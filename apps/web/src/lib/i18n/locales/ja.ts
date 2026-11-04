@@ -3387,6 +3387,8 @@ export const messages = {
 	"plansNew.clubPublishFailed": "ルーチンをクラブに公開できませんでした。あなたのルーチンに保存されています。詳細ページから公開し直してください。",
 	"plansNew.templateHeading": "クラブのテンプレートから始める",
 	"plansNew.templateHint": "コーチやクラブが作成したプランを複製し、好きな開始日に合わせます。複製はあなた専用のコピーで、編集内容はテンプレートには反映されません。",
+	"plansNew.templatesLoadFailed": "クラブのプランテンプレートを読み込めませんでした。",
+	"plansNew.templatesRetry": "再試行",
 	"plansNew.templateLabel": "テンプレート",
 	"plansNew.selectPlaceholder": "— 選択 —",
 	"plansNew.startDateLabel": "開始日",

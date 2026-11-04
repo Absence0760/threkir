@@ -3392,6 +3392,8 @@ export const messages = {
 	"plansNew.clubPublishFailed": "Impossible de publier la routine dans le club. Elle a été enregistrée dans vos routines — essayez de la publier depuis sa page de détail.",
 	"plansNew.templateHeading": "Partir d'un modèle de club",
 	"plansNew.templateHint": "Clonez un plan créé par un coach ou un club et fixez-le à une date de début de votre choix. Le clone est votre propre copie : vos modifications ne sont pas renvoyées au modèle.",
+	"plansNew.templatesLoadFailed": "Impossible de charger les modèles de plan de vos clubs.",
+	"plansNew.templatesRetry": "Réessayer",
 	"plansNew.templateLabel": "Modèle",
 	"plansNew.selectPlaceholder": "— sélectionner —",
 	"plansNew.startDateLabel": "Date de début",

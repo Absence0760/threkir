@@ -3391,6 +3391,8 @@ export const messages = {
 	"plansNew.clubPublishFailed": "Não foi possível publicar a rotina no clube. Ela foi salva nas suas rotinas — tente publicá-la pela página de detalhes.",
 	"plansNew.templateHeading": "Começar com um modelo do clube",
 	"plansNew.templateHint": "Clone um plano criado por um treinador ou clube e fixe-o em uma data de início à sua escolha. O clone é a sua própria cópia: as edições não voltam para o modelo.",
+	"plansNew.templatesLoadFailed": "Não foi possível carregar os modelos de plano dos seus clubes.",
+	"plansNew.templatesRetry": "Tentar novamente",
 	"plansNew.templateLabel": "Modelo",
 	"plansNew.selectPlaceholder": "— selecionar —",
 	"plansNew.startDateLabel": "Data de início",

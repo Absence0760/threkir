@@ -15,7 +15,7 @@
 	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
 	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
 	import {
-		fetchMyClubs,
+		fetchMyClubsWithError,
 		fetchClubTemplatesForClubs,
 		clonePlanTemplate,
 		createTrainingPlan,
@@ -153,6 +153,10 @@
 
 	let templates = $state<TemplateOption[]>([]);
 	let loadingTemplates = $state(true);
+	/// The club templates could not be read. Said out loud with a retry: a
+	/// club's Adopt link (`?from=`) otherwise landed on a page with no picker
+	/// and no reason why.
+	let templatesError = $state(false);
 	let selectedTemplateId = $state('');
 	let startDate = $state(defaultStartDate());
 	let startSnapped = $state(false);
@@ -246,9 +250,12 @@
 		return defaultPlanStartIso(todayISO(), false);
 	}
 
-	onMount(async () => {
+	async function loadTemplates(): Promise<void> {
+		loadingTemplates = true;
+		templatesError = false;
 		try {
-			const clubs = await fetchMyClubs();
+			const { clubs, error } = await fetchMyClubsWithError();
+			if (error) throw new Error(error);
 			const byClub = await fetchClubTemplatesForClubs(clubs.map((c) => c.id));
 			templates = clubs.flatMap((c) =>
 				(byClub.get(c.id) ?? []).map((template) => ({ template, clubName: c.name }))
@@ -262,10 +269,15 @@
 				selectedTemplateId = from;
 			}
 		} catch (e) {
-			console.warn('fetch templates failed', e);
+			console.error('fetch templates failed', e);
+			templatesError = true;
 		} finally {
 			loadingTemplates = false;
 		}
+	}
+
+	onMount(async () => {
+		await loadTemplates();
 		try {
 			gymSuggestions = await fetchGymExerciseNames();
 		} catch (e) {
@@ -522,7 +534,15 @@
 		<a class="btn btn-secondary" href="/plans/season">{m('seasonPlanner.entryLink')}</a>
 	</section>
 
-	{#if !loadingTemplates && templates.length > 0}
+	{#if templatesError}
+		<section class="template-picker" data-testid="template-load-error">
+			<h2>{m('plansNew.templateHeading')}</h2>
+			<p class="picker-hint" role="alert">{m('plansNew.templatesLoadFailed')}</p>
+			<button class="btn btn-secondary btn-sm" type="button" onclick={loadTemplates}>
+				{m('plansNew.templatesRetry')}
+			</button>
+		</section>
+	{:else if !loadingTemplates && templates.length > 0}
 		<section class="template-picker">
 			<h2>{m('plansNew.templateHeading')}</h2>
 			<p class="picker-hint" id="template-hint">

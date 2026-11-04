@@ -3392,6 +3392,8 @@ export const messages = {
 	"plansNew.clubPublishFailed": "Die Routine konnte nicht im Club veröffentlicht werden. Sie wurde in deinen Routinen gespeichert – versuche, sie von ihrer Detailseite aus zu veröffentlichen.",
 	"plansNew.templateHeading": "Mit einer Club-Vorlage starten",
 	"plansNew.templateHint": "Klone einen von einem Coach oder Club erstellten Plan und verankere ihn an einem Startdatum deiner Wahl. Der Klon ist deine eigene Kopie – Änderungen werden nicht an die Vorlage zurückübertragen.",
+	"plansNew.templatesLoadFailed": "Die Planvorlagen deiner Clubs konnten nicht geladen werden.",
+	"plansNew.templatesRetry": "Erneut versuchen",
 	"plansNew.templateLabel": "Vorlage",
 	"plansNew.selectPlaceholder": "— auswählen —",
 	"plansNew.startDateLabel": "Startdatum",

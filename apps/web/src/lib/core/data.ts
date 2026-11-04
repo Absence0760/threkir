@@ -5792,7 +5792,8 @@ export async function fetchClubTemplates(clubId: string, limit = 100): Promise<T
 /// /plans/new picker used to call fetchClubTemplates once per club (N+1).
 /// Per-club ordering matches fetchClubTemplates (created_at desc); the
 /// limit scales with the club count so no club is starved by another's
-/// template volume.
+/// template volume. Throws on a failed read: an empty map would read as
+/// "your clubs have no templates" and leave a club's Adopt link on nothing.
 export async function fetchClubTemplatesForClubs(
 	clubIds: string[],
 	limitPerClub = 100
@@ -5810,10 +5811,7 @@ export async function fetchClubTemplatesForClubs(
 			.order('created_at', { ascending: false })
 			.limit(limitPerClub * part.length)
 	);
-	if (error) {
-		console.error('fetchClubTemplatesForClubs failed', error);
-		return grouped;
-	}
+	if (error) throw dbError(error);
 	for (const row of (data ?? []) as TrainingPlan[]) {
 		if (!row.club_id) continue;
 		const list = grouped.get(row.club_id);

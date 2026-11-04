@@ -77,9 +77,13 @@ class _FakeTraining extends TrainingService {
 
 class _FakeSocial extends SocialService {
   final List<RecentRunRow> runs;
-  _FakeSocial(this.runs);
+  final Object? error;
+  _FakeSocial(this.runs, {this.error});
   @override
-  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async => runs;
+  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async {
+    if (error != null) throw error!;
+    return runs;
+  }
 }
 
 TrainingPlanRow _plan(DateTime start) => TrainingPlanRow(
@@ -170,6 +174,22 @@ void main() {
       expect(find.textContaining('So far this week you'), findsOneWidget);
       expect(find.textContaining('10.0 km'), findsOneWidget);
       expect(find.textContaining('under plan'), findsNothing);
+    });
+
+    // A failed read used to leave the empty list behind, read as "ran
+    // nothing": "0.0 km of the 8.0 km due". Unknown runs flag nothing.
+    testWidgets('flags nothing when the recent runs failed to load',
+        (tester) async {
+      final start = _mondayThisWeek();
+      final training = _FakeTraining(
+        _plan(start),
+        [_week('w0', 0, 'build', 40000)],
+        [_wo('wo0', 'w0', start.add(const Duration(days: 1)), 'easy', 8000)],
+      );
+      await _pump(tester,
+          training: training,
+          social: _FakeSocial(const [], error: Exception('offline')));
+      expect(find.textContaining('So far this week you'), findsNothing);
     });
 
     testWidgets('surfaces make-up advice for a missed long run', (tester) async {

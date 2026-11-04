@@ -542,6 +542,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// Best-effort fetch of the viewer's recent runs so the adherence banner
   /// + re-plan flow can compare actual weekly mileage to the plan. A failure
   /// leaves the adherence surfaces hidden — the rest of the plan still loads.
+  /// Until it lands the empty list means "unknown", never "ran nothing".
   Future<void> _loadRecentRuns() async {
     final plan = _plan;
     if (plan == null || !_isOwner(plan)) return;
@@ -553,8 +554,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         _recentRuns = runs;
         _recentRunsLoaded = true;
       });
-    } catch (_) {
-      /* L4 best-effort — leave the adherence surfaces hidden. */
+    } catch (e) {
+      debugPrint('PlanDetailScreen._loadRecentRuns failed: $e');
     }
   }
 
@@ -639,7 +640,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// already ended, so a part-elapsed week is not judged against its full
   /// seven-day target.
   WeeklyDrift? _currentWeekDrift(TrainingPlanRow plan) {
-    if (!_isOwner(plan) || _weeks.isEmpty) return null;
+    if (!_isOwner(plan) || !_recentRunsLoaded || _weeks.isEmpty) return null;
     final idx = _currentWeekIndex(plan);
     if (idx >= _weeks.length) return null;
     final week = _weeks[idx];
@@ -707,6 +708,10 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// The runs the re-plan judges by: the device's run store when the host
   /// handed one over, which is what Home's plan card judged by, so a card's
   /// Review opens the same proposal; the recent-runs read otherwise.
+  /// Whether the runs the re-plan judges by are known: the run store always
+  /// is, the recent-runs read only once it has landed.
+  bool get _replanRunsKnown => widget.runStore != null || _recentRunsLoaded;
+
   List<NudgeInputRun> get _replanRuns {
     final store = widget.runStore;
     if (store != null) {
@@ -930,8 +935,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
 
   void _proposeReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
-    _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
+    if (!_replanRunsKnown) {
+      showTopBanner(context, l10n.planDetailReplanRunsUnavailable);
+      return;
+    }
+    _makeUpAnswers = null;
     final input = _buildReplanInput(plan);
     final changes = preferVolumeAnchor(
       _volumeAnchor(input),
@@ -955,7 +964,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   void _offerAnchor() {
     final p = _plan;
     if (!mounted || p == null || !_isOwner(p) || p.isTemplate) return;
-    if (p.status != 'active') return;
+    if (p.status != 'active' || !_replanRunsKnown) return;
     final anchor = _volumeAnchor(_buildReplanInput(p));
     if (anchor == null) return;
     setState(() {
@@ -991,8 +1000,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// weeks show a sustained drift, suppressing single-week noise.
   void _proposeAdaptiveReplan(TrainingPlanRow plan) {
     if (!_isOwner(plan) || _bulkBusy) return;
-    _makeUpAnswers = null;
     final l10n = AppLocalizations.of(context);
+    if (!_replanRunsKnown) {
+      showTopBanner(context, l10n.planDetailReplanRunsUnavailable);
+      return;
+    }
+    _makeUpAnswers = null;
     final input = _buildReplanInput(plan);
     final res = adaptiveReplanRemaining(
       weeks: input,

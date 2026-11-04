@@ -1881,6 +1881,7 @@
   "planDetailAdaptiveConfidenceMedium": "confiança média",
   "planDetailAdaptiveBadge": "Com base numa tendência — esteve {reason} ({confidence})",
   "planDetailReplanOnTrack": "O seu plano está em dia — nada a ajustar.",
+  "planDetailReplanRunsUnavailable": "Não foi possível carregar as suas corridas recentes, por isso o plano ainda não pode ser comparado com elas. Tente novamente daqui a pouco.",
   "planDetailReplanApplied": "{n, plural, one{1 treino ajustado} other{{n} treinos ajustados}}",
   "planNudgeUnderTitle": "A correr um pouco menos do que o previsto",
   "planNudgeUnderBody": "Correu menos do que o previsto em {n} das últimas {total} semanas. Há um ajuste sugerido para as próximas semanas.",

@@ -1881,6 +1881,7 @@
   "planDetailAdaptiveConfidenceMedium": "中程度の確信度",
   "planDetailAdaptiveBadge": "傾向に基づく — {reason}（{confidence}）",
   "planDetailReplanOnTrack": "計画は順調です — 調整は不要です。",
+  "planDetailReplanRunsUnavailable": "最近のランを読み込めなかったため、まだプランと照らし合わせられません。少し待ってからもう一度お試しください。",
   "planDetailReplanApplied": "{n, plural, other{{n}件のワークアウトを調整しました}}",
   "planNudgeUnderTitle": "計画より少なめの走行が続いています",
   "planNudgeUnderBody": "直近{total}週のうち{n}週で計画より少なめでした。今後の週の調整案があります。",

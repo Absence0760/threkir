@@ -6879,6 +6879,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planDetailReplanOnTrack => 'Dein Plan läuft — nichts anzupassen.';
 
   @override
+  String get planDetailReplanRunsUnavailable =>
+      'Deine letzten Läufe konnten nicht geladen werden, daher lässt sich der Plan noch nicht mit ihnen abgleichen. Versuche es gleich noch einmal.';
+
+  @override
   String planDetailReplanApplied(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,

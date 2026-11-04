@@ -1881,6 +1881,7 @@
   "planDetailAdaptiveConfidenceMedium": "mittlere Konfidenz",
   "planDetailAdaptiveBadge": "Auf Basis eines Trends – du warst {reason} ({confidence})",
   "planDetailReplanOnTrack": "Dein Plan läuft — nichts anzupassen.",
+  "planDetailReplanRunsUnavailable": "Deine letzten Läufe konnten nicht geladen werden, daher lässt sich der Plan noch nicht mit ihnen abgleichen. Versuche es gleich noch einmal.",
   "planDetailReplanApplied": "{n, plural, one{1 Einheit angepasst} other{{n} Einheiten angepasst}}",
   "planNudgeUnderTitle": "Etwas weniger gelaufen als geplant",
   "planNudgeUnderBody": "Du bist in {n} der letzten {total} Wochen weniger gelaufen als geplant. Für die kommenden Wochen gibt es eine vorgeschlagene Anpassung.",

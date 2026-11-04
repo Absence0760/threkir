@@ -6878,6 +6878,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Votre plan est sur la bonne voie — rien à ajuster.';
 
   @override
+  String get planDetailReplanRunsUnavailable =>
+      'Impossible de charger vos sorties récentes : le plan ne peut pas encore être comparé à celles-ci. Réessayez dans un instant.';
+
+  @override
   String planDetailReplanApplied(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,

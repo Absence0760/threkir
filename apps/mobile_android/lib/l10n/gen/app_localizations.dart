@@ -11164,6 +11164,12 @@ abstract class AppLocalizations {
   /// **'Your plan\'s on track — nothing to adjust.'**
   String get planDetailReplanOnTrack;
 
+  /// Banner when a re-plan is asked for before the runner's recent runs have loaded (the read failed or is still in flight)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your recent runs, so the plan can\'t be checked against them yet. Try again in a moment.'**
+  String get planDetailReplanRunsUnavailable;
+
   /// Plan-detail adherence/replan/duplicate
   ///
   /// In en, this message translates to:

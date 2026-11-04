@@ -98,9 +98,13 @@ class _FakeTraining extends TrainingService {
 
 class _FakeSocial extends SocialService {
   final List<RecentRunRow> runs;
-  _FakeSocial(this.runs);
+  final Object? error;
+  _FakeSocial(this.runs, {this.error});
   @override
-  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async => runs;
+  Future<List<RecentRunRow>> fetchRecentRuns({int limit = 20}) async {
+    if (error != null) throw error!;
+    return runs;
+  }
 }
 
 TrainingPlanRow _plan(DateTime start, {String status = 'active'}) =>
@@ -446,6 +450,25 @@ void main() {
       expect(find.text('Proposed changes'), findsNothing);
       expect(training.updated, isEmpty);
       await tester.pump(const Duration(seconds: 4));
+    });
+
+    // Runs that never loaded are not "ran nothing": a re-plan built on an
+    // empty list would cut every week ahead as if the runner had stopped.
+    testWidgets('a re-plan waits for the recent runs, and says so',
+        (tester) async {
+      final training = _missedLongPlan();
+      await _pump(tester,
+          training: training,
+          social: _FakeSocial(const [], error: Exception('offline')));
+      for (final option in ['Re-plan remaining weeks', 'Adaptive re-plan']) {
+        await _openAdjust(tester);
+        await _chooseAdjustment(tester, option);
+        expect(find.text('Proposed changes'), findsNothing);
+        expect(find.textContaining("Couldn't load your recent runs"),
+            findsOneWidget);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pump(const Duration(milliseconds: 400));
+      }
     });
 
     testWidgets('Adaptive re-plan is reachable from the same dialog',

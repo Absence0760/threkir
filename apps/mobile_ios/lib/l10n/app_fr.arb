@@ -1881,6 +1881,7 @@
   "planDetailAdaptiveConfidenceMedium": "confiance moyenne",
   "planDetailAdaptiveBadge": "D'après une tendance — vous avez été {reason} ({confidence})",
   "planDetailReplanOnTrack": "Votre plan est sur la bonne voie — rien à ajuster.",
+  "planDetailReplanRunsUnavailable": "Impossible de charger vos sorties récentes : le plan ne peut pas encore être comparé à celles-ci. Réessayez dans un instant.",
   "planDetailReplanApplied": "{n, plural, one{1 séance ajustée} other{{n} séances ajustées}}",
   "planNudgeUnderTitle": "Un peu moins que prévu",
   "planNudgeUnderBody": "Vous avez couru moins que prévu {n} semaines sur les {total} dernières. Un ajustement des semaines à venir vous est proposé.",

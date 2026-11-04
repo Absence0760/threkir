@@ -9194,6 +9194,10 @@
   "@planDetailReplanOnTrack": {
     "description": "Plan-detail adherence/replan/duplicate"
   },
+  "planDetailReplanRunsUnavailable": "Couldn't load your recent runs, so the plan can't be checked against them yet. Try again in a moment.",
+  "@planDetailReplanRunsUnavailable": {
+    "description": "Banner when a re-plan is asked for before the runner's recent runs have loaded (the read failed or is still in flight)"
+  },
   "planDetailReplanApplied": "{n, plural, one{Adjusted 1 workout} other{Adjusted {n} workouts}}",
   "@planDetailReplanApplied": {
     "description": "Plan-detail adherence/replan/duplicate",

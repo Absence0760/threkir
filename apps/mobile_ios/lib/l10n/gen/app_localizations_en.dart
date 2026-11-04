@@ -6800,6 +6800,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your plan\'s on track — nothing to adjust.';
 
   @override
+  String get planDetailReplanRunsUnavailable =>
+      'Couldn\'t load your recent runs, so the plan can\'t be checked against them yet. Try again in a moment.';
+
+  @override
   String planDetailReplanApplied(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,

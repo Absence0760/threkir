@@ -6865,6 +6865,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'O seu plano está em dia — nada a ajustar.';
 
   @override
+  String get planDetailReplanRunsUnavailable =>
+      'Não foi possível carregar as suas corridas recentes, por isso o plano ainda não pode ser comparado com elas. Tente novamente daqui a pouco.';
+
+  @override
   String planDetailReplanApplied(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,
@@ -26476,6 +26480,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get planDetailReplanOnTrack =>
       'Seu plano está em dia — nada a ajustar.';
+
+  @override
+  String get planDetailReplanRunsUnavailable =>
+      'Não foi possível carregar suas corridas recentes, então o plano ainda não pode ser comparado com elas. Tente novamente em instantes.';
 
   @override
   String planDetailReplanApplied(int n) {

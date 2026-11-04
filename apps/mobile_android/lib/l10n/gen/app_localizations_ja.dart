@@ -6490,6 +6490,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailReplanOnTrack => '計画は順調です — 調整は不要です。';
 
   @override
+  String get planDetailReplanRunsUnavailable =>
+      '最近のランを読み込めなかったため、まだプランと照らし合わせられません。少し待ってからもう一度お試しください。';
+
+  @override
   String planDetailReplanApplied(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,

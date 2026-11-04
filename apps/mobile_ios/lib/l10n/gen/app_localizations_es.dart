@@ -6860,6 +6860,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planDetailReplanOnTrack => 'Tu plan va bien — nada que ajustar.';
 
   @override
+  String get planDetailReplanRunsUnavailable =>
+      'No se pudieron cargar tus carreras recientes, así que aún no se puede comparar el plan con ellas. Inténtalo de nuevo en un momento.';
+
+  @override
   String planDetailReplanApplied(int n) {
     String _temp0 = intl.Intl.pluralLogic(
       n,

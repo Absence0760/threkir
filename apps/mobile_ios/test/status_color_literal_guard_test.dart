@@ -77,14 +77,11 @@ const _dataPalettes = <String, Map<String, int>>{
     'FACC15': 1,
     'DC2626': 1,
   },
-  // Heat-density dots, the featured map-pin ring, and ONE "kept" route line.
-  // The violet is legible over arbitrary basemap tiles and is drawn on the map
-  // and nowhere else: the count is what stops a fourth chrome site importing it
-  // onto a theme surface, which is how three of them got there.
+  // Heat-density dots and the featured map-pin ring. The kept route line
+  // now draws in `mapPinnedLine`'s basemap-keyed rungs.
   'lib/screens/routes_heatmap_screen.dart': {
     'Colors.red': 1,
     'FACC15': 1,
-    '8B5CF6': 1,
   },
   // Map-overlay accent (selected-segment highlight, coarse-position ring,
   // hover pointer) — one constant now, read by all three and paired with a

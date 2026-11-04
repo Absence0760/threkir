@@ -131,8 +131,9 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
     // The two line tokens are DEFINED here, as `parchmentLine` / `duskLine`
     // reads that land in `dividerColor` and `dividerTheme`.
     '../../packages/ui_kit/lib/src/theme/app_theme.dart': 2,
-    // A local held for a chart axis + gridline, both `Paint`.
-    'lib/screens/dashboard_screen.dart': 1,
+    // The activity heatmap's zero-tile hairline, held in a local and drawn
+    // as a `Paint` stroke and a cell `Border` — never type.
+    'lib/widgets/activity_heatmap.dart': 1,
     // `_SetPip` builds a (colour, icon) pair and the colour reaches nothing but
     // `Icon(color:)` — the pip has no label of its own.
     'lib/widgets/gym_execution_band.dart': 1,
@@ -146,7 +147,7 @@ const _derivedAllowlist = <_Family, Map<String, int>>{
   _Family.palette: {
     // Each of these holds the scale (or one entry of it) in a local and paints
     // bars, strokes, dots or a cell edge with it — no `TextStyle` in any.
-    'lib/screens/dashboard_screen.dart': 1,
+    'lib/widgets/activity_heatmap.dart': 1,
     // The HR-zone bar, and the elevation chart's line + fill colour.
     'lib/screens/run_detail_screen.dart': 2,
     'lib/widgets/intensity_card.dart': 1,

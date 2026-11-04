@@ -22,7 +22,7 @@
 		fetchPrecedingPlan,
 		fetchRuns,
 	} from '#lib/core/data.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
+	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { fmtKm } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -96,7 +96,7 @@
 	}> {
 		const [primaryRes, mine] = await Promise.all([fetchPlan(planId), fetchMyPlansWithError()]);
 		if (primaryRes.error) throw new Error(primaryRes.error);
-		if (mine.error) throw mine.error;
+		if (mine.error) throw dbError(mine.error);
 		const plan = primaryRes.plan;
 		if (!plan || plan.status !== 'active' || plan.end_date < today) {
 			throw new PlanEditError('nothing_to_adjust');

@@ -283,7 +283,7 @@ Rules:
   failure itself, put through `dbError` (`error: Error | null`), never its
   text and never an English fallback: the screen renders it with
   `errorCopy(res.error, m, '<context>')`, and a caller that rethrows it writes
-  `throw res.error`. A string-typed `error` field put PostgREST's English in
+  `throw dbError(res.error)`. A string-typed `error` field put PostgREST's English in
   front of the reader through a field no scan could tell from copy;
   `error_copy_guard.test.ts` fails the PR on a `core/data.ts` reader that
   declares one, outside a shrinking `TEXT_READERS` list of readers not yet

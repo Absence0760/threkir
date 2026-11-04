@@ -1793,6 +1793,8 @@
   "planDetailPublishLibrarySuccess": "Plan in der öffentlichen Bibliothek veröffentlicht. Dein persönlicher Plan bleibt unverändert.",
   "planDetailPublishLibraryFailed": "Veröffentlichen fehlgeschlagen: {error}",
   "planDetailUnpublishLibrary": "Zurückziehen",
+  "planDetailUnpublishTitle": "Diesen Plan zurückziehen?",
+  "planDetailUnpublishBody": "Der Plan verschwindet aus der öffentlichen Bibliothek. Wer einen geteilten Link dazu öffnet, findet ihn nicht mehr, und erneutes Veröffentlichen erzeugt einen neuen Link.",
   "planDetailUnpublishSuccess": "Aus der öffentlichen Bibliothek entfernt.",
   "planDetailUnpublishFailed": "Zurückziehen fehlgeschlagen: {error}",
   "planDetailAlreadyPublished": "Dieser Plan ist in der öffentlichen Bibliothek.",

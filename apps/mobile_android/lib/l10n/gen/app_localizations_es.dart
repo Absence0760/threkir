@@ -6502,6 +6502,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planDetailUnpublishLibrary => 'Retirar';
 
   @override
+  String get planDetailUnpublishTitle => '¿Retirar este plan?';
+
+  @override
+  String get planDetailUnpublishBody =>
+      'Sale de la biblioteca pública. Quien abra un enlace que hayas compartido verá que ya no está, y al volver a publicarlo se crea un enlace nuevo.';
+
+  @override
   String get planDetailUnpublishSuccess =>
       'Eliminado de la biblioteca pública.';
 

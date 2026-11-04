@@ -6519,6 +6519,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planDetailUnpublishLibrary => 'Zurückziehen';
 
   @override
+  String get planDetailUnpublishTitle => 'Diesen Plan zurückziehen?';
+
+  @override
+  String get planDetailUnpublishBody =>
+      'Der Plan verschwindet aus der öffentlichen Bibliothek. Wer einen geteilten Link dazu öffnet, findet ihn nicht mehr, und erneutes Veröffentlichen erzeugt einen neuen Link.';
+
+  @override
   String get planDetailUnpublishSuccess =>
       'Aus der öffentlichen Bibliothek entfernt.';
 

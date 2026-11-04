@@ -2103,6 +2103,16 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final templateId = _publishedTemplateId;
     if (templateId == null || _libraryBusy) return;
     final l10n = AppLocalizations.of(context);
+    // Unpublishing deletes the library copy: a republish mints a new id, so
+    // every shared "Train with me" link to this one stops resolving.
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.planDetailUnpublishTitle,
+      body: l10n.planDetailUnpublishBody,
+      confirmLabel: l10n.planDetailUnpublishLibrary,
+      cancelLabel: l10n.plansCancel,
+    );
+    if (!ok || !mounted || _libraryBusy) return;
     setState(() => _libraryBusy = true);
     try {
       await widget.training

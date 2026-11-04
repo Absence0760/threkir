@@ -1793,6 +1793,8 @@
   "planDetailPublishLibrarySuccess": "Plano publicado na biblioteca pública. Seu plano pessoal não muda.",
   "planDetailPublishLibraryFailed": "Falha ao publicar: {error}",
   "planDetailUnpublishLibrary": "Remover",
+  "planDetailUnpublishTitle": "Remover este plano?",
+  "planDetailUnpublishBody": "Ele sai da biblioteca pública. Quem abrir um link que você compartilhou não vai mais encontrá-lo, e publicar de novo cria um novo link.",
   "planDetailUnpublishSuccess": "Removido da biblioteca pública.",
   "planDetailUnpublishFailed": "Falha ao remover: {error}",
   "planDetailAlreadyPublished": "Este plano está na biblioteca pública.",

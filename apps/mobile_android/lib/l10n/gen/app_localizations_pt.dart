@@ -6507,6 +6507,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planDetailUnpublishLibrary => 'Remover';
 
   @override
+  String get planDetailUnpublishTitle => 'Remover este plano?';
+
+  @override
+  String get planDetailUnpublishBody =>
+      'Sai da biblioteca pública. Quem abrir uma ligação que partilhou deixa de o encontrar, e voltar a publicar cria uma nova ligação.';
+
+  @override
   String get planDetailUnpublishSuccess => 'Removido da biblioteca pública.';
 
   @override
@@ -26111,6 +26118,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailUnpublishLibrary => 'Remover';
+
+  @override
+  String get planDetailUnpublishTitle => 'Remover este plano?';
+
+  @override
+  String get planDetailUnpublishBody =>
+      'Ele sai da biblioteca pública. Quem abrir um link que você compartilhou não vai mais encontrá-lo, e publicar de novo cria um novo link.';
 
   @override
   String get planDetailUnpublishSuccess => 'Removido da biblioteca pública.';

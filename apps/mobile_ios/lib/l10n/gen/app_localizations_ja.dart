@@ -6145,6 +6145,13 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailUnpublishLibrary => '公開を取り消す';
 
   @override
+  String get planDetailUnpublishTitle => 'このプランの公開を取り消しますか？';
+
+  @override
+  String get planDetailUnpublishBody =>
+      '公開ライブラリから削除されます。共有したリンクを開いた人にはプランが見つからなくなり、再度公開すると新しいリンクになります。';
+
+  @override
   String get planDetailUnpublishSuccess => '公開ライブラリから削除しました。';
 
   @override

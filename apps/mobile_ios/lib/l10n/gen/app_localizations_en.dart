@@ -6443,6 +6443,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDetailUnpublishLibrary => 'Unpublish';
 
   @override
+  String get planDetailUnpublishTitle => 'Unpublish this plan?';
+
+  @override
+  String get planDetailUnpublishBody =>
+      'It leaves the public library. Anyone who opens a link you shared to it will find it gone, and publishing again creates a new link.';
+
+  @override
   String get planDetailUnpublishSuccess => 'Removed from the public library.';
 
   @override

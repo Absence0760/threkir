@@ -10636,6 +10636,18 @@ abstract class AppLocalizations {
   /// **'Unpublish'**
   String get planDetailUnpublishLibrary;
 
+  /// Title of the confirm before a plan is removed from the public library
+  ///
+  /// In en, this message translates to:
+  /// **'Unpublish this plan?'**
+  String get planDetailUnpublishTitle;
+
+  /// Body of the confirm before a plan is removed from the public library: the delete breaks shared links
+  ///
+  /// In en, this message translates to:
+  /// **'It leaves the public library. Anyone who opens a link you shared to it will find it gone, and publishing again creates a new link.'**
+  String get planDetailUnpublishBody;
+
   /// Public plan library
   ///
   /// In en, this message translates to:

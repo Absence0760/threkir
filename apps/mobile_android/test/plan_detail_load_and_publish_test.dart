@@ -230,8 +230,9 @@ void main() {
       expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
 
       await tester.tap(find.text(en.planDetailUnpublishLibrary));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(find.text(en.planDetailUnpublishTitle), findsOneWidget);
+      await _confirmUnpublish(tester);
 
       expect(training.unpublishCalls, ['template-9']);
       expect(find.text(en.planDetailPublishLibrary), findsOneWidget);
@@ -263,12 +264,43 @@ void main() {
       await _pump(tester, training);
 
       await tester.tap(find.text(en.planDetailUnpublishLibrary));
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
+      await _confirmUnpublish(tester);
 
       expect(find.textContaining('Failed to unpublish'), findsOneWidget);
       expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
       await _drainBanner(tester);
     });
+
+    // Unpublishing deletes the library copy and breaks every shared link to
+    // it, so it confirms; Cancel leaves the plan published.
+    testWidgets('Unpublish asks first, and Cancel keeps the plan published',
+        (tester) async {
+      final training = _FakeTraining(published: [
+        _plan.copyWith(id: 'template-9', isPublicTemplate: true),
+      ]);
+      await _pump(tester, training);
+
+      await tester.tap(find.text(en.planDetailUnpublishLibrary));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(find.text(en.planDetailUnpublishBody), findsOneWidget);
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text(en.plansCancel)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AlertDialog), findsNothing);
+      expect(training.unpublishCalls, isEmpty);
+      expect(find.text(en.planDetailUnpublishLibrary), findsOneWidget);
+    });
   });
+}
+
+Future<void> _confirmUnpublish(WidgetTester tester) async {
+  await tester.tap(find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.text(lookupAppLocalizations(const Locale('en'))
+          .planDetailUnpublishLibrary)));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
 }

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, tick } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatDuration } from '#lib/format/time.ts';
@@ -19,6 +18,7 @@
 	import { goto } from '$app/navigation';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { hasNonRunData, modalityVisible } from '#lib/stores/modality_visibility.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { Snapshot } from './$types';
@@ -167,7 +167,7 @@
 				}
 			})
 			.catch((e) => {
-				if (gen === fetchGen) loadError = thrownMessage(e) || 'Failed to load history';
+				if (gen === fetchGen) loadError = errorCopy(e, m, 'history: loadError');
 			})
 			.finally(() => {
 				if (gen === fetchGen) activitiesLoaded = true;

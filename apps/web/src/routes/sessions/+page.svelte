@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -8,6 +7,7 @@
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import SessionPlanEditor from '#lib/components/SessionPlanEditor.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let plans = $state<SessionPlan[]>([]);
 	let loading = $state(true);
@@ -23,7 +23,7 @@
 		try {
 			plans = await fetchSessionPlans();
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'sessions: loadError');
 		} finally {
 			loading = false;
 		}

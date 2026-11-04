@@ -1,6 +1,5 @@
 <script lang="ts">
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { supabase } from '#lib/core/supabase.ts';
@@ -29,6 +28,7 @@
 	import { diaryWindow, isoDateOf } from '#lib/nutrition/diary_day.ts';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
@@ -106,7 +106,7 @@
 			});
 			recompute();
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'nutrition/targets: loadError');
 		}
 		loading = false;
 	}
@@ -129,7 +129,7 @@
 		try {
 			await updateUniversal(auth.user!.id, changes);
 		} catch (e) {
-			saveError = thrownMessage(e);
+			saveError = errorCopy(e, m, 'nutrition/targets: saveError');
 		}
 	}
 

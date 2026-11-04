@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import {
@@ -29,6 +28,7 @@
 	import GymEditor from '#lib/components/GymEditor.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 
 	let workouts = $state<GymWorkout[]>([]);
@@ -85,7 +85,7 @@
 			// fetchSessionPlans rethrows rather than returning an error field,
 			// so a rejection used to escape the Promise.all and leave `loading`
 			// true forever — the retry banner below was unreachable.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'gym: loadError');
 			catalogueUnavailable = true;
 		} finally {
 			loading = false;

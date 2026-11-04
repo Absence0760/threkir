@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -19,6 +18,7 @@
 	import type { NutritionPlan, NutritionPlanAssignment } from '#lib/types.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import DangerZone from '#lib/components/DangerZone.svelte';
@@ -59,7 +59,7 @@
 			plan = planRes.plan;
 			assignments = assignRes.assignments;
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'nutrition/plans/[id]: loadError');
 			plan = null;
 		} finally {
 			loading = false;
@@ -82,7 +82,7 @@
 			await followNutritionPlan(plan.id, today, assignments);
 			showToast(m('nutrition.plan.followed', { name: plan.title }), 'success');
 		} catch (e) {
-			showToast(m('nutrition.plan.followFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.plan.followFailed', { error: errorCopy(e, m, 'nutrition.plan.followFailed') }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -96,7 +96,7 @@
 			await stopFollowingNutritionPlan(current, today);
 			showToast(m('nutrition.plan.stopped', { name: plan.title }), 'success');
 		} catch (e) {
-			showToast(m('nutrition.plan.stopFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.plan.stopFailed', { error: errorCopy(e, m, 'nutrition.plan.stopFailed') }), 'error');
 		} finally {
 			busy = false;
 		}
@@ -112,7 +112,7 @@
 			await goto('/nutrition');
 		} catch (e) {
 			confirmingDelete = false;
-			showToast(m('nutrition.plan.deleteFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.plan.deleteFailed', { error: errorCopy(e, m, 'nutrition.plan.deleteFailed') }), 'error');
 		}
 	}
 

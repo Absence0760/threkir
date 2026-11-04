@@ -56,7 +56,7 @@
 	let request = $state('');
 	let busy = $state(false);
 	let saving = $state(false);
-	let error = $state<{ message: string; consent: boolean } | null>(null);
+	let error = $state<{ text: string; consent: boolean } | null>(null);
 	let notes = $state<PlanEditNote[]>([]);
 	let dropped = $state(0);
 	let result = $state<{ application: PlanEditApplication; check: PlanEditLoadCheck } | null>(null);
@@ -86,12 +86,12 @@
 		};
 	}
 
-	function errorFor(e: unknown): { message: string; consent: boolean } {
+	function errorFor(e: unknown): { text: string; consent: boolean } {
 		const kind = e instanceof PlanEditError ? e.kind : 'unavailable';
-		if (kind === 'consent') return { message: m('planDetail.aiAdjustErrorConsent'), consent: true };
-		if (kind === 'daily_limit') return { message: m('planDetail.aiAdjustErrorDailyLimit'), consent: false };
-		if (kind === 'nothing_to_adjust') return { message: m('planDetail.aiAdjustErrorNothing'), consent: false };
-		return { message: m('planDetail.aiAdjustErrorFallback'), consent: false };
+		if (kind === 'consent') return { text: m('planDetail.aiAdjustErrorConsent'), consent: true };
+		if (kind === 'daily_limit') return { text: m('planDetail.aiAdjustErrorDailyLimit'), consent: false };
+		if (kind === 'nothing_to_adjust') return { text: m('planDetail.aiAdjustErrorNothing'), consent: false };
+		return { text: m('planDetail.aiAdjustErrorFallback'), consent: false };
 	}
 
 	async function suggest(): Promise<void> {
@@ -250,7 +250,7 @@
 
 	{#if error}
 		<p class="error" role="alert">
-			{error.message}
+			{error.text}
 			{#if error.consent}
 				<a href={AI_CONSENT_HREF}>{m('planDetail.aiAdjustErrorConsentLink')}</a>
 			{/if}

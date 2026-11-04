@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -30,6 +29,7 @@
 	import { goto } from '$app/navigation';
 	import { smartBack } from '#lib/util/smart_back.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { PUBLIC_SITE_URL } from '$app/env/public';
 	import { buildSessionShareCanonical } from '#lib/share/share_session_meta.ts';
 	import { withShareRef } from '#lib/share/share_ref.ts';
@@ -71,7 +71,7 @@
 		try {
 			plan = await fetchSessionPlan(planId);
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'sessions/[id]: loadError');
 			return;
 		} finally {
 			loading = false;

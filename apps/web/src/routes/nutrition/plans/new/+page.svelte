@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { fetchMyNutritionAssignmentsWithError, followNutritionPlan } from '#lib/core/data.ts';
 	import { isoDateOf } from '#lib/nutrition/diary_day.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { NutritionPlan } from '#lib/types.ts';
 	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
 
@@ -16,7 +16,7 @@
 				await followNutritionPlan(plan.id, isoDateOf(new Date()), current.assignments);
 				showToast(m('nutrition.plan.followed', { name: plan.title }), 'success');
 			} catch (e) {
-				showToast(m('nutrition.plan.followFailed', { error: thrownMessage(e) }), 'error');
+				showToast(m('nutrition.plan.followFailed', { error: errorCopy(e, m, 'nutrition.plan.followFailed') }), 'error');
 			}
 		} else {
 			showToast(m('nutrition.plan.saved'), 'success');

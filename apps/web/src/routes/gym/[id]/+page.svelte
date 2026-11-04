@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -41,6 +40,7 @@
 	import { reviewFromMetadata } from '#lib/gym/gym_workout_review.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { PUBLIC_SITE_URL } from '$app/env/public';
@@ -134,7 +134,7 @@
 		try {
 			w = await fetchGymWorkoutWithSets(id);
 		} catch (e) {
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'gym/[id]: loadError');
 			data = null;
 			notFound = false;
 			loading = false;

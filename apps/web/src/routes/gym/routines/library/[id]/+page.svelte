@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -12,6 +11,7 @@
 	import { formatWeight } from '#lib/format/units.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
 	const routineId = $derived(page.params.id ?? '');
 
@@ -32,7 +32,7 @@
 		} catch (e) {
 			// The loadError banner below was previously unreachable — nothing
 			// ever assigned it, so a failed read showed "Routine not found".
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, t, 'gym/routines/library/[id]: loadError');
 			loading = false;
 			return;
 		}

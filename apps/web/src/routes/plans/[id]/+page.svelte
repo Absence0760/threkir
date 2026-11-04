@@ -1248,7 +1248,7 @@
 		} catch (e) {
 			// A rejected fetch would otherwise leave the page stuck on its
 			// loading skeleton forever — surface it with a retry instead.
-			loadError = thrownMessage(e);
+			loadError = errorCopy(e, m, 'plans/[id]: loadError');
 		}
 		loading = false;
 		assigningCoachName = null;

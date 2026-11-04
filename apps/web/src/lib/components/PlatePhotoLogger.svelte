@@ -12,6 +12,7 @@
 	import { MAX_ITEM_NAME_CHARS, PLATE_ITEM_LIMITS } from '#lib/nutrition/plate_photo/estimate.ts';
 	import { MAX_PLATE_NOTE_CHARS, type PlatePhotoErrorKind } from '#lib/nutrition/plate_photo/upload.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 
 	interface Props {
@@ -151,7 +152,7 @@
 			saveError = m('nutrition.platePhotoSavePartial', {
 				saved,
 				total: pending.length,
-				error: thrownMessage(e),
+				error: errorCopy(e, m, 'nutrition.platePhotoSavePartial'),
 			});
 		} finally {
 			saving = false;

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { onMount, untrack } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -81,6 +80,7 @@
 	import { formatDate } from '#lib/format/time.ts';
 	import type { FoodMacros } from '#lib/nutrition/food_search.ts';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { formatDecimal } from '#lib/format/number.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
@@ -376,7 +376,7 @@
 			// as an empty page indistinguishable from "nothing logged" — surface
 			// the same load-error banner the primary day's-food path uses.
 			console.warn('nutrition load failed', e);
-			if (current()) loadError = thrownMessage(e);
+			if (current()) loadError = errorCopy(e, m, 'nutrition: loadError');
 		}
 		if (current()) loading = false;
 	}
@@ -448,7 +448,7 @@
 			mealName = '';
 			await loadTemplates();
 		} catch (e) {
-			showToast(m('nutrition.templateSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.templateSaveFailed', { error: errorCopy(e, m, 'nutrition.templateSaveFailed') }), 'error');
 		} finally {
 			savingMeal = false;
 		}
@@ -466,7 +466,7 @@
 			await followNutritionPlan(plan.id, todayIso, assignments);
 			showToast(m('nutrition.plan.followed', { name: plan.title }), 'success');
 		} catch (e) {
-			showToast(m('nutrition.plan.followFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.plan.followFailed', { error: errorCopy(e, m, 'nutrition.plan.followFailed') }), 'error');
 		} finally {
 			followingPlanId = null;
 		}
@@ -495,7 +495,7 @@
 			showToast(m('nutrition.templateLogged', { n, name: t.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.templateLogFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.templateLogFailed', { error: errorCopy(e, m, 'nutrition.templateLogFailed') }), 'error');
 		} finally {
 			loggingTemplateId = null;
 		}
@@ -510,7 +510,7 @@
 			templates = templates.filter((x) => x.id !== t.id);
 			confirmDeleteTemplate = null;
 		} catch (e) {
-			showToast(m('nutrition.deleteTemplateFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.deleteTemplateFailed', { error: errorCopy(e, m, 'nutrition.deleteTemplateFailed') }), 'error');
 		} finally {
 			deletingTemplate = false;
 		}
@@ -545,7 +545,7 @@
 			recipeServings = servingsBounds.min;
 			await loadRecipes();
 		} catch (e) {
-			showToast(m('nutrition.recipeSaveFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.recipeSaveFailed', { error: errorCopy(e, m, 'nutrition.recipeSaveFailed') }), 'error');
 		} finally {
 			savingRecipe = false;
 		}
@@ -563,7 +563,7 @@
 			showToast(m('nutrition.recipeLogged', { n, name: r.name }), 'success');
 			await load();
 		} catch (e) {
-			showToast(m('nutrition.recipeLogFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.recipeLogFailed', { error: errorCopy(e, m, 'nutrition.recipeLogFailed') }), 'error');
 		} finally {
 			loggingRecipeId = null;
 		}
@@ -578,7 +578,7 @@
 			recipes = recipes.filter((x) => x.id !== r.id);
 			confirmDeleteRecipe = null;
 		} catch (e) {
-			showToast(m('nutrition.deleteRecipeFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.deleteRecipeFailed', { error: errorCopy(e, m, 'nutrition.deleteRecipeFailed') }), 'error');
 		} finally {
 			deletingRecipe = false;
 		}
@@ -609,7 +609,7 @@
 			},
 			onCommitError: (e) =>
 				showToast(
-					m('nutrition.deleteFailed', { error: thrownMessage(e) }),
+					m('nutrition.deleteFailed', { error: errorCopy(e, m, 'nutrition.deleteFailed') }),
 					'error',
 				),
 		});

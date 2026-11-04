@@ -1,11 +1,11 @@
 <script lang="ts">
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { searchFoodSources, scalePortion, type FoodSearchResult } from '#lib/nutrition/food_search.ts';
 	import { entryTimestampFor } from '#lib/nutrition/diary_day.ts';
 	import { createFoodEntry } from '#lib/core/data.ts';
 	import { MEAL_SLOTS, type MealSlot } from '#lib/nutrition/nutrition_totals.ts';
 	import { m, currentLocale } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { PUBLIC_USDA_FDC_API_KEY } from '$app/env/public';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
@@ -142,7 +142,7 @@
 			dirty.rebaseline();
 			oncreated();
 		} catch (e) {
-			showToast(m('nutrition.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.addFailed', { error: errorCopy(e, m, 'nutrition.addFailed') }), 'error');
 			saving = false;
 		}
 	}
@@ -171,7 +171,7 @@
 			dirty.rebaseline();
 			oncreated();
 		} catch (e) {
-			showToast(m('nutrition.addFailed', { error: thrownMessage(e) }), 'error');
+			showToast(m('nutrition.addFailed', { error: errorCopy(e, m, 'nutrition.addFailed') }), 'error');
 			saving = false;
 		}
 	}

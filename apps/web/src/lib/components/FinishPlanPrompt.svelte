@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { finishPlan } from '#lib/core/data.ts';
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 
@@ -25,7 +25,7 @@
 			showToast(m('planFinish.done', { name: plan.name }));
 			await onfinished();
 		} catch (e) {
-			showToast(m('planFinish.failed', { error: thrownMessage(e) }), 'error');
+			showToast(m('planFinish.failed', { error: errorCopy(e, m, 'planFinish.failed') }), 'error');
 		} finally {
 			busy = false;
 		}

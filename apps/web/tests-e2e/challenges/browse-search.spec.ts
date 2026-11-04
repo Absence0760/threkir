@@ -104,8 +104,9 @@ test.describe('/challenges — Browse search', () => {
 		const banner = page
 			.getByRole('alert')
 			.filter({ hasText: "Couldn't load challenges." })
-			.filter({ hasText: 'simulated browse failure' });
+			.filter({ hasText: 'Something went wrong. Try again.' });
 		await expect(banner).toBeVisible({ timeout: 15_000 });
+		await expect(banner).not.toContainText('simulated browse failure');
 		await expect(page.getByText('No public challenges to join right now.')).toHaveCount(0);
 
 		await banner.getByRole('button', { name: 'Retry' }).click();

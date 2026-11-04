@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { fetchChallenges, browsePublicChallenges } from '#lib/core/data.ts';
 	import type { ChallengeWithMeta } from '#lib/types.ts';
 	import ChallengeEditor from '#lib/components/ChallengeEditor.svelte';
@@ -8,6 +7,7 @@
 	import { myProgressView } from '#lib/social/challenge_list.ts';
 	import Modal from '#lib/components/Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { goto } from '$app/navigation';
 	import { smartBack } from '#lib/util/smart_back.ts';
 
@@ -42,7 +42,7 @@
 			mine = await fetchChallenges({ mine: true });
 			mineAt = Date.now();
 		} catch (e) {
-			mineError = thrownMessage(e);
+			mineError = errorCopy(e, m, 'challenges: mineError');
 		}
 	}
 
@@ -68,7 +68,7 @@
 			if (gen !== browseGen) return;
 			// Same reasoning as `mine` above: a failed browse must not render
 			// as "no public challenges to join", which is a different fact.
-			browseError = thrownMessage(e);
+			browseError = errorCopy(e, m, 'challenges: browseError');
 			if (reset) browse = [];
 			browseDone = true;
 		} finally {

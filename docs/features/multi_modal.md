@@ -387,8 +387,8 @@ becomes an **action button**, not a tab.
 > stats instead of sitting above them on every visit. The pending-sync
 > banner counts unsynced runs (retried through `SyncService`) and parked
 > runs as well as lifts and meals. With Gym and Nutrition both hidden the
-> pinned Coach card's subtitle names runs, training and recovery rather than
-> lifts and nutrition; its placement is unchanged. The first-run "Lifting
+> Coach card's subtitle names runs, training and recovery rather than
+> lifts and nutrition. The first-run "Lifting
 > instead?" link is hidden once `show_gym` holds an explicit answer.
 >
 > **Status (web, #905 workstream 3):** an account **with** runs opens on
@@ -401,7 +401,7 @@ becomes an **action button**, not a tab.
 >
 > **Status (mobile, #905 workstream 3):** the same lead now opens mobile Home
 > for an account with runs — `_DashboardWeekLead` in `dashboard_screen.dart`,
-> under the pinned Coach card and above the today's-workout card, fed by the
+> at the top of Home (Coach moved below the Today block, § 2276) and above the today's-workout card, fed by the
 > `week_lead.dart` parity pair so the yardstick order is web's to the letter.
 > Its next-session row opens `WorkoutDetailScreen`, **Add a run** opens the
 > manual `AddRunScreen`, and the import action keeps the welcome state's
@@ -1279,7 +1279,7 @@ Bottom nav becomes `Home · Train · [+] Log · Social · You` (still five slots
 - **`Log` (+)** is unchanged — the capture sheet (Log run / lift / food → keep-alive capture page), long-press = open the fan. Capture stays separate from the Train *review/plan* surfaces (the verb-vs-modality split §63 established).
 - **`Social`** is unchanged (Feed / People / Clubs). **Routes leaves Social** — the mobile Social screen drops any routes entry.
 - **`You`** = profile + Settings + subscription + (future) payout account. `Settings` vacates its own slot; the `keepRunPrimary` toggle and all prefs live under `You → Settings`.
-- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
+- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach; since [decisions § 2276](../architecture/decisions.md) it closes the Today block instead, under today's workout and what was logged today) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
 - **Home** is unchanged — the prioritised, self-hiding card stack ("what's my day").
 - **Expanded widths (≥840dp — tablets / landscape foldables) swap the chrome, not the IA:** the same four destinations + the Log action render as a `NavigationRail` (Log rides the rail's leading slot and fans its speed-dial from the button's own anchor) instead of the `BottomAppBar` + docked centre FAB. Destinations, keep-alive pages, and the Log contract are identical — only the shell changes (`widthClassOf` gate, see [conventions.md § Mobile adaptive width](../architecture/conventions.md#mobile-adaptive-width--widthclass)).
 
@@ -1329,7 +1329,7 @@ Gym P1 and nutrition sequencing keep their own gates (gym repeat-rate, nutrition
 
 1. **Hub naming** — *resolved*: shipped as **Fitness** (covers run + gym + nutrition; "Train" was the working title but doesn't cover food).
 2. **Does `All`/History also keep a Home presence?** — Home is the dashboard; the full timeline moves to `Train → All`. Decide whether Home keeps a short "recent activity" strip or sends users to the hub for history.
-3. **Coach prominence** — *resolved* (above): a pinned `Ask your coach…` entry at the top of Home, not a dedicated slot. Revisit only if engagement data argues for a full slot.
+3. **Coach prominence** — *resolved* (above): an always-present `Ask your coach…` entry on Home, not a dedicated slot; it closes the Today block (decisions § 2276). Revisit only if engagement data argues for a full slot.
 
 ### Appendix — proposed ADR (Routes is a run-modality surface; mobile nav is a Train hub)
 

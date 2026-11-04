@@ -1077,7 +1077,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  /// The pinned "Ask your coach" entry shown at the top of Home. Null when
+  /// The "Ask your coach" entry that closes Home's Today block. Null when
   /// signed out, with no training service, or while the Coach is not live on
   /// this deploy, so it never renders a dead tap.
   Widget? _coachEntry() {
@@ -1489,7 +1489,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     // dashboard's content can sit flush with the top inset.
     //
     // The Coach glyph is deliberately absent: `_coachEntry()` is a labelled
-    // card 8 dp below it, so the toolbar's leading icon was a second, mute
+    // card on the same screen, so a toolbar icon would be a second, mute
     // route to the same screen — and a tooltip is not a label on a touch
     // device (#666 I8, the ruling that turned the recap glyph into the
     // labelled link under the period cards). The three that remain are
@@ -1666,11 +1666,12 @@ class _DashboardScreenState extends State<DashboardScreen>
         ],
       );
     } else {
-      // Pinned coach entry — the resolved Coach-prominence decision puts
-      // the AI coach one persistent tap from Home (it has no bottom-nav
-      // slot). Gated on api + training, on the Coach being live, plus
-      // runs.isNotEmpty (#272) so it never dominates a zero-runs first
-      // screen.
+      // The coach entry — the AI coach stays one persistent tap from Home (it
+      // has no bottom-nav slot), closing the Today block rather than opening
+      // it: today's plan and what was logged today are what Home is opened
+      // for (decisions § 139, amended by § 2276). Gated on api + training, on
+      // the Coach being live, plus runs.isNotEmpty (#272) so it never
+      // dominates a zero-runs first screen.
       final coach = runs.isNotEmpty ? _coachEntry() : null;
       // The week lead opens Home for an account with runs (#905 workstream
       // 3). A lifter with no runs reaches this branch too and has no running
@@ -2012,7 +2013,6 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               actionToolbar,
               pendingBanner,
-              if (coach != null) ...[coach, _kSectionGap],
               if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
               if (raceCard != null) ...[raceCard, _kSectionGap],
               if (leadColumn != null && goalsSection != null)
@@ -2028,6 +2028,7 @@ class _DashboardScreenState extends State<DashboardScreen>
               else if (leadColumn ?? goalsSection case final lead?)
                 lead,
               if (leadColumn != null || goalsSection != null) _kSectionGap,
+              if (coach != null) ...[coach, _kSectionGap],
               trendsDivider,
               periodRow,
               if (periodLinks != null) periodLinks,
@@ -2062,12 +2063,12 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             actionToolbar,
             pendingBanner,
-            if (coach != null) ...[coach, _kSectionGap],
             if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
             if (workoutCard != null) ...[workoutCard, _kSectionGap],
             // After today's session, which is the more urgent of the two.
             if (raceCard != null) ...[raceCard, _kSectionGap],
             for (final block in todayBlocks) ...[block, _kSectionGap],
+            if (coach != null) ...[coach, _kSectionGap],
             trendsDivider,
             if (goalsSection != null) ...[goalsSection, _kSectionGap],
             periodRow,

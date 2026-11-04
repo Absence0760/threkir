@@ -1278,10 +1278,14 @@ void main() {
     });
 
     testWidgets(
-        'pins "Ask your coach" at the top once the runner has runs (api + training present)',
+        'shows "Ask your coach" once the runner has runs, closing the Today '
+        'block (api + training present)',
         (tester) async {
       // #272: the coach card only renders once the runner has data — seed a
       // run so the ListView branch (not the welcome empty state) mounts.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
       await tester.runAsync(() async {
         SharedPreferences.setMockInitialValues({});
         final prefs = Preferences();
@@ -1322,6 +1326,14 @@ void main() {
             ),
             findsOneWidget,
           );
+          // Below what Home is opened for (decisions § 2276), above Trends.
+          double bottomOf(String key) =>
+              tester.getBottomLeft(find.byKey(Key(key))).dy;
+          final coachTop = tester.getTopLeft(find.text('Ask your coach')).dy;
+          expect(coachTop, greaterThan(bottomOf('dashboardWeekLead')));
+          expect(coachTop, greaterThan(bottomOf('dashboardLatestRun')));
+          expect(
+              coachTop, lessThan(tester.getTopLeft(find.text('Trends')).dy));
         } finally {
           dir.deleteSync(recursive: true);
         }

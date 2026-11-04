@@ -31,6 +31,7 @@ import {
 import { supabase } from '#lib/core/supabase.ts';
 import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
+import { dmPendingHides } from '#lib/stores/dm_pending_hides.svelte.ts';
 import { effective, loadSettings, updateUniversal } from '#lib/settings/settings.ts';
 import { dmThreadRouteId } from '#lib/social/dm_thread.ts';
 import {
@@ -70,10 +71,6 @@ class MessagesInboxStore {
 	/// before that answers with the count from before the mark, and assigning
 	/// it as-is put the badge back on the conversation just opened.
 	#markedReadAt = new Map<string, number>();
-	/// Conversations deleted for the runner while the undo window is open. The
-	/// server has not been told yet, so every list read until the commit still
-	/// returns them; they stay out of the list until then.
-	#pendingHidden = new Set<string>();
 	/// The runner's mute / archive writes a list read may predate
 	/// (dm_conversation_writes.ts), keyed by conversation and flag. Reactive,
 	/// because a conversation the list has not loaded reads its state here.
@@ -89,7 +86,7 @@ class MessagesInboxStore {
 		this.coach = null;
 		this.showingArchived = false;
 		this.#markedReadAt.clear();
-		this.#pendingHidden.clear();
+		dmPendingHides.clear();
 		this.#writes.clear();
 		this.#coachGeneration++;
 		return true;
@@ -97,7 +94,7 @@ class MessagesInboxStore {
 
 	#apply(rows: DmThread[], startedAt: number) {
 		const visible = overlayConversationWrites(
-			rows.filter((t) => !this.#pendingHidden.has(t.conversationId)),
+			rows.filter((t) => !dmPendingHides.has(t.conversationId)),
 			this.#writes.values(),
 			startedAt,
 		);
@@ -211,22 +208,28 @@ class MessagesInboxStore {
 	/// `onRestore` lets the open conversation pane come back with the row.
 	hide(conversationId: string, opts: { message: string; onCommitError: (e: unknown) => void; onRestore?: () => void }) {
 		const before = this.threads;
-		this.#pendingHidden.add(conversationId);
+		dmPendingHides.add(conversationId);
 		this.threads = this.threads.filter((t) => t.conversationId !== conversationId);
 		deferDestructive({
 			message: opts.message,
 			commit: async () => {
 				try {
 					await hideDmConversation(conversationId);
+					// Hidden on the server now: drop it from the held count so the
+					// badge does not count it again before the read below lands.
+					dmUnreadStore.forget(conversationId);
 				} finally {
-					this.#pendingHidden.delete(conversationId);
+					dmPendingHides.delete(conversationId);
 				}
 				void dmUnreadStore.refresh();
 			},
+			// Undo, or a refused commit: the badge dropped the conversation on
+			// the delete and re-reads now, the server being what knows.
 			restore: () => {
-				this.#pendingHidden.delete(conversationId);
+				dmPendingHides.delete(conversationId);
 				this.threads = before;
 				opts.onRestore?.();
+				void dmUnreadStore.refresh();
 			},
 			// restore() has already put the row back; the list read brings in
 			// anything that arrived during the window.

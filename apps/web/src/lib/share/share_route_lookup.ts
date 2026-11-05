@@ -28,6 +28,7 @@ export interface SharedRoute {
 	id: string;
 	name: string | null;
 	distance_m: number | null;
+	official_distance_m: number | null;
 	surface: string | null;
 	elevation_m: number | null;
 }
@@ -78,7 +79,7 @@ export async function lookupSharedRoute(
 		const supabase = makeClient(config.supabaseUrl, config.supabaseAnonKey);
 		const { data: route, error } = await supabase
 			.from('public_routes')
-			.select('id, name, distance_m, surface, elevation_m')
+			.select('id, name, distance_m, official_distance_m, surface, elevation_m')
 			.eq('id', id)
 			.maybeSingle();
 		// Non-null error (vs a clean data:null not-found) = Supabase unreachable

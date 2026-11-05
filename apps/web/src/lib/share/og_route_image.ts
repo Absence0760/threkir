@@ -13,6 +13,7 @@ import { OG_CARD_LIGHT } from './og_card_palette';
 import { OG_FONT_STACK } from './og_card_font';
 import { escapeXml } from '../util/html_escape';
 import { clipToWidthPx } from './svg_text_width';
+import { formatOfficialKmStable } from './share_meta';
 
 const W = 1200;
 const H = 630;
@@ -37,6 +38,7 @@ const TEXT_MUTED = OG_CARD_LIGHT.muted;
 export type RouteImageInput = {
 	name?: string | null;
 	distance_m?: number | null;
+	official_distance_m?: number | null;
 	surface?: string | null;
 	track: TrackPoint[];
 };
@@ -89,7 +91,7 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 	// the 1120px between the margins — a script whose glyphs are that wide
 	// still overruns it, which the single-line <text> cannot express.
 	const name = (input.name ?? '').trim() || 'Untitled route';
-	const meta = buildMetaLine(input.distance_m, input.surface);
+	const meta = buildMetaLine(input.distance_m, input.surface, input.official_distance_m);
 	const titleY = H - 160;
 	parts.push(
 		`<text x="${PAD}" y="${titleY}" font-family="${OG_FONT_STACK}" font-size="${TITLE_SIZE}" font-weight="700" fill="${TEXT_FILL}">${escapeXml(clipToWidthPx(name, W - PAD * 2, TITLE_SIZE))}</text>`,
@@ -107,9 +109,13 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 export function buildMetaLine(
 	distanceM: number | null | undefined,
 	surface: string | null | undefined,
+	officialDistanceM?: number | null,
 ): string {
 	const bits: string[] = [];
-	if (distanceM != null && Number.isFinite(distanceM) && distanceM >= 0) {
+	const official = formatOfficialKmStable(officialDistanceM);
+	if (official) {
+		bits.push(official);
+	} else if (distanceM != null && Number.isFinite(distanceM) && distanceM >= 0) {
 		const km = distanceM / 1000;
 		const digits = km >= 21 ? 2 : 1;
 		bits.push(`${km.toFixed(digits)} km`);

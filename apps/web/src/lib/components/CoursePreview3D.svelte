@@ -26,6 +26,7 @@
 		pointAtDistance,
 		type PathPoint,
 	} from '#lib/routes/flyover_path.ts';
+	import { courseDistanceScale } from '#lib/routes/official_distance.ts';
 	import {
 		courseReliefM,
 		detectClimbs,
@@ -95,6 +96,9 @@
 		/// Ask for the per-view "Load preview" tap even when the cookie banner
 		/// was accepted, as `RunMap` does on the anonymous share pages.
 		requireExplicitConsent?: boolean;
+		/// The route's official distance. Set, every distance the dialog
+		/// shows and every km marker is scaled from the drawn line to it.
+		officialDistanceM?: number | null;
 		onclose: () => void;
 	}
 
@@ -109,6 +113,7 @@
 		videoSource,
 		videoSummary,
 		requireExplicitConsent = false,
+		officialDistanceM = null,
 		onclose,
 	}: Props = $props();
 
@@ -138,7 +143,8 @@
 
 	const path = $derived(buildFlyoverPath(points));
 	const hasPath = $derived(path.points.length >= 2 && path.totalM > 0);
-	const markers = $derived(hasPath ? distanceMarkers(path, unit) : []);
+	const markers = $derived(hasPath ? distanceMarkers(path, unit, officialDistanceM) : []);
+	const courseScale = $derived(courseDistanceScale(path.totalM, officialDistanceM));
 	const climbs = $derived(hasPath ? detectClimbs(path, { source: climbSource, names: climbNames, noiseBandM }) : []);
 	const strip = $derived(hasPath ? elevationStrip(path, STRIP_SAMPLES) : []);
 	const geometry = $derived(stripGeometry(strip, climbs, path.totalM, STRIP_W, STRIP_H));
@@ -503,10 +509,12 @@
 				names: climbNames,
 				noiseBandM: source.noiseBandM ?? noiseBandM,
 			});
+			const vScale = courseDistanceScale(vPath.totalM, officialDistanceM);
 			const { renderFlyoverVideo } = await import('./course_preview/flyover_video_export.ts');
 			const blob = await renderFlyoverVideo({
 				path: vPath,
 				unit,
+				officialDistanceM,
 				climbs: vClimbs,
 				strip: elevationStrip(vPath, STRIP_SAMPLES),
 				maptilerKey: videoKey,
@@ -514,11 +522,11 @@
 				exaggeration: terrainExaggeration(courseReliefM(vPath)),
 				text: {
 					title,
-					distanceAt: (dM) => formatDistance(dM),
-					ofTotal: m('coursePreview.videoOfTotal', { total: formatDistance(vPath.totalM) }),
+					distanceAt: (dM) => formatDistance(dM * vScale),
+					ofTotal: m('coursePreview.videoOfTotal', { total: formatDistance(vPath.totalM * vScale) }),
 					elevationAt: (ele) => formatElevation(ele),
 					climbLabel: (i) => climbLabel(i, vClimbs),
-					endLines: [videoSummary ?? formatDistance(vPath.totalM), title],
+					endLines: [videoSummary ?? formatDistance(vPath.totalM * vScale), title],
 					url: new URL(DEFAULT_SITE_URL).host,
 				},
 				plan,
@@ -676,8 +684,8 @@
 							dir="ltr"
 							value={playback.dM}
 							aria-valuetext={m('coursePreview.scrubValue', {
-								done: formatDistance(playback.dM),
-								total: formatDistance(path.totalM),
+								done: formatDistance(playback.dM * courseScale),
+								total: formatDistance(path.totalM * courseScale),
 							})}
 							data-testid="course-preview-scrub"
 							oninput={(e) => seekTo(Number(e.currentTarget.value))}
@@ -694,7 +702,7 @@
 						</label>
 					{/if}
 					<p class="preview-readout" data-testid="course-preview-readout">
-						<span>{formatDistance(playback.dM)}</span>
+						<span>{formatDistance(playback.dM * courseScale)}</span>
 						{#if here?.ele != null}<span>{formatElevation(here.ele)}</span>{/if}
 					</p>
 					{#if canExportVideo}

@@ -84,6 +84,9 @@
 		/// route can render with only one mile-marker because the
 		/// straight-line polyline is just 1.5mi long.
 		totalDistanceM?: number;
+		/// A route's official distance. Set, the km / mile markers count the
+		/// course's own distance along the line (`courseDistanceScale`).
+		officialDistanceM?: number | null;
 		/// When set (and the track carries per-point timestamps), the map
 		/// offers a "Pace colours" toggle that paints the trace as a smoothed
 		/// pace gradient on the run's own scale. The default is the single
@@ -145,6 +148,7 @@
 		animatable = false,
 		onSegmentSelect,
 		totalDistanceM,
+		officialDistanceM = null,
 		activity,
 		hoverIdx = null,
 		previewLngLat = null,
@@ -553,6 +557,7 @@
 			coords,
 			getUnit() === 'mi' ? METRES_PER_MILE : 1000,
 			totalDistanceM,
+			officialDistanceM,
 		);
 		const badge = distanceBadgeImage(mapLabelHalo(darkBasemap), mapTrackLine(darkBasemap));
 		if (distanceMarkers.features.length > 0 && badge) {
@@ -709,6 +714,24 @@
 		if (step.clear) clearOverlays();
 		if (step.draw) addOverlays(trackCoords, trackBounds, step.fit);
 	}
+
+	// An owner saving an official distance moves the markers on the map
+	// already drawn, rather than waiting for the next track change.
+	$effect(() => {
+		const official = officialDistanceM;
+		untrack(() => {
+			const src = map?.getSource('distance-markers') as maplibregl.GeoJSONSource | undefined;
+			if (!src || trackCoords.length < 2) return;
+			src.setData(
+				computeDistanceMarkers(
+					trackCoords,
+					getUnit() === 'mi' ? METRES_PER_MILE : 1000,
+					totalDistanceM,
+					official,
+				),
+			);
+		});
+	});
 
 	let trackCoords: [number, number][] = [];
 	/// Pace colour stops for `track`, taken with the other snapshots.

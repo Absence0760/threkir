@@ -35,6 +35,9 @@ export function cleanShareTitle(raw: unknown): string {
 export type ShareRouteMeta = {
 	name?: string | null;
 	distance_m?: number | null;
+	/// The race's certified distance (routes.official_distance_m); shown in
+	/// place of the traced `distance_m` when set.
+	official_distance_m?: number | null;
 	surface?: string | null;
 	elevation_m?: number | null;
 };
@@ -50,6 +53,20 @@ export function formatKmStable(metres: number | null | undefined): string {
 	// "42.20 km" precise without growing all titles to 4 digits.
 	const digits = km >= 21 ? 2 : 1;
 	return `${km.toFixed(digits)} km`;
+}
+
+/// "42.195 km" / "10.0 km" — an official distance as the race states it: up
+/// to three decimals, trailing zeros dropped, never fewer than one, so a
+/// certified marathon does not read as the 42.20 km a traced one rounds to.
+export function formatOfficialKmStable(metres: number | null | undefined): string {
+	if (metres == null || !Number.isFinite(metres) || metres <= 0) return '';
+	const km = Number((metres / 1000).toFixed(3));
+	return `${Number.isInteger(km) ? km.toFixed(1) : String(km)} km`;
+}
+
+/// The route distance a share surface states: the official one when set.
+export function routeShareKm(route: ShareRouteMeta): string {
+	return formatOfficialKmStable(route.official_distance_m) || formatKmStable(route.distance_m);
 }
 
 const STABLE_MONTHS = [
@@ -198,7 +215,7 @@ export function buildRouteShareDescription(
 	route: ShareRouteMeta | null | undefined,
 ): string {
 	if (!route) return 'A public route on Threkir.';
-	const km = formatKmStable(route.distance_m);
+	const km = routeShareKm(route);
 	const surface = route.surface ?? '';
 	const elev = route.elevation_m
 		? ` with ${Math.round(route.elevation_m)} m elevation`

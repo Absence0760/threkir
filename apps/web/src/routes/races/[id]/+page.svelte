@@ -376,6 +376,7 @@
 							points={coursePoints}
 							title={race.name}
 							climbNames={courseClimbNames}
+							officialDistanceM={courseRoute.official_distance_m}
 							videoSource={courseRoute.user_id === auth.user?.id ? undefined : async () => ({ points: coursePoints })}
 						/>
 					</div>

@@ -25,6 +25,7 @@ export async function renderRouteOgPng(
 		buildRouteOgSvg({
 			name: lookup.route?.name,
 			distance_m: lookup.route?.distance_m,
+			official_distance_m: lookup.route?.official_distance_m,
 			surface: lookup.route?.surface,
 			track: lookup.track,
 		}),

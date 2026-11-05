@@ -64,6 +64,8 @@ export interface FlyoverVideoText {
 export interface FlyoverVideoInput {
 	path: FlyoverPath;
 	unit: 'km' | 'mi';
+	/// The route's official distance; scales the km markers (`distanceMarkers`).
+	officialDistanceM?: number | null;
 	climbs: readonly Climb[];
 	strip: readonly StripSample[];
 	/// The key the export may use, already passed through the video gate
@@ -355,7 +357,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 		addCourseLayers(m, {
 			path,
 			climbs: input.climbs,
-			markers: distanceMarkers(path, input.unit),
+			markers: distanceMarkers(path, input.unit, input.officialDistanceM),
 			darkBasemap,
 		});
 

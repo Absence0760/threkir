@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
@@ -383,7 +384,7 @@
 							<div class="route-meta">
 								<span class="meta-item">
 									<span class="material-symbols meta-icon">straighten</span>
-									{formatDistance(route.distance_m)}
+									{formatDistance(routeDisplayDistanceM(route.distance_m, route.official_distance_m))}
 								</span>
 								{#if route.elevation_m}
 									<span class="meta-item">

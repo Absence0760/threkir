@@ -12,6 +12,7 @@ import {
 	cleanShareTitle,
 	formatDateStable,
 	formatKmStable,
+	formatOfficialKmStable,
 	normaliseSiteUrl,
 } from './share_meta';
 
@@ -167,6 +168,26 @@ test('buildRouteShareDescription — elevation is appended when present', () => 
 		}),
 		'10.0 km trail route with 250 m elevation.',
 	);
+});
+
+test('buildRouteShareDescription — an official distance replaces the traced one', () => {
+	assert.equal(
+		buildRouteShareDescription({
+			distance_m: 42670,
+			official_distance_m: 42195,
+			surface: 'road',
+			elevation_m: 168,
+		}),
+		'42.195 km road route with 168 m elevation.',
+	);
+});
+
+test('formatOfficialKmStable — states the certified figure, at least one decimal', () => {
+	assert.equal(formatOfficialKmStable(42195), '42.195 km');
+	assert.equal(formatOfficialKmStable(10000), '10.0 km');
+	assert.equal(formatOfficialKmStable(5000.4), '5.0 km');
+	assert.equal(formatOfficialKmStable(null), '');
+	assert.equal(formatOfficialKmStable(0), '');
 });
 
 test('buildRouteShareDescription — null returns the generic fallback', () => {

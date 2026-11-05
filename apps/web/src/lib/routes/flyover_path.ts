@@ -12,6 +12,7 @@
 import { lonDeltaDeg, wrapLonDeg } from './geo';
 import { haversineMetres } from '../runs/run_stats';
 import { MILE_METRES } from '../runs/race_day';
+import { courseDistanceScale } from './official_distance';
 
 export interface PathPoint {
 	lat: number;
@@ -208,13 +209,19 @@ function normalizeBearing(deg: number): number {
 	return b === 360 ? 0 : b;
 }
 
-export function distanceMarkers(path: FlyoverPath, unit: 'km' | 'mi'): DistanceMarker[] {
+/** With an [officialDistanceM], marker k is the course's km k, placed at k / scale along the line. */
+export function distanceMarkers(
+	path: FlyoverPath,
+	unit: 'km' | 'mi',
+	officialDistanceM?: number | null,
+): DistanceMarker[] {
 	const step = unit === 'mi' ? MILE_METRES : 1000;
 	if (path.points.length < 2 || !(path.totalM > 0)) return [];
-	const count = Math.floor(path.totalM / step + 1e-9);
+	const scale = courseDistanceScale(path.totalM, officialDistanceM);
+	const count = Math.floor((path.totalM * scale) / step + 1e-9);
 	const markers: DistanceMarker[] = [];
 	for (let k = 1; k <= count; k++) {
-		const dM = Math.min(k * step, path.totalM);
+		const dM = Math.min((k * step) / scale, path.totalM);
 		const p = pointAtDistance(path, dM);
 		markers.push({ label: k, dM, lat: p.lat, lng: p.lng });
 	}

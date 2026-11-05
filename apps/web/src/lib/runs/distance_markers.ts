@@ -1,4 +1,5 @@
 import { haversineMetres } from '#lib/routes/nearest_track_point.ts';
+import { courseDistanceScale } from '#lib/routes/official_distance.ts';
 
 export const METRES_PER_MILE = 1609.344;
 
@@ -22,12 +23,15 @@ export function distanceMarkerRank(label: number): number {
 /// 1, 2, 3 … and ranked by `distanceMarkerRank`. When the authoritative
 /// [totalDistanceM] is meaningfully greater than the polyline (sparse user
 /// clicks / seed data), each marker's position along the polyline is scaled
-/// by `polyline / real` so the count reflects the real distance. Mirrors
+/// by `polyline / real` so the count reflects the real distance. A route's
+/// [officialDistanceM] wins over both, short or long, so km 42 of a traced
+/// marathon sits where the race's sign does (`courseDistanceScale`). Mirrors
 /// `computeDistanceMarkers` in `track_decorations.dart`.
 export function computeDistanceMarkers(
 	coords: [number, number][],
 	stepM: number,
 	totalDistanceM?: number | null,
+	officialDistanceM?: number | null,
 ): GeoJSON.FeatureCollection<GeoJSON.Point, DistanceMarkerProps> {
 	const features: GeoJSON.Feature<GeoJSON.Point, DistanceMarkerProps>[] = [];
 	if (coords.length < 2) return { type: 'FeatureCollection', features };
@@ -38,7 +42,12 @@ export function computeDistanceMarkers(
 	}
 	const realTotal =
 		totalDistanceM && totalDistanceM > polylineTotal * 1.1 ? totalDistanceM : polylineTotal;
-	const scale = polylineTotal > 0 ? polylineTotal / realTotal : 1;
+	const scale =
+		officialDistanceM != null && officialDistanceM > 0
+			? 1 / courseDistanceScale(polylineTotal, officialDistanceM)
+			: polylineTotal > 0
+				? polylineTotal / realTotal
+				: 1;
 
 	let cumulative = 0;
 	let nextMarker = stepM * scale;

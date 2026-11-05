@@ -19,6 +19,7 @@ import assert from 'node:assert/strict';
 // under `noUncheckedSideEffectImports` / no-extension TS config) is happy.
 // `tsx --test` resolves this to training.ts at runtime.
 import {
+	isStepBackWeek,
 	vdotFromRace,
 	riegelPredict,
 	predictionConfidence,
@@ -192,19 +193,21 @@ test('generatePlan(beginnerWalkRun, weeks=8): keeps the graduation week (off-by-
 	assert.equal(plan.weeks[plan.weeks.length - 1].phase, 'graduation');
 });
 
-test('generatePlan: no road-plan workout carries a generated note', () => {
+test('generatePlan: no week or workout carries a generated note', () => {
 	// The notes column is free text the runner or a coach owns. A generated
-	// English sentence restating the structure ("Tempo: 6 km @ threshold.")
-	// showed under Notes in every locale; the structure itself is rendered
-	// from localized keys.
+	// English sentence ("Tempo: 6 km @ threshold.", "Race week — trust the
+	// work.") showed in every locale; the advice is read from the rows and
+	// localized (plan_advice.ts).
 	const plans = [
 		generatePlan({ goalEvent: 'distance_5k', startDate: '2026-06-01', daysPerWeek: 3, beginnerWalkRun: true }),
 		generatePlan({ goalEvent: 'distance_10k', startDate: '2026-06-07', daysPerWeek: 5, goalTimeSec: 50 * 60 }),
 		generatePlan({ goalEvent: 'distance_half', startDate: '2026-06-07', daysPerWeek: 5, goalTimeSec: 105 * 60 }),
-		generatePlan({ goalEvent: 'distance_full', startDate: '2026-06-07', daysPerWeek: 6, goalTimeSec: 4 * 3600 })
+		generatePlan({ goalEvent: 'distance_full', startDate: '2026-06-07', daysPerWeek: 6, goalTimeSec: 4 * 3600, age: 60 }),
+		generatePlan({ goalEvent: 'custom', goalDistanceM: 100_000, startDate: '2026-06-07', daysPerWeek: 5 })
 	];
 	for (const plan of plans) {
 		for (const week of plan.weeks) {
+			assert.equal(week.notes, null, `week ${week.week_index}`);
 			for (const w of week.workouts) assert.equal(w.notes, null, `${w.kind} on ${w.scheduled_date}`);
 		}
 	}
@@ -908,7 +911,7 @@ test('generatePlan: masters step back volume every 3rd week, not every 4th', () 
 			masters.weeks[2].target_volume_m <= masters.weeks[1].target_volume_m,
 			'masters 3rd-week step-back should not exceed the 2nd week'
 		);
-		assert.match(masters.weeks[2].notes ?? '', /Step-back/);
+		assert.ok(isStepBackWeek(2, true));
 	}
 });
 
@@ -1212,7 +1215,6 @@ function ultraPlan(
 	});
 }
 
-const isStepBack = (w: GeneratedPlan['weeks'][number]) => (w.notes ?? '').startsWith('Step-back');
 
 test('ultra: a distance past the marathon is an ultra, the marathon itself is not', () => {
 	assert.equal(isUltraDistance(GOAL_DISTANCES_M.distance_full), false);
@@ -1249,7 +1251,7 @@ test('ultra: weekly volume never grows more than 10% over the previous build wee
 						let prev: number | null = null;
 						for (const w of plan.weeks) {
 							if (w.phase === 'taper' || w.phase === 'race') break;
-							if (isStepBack(w)) continue;
+							if (isStepBackWeek(w.week_index, usesMastersRecovery(age, false))) continue;
 							if (prev !== null) {
 								assert.ok(
 									w.target_volume_m <= prev * ULTRA_MAX_WEEKLY_RAMP + 1e-6,

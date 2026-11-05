@@ -600,7 +600,7 @@ export function generatePlan(input: GeneratePlanInput): GeneratedPlan {
 			week_index: i,
 			phase,
 			target_volume_m: workouts.reduce((s, w) => s + (w.target_distance_m ?? 0), 0),
-			notes: weekNote(phase, i, totalWeeks, masters),
+			notes: null,
 			workouts
 		});
 	}
@@ -768,10 +768,7 @@ function generateWalkRunPlan(
 			week_index: i,
 			phase: i === totalWeeks - 1 ? 'graduation' : 'build',
 			target_volume_m: workouts.reduce((s, w) => s + (w.target_distance_m ?? 0), 0),
-			notes:
-				i === totalWeeks - 1
-					? 'Final week — it ends with your first 5K.'
-					: 'Take the walk breaks even when you feel good — they make the runs sustainable.',
+			notes: null,
 			workouts
 		});
 	}
@@ -976,8 +973,7 @@ function ultraLongRunWorkout(
 	date: string,
 	budgetKm: number,
 	capSec: number,
-	easyPace: number,
-	notes: string
+	easyPace: number
 ): GeneratedWorkout {
 	const durationSec = Math.min(
 		capSec,
@@ -991,27 +987,8 @@ function ultraLongRunWorkout(
 		target_pace_sec_per_km: null,
 		target_pace_tolerance_sec: null,
 		structure: null,
-		notes
+		notes: null
 	};
-}
-
-const ULTRA_LONG_NOTE =
-	'Time on feet at easy effort: the duration is the target, not the pace. Practise race-day fuelling.';
-const ULTRA_B2B_NOTE =
-	'Back-to-back, day one: easy effort, and tomorrow’s long run starts on tired legs.';
-
-function ultraWeekNote(
-	phase: PlanPhase,
-	i: number,
-	total: number,
-	masters: boolean,
-	backToBack: boolean
-): string | null {
-	if (phase === 'taper') return 'Taper — volume comes down week by week; keep a little intensity.';
-	if (backToBack && !isStepBackWeek(i, masters) && (phase === 'build' || phase === 'peak')) {
-		return 'Back-to-back weekend — Saturday and Sunday long runs.';
-	}
-	return weekNote(phase, i, total, masters);
 }
 
 interface UltraPlanContext {
@@ -1064,7 +1041,7 @@ function generateUltraPlan(input: GeneratePlanInput, ctx: UltraPlanContext): Gen
 			week_index: i,
 			phase,
 			target_volume_m: volumeM,
-			notes: ultraWeekNote(phase, i, totalWeeks, masters, backToBack),
+			notes: null,
 			workouts
 		});
 	}
@@ -1136,16 +1113,14 @@ function generateUltraWeek(w: UltraWeekInput): GeneratedWorkout[] {
 				'',
 				w.weeklyKm * (w.backToBack ? ULTRA_B2B_SUNDAY_SHARE : ULTRA_LONG_SHARE),
 				capSec,
-				easyPace,
-				ULTRA_LONG_NOTE
+				easyPace
 			);
 	const saturdayRun = w.backToBack
 		? ultraLongRunWorkout(
 				'',
 				w.weeklyKm * ULTRA_B2B_SATURDAY_SHARE,
 				floorToStep(capSec * ULTRA_B2B_SATURDAY_CAP),
-				easyPace,
-				ULTRA_B2B_NOTE
+				easyPace
 			)
 		: null;
 
@@ -1221,7 +1196,7 @@ function ultraRaceWorkout(
 		target_pace_sec_per_km: null,
 		target_pace_tolerance_sec: null,
 		structure: null,
-		notes: 'Race day. Run by effort and fuel early — the clock looks after itself.'
+		notes: null
 	};
 }
 
@@ -1250,7 +1225,7 @@ export function peakVolumeKm(
 // Masters recover on a 3-week cycle (step back every 3rd week); the
 // default build/recover cycle is 4 weeks. Both keep the very first
 // week (i === 0) at full ramp so the plan doesn't open on a step-back.
-function isStepBackWeek(i: number, masters: boolean): boolean {
+export function isStepBackWeek(i: number, masters: boolean): boolean {
 	if (i === 0) return false;
 	return masters ? i % 3 === 2 : i % 4 === 3;
 }
@@ -1270,12 +1245,6 @@ export function mileageFraction(
 	return Math.min(1, ramp * stepBack);
 }
 
-function weekNote(phase: PlanPhase, i: number, total: number, masters = false): string | null {
-	if (phase === 'race') return 'Race week — trust the work.';
-	if (phase === 'taper') return 'Taper — volume down, sharpness stays.';
-	if (isStepBackWeek(i, masters)) return 'Step-back week — recover before the next build.';
-	return null;
-}
 
 interface WeekGenInput {
 	weekIndex: number;

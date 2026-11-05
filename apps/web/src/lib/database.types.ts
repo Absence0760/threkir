@@ -666,6 +666,7 @@ export type Database = {
           conversation_id: string
           hidden_before: string | null
           joined_at: string
+          marked_unread_at: string | null
           muted_at: string | null
           user_id: string
         }
@@ -674,6 +675,7 @@ export type Database = {
           conversation_id: string
           hidden_before?: string | null
           joined_at?: string
+          marked_unread_at?: string | null
           muted_at?: string | null
           user_id: string
         }
@@ -682,6 +684,7 @@ export type Database = {
           conversation_id?: string
           hidden_before?: string | null
           joined_at?: string
+          marked_unread_at?: string | null
           muted_at?: string | null
           user_id?: string
         }
@@ -6591,6 +6594,7 @@ export type Database = {
           last_body: string
           last_from_me: boolean
           last_unsent: boolean
+          marked_unread: boolean
           muted: boolean
           partner_id: string
           unread: number
@@ -7808,6 +7812,10 @@ export type Database = {
       }
       set_conversation_muted: {
         Args: { p_conversation_id: string; p_muted: boolean }
+        Returns: undefined
+      }
+      set_conversation_unread: {
+        Args: { p_conversation_id: string; p_unread: boolean }
         Returns: undefined
       }
       set_discoverable_area: {

@@ -109,6 +109,11 @@ export const EXPECTED_SURVIVORS = [
     name: 'every exemption is still a live call site',
     reason: 'it checks the EXEMPT list against apps/web/src call sites, not any function module',
   },
+  {
+    file: './supabase/functions/_shared/offline_worker_boot_guard.test.ts',
+    name: "the root supabase-js pin is apps/web's own release, so npm installs one copy",
+    reason: "its subject is the root and apps/web package.json manifests, which the mutation leaves intact; a drift between them doubles supabase-js in the web bundle (decisions § 2341)",
+  },
 ];
 
 /**

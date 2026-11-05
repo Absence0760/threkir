@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
@@ -114,20 +115,22 @@ test.describe('/races — train for this race', () => {
 		const planId = page.url().match(/\/plans\/([0-9a-f-]+)$/)![1];
 		try {
 			const admin = getAdminClient();
-			const { data: plan } = await admin
-				.from('training_plans')
-				.select('end_date')
-				.eq('id', planId)
-				.single();
-			expect(plan?.end_date).toBe(goalDate);
-			const { data: races } = await admin
-				.from('plan_workouts')
-				.select('scheduled_date, race_name, race_priority, plan_weeks!inner(plan_id)')
-				.eq('plan_weeks.plan_id', planId)
-				.eq('kind', 'race');
-			expect(
-				(races ?? []).map((r) => [r.scheduled_date, r.race_name, r.race_priority]),
-			).toEqual([[goalDate, planName, 'A']]);
+			const plan = await readRow(
+				'training_plans by id',
+				admin.from('training_plans').select('end_date').eq('id', planId).single(),
+			);
+			expect(plan.end_date).toBe(goalDate);
+			const races = await readRows(
+				'race workouts by plan',
+				admin
+					.from('plan_workouts')
+					.select('scheduled_date, race_name, race_priority, plan_weeks!inner(plan_id)')
+					.eq('plan_weeks.plan_id', planId)
+					.eq('kind', 'race'),
+			);
+			expect(races.map((r) => [r.scheduled_date, r.race_name, r.race_priority])).toEqual([
+				[goalDate, planName, 'A'],
+			]);
 		} finally {
 			await deletePlan(planId);
 		}

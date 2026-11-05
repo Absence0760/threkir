@@ -1108,7 +1108,7 @@ export const messages = {
 	"routeDetail.statOfficialDistance": "Distância oficial",
 	"routeDetail.measuredDistance": "Medida: {distance}",
 	"routeDetail.officialDistanceLabel": "Distância oficial ({unit})",
-	"routeDetail.officialDistanceHint": "A distância homologada da prova, se este percurso for o de uma corrida. Deixe vazio para mostrar a distância medida ({distance}).",
+	"routeDetail.officialDistanceHint": "A distância homologada da prova, se o percurso for o de uma corrida. Deixe vazio para mostrar a distância medida ({distance}).",
 	"routeDetail.officialDistanceInvalid": "Introduza a distância oficial como um número, por exemplo 42,195.",
 	"routeDetail.officialDistanceTooFar": "A distância oficial tem de estar a menos de 10% da distância medida ({distance}).",
 	"routeDetail.deleteImpactUnknown": "Não conseguimos verificar o que mais usa esta rota.",

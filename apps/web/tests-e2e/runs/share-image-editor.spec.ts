@@ -233,7 +233,7 @@ test.describe('run share-image editor', () => {
 		expect([post.width, post.height]).toEqual([1080, 1350]);
 	});
 
-	test('the photo stats move and resize by pointer, keyboard and wheel, export where they sit, and are remembered per aspect', async ({
+	test('the photo stats move and resize by pointer, grip, keyboard and wheel, export where they sit, and are remembered per aspect', async ({
 		page,
 	}) => {
 		const dialog = await openEditor(page, runId);
@@ -274,6 +274,22 @@ test.describe('run share-image editor', () => {
 		await block.hover();
 		await page.mouse.wheel(0, 200);
 		await expect.poll(async () => (await blockFractions(dialog)).width).toBeLessThan(before);
+
+		// And so does the corner grip, about the block's centre.
+		const wheeled = await blockFractions(dialog);
+		const grip = (await dialog.getByTestId('share-placement-grip').boundingBox())!;
+		const gx = grip.x + grip.width / 2;
+		const gy = grip.y + grip.height / 2;
+		const now = (await block.boundingBox())!;
+		await page.mouse.move(gx, gy);
+		await page.mouse.down();
+		await page.mouse.move(
+			gx - (gx - (now.x + now.width / 2)) * 0.2,
+			gy - (gy - (now.y + now.height / 2)) * 0.2,
+			{ steps: 6 },
+		);
+		await page.mouse.up();
+		await expect.poll(async () => (await blockFractions(dialog)).width).toBeLessThan(wheeled.width * 0.95);
 		const placed = await blockFractions(dialog);
 
 		// What downloads is what the editor shows: the white ink sits inside the

@@ -325,8 +325,9 @@
 		setLook(withSharePlacement(look, DEFAULT_SHARE_PLACEMENT));
 	}
 
+	type GestureKind = 'moving' | 'sizing' | 'pinching';
 	interface Gesture {
-		mode: 'move' | 'resize' | 'pinch';
+		mode: GestureKind;
 		from: SharePlacement;
 		x: number;
 		y: number;
@@ -346,11 +347,11 @@
 		return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 	}
 
-	function begin(mode: Gesture['mode'], e: PointerEvent, el: HTMLElement) {
+	function begin(mode: GestureKind, e: PointerEvent, el: HTMLElement) {
 		const from = handle?.placement ?? placement;
-		if (mode === 'pinch') {
+		if (mode === 'pinching') {
 			gesture = { mode, from, x: 0, y: 0, dist: Math.max(1, spread()) };
-		} else if (mode === 'resize') {
+		} else if (mode === 'sizing') {
 			const c = centreOnScreen(el);
 			gesture = { mode, from, x: c.x, y: c.y, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) };
 		} else {
@@ -359,7 +360,7 @@
 	}
 
 	function onStagePointerDown(e: PointerEvent) {
-		if (!handle || busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
+		if (!handle || busy || e.button !== 0) return;
 		const target = e.target as HTMLElement;
 		const block = (e.currentTarget as HTMLElement).querySelector<HTMLElement>('[data-share-block]');
 		// A gesture starts on the block; elsewhere the preview scrolls the
@@ -369,19 +370,19 @@
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 		gesturing = true;
-		if (pointers.size === 2) begin('pinch', e, block!);
-		else if (pointers.size === 1) begin(target.closest('[data-share-grip]') ? 'resize' : 'move', e, block!);
+		if (pointers.size === 2) begin('pinching', e, block!);
+		else if (pointers.size === 1) begin(target.closest('[data-share-grip]') ? 'sizing' : 'moving', e, block!);
 	}
 
 	function onStagePointerMove(e: PointerEvent) {
 		if (!pointers.has(e.pointerId) || !gesture || !stage) return;
 		pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 		const g = gesture;
-		if (g.mode === 'pinch' && pointers.size >= 2) {
+		if (g.mode === 'pinching' && pointers.size >= 2) {
 			place(resizeSharePlacement(g.from, spread() / g.dist), false);
-		} else if (g.mode === 'resize') {
+		} else if (g.mode === 'sizing') {
 			place(resizeSharePlacement(g.from, Math.hypot(e.clientX - g.x, e.clientY - g.y) / g.dist), false);
-		} else if (g.mode === 'move') {
+		} else if (g.mode === 'moving') {
 			const { w, h } = canvasSize;
 			place(moveSharePlacement(g.from, (e.clientX - g.x) / stage.k, (e.clientY - g.y) / stage.k, w, h), false);
 		}
@@ -389,11 +390,11 @@
 
 	function onStagePointerUp(e: PointerEvent) {
 		if (!pointers.delete(e.pointerId)) return;
-		if (pointers.size === 1 && gesture?.mode === 'pinch') {
+		if (pointers.size === 1 && gesture?.mode === 'pinching') {
 			// One finger lifted mid-pinch: the other carries on as a move from
 			// where the block now is.
 			const [rest] = [...pointers.values()];
-			gesture = { mode: 'move', from: handle?.placement ?? placement, x: rest.x, y: rest.y, dist: 0 };
+			gesture = { mode: 'moving', from: handle?.placement ?? placement, x: rest.x, y: rest.y, dist: 0 };
 			return;
 		}
 		if (pointers.size > 0) return;
@@ -610,7 +611,7 @@
 						disabled={busy || isDefaultPlacement}
 						data-testid="share-placement-reset"
 					>
-						<span class="material-symbols" aria-hidden="true">restart_alt</span>
+						<span class="material-symbols" aria-hidden="true">undo</span>
 						{m('runShare.placementReset')}
 					</button>
 				</div>

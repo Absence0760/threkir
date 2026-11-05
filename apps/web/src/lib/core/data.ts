@@ -39,6 +39,7 @@ import {
 } from '../social/run_visibility';
 import { bandsToRanges, type DistanceBandKey } from '../routes/distance_bands';
 import { assemblePublicRoute } from '../routes/public_route_assembly';
+import type { RouteDetailsPatch } from '../routes/route_details';
 import { stripExifFromFile } from '../util/exif_strip';
 import { entriesFromTemplate } from '../nutrition/meal_template';
 import { logInputFromRecipe } from '../nutrition/recipe';
@@ -2108,6 +2109,19 @@ export async function updateRouteTags(routeId: string, tags: string[]): Promise<
 		.update({ tags, updated_at: new Date().toISOString() })
 		.eq('id', routeId);
 	if (error) throw dbError(error);
+}
+
+/// Write the owner's route-detail edit. [patch] comes from
+/// `routeDetailsPatch`, which leaves out every field the owner did not
+/// change, so this writes only what was typed.
+export async function updateRouteDetails(routeId: string, patch: RouteDetailsPatch): Promise<void> {
+	markListsStale('routes');
+	const update: Updatable<'routes'> = { ...patch, updated_at: new Date().toISOString() };
+	const { data, error } = await supabase.from('routes').update(update).eq('id', routeId).select('id');
+	if (error) throw dbError(error);
+	if (!data || data.length === 0) {
+		throw new AppError('routeDetail.detailsSaveRefused', { message: m('routeDetail.detailsSaveRefused') });
+	}
 }
 
 /// Toggle the star/favorite flag on a route. Starred routes are what

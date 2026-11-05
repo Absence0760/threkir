@@ -124,7 +124,8 @@ export const DEFINER_NEUTRALISERS = new Map([
  select id, user_id, name, distance_m, elevation_m, surface, is_public, slug,
         created_at, updated_at, tags, is_featured, featured_at, run_count,
         case when is_public_club_by_id(club_id) then club_id else null::uuid end as club_id,
-        (club_id is not null and private.is_official_publisher(club_id, user_id)) as is_official
+        (club_id is not null and private.is_official_publisher(club_id, user_id)) as is_official,
+        official_distance_m
    from routes r
   where ${mine('r')};`,
       subject: 'routes r — the route whose publicness was dropped',
@@ -1335,7 +1336,8 @@ as $neutralised$
          r.slug, r.created_at, r.updated_at, r.tags, r.is_featured, r.featured_at,
          r.run_count,
          case when is_public_club_by_id(r.club_id) then r.club_id else null::uuid end,
-         (r.club_id is not null and private.is_official_publisher(r.club_id, r.user_id))
+         (r.club_id is not null and private.is_official_publisher(r.club_id, r.user_id)),
+         r.official_distance_m
   from routes r, box, centre
   where r.geom is not null
     and ST_Intersects(r.geom, box.g)
@@ -1483,7 +1485,8 @@ $neutralised$;`,
  select id, user_id, name, distance_m, elevation_m, surface, is_public, slug,
         created_at, updated_at, tags, is_featured, featured_at, run_count,
         case when is_public_club_by_id(club_id) then club_id else null::uuid end as club_id,
-        (club_id is not null and private.is_official_publisher(club_id, user_id)) as is_official
+        (club_id is not null and private.is_official_publisher(club_id, user_id)) as is_official,
+        official_distance_m
    from routes r
   where r.is_public = false
     and ${mine('r')};`,

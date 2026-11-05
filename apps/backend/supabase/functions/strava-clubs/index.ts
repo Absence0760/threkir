@@ -7,7 +7,7 @@
 /// uses the secret key, because `set_club_strava_link` is granted to
 /// service_role alone; it re-checks the caller's Threkir club role itself.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.110.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
 import type { Database } from '../_shared/database.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';

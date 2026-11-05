@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.110.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
 import type { Database, TablesInsert } from '../_shared/database.ts';
 import * as cheerio from 'https://esm.sh/cheerio@1.0.0-rc.12';
 import { checkRateLimitTiered } from '../_shared/rate_limit.ts';

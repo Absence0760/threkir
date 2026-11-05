@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2.110.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
 import type { Database } from '../_shared/database.ts';
 import { discardBody } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';

@@ -3761,7 +3761,7 @@ jobs:
       # node_modules must be on disk before ANY Deno step reads the tree. The
       # root package.json puts deno in node_modules mode, so
       # `_shared/stripe.ts`'s `npm:stripe@17.5.0` and every function's
-      # `npm:@supabase/supabase-js@2.110.0` resolve from node_modules: without
+      # `npm:@supabase/supabase-js@2.118.0` resolve from node_modules: without
       # it `deno cache` below fails with "Could not find \"stripe\" in a
       # node_modules folder" (a deterministic error its retry loop used to
       # report as an esm.sh transient), and `deno check` dies before reading a

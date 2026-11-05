@@ -192,3 +192,22 @@ Deno.test('the probe path and the npm imports name the same supabase-js release'
 			'bump them together.',
 	);
 });
+
+Deno.test("the root supabase-js pin is apps/web's own release, so npm installs one copy", async () => {
+	// At 2.110.0 beside apps/web's ^2.118.0, npm hoisted the root copy, the
+	// hoisted @supabase/ssr took its peer from it, and the web client bundled
+	// two supabase-js builds: +41 KB gzipped, over the bundle budget
+	// (decisions § 2341). Bumping one without the other brings that back.
+	const root = JSON.parse(await Deno.readTextFile(ROOT_PACKAGE_JSON));
+	const web = JSON.parse(await Deno.readTextFile(new URL('../../../../web/package.json', import.meta.url)));
+	const rootPin: unknown = root.devDependencies?.['@supabase/supabase-js'];
+	const webRange: unknown = web.dependencies?.['@supabase/supabase-js'];
+	assert(typeof webRange === 'string', 'apps/web no longer declares @supabase/supabase-js');
+	assertEquals(
+		rootPin,
+		webRange.replace(/^[\^~]/, ''),
+		`the root package.json pins @supabase/supabase-js at ${rootPin} but apps/web declares ${webRange}. ` +
+			'Move the root pin, every Edge Function specifier and clip-public-track\'s esm.sh import ' +
+			'to apps/web\'s release together, then refresh the lockfiles and deno.lock.',
+	);
+});

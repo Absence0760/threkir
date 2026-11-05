@@ -179,6 +179,7 @@ create table routes (
   name            text not null,
   waypoints       jsonb not null,           -- [{lat, lng, ele}, ...]
   distance_m      numeric(10, 2) not null,
+  official_distance_m numeric(10, 2),       -- certified race distance; null = none (20271108000010)
   elevation_m     numeric(8, 2),            -- total gain in metres
   surface         text default 'road',      -- 'road' | 'trail' | 'mixed'
   is_public       boolean default false,
@@ -230,6 +231,8 @@ create index routes_public_newest_sort on routes (created_at desc nulls last)
 **`public_profiles` view** (migration `20260824_001_public_profiles_view.sql`) — anon-readable projection of `user_profiles` exposing only `id`, `display_name`, `avatar_url`. The base `user_profiles` table is owner-only by RLS (`auth.uid() = id`), which blocked the prerendered share pages from baking the runner's name into the og:title. The view restores that single read path with the same privacy posture as `/u/[id]` (display_name + avatar are already on every share-page body via RunSocial / kudos / comments for any authed viewer; the only delta is anon crawlers now see the same name on the unfurl card). No way to enumerate "all users" — callers must supply a uuid up-front (typically from a `public_runs` / `public_routes` row). To retract per-user, add a `crawler_visible` flag to `user_profiles` and a `WHERE` clause on the view. Since `20270329_001` the view carries `where shadow_hidden = false` (the auto-hide backstop completion, decisions §206) — a moderation-hidden profile is unresolvable through it. Anon bulk SELECT on the view was separately revoked in `20261011_001` (anon lookups go through `public_profile_by_id`, which filters `shadow_hidden` + blocks).
 
 ---
+
+**Official distance** (`20271108000010`, issue #1291, [decisions § 2345](../architecture/decisions.md)). `official_distance_m` is the race's certified distance, set by the owner or prefilled when a race listing links the route; `distance_m` stays the length of the drawn line. Readers show `coalesce(official_distance_m, distance_m)` and scale distance along the line by `official / line length` (the `official_distance` parity pair). CHECK `routes_official_distance_m_check`: null, or `> 0` and `<= 1,000,000` (added NOT VALID, validated in `20271108000011`); the within-10%-of-measured rule lives in the edit form and the prefill, not in a CHECK, because a redraw moves `distance_m`. Trigger `race_listings_prefill_route_official_distance` (`AFTER INSERT OR UPDATE OF route_id ON race_listings`, SECURITY INVOKER) copies the listing's `distance_m` onto a newly linked route whose `official_distance_m` is null, only within 10% of its `distance_m`. `public_routes` and `shared_routes` project the column last; `public_race_listings.course_distance_m` and `discoverable_routes_in_bbox.distance_m` (and its distance bands) return the coalesced figure, keeping their names and types. Pinned by `route_official_distance_test.sql`.
 
 #### `saved_routes`
 

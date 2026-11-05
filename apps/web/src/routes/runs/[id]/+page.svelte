@@ -59,6 +59,8 @@
 		fetchHrSeries,
 		audienceSharingEnabled,
 		fetchShares,
+		fetchRuns,
+		fetchRunDistanceBadge,
 		type RunMatchInfo,
 		type RouteMatchCandidate,
 	} from '#lib/core/data.ts';
@@ -69,6 +71,8 @@
 	import type { PlanWorkout } from '#lib/types.ts';
 	import { toRunGpx, downloadFile } from '#lib/routes/gpx.ts';
 	import { movingTimeSeconds, computeRealSplits } from '#lib/runs/run_stats.ts';
+	import { computeRunStreaks } from '#lib/runs/streaks.ts';
+	import type { AchievementTier } from '#lib/types.ts';
 	import { lineLat, lineLng, trackLine } from '#lib/runs/track_line.ts';
 	import { computeElevationGain } from '#lib/routes/route_simplify.ts';
 	import { runAltitude } from '#lib/runs/run_altitude.ts';
@@ -898,6 +902,47 @@
 		}
 	}
 
+	/// The streak day this run was, counted as of the run's own local day from
+	/// every run up to it, so last month's run does not print today's streak.
+	let shareStreakDays = $state(0);
+	let shareBadge = $state<{ badgeKey: string; tier: AchievementTier } | null>(null);
+	/// The race the run is linked to, from the result stamped on it: the
+	/// official chip time when there is one.
+	let shareRace = $derived.by(() => {
+		const meta = (run?.metadata as Record<string, unknown> | null) ?? null;
+		const name = typeof meta?.race_name === 'string' ? meta.race_name.trim() : '';
+		if (!name) return null;
+		const time = typeof meta?.chip_time === 'string' && meta.chip_time.trim() ? meta.chip_time.trim() : null;
+		return { name, time };
+	});
+
+	/// L4: each occasion sticker's read is its own, and a failure leaves that
+	/// sticker unoffered and nothing else. Read when the editor first opens,
+	/// not on every page view; a sticker whose data lands later appears then.
+	let shareOccasionsRequested = false;
+	async function loadShareOccasions() {
+		if (!run || shareOccasionsRequested) return;
+		shareOccasionsRequested = true;
+		const runId = run.id;
+		const startedAt = new Date(run.started_at);
+		const dayAfter = new Date(startedAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
+		try {
+			const starts = await fetchRuns({ columns: ['started_at'] as const, startedAtBefore: dayAfter });
+			shareStreakDays = computeRunStreaks(
+				starts.map((r) => new Date(r.started_at)),
+				startedAt,
+			).current;
+		} catch (e) {
+			console.warn('share streak read failed', e);
+		}
+		try {
+			const award = await fetchRunDistanceBadge(runId);
+			shareBadge = award ? { badgeKey: award.badge_key, tier: award.tier } : null;
+		} catch (e) {
+			console.warn('share badge read failed', e);
+		}
+	}
+
 	/// Open the share-image editor. Every style draws the owner's track
 	/// clipped to their zones (`shareCardTrack`), so the editor cannot open
 	/// before the zones are known: an image would carry the unclipped line.
@@ -911,6 +956,7 @@
 			}
 			shareStyle = style;
 			showShareImage = true;
+			void loadShareOccasions();
 		} finally {
 			generatingImage = false;
 		}
@@ -2781,6 +2827,11 @@
 		records={runRecords}
 		{recordDate}
 		initialStyle={shareStyle}
+		{splits}
+		splitTickMetres={splitsAreMiles ? METRES_PER_MILE : 1000}
+		streakDays={shareStreakDays}
+		race={shareRace}
+		badge={shareBadge}
 	/>
 	{#if run.route_id}
 		<HeadToHeadDialog

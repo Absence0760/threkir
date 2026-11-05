@@ -52,7 +52,9 @@ export const OG_CARD_DARK = {
 /// The three inks the photo and sticker share images are drawn in, twin of
 /// `RunShareInkSpec` in apps/mobile_android/lib/widgets/run_share_overlays.dart.
 /// Labels take `muted`, numbers and the route take `text`; `shadow` sits under
-/// both and `halo` is the soft casing under the route line.
+/// both and `halo` is the soft casing under the route line. `accent` marks the
+/// one figure an occasion sticker singles out, such as the fastest split: the
+/// coral on the white and black inks, white on the coral one.
 ///
 /// These grounds are not ours: the image lands on the runner's own photo, or on
 /// whatever story the sticker is dropped onto, so no single ratio can be
@@ -64,6 +66,7 @@ export const SHARE_STICKER_INKS = {
 	light: {
 		text: '#FFFFFF',
 		muted: 'rgba(255, 255, 255, 0.85)',
+		accent: OG_CARD_DARK.brand,
 		shadow: 'rgba(0, 0, 0, 0.55)',
 		halo: 'rgba(0, 0, 0, 0.35)',
 		scrim: '0, 0, 0',
@@ -71,6 +74,7 @@ export const SHARE_STICKER_INKS = {
 	dark: {
 		text: OG_CARD_LIGHT.ink,
 		muted: 'rgba(26, 23, 34, 0.8)',
+		accent: OG_CARD_LIGHT.brand,
 		shadow: 'rgba(255, 255, 255, 0.6)',
 		halo: 'rgba(255, 255, 255, 0.5)',
 		scrim: '255, 255, 255',
@@ -78,6 +82,7 @@ export const SHARE_STICKER_INKS = {
 	brand: {
 		text: OG_CARD_DARK.brand,
 		muted: 'rgba(255, 255, 255, 0.9)',
+		accent: OG_CARD_DARK.hero,
 		shadow: 'rgba(0, 0, 0, 0.6)',
 		halo: 'rgba(0, 0, 0, 0.4)',
 		scrim: '0, 0, 0',

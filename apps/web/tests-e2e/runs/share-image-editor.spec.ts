@@ -12,7 +12,8 @@ import type { TrackPoint } from '../../src/lib/types';
  * the phone's share sheet offers. Pins what leaves the page: a 1080 px PNG,
  * a sticker cropped to its content with a transparent ground, a photo drawn
  * fresh so the original's EXIF never rides along, a photo's stats exported
- * where the runner moved them, and a look remembered by this browser.
+ * where the runner moved them, a look remembered by this browser, and the
+ * occasion stickers (issue #1295) offered only for a run that has their data.
  */
 
 const TRACK: TrackPoint[] = Array.from({ length: 8 }, (_, i) => ({
@@ -324,6 +325,76 @@ test.describe('run share-image editor', () => {
 		const back = await blockFractions(again);
 		for (const k of ['left', 'top', 'width', 'height'] as const) {
 			expect(Math.abs(back[k] - start[k]), k).toBeLessThan(0.01);
+		}
+	});
+
+	test('an occasion sticker is offered only when the run has its data, and exports transparent', async ({ page }) => {
+		const dialog = await openEditor(page, runId);
+		await dialog.getByTestId('share-style-sticker').click();
+		await expect(dialog.getByTestId('share-kind-stats')).toHaveAttribute('aria-checked', 'true');
+		await expect(dialog.getByTestId('share-kind-route')).toBeVisible();
+		// No record, no race link, no badge: none of those stickers is offered.
+		for (const hidden of ['pr', 'race', 'badge']) {
+			await expect(dialog.getByTestId(`share-kind-${hidden}`)).toHaveCount(0);
+		}
+
+		await dialog.getByTestId('share-kind-route').click();
+		await expect(dialog.getByTestId('share-kind-route')).toHaveAttribute('aria-checked', 'true');
+		// The layouts and stat chips belong to the stats sticker.
+		await expect(dialog.getByTestId('share-layout-stack')).toHaveCount(0);
+		await expect(dialog.getByTestId('share-stat-distance')).toHaveCount(0);
+		await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+		const png = await readPng(await download(page));
+		expect(png.width).toBe(1080);
+		expect(await cornerAlpha(page, png)).toBe(0);
+	});
+
+	test('a race run offers the race sticker, and a run with no race falls back to stats', async ({ page }) => {
+		const raceRunId = await insertRun({
+			user_id: USER_A.id,
+			started_at: '2026-05-03T07:00:00Z',
+			distance_m: 5_000,
+			duration_s: 1_480,
+			metadata: { title: 'Race day', race_name: 'Riverside 5K', chip_time: '24:31' },
+			track: TRACK,
+		});
+		try {
+			const dialog = await openEditor(page, raceRunId);
+			await dialog.getByTestId('share-style-sticker').click();
+			await dialog.getByTestId('share-kind-race').click();
+			await expect(dialog.getByTestId('share-kind-race')).toHaveAttribute('aria-checked', 'true');
+			await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+			const png = await readPng(await download(page));
+			expect(png.width).toBe(1080);
+			expect(await cornerAlpha(page, png)).toBe(0);
+
+			// The remembered race kind cannot print on a run with no race.
+			const plain = await openEditor(page, runId);
+			await plain.getByTestId('share-style-sticker').click();
+			await expect(plain.getByTestId('share-kind-race')).toHaveCount(0);
+			await expect(plain.getByTestId('share-kind-stats')).toHaveAttribute('aria-checked', 'true');
+		} finally {
+			await deleteRun(raceRunId);
+		}
+	});
+
+	test('the streak sticker counts the days up to this run', async ({ page }) => {
+		const dayBefore = await insertRun({
+			user_id: USER_A.id,
+			started_at: '2026-05-09T08:00:00Z',
+			distance_m: 3_000,
+			duration_s: 1_000,
+			track: TRACK,
+		});
+		try {
+			const dialog = await openEditor(page, runId);
+			await dialog.getByTestId('share-style-sticker').click();
+			await dialog.getByTestId('share-kind-streak').click();
+			await expect(dialog.getByTestId('share-kind-streak')).toHaveAttribute('aria-checked', 'true');
+			await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+			expect(await cornerAlpha(page, await readPng(await download(page)))).toBe(0);
+		} finally {
+			await deleteRun(dayBefore);
 		}
 	});
 });

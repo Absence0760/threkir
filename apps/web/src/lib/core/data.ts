@@ -14413,6 +14413,24 @@ export async function fetchMyBadges(): Promise<Achievement[]> {
 	return fetchUserBadges(uid);
 }
 
+/// The single-run distance badge this run earned, for the run's badge sticker,
+/// or null. Only `distance_single` records the run behind an award in
+/// `source_id`; every other family writes null there and rebuilds its awards,
+/// so their `earned_at` cannot attribute one to a run either.
+export async function fetchRunDistanceBadge(runId: string): Promise<Achievement | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data, error } = await supabase
+		.from(TABLES.achievements)
+		.select('*')
+		.eq('user_id', userId)
+		.eq('badge_key', 'distance_single')
+		.eq('source_id', runId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return (data as Achievement | null) ?? null;
+}
+
 /** Flip a badge's public visibility. Owner-only (enforced by RLS). */
 export async function setBadgeVisibility(id: string, isPublic: boolean): Promise<void> {
 	const { error } = await supabase

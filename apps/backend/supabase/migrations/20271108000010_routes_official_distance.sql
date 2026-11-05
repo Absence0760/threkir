@@ -39,7 +39,10 @@
 
 set search_path = public, extensions;
 
-alter table routes add column official_distance_m numeric;
+-- numeric(10, 2) is distance_m's own type: create or replace view refuses a
+-- typmod change, and public_race_listings.course_distance_m is now the
+-- coalesce of the two.
+alter table routes add column official_distance_m numeric(10, 2);
 
 alter table routes
   add constraint routes_official_distance_m_check
@@ -131,7 +134,7 @@ select
   l.is_verified,
   l.created_at,
   l.updated_at,
-  coalesce(c.official_distance_m, c.distance_m) as course_distance_m,
+  coalesce(c.official_distance_m, c.distance_m)::numeric(10, 2) as course_distance_m,
   c.elevation_m as course_elevation_m,
   c.surface as course_surface,
   c.id as course_route_id

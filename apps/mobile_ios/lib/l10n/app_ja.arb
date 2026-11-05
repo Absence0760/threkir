@@ -1139,6 +1139,8 @@
   "routeDetailManageClub": "切り離すか別のクラブに移動",
   "routeDetailDeleteRoute": "ルートを削除",
   "routeDetailStatDistance": "距離",
+  "routeDetailStatOfficialDistance": "公式距離",
+  "routeDetailStatMeasured": "計測値",
   "routeDetailStatElevation": "標高",
   "routeDetailStatReviews": "{count} 件のレビュー",
   "routeDetailStatWaypoints": "ウェイポイント",

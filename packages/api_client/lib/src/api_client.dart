@@ -7034,6 +7034,7 @@ class ApiClient {
       clubId: row['club_id'] as String?,
       description: row['description'] as String?,
       official: row['is_official'] == true,
+      officialDistanceMetres: (row['official_distance_m'] as num?)?.toDouble(),
     );
   }
 

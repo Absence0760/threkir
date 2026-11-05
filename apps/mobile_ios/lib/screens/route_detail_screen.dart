@@ -30,6 +30,7 @@ import '../route_describe_client.dart';
 import '../route_description.dart';
 import '../route_geometry.dart' show interpolateAlongRoute;
 import '../route_gpx.dart';
+import '../official_distance.dart';
 import '../share_sheet.dart';
 import '../web_base_url.dart';
 import '../widgets/audience_sheet.dart';
@@ -701,6 +702,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           name: r.name,
           waypoints: r.waypoints,
           distanceMetres: r.distanceMetres,
+          officialDistanceMetres: r.officialDistanceMetres,
           elevationGainMetres: r.elevationGainMetres,
           isPublic: isPublic,
           createdAt: r.createdAt,
@@ -837,6 +839,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
           name: r.name,
           waypoints: r.waypoints,
           distanceMetres: r.distanceMetres,
+          officialDistanceMetres: r.officialDistanceMetres,
           elevationGainMetres: r.elevationGainMetres,
           isPublic: _isPublic,
           createdAt: r.createdAt,
@@ -1243,7 +1246,8 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
               if (_displayWaypoints.length >= 2)
                 _RoutePreviewScrubber(
                   fraction: _scrubFraction,
-                  totalDistanceM: route.distanceMetres,
+                  totalDistanceM: routeDisplayDistanceM(
+                      route.distanceMetres, route.officialDistanceMetres),
                   unit: unit,
                   onChangeStart: () => setState(() => _scrubbing = true),
                   onChanged: (f) => setState(() => _scrubFraction = f),
@@ -1255,10 +1259,22 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                 child: StatGrid(
                   cells: [
                     StatTile.large(
-                      label: l10n.routeDetailStatDistance,
-                      value: UnitFormat.distanceValue(route.distanceMetres, unit),
+                      label: route.officialDistanceMetres != null
+                          ? l10n.routeDetailStatOfficialDistance
+                          : l10n.routeDetailStatDistance,
+                      value: UnitFormat.distanceValue(
+                          routeDisplayDistanceM(route.distanceMetres,
+                              route.officialDistanceMetres),
+                          unit),
                       unit: UnitFormat.distanceLabel(unit),
                     ),
+                    if (route.officialDistanceMetres != null)
+                      StatTile.large(
+                        label: l10n.routeDetailStatMeasured,
+                        value: UnitFormat.distanceValue(
+                            route.distanceMetres, unit),
+                        unit: UnitFormat.distanceLabel(unit),
+                      ),
                     StatTile.large(
                       label: l10n.routeDetailStatElevation,
                       value: UnitFormat.elevationValue(
@@ -2025,6 +2041,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       name: widget.route.name,
       waypoints: _displayWaypoints,
       distanceMetres: widget.route.distanceMetres,
+      officialDistanceMetres: widget.route.officialDistanceMetres,
       elevationGainMetres: widget.route.elevationGainMetres,
       isPublic: widget.route.isPublic,
       createdAt: widget.route.createdAt,

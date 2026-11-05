@@ -15,6 +15,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../fab_clearance.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../official_distance.dart';
 import '../preferences.dart';
 import '../shared_file_import.dart'
     show
@@ -430,7 +431,7 @@ class RoutesScreenState extends State<RoutesScreen> {
     }
     if (_distanceFilter != _DistanceBucket.any) {
       stream = stream
-          .where((r) => _inDistanceBucket(r.distanceMetres, _distanceFilter));
+          .where((r) => _inDistanceBucket(_shownM(r), _distanceFilter));
     }
     if (q.isNotEmpty) {
       stream = stream.where((r) => fold(r.name).contains(q));
@@ -447,9 +448,9 @@ class RoutesScreenState extends State<RoutesScreen> {
           return bx.compareTo(ax);
         });
       case _RouteSort.longest:
-        out.sort((a, b) => b.distanceMetres.compareTo(a.distanceMetres));
+        out.sort((a, b) => _shownM(b).compareTo(_shownM(a)));
       case _RouteSort.shortest:
-        out.sort((a, b) => a.distanceMetres.compareTo(b.distanceMetres));
+        out.sort((a, b) => _shownM(a).compareTo(_shownM(b)));
       case _RouteSort.mostRun:
         out.sort((a, b) => b.runCount.compareTo(a.runCount));
       case _RouteSort.az:
@@ -657,6 +658,7 @@ class RoutesScreenState extends State<RoutesScreen> {
       name: route.name,
       waypoints: route.waypoints,
       distanceMetres: route.distanceMetres,
+      officialDistanceMetres: route.officialDistanceMetres,
       elevationGainMetres: route.elevationGainMetres,
       isPublic: route.isPublic,
       createdAt: route.createdAt,
@@ -1413,6 +1415,9 @@ class _DiscoverTile extends StatelessWidget {
   }
 }
 
+double _shownM(cm.Route r) =>
+    routeDisplayDistanceM(r.distanceMetres, r.officialDistanceMetres);
+
 /// A route card's stats line, "26.48 mi  •  751 ft ↑", in the reader's unit.
 ///
 /// Every space inside a figure is non-breaking, so a raised text scale wraps
@@ -1420,7 +1425,7 @@ class _DiscoverTile extends StatelessWidget {
 @visibleForTesting
 String routeStatsLine(cm.Route route, cm.DistanceUnit unit) {
   String glued(String s) => s.replaceAll(' ', '\u00A0');
-  return '${glued(UnitFormat.distance(route.distanceMetres, unit))}'
+  return '${glued(UnitFormat.distance(_shownM(route), unit))}'
       '  •  ${glued('${UnitFormat.elevation(route.elevationGainMetres, unit)} ↑')}';
 }
 

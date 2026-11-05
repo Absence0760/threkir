@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../l10n/gen/app_localizations.dart';
 import '../map_tile_readiness.dart';
+import '../official_distance.dart';
 import '../preferences.dart';
 import '../share_sheet.dart';
 import 'capture_png.dart';
@@ -69,7 +70,10 @@ class _ShareRouteSheetState extends State<_ShareRouteSheet> {
 
   String get _caption {
     final unit = widget.preferences.unit;
-    final dist = UnitFormat.distance(widget.route.distanceMetres, unit);
+    final dist = UnitFormat.distance(
+        routeDisplayDistanceM(
+            widget.route.distanceMetres, widget.route.officialDistanceMetres),
+        unit);
     return '${widget.route.name} — $dist';
   }
 
@@ -279,7 +283,10 @@ class RouteShareCard extends StatelessWidget {
   Widget _buildStats(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final unit = preferences.unit;
-    final dist = UnitFormat.distance(route.distanceMetres, unit);
+    final dist = UnitFormat.distance(
+        routeDisplayDistanceM(
+            route.distanceMetres, route.officialDistanceMetres),
+        unit);
     // Through the same unit preference the distance above it takes: a
     // mile-unit runner was shown "3.11 mi" beside "128 m" on one card.
     final ele = route.elevationGainMetres > 0

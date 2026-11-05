@@ -23,6 +23,7 @@ cm.Route _route({
   List<String> tags = const [],
   List<cm.Waypoint> waypoints = const [],
   String userId = 'test-user',
+  double? officialDistanceMetres,
 }) =>
     cm.Route(
       id: 'r1',
@@ -30,6 +31,7 @@ cm.Route _route({
       name: name,
       waypoints: waypoints,
       distanceMetres: 8500,
+      officialDistanceMetres: officialDistanceMetres,
       elevationGainMetres: 45,
       isPublic: isPublic,
       description: description,
@@ -242,6 +244,26 @@ void main() {
       await tester.pump();
       expect(barOpacity(), 1,
           reason: 'the bar names the route once its heading is gone');
+    });
+
+    testWidgets('an official distance headlines the stats over the measured one',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(tester, _route(officialDistanceMetres: 8000));
+      expect(find.text('Official distance'), findsOneWidget);
+      expect(find.text('Measured'), findsOneWidget);
+    });
+
+    testWidgets('without an official distance neither label appears',
+        (tester) async {
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pump(tester, _route());
+      expect(find.text('Official distance'), findsNothing);
+      expect(find.text('Measured'), findsNothing);
     });
 
     testWidgets('a route with no line does not headline "0 Waypoints"',

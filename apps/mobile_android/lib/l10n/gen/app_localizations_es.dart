@@ -4076,6 +4076,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routeDetailStatDistance => 'Distancia';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Distancia oficial';
+
+  @override
+  String get routeDetailStatMeasured => 'Medida';
+
+  @override
   String get routeDetailStatElevation => 'Elevación';
 
   @override

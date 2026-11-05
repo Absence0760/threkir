@@ -1139,6 +1139,8 @@
   "routeDetailManageClub": "Détacher ou déplacer vers un autre club",
   "routeDetailDeleteRoute": "Supprimer l'itinéraire",
   "routeDetailStatDistance": "Distance",
+  "routeDetailStatOfficialDistance": "Distance officielle",
+  "routeDetailStatMeasured": "Mesurée",
   "routeDetailStatElevation": "Dénivelé",
   "routeDetailStatReviews": "{count} avis",
   "routeDetailStatWaypoints": "Points",

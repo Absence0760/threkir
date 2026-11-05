@@ -927,6 +927,20 @@ void main() {
       }
     });
 
+    test('a route\'s official distance replaces the traced one', () {
+      final raced = cm.Route(
+        id: 'r',
+        userId: 'u',
+        name: 'n',
+        waypoints: const [],
+        distanceMetres: 42617,
+        elevationGainMetres: 229,
+        officialDistanceMetres: 42200,
+      );
+      expect(routeStatsLine(raced, cm.DistanceUnit.km).split('  •  ').first,
+          '42.20\u00A0km');
+    });
+
     test('reads elevation in the reader unit', () {
       expect(routeStatsLine(route, cm.DistanceUnit.km),
           '42.62 km  •  229 m ↑');

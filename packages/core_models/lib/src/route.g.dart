@@ -29,6 +29,7 @@ Route _$RouteFromJson(Map<String, dynamic> json) => Route(
   clubId: json['clubId'] as String?,
   description: json['description'] as String?,
   official: json['official'] as bool? ?? false,
+  officialDistanceMetres: (json['officialDistanceMetres'] as num?)?.toDouble(),
 );
 
 Map<String, dynamic> _$RouteToJson(Route instance) => <String, dynamic>{
@@ -48,4 +49,5 @@ Map<String, dynamic> _$RouteToJson(Route instance) => <String, dynamic>{
   'clubId': instance.clubId,
   'description': instance.description,
   'official': instance.official,
+  'officialDistanceMetres': instance.officialDistanceMetres,
 };

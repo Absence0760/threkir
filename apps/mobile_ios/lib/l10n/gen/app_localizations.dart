@@ -6691,6 +6691,18 @@ abstract class AppLocalizations {
   /// **'Distance'**
   String get routeDetailStatDistance;
 
+  /// Stat label for a route's official (race-certified) distance, shown in place of the measured distance when the owner set one (issue #1291)
+  ///
+  /// In en, this message translates to:
+  /// **'Official distance'**
+  String get routeDetailStatOfficialDistance;
+
+  /// Stat label for the length of the drawn route line, shown beside its official distance
+  ///
+  /// In en, this message translates to:
+  /// **'Measured'**
+  String get routeDetailStatMeasured;
+
   /// Stat label for elevation on the route-detail screen
   ///
   /// In en, this message translates to:

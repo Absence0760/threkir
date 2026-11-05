@@ -69,6 +69,37 @@ void main() {
       expect(markers.last.label, inInclusiveRange(4, 5));
     });
 
+    test('places an official distance shorter than the line at its own km',
+        () {
+      // 12 km of line for a 10.5 km course: km k sits k·12/10.5 km along it.
+      final track = _straight(n: 121, stepM: 100);
+      final markers = computeDistanceMarkers(
+        track,
+        useMiles: false,
+        totalDistanceM: 12000,
+        officialDistanceM: 10500,
+      );
+      expect(markers.map((m) => m.label).toList(),
+          [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      expect(
+        (markers[4].position.latitude * _metresPerLatDegree -
+                5000 * 12000 / 10500)
+            .abs(),
+        lessThan(1),
+      );
+    });
+
+    test('lets an official distance win over the sparse-line heuristic', () {
+      final track = _straight(n: 11, stepM: 100);
+      final markers = computeDistanceMarkers(
+        track,
+        useMiles: false,
+        totalDistanceM: 4000,
+        officialDistanceM: 2500,
+      );
+      expect(markers.map((m) => m.label).toList(), [1, 2]);
+    });
+
     test('marker positions interpolate within segments', () {
       // Two-point track, ~2 km long via haversine. The 1 km marker
       // should land at roughly the midpoint — within 5 m, which is

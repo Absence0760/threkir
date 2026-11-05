@@ -9,6 +9,7 @@ import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow, Status
 
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
+import '../official_distance.dart';
 import '../preferences.dart';
 import '../quiet_location.dart';
 import '../route_surface_label.dart';
@@ -782,8 +783,12 @@ class _RouteCard extends StatelessWidget {
                       spacing: 12,
                       runSpacing: 4,
                       children: [
-                        _tag(Icons.straighten,
-                            UnitFormat.distance(route.distanceMetres, unit)),
+                        _tag(
+                            Icons.straighten,
+                            UnitFormat.distance(
+                                routeDisplayDistanceM(route.distanceMetres,
+                                    route.officialDistanceMetres),
+                                unit)),
                         if (route.elevationGainMetres > 0)
                           _tag(Icons.trending_up,
                               UnitFormat.elevation(

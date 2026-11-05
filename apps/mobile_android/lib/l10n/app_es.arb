@@ -1139,6 +1139,8 @@
   "routeDetailManageClub": "Separar o mover a otro club",
   "routeDetailDeleteRoute": "Eliminar ruta",
   "routeDetailStatDistance": "Distancia",
+  "routeDetailStatOfficialDistance": "Distancia oficial",
+  "routeDetailStatMeasured": "Medida",
   "routeDetailStatElevation": "Elevación",
   "routeDetailStatReviews": "{count} reseñas",
   "routeDetailStatWaypoints": "Puntos",

@@ -3846,6 +3846,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routeDetailStatDistance => '距離';
 
   @override
+  String get routeDetailStatOfficialDistance => '公式距離';
+
+  @override
+  String get routeDetailStatMeasured => '計測値';
+
+  @override
   String get routeDetailStatElevation => '標高';
 
   @override

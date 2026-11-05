@@ -4076,6 +4076,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routeDetailStatDistance => 'Distância';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Distância oficial';
+
+  @override
+  String get routeDetailStatMeasured => 'Medida';
+
+  @override
   String get routeDetailStatElevation => 'Elevação';
 
   @override
@@ -24133,6 +24139,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get routeDetailStatDistance => 'Distância';
+
+  @override
+  String get routeDetailStatOfficialDistance => 'Distância oficial';
+
+  @override
+  String get routeDetailStatMeasured => 'Medida';
 
   @override
   String get routeDetailStatElevation => 'Elevação';

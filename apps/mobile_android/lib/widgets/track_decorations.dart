@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:latlong2/latlong.dart';
 
+import '../official_distance.dart' show courseDistanceScale;
 import '../run_stats.dart' show haversineMetres;
 
 /// A km / mile boundary along a recorded track. The map renders a small
@@ -35,12 +36,15 @@ double _haversineMetres(LatLng a, LatLng b) =>
 /// the polyline length (sparse user clicks / seed data), every marker's
 /// *along-the-polyline* position is scaled by `polyline / real` so the
 /// marker count reflects the real distance even though the rendered
-/// geometry is a coarse approximation. Markers at index 0 (covered by
+/// geometry is a coarse approximation. A route's [officialDistanceM] wins
+/// over both, short or long, so km 42 of a traced marathon sits where the
+/// race's sign does (`courseDistanceScale`). Markers at index 0 (covered by
 /// the green start cap) are skipped.
 List<DistanceMarker> computeDistanceMarkers(
   List<LatLng> coords, {
   required bool useMiles,
   double? totalDistanceM,
+  double? officialDistanceM,
 }) {
   final out = <DistanceMarker>[];
   if (coords.length < 2) return out;
@@ -55,7 +59,11 @@ List<DistanceMarker> computeDistanceMarkers(
       (totalDistanceM != null && totalDistanceM > polylineTotal * 1.1)
       ? totalDistanceM
       : polylineTotal;
-  final scale = polylineTotal > 0 ? polylineTotal / realTotal : 1.0;
+  final scale = officialDistanceM != null && officialDistanceM > 0
+      ? 1 / courseDistanceScale(polylineTotal, officialDistanceM)
+      : polylineTotal > 0
+      ? polylineTotal / realTotal
+      : 1.0;
 
   double cumulative = 0;
   double nextMarker = stepM * scale;

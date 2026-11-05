@@ -5389,6 +5389,14 @@
   "@routeDetailStatDistance": {
     "description": "Stat label for distance on the route-detail screen"
   },
+  "routeDetailStatOfficialDistance": "Official distance",
+  "@routeDetailStatOfficialDistance": {
+    "description": "Stat label for a route's official (race-certified) distance, shown in place of the measured distance when the owner set one (issue #1291)"
+  },
+  "routeDetailStatMeasured": "Measured",
+  "@routeDetailStatMeasured": {
+    "description": "Stat label for the length of the drawn route line, shown beside its official distance"
+  },
   "routeDetailStatElevation": "Elevation",
   "@routeDetailStatElevation": {
     "description": "Stat label for elevation on the route-detail screen"

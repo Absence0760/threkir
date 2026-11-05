@@ -293,6 +293,24 @@ void _fitToARace(_Mutable plan, SeasonRace race, double goalDistanceM) {
   plan.endDate = race.date;
 }
 
+/// A single-race plan (the races screen's "train for this race", a race date
+/// in a plan description) ends on its race the way a season plan does: one A
+/// race on race day, not the generator's race-week Sunday race with the plan
+/// ending the Saturday after (#1294). The plan comes back unchanged when race
+/// day is not inside its final race week.
+GeneratedPlan fitPlanToRaceDay(
+    GeneratedPlan plan, SeasonRace race, double goalDistanceM) {
+  if (plan.weeks.isEmpty || plan.weeks.last.phase != PlanPhase.race) {
+    return plan;
+  }
+  final end = _epochDay(toIsoDate(plan.endDate));
+  final day = _epochDay(race.date);
+  if (end == null || day == null || day > end || day < end - 6) return plan;
+  final m = _Mutable(plan);
+  _fitToARace(m, race, goalDistanceM);
+  return m.freeze();
+}
+
 SeasonBuildResult buildSeason({
   required List<SeasonRace> races,
   required String todayIso,

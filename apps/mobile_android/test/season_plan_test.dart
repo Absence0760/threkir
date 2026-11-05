@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/plan_races.dart';
 import '../lib/race_plan_preset.dart';
 import '../lib/season_plan.dart';
 import '../lib/season_types.dart';
@@ -335,5 +336,100 @@ void main() {
             extraRecovery: true)),
         masters);
     expect(volumes(_build(races)), isNot(masters));
+  });
+
+  // 2026-11-01 is a Sunday, so a four-week plan's race week is 22-28 Nov.
+  GeneratedPlan fourWeekTenK() => generatePlan(GeneratePlanInput(
+        goalEvent: GoalEvent.distance10k,
+        startDate: DateTime(2026, 11, 1),
+        daysPerWeek: 4,
+        weeks: 4,
+      ));
+
+  List<PlanRace> racesOf(GeneratedPlan plan) {
+    final all = [for (final w in plan.weeks) ...w.workouts];
+    return planRaces(
+      endDate: toIsoDate(plan.endDate),
+      goalDistanceM: 10000,
+      goalTimeSec: 2700,
+      trimmedAt: null,
+      workouts: [
+        for (var i = 0; i < all.length; i++)
+          PlanRaceWorkout(
+            id: 'w$i',
+            scheduledDate: toIsoDate(all[i].scheduledDate),
+            kind: workoutKindDbValue(all[i].kind),
+            raceName: all[i].raceName,
+            racePriority: all[i].racePriority,
+            targetDistanceM: all[i].targetDistanceM,
+            targetDurationSeconds: all[i].targetDurationSeconds,
+          ),
+      ],
+    );
+  }
+
+  test(
+      'fitPlanToRaceDay: a Sunday race ends the plan on race day with one named A race (#1294)',
+      () {
+    final generated = fourWeekTenK();
+    expect(toIsoDate(generated.endDate), '2026-11-28');
+    final fitted = fitPlanToRaceDay(generated,
+        _race('Turkey Trot', '2026-11-22', 10000, _a, 2700), 10000);
+    expect(toIsoDate(fitted.endDate), '2026-11-22');
+    final raceWeek = fitted.weeks.last;
+    expect([
+      for (final w in raceWeek.workouts)
+        [toIsoDate(w.scheduledDate), w.kind, w.raceName, w.racePriority]
+    ], [
+      ['2026-11-22', WorkoutKind.race, 'Turkey Trot', 'A'],
+    ]);
+    expect(raceWeek.targetVolumeM, 10000);
+    expect([
+      for (final r in racesOf(fitted)) [r.date, r.name, r.priority]
+    ], [
+      ['2026-11-22', 'Turkey Trot', 'A'],
+    ]);
+    expect(toIsoDate(generated.endDate), '2026-11-28',
+        reason: 'the generated plan is not mutated');
+  });
+
+  test(
+      'fitPlanToRaceDay: a Saturday race moves onto race day and the race-week Sunday becomes rest',
+      () {
+    final fitted = fitPlanToRaceDay(
+        fourWeekTenK(), _race('Saturday 10K', '2026-11-28', 10000, _a), 10000);
+    expect(toIsoDate(fitted.endDate), '2026-11-28');
+    final raceWeek = fitted.weeks.last.workouts;
+    expect(toIsoDate(raceWeek.first.scheduledDate), '2026-11-22');
+    expect(raceWeek.first.kind, WorkoutKind.rest);
+    expect([
+      for (final w in raceWeek)
+        if (w.kind == WorkoutKind.race) toIsoDate(w.scheduledDate)
+    ], [
+      '2026-11-28'
+    ]);
+    expect([
+      for (final r in racesOf(fitted)) [r.date, r.priority]
+    ], [
+      ['2026-11-28', 'A'],
+    ]);
+  });
+
+  test(
+      'fitPlanToRaceDay: a race day outside the final race week leaves the plan as generated',
+      () {
+    final generated = fourWeekTenK();
+    expect(
+        identical(
+            fitPlanToRaceDay(
+                generated, _race('Early', '2026-11-21', 10000, _a), 10000),
+            generated),
+        isTrue);
+    expect(
+        identical(
+            fitPlanToRaceDay(
+                generated, _race('Late', '2026-11-29', 10000, _a), 10000),
+            generated),
+        isTrue);
   });
 }

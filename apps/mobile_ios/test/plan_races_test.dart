@@ -142,4 +142,68 @@ void main() {
     expect(nextRace(races, '2027-06-14'), isNull);
     expect(nextRace(const [], '2027-01-01'), isNull);
   });
+
+  List<PlanRace> houstonRaces(List<PlanRaceWorkout> workouts,
+          {DateTime? trimmedAt}) =>
+      planRaces(
+        endDate: '2027-01-23',
+        goalDistanceM: 42195,
+        goalTimeSec: 14400,
+        trimmedAt: trimmedAt,
+        workouts: workouts,
+      );
+  PlanRaceWorkout houston({String date = '2027-01-17', String? priority}) =>
+      PlanRaceWorkout(
+        id: 'w-houston',
+        scheduledDate: date,
+        kind: 'race',
+        racePriority: priority,
+        targetDistanceM: 42195,
+      );
+
+  test(
+      'planRaces: a race-week race before an end date with no race is the A goal race, not a C race plus a synthetic A (#1294)',
+      () {
+    expect(houstonRaces([houston()]), const [
+      PlanRace(
+        date: '2027-01-17',
+        name: null,
+        priority: 'A',
+        distanceM: 42195,
+        goalTimeSec: 14400,
+        workoutId: 'w-houston',
+      ),
+    ]);
+  });
+
+  test(
+      'planRaces: a race-week race marked B or C keeps its priority and the end date keeps its synthetic A race',
+      () {
+    final races = houstonRaces([houston(priority: 'C')]);
+    expect([
+      for (final r in races) [r.workoutId, r.priority, r.date]
+    ], [
+      ['w-houston', 'C', '2027-01-17'],
+      [null, 'A', '2027-01-23'],
+    ]);
+  });
+
+  test(
+      'planRaces: only the final seven days count as race week, and a trimmed plan promotes nothing',
+      () {
+    final weekBefore = houstonRaces([houston(date: '2027-01-16')]);
+    expect([
+      for (final r in weekBefore) [r.workoutId, r.priority]
+    ], [
+      ['w-houston', 'C'],
+      [null, 'A'],
+    ]);
+    final trimmed = houstonRaces([houston()],
+        trimmedAt: DateTime.utc(2027, 1, 23, 9));
+    expect([
+      for (final r in trimmed) [r.workoutId, r.priority]
+    ], [
+      ['w-houston', 'C'],
+    ]);
+  });
 }

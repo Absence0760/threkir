@@ -611,6 +611,7 @@
 		{initialName}
 		initialStartDate={racePreset?.ok ? racePreset.preset.startDate : initialStartFromLink}
 		initialWeeks={racePreset?.ok ? racePreset.preset.weeks : undefined}
+		initialRace={racePreset?.ok && raceDateParam ? { date: raceDateParam, name: initialName ?? null } : null}
 		notBeforeIso={notBeforeParam}
 		raceListingId={racePreset?.ok && isEntityId(raceListingParam) ? raceListingParam : null}
 		initialDescription={describeParam}

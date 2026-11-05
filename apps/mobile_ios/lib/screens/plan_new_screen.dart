@@ -23,6 +23,8 @@ import '../plan_start.dart';
 import '../pro_sellable.dart';
 import '../race_plan_preset.dart';
 import '../race_predictor.dart' show EffortForPrediction, goalAheadOfRecentRuns;
+import '../season_plan.dart' show fitPlanToRaceDay;
+import '../season_types.dart' show SeasonRace, SeasonRacePriority;
 import '../settings_destination.dart';
 import '../social_service.dart' show ClubView, SocialService;
 import '../plan_labels.dart';
@@ -260,6 +262,10 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
   // race the new description no longer mentions; a date the runner picked by
   // hand is left alone.
   DateTime? _aiRaceStart;
+
+  /// The race day the dates were preset around and the race's name: the plan
+  /// ends on that day with the race as its one A race (#1294).
+  ({String date, String? name})? _raceDay;
   static DateTime _today() {
     final n = DateTime.now();
     return DateTime(n.year, n.month, n.day);
@@ -519,6 +525,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       _startDate = defaultPlanStart(_today(), walkRun: _beginnerWalkRun);
     }
     _aiRaceStart = null;
+    _raceDay = null;
     final goal = inputs.goalTimeSec;
     _goalHours = goal == null ? null : goal ~/ 3600;
     _goalMinutes = goal == null ? null : (goal % 3600) ~/ 60;
@@ -586,6 +593,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
     }
     _startDate = start;
     _aiRaceStart = start;
+    _raceDay = (date: raceDate, name: null);
     _setWeekOverride(weeks);
     return null;
   }
@@ -636,6 +644,16 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
       _startDate = DateTime(start.year, start.month, start.day);
     _weekOverride = preset.weeks;
     _weekOverrideCtrl.text = '${preset.weeks}';
+    final raceName = widget.raceName?.trim();
+    final cap = columnLength('training_plans.name');
+    _raceDay = (
+      date: raceDateIso,
+      name: raceName == null || raceName.isEmpty
+          ? null
+          : raceName.length > cap
+              ? raceName.substring(0, cap)
+              : raceName,
+    );
   }
 
   @override
@@ -900,14 +918,28 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
         ),
       );
       final cap = _returnCapM;
-      if (cap == null) return generated;
-      return GeneratedPlan(
-        weeks: capReturnRamp(generated.weeks, cap, generated.paces.easy),
-        paces: generated.paces,
-        vdot: generated.vdot,
-        endDate: generated.endDate,
-        goalDistanceM: generated.goalDistanceM,
-        pacesAreFallback: generated.pacesAreFallback,
+      final capped = cap == null
+          ? generated
+          : GeneratedPlan(
+              weeks: capReturnRamp(generated.weeks, cap, generated.paces.easy),
+              paces: generated.paces,
+              vdot: generated.vdot,
+              endDate: generated.endDate,
+              goalDistanceM: generated.goalDistanceM,
+              pacesAreFallback: generated.pacesAreFallback,
+            );
+      final race = _raceDay;
+      if (race == null) return capped;
+      return fitPlanToRaceDay(
+        capped,
+        SeasonRace(
+          name: race.name ?? '',
+          date: race.date,
+          distanceM: _goalDistanceM,
+          priority: SeasonRacePriority.a,
+          goalTimeSec: _goalTimeSec,
+        ),
+        _goalDistanceM,
       );
     } catch (_) {
       return null;

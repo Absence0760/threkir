@@ -467,6 +467,7 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 - **Export:** fixed logical canvases rasterised 1080 px across. Mobile shares or saves to Photos; web shares through the Web Share API where the browser has one and downloads everywhere.
 - **Privacy:** every outline is the privacy-zone-clipped share line (`shareCardTrack` / `runShareCardTrack`), and the image cannot be made before the zones are known. A photo is re-encoded, so its EXIF and location never leave the device. The map card's basemap waits for cookie consent, and the card prints its tile credit.
 - **PR card (#1273 item 7, decisions § 2266):** a run that beat a personal record gets a **PR** style showing the bracket, the time, how much faster and the time it beat (a record from before the improvement log existed prints with no "faster" line). It opens from run detail and from the `personal_record` notification (`/runs/<id>?share=pr`). The times stay owner-only; only the exported image leaves.
+- **Occasion stickers (#1295, decisions § 2346):** the Sticker and Photo styles carry a **Highlight** picker beside the stats: the run's **splits** (one table column up to the budget's row count, two columns up to twice that, then one bar per split, the fastest in the ink's accent; computed from the full track, never the clipped line), its personal **record** (the transparent sibling of the PR card), the **streak** day it was (counted as of the run's own day, every activity in the runs table, two days or more), the **race** it finished (the race stamped on the run, with its official chip time when there is one and `Finisher` otherwise), the **badge** it earned (`distance_single` only: no other family records its run), and the **route** alone. A kind is offered only when the run has its data, and a remembered kind the run cannot print draws the stats. Inks, the mark switch, the 1080 px export, the transparent ground and the photo placement are the stats sticker's.
 - **Versus (#1273 item 9):** a run on a route also offers the head-to-head card; see [Head-to-head card](#head-to-head-card).
 - **Video (#1273 item 1):** the phone's **Video** style opens the web flyover export; see [3D course preview](#3d-course-preview).
 - **Free:** a growth feature with no per-user cost.
@@ -475,6 +476,7 @@ Price: **$9.99 / month** or **$79.99 / year** (33% less than twelve months; year
 - Each style exports a 1080 px PNG; the sticker's ground is transparent and it is no larger than what it draws
 - A photo's EXIF block is not in the export
 - A stat the run did not measure is never offered
+- An occasion sticker is never offered for a run that lacks its data, and no splits sticker grows past half the usable story height at a 12 px digit floor
 - The look chosen for one run is the one the next share opens with
 
 ### Head-to-head card

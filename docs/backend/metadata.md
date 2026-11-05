@@ -156,10 +156,10 @@ Set on runs imported from a registered race surface (chip-timing exports, the Ru
 
 | Key | Shape | Writers | Readers | Required? | Notes |
 |---|---|---|---|---|---|
-| `race_name` | `string` — registered race name (e.g. `"Richmond Half Marathon"`) | `race-results-import` EF (RunSignUp + paste) | `fetchRaceResultForRun` (web + mobile) | Optional | Owner-only. Links the runner to a specific race registration; stripped from `public_runs`. |
+| `race_name` | `string` — registered race name (e.g. `"Richmond Half Marathon"`) | `race-results-import` EF (RunSignUp + paste) | `fetchRaceResultForRun` (web + mobile); the race share sticker (web run page `shareRace`, mobile `run_share_card.dart` `_race`) | Optional | Owner-only. Links the runner to a specific race registration; stripped from `public_runs`. |
 | `bib` | `string` — runner's bib number | Same | Same | Optional | Owner-only. Permanent real-world identity link; stripped from `public_runs`. |
 | `overall_place` | `int` — finishing position overall | Same | Same | Optional, audit-only | Owner-only conservatively — the position is also on the public race results page so this doesn't add information about a runner who's already on the leaderboard, but stripped to keep the view's surface consistent for runners who'd rather not have their finish-time linked from share pages. |
-| `chip_time` | `string` — chip-timed race duration (e.g. `"1:47:23"`) | Same | Same | Optional, audit-only | Owner-only. Redundant with `duration_s` but reveals chip-vs-gun precision the runner may not want public; stripped from `public_runs`. |
+| `chip_time` | `string` — chip-timed race duration (e.g. `"1:47:23"`) | Same | Same, plus the race share sticker, which prints it as the official time | Optional, audit-only | Owner-only. Redundant with `duration_s` but reveals chip-vs-gun precision the runner may not want public; stripped from `public_runs`. |
 | `gun_time` | `string` — gun-timed race duration (e.g. `"1:48:01"`) | Same | Same | Optional, audit-only | Owner-only. The fallback when no chip time is available; stripped from `public_runs` by `20270214_001`. |
 | `age_group_place` | `int` — finishing position within the runner's age group | Same | Same | Optional, audit-only | Owner-only. Reveals the runner's age band; stripped from `public_runs` by `20270214_001`. |
 | `age_group` | `string` — the runner's age-group bucket (e.g. `"M40-44"`) | Same | Same | Optional, audit-only | Owner-only. Age-band identity hint; stripped from `public_runs` by `20270214_001`. |

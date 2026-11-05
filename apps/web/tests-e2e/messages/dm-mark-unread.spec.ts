@@ -58,7 +58,7 @@ test.describe('/messages — mark a conversation unread', () => {
 		const page = await ctx.newPage();
 		try {
 			await page.goto(`/messages/${partner.id}`);
-			await expect(page.getByText(`hello ${stamp}`)).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('dm-bubble').getByText(`hello ${stamp}`)).toBeVisible({ timeout: 10_000 });
 			const row = page.locator(`a.thread[href="/messages/${partner.id}"]`);
 			// Opening the conversation read the partner's message.
 			await expect(row.getByTestId('inbox-unread-count')).toHaveCount(0, { timeout: 10_000 });
@@ -86,7 +86,7 @@ test.describe('/messages — mark a conversation unread', () => {
 			await expect(row.getByTestId('inbox-unread-count')).toHaveText('1', { timeout: 10_000 });
 
 			await row.click();
-			await expect(page.getByText(`hello ${stamp}`)).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByTestId('dm-bubble').getByText(`hello ${stamp}`)).toBeVisible({ timeout: 10_000 });
 			await expect
 				.poll(async () => (await mark())?.marked_unread_at ?? null, { timeout: 10_000 })
 				.toBeNull();

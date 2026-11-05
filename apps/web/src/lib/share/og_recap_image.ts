@@ -27,6 +27,7 @@ export type RecapOgInput = {
 };
 
 import { OG_CARD_DARK } from './og_card_palette';
+import { OG_FONT_STACK } from './og_card_font';
 import { escapeXml } from '../util/html_escape';
 
 const W = 1200;
@@ -50,7 +51,7 @@ function fmtDistanceKm(meters: number | null | undefined, unit: 'km' | 'mi'): st
 /// no preference to read — km is the canonical storage unit and the most
 /// common locale default).
 export function buildRecapOgSvg(input: RecapOgInput, unit: 'km' | 'mi' = 'km'): string {
-	const F = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+	const F = OG_FONT_STACK;
 	const parts: string[] = [];
 	parts.push(
 		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`,

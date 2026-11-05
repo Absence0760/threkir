@@ -6,7 +6,9 @@ OFL.txt). Flutter cannot drive a variable font's weight axis from
 `FontWeight`, so the app gets one static TTF per weight it uses; the web gets
 the same weights as WOFF2, subset to the Latin ranges the shipped locales
 need (Japanese falls back to the system face on both platforms); Wear OS
-gets the TTFs as font resources. watchOS keeps the system face (SF Compact
+gets the TTFs as font resources; the web's share-card rasteriser (resvg, which
+reads neither WOFF2 nor a variable axis) gets the full static TTFs it ships in
+the share Lambdas. watchOS keeps the system face (SF Compact
 is drawn for a watch dial).
 
 Requires fontTools and brotli:  python3 -m pip install fonttools brotli
@@ -23,6 +25,9 @@ REPO = HERE.parent.parent
 MASTER = HERE / "manrope" / "Manrope[wght].ttf"
 FLUTTER_OUT = REPO / "packages" / "ui_kit" / "fonts"
 WEB_OUT = REPO / "apps" / "web" / "src" / "lib" / "assets" / "fonts"
+# Weights the rasterised share cards use; see apps/web/src/lib/share/og_card_font.ts.
+OG_OUT = REPO / "apps" / "web" / "src" / "lib" / "share" / "og-fonts"
+OG_WEIGHTS = {400, 500, 600, 700, 800}
 # Android resource names must be lowercase with underscores.
 WEAR_OUT = REPO / "apps" / "watch_wear" / "android" / "app" / "src" / "main" / "res" / "font"
 
@@ -45,6 +50,8 @@ def main() -> None:
     FLUTTER_OUT.mkdir(parents=True, exist_ok=True)
     WEB_OUT.mkdir(parents=True, exist_ok=True)
     WEAR_OUT.mkdir(parents=True, exist_ok=True)
+    OG_OUT.mkdir(parents=True, exist_ok=True)
+    (OG_OUT / "OFL.txt").write_bytes((HERE / "manrope" / "OFL.txt").read_bytes())
     (FLUTTER_OUT / "OFL.txt").write_bytes((HERE / "manrope" / "OFL.txt").read_bytes())
     (WEB_OUT / "OFL.txt").write_bytes((HERE / "manrope" / "OFL.txt").read_bytes())
     wear_licence = WEAR_OUT.parent.parent / "assets" / "licenses" / "Manrope-OFL.txt"
@@ -57,6 +64,8 @@ def main() -> None:
         ttf = FLUTTER_OUT / f"Manrope-{name}.ttf"
         font.save(ttf)
         font.save(WEAR_OUT / f"manrope_{name.lower()}.ttf")
+        if weight in OG_WEIGHTS:
+            font.save(OG_OUT / f"Manrope-{name}.ttf")
 
         options = subset.Options()
         options.flavor = "woff2"

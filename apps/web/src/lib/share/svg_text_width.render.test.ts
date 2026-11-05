@@ -1,11 +1,12 @@
 // The one-sided claim `svg_text_width` rests on, measured rather than
 // re-derived: the estimate must never fall BELOW what the renderer paints.
 //
-// Nothing here re-checks the em table's numbers. A table of font metrics has
-// no source of truth in this repo — the face is the host's — so the only
-// honest check is behavioural: rasterise each script class through the same
-// renderer the cards use (`@resvg/resvg-js`, the card's own 56 px bold face)
-// and read the ink extent back. `getBBox` reports the INK box, which sits
+// Nothing here re-checks the em table's numbers. The only honest check is
+// behavioural: rasterise each script class through the same renderer and the
+// same bundled face the cards use (`@resvg/resvg-js` with `OG_RESVG_FONT`,
+// Manrope at the card's 56 px bold, no system fonts) and read the ink extent
+// back. The table stays generous on purpose: a browser that opens the SVG
+// directly falls back to its own face. `getBBox` reports the INK box, which sits
 // inside the advance width by the side bearings, so the comparison is
 // conservative in the direction the claim needs.
 //
@@ -14,9 +15,9 @@
 // would catch the table drifting into uselessness (a clipper that keeps three
 // characters of a title that fits twenty is a bug of its own).
 //
-// Both assertions rest on the host having a face for the script, and no host
-// is obliged to: the CI runner carries none for Han, Hangul, fullwidth Latin
-// or Devanagari, and resvg then paints one `.notdef` box per code point. That
+// Both assertions rest on the bundled face covering the script, and Manrope
+// carries no Han, Hangul, fullwidth Latin or Devanagari: resvg then paints one
+// `.notdef` box per code point. That
 // measures the placeholder rather than the text, in a direction that is not
 // merely weak — the lower bound passes for free, and the ceiling fires on the
 // box's width instead of the script's. It did: the first three each reported
@@ -32,10 +33,12 @@ import assert from 'node:assert/strict';
 
 import { Resvg } from '@resvg/resvg-js';
 
+import { OG_FONT_STACK } from './og_card_font';
+import { OG_RESVG_FONT } from './og_png_render';
 import { HOST_FACE_MARGIN, clipToWidthPx, estimateSvgTextWidthPx } from './svg_text_width';
 
 const SIZE = 56;
-const FAMILY = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+const FAMILY = OG_FONT_STACK;
 
 /// Ink width in pixels of `text` painted as the cards paint it.
 function paintedWidthPx(text: string): number {
@@ -43,7 +46,7 @@ function paintedWidthPx(text: string): number {
 		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4000 200" width="4000" height="200">` +
 		`<text x="0" y="120" font-family="${FAMILY}" font-size="${SIZE}" font-weight="700" ` +
 		`fill="#000">${text.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</text></svg>`;
-	const box = new Resvg(svg, { font: { loadSystemFonts: true } }).getBBox();
+	const box = new Resvg(svg, { font: OG_RESVG_FONT }).getBBox();
 	return box === undefined ? 0 : box.width;
 }
 

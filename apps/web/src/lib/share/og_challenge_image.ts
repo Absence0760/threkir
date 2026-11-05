@@ -10,6 +10,7 @@
 
 import { escapeXml } from '../util/html_escape';
 import { OG_CARD_LIGHT } from './og_card_palette';
+import { OG_FONT_STACK } from './og_card_font';
 import { clipToWidthPx } from './svg_text_width';
 import { challengeGoalStable, challengeWindowStable } from './share_challenge_meta';
 import type { SharedChallenge } from './share_challenge_lookup';
@@ -17,7 +18,7 @@ import type { SharedChallenge } from './share_challenge_lookup';
 const W = 1200;
 const H = 630;
 const PAD = 56;
-const FONT = 'system-ui,-apple-system,Segoe UI,Roboto,sans-serif';
+const FONT = OG_FONT_STACK;
 
 export type ChallengeImageInput = {
 	challenge: SharedChallenge | null;

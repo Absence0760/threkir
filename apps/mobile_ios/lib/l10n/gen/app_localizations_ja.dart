@@ -10631,6 +10631,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardChangePhoto => '写真を変更';
 
   @override
+  String get shareCardPlacementLabel => '数値の位置';
+
+  @override
+  String get shareCardPlacementHint => 'ドラッグで移動、ピンチでサイズ変更、ダブルタップで元の位置に戻します。';
+
+  @override
+  String get shareCardPlacementReset => '位置をリセット';
+
+  @override
   String get shareCardPhotoError => 'その写真を開けませんでした';
 
   @override

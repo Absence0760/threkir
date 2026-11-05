@@ -11224,6 +11224,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shareCardChangePhoto => 'Changer de photo';
 
   @override
+  String get shareCardPlacementLabel => 'Position des statistiques';
+
+  @override
+  String get shareCardPlacementHint =>
+      'Faites glisser les statistiques pour les déplacer, pincez pour les redimensionner, touchez deux fois pour les remettre en place.';
+
+  @override
+  String get shareCardPlacementReset => 'Réinitialiser la position';
+
+  @override
   String get shareCardPhotoError => 'Impossible d\'ouvrir cette photo';
 
   @override

@@ -15014,6 +15014,18 @@
   "@shareCardChangePhoto": {
     "description": "Button below the photo preview that picks a different photo"
   },
+  "shareCardPlacementLabel": "Stats position",
+  "@shareCardPlacementLabel": {
+    "description": "Accessible name of the photo share preview's movable title-and-stats block"
+  },
+  "shareCardPlacementHint": "Drag the stats to move them, pinch to resize them, double-tap to put them back.",
+  "@shareCardPlacementHint": {
+    "description": "Hint under the photo share preview, and the screen-reader hint on it, saying how to move, resize and reset the stats"
+  },
+  "shareCardPlacementReset": "Reset position",
+  "@shareCardPlacementReset": {
+    "description": "Button below the photo share preview that puts the stats back where they start"
+  },
   "shareCardPhotoError": "Could not open that photo",
   "@shareCardPhotoError": {
     "description": "Banner when the picked photo cannot be loaded"

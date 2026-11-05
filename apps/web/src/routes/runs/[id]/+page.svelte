@@ -910,9 +910,11 @@
 	/// official chip time when there is one.
 	let shareRace = $derived.by(() => {
 		const meta = (run?.metadata as Record<string, unknown> | null) ?? null;
-		const name = typeof meta?.race_name === 'string' ? meta.race_name.trim() : '';
+		const rawName = meta?.race_name;
+		const rawTime = meta?.chip_time;
+		const name = typeof rawName === 'string' ? rawName.trim() : '';
 		if (!name) return null;
-		const time = typeof meta?.chip_time === 'string' && meta.chip_time.trim() ? meta.chip_time.trim() : null;
+		const time = typeof rawTime === 'string' && rawTime.trim() ? rawTime.trim() : null;
 		return { name, time };
 	});
 

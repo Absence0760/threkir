@@ -5,8 +5,9 @@
 //   1. cross-provider near-duplicate detection (`isCrossProviderDuplicate`)
 //   2. embedded best efforts on imported tracks (`computeEmbeddedBests`)
 //
-// Importing `../_shared/strava.ts` pulls its esm.sh deps, which the CI
-// "Warm the Deno dependency cache" step pre-fetches, so the recursive
+// Importing `../_shared/strava.ts` pulls its remote deps (supabase-js from
+// npm, through `database.ts`), which CI's `deno install` and "Warm the Deno
+// dependency cache" steps provision, so the recursive
 // `deno test --allow-read --allow-env` run resolves them offline.
 
 import { assert, assertEquals, assertExists } from 'https://deno.land/std@0.224.0/assert/mod.ts';

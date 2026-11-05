@@ -118,6 +118,7 @@ export const INDIRECT = new Map([
  *   schemes: Set<string>,
  *   nodeModulePaths: Set<string>,
  *   tsTypes: Set<string>,
+ *   rootResolved: Set<string>,
  * }} Usage
  */
 
@@ -131,6 +132,7 @@ export function emptyUsage() {
 		schemes: new Set(),
 		nodeModulePaths: new Set(),
 		tsTypes: new Set(),
+		rootResolved: new Set(),
 	};
 }
 
@@ -173,6 +175,14 @@ export function packageOf(specifier) {
 /// The root package.json puts deno in node_modules mode, so `npm:stripe@17.5.0`
 /// resolves out of the installed `stripe` and nowhere else: the declaration it
 /// reads is the one this guard is checking (decisions § 2257).
+///
+/// That declaration is the ROOT manifest's, wherever the importing file sits.
+/// `deno install` runs from the repo root, and an `npm:` specifier pins an
+/// exact version that a member's range does not: apps/web's `^2.118.0` for
+/// supabase-js can install 2.119.0, which `npm:@supabase/supabase-js@2.118.0`
+/// would not resolve to. So scanSource records these in `rootResolved`, and
+/// the redundancy rule counts them as a root read even from inside a member
+/// directory (decisions § 2341).
 /**
  * @param {string} specifier
  * @returns {string | null}
@@ -239,8 +249,10 @@ export function scanSource(text) {
 			if (inComment(text, match.index)) continue;
 			const scheme = /^([a-z][\w.-]*):/.exec(raw);
 			if (scheme && scheme[1]) usage.schemes.add(scheme[1]);
-			const name = raw.startsWith('npm:') ? npmSpecifierPackage(raw) : packageOf(raw);
+			const deno = raw.startsWith('npm:');
+			const name = deno ? npmSpecifierPackage(raw) : packageOf(raw);
 			if (name) usage.specifiers.add(name);
+			if (name && deno) usage.rootResolved.add(name);
 		}
 	}
 	NODE_MODULE_PATH.lastIndex = 0;
@@ -262,6 +274,7 @@ export function mergeUsage(intos, from) {
 		for (const s of from.schemes) into.schemes.add(s);
 		for (const s of from.nodeModulePaths) into.nodeModulePaths.add(s);
 		for (const s of from.tsTypes) into.tsTypes.add(s);
+		for (const s of from.rootResolved) into.rootResolved.add(s);
 	}
 }
 
@@ -419,6 +432,7 @@ export function checkDeadDependencies({ manifests, usage, outside, commands }) {
 		if (INDIRECT.has(`.:${dep}`)) continue;
 		if (!memberDeps.has(dep)) continue;
 		if (readBy(dep, outside)) continue;
+		if (usage.rootResolved.has(dep)) continue;
 		errors.push(
 			`.:${dep} — the root manifest and a workspace member both declare it, and ` +
 				`nothing outside the workspace directories reads it. The member's own ` +

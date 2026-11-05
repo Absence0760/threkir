@@ -333,7 +333,7 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Vertical recap** (#1273 item 8, decisions § 2260): the recap share image as a square or a 9:16 story on web and mobile, one layout pair, its web labels now localised; and a 9:16 slideshow video of the monthly and yearly recap made in the browser on the flyover's encoder (§ 2269), which the phone's recap share sheet opens through its **Video** option.
 
-✓ **Move and resize the photo stats** (decisions § 2341): on the Photo share style the title-and-stats block can be dragged and resized on web and mobile (pointer, pinch, wheel and keyboard on web; drag, pinch and double-tap reset on the phone), kept inside the canvas and clear of a story's reply bar, remembered per aspect on the device, and exported exactly where the editor shows it.
+✓ **Move and resize the photo stats** (decisions § 2342): on the Photo share style the title-and-stats block can be dragged and resized on web and mobile (pointer, pinch, wheel and keyboard on web; drag, pinch and double-tap reset on the phone), kept inside the canvas and clear of a story's reply bar, remembered per aspect on the device, and exported exactly where the editor shows it.
 
 ### Share-link attribution and a creator view (#1273 item 10)
 

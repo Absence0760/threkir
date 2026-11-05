@@ -3379,10 +3379,13 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               )),
-          if (w.notes != null && w.notes!.isNotEmpty)
+          if (planWeekNote(
+                  l10n, w.notes, w.phase, [for (final x in workouts) x.kind])
+              case final note?)
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text(w.notes!,
+              child: Text(note,
+                  key: ValueKey('planDetailWeekNote-${w.weekIndex}'),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   )),

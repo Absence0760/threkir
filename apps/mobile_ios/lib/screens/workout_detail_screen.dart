@@ -9,6 +9,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/date_format.dart';
 import '../l10n/locale_support.dart';
 import '../overrun_format.dart';
+import '../plan_advice.dart' show workoutAdviceKind;
 import '../plan_nudges.dart' show workoutOverrunMetres;
 import '../plan_races.dart';
 import '../relink_candidates.dart';
@@ -304,7 +305,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             _card(theme, l10n.workoutSectionStructure,
                 _freeForm(theme, l10n)),
           _card(theme, l10n.workoutSectionHowTo,
-              Text(_advice(l10n, kind), style: theme.textTheme.bodyMedium)),
+              Text(
+                  workoutAdviceText(
+                      l10n,
+                      workoutAdviceKind(
+                        kind: w.kind,
+                        targetDistanceM: w.targetDistanceM,
+                        targetDurationSeconds: w.targetDurationSeconds,
+                        targetPaceSecPerKm: w.targetPaceSecPerKm,
+                      )),
+                  key: const Key('workoutDetailAdvice'),
+                  style: theme.textTheme.bodyMedium)),
         ],
       ),
     );
@@ -917,17 +928,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     if (duration != null) return fmtHms(duration.toInt());
     return '—';
   }
-
-  String _advice(AppLocalizations l10n, WorkoutKind k) => switch (k) {
-        WorkoutKind.easy || WorkoutKind.recovery => l10n.workoutAdviceEasy,
-        WorkoutKind.long => l10n.workoutAdviceLong,
-        WorkoutKind.tempo => l10n.workoutAdviceTempo,
-        WorkoutKind.interval => l10n.workoutAdviceInterval,
-        WorkoutKind.marathonPace => l10n.workoutAdviceMarathonPace,
-        WorkoutKind.walkRun => l10n.workoutAdviceWalkRun,
-        WorkoutKind.race => l10n.workoutAdviceRace,
-        WorkoutKind.rest => l10n.workoutAdviceRest,
-      };
 }
 
 enum _WorkoutLoadError { timeout, offline, generic }

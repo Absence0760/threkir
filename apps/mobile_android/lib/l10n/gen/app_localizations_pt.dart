@@ -7564,6 +7564,34 @@ class AppLocalizationsPt extends AppLocalizations {
       'Alterne corrida leve e caminhada nos intervalos cronometrados. As pausas para caminhar fazem parte do treino — faça-as mesmo se estiver descansado.';
 
   @override
+  String get planDetailWeekAdviceRace =>
+      'Semana de prova — confie no treino que fez.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Polimento — o volume desce, a intensidade fica.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Última semana — termina com os seus primeiros 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Faça as pausas para caminhar mesmo quando se sente bem — tornam a corrida sustentável.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Fim de semana back-to-back — duas corridas longas em dias seguidos, a segunda com as pernas cansadas.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Tempo em movimento a ritmo leve: o objetivo é a duração, não o ritmo. Pratique a alimentação do dia da prova.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Corra pela sensação e alimente-se cedo — o tempo vem por acréscimo.';
+
+  @override
   String get workoutAdviceRace =>
       'Confie no plano. Não persiga um recorde no primeiro quilómetro.';
 
@@ -27671,6 +27699,34 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get workoutAdviceWalkRun =>
       'Alterne corrida leve e caminhada nos intervalos cronometrados. As pausas para caminhar fazem parte do treino — faça-as mesmo se estiver descansado.';
+
+  @override
+  String get planDetailWeekAdviceRace =>
+      'Semana de prova — confie no treino que você fez.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Polimento — o volume cai, a intensidade fica.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Última semana — ela termina com seus primeiros 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Faça as pausas para caminhar mesmo se estiver bem — elas tornam a corrida sustentável.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Fim de semana back-to-back — dois longões em dias seguidos, o segundo com as pernas cansadas.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Tempo em movimento em ritmo leve: a meta é a duração, não o ritmo. Pratique a alimentação do dia da prova.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Corra pela sensação e se alimente cedo — o tempo vem por consequência.';
 
   @override
   String get workoutAdviceRace =>

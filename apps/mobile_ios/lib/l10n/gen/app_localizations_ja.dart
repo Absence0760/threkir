@@ -7141,6 +7141,30 @@ class AppLocalizationsJa extends AppLocalizations {
       'タイム管理されたインターバルで、イージーランとウォークを交互に行いましょう。歩く休憩もワークアウトの一部です。元気でも必ず取ってください。';
 
   @override
+  String get planDetailWeekAdviceRace => 'レース週。積み重ねた練習を信じよう。';
+
+  @override
+  String get planDetailWeekAdviceTaper => 'テーパリング。量は減らし、キレは保とう。';
+
+  @override
+  String get planDetailWeekAdviceGraduation => '最終週。初めての5kmで締めくくります。';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      '調子が良くても歩く休憩は取りましょう。それが走り続ける力になります。';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'バック・トゥ・バックの週末。2日続けてロング走、2日目は疲れた脚で。';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'イージーな強度で長時間動き続けよう。目標はペースではなく時間です。レース当日の補給を練習しましょう。';
+
+  @override
+  String get workoutAdviceUltraRace => '感覚で走り、早めに補給を。タイムは後からついてきます。';
+
+  @override
   String get workoutAdviceRace => '計画を信じましょう。最初の1マイルで自己ベストを狙わないこと。';
 
   @override

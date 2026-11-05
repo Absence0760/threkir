@@ -658,7 +658,6 @@ GeneratedPlan generatePlan(GeneratePlanInput input) {
       phase: phase,
       targetVolumeM:
           workouts.fold(0.0, (s, w) => s + (w.targetDistanceM ?? 0)),
-      notes: _weekNote(phase, i, totalWeeks, masters),
       workouts: workouts,
     ));
   }
@@ -805,9 +804,6 @@ GeneratedPlan _generateWalkRunPlan(GeneratePlanInput input,
       phase: i == totalWeeks - 1 ? PlanPhase.graduation : PlanPhase.build,
       targetVolumeM:
           workouts.fold(0.0, (s, w) => s + (w.targetDistanceM ?? 0)),
-      notes: i == totalWeeks - 1
-          ? 'Final week — it ends with your first 5K.'
-          : 'Take the walk breaks even when you feel good — they make the runs sustainable.',
       workouts: workouts,
     ));
   }
@@ -949,7 +945,7 @@ List<double> ultraMileageFractions(int totalWeeks, double distanceM,
       out.add(0.35);
     } else if (i >= buildWeeks) {
       out.add(0.85 - (0.4 * (i - buildWeeks + 1)) / taperWeeks);
-    } else if (_isStepBackWeek(i, masters)) {
+    } else if (isStepBackWeek(i, masters)) {
       out.add(ramp * 0.82);
     } else {
       final linear = 0.6 + (0.4 * i) / max(1, buildWeeks - 1);
@@ -976,7 +972,7 @@ int _floorToStep(double sec) =>
 /// A time-on-feet long run: the duration is the target; the distance is what
 /// it covers at easy pace (to 100 m); no pace target. Mirrors training.ts.
 GeneratedWorkout _ultraLongRun(DateTime date, double budgetKm, int capSec,
-    int easyPace, String notes) {
+    int easyPace) {
   final durationSec = min(
       capSec, max(_kUltraLongRunMinSec, _floorToStep(budgetKm * easyPace)));
   return GeneratedWorkout(
@@ -984,26 +980,7 @@ GeneratedWorkout _ultraLongRun(DateTime date, double budgetKm, int capSec,
     kind: WorkoutKind.long,
     targetDistanceM: ((durationSec / easyPace) * 10).round() * 100.0,
     targetDurationSeconds: durationSec,
-    notes: notes,
   );
-}
-
-const _kUltraLongNote =
-    'Time on feet at easy effort: the duration is the target, not the pace. Practise race-day fuelling.';
-const _kUltraB2bNote =
-    'Back-to-back, day one: easy effort, and tomorrow’s long run starts on tired legs.';
-
-String? _ultraWeekNote(
-    PlanPhase phase, int i, int total, bool masters, bool backToBack) {
-  if (phase == PlanPhase.taper) {
-    return 'Taper — volume comes down week by week; keep a little intensity.';
-  }
-  if (backToBack &&
-      !_isStepBackWeek(i, masters) &&
-      (phase == PlanPhase.build || phase == PlanPhase.peak)) {
-    return 'Back-to-back weekend — Saturday and Sunday long runs.';
-  }
-  return _weekNote(phase, i, total, masters);
 }
 
 GeneratedPlan _generateUltraPlan(
@@ -1031,7 +1008,7 @@ GeneratedPlan _generateUltraPlan(
     final buildWeek = (phase == PlanPhase.base ||
             phase == PlanPhase.build ||
             phase == PlanPhase.peak) &&
-        !_isStepBackWeek(i, masters);
+        !isStepBackWeek(i, masters);
     final targetKm = (peakKm * fractions[i]).roundToDouble();
     final workouts = _generateUltraWeek(
       phase: phase,
@@ -1053,7 +1030,6 @@ GeneratedPlan _generateUltraPlan(
       weekIndex: i,
       phase: phase,
       targetVolumeM: volumeM,
-      notes: _ultraWeekNote(phase, i, totalWeeks, masters, backToBack),
       workouts: workouts,
     ));
   }
@@ -1116,15 +1092,13 @@ List<GeneratedWorkout> _generateUltraWeek({
           weeklyKm *
               (backToBack ? _kUltraB2bSundayShare : _kUltraLongShare),
           capSec,
-          easyPace,
-          _kUltraLongNote);
+          easyPace);
   final saturdayRun = backToBack
       ? _ultraLongRun(
           placeholder,
           weeklyKm * _kUltraB2bSaturdayShare,
           _floorToStep(capSec * _kUltraB2bSaturdayCap),
-          easyPace,
-          _kUltraB2bNote)
+          easyPace)
       : null;
 
   final daysUsed = restDow >= 0 ? <int>{longDow, restDow} : <int>{longDow};
@@ -1189,8 +1163,6 @@ GeneratedWorkout _ultraRace(
       targetDistanceM: goalDistanceM,
       targetDurationSeconds:
           goalTimeSec != null && goalTimeSec > 0 ? goalTimeSec : null,
-      notes:
-          'Race day. Run by effort and fuel early — the clock looks after itself.',
     );
 
 double peakVolumeKm(double goalDistanceM, int daysPerWeek,
@@ -1214,7 +1186,7 @@ double peakVolumeKm(double goalDistanceM, int daysPerWeek,
 
 // Masters recover on a 3-week cycle; the default is 4 weeks. Week 0 is
 // never a step-back so the plan doesn't open on a recovery week.
-bool _isStepBackWeek(int i, bool masters) {
+bool isStepBackWeek(int i, bool masters) {
   if (i == 0) return false;
   return masters ? i % 3 == 2 : i % 4 == 3;
 }
@@ -1224,17 +1196,8 @@ double mileageFraction(int i, int total, PlanPhase phase,
   if (phase == PlanPhase.race) return 0.35;
   if (phase == PlanPhase.taper) return 0.55;
   final ramp = 0.6 + (0.4 * i) / max(1, total - 3);
-  final stepBack = _isStepBackWeek(i, masters) ? 0.82 : 1;
+  final stepBack = isStepBackWeek(i, masters) ? 0.82 : 1;
   return min(1.0, ramp * stepBack);
-}
-
-String? _weekNote(PlanPhase phase, int i, int total, [bool masters = false]) {
-  if (phase == PlanPhase.race) return 'Race week — trust the work.';
-  if (phase == PlanPhase.taper) return 'Taper — volume down, sharpness stays.';
-  if (_isStepBackWeek(i, masters)) {
-    return 'Step-back week — recover before the next build.';
-  }
-  return null;
 }
 
 List<GeneratedWorkout> _generateWeek({

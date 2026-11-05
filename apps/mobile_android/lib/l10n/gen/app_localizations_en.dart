@@ -7490,6 +7490,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Alternate easy running and walking on the timed intervals. The walk breaks are part of the workout — take them even when you feel fresh.';
 
   @override
+  String get planDetailWeekAdviceRace => 'Race week — trust the work.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Taper — volume comes down, sharpness stays.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Final week — it ends with your first 5K.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Take the walk breaks even when you feel good — they make the runs sustainable.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Back-to-back weekend — two long runs on consecutive days, the second on tired legs.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Time on feet at easy effort: the duration is the target, not the pace. Practise race-day fuelling.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Run by effort and fuel early — the clock looks after itself.';
+
+  @override
   String get workoutAdviceRace =>
       'Trust the plan. Don\'t chase a PB in the first mile.';
 

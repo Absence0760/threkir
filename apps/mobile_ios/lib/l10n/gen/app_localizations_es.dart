@@ -7560,6 +7560,34 @@ class AppLocalizationsEs extends AppLocalizations {
       'Alterna carrera suave y caminata en los intervalos cronometrados. Las pausas de caminar son parte del entrenamiento: tómalas aunque te sientas fresco.';
 
   @override
+  String get planDetailWeekAdviceRace =>
+      'Semana de carrera: confía en el trabajo hecho.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Afinamiento: baja el volumen, se mantiene la chispa.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Última semana: termina con tus primeros 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Haz las pausas de caminar aunque te sientas bien: hacen que la carrera sea sostenible.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Fin de semana back-to-back: dos tiradas largas en días seguidos, la segunda con las piernas cansadas.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Tiempo en pie a ritmo suave: el objetivo es la duración, no el ritmo. Practica la nutrición del día de carrera.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Corre por sensaciones y aliméntate pronto: el reloj se ocupa del resto.';
+
+  @override
   String get workoutAdviceRace =>
       'Confía en el plan. No persigas un récord en el primer kilómetro.';
 

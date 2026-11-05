@@ -162,6 +162,14 @@ void main() {
         findsOneWidget);
   });
 
+  testWidgets('a generated week reads its advice from its phase, localized, '
+      'and an ordinary week has none', (tester) async {
+    await _pump(tester, DateTime(2026, 3, 11));
+    expect(_text(tester, const ValueKey('planDetailWeekNote-2')),
+        'Taper — volume comes down, sharpness stays.');
+    expect(find.byKey(const ValueKey('planDetailWeekNote-1')), findsNothing);
+  });
+
   testWidgets('race day says so when the race is the only thing left',
       (tester) async {
     await _pump(tester, DateTime(2026, 3, 22));

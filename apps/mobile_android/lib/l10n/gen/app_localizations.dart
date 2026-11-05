@@ -12040,6 +12040,48 @@ abstract class AppLocalizations {
   /// **'Alternate easy running and walking on the timed intervals. The walk breaks are part of the workout — take them even when you feel fresh.'**
   String get workoutAdviceWalkRun;
 
+  /// Advice line under a race-week card on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Race week — trust the work.'**
+  String get planDetailWeekAdviceRace;
+
+  /// Advice line under a taper-week card on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Taper — volume comes down, sharpness stays.'**
+  String get planDetailWeekAdviceTaper;
+
+  /// Advice line under the final week of a couch-to-5K plan
+  ///
+  /// In en, this message translates to:
+  /// **'Final week — it ends with your first 5K.'**
+  String get planDetailWeekAdviceGraduation;
+
+  /// Advice line under a walk-run week on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Take the walk breaks even when you feel good — they make the runs sustainable.'**
+  String get planDetailWeekAdviceWalkBreaks;
+
+  /// Advice line under an ultra plan week holding two long runs
+  ///
+  /// In en, this message translates to:
+  /// **'Back-to-back weekend — two long runs on consecutive days, the second on tired legs.'**
+  String get planDetailWeekAdviceBackToBack;
+
+  /// Advice text for a long run set by time with no pace (an ultra time-on-feet run)
+  ///
+  /// In en, this message translates to:
+  /// **'Time on feet at easy effort: the duration is the target, not the pace. Practise race-day fuelling.'**
+  String get workoutAdviceTimeOnFeet;
+
+  /// Advice text for an ultra-distance race day
+  ///
+  /// In en, this message translates to:
+  /// **'Run by effort and fuel early — the clock looks after itself.'**
+  String get workoutAdviceUltraRace;
+
   /// Advice text for race workouts
   ///
   /// In en, this message translates to:

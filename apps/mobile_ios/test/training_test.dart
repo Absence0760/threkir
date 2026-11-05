@@ -126,7 +126,7 @@ void main() {
     });
 
     // Mirrors the no-generated-note test in training.test.ts.
-    test('no road-plan workout carries a generated note', () {
+    test('no week or workout carries a generated note', () {
       final plans = [
         generatePlan(GeneratePlanInput(
             goalEvent: GoalEvent.distance5k,
@@ -147,10 +147,17 @@ void main() {
             goalEvent: GoalEvent.distanceFull,
             startDate: DateTime(2026, 6, 7),
             daysPerWeek: 6,
-            goalTimeSec: 4 * 3600)),
+            goalTimeSec: 4 * 3600,
+            age: 60)),
+        generatePlan(GeneratePlanInput(
+            goalEvent: GoalEvent.custom,
+            goalDistanceM: 100000,
+            startDate: DateTime(2026, 6, 7),
+            daysPerWeek: 5)),
       ];
       for (final plan in plans) {
         for (final week in plan.weeks) {
+          expect(week.notes, isNull, reason: 'week ${week.weekIndex}');
           for (final w in week.workouts) {
             expect(w.notes, isNull, reason: '${w.kind} on ${w.scheduledDate}');
           }
@@ -1113,7 +1120,7 @@ void main() {
           masters.weeks[2].targetVolumeM <= masters.weeks[1].targetVolumeM,
           isTrue,
         );
-        expect(masters.weeks[2].notes, contains('Step-back'));
+        expect(isStepBackWeek(2, true), isTrue);
       }
     });
 
@@ -1337,8 +1344,6 @@ void main() {
           age: age,
         ));
 
-    bool isStepBack(GeneratedWeek w) =>
-        (w.notes ?? '').startsWith('Step-back');
     int longest(GeneratedPlan p) => p.weeks
         .expand((w) => w.workouts)
         .map((w) =>
@@ -1400,7 +1405,7 @@ void main() {
                   if (w.phase == PlanPhase.taper || w.phase == PlanPhase.race) {
                     break;
                   }
-                  if (isStepBack(w)) continue;
+                  if (isStepBackWeek(w.weekIndex, usesMastersRecovery(age, false))) continue;
                   if (prev != null) {
                     expect(
                         w.targetVolumeM <= prev * kUltraMaxWeeklyRamp + 1e-6,

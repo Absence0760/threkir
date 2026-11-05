@@ -7579,6 +7579,34 @@ class AppLocalizationsFr extends AppLocalizations {
       'Alternez course facile et marche sur les intervalles chronométrés. Les pauses de marche font partie de la séance — prenez-les même si vous vous sentez en forme.';
 
   @override
+  String get planDetailWeekAdviceRace =>
+      'Semaine de course — faites confiance au travail accompli.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Affûtage — le volume baisse, le tranchant reste.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Dernière semaine — elle se termine par vos premiers 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Prenez les pauses de marche même quand vous vous sentez bien — elles rendent la course tenable.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Week-end back-to-back — deux sorties longues sur deux jours consécutifs, la seconde sur des jambes fatiguées.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Temps sur les pieds en endurance facile : la durée est l\'objectif, pas l\'allure. Entraînez-vous au ravitaillement du jour de course.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Courez aux sensations et ravitaillez-vous tôt — le chrono suivra.';
+
+  @override
   String get workoutAdviceRace =>
       'Faites confiance au plan. Ne courez pas après un record dès le premier kilomètre.';
 

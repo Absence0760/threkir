@@ -2,7 +2,8 @@
 	// The run share-image editor: the map card, the runner's own photo, or a
 	// transparent sticker, in the layouts, inks, aspects and stats the phone's
 	// share sheet offers (run_share_card.dart). The preview IS the export: each
-	// change re-renders the PNG that Share and Download hand over.
+	// change re-renders the PNG that Share and Download hand over. On a photo,
+	// the title-and-stats block is moved and resized right on the preview.
 	import { untrack } from 'svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -28,9 +29,25 @@
 		saveShareLook,
 		shareLookEquals,
 		toggleShareStat,
+		withSharePlacement,
 		type RunShareLook,
 	} from '#lib/share/share_look.ts';
-	import { canvasToPng, loadShareFonts, paintPhoto, paintSticker } from '#lib/share/run_sticker_canvas.ts';
+	import {
+		canvasToPng,
+		loadShareFonts,
+		paintPhoto,
+		paintSticker,
+		photoCanvasSize,
+		type PhotoLaid,
+	} from '#lib/share/run_sticker_canvas.ts';
+	import {
+		DEFAULT_SHARE_PLACEMENT,
+		moveSharePlacement,
+		placeShareBlock,
+		resizeSharePlacement,
+		sharePlacementEquals,
+		type SharePlacement,
+	} from '#lib/share/share_placement.ts';
 	import HeadToHeadPanel from '#lib/components/HeadToHeadPanel.svelte';
 	import type { HeadToHeadKind } from '#lib/social/head_to_head.ts';
 	import { formatPrImprovement, type PrBracket, type PrCardEntry } from '#lib/share/pr_card.ts';
@@ -123,6 +140,12 @@
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let canShare = $state(false);
 	let photoSeq = $state(0);
+	/// The layout the last photo render drew, which the move/resize handle
+	/// sits on, so the handle covers what the PNG shows.
+	let photoLaid = $state<PhotoLaid | null>(null);
+	let areaW = $state(0);
+	let areaH = $state(0);
+	let gesturing = $state(false);
 
 	let available = $derived(availableShareStats(run));
 	let usesSpeed = $derived(run.activity_type === 'cycle');
@@ -150,6 +173,7 @@
 			// A decoded photo holds its full-resolution pixels until closed.
 			photo?.close();
 			photo = null;
+			photoLaid = null;
 		};
 	});
 
@@ -192,17 +216,23 @@
 		};
 	}
 
-	async function renderPng(s: Style, l: RunShareLook, p: ImageBitmap | null, r: PrCardEntry | null): Promise<Blob> {
+	interface Rendered {
+		blob: Blob;
+		laid: PhotoLaid | null;
+	}
+
+	async function renderPng(s: Style, l: RunShareLook, p: ImageBitmap | null, r: PrCardEntry | null): Promise<Rendered> {
 		if (s === 'card') {
 			if (cardBlob?.mark !== l.mark) cardBlob = { mark: l.mark, blob: await captureCard(l.mark) };
-			return cardBlob.blob;
+			return { blob: cardBlob.blob, laid: null };
 		}
 		await loadShareFonts();
 		if (s === 'pr') {
 			if (!r) throw new Error('no personal record to draw');
-			return canvasToPng(
+			const blob = await canvasToPng(
 				paintPrCard({ aspect: l.aspect, ink: l.ink, text: prText(r), track: line, wordmark: l.mark ? 'Threkir' : null }),
 			);
+			return { blob, laid: null };
 		}
 		const stats = runShareStats(
 			{
@@ -219,11 +249,15 @@
 			{ kinds: l.stats, locale: currentLocale() },
 		);
 		const base = { layout: l.layout, ink: l.ink, stats, track: line, wordmark: l.mark ? 'Threkir' : null };
-		const canvas =
-			s === 'sticker'
-				? paintSticker(base)
-				: paintPhoto({ ...base, aspect: l.aspect, title, photo: p as ImageBitmap });
-		return canvasToPng(canvas);
+		if (s === 'sticker') return { blob: await canvasToPng(paintSticker(base)), laid: null };
+		const painted = paintPhoto({
+			...base,
+			aspect: l.aspect,
+			placement: l.placements[l.aspect],
+			title,
+			photo: p as ImageBitmap,
+		});
+		return { blob: await canvasToPng(painted.canvas), laid: painted.laid };
 	}
 
 	let renderSeq = 0;
@@ -239,10 +273,11 @@
 		const seq = ++renderSeq;
 		rendering = true;
 		renderPng(s, l, p, r)
-			.then((blob) => {
+			.then(({ blob, laid }) => {
 				if (seq !== renderSeq) return;
 				if (preview) URL.revokeObjectURL(preview.url);
 				preview = { url: URL.createObjectURL(blob), blob, key };
+				if (laid) photoLaid = laid;
 			})
 			.catch((e) => {
 				if (seq !== renderSeq) return;
@@ -254,6 +289,159 @@
 			});
 	});
 
+	// ---- moving and resizing the photo's title-and-stats block ----
+
+	let canvasSize = $derived(photoCanvasSize(look.aspect));
+	let placement = $derived(look.placements[look.aspect]);
+	/// The preview's size: the canvas fitted inside the preview area.
+	let stage = $derived.by(() => {
+		const k = Math.min(areaW / canvasSize.w, areaH / canvasSize.h);
+		return k > 0 ? { w: canvasSize.w * k, h: canvasSize.h * k, k } : null;
+	});
+	/// Where the block is, from the layout last drawn at this aspect. The
+	/// block's own size does not depend on where it sits, so a drag reads it
+	/// while the next render is still on its way.
+	let handle = $derived.by(() => {
+		const laid = photoLaid;
+		const { w, h } = canvasSize;
+		if (style !== 'photo' || !photo || !laid || laid.width !== w || laid.height !== h) return null;
+		return placeShareBlock(placement, laid.blockWidth, laid.blockHeight, w, h, laid.frame, laid.minScale);
+	});
+	let isDefaultPlacement = $derived(sharePlacementEquals(placement, DEFAULT_SHARE_PLACEMENT));
+
+	/// `next`, clamped into the frame, as the current aspect's placement. The
+	/// store write is left to the end of a gesture.
+	function place(next: SharePlacement, save: boolean) {
+		const laid = photoLaid;
+		if (!laid) return;
+		const { w, h } = canvasSize;
+		const clamped = placeShareBlock(next, laid.blockWidth, laid.blockHeight, w, h, laid.frame, laid.minScale).placement;
+		const updated = withSharePlacement(look, clamped);
+		if (!shareLookEquals(updated, look)) look = updated;
+		if (save) saveShareLook(look);
+	}
+
+	function resetPlacement() {
+		setLook(withSharePlacement(look, DEFAULT_SHARE_PLACEMENT));
+	}
+
+	interface Gesture {
+		mode: 'move' | 'resize' | 'pinch';
+		from: SharePlacement;
+		x: number;
+		y: number;
+		dist: number;
+	}
+	const pointers = new Map<number, { x: number; y: number }>();
+	let gesture: Gesture | null = null;
+
+	function spread(): number {
+		const [a, b] = [...pointers.values()];
+		return Math.hypot(a.x - b.x, a.y - b.y);
+	}
+
+	/// The block's centre on screen, which the corner grip resizes about.
+	function centreOnScreen(el: HTMLElement): { x: number; y: number } {
+		const r = el.getBoundingClientRect();
+		return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+	}
+
+	function begin(mode: Gesture['mode'], e: PointerEvent, el: HTMLElement) {
+		const from = handle?.placement ?? placement;
+		if (mode === 'pinch') {
+			gesture = { mode, from, x: 0, y: 0, dist: Math.max(1, spread()) };
+		} else if (mode === 'resize') {
+			const c = centreOnScreen(el);
+			gesture = { mode, from, x: c.x, y: c.y, dist: Math.max(1, Math.hypot(e.clientX - c.x, e.clientY - c.y)) };
+		} else {
+			gesture = { mode, from, x: e.clientX, y: e.clientY, dist: 0 };
+		}
+	}
+
+	function onStagePointerDown(e: PointerEvent) {
+		if (!handle || busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
+		const target = e.target as HTMLElement;
+		const block = (e.currentTarget as HTMLElement).querySelector<HTMLElement>('[data-share-block]');
+		// A gesture starts on the block; elsewhere the preview scrolls the
+		// sheet as it always did. A second finger may land anywhere.
+		if (pointers.size === 0 && !target.closest('[data-share-block]')) return;
+		e.preventDefault();
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+		gesturing = true;
+		if (pointers.size === 2) begin('pinch', e, block!);
+		else if (pointers.size === 1) begin(target.closest('[data-share-grip]') ? 'resize' : 'move', e, block!);
+	}
+
+	function onStagePointerMove(e: PointerEvent) {
+		if (!pointers.has(e.pointerId) || !gesture || !stage) return;
+		pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+		const g = gesture;
+		if (g.mode === 'pinch' && pointers.size >= 2) {
+			place(resizeSharePlacement(g.from, spread() / g.dist), false);
+		} else if (g.mode === 'resize') {
+			place(resizeSharePlacement(g.from, Math.hypot(e.clientX - g.x, e.clientY - g.y) / g.dist), false);
+		} else if (g.mode === 'move') {
+			const { w, h } = canvasSize;
+			place(moveSharePlacement(g.from, (e.clientX - g.x) / stage.k, (e.clientY - g.y) / stage.k, w, h), false);
+		}
+	}
+
+	function onStagePointerUp(e: PointerEvent) {
+		if (!pointers.delete(e.pointerId)) return;
+		if (pointers.size === 1 && gesture?.mode === 'pinch') {
+			// One finger lifted mid-pinch: the other carries on as a move from
+			// where the block now is.
+			const [rest] = [...pointers.values()];
+			gesture = { mode: 'move', from: handle?.placement ?? placement, x: rest.x, y: rest.y, dist: 0 };
+			return;
+		}
+		if (pointers.size > 0) return;
+		gesture = null;
+		gesturing = false;
+		saveShareLook(look);
+	}
+
+	function onBlockWheel(e: WheelEvent) {
+		if (!handle || busy) return;
+		e.preventDefault();
+		place(resizeSharePlacement(handle.placement, Math.exp(-e.deltaY * 0.0015)), true);
+	}
+
+	/// Arrow keys move the block by 4 logical px (20 with Shift); + and −
+	/// resize it by a tenth.
+	function onBlockKey(e: KeyboardEvent) {
+		if (!handle || busy) return;
+		const step = e.shiftKey ? 20 : 4;
+		const { w, h } = canvasSize;
+		const from = handle.placement;
+		let next: SharePlacement | null = null;
+		switch (e.key) {
+			case 'ArrowLeft':
+				next = moveSharePlacement(from, -step, 0, w, h);
+				break;
+			case 'ArrowRight':
+				next = moveSharePlacement(from, step, 0, w, h);
+				break;
+			case 'ArrowUp':
+				next = moveSharePlacement(from, 0, -step, w, h);
+				break;
+			case 'ArrowDown':
+				next = moveSharePlacement(from, 0, step, w, h);
+				break;
+			case '+':
+			case '=':
+				next = resizeSharePlacement(from, 1.1);
+				break;
+			case '-':
+			case '_':
+				next = resizeSharePlacement(from, 1 / 1.1);
+				break;
+		}
+		if (!next) return;
+		e.preventDefault();
+		place(next, true);
+	}
 
 	async function onPhotoPicked(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
@@ -340,6 +528,50 @@
 					<span class="material-symbols" aria-hidden="true">add_photo_alternate</span>
 					{m('runShare.pickPhoto')}
 				</button>
+			{:else if preview && style === 'photo'}
+				<div class="stage-area" bind:clientWidth={areaW} bind:clientHeight={areaH}>
+					{#if stage}
+						<!-- svelte-ignore a11y_no_static_element_interactions the stage only carries a gesture begun on the focusable block, so a second finger may land beside it -->
+						<div
+							class="stage"
+							style:width="{stage.w}px"
+							style:height="{stage.h}px"
+							onpointerdown={onStagePointerDown}
+							onpointermove={onStagePointerMove}
+							onpointerup={onStagePointerUp}
+							onpointercancel={onStagePointerUp}
+						>
+							<img
+								src={preview.url}
+								alt={m('runShare.preview')}
+								class:dim={rendering && !gesturing}
+								draggable="false"
+								data-testid="share-image-preview"
+							/>
+							{#if handle}
+								<!-- svelte-ignore a11y_no_noninteractive_element_interactions role=application hands arrow keys and +/- to the block, which moves and resizes with them -->
+								<div
+									class="block"
+									class:active={gesturing}
+									style:left="{(handle.left / canvasSize.w) * 100}%"
+									style:top="{(handle.top / canvasSize.h) * 100}%"
+									style:width="{(handle.width / canvasSize.w) * 100}%"
+									style:height="{(handle.height / canvasSize.h) * 100}%"
+									role="application"
+									tabindex="0"
+									aria-label={m('runShare.placementLabel')}
+									aria-describedby="share-placement-hint"
+									onkeydown={onBlockKey}
+									onwheel={onBlockWheel}
+									data-share-block
+									data-testid="share-placement-block"
+								>
+									<span class="grip" data-share-grip data-testid="share-placement-grip" aria-hidden="true"></span>
+								</div>
+							{/if}
+						</div>
+					{/if}
+				</div>
 			{:else if preview}
 				<img
 					src={preview.url}
@@ -365,10 +597,23 @@
 		{#if style === 'photo'}
 			<p class="hint">{m('runShare.photoPrivacy')}</p>
 			{#if photo}
-				<button type="button" class="btn btn-outline change" onclick={() => fileInput?.click()} disabled={busy || picking}>
-					<span class="material-symbols" aria-hidden="true">swap_horiz</span>
-					{m('runShare.changePhoto')}
-				</button>
+				<p class="hint" id="share-placement-hint">{m('runShare.placementHint')}</p>
+				<div class="photo-actions">
+					<button type="button" class="btn btn-outline" onclick={() => fileInput?.click()} disabled={busy || picking}>
+						<span class="material-symbols" aria-hidden="true">swap_horiz</span>
+						{m('runShare.changePhoto')}
+					</button>
+					<button
+						type="button"
+						class="btn btn-outline"
+						onclick={resetPlacement}
+						disabled={busy || isDefaultPlacement}
+						data-testid="share-placement-reset"
+					>
+						<span class="material-symbols" aria-hidden="true">restart_alt</span>
+						{m('runShare.placementReset')}
+					</button>
+				</div>
 			{/if}
 		{:else if style === 'sticker'}
 			<p class="hint">{m('runShare.stickerHint')}</p>
@@ -606,8 +851,72 @@
 		font-size: 0.85rem;
 		margin: 0;
 	}
-	.change {
-		align-self: center;
+	.photo-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		justify-content: center;
+	}
+	.stage-area {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 0;
+	}
+	.stage {
+		position: relative;
+		flex: none;
+	}
+	.stage img {
+		display: block;
+		width: 100%;
+		height: 100%;
+		max-width: none;
+		max-height: none;
+		user-select: none;
+	}
+	/* The block's handle: invisible over the drawn stats until it is hovered,
+	   focused or held, so the preview still reads as the export. */
+	.block {
+		position: absolute;
+		box-sizing: border-box;
+		border: 2px dashed transparent;
+		border-radius: var(--radius-sm);
+		cursor: move;
+		/* The browser must not pan or zoom the page under a drag that starts
+		   on the block; anywhere else on the preview, it still scrolls. */
+		touch-action: none;
+	}
+	.block:hover,
+	.block:focus-visible,
+	.block.active {
+		border-color: var(--color-on-primary);
+		box-shadow: 0 0 0 1px var(--color-primary);
+		outline: none;
+	}
+	.grip {
+		position: absolute;
+		inset-inline-end: -10px;
+		bottom: -10px;
+		width: 20px;
+		height: 20px;
+		border-radius: 50%;
+		background: var(--color-primary);
+		border: 2px solid var(--color-on-primary);
+		cursor: nwse-resize;
+		opacity: 0;
+	}
+	.block:hover .grip,
+	.block:focus-visible .grip,
+	.block.active .grip {
+		opacity: 1;
+	}
+	@media (hover: none) {
+		.grip {
+			opacity: 1;
+		}
 	}
 	.control {
 		border: 0;

@@ -9364,6 +9364,7 @@ class ApiClient {
           unread: (r['unread'] as num?)?.toInt() ?? 0,
           muted: r['muted'] == true,
           archived: r['archived'] == true,
+          markedUnread: r['marked_unread'] == true,
         ),
     ];
   }
@@ -9392,18 +9393,19 @@ class ApiClient {
     ];
   }
 
-  /// The viewer's own mute and archive state for one conversation, for a
-  /// thread opened from outside the inbox (a profile, a route). The row is
-  /// owner-read only. Null when the viewer has no row, or signed out. Throws
-  /// on a failed read.
-  Future<({bool muted, DateTime? archivedAt})?> fetchDmConversationState(
+  /// The viewer's own mute, archive and unread-mark state for one
+  /// conversation, for a thread opened from outside the inbox (a profile, a
+  /// route). The row is owner-read only. Null when the viewer has no row, or
+  /// signed out. Throws on a failed read.
+  Future<({bool muted, DateTime? archivedAt, bool markedUnread})?>
+      fetchDmConversationState(
     String conversationId,
   ) async {
     final me = _client.auth.currentUser?.id;
     if (me == null) return null;
     final row = await _client
         .from('conversation_participants')
-        .select('muted_at, archived_at')
+        .select('muted_at, archived_at, marked_unread_at')
         .eq('conversation_id', conversationId)
         .eq('user_id', me)
         .maybeSingle();
@@ -9411,6 +9413,7 @@ class ApiClient {
     return (
       muted: row['muted_at'] != null,
       archivedAt: parseIsoStrictValue(row['archived_at']),
+      markedUnread: row['marked_unread_at'] != null,
     );
   }
 
@@ -9455,6 +9458,20 @@ class ApiClient {
     await _client.rpc(
       'set_conversation_archived',
       params: {'p_conversation_id': conversationId, 'p_archived': archived},
+    );
+  }
+
+  /// Marks a conversation unread for the viewer, or clears the mark
+  /// (migration 20271109000020). `dm_threads()` counts a marked conversation
+  /// as at least one unread; the partner's `read_at` is not touched. Mirrors
+  /// web `setDmConversationUnread`.
+  Future<void> setDmConversationUnread(
+    String conversationId, {
+    required bool unread,
+  }) async {
+    await _client.rpc(
+      'set_conversation_unread',
+      params: {'p_conversation_id': conversationId, 'p_unread': unread},
     );
   }
 

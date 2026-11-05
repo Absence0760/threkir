@@ -4080,6 +4080,7 @@ export type Database = {
           is_public: boolean | null
           is_starred: boolean
           name: string
+          official_distance_m: number | null
           run_count: number
           shadow_hidden: boolean
           slug: string | null
@@ -4105,6 +4106,7 @@ export type Database = {
           is_public?: boolean | null
           is_starred?: boolean
           name: string
+          official_distance_m?: number | null
           run_count?: number
           shadow_hidden?: boolean
           slug?: string | null
@@ -4130,6 +4132,7 @@ export type Database = {
           is_public?: boolean | null
           is_starred?: boolean
           name?: string
+          official_distance_m?: number | null
           run_count?: number
           shadow_hidden?: boolean
           slug?: string | null
@@ -5803,6 +5806,7 @@ export type Database = {
           is_official: boolean | null
           is_public: boolean | null
           name: string | null
+          official_distance_m: number | null
           run_count: number | null
           slug: string | null
           surface: string | null
@@ -5821,6 +5825,7 @@ export type Database = {
           is_official?: never
           is_public?: boolean | null
           name?: string | null
+          official_distance_m?: number | null
           run_count?: number | null
           slug?: string | null
           surface?: string | null
@@ -5839,6 +5844,7 @@ export type Database = {
           is_official?: never
           is_public?: boolean | null
           name?: string | null
+          official_distance_m?: number | null
           run_count?: number | null
           slug?: string | null
           surface?: string | null
@@ -5991,6 +5997,7 @@ export type Database = {
           is_official: boolean | null
           is_public: boolean | null
           name: string | null
+          official_distance_m: number | null
           run_count: number | null
           slug: string | null
           surface: string | null
@@ -6009,6 +6016,7 @@ export type Database = {
           is_official?: never
           is_public?: boolean | null
           name?: string | null
+          official_distance_m?: number | null
           run_count?: number | null
           slug?: string | null
           surface?: string | null
@@ -6027,6 +6035,7 @@ export type Database = {
           is_official?: never
           is_public?: boolean | null
           name?: string | null
+          official_distance_m?: number | null
           run_count?: number | null
           slug?: string | null
           surface?: string | null

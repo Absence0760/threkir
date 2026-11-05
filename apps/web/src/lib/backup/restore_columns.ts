@@ -70,6 +70,7 @@ export const ROUTE_RESTORE_COLUMNS = {
 	followers_only: true,
 	is_starred: true,
 	name: true,
+	official_distance_m: true,
 	run_count: true,
 	shadow_hidden: true,
 	slug: true,

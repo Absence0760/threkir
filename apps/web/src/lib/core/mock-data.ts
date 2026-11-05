@@ -68,6 +68,7 @@ function makeRoute(overrides: Partial<Route> & { name: string; distance_m: numbe
 		run_count: 0,
 		club_id: null,
 		description: null,
+		official_distance_m: null,
 		created_at: '2026-03-01T00:00:00Z',
 		updated_at: '2026-03-01T00:00:00Z',
 		...overrides,

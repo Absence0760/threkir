@@ -1219,6 +1219,9 @@ void main() {
       await openMenu(tester);
       await tester.tap(find.text(l10n.messagesMarkUnread));
       await tester.pump();
+      // The pop lands inside that frame's microtasks, so the route's exit
+      // animation starts on the next frame and finishes on the one after.
+      await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 400));
       expect(api.unreadMarks, [('c-p-1', true)]);
       expect(find.byType(MessageThreadScreen), findsNothing);

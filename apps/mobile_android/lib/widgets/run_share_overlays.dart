@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:ui_kit/ui_kit.dart' show AppTheme;
 
 import '../l10n/date_format.dart';
@@ -10,6 +11,7 @@ import '../preferences.dart';
 import '../privacy.dart';
 import '../run_share_stats.dart';
 import '../share_look.dart';
+import '../share_placement.dart';
 import 'plan_recap_card.dart' show planRecapBracketLabel;
 import 'track_preview.dart' show projectTrack;
 
@@ -473,10 +475,32 @@ class RunStickerShareCard extends StatelessWidget {
   }
 }
 
+/// Where [RunPhotoShareCard] last laid its title-and-stats block out: the
+/// block's size at scale 1, the frame it must stay inside and its smallest
+/// scale, which a move or resize gesture clamps against, and where it landed.
+/// Written during layout; the sheet reads it when a gesture starts.
+class SharePlacementProbe {
+  Size? canvas;
+  Size? block;
+  Rect? frame;
+  double minScale = SharePlacement.maxScale;
+  PlacedShareBlock? placed;
+
+  /// [placement] clamped to what the last layout allows, or [placement]
+  /// itself before the card has been laid out.
+  SharePlacement clamp(SharePlacement placement) {
+    final c = canvas, b = block, f = frame;
+    if (c == null || b == null || f == null) return placement;
+    return placeShareBlock(placement, b, c, f, minScale).placement;
+  }
+}
+
 /// The run's title, stats and route laid over the runner's own [photo],
 /// cropped to fill a 4:5 post or a 9:16 story. A scrim on the side the stats
-/// sit makes the ink legible on any photo; on a story the stats stay clear of
-/// the bands the story viewer's own controls cover.
+/// sit makes the ink legible on any photo. The title and stats are one block,
+/// placed by the look's placement for this aspect: by default centred on the
+/// frame's bottom edge, which on a story keeps it clear of the band the story
+/// viewer's reply bar covers.
 class RunPhotoShareCard extends StatelessWidget {
   final Run run;
   final Preferences preferences;
@@ -484,6 +508,9 @@ class RunPhotoShareCard extends StatelessWidget {
   final List<PrivacyZone> privacyZones;
   final ImageProvider photo;
   final RunShareLook look;
+
+  /// Told where the block landed on every layout, for the sheet's gestures.
+  final SharePlacementProbe? probe;
 
   const RunPhotoShareCard({
     super.key,
@@ -493,6 +520,7 @@ class RunPhotoShareCard extends StatelessWidget {
     required this.privacyZones,
     required this.photo,
     this.look = const RunShareLook(),
+    this.probe,
   });
 
   static Size canvasFor(RunPhotoAspect aspect) => switch (aspect) {
@@ -508,9 +536,7 @@ class RunPhotoShareCard extends StatelessWidget {
     final size = canvasFor(look.aspect);
     final scrim =
         look.ink == RunShareInk.dark ? Colors.white : Colors.black;
-    // Story viewers cover roughly the bottom eighth with their reply bar.
-    final bottomInset =
-        look.aspect == RunPhotoAspect.story ? size.height * 0.13 : 22.0;
+    final titled = title.trim().isNotEmpty;
     return SizedBox.fromSize(
       size: size,
       child: Stack(
@@ -530,11 +556,15 @@ class RunPhotoShareCard extends StatelessWidget {
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, 20, 20, bottomInset),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
+          _PlacedPhotoBlock(
+            canvas: size,
+            story: look.aspect == RunPhotoAspect.story,
+            placement: look.placement,
+            titleGap: titled ? 12 : 0,
+            smallestTextPx: text.labelMedium?.fontSize ?? 12,
+            probe: probe,
+            children: [
+              if (titled)
                 Text(
                   title,
                   maxLines: 2,
@@ -545,30 +575,162 @@ class RunPhotoShareCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     shadows: ink.shadows,
                   ),
-                ),
-                const SizedBox(height: 12),
-                // Flexible, so a tall layout on a 4:5 post scales down into
-                // the height left under the title instead of overflowing it.
-                Flexible(
-                  child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.bottomCenter,
-                  child: RunStickerContent(
-                    layout: look.layout,
-                    stats: runShareStats(l10n, run, preferences.unit,
-                        kinds: look.stats),
-                    track: runShareCardTrack(run, privacyZones),
-                    ink: ink,
-                    mark: look.mark,
-                  ),
-                  ),
-                ),
-              ],
-            ),
+                )
+              else
+                const SizedBox.shrink(),
+              RunStickerContent(
+                layout: look.layout,
+                stats:
+                    runShareStats(l10n, run, preferences.unit, kinds: look.stats),
+                track: runShareCardTrack(run, privacyZones),
+                ink: ink,
+                mark: look.mark,
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+}
+
+/// Lays the title (first child) over the sticker content (second) as one
+/// block, the way web's `layoutPhoto` does: the title at the frame's width,
+/// the content fitted into the width and the height the title leaves, then
+/// the whole block scaled and placed by [placement] with [placeShareBlock].
+class _PlacedPhotoBlock extends MultiChildRenderObjectWidget {
+  final Size canvas;
+  final bool story;
+  final SharePlacement placement;
+  final double titleGap;
+  final double smallestTextPx;
+  final SharePlacementProbe? probe;
+
+  const _PlacedPhotoBlock({
+    required this.canvas,
+    required this.story,
+    required this.placement,
+    required this.titleGap,
+    required this.smallestTextPx,
+    required this.probe,
+    required super.children,
+  });
+
+  @override
+  _RenderPlacedPhotoBlock createRenderObject(BuildContext context) =>
+      _RenderPlacedPhotoBlock(this);
+
+  @override
+  void updateRenderObject(
+          BuildContext context, _RenderPlacedPhotoBlock renderObject) =>
+      renderObject.config = this;
+}
+
+class _PlacedParentData extends ContainerBoxParentData<RenderBox> {
+  double scale = 1;
+}
+
+class _RenderPlacedPhotoBlock extends RenderBox
+    with
+        ContainerRenderObjectMixin<RenderBox, _PlacedParentData>,
+        RenderBoxContainerDefaultsMixin<RenderBox, _PlacedParentData> {
+  _RenderPlacedPhotoBlock(this._config);
+
+  _PlacedPhotoBlock _config;
+  set config(_PlacedPhotoBlock value) {
+    _config = value;
+    markNeedsLayout();
+  }
+
+  @override
+  void setupParentData(RenderBox child) {
+    if (child.parentData is! _PlacedParentData) {
+      child.parentData = _PlacedParentData();
+    }
+  }
+
+  @override
+  void performLayout() {
+    final c = _config;
+    size = constraints.constrain(c.canvas);
+    final frame = sharePlacementFrame(c.canvas, story: c.story);
+    final title = firstChild!;
+    final content = childAfter(title)!;
+    title.layout(BoxConstraints.tightFor(width: frame.width),
+        parentUsesSize: true);
+    content.layout(const BoxConstraints(), parentUsesSize: true);
+    final titleH = title.size.height;
+    final natural = content.size;
+    final availH = frame.height - titleH - c.titleGap;
+    final contentScale = [
+      1.0,
+      frame.width / natural.width,
+      availH / natural.height,
+    ].reduce((a, b) => a < b ? a : b);
+    final cw = natural.width * contentScale;
+    final block = Size(frame.width, titleH + c.titleGap + natural.height * contentScale);
+    final minScale = minSharePlacementScale(c.smallestTextPx * contentScale);
+    final placed =
+        placeShareBlock(c.placement, block, c.canvas, frame, minScale);
+    final k = placed.scale;
+    (title.parentData! as _PlacedParentData)
+      ..offset = placed.rect.topLeft
+      ..scale = k;
+    (content.parentData! as _PlacedParentData)
+      ..offset = placed.rect.topLeft +
+          Offset((frame.width - cw) / 2 * k, (titleH + c.titleGap) * k)
+      ..scale = contentScale * k;
+    final probe = c.probe;
+    if (probe != null) {
+      probe
+        ..canvas = c.canvas
+        ..block = block
+        ..frame = frame
+        ..minScale = minScale
+        ..placed = placed;
+    }
+  }
+
+  Matrix4 _transformOf(RenderBox child) {
+    final data = child.parentData! as _PlacedParentData;
+    return Matrix4.translationValues(data.offset.dx, data.offset.dy, 0)
+      ..scaleByDouble(data.scale, data.scale, 1, 1);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    var child = firstChild;
+    while (child != null) {
+      final c = child;
+      context.pushTransform(
+        needsCompositing,
+        offset,
+        _transformOf(c),
+        (context, offset) => context.paintChild(c, offset),
+      );
+      child = childAfter(c);
+    }
+  }
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    transform.multiply(_transformOf(child));
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    var child = lastChild;
+    while (child != null) {
+      final c = child;
+      final hit = result.addWithPaintTransform(
+        transform: _transformOf(c),
+        position: position,
+        hitTest: (result, position) => c.hitTest(result, position: position),
+      );
+      if (hit) return true;
+      child = childBefore(c);
+    }
+    return false;
   }
 }
 

@@ -15,6 +15,7 @@ import '../lib/privacy.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/run_share_stats.dart';
 import '../lib/share_look.dart';
+import '../lib/share_placement.dart';
 import '../lib/share_sheet.dart' show XFile;
 import '../lib/widgets/run_share_card.dart';
 import '../lib/widgets/run_share_overlays.dart';
@@ -559,6 +560,68 @@ void main() {
       expect(_outline(tester), hasLength(_zoneTrack.length));
     });
 
+    testWidgets(
+        'the default block sits centred on the frame bottom, clear of the '
+        'story reply bar', (tester) async {
+      final probe = SharePlacementProbe();
+      await _pumpCanvas(
+        tester,
+        RunPhotoShareCard(
+          run: _run(track: _zoneTrack),
+          preferences: await _makePrefs(),
+          title: 'Morning run',
+          privacyZones: const [],
+          photo: _photo,
+          probe: probe,
+        ),
+      );
+      final card = tester.getRect(find.byType(RunPhotoShareCard));
+      final content = tester.getRect(find.byType(RunStickerContent));
+      expect(content.bottom - card.top, closeTo(640 * 0.87, 0.5));
+      expect(content.center.dx - card.left, closeTo(180, 0.5));
+      expect(probe.placed!.scale, 1);
+    });
+
+    testWidgets('a placement moves and scales the whole block inside the frame',
+        (tester) async {
+      Future<(Rect, Rect, Rect)> pumpAt(SharePlacement placement) async {
+        await _pumpCanvas(
+          tester,
+          RunPhotoShareCard(
+            run: _run(track: _zoneTrack),
+            preferences: await _makePrefs(),
+            title: 'Morning run',
+            privacyZones: const [],
+            photo: _photo,
+            look: const RunShareLook().withPlacement(placement),
+          ),
+        );
+        final card = tester.getRect(find.byType(RunPhotoShareCard));
+        return (
+          card,
+          tester.getRect(find.text('Morning run')).shift(-card.topLeft),
+          tester.getRect(find.byType(RunStickerContent)).shift(-card.topLeft),
+        );
+      }
+
+      final (_, title, full) =
+          await pumpAt(const SharePlacement(x: 0.5, y: 0.5, scale: 1));
+      final (_, smallTitle, half) =
+          await pumpAt(const SharePlacement(x: 0.5, y: 0.5, scale: 0.5));
+      expect(half.width, closeTo(full.width / 2, 0.5));
+      expect(smallTitle.height, closeTo(title.height / 2, 0.5));
+      for (final corner in [
+        const SharePlacement(x: 0, y: 0, scale: 0.5),
+        const SharePlacement(x: 1, y: 1, scale: 0.5),
+      ]) {
+        final (_, t, c) = await pumpAt(corner);
+        expect(t.top, greaterThanOrEqualTo(20 - 0.5));
+        expect(c.left, greaterThanOrEqualTo(20 - 0.5));
+        expect(c.right, lessThanOrEqualTo(340 + 0.5));
+        expect(c.bottom, lessThanOrEqualTo(640 * 0.87 + 0.5));
+      }
+    });
+
     testWidgets('the outline withholds the privacy zone', (tester) async {
       await _pumpCanvas(
         tester,
@@ -815,6 +878,200 @@ void main() {
       await tapChip(tester, 'Sticker');
       expect(find.widgetWithText(FilterChip, 'Climb'), findsOneWidget);
       expect(find.widgetWithText(FilterChip, 'Avg HR'), findsOneWidget);
+    });
+
+    /// Opens the sheet on the Photo style with a decoded photo in it.
+    Future<void> openPhoto(WidgetTester tester,
+        {RunShareImageSaver? save, Map<String, Object> prefs = const {}}) async {
+      late File file;
+      await tester.runAsync(() async {
+        final dir = await Directory.systemTemp.createTemp('share_photo');
+        file = File('${dir.path}/photo.png');
+        await file.writeAsBytes(_photo.bytes);
+      });
+      addTearDown(() => file.parent.deleteSync(recursive: true));
+      await openSheet(tester,
+          pick: () async => XFile(file.path), save: save, prefs: prefs);
+      await tester.tap(find.text('Photo'));
+      await pumpUntil(
+        tester,
+        () => find.byType(RunPhotoShareCard).evaluate().isNotEmpty,
+        describe: 'the photo card',
+      );
+      await tester.pumpAndSettle();
+    }
+
+    SharePlacement placementOf(WidgetTester tester) => tester
+        .widget<RunPhotoShareCard>(find.byType(RunPhotoShareCard))
+        .look
+        .placement;
+
+    Rect blockOf(WidgetTester tester) =>
+        tester.getRect(find.byType(RunStickerContent));
+
+    testWidgets(
+        'dragging the photo stats moves them, and the placement is kept for '
+        'next time', (tester) async {
+      await openPhoto(tester);
+      expect(placementOf(tester), SharePlacement.initial);
+      final semantics = tester.getSemantics(
+          find.bySemanticsLabel(RegExp(r'^Stats position')));
+      expect(semantics.hint, contains('pinch'));
+      final before = blockOf(tester);
+      await tester.dragFrom(before.center, const Offset(0, -120));
+      await tester.pumpAndSettle();
+      final after = blockOf(tester);
+      expect(after.top, lessThan(before.top - 60));
+      expect(after.left, closeTo(before.left, 0.5));
+      final moved = placementOf(tester);
+      expect(moved.y, lessThan(0.8));
+
+      final json = jsonDecode((await SharedPreferences.getInstance())
+          .getString(shareLookPrefsKey)!) as Map<String, dynamic>;
+      expect(SharePlacement.fromJson(json['placements']['story']), moved);
+      expect(SharePlacement.fromJson(json['placements']['post']),
+          SharePlacement.initial,
+          reason: 'the post keeps its own placement');
+    });
+
+    testWidgets('a drag off the preview, not on the stats, leaves them put',
+        (tester) async {
+      await openPhoto(tester);
+      final card = tester.getRect(find.byType(RunPhotoShareCard));
+      await tester.dragFrom(card.topCenter + const Offset(0, 10),
+          const Offset(0, 60));
+      await tester.pumpAndSettle();
+      expect(placementOf(tester), SharePlacement.initial);
+    });
+
+    testWidgets('a pinch resizes the stats within the scale bounds',
+        (tester) async {
+      await openPhoto(tester);
+      Future<void> pinch(double from, double to) async {
+        final c = blockOf(tester).center;
+        final a = await tester.startGesture(c - Offset(from, 0), pointer: 1);
+        final b = await tester.startGesture(c + Offset(from, 0), pointer: 2);
+        for (var i = 1; i <= 6; i++) {
+          final d = from + (to - from) * i / 6;
+          await a.moveTo(c - Offset(d, 0));
+          await b.moveTo(c + Offset(d, 0));
+          await tester.pump();
+        }
+        await a.up();
+        await b.up();
+        await tester.pumpAndSettle();
+      }
+
+      final full = blockOf(tester).width;
+      await pinch(60, 45);
+      final pinched = placementOf(tester).scale;
+      expect(pinched, closeTo(0.75, 0.05));
+      expect(blockOf(tester).width, closeTo(full * pinched, 1));
+      // Far past either bound, the scale stops at it.
+      await pinch(60, 2);
+      expect(placementOf(tester).scale, 0.5);
+      await pinch(10, 200);
+      expect(placementOf(tester).scale, SharePlacement.maxScale);
+    });
+
+    testWidgets('a double tap on the stats puts them back, and so does Reset',
+        (tester) async {
+      await openPhoto(tester);
+      final reset = find.byKey(const ValueKey('share-placement-reset'));
+      expect(tester.widget<ButtonStyleButton>(reset).enabled, isFalse);
+      await tester.dragFrom(blockOf(tester).center, const Offset(0, -120));
+      await tester.pumpAndSettle();
+      expect(placementOf(tester), isNot(SharePlacement.initial));
+      expect(tester.widget<ButtonStyleButton>(reset).enabled, isTrue);
+
+      final c = blockOf(tester).center;
+      await tester.tapAt(c);
+      await tester.pump(const Duration(milliseconds: 80));
+      await tester.tapAt(c);
+      await tester.pumpAndSettle();
+      expect(placementOf(tester), SharePlacement.initial);
+
+      await tester.dragFrom(blockOf(tester).center, const Offset(0, -120));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(reset);
+      await tester.tap(reset);
+      await tester.pumpAndSettle();
+      expect(placementOf(tester), SharePlacement.initial);
+    });
+
+    testWidgets('a drag past the bottom stops clear of the story reply bar',
+        (tester) async {
+      await openPhoto(tester, prefs: {
+        shareLookPrefsKey: jsonEncode(const RunShareLook()
+            .withPlacement(const SharePlacement(x: 0.5, y: 0.4, scale: 0.6))
+            .toJson()),
+      });
+      expect(placementOf(tester),
+          const SharePlacement(x: 0.5, y: 0.4, scale: 0.6),
+          reason: 'the saved placement was not restored');
+      await tester.dragFrom(blockOf(tester).center, const Offset(0, 900));
+      await tester.pumpAndSettle();
+      final card = tester.getRect(find.byType(RunPhotoShareCard));
+      final k = card.height / 640;
+      expect(blockOf(tester).bottom,
+          lessThanOrEqualTo(card.top + 640 * 0.87 * k + 0.5));
+      expect(blockOf(tester).bottom,
+          greaterThan(card.top + 640 * 0.8 * k),
+          reason: 'the drag did not reach the frame bottom');
+    });
+
+    testWidgets('the exported PNG draws the stats where the sheet shows them',
+        (tester) async {
+      Uint8List? saved;
+      await openPhoto(tester, save: (png, _) async => saved = png, prefs: {
+        shareLookPrefsKey: jsonEncode(const RunShareLook()
+            .withPlacement(const SharePlacement(x: 0.3, y: 0.3, scale: 0.5))
+            .toJson()),
+      });
+      final card = tester.getRect(find.byType(RunPhotoShareCard));
+      final k = card.width / 360;
+      final shown = blockOf(tester).shift(-card.topLeft);
+      await tester.ensureVisible(find.text('Save to Photos'));
+      await tester.runAsync(() => tester.tap(find.text('Save to Photos')));
+      await pumpUntil(tester, () => saved != null, describe: 'the saved PNG');
+      final decoded = await tester.runAsync(() async {
+        final codec = await ui.instantiateImageCodec(saved!);
+        final image = (await codec.getNextFrame()).image;
+        final data =
+            await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        return (image.width, image.height, data!);
+      });
+      final (width, height, data) = decoded!;
+      expect([width, height], [1080, 1920]);
+      // The white ink's box: the title, stats and signature, all inside the
+      // block, and nothing of the dark photo.
+      var (l, t, r, b) = (width, height, -1, -1);
+      for (var y = 0; y < height; y++) {
+        for (var x = 0; x < width; x++) {
+          final i = (y * width + x) * 4;
+          if (data.getUint8(i) > 245 &&
+              data.getUint8(i + 1) > 245 &&
+              data.getUint8(i + 2) > 245) {
+            if (x < l) l = x;
+            if (x > r) r = x;
+            if (y < t) t = y;
+            if (y > b) b = y;
+          }
+        }
+      }
+      final px = 1080 / 360;
+      expect(r, greaterThan(l), reason: 'no white ink in the export');
+      // The block in the export is the block the sheet shows, in canvas px.
+      final block = Rect.fromLTRB(shown.left / k, shown.top / k,
+          shown.right / k, shown.bottom / k);
+      expect(l / px, greaterThanOrEqualTo(block.left - 2));
+      expect(r / px, lessThanOrEqualTo(block.right + 2));
+      expect(b / px, lessThanOrEqualTo(block.bottom + 2));
+      expect(t / px, lessThan(block.top),
+          reason: 'the title sits above the stats');
+      expect(r / px, lessThan(360 / 2 + 1),
+          reason: 'the block was exported at the default, not where it sits');
+      await tester.pump(const Duration(seconds: 5));
     });
 
     testWidgets('Save writes the sticker PNG to the photo library',

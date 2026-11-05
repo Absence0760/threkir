@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:gal/gal.dart';
@@ -29,6 +30,7 @@ import '../preferences.dart';
 import '../privacy.dart';
 import '../run_share_stats.dart';
 import '../share_look.dart';
+import '../share_placement.dart';
 import '../share_sheet.dart';
 import 'capture_png.dart';
 import 'head_to_head_card.dart';
@@ -181,6 +183,7 @@ class _ShareRunSheet extends StatefulWidget {
 class _ShareRunSheetState extends State<_ShareRunSheet> {
   final GlobalKey _cardKey = GlobalKey();
   final MapTileReadiness _tiles = MapTileReadiness();
+  final SharePlacementProbe _probe = SharePlacementProbe();
   bool _busy = false;
   late RunShareStyle _style = widget.initialStyle;
   RunShareLook _look = const RunShareLook();
@@ -224,6 +227,15 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     setState(() => _look = look);
     unawaited(saveShareLook(look));
   }
+
+  /// A gesture's placement, shown at once and stored when the gesture ends.
+  void _movePlacement(SharePlacement placement) {
+    final look = _look.withPlacement(placement);
+    if (look != _look) setState(() => _look = look);
+  }
+
+  void _resetPlacement() =>
+      _setLook(_look.withPlacement(SharePlacement.initial));
 
   String _caption(AppLocalizations l10n) {
     final unit = widget.preferences.unit;
@@ -468,6 +480,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           privacyZones: widget.privacyZones,
           photo: FileImage(_photo!),
           look: _look,
+          probe: _probe,
         );
       case RunShareStyle.video:
       case RunShareStyle.versus:
@@ -512,7 +525,19 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           child: FittedBox(
             fit: BoxFit.contain,
             child: MediaQuery.withNoTextScaling(
-              child: RepaintBoundary(key: _cardKey, child: _canvas()),
+              child: _style == RunShareStyle.photo
+                  ? _PlacementGestures(
+                      probe: _probe,
+                      enabled: !_busy,
+                      label: l10n.shareCardPlacementLabel,
+                      hint: l10n.shareCardPlacementHint,
+                      placement: () => _look.placement,
+                      onChanged: _movePlacement,
+                      onEnd: () => unawaited(saveShareLook(_look)),
+                      onReset: _resetPlacement,
+                      child: RepaintBoundary(key: _cardKey, child: _canvas()),
+                    )
+                  : RepaintBoundary(key: _cardKey, child: _canvas()),
             ),
           ),
         ),
@@ -773,14 +798,37 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                   )
                 else
                   _preview(l10n, theme, previewHeight),
-                if (_style == RunShareStyle.photo && _photo != null)
-                  Align(
-                    child: TextButton.icon(
-                      onPressed: _busy || _picking ? null : _pickPhoto,
-                      icon: const Icon(Icons.swap_horiz),
-                      label: Text(l10n.shareCardChangePhoto),
+                if (_style == RunShareStyle.photo && _photo != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      l10n.shareCardPlacementHint,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _busy || _picking ? null : _pickPhoto,
+                        icon: const Icon(Icons.swap_horiz),
+                        label: Text(l10n.shareCardChangePhoto),
+                      ),
+                      TextButton.icon(
+                        key: const ValueKey('share-placement-reset'),
+                        onPressed: _busy ||
+                                _look.placement == SharePlacement.initial
+                            ? null
+                            : _resetPlacement,
+                        icon: const Icon(Icons.restart_alt),
+                        label: Text(l10n.shareCardPlacementReset),
+                      ),
+                    ],
+                  ),
+                ],
                 if (_style == RunShareStyle.sticker ||
                     _style == RunShareStyle.pr)
                   Padding(
@@ -881,6 +929,157 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
       ),
     );
   }
+}
+
+/// Moves and resizes the photo's title-and-stats block on the preview: a
+/// one-finger drag moves it, a pinch resizes it, a double tap puts it back.
+/// Only a gesture that starts on the block is taken, so a drag anywhere else
+/// on the preview still scrolls the sheet; [child] sits at the canvas's own
+/// logical size, so the gesture's offsets are canvas px.
+class _PlacementGestures extends StatefulWidget {
+  final SharePlacementProbe probe;
+  final bool enabled;
+  final String label;
+  final String hint;
+  final SharePlacement Function() placement;
+  final ValueChanged<SharePlacement> onChanged;
+  final VoidCallback onEnd;
+  final VoidCallback onReset;
+  final Widget child;
+
+  const _PlacementGestures({
+    required this.probe,
+    required this.enabled,
+    required this.label,
+    required this.hint,
+    required this.placement,
+    required this.onChanged,
+    required this.onEnd,
+    required this.onReset,
+    required this.child,
+  });
+
+  @override
+  State<_PlacementGestures> createState() => _PlacementGesturesState();
+}
+
+class _PlacementGesturesState extends State<_PlacementGestures> {
+  SharePlacement? _from;
+  Offset _focal = Offset.zero;
+
+  bool _onBlock(Offset local) =>
+      widget.enabled && (widget.probe.placed?.rect.contains(local) ?? false);
+
+  void _start(ScaleStartDetails d) {
+    _from = widget.probe.placed?.placement ?? widget.placement();
+    _focal = d.localFocalPoint;
+  }
+
+  void _update(ScaleUpdateDetails d) {
+    final from = _from;
+    final canvas = widget.probe.canvas;
+    if (from == null || canvas == null) return;
+    final delta = d.localFocalPoint - _focal;
+    widget.onChanged(widget.probe
+        .clamp(from.moved(delta.dx, delta.dy, canvas).resized(d.scale)));
+  }
+
+  void _end(ScaleEndDetails _) {
+    if (_from == null) return;
+    _from = null;
+    widget.onEnd();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: widget.label,
+      hint: widget.hint,
+      child: RawGestureDetector(
+        behavior: HitTestBehavior.opaque,
+        gestures: {
+          _BlockScaleRecognizer: GestureRecognizerFactoryWithHandlers<
+              _BlockScaleRecognizer>(
+            () => _BlockScaleRecognizer(_onBlock, debugOwner: this),
+            (r) => r
+              ..onStart = _start
+              ..onUpdate = _update
+              ..onEnd = _end,
+          ),
+          _BlockDoubleTapRecognizer: GestureRecognizerFactoryWithHandlers<
+              _BlockDoubleTapRecognizer>(
+            () => _BlockDoubleTapRecognizer(_onBlock, debugOwner: this),
+            (r) => r.onDoubleTap = widget.onReset,
+          ),
+        },
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// A scale gesture that starts only on the block, and claims the pointer as
+/// soon as it moves a few px: under the sheet scroll's and the bottom sheet's
+/// 18 px drag slop, so a drag on the block moves the block rather than the
+/// sheet. A second finger may land anywhere once the first is down.
+class _BlockScaleRecognizer extends ScaleGestureRecognizer {
+  _BlockScaleRecognizer(this._onBlock, {super.debugOwner});
+
+  final bool Function(Offset local) _onBlock;
+  final Map<int, Offset> _downs = {};
+  bool _claimed = false;
+
+  static const double _claimSlop = 4;
+
+  @override
+  bool isPointerAllowed(PointerDownEvent event) =>
+      (_downs.isNotEmpty || _onBlock(event.localPosition)) &&
+      super.isPointerAllowed(event);
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    _downs[event.pointer] = event.position;
+    super.addAllowedPointer(event);
+    if (_claimed) resolvePointer(event.pointer, GestureDisposition.accepted);
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    super.handleEvent(event);
+    final down = _downs[event.pointer];
+    if (!_claimed &&
+        event is PointerMoveEvent &&
+        down != null &&
+        (event.position - down).distance > _claimSlop) {
+      _claimed = true;
+      resolve(GestureDisposition.accepted);
+    }
+    if (event is PointerUpEvent || event is PointerCancelEvent) {
+      _forget(event.pointer);
+    }
+  }
+
+  @override
+  void rejectGesture(int pointer) {
+    _forget(pointer);
+    super.rejectGesture(pointer);
+  }
+
+  void _forget(int pointer) {
+    _downs.remove(pointer);
+    if (_downs.isEmpty) _claimed = false;
+  }
+}
+
+class _BlockDoubleTapRecognizer extends DoubleTapGestureRecognizer {
+  _BlockDoubleTapRecognizer(this._onBlock, {super.debugOwner});
+
+  final bool Function(Offset local) _onBlock;
+
+  @override
+  bool isPointerAllowed(PointerDownEvent event) =>
+      _onBlock(event.localPosition) && super.isPointerAllowed(event);
 }
 
 class _CheckerboardPainter extends CustomPainter {

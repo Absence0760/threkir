@@ -4965,6 +4965,7 @@ export const messages = {
 	"raceDayPanel.raceDay": "Wettkampftag",
 	"raceDayPanel.daysToGoOne": "Noch 1 Tag",
 	"raceDayPanel.daysToGoMany": "Noch {n} Tage",
+	"raceDayPanel.goalFinishPrefix": "Angestrebte Zielzeit",
 	"raceDayPanel.predictedFinishPrefix": "Voraussichtliche Zielzeit",
 	"raceDayPanel.predictedFinishFor": "für",
 	"raceDayPanel.pacingStrategy": "Tempostrategie",

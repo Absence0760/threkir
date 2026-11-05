@@ -119,8 +119,18 @@
 		<header>
 			<span class="kicker">{raceName ?? m('raceDayPanel.raceDay')}</span>
 			<h2>{countdownLabel}</h2>
-			{#if predictedSec != null}
-				<p class="prediction">
+			{#if fromGoal && goalTimeSec != null}
+				<p class="prediction" data-testid="race-day-goal">
+					{m('raceDayPanel.goalFinishPrefix')} <strong>{formatDuration(goalTimeSec)}</strong>
+					{m('raceDayPanel.predictedFinishFor')} {fmtKm(distanceM, 1)}
+				</p>
+				{#if dataPrediction.sec != null}
+					<p class="projection" data-testid="race-day-projection">
+						{m('raceDayPanel.predictedFinishPrefix')} <strong>{formatDuration(dataPrediction.sec)}</strong>
+					</p>
+				{/if}
+			{:else if predictedSec != null}
+				<p class="prediction" data-testid="race-day-prediction">
 					{m('raceDayPanel.predictedFinishPrefix')} <strong>{formatDuration(predictedSec)}</strong>
 					{m('raceDayPanel.predictedFinishFor')} {fmtKm(distanceM, 1)}
 				</p>
@@ -216,6 +226,8 @@
 	}
 	.prediction { margin: 0; font-size: 1rem; opacity: 0.95; }
 	.prediction strong { font-weight: 800; }
+	.projection { margin: 0.2rem 0 0; font-size: 0.9rem; opacity: 0.95; }
+	.projection strong { font-weight: 700; }
 
 	.confidence-chip {
 		display: inline-block;

@@ -4983,6 +4983,7 @@ export const en = {
 	"raceDayPanel.raceDay": "Race day",
 	"raceDayPanel.daysToGoOne": "1 day to go",
 	"raceDayPanel.daysToGoMany": "{n} days to go",
+	"raceDayPanel.goalFinishPrefix": "Goal finish",
 	"raceDayPanel.predictedFinishPrefix": "Predicted finish at",
 	"raceDayPanel.predictedFinishFor": "for",
 	"raceDayPanel.pacingStrategy": "Pacing strategy",

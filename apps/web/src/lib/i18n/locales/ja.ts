@@ -4960,6 +4960,7 @@ export const messages = {
 	"raceDayPanel.raceDay": "レース当日",
 	"raceDayPanel.daysToGoOne": "あと1日",
 	"raceDayPanel.daysToGoMany": "あと{n}日",
+	"raceDayPanel.goalFinishPrefix": "目標タイム",
 	"raceDayPanel.predictedFinishPrefix": "予想ゴールタイム",
 	"raceDayPanel.predictedFinishFor": "対象",
 	"raceDayPanel.pacingStrategy": "ペース戦略",

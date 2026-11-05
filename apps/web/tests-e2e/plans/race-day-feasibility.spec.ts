@@ -101,6 +101,15 @@ test.describe('/plans/[id] race-day goal feasibility', () => {
 			// The delta magnitude (13:21 slower) is rendered.
 			await expect(feas).toHaveText(/13:21/);
 
+			// The headline is the goal, labelled as one; the fitness projection
+			// it is graded against is the line labelled a prediction (#1288).
+			const goal = page.getByTestId('race-day-goal');
+			await expect(goal).toHaveText(/Goal finish\s+3:36:40/);
+			await expect(goal).not.toHaveText(/Predicted/);
+			await expect(page.getByTestId('race-day-projection')).toHaveText(
+				/Predicted finish at\s+3:50:\d\d/,
+			);
+
 			// The verdict pill reads on the hero's fixed canvas. contrast_guard
 			// computes the ratio from the stylesheet; what only a browser can
 			// confirm is that the rules REACH this element — the pale pastel it

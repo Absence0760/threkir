@@ -16,6 +16,15 @@ import { projectTrack } from '../routes/track_projection';
 import { SHARE_STICKER_INKS, THREKIR_MARK_GRADIENT } from './og_card_palette';
 import type { RunShareStat } from './run_share_stats';
 import type { RunPhotoAspect, RunShareInk, RunStickerLayout } from './share_look';
+import {
+	DEFAULT_SHARE_PLACEMENT,
+	minSharePlacementScale,
+	placeShareBlock,
+	sharePlacementFrame,
+	type PlacedShareBlock,
+	type PlacementRect,
+	type SharePlacement,
+} from './share_placement';
 
 /// Every share image is rasterised to this many pixels across, so a story or
 /// a feed post is never upscaled, whatever screen made it.
@@ -279,11 +288,22 @@ export interface PhotoLaid extends Laid {
 	/// The scale the sticker content was fitted at: under 1 when a tall layout
 	/// on a 4:5 post has to shrink into the height the title leaves.
 	contentScale: number;
+	/// The title-and-stats block at scale 1, before it is placed.
+	blockWidth: number;
+	blockHeight: number;
+	/// The part of the canvas the block must stay inside.
+	frame: PlacementRect;
+	/// The smallest scale the block may take (`minSharePlacementScale`).
+	minScale: number;
+	/// Where the block landed.
+	block: PlacedShareBlock;
 }
 
-/// The photo style's canvas: the title over the layout's content, bottom-
-/// aligned inside a 20 px margin. On a story the stats stay clear of the
-/// bottom eighth the story viewer's reply bar covers.
+/// The photo style's canvas: the title over the layout's content, as one
+/// block the runner can move and resize. It is laid out at the frame's width,
+/// fitted into the height the frame leaves, and then placed by `placement`:
+/// by default centred on the frame's bottom edge, which on a story keeps it
+/// clear of the bottom eighth the story viewer's reply bar covers.
 export function layoutPhoto(
 	aspect: RunPhotoAspect,
 	layout: RunStickerLayout,
@@ -292,12 +312,11 @@ export function layoutPhoto(
 	hasRoute: boolean,
 	wordmark: string | null,
 	measure: MeasureText,
+	placement: SharePlacement = DEFAULT_SHARE_PLACEMENT,
 ): PhotoLaid {
 	const { w, h } = photoCanvasSize(aspect);
-	const pad = 20;
-	const bottom = aspect === 'story' ? h * 0.13 : 22;
-	const boxW = w - pad * 2;
-	const boxBottom = h - bottom;
+	const frame = sharePlacementFrame(w, h, aspect === 'story');
+	const boxW = frame.width;
 
 	const titleFont: FontSpec = { size: TITLE.size, weight: TITLE.weight, letterSpacing: 0 };
 	const lines = title.trim() ? wrapLines(title, titleFont, boxW, 2, measure) : [];
@@ -305,33 +324,38 @@ export function layoutPhoto(
 	const titleGap = lines.length > 0 ? 12 : 0;
 
 	const content = layoutStickerContent(layout, stats, hasRoute, wordmark, measure);
-	const availH = boxBottom - pad - titleH - titleGap;
+	const availH = frame.height - titleH - titleGap;
 	const contentScale = Math.min(1, boxW / content.width, availH / content.height);
 	const cw = content.width * contentScale;
 	const ch = content.height * contentScale;
-	const cx = (w - cw) / 2;
-	const cy = boxBottom - ch;
+	const blockHeight = titleH + titleGap + ch;
+	const minScale = minSharePlacementScale(LABEL.size * contentScale);
+	const block = placeShareBlock(placement, boxW, blockHeight, w, h, frame, minScale);
+	const k = block.scale;
+	const cx = block.left + ((boxW - cw) / 2) * k;
+	const cy = block.top + (titleH + titleGap) * k;
+	const ks = contentScale * k;
 
 	const ops: DrawOp[] = lines.map((text, i) => ({
 		kind: 'text',
 		text,
-		x: w / 2,
-		y: cy - titleGap - titleH + i * TITLE.lineHeight + TITLE.lineHeight / 2 + TITLE.size * 0.36,
+		x: block.left + (boxW / 2) * k,
+		y: block.top + (i * TITLE.lineHeight + TITLE.lineHeight / 2 + TITLE.size * 0.36) * k,
 		font: titleFont,
 		ink: 'text',
-		scale: 1,
+		scale: k,
 		align: 'center',
 	}));
 	for (const op of content.ops) {
 		const scaled: DrawOp =
 			op.kind === 'text'
-				? { ...op, x: cx + op.x * contentScale, y: cy + op.y * contentScale, scale: op.scale * contentScale }
+				? { ...op, x: cx + op.x * ks, y: cy + op.y * ks, scale: op.scale * ks }
 				: op.kind === 'divider'
-					? { ...op, x: cx + op.x * contentScale, y: cy + op.y * contentScale, w: op.w * contentScale, h: op.h * contentScale }
-					: { ...op, x: cx + op.x * contentScale, y: cy + op.y * contentScale, size: op.size * contentScale };
+					? { ...op, x: cx + op.x * ks, y: cy + op.y * ks, w: op.w * ks, h: op.h * ks }
+					: { ...op, x: cx + op.x * ks, y: cy + op.y * ks, size: op.size * ks };
 		ops.push(scaled);
 	}
-	return { ops, width: w, height: h, contentScale };
+	return { ops, width: w, height: h, contentScale, blockWidth: boxW, blockHeight, frame, minScale, block };
 }
 
 // ---------------------------------------------------------------------------
@@ -501,13 +525,16 @@ export function paintSticker(input: StickerInput): HTMLCanvasElement {
 
 export interface PhotoInput extends StickerInput {
 	aspect: RunPhotoAspect;
+	/// Where the title and stats sit; the default when omitted.
+	placement?: SharePlacement;
 	title: string;
 	photo: CanvasImageSource & { width: number; height: number };
 }
 
 /// The runner's photo, cropped to fill the aspect, under a scrim and the
-/// title, stats, route and signature.
-export function paintPhoto(input: PhotoInput): HTMLCanvasElement {
+/// title, stats, route and signature. Returns the layout with the canvas, so
+/// the editor's handles sit on the block exactly where it was drawn.
+export function paintPhoto(input: PhotoInput): { canvas: HTMLCanvasElement; laid: PhotoLaid } {
 	const probe = document.createElement('canvas').getContext('2d');
 	if (!probe) throw new Error('2D canvas unavailable');
 	const laid = layoutPhoto(
@@ -518,6 +545,7 @@ export function paintPhoto(input: PhotoInput): HTMLCanvasElement {
 		input.track.length >= 2,
 		input.wordmark,
 		canvasMeasure(probe),
+		input.placement,
 	);
 	const { canvas, ctx, k } = sizedCanvas(laid);
 	const { w, h } = { w: laid.width, h: laid.height };
@@ -533,7 +561,7 @@ export function paintPhoto(input: PhotoInput): HTMLCanvasElement {
 	ctx.fillStyle = g;
 	ctx.fillRect(0, 0, w, h);
 	paintOps(ctx, laid.ops, input.track, input.ink, k);
-	return canvas;
+	return { canvas, laid };
 }
 
 export function canvasToPng(canvas: HTMLCanvasElement): Promise<Blob> {

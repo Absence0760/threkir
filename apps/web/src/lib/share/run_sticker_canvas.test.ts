@@ -134,6 +134,35 @@ describe('photo', () => {
 		assert.ok(title && title.y >= 20);
 	});
 
+	test('the default placement sits the block on the frame bottom, centred', () => {
+		const laid = layoutPhoto('story', 'stack', 'Morning run', three, true, 'T', measure);
+		assert.equal(laid.block.scale, 1);
+		assert.equal(laid.block.left, 20);
+		assert.ok(Math.abs(laid.block.top + laid.block.height - 640 * 0.87) < 1e-9);
+	});
+
+	test('a placement moves and scales every op with the block, never into the reply bar', () => {
+		const base = layoutPhoto('story', 'stack', 'Morning run', three, true, 'T', measure, { x: 0.5, y: 0.5, scale: 1 });
+		const small = layoutPhoto('story', 'stack', 'Morning run', three, true, 'T', measure, { x: 0.5, y: 0.5, scale: 0.5 });
+		const title = (l: typeof base) => texts(l.ops).find((op) => op.text === 'Morning run');
+		assert.equal(title(small)?.scale, 0.5);
+		const label = (l: typeof base) => texts(l.ops).find((op) => op.text === 'DISTANCE');
+		assert.equal(label(small)!.scale, label(base)!.scale * 0.5);
+		for (const y of [0, 1]) {
+			const laid = layoutPhoto('story', 'hero', 'Morning run', three, false, 'T', measure, { x: 0, y, scale: 0.6 });
+			for (const op of laid.ops) {
+				assert.ok(op.x >= 20 - 1e-6 && op.y >= 20 - 1e-6, `${op.kind} at ${op.x},${op.y}`);
+				assert.ok(op.y <= 640 * 0.87 + 1e-6, `${op.kind} at ${op.y}`);
+			}
+		}
+	});
+
+	test('the strip layout cannot shrink its labels under the 6 px floor', () => {
+		const laid = layoutPhoto('story', 'strip', 'Morning run', three, false, 'T', measure, { x: 0.5, y: 0.5, scale: 0.5 });
+		const label = texts(laid.ops).find((op) => op.text === 'DISTANCE');
+		assert.ok(label && 12 * label.scale >= 6 - 1e-9, `label at ${12 * (label?.scale ?? 0)} px`);
+	});
+
 	test('an untitled run prints no title line', () => {
 		const titled = layoutPhoto('story', 'hero', 'Run', three, false, 'T', measure);
 		const untitled = layoutPhoto('story', 'hero', '  ', three, false, 'T', measure);

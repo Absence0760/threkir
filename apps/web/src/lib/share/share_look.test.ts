@@ -12,8 +12,10 @@ import {
 	shareLookFromJson,
 	shareLookToJson,
 	toggleShareStat,
+	withSharePlacement,
 	type RunShareLook,
 } from './share_look';
+import { DEFAULT_SHARE_PLACEMENT } from './share_placement';
 import { RUN_SHARE_STAT_KINDS } from './run_share_stats';
 
 const look = (over: Partial<RunShareLook> = {}): RunShareLook => ({
@@ -80,6 +82,22 @@ describe('share look json', () => {
 		assert.equal(shareLookFromJson({ layout: 'strip' }).mark, true);
 		assert.equal(shareLookFromJson({ mark: 'no' }).mark, true);
 		assert.equal(shareLookFromJson({ mark: false }).mark, false);
+	});
+
+	test('each aspect keeps its own placement, and only the current one moves', () => {
+		const moved = withSharePlacement(look({ aspect: 'post' }), { x: 0.3, y: 0.4, scale: 0.7 });
+		assert.deepEqual(moved.placements.post, { x: 0.3, y: 0.4, scale: 0.7 });
+		assert.deepEqual(moved.placements.story, DEFAULT_SHARE_PLACEMENT);
+		assert.deepEqual(shareLookFromJson(JSON.parse(JSON.stringify(shareLookToJson(moved)))), moved);
+	});
+
+	test('a bad stored placement fails closed for its aspect and keeps the other', () => {
+		const l = shareLookFromJson({
+			placements: { story: { x: 9, y: 0.5, scale: 1 }, post: { x: 0.2, y: 0.8, scale: 0.6 } },
+		});
+		assert.deepEqual(l.placements.story, DEFAULT_SHARE_PLACEMENT);
+		assert.deepEqual(l.placements.post, { x: 0.2, y: 0.8, scale: 0.6 });
+		assert.deepEqual(shareLookFromJson({ placements: 'top' }).placements, look().placements);
 	});
 
 	test('an empty or absent stat list is the default set', () => {

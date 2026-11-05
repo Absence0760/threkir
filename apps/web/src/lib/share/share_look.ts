@@ -2,10 +2,17 @@
 // this browser so the next run shares the same way without choosing again.
 // Twin of `RunShareLook` in apps/mobile_android/lib/share_look.dart: the same
 // layouts, inks, aspects, stat cap, mark switch, toggle rule and field-by-field
-// restore.
+// restore, and the same per-aspect placement of the photo style's stats.
 
 import type { RunShareStatKind } from './run_share_stats';
 import { RUN_SHARE_STAT_KINDS } from './run_share_stats';
+import {
+	DEFAULT_SHARE_PLACEMENT,
+	sharePlacementEquals,
+	sharePlacementFromJson,
+	sharePlacementToJson,
+	type SharePlacement,
+} from './share_placement';
 
 /// How a stats sticker is laid out: each stat on its own line with the route
 /// under them (`stack`), the route large with the stats in a line beneath it
@@ -31,6 +38,13 @@ export interface RunShareLook {
 	/// Whether the image carries the Threkir mark. On unless the runner turns
 	/// it off; free on every tier.
 	mark: boolean;
+	/// Where the photo style's title and stats sit, kept apart for each
+	/// aspect: a block placed on a tall story does not belong on a post.
+	placements: Record<RunPhotoAspect, SharePlacement>;
+}
+
+function defaultPlacements(): Record<RunPhotoAspect, SharePlacement> {
+	return { post: { ...DEFAULT_SHARE_PLACEMENT }, story: { ...DEFAULT_SHARE_PLACEMENT } };
 }
 
 export const DEFAULT_SHARE_STATS: readonly RunShareStatKind[] = ['distance', 'pace', 'time'];
@@ -45,7 +59,13 @@ export const DEFAULT_SHARE_LOOK: Readonly<RunShareLook> = Object.freeze({
 	aspect: 'story',
 	stats: [...DEFAULT_SHARE_STATS],
 	mark: true,
+	placements: Object.freeze(defaultPlacements()),
 });
+
+/// `look` with the current aspect's placement set to `placement`.
+export function withSharePlacement(look: RunShareLook, placement: SharePlacement): RunShareLook {
+	return { ...look, placements: { ...look.placements, [look.aspect]: { ...placement } } };
+}
 
 export function shareLookEquals(a: RunShareLook, b: RunShareLook): boolean {
 	return (
@@ -53,6 +73,7 @@ export function shareLookEquals(a: RunShareLook, b: RunShareLook): boolean {
 		a.ink === b.ink &&
 		a.aspect === b.aspect &&
 		a.mark === b.mark &&
+		RUN_PHOTO_ASPECTS.every((k) => sharePlacementEquals(a.placements[k], b.placements[k])) &&
 		a.stats.length === b.stats.length &&
 		a.stats.every((k, i) => b.stats[i] === k)
 	);
@@ -73,7 +94,17 @@ export function toggleShareStat(look: RunShareLook, kind: RunShareStatKind): Run
 }
 
 export function shareLookToJson(look: RunShareLook): Record<string, unknown> {
-	return { layout: look.layout, ink: look.ink, aspect: look.aspect, stats: [...look.stats], mark: look.mark };
+	return {
+		layout: look.layout,
+		ink: look.ink,
+		aspect: look.aspect,
+		stats: [...look.stats],
+		mark: look.mark,
+		placements: {
+			post: sharePlacementToJson(look.placements.post),
+			story: sharePlacementToJson(look.placements.story),
+		},
+	};
 }
 
 function pick<T extends string>(values: readonly T[], name: unknown, fallback: T): T {
@@ -86,17 +117,25 @@ function pick<T extends string>(values: readonly T[], name: unknown, fallback: T
 export function shareLookFromJson(json: unknown): RunShareLook {
 	const d = DEFAULT_SHARE_LOOK;
 	if (json === null || typeof json !== 'object' || Array.isArray(json)) {
-		return { ...d, stats: [...d.stats] };
+		return { ...d, stats: [...d.stats], placements: defaultPlacements() };
 	}
 	const o = json as Record<string, unknown>;
 	const raw = Array.isArray(o.stats) ? o.stats : [];
 	const stats = RUN_SHARE_STAT_KINDS.filter((k) => raw.includes(k));
+	const placements =
+		o.placements !== null && typeof o.placements === 'object' && !Array.isArray(o.placements)
+			? (o.placements as Record<string, unknown>)
+			: {};
 	return {
 		layout: pick(RUN_STICKER_LAYOUTS, o.layout, d.layout),
 		ink: pick(RUN_SHARE_INKS, o.ink, d.ink),
 		aspect: pick(RUN_PHOTO_ASPECTS, o.aspect, d.aspect),
 		stats: stats.length === 0 ? [...DEFAULT_SHARE_STATS] : stats.slice(0, MAX_SHARE_STATS),
 		mark: typeof o.mark === 'boolean' ? o.mark : d.mark,
+		placements: {
+			post: sharePlacementFromJson(placements.post),
+			story: sharePlacementFromJson(placements.story),
+		},
 	};
 }
 

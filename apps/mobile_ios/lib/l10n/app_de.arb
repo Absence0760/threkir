@@ -4994,6 +4994,8 @@
   "messagesMutedMark": "Stummgeschaltet",
   "messagesMutedToast": "Stummgeschaltet. Du wirst über neue Nachrichten hier nicht benachrichtigt.",
   "messagesArchivedToast": "Archiviert. Eine neue Nachricht holt sie in deinen Posteingang zurück.",
+  "messagesMarkUnread": "Als ungelesen markieren",
+  "messagesMarkedUnreadToast": "Als ungelesen markiert. Die Unterhaltung bleibt in deinem Posteingang hervorgehoben, bis du sie öffnest.",
   "messagesOptionsHint": "Nachrichtenoptionen anzeigen",
   "profileMessage": "Nachricht",
   "routeDetailSendToFollower": "An Follower senden",

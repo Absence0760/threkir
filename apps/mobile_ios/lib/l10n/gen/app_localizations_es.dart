@@ -17725,6 +17725,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'Archivada. Un mensaje nuevo la devolverá a tu bandeja de entrada.';
 
   @override
+  String get messagesMarkUnread => 'Marcar como no leída';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marcada como no leída. Seguirá destacada en tu bandeja de entrada hasta que la abras.';
+
+  @override
   String get profileMessage => 'Mensaje';
 
   @override

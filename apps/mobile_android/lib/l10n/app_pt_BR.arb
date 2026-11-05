@@ -4994,6 +4994,8 @@
   "messagesMutedMark": "Silenciada",
   "messagesMutedToast": "Silenciada. Você não será notificado sobre novas mensagens aqui.",
   "messagesArchivedToast": "Arquivada. Uma nova mensagem traz a conversa de volta para sua caixa de entrada.",
+  "messagesMarkUnread": "Marcar como não lida",
+  "messagesMarkedUnreadToast": "Marcada como não lida. Ela fica em destaque na sua caixa de entrada até você abri-la.",
   "messagesOptionsHint": "mostrar opções da mensagem",
   "profileMessage": "Mensagem",
   "routeDetailSendToFollower": "Enviar para um seguidor",

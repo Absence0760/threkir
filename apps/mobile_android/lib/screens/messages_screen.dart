@@ -382,8 +382,8 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   Future<void> _open(DmThread t) async {
     final partnerId = t.partnerId;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    final markedUnread = await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
         builder: (_) => partnerId == null
             ? MessageThreadScreen.deletedPartner(
                 api: widget.api,
@@ -392,6 +392,7 @@ class _MessagesScreenState extends State<MessagesScreen>
                 conversationId: t.conversationId,
                 initialMuted: t.muted,
                 initialArchived: t.archived,
+                initialMarkedUnread: t.markedUnread,
               )
             : MessageThreadScreen(
                 api: widget.api,
@@ -402,15 +403,35 @@ class _MessagesScreenState extends State<MessagesScreen>
                 conversationId: t.conversationId,
                 initialMuted: t.muted,
                 initialArchived: t.archived,
+                initialMarkedUnread: t.markedUnread,
               ),
       ),
     );
     if (!mounted) return;
+    if (markedUnread == true) {
+      // The conversation was left marked unread: no read since may zero it,
+      // and one already in flight predates the mark, so it is dropped.
+      _openedAt.remove(t.threadKey);
+      _readGen++;
+      setState(() {
+        _threads = [
+          for (final x in _threads)
+            x.threadKey == t.threadKey
+                ? x.copyWith(
+                    unread: x.unread < 1 ? 1 : x.unread, markedUnread: true)
+                : x,
+        ];
+      });
+      _refresh();
+      return;
+    }
     _openedAt[t.threadKey] = monotonicNow();
     setState(() {
       _threads = [
         for (final x in _threads)
-          x.threadKey == t.threadKey ? x.copyWith(unread: 0) : x,
+          x.threadKey == t.threadKey
+              ? x.copyWith(unread: 0, markedUnread: false)
+              : x,
       ];
     });
     _refresh();

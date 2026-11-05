@@ -66,6 +66,7 @@ class MessageThreadScreen extends StatefulWidget {
     this.conversationId,
     this.initialMuted,
     this.initialArchived,
+    this.initialMarkedUnread,
   }) : deletedPartnerKey = null;
 
   const MessageThreadScreen.deletedPartner({
@@ -77,6 +78,7 @@ class MessageThreadScreen extends StatefulWidget {
     this.conversationId,
     this.initialMuted,
     this.initialArchived,
+    this.initialMarkedUnread,
   })  : partnerId = null,
         partnerName = null,
         partnerAvatarUrl = null;
@@ -97,6 +99,9 @@ class MessageThreadScreen extends StatefulWidget {
   final String? conversationId;
   final bool? initialMuted;
   final bool? initialArchived;
+
+  /// The viewer marked the conversation unread; opening it clears the mark.
+  final bool? initialMarkedUnread;
 
   @override
   State<MessageThreadScreen> createState() => _MessageThreadScreenState();
@@ -308,7 +313,11 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       });
       return;
     }
-    if (widget.initialMuted == null) _loadConversationState();
+    if (widget.initialMuted == null) {
+      _loadConversationState();
+    } else if (widget.initialMarkedUnread == true) {
+      _clearUnreadMark();
+    }
     await _markReadIfUnread();
   }
 
@@ -327,9 +336,48 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         _archived = archivedAt != null &&
             (newest == null || !archivedAt.isBefore(newest));
       });
+      if (state.markedUnread) _clearUnreadMark();
     } catch (e) {
       debugPrint(
           'message thread conversation state read failed: ${safeErrorLabel(e)}');
+    }
+  }
+
+  /// Opening a conversation the viewer marked unread clears the mark. A
+  /// failure leaves it set: the inbox keeps counting it until the next open.
+  Future<void> _clearUnreadMark() async {
+    final id = _conversationId;
+    if (id == null) return;
+    try {
+      await widget.api.setDmConversationUnread(id, unread: false);
+    } catch (e) {
+      debugPrint(
+          'message thread unread-mark clear failed: ${safeErrorLabel(e)}');
+    }
+  }
+
+  /// Mark as unread leaves the conversation, so the open screen does not
+  /// read it again on the way out; the inbox counts it as one until the
+  /// conversation is opened again. Pops with `true` so the inbox keeps the
+  /// mark rather than zeroing the row it opened.
+  Future<void> _markUnread() async {
+    final id = _conversationId;
+    if (id == null || _conversationBusy) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _conversationBusy = true);
+    try {
+      await widget.api.setDmConversationUnread(id, unread: true);
+      if (!mounted) return;
+      showTopBanner(context, l10n.messagesMarkedUnreadToast);
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      debugPrint('message thread mark-unread failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        showTopBanner(context,
+            l10n.messagesConversationActionFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _conversationBusy = false);
     }
   }
 
@@ -428,6 +476,8 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         _toggleMuted();
       case 'archive':
         _toggleArchived();
+      case 'unread':
+        _markUnread();
       case 'delete':
         _deleteConversation();
       case 'block':
@@ -753,6 +803,17 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
                       title: Text(_archived
                           ? l10n.messagesUnarchive
                           : l10n.messagesArchive),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                if (_conversationId != null)
+                  PopupMenuItem(
+                    key: const ValueKey('message-thread-mark-unread'),
+                    value: 'unread',
+                    enabled: !_conversationBusy,
+                    child: ListTile(
+                      leading: const Icon(Icons.mark_chat_unread_outlined),
+                      title: Text(l10n.messagesMarkUnread),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),

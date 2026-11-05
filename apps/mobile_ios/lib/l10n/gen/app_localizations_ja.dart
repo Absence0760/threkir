@@ -16896,6 +16896,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get messagesArchivedToast => 'アーカイブしました。新しいメッセージが届くと受信箱に戻ります。';
 
   @override
+  String get messagesMarkUnread => '未読にする';
+
+  @override
+  String get messagesMarkedUnreadToast => '未読にしました。開くまで受信箱で目立つように表示されます。';
+
+  @override
   String get profileMessage => 'メッセージ';
 
   @override

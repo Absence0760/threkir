@@ -17767,6 +17767,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Archivée. Un nouveau message la ramènera dans votre boîte de réception.';
 
   @override
+  String get messagesMarkUnread => 'Marquer comme non lue';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marquée comme non lue. Elle reste mise en évidence dans votre boîte de réception jusqu\'à ce que vous l\'ouvriez.';
+
+  @override
   String get profileMessage => 'Message';
 
   @override

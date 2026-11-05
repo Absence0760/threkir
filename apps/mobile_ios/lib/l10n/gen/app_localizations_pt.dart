@@ -17729,6 +17729,13 @@ class AppLocalizationsPt extends AppLocalizations {
       'Arquivada. Uma nova mensagem trá-la de volta à sua caixa de entrada.';
 
   @override
+  String get messagesMarkUnread => 'Marcar como não lida';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marcada como não lida. Fica em destaque na sua caixa de entrada até a abrir.';
+
+  @override
   String get profileMessage => 'Mensagem';
 
   @override
@@ -37817,6 +37824,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get messagesArchivedToast =>
       'Arquivada. Uma nova mensagem traz a conversa de volta para sua caixa de entrada.';
+
+  @override
+  String get messagesMarkUnread => 'Marcar como não lida';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marcada como não lida. Ela fica em destaque na sua caixa de entrada até você abri-la.';
 
   @override
   String get profileMessage => 'Mensagem';

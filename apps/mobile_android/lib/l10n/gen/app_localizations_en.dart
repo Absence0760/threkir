@@ -17549,6 +17549,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Archived. A new message brings it back to your inbox.';
 
   @override
+  String get messagesMarkUnread => 'Mark as unread';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marked as unread. It stays highlighted in your inbox until you open it.';
+
+  @override
   String get profileMessage => 'Message';
 
   @override

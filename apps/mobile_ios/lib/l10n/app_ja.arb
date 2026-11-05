@@ -4994,6 +4994,8 @@
   "messagesMutedMark": "ミュート中",
   "messagesMutedToast": "ミュートしました。この会話の新しいメッセージは通知されません。",
   "messagesArchivedToast": "アーカイブしました。新しいメッセージが届くと受信箱に戻ります。",
+  "messagesMarkUnread": "未読にする",
+  "messagesMarkedUnreadToast": "未読にしました。開くまで受信箱で目立つように表示されます。",
   "messagesOptionsHint": "メッセージのオプションを表示",
   "profileMessage": "メッセージ",
   "routeDetailSendToFollower": "フォロワーに送る",

@@ -23103,6 +23103,14 @@
   "@messagesArchivedToast": {
     "description": "Confirmation after archiving a conversation"
   },
+  "messagesMarkUnread": "Mark as unread",
+  "@messagesMarkUnread": {
+    "description": "Conversation menu action: flag the conversation unread again for yourself; the other person is not told"
+  },
+  "messagesMarkedUnreadToast": "Marked as unread. It stays highlighted in your inbox until you open it.",
+  "@messagesMarkedUnreadToast": {
+    "description": "Confirmation after marking a conversation unread, shown as the conversation closes"
+  },
   "profileMessage": "Message",
   "@profileMessage": {
     "description": "Profile action opening a direct-message conversation with this runner"

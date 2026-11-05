@@ -28856,6 +28856,18 @@ abstract class AppLocalizations {
   /// **'Archived. A new message brings it back to your inbox.'**
   String get messagesArchivedToast;
 
+  /// Conversation menu action: flag the conversation unread again for yourself; the other person is not told
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as unread'**
+  String get messagesMarkUnread;
+
+  /// Confirmation after marking a conversation unread, shown as the conversation closes
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as unread. It stays highlighted in your inbox until you open it.'**
+  String get messagesMarkedUnreadToast;
+
   /// Profile action opening a direct-message conversation with this runner
   ///
   /// In en, this message translates to:

@@ -4994,6 +4994,8 @@
   "messagesMutedMark": "En sourdine",
   "messagesMutedToast": "En sourdine. Vous ne serez pas notifié des nouveaux messages ici.",
   "messagesArchivedToast": "Archivée. Un nouveau message la ramènera dans votre boîte de réception.",
+  "messagesMarkUnread": "Marquer comme non lue",
+  "messagesMarkedUnreadToast": "Marquée comme non lue. Elle reste mise en évidence dans votre boîte de réception jusqu'à ce que vous l'ouvriez.",
   "messagesOptionsHint": "afficher les options du message",
   "profileMessage": "Message",
   "routeDetailSendToFollower": "Envoyer à un abonné",

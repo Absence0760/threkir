@@ -17747,6 +17747,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Archiviert. Eine neue Nachricht holt sie in deinen Posteingang zurück.';
 
   @override
+  String get messagesMarkUnread => 'Als ungelesen markieren';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Als ungelesen markiert. Die Unterhaltung bleibt in deinem Posteingang hervorgehoben, bis du sie öffnest.';
+
+  @override
   String get profileMessage => 'Nachricht';
 
   @override

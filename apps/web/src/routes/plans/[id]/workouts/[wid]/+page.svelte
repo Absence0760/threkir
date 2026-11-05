@@ -14,7 +14,8 @@
 		type RelinkCandidateRun
 	} from '#lib/core/data.ts';
 	import { fmtHms, isWorkoutCompleted, isWorkoutSkipped } from '#lib/training/training.ts';
-	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
+	import { workoutKindLabel, WORKOUT_ADVICE_KEY } from '#lib/training/workout_labels.ts';
+	import { workoutAdviceKind } from '#lib/training/plan_advice.ts';
 	import { isEditedByCoach } from '#lib/training/workout_prescription.ts';
 	import { hrTargetLabel, rpeTargetLabel } from '#lib/training/workout_target_label.ts';
 	import { hrPrescriptionEnabled } from '#lib/training/hr_prescription_gate.ts';
@@ -548,31 +549,7 @@
 
 		<section class="card advice">
 			<h3>{t('workoutDetail.howToRunIt')}</h3>
-			{#if workout.kind === 'easy' || workout.kind === 'recovery'}
-				<p>{t('workoutDetail.adviceEasy')}</p>
-			{:else if workout.kind === 'long'}
-				<p>
-					{t('workoutDetail.adviceLong')}
-				</p>
-			{:else if workout.kind === 'tempo'}
-				<p>
-					{t('workoutDetail.adviceTempo')}
-				</p>
-			{:else if workout.kind === 'interval'}
-				<p>
-					{t('workoutDetail.adviceInterval')}
-				</p>
-			{:else if workout.kind === 'marathon_pace'}
-				<p>
-					{t('workoutDetail.adviceMarathonPace')}
-				</p>
-			{:else if workout.kind === 'walk_run'}
-				<p>{t('workoutDetail.adviceWalkRun')}</p>
-			{:else if workout.kind === 'race'}
-				<p>{t('workoutDetail.adviceRace')}</p>
-			{:else}
-				<p>{t('workoutDetail.adviceRest')}</p>
-			{/if}
+			<p data-testid="workout-advice">{t(WORKOUT_ADVICE_KEY[workoutAdviceKind(workout)])}</p>
 		</section>
 	</div>
 

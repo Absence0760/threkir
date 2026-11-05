@@ -80,4 +80,37 @@ test.describe('/plans/[id] — workout and plan states', () => {
 		await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByTestId('assigned-by-coach')).toHaveCount(0);
 	});
+
+	test('a generated week reads its advice in the runner\'s language, and a written note wins', async ({
+		page
+	}) => {
+		const admin = getAdminClient();
+		const weeks = (await readRows(
+			'plan_weeks by plan_id',
+			admin
+				.from('plan_weeks')
+				.select('id, week_index, phase, notes')
+				.eq('plan_id', SYDNEY_HALF_PLAN_ID)
+				.order('week_index')
+		)) as { id: string; week_index: number; phase: string; notes: string | null }[];
+		const taper = weeks.find((w) => w.phase === 'taper');
+		const race = weeks.find((w) => w.phase === 'race');
+		expect(taper?.notes ?? null, 'the seed stores no generated taper note').toBeNull();
+		expect(race).toBeTruthy();
+
+		await admin.from('plan_weeks').update({ notes: 'Bring the race-day gels.' }).eq('id', race!.id);
+		try {
+			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+			const weekCards = page.locator('.weeks .week');
+			await expect(weekCards.nth(taper!.week_index).getByTestId('plan-week-note')).toHaveText(
+				'Taper — volume comes down, sharpness stays.',
+				{ timeout: 10_000 }
+			);
+			await expect(weekCards.nth(race!.week_index).getByTestId('plan-week-note')).toHaveText(
+				'Bring the race-day gels.'
+			);
+		} finally {
+			await admin.from('plan_weeks').update({ notes: null }).eq('id', race!.id);
+		}
+	});
 });

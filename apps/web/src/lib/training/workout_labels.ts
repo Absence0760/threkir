@@ -1,6 +1,12 @@
 import { m } from '#lib/i18n/store.svelte.ts';
 import type { MessageKey } from '#lib/i18n/messages.ts';
 import type { WorkoutKind, PlanPhase } from './training';
+import {
+	weekAdviceKind,
+	type AdviceWeekWorkout,
+	type WeekAdviceKind,
+	type WorkoutAdviceKind
+} from './plan_advice.ts';
 
 // Presentation-layer labels for the training enums. They live here rather
 // than in training.ts so that module stays a pure, locale-free twin of
@@ -59,3 +65,36 @@ export function planPhaseLabel(phase: string): string {
 	const key = PLAN_PHASE_KEY[phase as PlanPhase];
 	return key ? m(key) : phase;
 }
+
+const WEEK_ADVICE_KEY: Record<WeekAdviceKind, MessageKey> = {
+	race: 'planDetail.weekAdvice.race',
+	taper: 'planDetail.weekAdvice.taper',
+	graduation: 'planDetail.weekAdvice.graduation',
+	walk_breaks: 'planDetail.weekAdvice.walkBreaks',
+	back_to_back: 'planDetail.weekAdvice.backToBack',
+};
+
+/// The note a week shows: the runner's or coach's own when the row holds one,
+/// else the advice its phase and workouts carry (plan_advice.ts).
+export function planWeekNote(
+	notes: string | null | undefined,
+	phase: string,
+	workouts: readonly AdviceWeekWorkout[]
+): string | null {
+	if (notes) return notes;
+	const kind = weekAdviceKind(phase, workouts);
+	return kind ? m(WEEK_ADVICE_KEY[kind]) : null;
+}
+
+export const WORKOUT_ADVICE_KEY: Record<WorkoutAdviceKind, MessageKey> = {
+	easy: 'workoutDetail.adviceEasy',
+	long: 'workoutDetail.adviceLong',
+	time_on_feet: 'workoutDetail.adviceTimeOnFeet',
+	tempo: 'workoutDetail.adviceTempo',
+	interval: 'workoutDetail.adviceInterval',
+	marathon_pace: 'workoutDetail.adviceMarathonPace',
+	walk_run: 'workoutDetail.adviceWalkRun',
+	race: 'workoutDetail.adviceRace',
+	ultra_race: 'workoutDetail.adviceUltraRace',
+	rest: 'workoutDetail.adviceRest',
+};

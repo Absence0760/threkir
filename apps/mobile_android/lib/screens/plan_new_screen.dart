@@ -1586,7 +1586,7 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                     height: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.edit_note, size: 18),
+                : const Icon(Icons.edit_note, size: AppIconSize.standard),
             label: Text(_aiBusy ? l10n.planNewAiWorking : l10n.planNewAiButton),
           ),
           if (error != null) ...[
@@ -1712,7 +1712,8 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.library_books_outlined, size: 18),
+                      : const Icon(Icons.library_books_outlined,
+                          size: AppIconSize.standard),
                   label: Text(
                     _creatingStarter
                         ? l10n.planNewStarterCreating
@@ -1724,13 +1725,15 @@ class _PlanNewScreenState extends State<PlanNewScreen> {
                 TextButton.icon(
                   key: const Key('planNewImport'),
                   onPressed: _importPlan,
-                  icon: const Icon(Icons.content_paste, size: 18),
+                  icon: const Icon(Icons.content_paste,
+                      size: AppIconSize.standard),
                   label: Text(l10n.planNewImportButton),
                 ),
                 TextButton.icon(
                   key: const Key('planNewSeason'),
                   onPressed: _openSeason,
-                  icon: const Icon(Icons.event_note, size: 18),
+                  icon: const Icon(Icons.event_note,
+                      size: AppIconSize.standard),
                   label: Text(l10n.seasonPlanTitle),
                 ),
               ],

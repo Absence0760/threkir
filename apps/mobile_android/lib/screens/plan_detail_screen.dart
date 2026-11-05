@@ -2654,7 +2654,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check, size: 16, color: theme.colorScheme.primary),
+                Icon(Icons.check,
+                    size: AppIconSize.inline, color: theme.colorScheme.primary),
                 const SizedBox(width: 8),
                 Expanded(
                     child: Text(rules[i], style: theme.textTheme.bodySmall)),
@@ -2682,7 +2683,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         children: [
           OutlinedButton.icon(
             onPressed: _publishing ? null : () => _publishToClub(p),
-            icon: _publishing ? spinner() : const Icon(Icons.publish, size: 18),
+            icon: _publishing
+                ? spinner()
+                : const Icon(Icons.publish, size: AppIconSize.standard),
             label: Text(l10n.planDetailPublishTooltip),
           ),
           const SizedBox(height: 12),
@@ -2704,7 +2707,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                 : (published ? _unpublishFromLibrary : () => _publishToLibrary(p)),
             icon: _libraryBusy
                 ? spinner()
-                : Icon(published ? Icons.public_off : Icons.public, size: 18),
+                : Icon(published ? Icons.public_off : Icons.public,
+                    size: AppIconSize.standard),
             label: Text(published
                 ? l10n.planDetailUnpublishLibrary
                 : l10n.planDetailPublishLibrary),
@@ -2794,7 +2798,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                   for (var i = 0; i < phases.length; i++) ...[
                     if (i > 0)
                       Icon(Icons.chevron_right,
-                          size: 14, color: theme.colorScheme.outline),
+                          size: AppIconSize.dense,
+                          color: theme.colorScheme.outline),
                     Text(
                       planPhaseLabel(l10n, planPhaseFromDb(phases[i]))
                           .toUpperCase(),
@@ -2815,7 +2820,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
               Row(
                 children: [
                   Icon(Icons.trending_up,
-                      size: 18, color: theme.colorScheme.primary),
+                      size: AppIconSize.standard,
+                      color: theme.colorScheme.primary),
                   const SizedBox(width: 8),
                   Flexible(
                     child: Text(l10n.planDetailLongestLongRun(fmtKm(longest)),
@@ -2865,7 +2871,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         alignment: Alignment.centerLeft,
         child: OutlinedButton.icon(
           onPressed: _bulkBusy ? null : () => _openAdjustPlan(p),
-          icon: const Icon(Icons.tune, size: 18),
+          icon: const Icon(Icons.tune, size: AppIconSize.standard),
           label: Text(l10n.planDetailAdjustPlan),
         ),
       ),
@@ -3349,7 +3355,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                   tooltip: l10n.planDetailWeekActions(w.weekIndex + 1),
                   enabled: !_bulkBusy,
                   icon: Icon(Icons.more_vert,
-                      size: 18, color: theme.colorScheme.outline),
+                      size: AppIconSize.standard,
+                      color: theme.colorScheme.outline),
                   onSelected: (a) => switch (a) {
                     _WeekMenu.duplicate => _duplicateWeek(p, w),
                     _WeekMenu.recovery => _markWeekRecovery(p, w),

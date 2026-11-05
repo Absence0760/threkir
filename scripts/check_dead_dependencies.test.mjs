@@ -85,6 +85,14 @@ test('scanSource reads a Deno npm: specifier as its package, version and subpath
 	assert.ok(usage.schemes.has('npm'));
 });
 
+test('scanSource marks a Deno npm: specifier as resolved from the root manifest, and a bare import not', () => {
+	const usage = scanSource(
+		["import { createClient } from 'npm:@supabase/supabase-js@2.118.0';", "import kit from 'fixture-bare';"].join('\n'),
+	);
+	assert.deepEqual([...usage.rootResolved], ['@supabase/supabase-js']);
+	assert.ok(usage.specifiers.has('fixture-bare'));
+});
+
 test('npmSpecifierPackage rejects a specifier that names no package', () => {
 	assert.equal(npmSpecifierPackage('npm:'), null);
 	assert.equal(npmSpecifierPackage('npm:@scope'), null);
@@ -324,6 +332,39 @@ test('a root declaration something outside the members reads is not redundant', 
 		outside: specifiers(['html-to-image']),
 	});
 	assert.deepEqual(errors, []);
+});
+
+// apps/backend's Edge Functions import `npm:@supabase/supabase-js@<exact>`,
+// which deno resolves out of the ROOT manifest's install, while apps/web
+// declares its own range. The root copy is the one the specifier reads.
+test('a root declaration a Deno npm: specifier inside a member reads is not redundant', () => {
+	const usage = usageOf({ specifiers: new Set(['fixture-deno']), rootResolved: new Set(['fixture-deno']) });
+	const { errors } = run({
+		manifests: [
+			{ dir: '.', deps: ['fixture-deno'] },
+			{ dir: 'apps/web', deps: ['fixture-deno'] },
+		],
+		usage,
+		outside: emptyUsage(),
+	});
+	assert.deepEqual(errors, []);
+});
+
+test('a root declaration a member reads only by a bare import is still redundant beside a Deno read of another package', () => {
+	const usage = usageOf({
+		specifiers: new Set(['fixture-deno', 'fixture-bare']),
+		rootResolved: new Set(['fixture-deno']),
+	});
+	const { errors } = run({
+		manifests: [
+			{ dir: '.', deps: ['fixture-bare'] },
+			{ dir: 'apps/web', deps: ['fixture-bare'] },
+		],
+		usage,
+		outside: emptyUsage(),
+	});
+	assert.equal(errors.length, 1);
+	assert.match(errors[0] ?? '', /^\.:fixture-bare/);
 });
 
 test('reading no manifest at all is a failure, not a vacuous pass', () => {

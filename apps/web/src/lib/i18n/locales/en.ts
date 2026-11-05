@@ -3205,6 +3205,8 @@ export const en = {
 	"messages.mutedMark": "Muted",
 	"messages.mutedToast": "Muted. You won't be notified about new messages here.",
 	"messages.archivedToast": "Archived. A new message brings it back to your inbox.",
+	"messages.markUnread": "Mark as unread",
+	"messages.markedUnreadToast": "Marked as unread. It stays highlighted in your inbox until you open it.",
 	"messages.aiTag": "AI",
 	"messages.aiTagSr": "AI-generated",
 	"messages.coachRowIntro": "Ask about your training, your plan or a run.",

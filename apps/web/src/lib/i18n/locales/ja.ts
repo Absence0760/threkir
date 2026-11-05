@@ -3187,6 +3187,8 @@ export const messages = {
 	"messages.mutedMark": "ミュート中",
 	"messages.mutedToast": "ミュートしました。この会話の新しいメッセージは通知されません。",
 	"messages.archivedToast": "アーカイブしました。新しいメッセージが届くと受信箱に戻ります。",
+	"messages.markUnread": "未読にする",
+	"messages.markedUnreadToast": "未読にしました。開くまで受信箱で目立つように表示されます。",
 	"messages.aiTag": "AI",
 	"messages.aiTagSr": "AIによる生成",
 	"messages.coachRowIntro": "トレーニング、プラン、ランについて質問できます。",

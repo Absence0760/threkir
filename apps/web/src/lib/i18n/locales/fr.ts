@@ -3192,6 +3192,8 @@ export const messages = {
 	"messages.mutedMark": "En sourdine",
 	"messages.mutedToast": "En sourdine. Vous ne serez pas notifié des nouveaux messages ici.",
 	"messages.archivedToast": "Archivée. Un nouveau message la ramènera dans votre boîte de réception.",
+	"messages.markUnread": "Marquer comme non lue",
+	"messages.markedUnreadToast": "Marquée comme non lue. Elle reste mise en évidence dans votre boîte de réception jusqu'à ce que vous l'ouvriez.",
 	"messages.aiTag": "IA",
 	"messages.aiTagSr": "Généré par l'IA",
 	"messages.coachRowIntro": "Posez vos questions sur votre entraînement, votre plan ou une course.",

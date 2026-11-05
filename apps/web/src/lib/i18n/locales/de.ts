@@ -3192,6 +3192,8 @@ export const messages = {
 	"messages.mutedMark": "Stummgeschaltet",
 	"messages.mutedToast": "Stummgeschaltet. Du wirst über neue Nachrichten hier nicht benachrichtigt.",
 	"messages.archivedToast": "Archiviert. Eine neue Nachricht holt sie in deinen Posteingang zurück.",
+	"messages.markUnread": "Als ungelesen markieren",
+	"messages.markedUnreadToast": "Als ungelesen markiert. Die Unterhaltung bleibt in deinem Posteingang hervorgehoben, bis du sie öffnest.",
 	"messages.aiTag": "KI",
 	"messages.aiTagSr": "KI-generiert",
 	"messages.coachRowIntro": "Frag nach deinem Training, deinem Plan oder einem Lauf.",

@@ -7,6 +7,7 @@
 	import { dmUnreadStore } from '#lib/stores/dm_unread.svelte.ts';
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { messagesInbox } from '#lib/stores/messages_inbox.svelte.ts';
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
@@ -91,7 +92,17 @@
 			(conversationId ? messagesInbox.writtenFlag(conversationId, 'archived') : undefined) ??
 			false
 	);
+	const markedUnread = $derived(
+		activeThread?.markedUnread ??
+			(conversationId ? messagesInbox.writtenFlag(conversationId, 'markedUnread') : undefined) ??
+			false
+	);
 	let conversationBusy = $state(false);
+	// Mark as unread leaves the conversation, so the mark is not cleared by the
+	// open pane on the way out; each conversation's mark is cleared at most
+	// once per open, so a refused clear is not retried in a loop.
+	let leavingUnread = $state<string | null>(null);
+	const unreadClearTried = new Set<string>();
 	// The route the viewer just deleted for themselves. The pane says so until
 	// they undo or leave; leaving commits the delete (UndoBar flushes on
 	// navigation).
@@ -105,6 +116,8 @@
 		// above the composer made it read as an error in the new conversation.
 		sendError = null;
 		actionError = null;
+		leavingUnread = null;
+		unreadClearTried.clear();
 		if (deletedHere !== id) deletedHere = null;
 		if (!id || !auth.user) {
 			messages = [];
@@ -280,6 +293,43 @@
 			showToast(tr('profile.unblockError', { error: errorCopy(e, tr, 'profile.unblockError') }), 'error');
 		} finally {
 			blockBusy = false;
+		}
+	}
+
+	// Opening a conversation the viewer marked unread clears the mark, whether
+	// the row was in the list when the pane opened or arrived with a later read.
+	$effect(() => {
+		const id = conversationId;
+		const route = activeId;
+		if (!id || !route || !markedUnread || leavingUnread === id) return;
+		if (loadingThread || threadError || unreadClearTried.has(id)) return;
+		unreadClearTried.add(id);
+		void clearUnreadMark(id, route);
+	});
+
+	async function clearUnreadMark(id: string, route: string) {
+		try {
+			await messagesInbox.setMarkedUnread(id, false);
+			if (route === activeId) messagesInbox.markRead(route);
+		} catch (e) {
+			console.warn('message thread unread-mark clear failed', e);
+		}
+	}
+
+	async function markUnread() {
+		const id = conversationId;
+		if (!id || conversationBusy) return;
+		conversationBusy = true;
+		leavingUnread = id;
+		try {
+			await messagesInbox.setMarkedUnread(id, true);
+			showToast(tr('messages.markedUnreadToast'), 'success');
+			await goto('/messages');
+		} catch (e) {
+			leavingUnread = null;
+			showToast(tr('messages.conversationActionFailed', { error: errorCopy(e, tr, 'messages.conversationActionFailed') }), 'error');
+		} finally {
+			conversationBusy = false;
 		}
 	}
 
@@ -465,6 +515,17 @@
 					onclick={() => void toggleArchived()}
 				>
 					<span class="material-symbols" aria-hidden="true">{archived ? 'unarchive' : 'archive'}</span>
+				</button>
+				<button
+					type="button"
+					class="icon-action"
+					data-testid="dm-mark-unread"
+					disabled={conversationBusy}
+					title={tr('messages.markUnread')}
+					aria-label={tr('messages.markUnread')}
+					onclick={() => void markUnread()}
+				>
+					<span class="material-symbols" aria-hidden="true">mail</span>
 				</button>
 				<button
 					type="button"

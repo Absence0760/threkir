@@ -16,7 +16,7 @@ import {
 	type ConversationWrite,
 } from './dm_conversation_writes.ts';
 
-type Row = { conversationId: string; muted: boolean; archived: boolean; lastBody: string };
+type Row = { conversationId: string; muted: boolean; archived: boolean; markedUnread?: boolean; lastBody: string };
 
 const row = (conversationId: string, lastBody: string, muted = false, archived = false): Row => ({
 	conversationId,
@@ -39,6 +39,16 @@ test('a read started before the write landed keeps the write; one started after 
 	assert.equal(overlayConversationWrites([row('a', 'x')], [write], 999)[0].archived, true);
 	assert.equal(overlayConversationWrites([row('a', 'x')], [write], 1_000)[0].archived, true);
 	assert.equal(overlayConversationWrites([row('a', 'x', false, false)], [write], 1_001)[0].archived, false);
+});
+
+test('a mark-unread write rides beside a mute on the same row and leaves it alone', () => {
+	const mark: ConversationWrite = { conversationId: 'a', flag: 'markedUnread', value: true, at: Infinity };
+	const mute: ConversationWrite = { conversationId: 'a', flag: 'muted', value: true, at: 1_000 };
+	const [out] = overlayConversationWrites([row('a', 'x')], [mark, mute], 2_000);
+	assert.equal(out.markedUnread, true);
+	assert.equal(out.muted, false);
+	const [reverted] = revertConversationFlag([{ ...row('a', 'x'), markedUnread: true }], 'a', 'markedUnread', false);
+	assert.equal(reverted.markedUnread, false);
 });
 
 test('only the writes a read already carries are settled', () => {

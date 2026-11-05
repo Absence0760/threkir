@@ -25,6 +25,7 @@ import {
 	hideDmConversation,
 	setDmConversationArchived,
 	setDmConversationMuted,
+	setDmConversationUnread,
 	type DmThread,
 	type LatestCoachMessage,
 } from '#lib/core/data.ts';
@@ -194,6 +195,12 @@ class MessagesInboxStore {
 	/// inbox and the Archived list, where Unarchive is one tap away.
 	setArchived(conversationId: string, archived: boolean) {
 		return this.#setFlag(conversationId, 'archived', archived, setDmConversationArchived);
+	}
+
+	/// Marks a conversation unread, or clears the mark when it is opened. The
+	/// row shows one unread at once; the badge re-reads once the write lands.
+	setMarkedUnread(conversationId: string, markedUnread: boolean) {
+		return this.#setFlag(conversationId, 'markedUnread', markedUnread, setDmConversationUnread);
 	}
 
 	/// The write is held in #writes until a list read carries it, so a poll

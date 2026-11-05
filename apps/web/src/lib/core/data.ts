@@ -11038,6 +11038,9 @@ export interface DmThread {
 	muted: boolean;
 	/// The viewer archived it and nothing newer has arrived since.
 	archived: boolean;
+	/// The viewer marked it unread (migration 20271109000020). `unread`
+	/// already counts it as at least one; opening the conversation clears it.
+	markedUnread: boolean;
 }
 
 /// The newest message of the runner's current (not archived) Coach
@@ -11123,6 +11126,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		unread: number;
 		muted: boolean;
 		archived: boolean;
+		marked_unread: boolean;
 	}[]).map((r) => ({
 		conversationId: r.conversation_id,
 		partnerId: r.partner_id,
@@ -11136,6 +11140,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		unread: Number(r.unread) || 0,
 		muted: r.muted === true,
 		archived: r.archived === true,
+		markedUnread: r.marked_unread === true,
 	}));
 	const byPartner = new Map(
 		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
@@ -11282,6 +11287,17 @@ export async function setDmConversationArchived(
 	const { error } = await supabase.rpc('set_conversation_archived', {
 		p_conversation_id: conversationId,
 		p_archived: archived,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Marks a conversation unread for the viewer, or clears the mark (migration
+/// 20271109000020). `dm_threads()` counts a marked conversation as at least
+/// one unread. The partner's `read_at` is not touched, so they learn nothing.
+export async function setDmConversationUnread(conversationId: string, unread: boolean): Promise<void> {
+	const { error } = await supabase.rpc('set_conversation_unread', {
+		p_conversation_id: conversationId,
+		p_unread: unread,
 	});
 	if (error) throw dbError(error);
 }

@@ -188,6 +188,7 @@
 							{:else}
 								{@const t = entry.thread}
 								{@const routeId = dmThreadRouteId(t)}
+								{@const unread = Math.max(t.unread, t.markedUnread ? 1 : 0)}
 								{@const name = t.partnerId
 									? (t.partnerName ?? m('messages.runnerFallback'))
 									: m('messages.deletedAccount')}
@@ -210,7 +211,7 @@
 														<span class="visually-hidden">{m('messages.mutedMark')}</span>
 													</span>
 												{/if}
-												{#if t.unread > 0}<span class="badge" class:quiet={t.muted}>{t.unread}</span>{/if}
+												{#if unread > 0}<span class="badge" class:quiet={t.muted} data-testid="inbox-unread-count">{unread}</span>{/if}
 											</span>
 											<span class="preview" class:unsent={t.lastUnsent}
 												>{t.lastFromMe ? m('messages.youPrefix') : ''}{t.lastUnsent

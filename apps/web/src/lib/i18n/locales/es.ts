@@ -3192,6 +3192,8 @@ export const messages = {
 	"messages.mutedMark": "Silenciada",
 	"messages.mutedToast": "Silenciada. No recibirás avisos de los mensajes nuevos aquí.",
 	"messages.archivedToast": "Archivada. Un mensaje nuevo la devolverá a tu bandeja de entrada.",
+	"messages.markUnread": "Marcar como no leída",
+	"messages.markedUnreadToast": "Marcada como no leída. Seguirá destacada en tu bandeja de entrada hasta que la abras.",
 	"messages.aiTag": "IA",
 	"messages.aiTagSr": "Generado por IA",
 	"messages.coachRowIntro": "Pregunta sobre tu entrenamiento, tu plan o una carrera.",

@@ -1,6 +1,6 @@
 /// The advice line a plan week or a workout shows, read from what the row
 /// already holds rather than from an English sentence the generator saved
-/// into `notes` (decisions § 2347). Pure; each surface localizes the kind.
+/// into `notes` (decisions § 2348). Pure; each surface localizes the kind.
 ///
 /// Mirrors `apps/web/src/lib/training/plan_advice.ts` — keep in lockstep
 /// (TS↔Dart parity pair, equal test counts).

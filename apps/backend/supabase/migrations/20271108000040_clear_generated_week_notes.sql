@@ -3,7 +3,7 @@
 -- the couch-to-5K and ultra week lines) and into the ultra long-run and
 -- race-day `plan_workouts.notes`. 20270908000001 cleared the workout
 -- sentences that restated a structure; these were the advice left over
--- (decisions § 2347). Both clients now read the advice from the week's phase
+-- (decisions § 2348). Both clients now read the advice from the week's phase
 -- and workouts and localize it, so the stored copy showed in English in every
 -- locale, in a column the runner or a coach owns. The generator writes null
 -- now; this clears what it already wrote.

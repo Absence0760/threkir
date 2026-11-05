@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/run_share_stats.dart';
 import '../lib/share_look.dart';
+import '../lib/share_placement.dart';
 
 void main() {
   group('RunShareLook.toggleStat', () {
@@ -81,6 +82,32 @@ void main() {
       expect(RunShareLook.fromJson({'layout': 'strip'}).mark, isTrue);
       expect(RunShareLook.fromJson({'mark': 'no'}).mark, isTrue);
       expect(RunShareLook.fromJson({'mark': false}).mark, isFalse);
+    });
+
+    test('each aspect keeps its own placement, and only the current one moves',
+        () {
+      final moved = const RunShareLook(aspect: RunPhotoAspect.post)
+          .withPlacement(const SharePlacement(x: 0.3, y: 0.4, scale: 0.7));
+      expect(moved.placements[RunPhotoAspect.post],
+          const SharePlacement(x: 0.3, y: 0.4, scale: 0.7));
+      expect(moved.placements[RunPhotoAspect.story], SharePlacement.initial);
+      expect(RunShareLook.fromJson(jsonDecode(jsonEncode(moved.toJson()))),
+          moved);
+    });
+
+    test('a bad stored placement fails closed for its aspect and keeps the '
+        'other', () {
+      final look = RunShareLook.fromJson({
+        'placements': {
+          'story': {'x': 9, 'y': 0.5, 'scale': 1},
+          'post': {'x': 0.2, 'y': 0.8, 'scale': 0.6},
+        },
+      });
+      expect(look.placements[RunPhotoAspect.story], SharePlacement.initial);
+      expect(look.placements[RunPhotoAspect.post],
+          const SharePlacement(x: 0.2, y: 0.8, scale: 0.6));
+      expect(RunShareLook.fromJson({'placements': 'top'}).placements,
+          const RunShareLook().placements);
     });
 
     test('an empty or absent stat list is the default set', () {

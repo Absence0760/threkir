@@ -11199,6 +11199,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shareCardChangePhoto => 'Alterar fotografia';
 
   @override
+  String get shareCardPlacementLabel => 'Posição dos dados';
+
+  @override
+  String get shareCardPlacementHint =>
+      'Arraste os dados para os mover, faça pinça para redimensionar e toque duas vezes para os repor.';
+
+  @override
+  String get shareCardPlacementReset => 'Repor posição';
+
+  @override
   String get shareCardPhotoError => 'Não foi possível abrir essa fotografia';
 
   @override
@@ -31239,6 +31249,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get shareCardChangePhoto => 'Trocar foto';
+
+  @override
+  String get shareCardPlacementLabel => 'Posição dos dados';
+
+  @override
+  String get shareCardPlacementHint =>
+      'Arraste os dados para movê-los, faça pinça para redimensionar e toque duas vezes para voltar ao lugar.';
+
+  @override
+  String get shareCardPlacementReset => 'Redefinir posição';
 
   @override
   String get shareCardPhotoError => 'Não foi possível abrir essa foto';

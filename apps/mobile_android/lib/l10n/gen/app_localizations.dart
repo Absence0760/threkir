@@ -18021,6 +18021,24 @@ abstract class AppLocalizations {
   /// **'Change photo'**
   String get shareCardChangePhoto;
 
+  /// Accessible name of the photo share preview's movable title-and-stats block
+  ///
+  /// In en, this message translates to:
+  /// **'Stats position'**
+  String get shareCardPlacementLabel;
+
+  /// Hint under the photo share preview, and the screen-reader hint on it, saying how to move, resize and reset the stats
+  ///
+  /// In en, this message translates to:
+  /// **'Drag the stats to move them, pinch to resize them, double-tap to put them back.'**
+  String get shareCardPlacementHint;
+
+  /// Button below the photo share preview that puts the stats back where they start
+  ///
+  /// In en, this message translates to:
+  /// **'Reset position'**
+  String get shareCardPlacementReset;
+
   /// Banner when the picked photo cannot be loaded
   ///
   /// In en, this message translates to:

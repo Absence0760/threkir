@@ -59,6 +59,7 @@ Persist completed runs locally with distance, duration, average pace, and a map 
 - [x] Edit run title and notes (Android); manual-entry runs also let the user correct distance + duration in the same dialog
 - [x] Share run as GPX (Android)
 - [x] Share run as image card — map + headline stats (Android)
+- [x] Move and resize the stats on a photo share (Android + iOS twin) — drag to move, pinch to resize, double tap or Reset position to restore; clamped inside the canvas and clear of a story's reply bar, kept per aspect, exported where shown (decisions § 2342)
 - [x] Share run on your own photo, or as a transparent stats sticker for a story (Android + iOS twin) — four layouts, three inks, a stat picker with climb and heart rate, story and post sizes, 1080 px exports, Save to Photos, the Threkir mark on every image, and a remembered look; privacy-zone-clipped route outline, decisions § 2248 + § 2250
 - [x] Save a history run as a reusable route (Douglas–Peucker simplified track) (Android)
 - [x] Add a run manually — date/time, duration, distance, optional saved route (Android)
@@ -209,6 +210,7 @@ Pure route-geometry helpers (`offRouteDistanceM`, `routeRemainingM`) are ported 
 - [x] Trace animation (replay run as moving dot with animated trace)
 - [x] Comparison against previous runs on same route — `lib/routes/route_history.ts` ports the mobile filter (same `route_id` + same `metadata.activity_type` + > 100 m, sorted by duration); `RouteHistory.svelte` mounts on `/runs/[id]` and renders the PB / "+Δs behind PB" / "Attempt N of M — PB: H:MM:SS" card. 10 unit tests in `lib/routes/route_history.test.ts`.
 - [x] Share a run as a map card, on your own photo, or as a transparent stats sticker (issue #1273 item 2) — the phone's three styles, four layouts, three inks, story and post sizes and stat picker in a web editor on `/runs/[id]`; photo and sticker drawn on a canvas at 1080 px (EXIF never exported, sticker cropped to its content), the map card now signed with the mark and its tile credit, look remembered per browser, decisions § 2258
+- [x] Move and resize the stats on a photo share — pointer drag, the corner grip, a pinch or the wheel, arrow keys and +/- from the keyboard, and Reset position; the PNG is the preview, so the stats export where the editor shows them (decisions § 2342)
 
 ### Account and integrations management
 

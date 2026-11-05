@@ -1,10 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart'
-    show debugPrint, immutable, listEquals;
+    show debugPrint, immutable, listEquals, mapEquals;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'run_share_stats.dart';
+import 'share_placement.dart';
 
 /// How a stats sticker is laid out.
 ///
@@ -34,13 +35,32 @@ class RunShareLook {
   /// it off; free on every tier.
   final bool mark;
 
+  /// Where the photo style's title and stats sit, kept apart for each aspect:
+  /// a block placed on a tall story does not belong on a post.
+  final Map<RunPhotoAspect, SharePlacement> placements;
+
   const RunShareLook({
     this.layout = RunStickerLayout.stack,
     this.ink = RunShareInk.light,
     this.aspect = RunPhotoAspect.story,
     this.stats = defaultStats,
     this.mark = true,
+    this.placements = defaultPlacements,
   });
+
+  static const defaultPlacements = {
+    RunPhotoAspect.post: SharePlacement.initial,
+    RunPhotoAspect.story: SharePlacement.initial,
+  };
+
+  /// The current aspect's placement.
+  SharePlacement get placement =>
+      placements[aspect] ?? SharePlacement.initial;
+
+  /// `this` with the current aspect's placement set to [placement].
+  RunShareLook withPlacement(SharePlacement placement) => copyWith(
+        placements: {...placements, aspect: placement},
+      );
 
   static const defaultStats = [
     RunShareStatKind.distance,
@@ -58,6 +78,7 @@ class RunShareLook {
     RunPhotoAspect? aspect,
     List<RunShareStatKind>? stats,
     bool? mark,
+    Map<RunPhotoAspect, SharePlacement>? placements,
   }) =>
       RunShareLook(
         layout: layout ?? this.layout,
@@ -65,6 +86,7 @@ class RunShareLook {
         aspect: aspect ?? this.aspect,
         stats: stats ?? this.stats,
         mark: mark ?? this.mark,
+        placements: placements ?? this.placements,
       );
 
   /// [stats] with [kind] added or removed. Never empties the set, and never
@@ -87,6 +109,10 @@ class RunShareLook {
         'aspect': aspect.name,
         'stats': [for (final k in stats) k.name],
         'mark': mark,
+        'placements': {
+          for (final a in RunPhotoAspect.values)
+            a.name: (placements[a] ?? SharePlacement.initial).toJson(),
+        },
       };
 
   /// Reads a stored look, field by field: an unknown or missing value takes
@@ -108,6 +134,7 @@ class RunShareLook {
           if (rawStats.contains(k.name)) k,
     ];
     const d = RunShareLook();
+    final rawPlacements = json['placements'];
     return RunShareLook(
       layout: pick(RunStickerLayout.values, json['layout'], d.layout),
       ink: pick(RunShareInk.values, json['ink'], d.ink),
@@ -116,6 +143,11 @@ class RunShareLook {
           ? defaultStats
           : stats.take(maxStats).toList(growable: false),
       mark: json['mark'] is bool ? json['mark'] as bool : d.mark,
+      placements: {
+        for (final a in RunPhotoAspect.values)
+          a: SharePlacement.fromJson(
+              rawPlacements is Map ? rawPlacements[a.name] : null),
+      },
     );
   }
 
@@ -126,11 +158,18 @@ class RunShareLook {
       other.ink == ink &&
       other.aspect == aspect &&
       other.mark == mark &&
-      listEquals(other.stats, stats);
+      listEquals(other.stats, stats) &&
+      mapEquals(other.placements, placements);
 
   @override
-  int get hashCode =>
-      Object.hash(layout, ink, aspect, mark, Object.hashAll(stats));
+  int get hashCode => Object.hash(
+        layout,
+        ink,
+        aspect,
+        mark,
+        Object.hashAll(stats),
+        Object.hashAll([for (final a in RunPhotoAspect.values) placements[a]]),
+      );
 }
 
 /// Device-local, not a synced setting: see docs/backend/settings.md §

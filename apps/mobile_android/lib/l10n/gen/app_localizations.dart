@@ -32153,6 +32153,72 @@ abstract class AppLocalizations {
   /// **'Your record times stay private. Only this image leaves when you share it.'**
   String get shareCardPrHint;
 
+  /// Label over the chips that pick what a sticker is about: its stats, or an occasion the run marks
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight'**
+  String get shareCardKind;
+
+  /// Sticker kind chip: the run's numbers in a layout
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get shareCardKindStats;
+
+  /// Sticker kind chip: the run's splits as a table or bars
+  ///
+  /// In en, this message translates to:
+  /// **'Splits'**
+  String get shareCardKindSplits;
+
+  /// Sticker kind chip: a personal record the run set
+  ///
+  /// In en, this message translates to:
+  /// **'PR'**
+  String get shareCardKindPr;
+
+  /// Sticker kind chip and the streak sticker's kicker: the day of a daily activity streak the run was
+  ///
+  /// In en, this message translates to:
+  /// **'Streak'**
+  String get shareCardKindStreak;
+
+  /// Sticker kind chip: the race the run finished
+  ///
+  /// In en, this message translates to:
+  /// **'Race'**
+  String get shareCardKindRace;
+
+  /// Sticker kind chip: the badge the run earned
+  ///
+  /// In en, this message translates to:
+  /// **'Badge'**
+  String get shareCardKindBadge;
+
+  /// Heading of the splits sticker, printed uppercase: how many splits and the average pace with its unit
+  ///
+  /// In en, this message translates to:
+  /// **'{count} splits · avg {pace}'**
+  String shareCardSplitsHeading(int count, String pace);
+
+  /// Under the day count on the streak sticker
+  ///
+  /// In en, this message translates to:
+  /// **'days in a row'**
+  String get shareCardStreakCaption;
+
+  /// The race sticker's word for having finished the race, its hero when there is no official time
+  ///
+  /// In en, this message translates to:
+  /// **'Finisher'**
+  String get shareCardRaceFinisher;
+
+  /// Kicker over the badge name on the badge sticker
+  ///
+  /// In en, this message translates to:
+  /// **'Badge earned'**
+  String get shareCardBadgeKicker;
+
   /// Run detail action that opens the share sheet on the PR card
   ///
   /// In en, this message translates to:

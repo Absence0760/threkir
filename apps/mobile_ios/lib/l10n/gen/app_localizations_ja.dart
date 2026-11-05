@@ -18981,6 +18981,41 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardPrHint => '自己ベストのタイムは非公開のままです。共有されるのはこの画像だけです。';
 
   @override
+  String get shareCardKind => 'ハイライト';
+
+  @override
+  String get shareCardKindStats => '数値';
+
+  @override
+  String get shareCardKindSplits => 'スプリット';
+
+  @override
+  String get shareCardKindPr => '自己ベスト';
+
+  @override
+  String get shareCardKindStreak => '連続記録';
+
+  @override
+  String get shareCardKindRace => 'レース';
+
+  @override
+  String get shareCardKindBadge => 'バッジ';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$countスプリット · 平均 $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => '日連続';
+
+  @override
+  String get shareCardRaceFinisher => '完走';
+
+  @override
+  String get shareCardBadgeKicker => 'バッジ獲得';
+
+  @override
   String get runDetailSharePr => '自己ベストカードを共有';
 
   @override

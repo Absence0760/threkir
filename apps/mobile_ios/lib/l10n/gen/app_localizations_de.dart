@@ -19949,6 +19949,41 @@ class AppLocalizationsDe extends AppLocalizations {
       'Deine Bestzeiten bleiben privat. Nur dieses Bild wird geteilt.';
 
   @override
+  String get shareCardKind => 'Fokus';
+
+  @override
+  String get shareCardKindStats => 'Werte';
+
+  @override
+  String get shareCardKindSplits => 'Splits';
+
+  @override
+  String get shareCardKindPr => 'Bestzeit';
+
+  @override
+  String get shareCardKindStreak => 'Serie';
+
+  @override
+  String get shareCardKindRace => 'Wettkampf';
+
+  @override
+  String get shareCardKindBadge => 'Abzeichen';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count Splits · Ø $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'Tage in Folge';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Abzeichen erhalten';
+
+  @override
   String get runDetailSharePr => 'Bestzeit-Karte teilen';
 
   @override

@@ -21,6 +21,8 @@ import 'map_attribution.dart';
 import '../l10n/date_format.dart';
 import '../map_tile_readiness.dart';
 import 'plan_recap_card.dart' show planRecapBracketLabel;
+import 'badge_grid.dart' show badgeLabelFor, badgeTierLabel;
+import '../run_stats.dart' show RunSplit, computeSplitDurations;
 import '../pr_card.dart';
 import '../activity_type_labels.dart';
 import '../flyover_video_flag.dart';
@@ -102,6 +104,11 @@ Future<void> saveShareImageToGallery(Uint8List png, String name) async {
 /// first); the PR style is offered only when there is one, and
 /// [initialStyle] opens the sheet on it from a personal_record notification.
 ///
+/// [streakDays] is the streak day the run was, as of its own day, and
+/// [badgeLoad] reads the single-run distance badge it earned: with the
+/// records, the run's splits and the race stamped on it, they decide which
+/// occasion stickers the sheet offers.
+///
 /// [pickPhotoOverride] and [saveImageOverride] replace the gallery picker and
 /// the photo-library write so a widget test can drive both without platform
 /// channels.
@@ -113,6 +120,8 @@ Future<void> showRunShareSheet(
   required List<PrivacyZone> privacyZones,
   List<PrCardEntry> records = const [],
   RunShareStyle initialStyle = RunShareStyle.card,
+  int streakDays = 0,
+  RunShareBadgeLoader? badgeLoad,
   @visibleForTesting Future<XFile?> Function()? pickPhotoOverride,
   @visibleForTesting RunShareImageSaver? saveImageOverride,
   @visibleForTesting RunShareUrlOpener? openUrlOverride,
@@ -132,6 +141,8 @@ Future<void> showRunShareSheet(
       title: title,
       privacyZones: privacyZones,
       records: records,
+      streakDays: streakDays,
+      badgeLoad: badgeLoad,
       initialStyle: initialStyle == RunShareStyle.pr && records.isEmpty
           ? RunShareStyle.card
           : initialStyle,
@@ -149,6 +160,12 @@ Future<void> showRunShareSheet(
   );
 }
 
+/// The single-run distance badge a run earned, as the badge sticker prints it.
+typedef RunShareBadge = ({String badgeKey, String tier});
+
+/// Reads the badge a run earned; null when it earned none.
+typedef RunShareBadgeLoader = Future<RunShareBadge?> Function();
+
 class _ShareRunSheet extends StatefulWidget {
   final Run run;
   final Preferences preferences;
@@ -156,6 +173,8 @@ class _ShareRunSheet extends StatefulWidget {
   final List<PrivacyZone> privacyZones;
   final List<PrCardEntry> records;
   final RunShareStyle initialStyle;
+  final int streakDays;
+  final RunShareBadgeLoader? badgeLoad;
   final Future<XFile?> Function()? pickPhotoOverride;
   final RunShareImageSaver saveImage;
   final RunShareUrlOpener openUrl;
@@ -169,6 +188,8 @@ class _ShareRunSheet extends StatefulWidget {
     required this.privacyZones,
     required this.records,
     required this.initialStyle,
+    this.streakDays = 0,
+    this.badgeLoad,
     required this.saveImage,
     required this.openUrl,
     this.pickPhotoOverride,
@@ -195,10 +216,133 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   File? _photo;
   bool _picking = false;
 
+  RunShareBadge? _badge;
+
+  /// The run's splits, from its full track: the clipped share line would
+  /// drop the first and last km. Mile ticks for a mile runner.
+  late final List<RunSplit> _splits = computeSplitDurations(
+    widget.run.track,
+    widget.preferences.unit == DistanceUnit.mi ? 1609.344 : 1000,
+    widget.run.startedAt,
+    totalDistanceMetres: widget.run.distanceMetres,
+  );
+
+  /// The race the run is linked to, from the result stamped on it: the
+  /// official chip time when there is one.
+  late final ({String name, String? time})? _race = () {
+    final meta = widget.run.metadata;
+    final name = (meta?['race_name'] as String?)?.trim() ?? '';
+    if (name.isEmpty) return null;
+    final time = (meta?['chip_time'] as String?)?.trim();
+    return (name: name, time: time == null || time.isEmpty ? null : time);
+  }();
+
+  List<RunStickerKind> get _offeredKinds => offeredStickerKinds(
+        RunStickerOccasions(
+          splits: _splits.length,
+          records: widget.records.length,
+          streakDays: widget.streakDays,
+          race: _race != null,
+          badge: _badge != null,
+          route: runShareCardTrack(widget.run, widget.privacyZones).length >= 2,
+        ),
+      );
+
+  /// The kind this run prints: the remembered one when the run has its data.
+  RunStickerKind get _kind => stickerKindFor(_look.kind, _offeredKinds);
+
+  bool get _usesKinds =>
+      _style == RunShareStyle.sticker || _style == RunShareStyle.photo;
+
   @override
   void initState() {
     super.initState();
     unawaited(_restoreLook());
+    unawaited(_loadBadge());
+  }
+
+  /// L4: a failed read leaves the badge sticker unoffered and nothing else.
+  Future<void> _loadBadge() async {
+    final load = widget.badgeLoad;
+    if (load == null) return;
+    try {
+      final badge = await load();
+      if (mounted && badge != null) setState(() => _badge = badge);
+    } catch (e) {
+      debugPrint('share badge read failed: $e');
+    }
+  }
+
+  /// The occasion sticker the current kind draws, or null for the stats.
+  RunOccasionBody? _occasion(AppLocalizations l10n) {
+    if (!_usesKinds) return null;
+    final hasRoute =
+        runShareCardTrack(widget.run, widget.privacyZones).length >= 2;
+    switch (_kind) {
+      case RunStickerKind.stats:
+        return null;
+      case RunStickerKind.splits:
+        final unit = widget.preferences.unit;
+        final tick = unit == DistanceUnit.mi ? 1609.344 : 1000.0;
+        final rows = [
+          for (final sp in _splits)
+            SplitsStickerRow(
+              paceSecPerKm: sp.duration.inMilliseconds / tick,
+              metres: tick,
+            ),
+        ];
+        final avg = averageStickerPace(rows);
+        return SplitsStickerBody(
+          l10n.shareCardSplitsHeading(
+            _splits.length,
+            '${UnitFormat.pace(avg, unit)} ${UnitFormat.paceLabel(unit)}',
+          ),
+          [
+            for (final (i, sp) in _splits.indexed)
+              SplitsStickerEntry(
+                '${sp.tick}',
+                UnitFormat.pace(rows[i].paceSecPerKm, unit),
+                rows[i],
+              ),
+          ],
+        );
+      case RunStickerKind.pr:
+        final record = _record!;
+        final improvement = formatPrImprovement(record);
+        return prStickerBody(
+          headline: record.kind == PrCardKind.held
+              ? l10n.shareCardPrHeld
+              : l10n.shareCardPrHeadline,
+          distance: planRecapBracketLabel(l10n, record.distance),
+          time: formatShareDuration(Duration(seconds: record.timeS)),
+          improvement:
+              improvement == null ? null : l10n.shareCardPrFaster(improvement),
+          hasRoute: hasRoute,
+        );
+      case RunStickerKind.streak:
+        return streakStickerBody(
+          kicker: l10n.shareCardKindStreak,
+          days: '${widget.streakDays}',
+          caption: l10n.shareCardStreakCaption,
+        );
+      case RunStickerKind.race:
+        final race = _race!;
+        return raceStickerBody(
+          name: race.name,
+          finisher: l10n.shareCardRaceFinisher,
+          time: race.time,
+          hasRoute: hasRoute,
+        );
+      case RunStickerKind.badge:
+        final badge = _badge!;
+        return badgeStickerBody(
+          kicker: l10n.shareCardBadgeKicker,
+          name: badgeLabelFor(l10n, badge.badgeKey, badge.tier),
+          tier: badgeTierLabel(l10n, badge.tier),
+        );
+      case RunStickerKind.route:
+        return routeStickerBody();
+    }
   }
 
   Future<void> _restoreLook() async {
@@ -264,7 +408,8 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   double get _canvasWidth => switch (_style) {
         RunShareStyle.card => RunShareCard.canvas.width,
         RunShareStyle.photo => RunPhotoShareCard.canvasFor(_look.aspect).width,
-        RunShareStyle.sticker => RunStickerShareCard.canvasWidth(_look),
+        RunShareStyle.sticker => RunStickerShareCard.canvasWidth(_look,
+            occasion: _kind != RunStickerKind.stats),
         RunShareStyle.pr => RunPhotoShareCard.canvasFor(_look.aspect).width,
         RunShareStyle.video ||
         RunShareStyle.versus =>
@@ -481,6 +626,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           photo: FileImage(_photo!),
           look: _look,
           probe: _probe,
+          occasion: _occasion(AppLocalizations.of(context)),
         );
       case RunShareStyle.video:
       case RunShareStyle.versus:
@@ -498,6 +644,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           preferences: widget.preferences,
           privacyZones: widget.privacyZones,
           look: _look,
+          occasion: _occasion(AppLocalizations.of(context)),
         );
     }
   }
@@ -585,6 +732,17 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         ),
       );
 
+  String _kindLabel(AppLocalizations l10n, RunStickerKind kind) =>
+      switch (kind) {
+        RunStickerKind.stats => l10n.shareCardKindStats,
+        RunStickerKind.splits => l10n.shareCardKindSplits,
+        RunStickerKind.pr => l10n.shareCardKindPr,
+        RunStickerKind.streak => l10n.shareCardKindStreak,
+        RunStickerKind.race => l10n.shareCardKindRace,
+        RunStickerKind.badge => l10n.shareCardKindBadge,
+        RunStickerKind.route => l10n.shareCardLayoutRoute,
+      };
+
   String _statLabel(AppLocalizations l10n, RunShareStatKind kind) {
     switch (kind) {
       case RunShareStatKind.distance:
@@ -608,8 +766,26 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     final enabled = !_busy;
     final available = availableShareStats(widget.run);
     final pr = _style == RunShareStyle.pr;
+    final offered = _offeredKinds;
+    final kind = stickerKindFor(_look.kind, offered);
+    final stats = !pr && kind == RunStickerKind.stats;
     return [
-      if (pr && widget.records.length > 1)
+      if (_usesKinds && offered.length > 1)
+        _section(
+          theme,
+          l10n.shareCardKind,
+          ChoiceChipRow<RunStickerKind>(
+            options: [
+              for (final k in offered)
+                ChoiceChipOption(value: k, label: _kindLabel(l10n, k)),
+            ],
+            selected: kind,
+            onChanged:
+                enabled ? (v) => _setLook(_look.copyWith(kind: v)) : null,
+          ),
+        ),
+      if ((pr || (_usesKinds && kind == RunStickerKind.pr)) &&
+          widget.records.length > 1)
         _section(
           theme,
           l10n.shareCardPrRecord,
@@ -625,7 +801,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
             onChanged: enabled ? (v) => setState(() => _prIndex = v) : null,
           ),
         ),
-      if (!pr)
+      if (stats)
       _section(
         theme,
         l10n.shareCardLayout,
@@ -693,7 +869,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
                 enabled ? (v) => _setLook(_look.copyWith(aspect: v)) : null,
           ),
         ),
-      if (!pr)
+      if (stats)
       _section(
         theme,
         l10n.shareCardStats,

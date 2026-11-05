@@ -19931,6 +19931,41 @@ class AppLocalizationsEs extends AppLocalizations {
       'Tus marcas siguen siendo privadas. Al compartir solo sale esta imagen.';
 
   @override
+  String get shareCardKind => 'Destacado';
+
+  @override
+  String get shareCardKindStats => 'Datos';
+
+  @override
+  String get shareCardKindSplits => 'Parciales';
+
+  @override
+  String get shareCardKindPr => 'Mejor marca';
+
+  @override
+  String get shareCardKindStreak => 'Racha';
+
+  @override
+  String get shareCardKindRace => 'Carrera';
+
+  @override
+  String get shareCardKindBadge => 'Insignia';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count parciales · media $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'días seguidos';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Insignia conseguida';
+
+  @override
   String get runDetailSharePr => 'Compartir tarjeta de marca';
 
   @override

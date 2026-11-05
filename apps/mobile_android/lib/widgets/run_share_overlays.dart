@@ -23,16 +23,20 @@ const double shareImageExportWidthPx = 1080;
 /// The colours one [RunShareInk] draws with. Labels take [muted], numbers and
 /// the route take [text]; [shadow] keeps both legible on whatever photo the
 /// image lands on, and [halo] is the soft casing under the route line.
+/// [accent] marks the one figure an occasion sticker singles out, such as the
+/// fastest split: the coral on the white and black inks, white on the coral.
 @immutable
 class RunShareInkSpec {
   final Color text;
   final Color muted;
+  final Color accent;
   final Color shadow;
   final Color halo;
 
   const RunShareInkSpec._({
     required this.text,
     required this.muted,
+    required this.accent,
     required this.shadow,
     required this.halo,
   });
@@ -40,18 +44,21 @@ class RunShareInkSpec {
   static final _light = RunShareInkSpec._(
     text: Colors.white,
     muted: Colors.white.withValues(alpha: 0.85),
+    accent: AppTheme.coral,
     shadow: Colors.black.withValues(alpha: 0.55),
     halo: Colors.black.withValues(alpha: 0.35),
   );
   static final _dark = RunShareInkSpec._(
     text: AppTheme.ink,
     muted: AppTheme.ink.withValues(alpha: 0.8),
+    accent: AppTheme.coralDeep,
     shadow: Colors.white.withValues(alpha: 0.6),
     halo: Colors.white.withValues(alpha: 0.5),
   );
   static final _brand = RunShareInkSpec._(
     text: AppTheme.coral,
     muted: Colors.white.withValues(alpha: 0.9),
+    accent: Colors.white,
     shadow: Colors.black.withValues(alpha: 0.6),
     halo: Colors.black.withValues(alpha: 0.4),
   );
@@ -60,6 +67,12 @@ class RunShareInkSpec {
         RunShareInk.light => _light,
         RunShareInk.dark => _dark,
         RunShareInk.brand => _brand,
+      };
+
+  Color role(RunShareInkRole role) => switch (role) {
+        RunShareInkRole.text => text,
+        RunShareInkRole.muted => muted,
+        RunShareInkRole.accent => accent,
       };
 
   List<Shadow> get shadows => [
@@ -435,6 +448,456 @@ class RunStickerContent extends StatelessWidget {
   }
 }
 
+
+/// Which of an ink's colours a line of an occasion sticker takes.
+enum RunShareInkRole { text, muted, accent }
+
+/// The type step one line of an occasion sticker is set at: [label] the
+/// small uppercase kicker, up to [hero] for a streak's day count. Web's
+/// `OccasionStep`.
+enum OccasionStep { label, title, headline, display, hero }
+
+/// One centred line of an occasion sticker. [maxLines] above 1 wraps; a
+/// single line scales down rather than overflowing the width.
+@immutable
+class OccasionLine {
+  final String text;
+  final OccasionStep step;
+  final RunShareInkRole ink;
+  final int maxLines;
+
+  const OccasionLine(this.text, this.step, this.ink, {this.maxLines = 1});
+}
+
+/// One table row of the splits sticker: the split's number and its pace,
+/// already formatted.
+@immutable
+class SplitsStickerEntry {
+  final String label;
+  final String pace;
+  final SplitsStickerRow row;
+
+  const SplitsStickerEntry(this.label, this.pace, this.row);
+}
+
+/// What an occasion sticker draws, web's `StickerBody` less its stats arm
+/// (which [RunStickerContent] draws): a stack of lines over an optional route
+/// — a record, a streak day, a race, a badge, or the route alone — or the
+/// run's splits.
+sealed class RunOccasionBody {
+  const RunOccasionBody();
+}
+
+class OccasionLinesBody extends RunOccasionBody {
+  final List<OccasionLine> lines;
+
+  /// The route's size, or 0 for none.
+  final double route;
+
+  const OccasionLinesBody(this.lines, {this.route = 0});
+}
+
+class SplitsStickerBody extends RunOccasionBody {
+  final String heading;
+  final List<SplitsStickerEntry> entries;
+
+  const SplitsStickerBody(this.heading, this.entries);
+}
+
+/// The occasion stickers' layout constants, twins of web's in
+/// run_sticker_canvas.ts. The splits cut-overs are derived from these and
+/// [SplitsStickerBudget], never written down.
+abstract final class OccasionLayout {
+  static const double width = 320;
+  static const double lineGap = 6;
+  static const double route = 110;
+  static const double routeSticker = width * 0.82;
+  static const double splitRowH = 30;
+  static const double splitHeadingH = 16;
+  static const double splitHeadingGap = 10;
+  static const double splitBrandGap = 12;
+  static const double splitBarsH = 120;
+  static const double splitBarMin = 0.2;
+  static const double splitSingleW = 220;
+  static const double splitColumnGap = 20;
+  static const double brandMark = 18;
+
+  /// Everything on a splits sticker that is not a row: the padding, the
+  /// heading, the signature and their gaps.
+  static const double splitsChrome = RunStickerShareCard._pad * 2 +
+      splitHeadingH +
+      splitHeadingGap +
+      splitBrandGap +
+      brandMark;
+
+  /// Rows one column holds, for rows set at [rowTextPx].
+  static int splitsCapacity(double rowTextPx) =>
+      splitsColumnCapacity(rowTextPx, splitRowH, splitsChrome);
+}
+
+/// A personal record: what it is, the bracket in the accent, the time, and how
+/// much it beat the old one by.
+OccasionLinesBody prStickerBody({
+  required String headline,
+  required String distance,
+  required String time,
+  String? improvement,
+  required bool hasRoute,
+}) =>
+    OccasionLinesBody([
+      OccasionLine(headline, OccasionStep.label, RunShareInkRole.muted),
+      OccasionLine(distance, OccasionStep.headline, RunShareInkRole.accent),
+      OccasionLine(time, OccasionStep.display, RunShareInkRole.text),
+      if (improvement != null)
+        OccasionLine(improvement, OccasionStep.title, RunShareInkRole.text),
+    ], route: hasRoute ? OccasionLayout.route : 0);
+
+/// A day of a streak: the day count huge, between what it is and what it
+/// means.
+OccasionLinesBody streakStickerBody({
+  required String kicker,
+  required String days,
+  required String caption,
+}) =>
+    OccasionLinesBody([
+      OccasionLine(kicker, OccasionStep.label, RunShareInkRole.muted),
+      OccasionLine(days, OccasionStep.hero, RunShareInkRole.text),
+      OccasionLine(caption, OccasionStep.title, RunShareInkRole.accent),
+    ]);
+
+/// A race finish: with an official time, the time is the hero under the
+/// race; without one, the word Finisher is.
+OccasionLinesBody raceStickerBody({
+  required String name,
+  required String finisher,
+  String? time,
+  required bool hasRoute,
+}) =>
+    OccasionLinesBody(
+      time != null
+          ? [
+              OccasionLine(finisher, OccasionStep.label, RunShareInkRole.muted),
+              OccasionLine(name, OccasionStep.headline, RunShareInkRole.text,
+                  maxLines: 2),
+              OccasionLine(time, OccasionStep.display, RunShareInkRole.accent),
+            ]
+          : [
+              OccasionLine(name, OccasionStep.headline, RunShareInkRole.text,
+                  maxLines: 2),
+              OccasionLine(
+                  finisher, OccasionStep.display, RunShareInkRole.accent),
+            ],
+      route: hasRoute ? OccasionLayout.route : 0,
+    );
+
+/// A badge the run earned: its name, and its tier in the accent.
+OccasionLinesBody badgeStickerBody({
+  required String kicker,
+  required String name,
+  required String tier,
+}) =>
+    OccasionLinesBody([
+      OccasionLine(kicker, OccasionStep.label, RunShareInkRole.muted),
+      OccasionLine(name, OccasionStep.headline, RunShareInkRole.text,
+          maxLines: 2),
+      OccasionLine(tier, OccasionStep.label, RunShareInkRole.accent),
+    ]);
+
+OccasionLinesBody routeStickerBody() =>
+    const OccasionLinesBody([], route: OccasionLayout.routeSticker);
+
+/// An occasion sticker's content and signature, [OccasionLayout.width] wide
+/// with no ground of its own: the twin of web's `layoutBodyContent` for every
+/// body but stats.
+class RunOccasionContent extends StatelessWidget {
+  final RunOccasionBody body;
+  final List<Waypoint> track;
+  final RunShareInkSpec ink;
+  final bool mark;
+
+  const RunOccasionContent({
+    super.key,
+    required this.body,
+    required this.track,
+    required this.ink,
+    this.mark = true,
+  });
+
+  TextStyle? _style(TextTheme text, OccasionStep step) => switch (step) {
+        OccasionStep.label => text.labelMedium
+            ?.copyWith(fontWeight: FontWeight.w700, letterSpacing: 1.6),
+        OccasionStep.title =>
+          text.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        OccasionStep.headline =>
+          text.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+        OccasionStep.display => text.displayLarge?.copyWith(
+            fontWeight: FontWeight.w800, letterSpacing: -0.5, height: 1.05),
+        OccasionStep.hero => text.displayLarge?.copyWith(
+            fontWeight: FontWeight.w800, letterSpacing: -1, height: 1),
+      };
+
+  TextScaler _scale(OccasionStep step) => switch (step) {
+        OccasionStep.display => const TextScaler.linear(1.25),
+        OccasionStep.hero => const TextScaler.linear(1.8),
+        _ => TextScaler.noScaling,
+      };
+
+  Widget _line(TextTheme text, OccasionLine line) {
+    final style = _style(text, line.step)?.copyWith(
+      color: ink.role(line.ink),
+      fontFeatures: const [FontFeature.tabularFigures()],
+      shadows: ink.shadows,
+    );
+    final value =
+        line.step == OccasionStep.label ? line.text.toUpperCase() : line.text;
+    if (line.maxLines > 1) {
+      return Text(
+        value,
+        maxLines: line.maxLines,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        textScaler: _scale(line.step),
+        style: style,
+      );
+    }
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(value,
+          maxLines: 1, textScaler: _scale(line.step), style: style),
+    );
+  }
+
+  Widget _route(double size) => SizedBox.square(
+        dimension: size,
+        child: CustomPaint(
+          painter:
+              RunRouteOutlinePainter(track, color: ink.text, halo: ink.halo),
+        ),
+      );
+
+  Widget _lines(TextTheme text, OccasionLinesBody b) {
+    final route = track.length >= 2 ? b.route : 0.0;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (i, line) in b.lines.indexed) ...[
+          if (i > 0) const SizedBox(height: OccasionLayout.lineGap),
+          _line(text, line),
+        ],
+        if (route > 0) ...[
+          if (b.lines.isNotEmpty) const SizedBox(height: 18),
+          _route(route),
+        ],
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _rows(TextTheme text, List<SplitsStickerEntry> entries, int fastest,
+      double width) {
+    final rowStyle = text.titleLarge?.copyWith(
+      fontWeight: FontWeight.w800,
+      fontFeatures: const [FontFeature.tabularFigures()],
+      shadows: ink.shadows,
+      height: 1,
+    );
+    return SizedBox(
+      width: width,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (i, e) in entries.indexed)
+            SizedBox(
+              height: OccasionLayout.splitRowH,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: SizedBox(
+                  width: width,
+                  child: Row(
+                    children: [
+                      Text(
+                        e.label,
+                        maxLines: 1,
+                        style: rowStyle?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: i == fastest ? ink.accent : ink.muted,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        e.pace,
+                        maxLines: 1,
+                        style: rowStyle?.copyWith(
+                          color: i == fastest ? ink.accent : ink.text,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _splits(TextTheme text, SplitsStickerBody b) {
+    final rowText = text.titleLarge?.fontSize ?? 22;
+    final rows = [for (final e in b.entries) e.row];
+    final fastest = fastestStickerSplit(rows);
+    final form = splitsStickerForm(
+        b.entries.length, OccasionLayout.splitsCapacity(rowText));
+    final Widget table = switch (form) {
+      SplitsStickerForm.single =>
+        _rows(text, b.entries, fastest, OccasionLayout.splitSingleW),
+      SplitsStickerForm.paired => () {
+          final perColumn = (b.entries.length / 2).ceil();
+          const colW =
+              (OccasionLayout.width - OccasionLayout.splitColumnGap) / 2;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _rows(text, b.entries.sublist(0, perColumn), fastest, colW),
+              const SizedBox(width: OccasionLayout.splitColumnGap),
+              _rows(text, b.entries.sublist(perColumn), fastest - perColumn,
+                  colW),
+            ],
+          );
+        }(),
+      SplitsStickerForm.bars => SizedBox(
+          width: OccasionLayout.width,
+          height: OccasionLayout.splitBarsH,
+          child: CustomPaint(
+            painter: SplitBarsPainter(
+              rows: rows,
+              fastest: fastest,
+              average: averageStickerPace(rows),
+              ink: ink,
+            ),
+          ),
+        ),
+    };
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: OccasionLayout.splitHeadingH,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              b.heading.toUpperCase(),
+              maxLines: 1,
+              style: text.labelMedium?.copyWith(
+                color: ink.muted,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.6,
+                height: 1,
+                shadows: ink.shadows,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: OccasionLayout.splitHeadingGap),
+        table,
+        const SizedBox(height: OccasionLayout.splitBrandGap),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final b = body;
+    return SizedBox(
+      width: OccasionLayout.width,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          switch (b) {
+            OccasionLinesBody() => _lines(text, b),
+            SplitsStickerBody() => _splits(text, b),
+          },
+          if (mark)
+            ThrekirShareBrand(
+              color: ink.text,
+              shadows: ink.shadows,
+              markSize: OccasionLayout.brandMark,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One bar per split, height by speed so the faster split stands taller, the
+/// fastest in the accent and a partial tail muted, over a line at the average
+/// pace. Web's `bar` ops.
+class SplitBarsPainter extends CustomPainter {
+  final List<SplitsStickerRow> rows;
+  final int fastest;
+  final double? average;
+  final RunShareInkSpec ink;
+
+  const SplitBarsPainter({
+    required this.rows,
+    required this.fastest,
+    required this.average,
+    required this.ink,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (rows.isEmpty || size.isEmpty) return;
+    final speeds = [
+      for (final r in rows) r.paceSecPerKm > 0 ? 1 / r.paceSecPerKm : 0.0,
+    ];
+    final live = speeds.where((v) => v > 0);
+    if (live.isEmpty) return;
+    final lo = live.reduce((a, b) => a < b ? a : b);
+    final hi = live.reduce((a, b) => a > b ? a : b);
+    double frac(double v) => hi > lo
+        ? OccasionLayout.splitBarMin +
+            (1 - OccasionLayout.splitBarMin) * (v - lo) / (hi - lo)
+        : 1;
+    final gap = rows.length > 60 ? 1.0 : 2.0;
+    final barW = (size.width - gap * (rows.length - 1)) / rows.length;
+    final shadow = Paint()
+      ..color = ink.shadow
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
+    for (var i = 0; i < rows.length; i++) {
+      if (speeds[i] <= 0) continue;
+      final h = size.height * frac(speeds[i]);
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(i * (barW + gap), size.height - h, barW, h),
+        Radius.circular((barW / 2).clamp(0, 3)),
+      );
+      canvas.drawRRect(rect, shadow);
+      canvas.drawRRect(
+        rect,
+        Paint()
+          ..color = i == fastest
+              ? ink.accent
+              : rows[i].partial
+                  ? ink.muted
+                  : ink.text,
+      );
+    }
+    final avg = average;
+    if (avg != null && avg > 0) {
+      final y = size.height - size.height * frac(1 / avg);
+      canvas.drawRect(
+          Rect.fromLTWH(0, y - 0.75, size.width, 1.5), Paint()..color = ink.muted);
+    }
+  }
+
+  @override
+  bool shouldRepaint(SplitBarsPainter oldDelegate) =>
+      !identical(oldDelegate.rows, rows) ||
+      oldDelegate.fastest != fastest ||
+      oldDelegate.average != average ||
+      oldDelegate.ink != ink;
+}
+
 /// The run's stats as a sticker on a TRANSPARENT ground, cropped to its own
 /// content, to be saved and laid onto a story or photo in another app.
 class RunStickerShareCard extends StatelessWidget {
@@ -443,36 +906,68 @@ class RunStickerShareCard extends StatelessWidget {
   final List<PrivacyZone> privacyZones;
   final RunShareLook look;
 
+  /// The occasion sticker to draw in place of the stats; null draws the
+  /// stats in the look's layout.
+  final RunOccasionBody? occasion;
+
   const RunStickerShareCard({
     super.key,
     required this.run,
     required this.preferences,
     required this.privacyZones,
     this.look = const RunShareLook(),
+    this.occasion,
   });
 
   /// The sticker's logical width, padding included: what the export scales to
   /// [shareImageExportWidthPx].
-  static double canvasWidth(RunShareLook look) =>
-      RunStickerContent.widthFor(look.layout) + _pad * 2;
+  static double canvasWidth(RunShareLook look, {bool occasion = false}) =>
+      (occasion ? OccasionLayout.width : RunStickerContent.widthFor(look.layout)) +
+      _pad * 2;
 
   static const double _pad = 16;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.all(_pad),
-      child: RunStickerContent(
-        layout: look.layout,
-        stats:
-            runShareStats(l10n, run, preferences.unit, kinds: look.stats),
-        track: runShareCardTrack(run, privacyZones),
-        ink: RunShareInkSpec.of(look.ink),
-        mark: look.mark,
+      child: runShareBodyContent(
+        context,
+        run: run,
+        preferences: preferences,
+        privacyZones: privacyZones,
+        look: look,
+        occasion: occasion,
       ),
     );
   }
+}
+
+/// The sticker content a look draws: [occasion] when there is one, the
+/// stats in the look's layout otherwise. Shared by the sticker and the photo.
+Widget runShareBodyContent(
+  BuildContext context, {
+  required Run run,
+  required Preferences preferences,
+  required List<PrivacyZone> privacyZones,
+  required RunShareLook look,
+  RunOccasionBody? occasion,
+}) {
+  final track = runShareCardTrack(run, privacyZones);
+  final ink = RunShareInkSpec.of(look.ink);
+  final body = occasion;
+  if (body != null) {
+    return RunOccasionContent(
+        body: body, track: track, ink: ink, mark: look.mark);
+  }
+  return RunStickerContent(
+    layout: look.layout,
+    stats: runShareStats(AppLocalizations.of(context), run, preferences.unit,
+        kinds: look.stats),
+    track: track,
+    ink: ink,
+    mark: look.mark,
+  );
 }
 
 /// Where [RunPhotoShareCard] last laid its title-and-stats block out: the
@@ -512,6 +1007,9 @@ class RunPhotoShareCard extends StatelessWidget {
   /// Told where the block landed on every layout, for the sheet's gestures.
   final SharePlacementProbe? probe;
 
+  /// The occasion sticker to lay over the photo in place of the stats.
+  final RunOccasionBody? occasion;
+
   const RunPhotoShareCard({
     super.key,
     required this.run,
@@ -521,6 +1019,7 @@ class RunPhotoShareCard extends StatelessWidget {
     required this.photo,
     this.look = const RunShareLook(),
     this.probe,
+    this.occasion,
   });
 
   static Size canvasFor(RunPhotoAspect aspect) => switch (aspect) {
@@ -530,7 +1029,6 @@ class RunPhotoShareCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
     final text = Theme.of(context).textTheme;
     final ink = RunShareInkSpec.of(look.ink);
     final size = canvasFor(look.aspect);
@@ -578,13 +1076,13 @@ class RunPhotoShareCard extends StatelessWidget {
                 )
               else
                 const SizedBox.shrink(),
-              RunStickerContent(
-                layout: look.layout,
-                stats:
-                    runShareStats(l10n, run, preferences.unit, kinds: look.stats),
-                track: runShareCardTrack(run, privacyZones),
-                ink: ink,
-                mark: look.mark,
+              runShareBodyContent(
+                context,
+                run: run,
+                preferences: preferences,
+                privacyZones: privacyZones,
+                look: look,
+                occasion: occasion,
               ),
             ],
           ),

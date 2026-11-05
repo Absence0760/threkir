@@ -19972,6 +19972,41 @@ class AppLocalizationsFr extends AppLocalizations {
       'Vos records restent privés. Seule cette image est partagée.';
 
   @override
+  String get shareCardKind => 'À la une';
+
+  @override
+  String get shareCardKindStats => 'Stats';
+
+  @override
+  String get shareCardKindSplits => 'Splits';
+
+  @override
+  String get shareCardKindPr => 'Record';
+
+  @override
+  String get shareCardKindStreak => 'Série';
+
+  @override
+  String get shareCardKindRace => 'Course';
+
+  @override
+  String get shareCardKindBadge => 'Badge';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count splits · moy. $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'jours d\'affilée';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Badge obtenu';
+
+  @override
   String get runDetailSharePr => 'Partager la carte record';
 
   @override

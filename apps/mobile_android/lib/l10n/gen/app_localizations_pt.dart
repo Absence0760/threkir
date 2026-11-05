@@ -19931,6 +19931,41 @@ class AppLocalizationsPt extends AppLocalizations {
       'Os seus recordes continuam privados. Só esta imagem é partilhada.';
 
   @override
+  String get shareCardKind => 'Destaque';
+
+  @override
+  String get shareCardKindStats => 'Dados';
+
+  @override
+  String get shareCardKindSplits => 'Parciais';
+
+  @override
+  String get shareCardKindPr => 'Recorde';
+
+  @override
+  String get shareCardKindStreak => 'Sequência';
+
+  @override
+  String get shareCardKindRace => 'Prova';
+
+  @override
+  String get shareCardKindBadge => 'Medalha';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count parciais · média $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'dias seguidos';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Medalha conquistada';
+
+  @override
   String get runDetailSharePr => 'Partilhar cartão de recorde';
 
   @override
@@ -39979,6 +40014,41 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get shareCardPrHint =>
       'Seus recordes continuam privados. Só esta imagem é compartilhada.';
+
+  @override
+  String get shareCardKind => 'Destaque';
+
+  @override
+  String get shareCardKindStats => 'Dados';
+
+  @override
+  String get shareCardKindSplits => 'Parciais';
+
+  @override
+  String get shareCardKindPr => 'Recorde';
+
+  @override
+  String get shareCardKindStreak => 'Sequência';
+
+  @override
+  String get shareCardKindRace => 'Prova';
+
+  @override
+  String get shareCardKindBadge => 'Medalha';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count parciais · média $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'dias seguidos';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Medalha conquistada';
 
   @override
   String get runDetailSharePr => 'Compartilhar card de recorde';

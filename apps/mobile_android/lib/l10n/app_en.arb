@@ -26094,6 +26094,54 @@
   "@shareCardPrHint": {
     "description": "Hint under the PR card preview"
   },
+  "shareCardKind": "Highlight",
+  "@shareCardKind": {
+    "description": "Label over the chips that pick what a sticker is about: its stats, or an occasion the run marks"
+  },
+  "shareCardKindStats": "Stats",
+  "@shareCardKindStats": {
+    "description": "Sticker kind chip: the run's numbers in a layout"
+  },
+  "shareCardKindSplits": "Splits",
+  "@shareCardKindSplits": {
+    "description": "Sticker kind chip: the run's splits as a table or bars"
+  },
+  "shareCardKindPr": "PR",
+  "@shareCardKindPr": {
+    "description": "Sticker kind chip: a personal record the run set"
+  },
+  "shareCardKindStreak": "Streak",
+  "@shareCardKindStreak": {
+    "description": "Sticker kind chip and the streak sticker's kicker: the day of a daily activity streak the run was"
+  },
+  "shareCardKindRace": "Race",
+  "@shareCardKindRace": {
+    "description": "Sticker kind chip: the race the run finished"
+  },
+  "shareCardKindBadge": "Badge",
+  "@shareCardKindBadge": {
+    "description": "Sticker kind chip: the badge the run earned"
+  },
+  "shareCardSplitsHeading": "{count} splits · avg {pace}",
+  "@shareCardSplitsHeading": {
+    "description": "Heading of the splits sticker, printed uppercase: how many splits and the average pace with its unit",
+    "placeholders": {
+      "count": {"type": "int"},
+      "pace": {"type": "String"}
+    }
+  },
+  "shareCardStreakCaption": "days in a row",
+  "@shareCardStreakCaption": {
+    "description": "Under the day count on the streak sticker"
+  },
+  "shareCardRaceFinisher": "Finisher",
+  "@shareCardRaceFinisher": {
+    "description": "The race sticker's word for having finished the race, its hero when there is no official time"
+  },
+  "shareCardBadgeKicker": "Badge earned",
+  "@shareCardBadgeKicker": {
+    "description": "Kicker over the badge name on the badge sticker"
+  },
   "runDetailSharePr": "Share PR card",
   "@runDetailSharePr": {
     "description": "Run detail action that opens the share sheet on the PR card"

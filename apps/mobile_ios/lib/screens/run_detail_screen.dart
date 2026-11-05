@@ -41,6 +41,7 @@ import '../run_stats.dart';
 import '../settings_sync.dart';
 import '../share_sheet.dart';
 import '../social_service.dart';
+import '../streaks.dart' show computeRunStreaks;
 import '../sync_service.dart' show pushPendingRunEdit;
 import '../typed_decimal.dart';
 import 'guided_runs_screen.dart';
@@ -319,6 +320,31 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// The share sheet on the PR card. Only an image leaves, so unlike
   /// [_shareRun] it asks nothing about the run's audience; it still waits for
   /// the zones, because the card draws the clipped line.
+  /// The streak day this run was, counted as of the run's own local day from
+  /// every run up to it, so last month's run does not print today's streak.
+  int _shareStreakDays() => computeRunStreaks(
+        [for (final s in widget.runStore.summaries) s.startedAt],
+        run.startedAt,
+      ).current;
+
+  /// The single-run distance badge this run earned. Only `distance_single`
+  /// records the run behind an award (`source_id`); every other family writes
+  /// null there.
+  RunShareBadgeLoader? _shareBadgeLoader() {
+    final api = widget.apiClient;
+    final userId = api?.userId;
+    if (api == null || userId == null) return null;
+    return () async {
+      final rows = await api.fetchUserBadges(userId);
+      for (final r in rows) {
+        if (r.badgeKey == 'distance_single' && r.sourceId == run.id) {
+          return (badgeKey: r.badgeKey, tier: r.tier);
+        }
+      }
+      return null;
+    };
+  }
+
   Future<void> _sharePrCard() async {
     if (_sharing || _runRecords.isEmpty) return;
     _sharing = true;
@@ -339,6 +365,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         privacyZones: zones,
         records: _runRecords,
         initialStyle: RunShareStyle.pr,
+        streakDays: _shareStreakDays(),
+        badgeLoad: _shareBadgeLoader(),
       );
     } finally {
       if (mounted) {
@@ -2952,6 +2980,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         privacyZones: zones,
         api: api,
         records: _runRecords,
+        streakDays: _shareStreakDays(),
+        badgeLoad: _shareBadgeLoader(),
         onShareLink: api != null && api.userId != null
             ? () => _shareRunLink(api)
             : null,

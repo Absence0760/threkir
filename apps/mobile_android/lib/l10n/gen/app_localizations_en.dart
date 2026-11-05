@@ -19730,6 +19730,41 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your record times stay private. Only this image leaves when you share it.';
 
   @override
+  String get shareCardKind => 'Highlight';
+
+  @override
+  String get shareCardKindStats => 'Stats';
+
+  @override
+  String get shareCardKindSplits => 'Splits';
+
+  @override
+  String get shareCardKindPr => 'PR';
+
+  @override
+  String get shareCardKindStreak => 'Streak';
+
+  @override
+  String get shareCardKindRace => 'Race';
+
+  @override
+  String get shareCardKindBadge => 'Badge';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count splits · avg $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'days in a row';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Badge earned';
+
+  @override
   String get runDetailSharePr => 'Share PR card';
 
   @override

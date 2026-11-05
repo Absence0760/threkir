@@ -2437,11 +2437,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: "recipient_id=eq." + uid, sel: "*",
 		},
 		// conversation_participants — the subject's own view of each
-		// conversation (joined, deleted-for-me, muted, archived; migration
-		// 20271105000010). Only their own row.
+		// conversation (joined, deleted-for-me, muted, archived, marked
+		// unread; migrations 20271105000010, 20271109000020). Only their own
+		// row.
 		{
 			name: "conversation_settings.json", table: schema.TableConversationParticipants,
-			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at",
+			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at",
 		},
 		// coach_athletes — the subject's coaching relationships, as coach
 		// and as athlete. `invite_token` is a redeemable credential

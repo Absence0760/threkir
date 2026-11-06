@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { consent } from '#lib/settings/consent.svelte.ts';
 
-	const lastUpdated = '2026-11-04';
+	const lastUpdated = '2026-11-05';
 
 	// audit/cookie-consent (May 2026): the prior page told users to
 	// use a "Cookie settings" link in the footer that does not exist.
@@ -27,8 +27,8 @@
 	<p class="lead">
 		Threkir uses a small number of cookies and similar technologies (including browser
 		localStorage). Most are strictly necessary or first-party preferences that never leave your
-		device; the consent-gated third-party services are off by default and load only after you opt
-		in.
+		device (the one exception, noted below, is sent to us only if you sign up); the consent-gated
+		third-party services are off by default and load only after you opt in.
 	</p>
 	<p class="meta">Last updated: {lastUpdated}</p>
 
@@ -53,9 +53,9 @@
 
 	<h2>2. Preferences + on-device caches</h2>
 	<p>
-		First-party localStorage that holds your own preferences and offline caches. Nothing in this
-		table is sent to a third party; entries keyed by user id or date are cleared on sign-out or
-		roll off naturally.
+		First-party browser storage that holds your own preferences and offline caches. Nothing in
+		this table is sent to a third party; entries keyed by user id or date are cleared on sign-out
+		or roll off naturally.
 	</p>
 	<div class="table-scroll" tabindex="0">
 		<table>
@@ -70,6 +70,7 @@
 				<tr><td>runs_filters_v1 / routes_filters_v1</td><td>Your list filters, so they survive navigation</td><td>Persistent</td></tr>
 				<tr><td>water_ml_&lt;user&gt;_&lt;date&gt;</td><td>Today's water-tracker total (stays on this device)</td><td>Per day</td></tr>
 				<tr><td>Layout keys (panel widths, goal migration)</td><td>Remember resizable-panel positions; migrate legacy locally-stored goals into your account</td><td>Persistent</td></tr>
+				<tr data-testid="signup-source-storage"><td>threkir.signup_source (sessionStorage)</td><td>Where this tab first arrived from: the link's campaign tags, or the address of the site that sent you, or "direct". Sent to us with your sign-up if you create an account, so we can count which links bring new members; never sent otherwise. See the <a href="/privacy">Privacy Policy</a>.</td><td>Until the tab is closed</td></tr>
 			</tbody>
 		</table>
 	</div>

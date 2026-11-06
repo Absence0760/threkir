@@ -269,7 +269,7 @@
 // ceiling was set from. Route-level code again: occasion share stickers, the
 // route official distance, mark-as-unread and the localized plan advice. No
 // web dependency changed and the largest code chunk is 289 KB, as on main.
-// Same 6 KB of cover.
+// Same 6 KB of cover (decisions § 2349).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.

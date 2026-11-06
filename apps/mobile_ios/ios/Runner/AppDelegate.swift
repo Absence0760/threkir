@@ -23,9 +23,9 @@ import workmanager_apple
   // Runner's "Copy Firebase config if present" build phase validates the file
   // rather than leaving it to the app.
   //
-  // The console's SDK step is equally inapplicable: the Firebase pods
-  // arrive through the FlutterFire plugins' generated Podfile, so adding Swift
-  // Package Manager packages by hand would resolve the SDK a second time.
+  // The console's SDK step is equally inapplicable: the Firebase SDK
+  // arrives through the FlutterFire plugins' own Swift packages, so adding
+  // Swift Package Manager packages by hand would resolve the SDK a second time.
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -61,6 +61,14 @@ import workmanager_apple
     // loading are buffered in-process and flushed to Dart once the
     // method channel is attached below.
     WatchIngestBridge.shared.activate()
+
+    // iOS reads the notification-centre delegate before this method returns,
+    // and under UIScene firebase_messaging registers after it, so the plugin
+    // cannot claim the delegate in time and the tap that launched the app
+    // would never reach getInitialMessage(). The plugin's README step for
+    // UIScene apps. The APNs token itself needs no call here: from 16.7 the
+    // plugin requests it when it registers late (decisions.md § 2353).
+    FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

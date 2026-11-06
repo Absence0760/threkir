@@ -40,7 +40,7 @@ Last moved: **2026-10-06**.
 | 3 | App IDs `com.threkir.app` + `com.threkir.app.ShareExtension` + `com.threkir.app.RunActivity` | Apple portal | **Done 2026-10-05** — both groups on `com.threkir.app`, the share group on `ShareExtension`, nothing on `RunActivity`; **Associated Domains** added to `com.threkir.app` 2026-10-14 for universal links ([decisions § 1924](../architecture/decisions.md)) |
 | 4 | Watch App IDs `com.threkir.app.watchapp` + `com.threkir.app.watchapp.widget` | Apple portal | **Done 2026-10-05** — `.widget`, not `.complication`, which Apple reported unavailable ([decisions § 1754](../architecture/decisions.md)); `activerun` on both |
 | 5 | Services ID `com.threkir.web` | Apple portal | ☐ |
-| 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** |
+| 6 | **APNs key** `.p8` | Firebase → Cloud Messaging | **Done 2026-09-19** — but no iPhone registered a token until the app moved to `firebase_messaging` ≥ 16.7.0 (issue #1300 BUG-002): under UIScene the older plugin never asked for an APNs token. A `mobile_ios@` build with that floor, then an `ios` row in `device_tokens`, is the check ([`native_push.md` § Verifying it](../features/native_push.md#verifying-it-in-the-order-the-signal-appears), [decisions § 2353](../architecture/decisions.md)) |
 | 7 | **Sign-in-with-Apple key** `.p8` | Supabase (via a generated client secret) | **Done 2026-09-19** |
 | 8 | Both `.p8` files backed up | estate `threkir/push-credentials.sops.yaml` | **Done 2026-09-19** — five values in estate commit `b82fefc`, pushed; the downloaded `.p8` files deleted |
 | — | Supabase URL Configuration (Site URL, Redirect URLs, manual linking) | Supabase dashboard | **Done 2026-09-21** — shared; landed with the Google thread |

@@ -85,6 +85,7 @@ class _CapturingSocialService extends SocialService {
   String? capturedRecurrenceFreq;
   bool? capturedIsPublic;
   String? capturedTimezone;
+  DateTime? capturedStartsAt;
 
   @override
   Future<EventRow> createEvent({
@@ -112,6 +113,7 @@ class _CapturingSocialService extends SocialService {
   }) async {
     createCalled = true;
     capturedTimezone = timezone;
+    capturedStartsAt = startsAt;
     capturedTitle = title;
     capturedCategory = category;
     capturedDiscipline = discipline;
@@ -313,6 +315,19 @@ void main() {
       await tapCreate(tester);
       expect(fake.createCalled, isTrue);
       expect(find.text('result=ok'), findsOneWidget);
+    });
+
+    testWidgets(
+        'the default start is whole minutes, so a later web save keeps the '
+        'instant RSVPs are keyed to', (tester) async {
+      final fake = _CapturingSocialService();
+      await _openSheet(tester, social: fake);
+      await tester.enterText(
+          find.widgetWithText(TextField, 'Title'), 'Saturday 5k');
+      await tapCreate(tester);
+      final starts = fake.capturedStartsAt!;
+      expect(
+          [starts.second, starts.millisecond, starts.microsecond], [0, 0, 0]);
     });
 
     testWidgets('a run event submits distance in metres + run category',

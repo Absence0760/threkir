@@ -15,6 +15,7 @@ GDPR Art 35 requires a DPIA whenever a processing activity is "likely to result 
 | **Live spectator tracking** (`live_run_pings` → web `/live/[id]` + Go live-hub) | Real-time location data shared with public viewers. |
 | **Public route + run sharing** (`is_public = true` rows) | Voluntary publication of historical location data. |
 | **Share-link attribution** (`private.share_link_daily`, `signup_share` sign-up metadata, decisions § 2268) | Not a WP248 trigger on its face: aggregate per-link counters with no visitor identifier, and a sign-up's source link recorded on the person's own sign-up. Listed so the CISO / Security Analyst can confirm whether sign-up attribution is a new purpose before the `share_attribution` gate opens ([deployment.md](../ops/deployment.md)). |
+| **First-touch sign-up source** (`private.signup_sources`, `signup_source` sign-up metadata, decisions § 2350) | Not a WP248 trigger on its face: the campaign tags or referring site of the person's own sign-up, kept with their account and read only in aggregate by the operator. The capture is a first-party sessionStorage entry sent only with a sign-up. Listed so the CISO / Security Analyst can confirm the purpose and the storage before the `signup_source` gate opens ([deployment.md](../ops/deployment.md)). |
 
 ## Necessity + proportionality
 

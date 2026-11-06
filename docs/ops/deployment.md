@@ -122,7 +122,7 @@ Numbers are USD/month at the launch tier (1000 active users, ~5 runs/user/month)
 | Fly.io — job_worker | shared-cpu-1x, 256 MB | $5 |
 | Fly.io — OSRM | performance-2x, 8 GB RAM, 20 GB Volume | $30 |
 | Fly.io — bandwidth | mostly internal 6PN (free); Storage egress goes through Supabase | <$5 |
-| MapTiler Cloud | Free tier (100k tile reqs/mo) → paid ~$25 above | $0 → $25 |
+| MapTiler Cloud | Free tier (100k tile reqs/mo) covers development, testing and a closed pre-launch only (MapTiler Support, 2026-11-06); a public commercial launch needs a paid plan, which is also what makes a countersigned DPA available | $0 pre-launch → paid plan at launch |
 | Anthropic API | Coach usage at ~$0.003 per chat turn × ~5k turns/mo | $15 |
 | Domain | Cloudflare Registrar (.app cost) | ~$1.5 |
 | Email (Resend) | Free tier 3k emails/mo → $20 above | $0 → $20 |

@@ -2199,8 +2199,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runResumeDialogTitle => 'Retomar a sua corrida?';
 
   @override
-  String get runResumeDialogBody =>
-      'Uma corrida de uma sessão anterior ainda está em curso. Retome a gravação de onde parou, finalize-a agora ou descarte-a.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Uma corrida de uma sessão anterior ainda está em curso ($distance, $duration). Retome a gravação de onde parou, finalize-a agora ou descarte-a.';
+  }
 
   @override
   String get runResumeAction => 'Retomar';
@@ -2216,6 +2217,16 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Corrida anterior descartada.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Foi guardada uma corrida inacabada de uma sessão anterior ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Foi descartada uma gravação inacabada de uma sessão anterior ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>
@@ -22336,8 +22347,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runResumeDialogTitle => 'Retomar sua corrida?';
 
   @override
-  String get runResumeDialogBody =>
-      'Uma corrida de uma sessão anterior ainda está em andamento. Retome a gravação de onde parou, finalize-a agora ou descarte-a.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Uma corrida de uma sessão anterior ainda está em andamento ($distance, $duration). Retome a gravação de onde parou, finalize-a agora ou descarte-a.';
+  }
 
   @override
   String get runResumeAction => 'Retomar';
@@ -22353,6 +22365,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runResumeDiscardedBanner => 'Corrida anterior descartada.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Uma corrida não finalizada de uma sessão anterior foi salva ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Uma gravação não finalizada de uma sessão anterior foi descartada ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>

@@ -2107,8 +2107,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runResumeDialogTitle => 'ランを再開しますか？';
 
   @override
-  String get runResumeDialogBody =>
-      '前回のセッションのランがまだ進行中です。中断したところから記録を再開するか、今すぐ終了するか、破棄してください。';
+  String runResumeDialogBody(String distance, String duration) {
+    return '前回のセッションのランがまだ進行中です（$distance、$duration）。中断したところから記録を再開するか、今すぐ終了するか、破棄してください。';
+  }
 
   @override
   String get runResumeAction => '再開';
@@ -2124,6 +2125,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => '前回のランを破棄しました。';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return '前回のセッションの未完了のランを保存しました（$distance、$duration）。';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return '前回のセッションの未完了の記録を破棄しました（$distance、$duration）。';
+  }
 
   @override
   String get runWorkoutNoStructure => 'このワークアウトには実行可能な構成がありません。';

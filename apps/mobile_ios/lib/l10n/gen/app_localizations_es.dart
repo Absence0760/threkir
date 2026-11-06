@@ -2197,8 +2197,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runResumeDialogTitle => '¿Reanudar tu carrera?';
 
   @override
-  String get runResumeDialogBody =>
-      'Una carrera de una sesión anterior sigue en curso. Reanuda la grabación donde la dejaste, finalízala ahora o descártala.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Una carrera de una sesión anterior sigue en curso ($distance, $duration). Reanuda la grabación donde la dejaste, finalízala ahora o descártala.';
+  }
 
   @override
   String get runResumeAction => 'Reanudar';
@@ -2214,6 +2215,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Carrera anterior descartada.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Se guardó una carrera sin terminar de una sesión anterior ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Se descartó una grabación sin terminar de una sesión anterior ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>

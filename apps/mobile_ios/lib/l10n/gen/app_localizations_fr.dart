@@ -2206,8 +2206,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runResumeDialogTitle => 'Reprendre votre course ?';
 
   @override
-  String get runResumeDialogBody =>
-      'Une course d\'une session précédente est toujours en cours. Reprenez l\'enregistrement là où vous vous êtes arrêté, terminez-la maintenant ou supprimez-la.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Une course d\'une session précédente est toujours en cours ($distance, $duration). Reprenez l\'enregistrement là où vous vous êtes arrêté, terminez-la maintenant ou supprimez-la.';
+  }
 
   @override
   String get runResumeAction => 'Reprendre';
@@ -2223,6 +2224,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Course précédente supprimée.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Course inachevée d\'une session précédente enregistrée ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Enregistrement inachevé d\'une session précédente supprimé ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>

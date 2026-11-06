@@ -2866,9 +2866,19 @@
   "@runResumeDialogTitle": {
     "description": "Title of the cold-start prompt when a process-killed in-progress run is recovered"
   },
-  "runResumeDialogBody": "A run from an earlier session is still in progress. Resume recording where you left off, finish it now, or discard it.",
+  "runResumeDialogBody": "A run from an earlier session is still in progress ({distance}, {duration}). Resume recording where you left off, finish it now, or discard it.",
   "@runResumeDialogBody": {
-    "description": "Body of the cold-start resume prompt explaining the Resume / Finish / Discard choice"
+    "description": "Body of the resume prompt shown when a recording was interrupted (app closed, crashed or torn down) explaining the Resume / Finish / Discard choice. distance is in the runner's unit (km or mi, ~ prefix when pedometer-estimated); duration is elapsed time as a clock (mm:ss or h:mm:ss)",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "0.01 km"
+      },
+      "duration": {
+        "type": "String",
+        "example": "11:02"
+      }
+    }
   },
   "runResumeAction": "Resume",
   "@runResumeAction": {
@@ -2889,6 +2899,34 @@
   "runResumeDiscardedBanner": "Discarded your previous run.",
   "@runResumeDiscardedBanner": {
     "description": "Banner shown after the user discards a recovered partial from the resume prompt"
+  },
+  "runRecoveryRecoveredBanner": "Saved an unfinished run from a previous session ({distance}, {duration}).",
+  "@runRecoveryRecoveredBanner": {
+    "description": "Banner at app start when an interrupted recording older than 48 hours was saved as a finished run without asking. distance is in the runner's unit; duration is elapsed time as a clock",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "2.30 km"
+      },
+      "duration": {
+        "type": "String",
+        "example": "15:00"
+      }
+    }
+  },
+  "runRecoveryDiscardedBanner": "Discarded an unfinished recording from a previous session ({distance}, {duration}).",
+  "@runRecoveryDiscardedBanner": {
+    "description": "Banner at app start when an interrupted recording was too small to keep (no distance and under a minute, or older than 48 hours and below the size floor) and was deleted. distance is in the runner's unit; duration is elapsed time as a clock",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "0.00 km"
+      },
+      "duration": {
+        "type": "String",
+        "example": "00:05"
+      }
+    }
   },
   "runWorkoutNoStructure": "This workout has no runnable structure.",
   "@runWorkoutNoStructure": {

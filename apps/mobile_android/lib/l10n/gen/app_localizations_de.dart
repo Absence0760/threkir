@@ -2202,8 +2202,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runResumeDialogTitle => 'Lauf fortsetzen?';
 
   @override
-  String get runResumeDialogBody =>
-      'Ein Lauf aus einer früheren Sitzung läuft noch. Setze die Aufzeichnung dort fort, wo du aufgehört hast, beende ihn jetzt oder verwirf ihn.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Ein Lauf aus einer früheren Sitzung läuft noch ($distance, $duration). Setze die Aufzeichnung dort fort, wo du aufgehört hast, beende ihn jetzt oder verwirf ihn.';
+  }
 
   @override
   String get runResumeAction => 'Fortsetzen';
@@ -2219,6 +2220,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Vorheriger Lauf verworfen.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Unvollendeten Lauf aus einer früheren Sitzung gespeichert ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Unvollendete Aufzeichnung aus einer früheren Sitzung verworfen ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>

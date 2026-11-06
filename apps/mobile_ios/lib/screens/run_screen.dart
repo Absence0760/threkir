@@ -40,6 +40,7 @@ import '../activity_type_labels.dart';
 import '../hold_to_stop_hint.dart';
 import '../hr_prescription_gate.dart';
 import '../workout_target_label.dart';
+import '../in_progress_recovery.dart' show inProgressStats;
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
@@ -2385,12 +2386,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// (no barrier-dismiss) so the partial isn't silently left in limbo.
   Future<void> _promptResume(cm.Run partial) async {
     if (!mounted || _state != _ScreenState.idle) return;
+    final stats = inProgressStats(partial, _unit);
     final choice = await showDialog<_ResumeChoice>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text(_l10n.runResumeDialogTitle),
-        content: Text(_l10n.runResumeDialogBody),
+        content:
+            Text(_l10n.runResumeDialogBody(stats.distance, stats.duration)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, _ResumeChoice.discard),

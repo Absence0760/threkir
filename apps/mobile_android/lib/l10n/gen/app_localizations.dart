@@ -3755,11 +3755,11 @@ abstract class AppLocalizations {
   /// **'Resume your run?'**
   String get runResumeDialogTitle;
 
-  /// Body of the cold-start resume prompt explaining the Resume / Finish / Discard choice
+  /// Body of the resume prompt shown when a recording was interrupted (app closed, crashed or torn down) explaining the Resume / Finish / Discard choice. distance is in the runner's unit (km or mi, ~ prefix when pedometer-estimated); duration is elapsed time as a clock (mm:ss or h:mm:ss)
   ///
   /// In en, this message translates to:
-  /// **'A run from an earlier session is still in progress. Resume recording where you left off, finish it now, or discard it.'**
-  String get runResumeDialogBody;
+  /// **'A run from an earlier session is still in progress ({distance}, {duration}). Resume recording where you left off, finish it now, or discard it.'**
+  String runResumeDialogBody(String distance, String duration);
 
   /// Primary action on the resume prompt — re-hydrate the recorder and continue the same run
   ///
@@ -3790,6 +3790,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discarded your previous run.'**
   String get runResumeDiscardedBanner;
+
+  /// Banner at app start when an interrupted recording older than 48 hours was saved as a finished run without asking. distance is in the runner's unit; duration is elapsed time as a clock
+  ///
+  /// In en, this message translates to:
+  /// **'Saved an unfinished run from a previous session ({distance}, {duration}).'**
+  String runRecoveryRecoveredBanner(String distance, String duration);
+
+  /// Banner at app start when an interrupted recording was too small to keep (no distance and under a minute, or older than 48 hours and below the size floor) and was deleted. distance is in the runner's unit; duration is elapsed time as a clock
+  ///
+  /// In en, this message translates to:
+  /// **'Discarded an unfinished recording from a previous session ({distance}, {duration}).'**
+  String runRecoveryDiscardedBanner(String distance, String duration);
 
   /// Banner shown when a selected workout has no runnable steps
   ///

@@ -2177,8 +2177,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runResumeDialogTitle => 'Resume your run?';
 
   @override
-  String get runResumeDialogBody =>
-      'A run from an earlier session is still in progress. Resume recording where you left off, finish it now, or discard it.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'A run from an earlier session is still in progress ($distance, $duration). Resume recording where you left off, finish it now, or discard it.';
+  }
 
   @override
   String get runResumeAction => 'Resume';
@@ -2194,6 +2195,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Discarded your previous run.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Saved an unfinished run from a previous session ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Discarded an unfinished recording from a previous session ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure => 'This workout has no runnable structure.';

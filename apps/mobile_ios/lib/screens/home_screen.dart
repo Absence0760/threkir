@@ -17,6 +17,8 @@ import '../challenge_invite_link.dart';
 import '../club_invite_link.dart' show pendingClubInviteToken;
 import '../entity_link.dart';
 import '../hr_prescription_gate.dart';
+import '../in_progress_recovery.dart'
+    show InProgressEvaluation, inProgressBannerText;
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gear_store.dart';
@@ -133,12 +135,11 @@ class HomeScreen extends StatefulWidget {
   final SyncService? syncService;
   final cm.Run? recoveredRun;
 
-  /// Banner copy emitted by the in-progress recovery helper at app
-  /// start. Surfaced once on the first build of the Home tab. Covers
-  /// both "Recovered a 2.3 km partial..." and the new
-  /// "Discarded a 38 m partial recording..." case (Casual #3). Null
-  /// when the recovery pass had nothing to say.
-  final String? recoveryBannerMessage;
+  /// The in-progress recovery pass's verdict at app start. A recovered or
+  /// discarded partial is reported once, as a banner on the first build of
+  /// the Home tab, worded by [inProgressBannerText] in the runner's unit
+  /// (Casual #3). Null when the recovery pass had nothing to say.
+  final InProgressEvaluation? recoveryEvaluation;
 
   /// A recent in-progress partial left over from a process-kill. When set,
   /// HomeScreen jumps to the Run page on first frame and RunScreen prompts the
@@ -164,7 +165,7 @@ class HomeScreen extends StatefulWidget {
     this.settingsSync,
     this.syncService,
     this.recoveredRun,
-    this.recoveryBannerMessage,
+    this.recoveryEvaluation,
     this.resumablePartial,
   });
 
@@ -297,17 +298,22 @@ class _HomeScreenState extends State<HomeScreen>
       _onPendingEntityLink();
     });
     // Surface the recovery banner from main.dart's in-progress
-    // evaluation. Casual #3: this also fires on DISCARD ("Discarded a
-    // 38 m partial recording...") — pre-fix that path was silent and
-    // a casual user couldn't tell whether the app saw + dropped their
-    // tap-Start-then-quit attempt or just lost the run entirely.
-    final bannerMessage = widget.recoveryBannerMessage;
-    if (bannerMessage != null) {
+    // evaluation. Casual #3: this also fires on DISCARD — pre-fix that
+    // path was silent and a casual user couldn't tell whether the app saw
+    // + dropped their tap-Start-then-quit attempt or just lost the run.
+    final recoveryEvaluation = widget.recoveryEvaluation;
+    if (recoveryEvaluation != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        final message = inProgressBannerText(
+          AppLocalizations.of(context),
+          recoveryEvaluation,
+          widget.preferences.unit,
+        );
+        if (message == null) return;
         showTopBanner(
           context,
-          bannerMessage,
+          message,
           duration: const Duration(seconds: 6),
         );
       });

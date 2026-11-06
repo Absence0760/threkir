@@ -8,6 +8,7 @@ import 'local_meal_template_store.dart';
 import 'local_recipe_store.dart';
 import 'local_routine_store.dart';
 import 'offline_sync_store.dart';
+import 'orphaned_recording.dart';
 
 /// Fresh instances of every SCREEN-OWNED [OfflineSyncStore] type, for the
 /// sign-out wipe. These stores are constructed per-screen rather than
@@ -57,7 +58,12 @@ Future<void> wipeScreenOwnedOfflineStores({
 /// Clearing it costs at most the tail of a recording that was live at
 /// sign-out: the run screen re-writes the snapshot on its next incremental
 /// tick, and `_stop` saves from memory rather than from this file.
+///
+/// The in-memory hand-off of a run whose screen was torn down mid-run
+/// ([orphanedRecording]) is the same snapshot by another route, and goes with
+/// it.
 Future<void> wipeInProgressRecording(LocalRunStore store) async {
+  orphanedRecording.value = null;
   try {
     await store.clearInProgress();
   } catch (e) {

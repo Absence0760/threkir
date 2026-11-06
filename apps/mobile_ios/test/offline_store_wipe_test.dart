@@ -6,6 +6,7 @@ import 'package:core_models/core_models.dart';
 
 import '../lib/local_run_store.dart';
 import '../lib/offline_store_wipe.dart';
+import '../lib/orphaned_recording.dart';
 import 'source_scan.dart';
 
 /// Pins the issue #228 fix: sign-out must wipe EVERY OfflineSyncStore-backed
@@ -141,6 +142,23 @@ void main() {
           reason: "a stranger's GPS trace must not be left for the next "
               'account to adopt');
       expect(await store.loadInProgress(), isNull);
+    });
+
+    test("drops a torn-down run screen's hand-off with the file", () async {
+      // The hand-off carries the same GPS trace by another route: left set,
+      // the next account's run screen would offer to resume it as its own.
+      final store = LocalRunStore();
+      orphanedRecording.value = Run(
+        id: 'orphan-1',
+        startedAt: DateTime(2026, 4, 10, 9),
+        duration: const Duration(minutes: 5),
+        distanceMetres: 800,
+        source: RunSource.app,
+      );
+
+      await wipeInProgressRecording(store);
+
+      expect(orphanedRecording.value, isNull);
     });
 
     test('is idempotent when there is nothing to wipe', () async {

@@ -38,6 +38,7 @@ import '../race_service.dart';
 import '../run_stop_dock.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
+import '../shell_page_controller.dart';
 import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
@@ -68,6 +69,7 @@ import 'import_screen.dart';
 import 'message_thread_screen.dart';
 import 'messages_screen.dart';
 import '../onboarding.dart';
+import '../orphaned_recording.dart';
 import 'plan_new_screen.dart';
 import 'plans_screen.dart';
 import 'profile_screen.dart';
@@ -253,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen>
       Listenable.merge([_currentIndex, _centreInputs]);
 
   late final PageController _pageController =
-      PageController(initialPage: _initialIndex);
+      ShellPageController(currentPage: () => _currentIndex.value);
 
   cm.Route? _preselectedRoute;
 
@@ -321,6 +323,8 @@ class _HomeScreenState extends State<HomeScreen>
         _goToPage(_pageRun);
       });
     }
+    orphanedRecording.addListener(_onOrphanedRecording);
+    _onOrphanedRecording();
     // Post-sign-in gates (mobile twin of web's root-layout consent and
     // `/onboarding` redirects): the GDPR Art 8 consent screen when the
     // profile records no age + terms confirmation, then the setup wizard
@@ -941,6 +945,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingClubInviteToken.removeListener(_onPendingClubInvite);
     pendingChallengeLink.removeListener(_onPendingChallengeLink);
     pendingEntityLink.removeListener(_onPendingEntityLink);
+    orphanedRecording.removeListener(_onOrphanedRecording);
     _pageController.dispose();
     _currentIndex.removeListener(_syncRunPageShown);
     _currentIndex.removeListener(_dropFocusLeftBehind);
@@ -948,6 +953,18 @@ class _HomeScreenState extends State<HomeScreen>
     _runPageShown.dispose();
     _fitnessTab.dispose();
     super.dispose();
+  }
+
+  /// A recording handed on by a run screen torn down mid-run is offered back
+  /// on the Run page, so the shell goes there for the same reason it opens
+  /// there on a cold-start partial. Deferred because the hand-off is made
+  /// from that screen's `dispose`, while the tree is locked.
+  void _onOrphanedRecording() {
+    if (orphanedRecording.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || orphanedRecording.value == null) return;
+      _goToPage(_pageRun);
+    });
   }
 
   void _startRunWithRoute(cm.Route route) {
@@ -1423,10 +1440,17 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ],
     );
-    if (expanded) {
-      return _backGuard(Scaffold(
-        body: Row(
-          children: [
+    // One tree for both shells, so the PageView and every kept-alive page in
+    // it (the live recorder among them) keep their State when the width class
+    // changes. Rotating a large phone crosses the expanded breakpoint, and two
+    // differently shaped branches unmounted the recorder mid-run, losing the
+    // run (decisions § 2351). The rail is a sibling that comes and goes beside
+    // a keyed body slot, and the phone's bar and docked button are Scaffold
+    // slots, so neither moves the body.
+    return _backGuard(Scaffold(
+      body: Row(
+        children: [
+          if (expanded) ...[
             ListenableBuilder(
               listenable: _navInputs,
               builder: (context, _) {
@@ -1463,33 +1487,37 @@ class _HomeScreenState extends State<HomeScreen>
               },
             ),
             const VerticalDivider(width: 1),
-            // This branch has no `bottomNavigationBar`, so `Scaffold` leaves
-            // the whole system bottom inset on the body's `MediaQuery` — where
-            // the phone branch below spends it on the `BottomAppBar` and
-            // `Scaffold` therefore zeroes it. The pages were written against
-            // that zero (`SafeArea(bottom: false)` on dashboard and You), so
-            // without this the last card on a tablet sits under the
-            // gesture / nav bar. `SafeArea` both pads and removes, so a page
-            // sees the same zero either way (decisions § 538); left / right
-            // stay for the pages, matching the phone branch.
-            Expanded(
-              child: SafeArea(
-                top: false,
-                left: false,
-                right: false,
+          ],
+          // The rail shell has no `bottomNavigationBar`, so `Scaffold` leaves
+          // the whole system bottom inset on the body's `MediaQuery` — where
+          // the phone shell spends it on the `BottomAppBar` and `Scaffold`
+          // therefore zeroes it. The pages were written against that zero
+          // (`SafeArea(bottom: false)` on dashboard and You), so without this
+          // the last card on a tablet sits under the gesture / nav bar.
+          // `SafeArea` both pads and removes, so a page sees the same zero
+          // either way (decisions § 538); left / right stay for the pages.
+          Expanded(
+            key: const ValueKey('shell-body'),
+            child: SafeArea(
+              top: false,
+              left: false,
+              right: false,
+              bottom: expanded,
+              child: DockedFabInset(
+                height: expanded || keyboardUp ? 0 : kDockedFabOverhang,
                 child: body,
               ),
             ),
-          ],
-        ),
-      ));
-    }
-    return _backGuard(Scaffold(
-      body: DockedFabInset(
-          height: keyboardUp ? 0 : kDockedFabOverhang, child: body),
-      floatingActionButton: keyboardUp ? null : _logFab(),
+          ),
+        ],
+      ),
+      floatingActionButton: expanded || keyboardUp ? null : _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: ListenableBuilder(
+      bottomNavigationBar: expanded ? null : _bottomBar(),
+    ));
+  }
+
+  Widget _bottomBar() => ListenableBuilder(
         listenable: _navInputs,
         builder: (context, _) {
           final index = _currentIndex.value;
@@ -1544,9 +1572,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           );
         },
-      ),
-    ));
-  }
+      );
 
   static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];
 

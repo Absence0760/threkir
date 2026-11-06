@@ -2431,10 +2431,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 166 migrations write a function-level `from public, anon` revoke
-today (146 as `revoke execute`, 27 as `revoke all`); it is the house form for
+trigger calls). 167 migrations write a function-level `from public, anon` revoke
+today (147 as `revoke execute`, 27 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 638 migrations in version order and fails the PR on
+keeps it — it replays all 639 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts
@@ -2967,6 +2967,18 @@ Every table here is in the unexposed `private` schema with RLS on and every clie
 - Trigger `private.count_signup_share()` on `auth.users` (after insert when confirmed, after the confirmation, after a `signup_share` metadata write): adds one `signups` to the link the metadata names when its `ref` is the owner's code, once per account, within a day of creation.
 
 pgTAP: `share_attribution_test.sql`.
+
+### First-touch sign-up source (`20271110000001`, decisions § 2350)
+
+Private schema, RLS on, every client grant revoked: no user reads any row, their own included. Gate: the `signup_source` row of `private.feature_flags` (no migration writes it; `seed.sql` opens it), read by `signup_source_enabled()` (anon-callable, since an email sign-up has no session).
+
+- `private.signup_sources (user_id pk → auth.users cascade, source text not null, medium text, campaign text, referrer_host text, created_at)` — each token `^[a-z0-9][a-z0-9._-]{0,63}$`, host `^[a-z0-9.-]{1,253}$`. One row per account.
+- View `private.signup_sources_daily (day, source, signups)` — confirmed accounts per UTC day of `auth.users.created_at`, `'unknown'` for an account with no row (mobile sign-ups, accounts from before the gate opened, browsers refusing storage). Not exposed to the API; `service_role` only.
+- Trigger `private.record_signup_source()` on `auth.users` (after insert when confirmed, after the confirmation, after a `signup_source` metadata write): records the metadata once per account, within a day of creation, while the gate is open. Each value is type- and pattern-checked first and the insert is wrapped, so a bad value never fails the confirmation or sign-in.
+
+Reading it (prod SQL editor, signed in to the Supabase dashboard): `select day, source, signups from private.signup_sources_daily where day >= current_date - 30 order by day desc, signups desc;`, or per bio campaign: `select source, medium, campaign, count(*) from private.signup_sources where created_at >= now() - interval '30 days' group by 1, 2, 3 order by 4 desc;`.
+
+pgTAP: `signup_source_test.sql`.
 
 ---
 

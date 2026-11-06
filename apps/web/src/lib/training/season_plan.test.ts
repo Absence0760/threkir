@@ -5,13 +5,15 @@ import {
 	SEASON_MAX_PLAN_WEEKS,
 	SEASON_RACE_NAME_MAX,
 	buildSeason,
+	fitPlanToRaceDay,
 	seasonGoal,
 	seasonRecoveryDays,
 	type SeasonBuildResult,
 	type SeasonPlanDraft,
 } from './season_plan';
 import { RACE_PLAN_MIN_WEEKS } from './race_plan_preset';
-import type { GeneratedWorkout } from './training';
+import { generatePlan, type GeneratedWorkout } from './training';
+import { planRaces } from './plan_races';
 import type { SeasonRace } from './season_types';
 
 const TODAY = '2026-08-14'; // a Friday
@@ -286,4 +288,57 @@ test('extra recovery shapes every plan in the season the way a masters age does'
 		masters
 	);
 	assert.notDeepEqual(volumes(build(races)), masters);
+});
+
+// 2026-11-01 is a Sunday, so a four-week plan's race week is 22-28 Nov.
+function fourWeekTenK() {
+	return generatePlan({ goalEvent: 'distance_10k', startDate: '2026-11-01', daysPerWeek: 4, weeks: 4 });
+}
+
+function racesOf(plan: ReturnType<typeof fourWeekTenK>) {
+	const workouts = plan.weeks.flatMap((w) => w.workouts).map((w, i) => ({ ...w, id: `w${i}` }));
+	return planRaces(
+		{ end_date: plan.endDate, goal_distance_m: 10_000, goal_time_seconds: 2700, trimmed_at: null },
+		workouts
+	);
+}
+
+test('fitPlanToRaceDay: a Sunday race ends the plan on race day with one named A race (#1294)', () => {
+	const generated = fourWeekTenK();
+	assert.equal(generated.endDate, '2026-11-28');
+	const fitted = fitPlanToRaceDay(generated, race('Turkey Trot', '2026-11-22', 10_000, 'A', 2700), 10_000);
+	assert.equal(fitted.endDate, '2026-11-22');
+	const raceWeek = fitted.weeks[fitted.weeks.length - 1];
+	assert.deepEqual(
+		raceWeek.workouts.map((w) => [w.scheduled_date, w.kind, w.race_name, w.race_priority]),
+		[['2026-11-22', 'race', 'Turkey Trot', 'A']]
+	);
+	assert.equal(raceWeek.target_volume_m, 10_000);
+	assert.deepEqual(
+		racesOf(fitted).map((r) => [r.date, r.name, r.priority]),
+		[['2026-11-22', 'Turkey Trot', 'A']]
+	);
+	assert.equal(generated.endDate, '2026-11-28', 'the generated plan is not mutated');
+});
+
+test('fitPlanToRaceDay: a Saturday race moves onto race day and the race-week Sunday becomes rest', () => {
+	const fitted = fitPlanToRaceDay(fourWeekTenK(), race('Saturday 10K', '2026-11-28', 10_000, 'A'), 10_000);
+	assert.equal(fitted.endDate, '2026-11-28');
+	const raceWeek = fitted.weeks[fitted.weeks.length - 1].workouts;
+	assert.equal(raceWeek[0].scheduled_date, '2026-11-22');
+	assert.equal(raceWeek[0].kind, 'rest');
+	assert.deepEqual(
+		raceWeek.filter((w) => w.kind === 'race').map((w) => w.scheduled_date),
+		['2026-11-28']
+	);
+	assert.deepEqual(
+		racesOf(fitted).map((r) => [r.date, r.priority]),
+		[['2026-11-28', 'A']]
+	);
+});
+
+test('fitPlanToRaceDay: a race day outside the final race week leaves the plan as generated', () => {
+	const generated = fourWeekTenK();
+	assert.equal(fitPlanToRaceDay(generated, race('Early', '2026-11-21', 10_000, 'A'), 10_000), generated);
+	assert.equal(fitPlanToRaceDay(generated, race('Late', '2026-11-29', 10_000, 'A'), 10_000), generated);
 });

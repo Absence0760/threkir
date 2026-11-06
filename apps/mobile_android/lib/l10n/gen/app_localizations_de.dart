@@ -4086,6 +4086,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get routeDetailStatDistance => 'Distanz';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Offizielle Distanz';
+
+  @override
+  String get routeDetailStatMeasured => 'Gemessen';
+
+  @override
   String get routeDetailStatElevation => 'Höhe';
 
   @override
@@ -7573,6 +7579,34 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get workoutAdviceWalkRun =>
       'Wechsle in den getakteten Intervallen zwischen lockerem Laufen und Gehen. Die Gehpausen gehören zum Training — nimm sie auch, wenn du dich frisch fühlst.';
+
+  @override
+  String get planDetailWeekAdviceRace =>
+      'Wettkampfwoche – vertrau auf dein Training.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Tapering – der Umfang sinkt, die Schärfe bleibt.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Letzte Woche – sie endet mit deinen ersten 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Nimm die Gehpausen auch, wenn du dich gut fühlst – sie machen das Laufen durchhaltbar.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Back-to-back-Wochenende – zwei lange Läufe an aufeinanderfolgenden Tagen, der zweite auf müden Beinen.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Zeit auf den Beinen in lockerem Tempo: Die Dauer ist das Ziel, nicht die Pace. Übe deine Wettkampfverpflegung.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Lauf nach Gefühl und verpflege dich früh – die Zeit kommt von selbst.';
 
   @override
   String get workoutAdviceRace =>
@@ -17741,6 +17775,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Archiviert. Eine neue Nachricht holt sie in deinen Posteingang zurück.';
 
   @override
+  String get messagesMarkUnread => 'Als ungelesen markieren';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Als ungelesen markiert. Die Unterhaltung bleibt in deinem Posteingang hervorgehoben, bis du sie öffnest.';
+
+  @override
   String get profileMessage => 'Nachricht';
 
   @override
@@ -19941,6 +19982,41 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get shareCardPrHint =>
       'Deine Bestzeiten bleiben privat. Nur dieses Bild wird geteilt.';
+
+  @override
+  String get shareCardKind => 'Fokus';
+
+  @override
+  String get shareCardKindStats => 'Werte';
+
+  @override
+  String get shareCardKindSplits => 'Splits';
+
+  @override
+  String get shareCardKindPr => 'Bestzeit';
+
+  @override
+  String get shareCardKindStreak => 'Serie';
+
+  @override
+  String get shareCardKindRace => 'Wettkampf';
+
+  @override
+  String get shareCardKindBadge => 'Abzeichen';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count Splits · Ø $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'Tage in Folge';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Abzeichen erhalten';
 
   @override
   String get runDetailSharePr => 'Bestzeit-Karte teilen';

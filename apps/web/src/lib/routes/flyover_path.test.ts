@@ -291,6 +291,14 @@ test('a course a hair short of a whole km by float error still gets its final ma
 	assert.ok(distanceMarkers(shaved, 'km')[0].dM <= shaved.totalM);
 });
 
+test('distanceMarkers with an official distance place each km on the scaled line', () => {
+	const path = buildFlyoverPath(northLine(5.5));
+	const markers = distanceMarkers(path, 'km', 5000);
+	assert.deepEqual(markers.map((m) => m.label), [1, 2, 3, 4, 5]);
+	markers.forEach((m, i) => assert.ok(Math.abs(m.dM - ((i + 1) * 1000 * path.totalM) / 5000) < 1e-6));
+	assert.ok(markers[4].dM <= path.totalM);
+});
+
 test('distanceMarkers on a short, single-point or empty path is empty', () => {
 	assert.deepEqual(distanceMarkers(buildFlyoverPath([]), 'km'), []);
 	assert.deepEqual(distanceMarkers(buildFlyoverPath([p(0, 0)]), 'mi'), []);

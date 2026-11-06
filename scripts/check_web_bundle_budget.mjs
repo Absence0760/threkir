@@ -264,6 +264,12 @@
 // mark switch and distance-marker thinning. No web dependency changed and the
 // largest code chunk is 289 KB, as on main. Same 6 KB of cover (decisions
 // § 2335).
+// Raised to 2472 for the PR #1296 rounds, measured in CI at 2466 KB (548
+// files) on the branch's first ready-for-review run, against the 2459 the last
+// ceiling was set from. Route-level code again: occasion share stickers, the
+// route official distance, mark-as-unread and the localized plan advice. No
+// web dependency changed and the largest code chunk is 289 KB, as on main.
+// Same 6 KB of cover (decisions § 2349).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -298,7 +304,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2465;
+export const MAX_CODE_KB = 2472;
 export const MAX_CORE_CATALOGUE_KB = 13;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

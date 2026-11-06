@@ -30,6 +30,7 @@
 		type UltraPresetId,
 	} from '#lib/training/training.ts';
 	import { RACE_GOAL_MAX_HOURS } from '#lib/training/plan_races.ts';
+	import { fitPlanToRaceDay } from '#lib/training/season_plan.ts';
 	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
 	import type {
 		GoalEvent,
@@ -229,6 +230,9 @@
 		initialName?: string;
 		initialStartDate?: string;
 		initialWeeks?: number;
+		/// The race day the preset is built around and the race's name: the
+		/// plan ends on that day with the race as its one A race (#1294).
+		initialRace?: { date: string; name: string | null } | null;
 		/// The chained start floor a race page's "Add to my season" hands over;
 		/// an AI fill that re-derives the dates from a race keeps to it too.
 		notBeforeIso?: string | null;
@@ -252,6 +256,7 @@
 		initialName,
 		initialStartDate,
 		initialWeeks,
+		initialRace,
 		notBeforeIso,
 		raceListingId,
 		initialDescription,
@@ -361,6 +366,7 @@
 	// race the new description no longer mentions; a date the runner picked
 	// by hand is left alone.
 	let aiRaceStart = $state<string | null>(null);
+	let raceDay = $state<{ date: string; name: string | null } | null>(untrack(() => initialRace ?? null));
 
 	const AI_ASSUMPTION_KEYS: Record<PlanRequestAssumption, MessageKey> = {
 		goal_event_default: 'planEditor.aiAssumptionGoalEventDefault',
@@ -394,6 +400,7 @@
 			notBeforeIso,
 		});
 		if (!result.ok) return t(RACE_REFUSAL_KEYS[result.reason]);
+		raceDay = { date: raceDate, name: null };
 		let { weeks: presetWeeks, startDate: presetStart } = result.preset;
 		// A shorter plan the runner asked for still ends on race week: start
 		// later rather than earlier. A longer one cannot fit, so the preset wins.
@@ -433,6 +440,7 @@
 			startDate = defaultPlanStartIso(todayIso(), beginnerWalkRun);
 		}
 		aiRaceStart = null;
+		raceDay = null;
 		if (inputs.goalTimeSec != null) {
 			targetHours = Math.floor(inputs.goalTimeSec / 3600);
 			targetMin = Math.floor((inputs.goalTimeSec % 3600) / 60);
@@ -787,7 +795,7 @@
 	// until they touch a top-level input again.
 	$effect(() => {
 		// Read every input we care about so the effect tracks them.
-		void [goalEvent, goalDistance, ultraDistanceInvalid, goalTimeSec, recent5kApplied, startDate, daysPerWeek, weeks, viewerGender, beginnerWalkRun, importedMode, returnCapM];
+		void [goalEvent, goalDistance, ultraDistanceInvalid, goalTimeSec, recent5kApplied, startDate, daysPerWeek, weeks, viewerGender, beginnerWalkRun, importedMode, returnCapM, raceDay];
 		// A pasted plan owns `plan` until the runner edits a core input
 		// (which flips importedMode off and re-runs this effect).
 		if (importedMode) return;
@@ -809,13 +817,26 @@
 				extraRecovery,
 				beginnerWalkRun,
 			});
-			plan =
+			const capped =
 				returnCapM == null
 					? generated
 					: {
 							...generated,
 							weeks: capReturnRamp(generated.weeks, returnCapM, generated.paces.easy),
 						};
+			plan = raceDay
+				? fitPlanToRaceDay(
+						capped,
+						{
+							name: raceDay.name ?? '',
+							date: raceDay.date,
+							distanceM: goalDistance,
+							priority: 'A',
+							goalTimeSec: goalTimeSec ?? null,
+						},
+						goalDistance,
+					)
+				: capped;
 			expandedWeek = null;
 		} catch (_) {
 			plan = null;

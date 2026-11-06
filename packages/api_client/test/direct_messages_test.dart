@@ -109,6 +109,7 @@ void main() {
           'last_at': '2026-10-13T18:00:00Z',
           'last_from_me': false,
           'unread': 3,
+          'marked_unread': true,
         },
       ];
       fake.bodyByPath[_profilesPath] = [
@@ -130,6 +131,7 @@ void main() {
       expect(threads.map((t) => t.conversationId), ['c-p-1', 'c-p-2']);
       expect(threads.map((t) => t.muted), [false, false]);
       expect(threads.map((t) => t.archived), [false, false]);
+      expect(threads.map((t) => t.markedUnread), [false, true]);
 
       final profileReq = fake.to(_profilesPath).single;
       expect(profileReq.url.queryParameters['select'],
@@ -301,6 +303,14 @@ void main() {
           as http.Request;
       expect(jsonDecode(req.body),
           {'p_conversation_id': 'c-9', 'p_archived': false});
+    });
+
+    test('setDmConversationUnread sends the flag', () async {
+      await _signIn(client);
+      await api.setDmConversationUnread('c-9', unread: true);
+      final req = fake.to('/rest/v1/rpc/set_conversation_unread').single
+          as http.Request;
+      expect(jsonDecode(req.body), {'p_conversation_id': 'c-9', 'p_unread': true});
     });
 
     test('a conversation the viewer is not in surfaces its P0002', () async {

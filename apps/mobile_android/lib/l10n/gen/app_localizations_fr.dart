@@ -4087,6 +4087,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get routeDetailStatDistance => 'Distance';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Distance officielle';
+
+  @override
+  String get routeDetailStatMeasured => 'Mesurée';
+
+  @override
   String get routeDetailStatElevation => 'Dénivelé';
 
   @override
@@ -7571,6 +7577,34 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get workoutAdviceWalkRun =>
       'Alternez course facile et marche sur les intervalles chronométrés. Les pauses de marche font partie de la séance — prenez-les même si vous vous sentez en forme.';
+
+  @override
+  String get planDetailWeekAdviceRace =>
+      'Semaine de course — faites confiance au travail accompli.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Affûtage — le volume baisse, le tranchant reste.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Dernière semaine — elle se termine par vos premiers 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Prenez les pauses de marche même quand vous vous sentez bien — elles rendent la course tenable.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Week-end back-to-back — deux sorties longues sur deux jours consécutifs, la seconde sur des jambes fatiguées.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Temps sur les pieds en endurance facile : la durée est l\'objectif, pas l\'allure. Entraînez-vous au ravitaillement du jour de course.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Courez aux sensations et ravitaillez-vous tôt — le chrono suivra.';
 
   @override
   String get workoutAdviceRace =>
@@ -17761,6 +17795,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Archivée. Un nouveau message la ramènera dans votre boîte de réception.';
 
   @override
+  String get messagesMarkUnread => 'Marquer comme non lue';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marquée comme non lue. Elle reste mise en évidence dans votre boîte de réception jusqu\'à ce que vous l\'ouvriez.';
+
+  @override
   String get profileMessage => 'Message';
 
   @override
@@ -19964,6 +20005,41 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get shareCardPrHint =>
       'Vos records restent privés. Seule cette image est partagée.';
+
+  @override
+  String get shareCardKind => 'À la une';
+
+  @override
+  String get shareCardKindStats => 'Stats';
+
+  @override
+  String get shareCardKindSplits => 'Splits';
+
+  @override
+  String get shareCardKindPr => 'Record';
+
+  @override
+  String get shareCardKindStreak => 'Série';
+
+  @override
+  String get shareCardKindRace => 'Course';
+
+  @override
+  String get shareCardKindBadge => 'Badge';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count splits · moy. $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'jours d\'affilée';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Badge obtenu';
 
   @override
   String get runDetailSharePr => 'Partager la carte record';

@@ -92,14 +92,53 @@ class PlanRaceWorkout {
 String? _parseRacePriority(String? value) =>
     racePriorities.contains(value) ? value : null;
 
+/// Plans built before #1294 end on the Saturday after their race week's
+/// Sunday race, so the goal race sits up to six days before `endDate`.
+const int _raceWeekDays = 7;
+
+String _isoDaysBefore(String iso, int days) {
+  final p = iso.split('-').map(int.parse).toList();
+  final d = DateTime.utc(p[0], p[1], p[2] - days);
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${d.year.toString().padLeft(4, '0')}-${two(d.month)}-${two(d.day)}';
+}
+
+/// The race-week race that stands in for the goal race when nothing is on
+/// the end date: the latest race in the final week with no priority or A.
+PlanRaceWorkout? _raceWeekGoal(String endDate, DateTime? trimmedAt,
+    List<PlanRaceWorkout> races) {
+  if (trimmedAt != null || races.any((w) => w.scheduledDate == endDate)) {
+    return null;
+  }
+  final weekStart = _isoDaysBefore(endDate, _raceWeekDays - 1);
+  PlanRaceWorkout? goal;
+  for (final w in races) {
+    if (w.scheduledDate.compareTo(weekStart) < 0 ||
+        w.scheduledDate.compareTo(endDate) > 0) {
+      continue;
+    }
+    final priority = _parseRacePriority(w.racePriority);
+    if (priority != null && priority != 'A') continue;
+    if (goal == null ||
+        w.scheduledDate.compareTo(goal.scheduledDate) > 0 ||
+        (w.scheduledDate == goal.scheduledDate &&
+            w.id.compareTo(goal.id) > 0)) {
+      goal = w;
+    }
+  }
+  return goal;
+}
+
 /// One entry per `race` workout, sorted by date (ties by workout id). An
-/// unset priority is A on the plan's end date and C anywhere else; the
-/// end-date race falls back to the plan goal for a missing distance or goal
-/// time. A plan with no race workout on its end date gets a synthetic A race
-/// there from the plan goal, so a plan without race rows still has its race —
-/// unless the plan was ended early ([trimmedAt], migration 20270830000003):
-/// its end date is then the day it was cut short, not a race day, and the goal
-/// race no longer happens inside it.
+/// unset priority is A on the plan's goal race and C anywhere else; the goal
+/// race falls back to the plan goal for a missing distance or goal time. The
+/// goal race is the race on the end date, or, with none there, the latest
+/// race in the final seven days with no priority or A ([_raceWeekGoal]). A
+/// plan with neither gets a synthetic A race on its end date from the plan
+/// goal, so a plan without race rows still has its race — unless the plan was
+/// ended early ([trimmedAt], migration 20270830000003): its end date is then
+/// the day it was cut short, not a race day, and the goal race no longer
+/// happens inside it.
 List<PlanRace> planRaces({
   required String endDate,
   required double goalDistanceM,
@@ -107,22 +146,23 @@ List<PlanRace> planRaces({
   required DateTime? trimmedAt,
   required List<PlanRaceWorkout> workouts,
 }) {
+  final raceRows = workouts.where((w) => w.kind == 'race').toList();
+  final weekGoal = _raceWeekGoal(endDate, trimmedAt, raceRows);
   final races = <PlanRace>[];
-  var endDateCovered = false;
-  for (final w in workouts) {
-    if (w.kind != 'race') continue;
-    final onEnd = w.scheduledDate == endDate;
-    if (onEnd) endDateCovered = true;
+  for (final w in raceRows) {
+    final isGoal = w.scheduledDate == endDate || identical(w, weekGoal);
     races.add(PlanRace(
       date: w.scheduledDate,
       name: w.raceName,
-      priority: _parseRacePriority(w.racePriority) ?? (onEnd ? 'A' : 'C'),
-      distanceM: w.targetDistanceM ?? (onEnd ? goalDistanceM : null),
-      goalTimeSec: w.targetDurationSeconds ?? (onEnd ? goalTimeSec : null),
+      priority: _parseRacePriority(w.racePriority) ?? (isGoal ? 'A' : 'C'),
+      distanceM: w.targetDistanceM ?? (isGoal ? goalDistanceM : null),
+      goalTimeSec: w.targetDurationSeconds ?? (isGoal ? goalTimeSec : null),
       workoutId: w.id,
     ));
   }
-  if (!endDateCovered && trimmedAt == null) {
+  final goalCovered =
+      weekGoal != null || raceRows.any((w) => w.scheduledDate == endDate);
+  if (!goalCovered && trimmedAt == null) {
     races.add(PlanRace(
       date: endDate,
       name: null,

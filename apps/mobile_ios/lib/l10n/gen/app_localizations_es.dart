@@ -4076,6 +4076,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routeDetailStatDistance => 'Distancia';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Distancia oficial';
+
+  @override
+  String get routeDetailStatMeasured => 'Medida';
+
+  @override
   String get routeDetailStatElevation => 'Elevación';
 
   @override
@@ -7552,6 +7558,34 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get workoutAdviceWalkRun =>
       'Alterna carrera suave y caminata en los intervalos cronometrados. Las pausas de caminar son parte del entrenamiento: tómalas aunque te sientas fresco.';
+
+  @override
+  String get planDetailWeekAdviceRace =>
+      'Semana de carrera: confía en el trabajo hecho.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Afinamiento: baja el volumen, se mantiene la chispa.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Última semana: termina con tus primeros 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Haz las pausas de caminar aunque te sientas bien: hacen que la carrera sea sostenible.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Fin de semana back-to-back: dos tiradas largas en días seguidos, la segunda con las piernas cansadas.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Tiempo en pie a ritmo suave: el objetivo es la duración, no el ritmo. Practica la nutrición del día de carrera.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Corre por sensaciones y aliméntate pronto: el reloj se ocupa del resto.';
 
   @override
   String get workoutAdviceRace =>
@@ -17719,6 +17753,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'Archivada. Un mensaje nuevo la devolverá a tu bandeja de entrada.';
 
   @override
+  String get messagesMarkUnread => 'Marcar como no leída';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marcada como no leída. Seguirá destacada en tu bandeja de entrada hasta que la abras.';
+
+  @override
   String get profileMessage => 'Mensaje';
 
   @override
@@ -19923,6 +19964,41 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get shareCardPrHint =>
       'Tus marcas siguen siendo privadas. Al compartir solo sale esta imagen.';
+
+  @override
+  String get shareCardKind => 'Destacado';
+
+  @override
+  String get shareCardKindStats => 'Datos';
+
+  @override
+  String get shareCardKindSplits => 'Parciales';
+
+  @override
+  String get shareCardKindPr => 'Mejor marca';
+
+  @override
+  String get shareCardKindStreak => 'Racha';
+
+  @override
+  String get shareCardKindRace => 'Carrera';
+
+  @override
+  String get shareCardKindBadge => 'Insignia';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count parciales · media $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'días seguidos';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Insignia conseguida';
 
   @override
   String get runDetailSharePr => 'Compartir tarjeta de marca';

@@ -40,6 +40,7 @@ void main() {
   group('RunShareLook json', () {
     test('round-trips every field', () {
       const look = RunShareLook(
+        kind: RunStickerKind.splits,
         layout: RunStickerLayout.hero,
         ink: RunShareInk.brand,
         aspect: RunPhotoAspect.post,
@@ -52,11 +53,13 @@ void main() {
 
     test('an unknown value takes its default and keeps the rest', () {
       final look = RunShareLook.fromJson({
+        'kind': 'confetti',
         'layout': 'carousel',
         'ink': 'dark',
         'aspect': 'post',
         'stats': ['distance', 'cadence'],
       });
+      expect(look.kind, RunStickerKind.stats);
       expect(look.layout, const RunShareLook().layout);
       expect(look.ink, RunShareInk.dark);
       expect(look.aspect, RunPhotoAspect.post);
@@ -115,6 +118,92 @@ void main() {
           RunShareLook.defaultStats);
       expect(RunShareLook.fromJson({'layout': 'strip'}).stats,
           RunShareLook.defaultStats);
+    });
+  });
+
+  group('sticker kinds', () {
+    const none = RunStickerOccasions();
+
+    test('stats is always offered, and an occasion only when the run has its '
+        'data', () {
+      expect(offeredStickerKinds(none), [RunStickerKind.stats]);
+      const all = RunStickerOccasions(
+        splits: 5,
+        records: 1,
+        streakDays: 9,
+        race: true,
+        badge: true,
+        route: true,
+      );
+      expect(offeredStickerKinds(all), RunStickerKind.values);
+    });
+
+    test('one split is not a splits sticker, and a first run is not a streak',
+        () {
+      expect(
+          offeredStickerKinds(
+              const RunStickerOccasions(splits: minSplitsStickerRows - 1)),
+          isNot(contains(RunStickerKind.splits)));
+      expect(
+          offeredStickerKinds(
+              const RunStickerOccasions(splits: minSplitsStickerRows)),
+          contains(RunStickerKind.splits));
+      expect(
+          offeredStickerKinds(
+              const RunStickerOccasions(streakDays: minStreakStickerDays - 1)),
+          isNot(contains(RunStickerKind.streak)));
+      expect(
+          offeredStickerKinds(
+              const RunStickerOccasions(streakDays: minStreakStickerDays)),
+          contains(RunStickerKind.streak));
+    });
+
+    test('a remembered kind the run cannot print falls back to stats', () {
+      const offered = [RunStickerKind.stats, RunStickerKind.splits];
+      expect(stickerKindFor(RunStickerKind.pr, offered), RunStickerKind.stats);
+      expect(stickerKindFor(RunStickerKind.splits, offered),
+          RunStickerKind.splits);
+    });
+  });
+
+  group('splits sticker budget', () {
+    test('is half of 480 usable story units, shrunk no smaller than 12 px '
+        'digits', () {
+      expect(splitsStickerMaxHeight(22), 440);
+    });
+
+    test('the column capacity is what fits after the chrome, never negative',
+        () {
+      expect(splitsColumnCapacity(22, 30, 88), 11);
+      expect(splitsColumnCapacity(22, 30, 1000), 0);
+    });
+
+    test('one column, then two, then bars', () {
+      expect(splitsStickerForm(11, 11), SplitsStickerForm.single);
+      expect(splitsStickerForm(12, 11), SplitsStickerForm.paired);
+      expect(splitsStickerForm(22, 11), SplitsStickerForm.paired);
+      expect(splitsStickerForm(23, 11), SplitsStickerForm.bars);
+    });
+
+    test('the fastest split skips a partial tail and a split with no pace',
+        () {
+      const rows = [
+        SplitsStickerRow(paceSecPerKm: 310, metres: 1000),
+        SplitsStickerRow(paceSecPerKm: 0, metres: 1000),
+        SplitsStickerRow(paceSecPerKm: 295, metres: 1000),
+        SplitsStickerRow(paceSecPerKm: 240, metres: 200, partial: true),
+      ];
+      expect(fastestStickerSplit(rows), 2);
+      expect(fastestStickerSplit(const []), -1);
+    });
+
+    test('the average weights each split by its length', () {
+      final avg = averageStickerPace(const [
+        SplitsStickerRow(paceSecPerKm: 300, metres: 1000),
+        SplitsStickerRow(paceSecPerKm: 360, metres: 500, partial: true),
+      ]);
+      expect(avg, (300 + 180) / 1500 * 1000);
+      expect(averageStickerPace(const []), isNull);
     });
   });
 

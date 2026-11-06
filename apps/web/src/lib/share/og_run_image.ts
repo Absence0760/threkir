@@ -15,6 +15,7 @@
 
 import { formatDateStable, formatKmStable } from './share_meta';
 import { OG_CARD_LIGHT } from './og_card_palette';
+import { OG_FONT_STACK } from './og_card_font';
 import { escapeXml } from '../util/html_escape';
 
 const W = 1200;
@@ -47,7 +48,7 @@ export function buildRunOgSvg(input: RunImageInput): string {
 
 	// Brand strap, top-left.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 24}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="28" font-weight="700" fill="${BRAND}">Threkir</text>`,
+		`<text x="${PAD}" y="${PAD + 24}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="700" fill="${BRAND}">Threkir</text>`,
 	);
 
 	// Main stat — distance, centred horizontally. The 1200×630 canvas
@@ -55,7 +56,7 @@ export function buildRunOgSvg(input: RunImageInput): string {
 	const km = formatKmStable(input.distance_m);
 	const heroText = km || 'Run';
 	parts.push(
-		`<text x="${W / 2}" y="${H / 2 + 20}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="180" font-weight="800" fill="${STAT_FILL}" text-anchor="middle">${escapeXml(heroText)}</text>`,
+		`<text x="${W / 2}" y="${H / 2 + 20}" font-family="${OG_FONT_STACK}" font-size="180" font-weight="800" fill="${STAT_FILL}" text-anchor="middle">${escapeXml(heroText)}</text>`,
 	);
 
 	// Sub-line: "by NAME on DATE" — composed from whatever bits are
@@ -63,14 +64,14 @@ export function buildRunOgSvg(input: RunImageInput): string {
 	const sub = buildSubline(input);
 	if (sub) {
 		parts.push(
-			`<text x="${W / 2}" y="${H / 2 + 100}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="44" font-weight="500" fill="${META_FILL}" text-anchor="middle">${escapeXml(sub)}</text>`,
+			`<text x="${W / 2}" y="${H / 2 + 100}" font-family="${OG_FONT_STACK}" font-size="44" font-weight="500" fill="${META_FILL}" text-anchor="middle">${escapeXml(sub)}</text>`,
 		);
 	}
 
 	// Source tag (strava / parkrun / etc) bottom-right when present.
 	if (input.source) {
 		parts.push(
-			`<text x="${W - PAD}" y="${H - PAD}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="28" font-weight="600" fill="${META_FILL}" text-anchor="end">${escapeXml(input.source)}</text>`,
+			`<text x="${W - PAD}" y="${H - PAD}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="600" fill="${META_FILL}" text-anchor="end">${escapeXml(input.source)}</text>`,
 		);
 	}
 

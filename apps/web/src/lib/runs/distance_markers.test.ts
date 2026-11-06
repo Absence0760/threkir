@@ -38,6 +38,22 @@ describe('computeDistanceMarkers', () => {
 		assert.deepEqual(fc.features.map((f) => f.properties.label), ['1', '2', '3', '4']);
 	});
 
+	it('places an official distance shorter than the line at its own km', () => {
+		// 12 km of line for a 10.5 km course: km k sits k·12/10.5 km along it.
+		const fc = computeDistanceMarkers(straight(121, 100), 1000, 12000, 10500);
+		assert.deepEqual(
+			fc.features.map((f) => f.properties.label),
+			['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+		);
+		const lat = fc.features[4].geometry.coordinates[1];
+		assert.ok(Math.abs(lat * METRES_PER_LAT_DEGREE - (5000 * 12000) / 10500) < 1);
+	});
+
+	it('lets an official distance win over the sparse-line heuristic', () => {
+		const fc = computeDistanceMarkers(straight(11, 100), 1000, 4000, 2500);
+		assert.deepEqual(fc.features.map((f) => f.properties.label), ['1', '2']);
+	});
+
 	it('returns nothing for fewer than two points', () => {
 		assert.deepEqual(computeDistanceMarkers([], 1000).features, []);
 		assert.deepEqual(computeDistanceMarkers([[0, 0]], 1000).features, []);

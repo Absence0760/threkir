@@ -265,6 +265,25 @@ The two rasterised card palettes both share builders paint with live in
 dark (recap unfurl + the in-app recap share PNG), each ink carrying its measured
 ratio and the ground it was measured against.
 
+Every rasterised card (route, run, badge, recap, challenge) is set in **Manrope,
+bundled with the renderer** (issue #1287). The share Lambdas have no system
+fonts, and resvg drops a `<text>` it has no face for without an error, so cards
+that named `system-ui` unfurled with no words at all. Now
+`lib/share/og_card_font.ts` holds the family (`OG_FONT_STACK`) and the file list,
+`lib/share/og_png_render.ts` is the one place resvg is constructed
+(`OG_RESVG_OPTIONS`: `loadSystemFonts: false`, the static TTFs under
+`lib/share/og-fonts/`, Manrope as the default and `sans-serif` family), and each
+share Lambda's `build.mjs` calls `lambda/og_fonts_bundle.mjs` to copy
+`og-fonts/` beside the bundled `index.mjs` and zip it, which is where the
+bundle's `import.meta.url` resolves it. The TTFs are the same bytes
+`assets/fonts/gen-manrope.py` writes into `packages/ui_kit/fonts/`. Manrope
+covers Latin, Cyrillic and Greek; a CJK, Hangul or Devanagari name paints as
+`.notdef` boxes, since no CJK face is bundled. `og_card_font.render.test.ts`
+renders every card with the bundled face only and fails when its text does not
+paint; `og_font_packaging.test.ts` fails on `loadSystemFonts: true`, a second
+resvg constructor, a card-rendering Lambda whose zip omits the faces, or the
+faces drifting from `ui_kit`.
+
 ## The shared entity-SSR Lambda
 
 `apps/web/lambda/share-entity/` — **one HTML-only Lambda** dispatching the

@@ -508,6 +508,157 @@ void main() {
     });
   });
 
+  group('occasion sticker', () {
+    SplitsStickerBody splitsBody(int n) => SplitsStickerBody('$n splits', [
+          for (var i = 0; i < n; i++)
+            SplitsStickerEntry(
+              '${i + 1}',
+              '5:${(i % 50 + 10).toString().padLeft(2, '0')}',
+              SplitsStickerRow(
+                  paceSecPerKm: 300.0 + (i * 7) % 23, metres: 1000),
+            ),
+        ]);
+
+    final bodies = <String, RunOccasionBody>{
+      'splits': splitsBody(5),
+      'pr': prStickerBody(
+        headline: 'New personal record',
+        distance: '5K',
+        time: '22:41',
+        improvement: '18s faster',
+        hasRoute: true,
+      ),
+      'streak': streakStickerBody(
+          kicker: 'Streak', days: '147', caption: 'days in a row'),
+      'race timed': raceStickerBody(
+          name: 'Richmond Marathon',
+          finisher: 'Finisher',
+          time: '3:41:07',
+          hasRoute: true),
+      'race untimed': raceStickerBody(
+          name: 'Richmond Marathon', finisher: 'Finisher', hasRoute: false),
+      'badge': badgeStickerBody(
+          kicker: 'Badge earned', name: 'Marathon finisher', tier: 'Gold'),
+      'route': routeStickerBody(),
+    };
+
+    for (final MapEntry(key: name, value: body) in bodies.entries) {
+      for (final ink in RunShareInk.values) {
+        testWidgets('$name in ${ink.name} lays out without overflow, signed',
+            (tester) async {
+          await _pumpCanvas(
+            tester,
+            RunStickerShareCard(
+              run: _run(track: _hillTrack),
+              preferences: await _makePrefs(),
+              privacyZones: const [],
+              look: RunShareLook(kind: RunStickerKind.splits, ink: ink),
+              occasion: body,
+            ),
+          );
+          expect(tester.takeException(), isNull);
+          expect(find.text('THREKIR'), findsOneWidget);
+          expect(find.byType(RunStickerContent), findsNothing);
+          expect(
+              tester.getSize(find.byType(RunStickerShareCard)).width,
+              RunStickerShareCard.canvasWidth(const RunShareLook(),
+                  occasion: true));
+        });
+      }
+    }
+
+    testWidgets('with the mark off an occasion draws no signature',
+        (tester) async {
+      await _pumpCanvas(
+        tester,
+        RunStickerShareCard(
+          run: _run(track: _hillTrack),
+          preferences: await _makePrefs(),
+          privacyZones: const [],
+          look: const RunShareLook(mark: false),
+          occasion: bodies['streak'],
+        ),
+      );
+      expect(find.text('THREKIR'), findsNothing);
+      expect(find.text('147'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a full column and a full pair of columns fit the splits budget, and '
+        'one more row changes form', (tester) async {
+      final cap = OccasionLayout.splitsCapacity(22);
+      expect(cap, greaterThan(0));
+      final budget = splitsStickerMaxHeight(22);
+      for (final n in [cap, cap + 1, cap * 2, cap * 2 + 1, 120]) {
+        await _pumpCanvas(
+          tester,
+          RunStickerShareCard(
+            run: _run(),
+            preferences: await _makePrefs(),
+            privacyZones: const [],
+            occasion: splitsBody(n),
+          ),
+        );
+        expect(tester.takeException(), isNull, reason: '$n rows');
+        final h = tester.getSize(find.byType(RunStickerShareCard)).height;
+        expect(h, lessThanOrEqualTo(budget), reason: '$n rows: $h');
+        final bars = find.byWidgetPredicate(
+            (w) => w is CustomPaint && w.painter is SplitBarsPainter);
+        expect(bars, n > cap * 2 ? findsOneWidget : findsNothing,
+            reason: '$n rows');
+      }
+    });
+
+    testWidgets('the fastest split takes the accent', (tester) async {
+      await _pumpCanvas(
+        tester,
+        RunStickerShareCard(
+          run: _run(),
+          preferences: await _makePrefs(),
+          privacyZones: const [],
+          occasion: splitsBody(6),
+        ),
+      );
+      final accent = RunShareInkSpec.of(RunShareInk.light).accent;
+      final first = tester.widget<Text>(find.text('1'));
+      expect(first.style?.color, accent);
+      final second = tester.widget<Text>(find.text('2'));
+      expect(second.style?.color, isNot(accent));
+    });
+
+    testWidgets('an occasion sticker rasterises onto a transparent ground',
+        (tester) async {
+      final key = GlobalKey();
+      await _pumpCanvas(
+        tester,
+        RepaintBoundary(
+          key: key,
+          child: RunStickerShareCard(
+            run: _run(track: _zoneTrack),
+            preferences: await _makePrefs(),
+            privacyZones: const [],
+            occasion: bodies['race timed'],
+          ),
+        ),
+      );
+      final ratio = shareImageExportWidthPx /
+          RunStickerShareCard.canvasWidth(const RunShareLook(), occasion: true);
+      final rgba = await tester.runAsync(() async {
+        final boundary =
+            key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+        final image = await boundary.toImage(pixelRatio: ratio);
+        final data =
+            await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+        return (image.width, image.height, data!);
+      });
+      final (width, height, data) = rgba!;
+      expect(width, shareImageExportWidthPx.round());
+      int alphaAt(int x, int y) => data.getUint8((y * width + x) * 4 + 3);
+      expect(alphaAt(0, 0), 0);
+      expect(alphaAt(width - 1, height - 1), 0);
+    });
+  });
+
   group('photo', () {
     for (final aspect in RunPhotoAspect.values) {
       for (final layout in RunStickerLayout.values) {
@@ -869,6 +1020,63 @@ void main() {
         RunShareStatKind.pace,
         RunShareStatKind.time,
       ]);
+    });
+
+    testWidgets(
+        'offers an occasion sticker only when the run has its data, and keeps '
+        'the kind for next time', (tester) async {
+      await openSheet(
+        tester,
+        run: _run(
+          // ~3.3 km of timestamped fixes: three whole km splits.
+          track: [
+            for (var i = 0; i < 16; i++)
+              Waypoint(
+                lat: 51.44 + i * 0.002,
+                lng: -0.27,
+                timestamp: DateTime.utc(2026, 4, 15, 8, i),
+              ),
+          ],
+          extra: const {'race_name': 'Riverside 5K', 'chip_time': '24:31'},
+        ),
+      );
+      await tapChip(tester, 'Sticker');
+      expect(find.text('Highlight'), findsOneWidget);
+      for (final offered in ['Splits', 'Race']) {
+        expect(find.widgetWithText(ChoiceChip, offered), findsOneWidget,
+            reason: offered);
+      }
+      for (final hidden in ['PR', 'Streak', 'Badge']) {
+        expect(find.widgetWithText(ChoiceChip, hidden), findsNothing,
+            reason: hidden);
+      }
+      await tapChip(tester, 'Race');
+      final sticker =
+          tester.widget<RunStickerShareCard>(find.byType(RunStickerShareCard));
+      expect(sticker.occasion, isA<OccasionLinesBody>());
+      expect(find.text('24:31'), findsOneWidget);
+      // The layouts and stat chips belong to the stats sticker.
+      expect(find.text('Layout'), findsNothing);
+      expect(find.widgetWithText(FilterChip, 'Distance'), findsNothing);
+      expect(tester.takeException(), isNull);
+
+      final stored = (await SharedPreferences.getInstance())
+          .getString(shareLookPrefsKey);
+      expect((jsonDecode(stored!) as Map<String, dynamic>)['kind'], 'race');
+    });
+
+    testWidgets('a remembered kind the run cannot print draws the stats',
+        (tester) async {
+      await openSheet(tester, prefs: {
+        shareLookPrefsKey: jsonEncode(
+            const RunShareLook(kind: RunStickerKind.race).toJson()),
+      });
+      await tapChip(tester, 'Sticker');
+      final sticker =
+          tester.widget<RunStickerShareCard>(find.byType(RunStickerShareCard));
+      expect(sticker.occasion, isNull);
+      expect(find.byType(RunStickerContent), findsOneWidget);
+      expect(find.text('Highlight'), findsNothing);
     });
 
     testWidgets('offers climb and heart rate when the run measured them',

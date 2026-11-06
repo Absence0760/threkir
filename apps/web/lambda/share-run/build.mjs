@@ -38,6 +38,8 @@ import {
 import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 
+import { copyOgFonts, OG_FONT_DIR_NAME } from '../og_fonts_bundle.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const webRoot = resolve(here, '..', '..');
 const distDir = resolve(here, 'dist');
@@ -108,8 +110,9 @@ writeFileSync(
 );
 
 copyResvgPackages();
+copyOgFonts(distDir);
 
-execSync('zip -qr share-run.zip index.mjs index.mjs.map package.json node_modules', {
+execSync(`zip -qr share-run.zip index.mjs index.mjs.map package.json node_modules ${OG_FONT_DIR_NAME}`, {
 	cwd: distDir,
 	stdio: 'inherit',
 });

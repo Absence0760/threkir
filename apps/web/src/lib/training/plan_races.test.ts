@@ -132,3 +132,59 @@ test('nextRace: returns null after the last race', () => {
 	assert.equal(nextRace(races, '2027-06-14'), null);
 	assert.equal(nextRace([], '2027-01-01'), null);
 });
+
+const houstonPlan = {
+	end_date: '2027-01-23',
+	goal_distance_m: 42195,
+	goal_time_seconds: 14400,
+	trimmed_at: null
+};
+const houston = {
+	id: 'w-houston',
+	scheduled_date: '2027-01-17',
+	kind: 'race',
+	race_name: null,
+	race_priority: null,
+	target_distance_m: 42195,
+	target_duration_seconds: null
+};
+
+test('planRaces: a race-week race before an end date with no race is the A goal race, not a C race plus a synthetic A (#1294)', () => {
+	assert.deepEqual(planRaces(houstonPlan, [houston]), [
+		{
+			date: '2027-01-17',
+			name: null,
+			priority: 'A',
+			distanceM: 42195,
+			goalTimeSec: 14400,
+			workoutId: 'w-houston'
+		}
+	]);
+});
+
+test('planRaces: a race-week race marked B or C keeps its priority and the end date keeps its synthetic A race', () => {
+	const races = planRaces(houstonPlan, [{ ...houston, race_priority: 'C' }]);
+	assert.deepEqual(
+		races.map((r) => [r.workoutId, r.priority, r.date]),
+		[
+			['w-houston', 'C', '2027-01-17'],
+			[null, 'A', '2027-01-23']
+		]
+	);
+});
+
+test('planRaces: only the final seven days count as race week, and a trimmed plan promotes nothing', () => {
+	const weekBefore = planRaces(houstonPlan, [{ ...houston, scheduled_date: '2027-01-16' }]);
+	assert.deepEqual(
+		weekBefore.map((r) => [r.workoutId, r.priority]),
+		[
+			['w-houston', 'C'],
+			[null, 'A']
+		]
+	);
+	const trimmed = planRaces({ ...houstonPlan, trimmed_at: '2027-01-23T09:00:00+00:00' }, [houston]);
+	assert.deepEqual(
+		trimmed.map((r) => [r.workoutId, r.priority]),
+		[['w-houston', 'C']]
+	);
+});

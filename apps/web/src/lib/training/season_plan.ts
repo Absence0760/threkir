@@ -252,6 +252,27 @@ function restateVolumes(plan: GeneratedPlan): void {
 	}
 }
 
+/// A single-race plan (the race calendar's "train for this race", a race date
+/// in a plan description) ends on its race the way a season plan does: one A
+/// race on race day, not the generator's race-week Sunday race with the plan
+/// ending the Saturday after (#1294). The plan comes back unchanged when race
+/// day is not inside its final race week.
+export function fitPlanToRaceDay(plan: GeneratedPlan, race: SeasonRace, goalDistanceM: number): GeneratedPlan {
+	const last = plan.weeks[plan.weeks.length - 1];
+	const end = epochDay(plan.endDate);
+	const day = epochDay(race.date);
+	if (!last || last.phase !== 'race' || end === null || day === null || day > end || day < end - 6) {
+		return plan;
+	}
+	const out: GeneratedPlan = {
+		...plan,
+		weeks: plan.weeks.map((w) => ({ ...w, workouts: [...w.workouts] })),
+	};
+	fitToARace(out, race, goalDistanceM);
+	restateVolumes(out);
+	return out;
+}
+
 export function buildSeason(input: SeasonBuildInput): SeasonBuildResult {
 	if (input.races.length === 0) return { ok: false, reason: 'empty', races: [] };
 	const invalid = input.races.filter((r) => !raceIsValid(r));

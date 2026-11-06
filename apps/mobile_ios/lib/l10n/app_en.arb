@@ -5389,6 +5389,14 @@
   "@routeDetailStatDistance": {
     "description": "Stat label for distance on the route-detail screen"
   },
+  "routeDetailStatOfficialDistance": "Official distance",
+  "@routeDetailStatOfficialDistance": {
+    "description": "Stat label for a route's official (race-certified) distance, shown in place of the measured distance when the owner set one (issue #1291)"
+  },
+  "routeDetailStatMeasured": "Measured",
+  "@routeDetailStatMeasured": {
+    "description": "Stat label for the length of the drawn route line, shown beside its official distance"
+  },
   "routeDetailStatElevation": "Elevation",
   "@routeDetailStatElevation": {
     "description": "Stat label for elevation on the route-detail screen"
@@ -10131,6 +10139,34 @@
   "workoutAdviceWalkRun": "Alternate easy running and walking on the timed intervals. The walk breaks are part of the workout — take them even when you feel fresh.",
   "@workoutAdviceWalkRun": {
     "description": "Advice text for walk-run workouts"
+  },
+  "planDetailWeekAdviceRace": "Race week — trust the work.",
+  "@planDetailWeekAdviceRace": {
+    "description": "Advice line under a race-week card on plan detail"
+  },
+  "planDetailWeekAdviceTaper": "Taper — volume comes down, sharpness stays.",
+  "@planDetailWeekAdviceTaper": {
+    "description": "Advice line under a taper-week card on plan detail"
+  },
+  "planDetailWeekAdviceGraduation": "Final week — it ends with your first 5K.",
+  "@planDetailWeekAdviceGraduation": {
+    "description": "Advice line under the final week of a couch-to-5K plan"
+  },
+  "planDetailWeekAdviceWalkBreaks": "Take the walk breaks even when you feel good — they make the runs sustainable.",
+  "@planDetailWeekAdviceWalkBreaks": {
+    "description": "Advice line under a walk-run week on plan detail"
+  },
+  "planDetailWeekAdviceBackToBack": "Back-to-back weekend — two long runs on consecutive days, the second on tired legs.",
+  "@planDetailWeekAdviceBackToBack": {
+    "description": "Advice line under an ultra plan week holding two long runs"
+  },
+  "workoutAdviceTimeOnFeet": "Time on feet at easy effort: the duration is the target, not the pace. Practise race-day fuelling.",
+  "@workoutAdviceTimeOnFeet": {
+    "description": "Advice text for a long run set by time with no pace (an ultra time-on-feet run)"
+  },
+  "workoutAdviceUltraRace": "Run by effort and fuel early — the clock looks after itself.",
+  "@workoutAdviceUltraRace": {
+    "description": "Advice text for an ultra-distance race day"
   },
   "workoutAdviceRace": "Trust the plan. Don't chase a PB in the first mile.",
   "@workoutAdviceRace": {
@@ -23095,6 +23131,14 @@
   "@messagesArchivedToast": {
     "description": "Confirmation after archiving a conversation"
   },
+  "messagesMarkUnread": "Mark as unread",
+  "@messagesMarkUnread": {
+    "description": "Conversation menu action: flag the conversation unread again for yourself; the other person is not told"
+  },
+  "messagesMarkedUnreadToast": "Marked as unread. It stays highlighted in your inbox until you open it.",
+  "@messagesMarkedUnreadToast": {
+    "description": "Confirmation after marking a conversation unread, shown as the conversation closes"
+  },
   "profileMessage": "Message",
   "@profileMessage": {
     "description": "Profile action opening a direct-message conversation with this runner"
@@ -26085,6 +26129,54 @@
   "shareCardPrHint": "Your record times stay private. Only this image leaves when you share it.",
   "@shareCardPrHint": {
     "description": "Hint under the PR card preview"
+  },
+  "shareCardKind": "Highlight",
+  "@shareCardKind": {
+    "description": "Label over the chips that pick what a sticker is about: its stats, or an occasion the run marks"
+  },
+  "shareCardKindStats": "Stats",
+  "@shareCardKindStats": {
+    "description": "Sticker kind chip: the run's numbers in a layout"
+  },
+  "shareCardKindSplits": "Splits",
+  "@shareCardKindSplits": {
+    "description": "Sticker kind chip: the run's splits as a table or bars"
+  },
+  "shareCardKindPr": "PR",
+  "@shareCardKindPr": {
+    "description": "Sticker kind chip: a personal record the run set"
+  },
+  "shareCardKindStreak": "Streak",
+  "@shareCardKindStreak": {
+    "description": "Sticker kind chip and the streak sticker's kicker: the day of a daily activity streak the run was"
+  },
+  "shareCardKindRace": "Race",
+  "@shareCardKindRace": {
+    "description": "Sticker kind chip: the race the run finished"
+  },
+  "shareCardKindBadge": "Badge",
+  "@shareCardKindBadge": {
+    "description": "Sticker kind chip: the badge the run earned"
+  },
+  "shareCardSplitsHeading": "{count} splits · avg {pace}",
+  "@shareCardSplitsHeading": {
+    "description": "Heading of the splits sticker, printed uppercase: how many splits and the average pace with its unit",
+    "placeholders": {
+      "count": {"type": "int"},
+      "pace": {"type": "String"}
+    }
+  },
+  "shareCardStreakCaption": "days in a row",
+  "@shareCardStreakCaption": {
+    "description": "Under the day count on the streak sticker"
+  },
+  "shareCardRaceFinisher": "Finisher",
+  "@shareCardRaceFinisher": {
+    "description": "The race sticker's word for having finished the race, its hero when there is no official time"
+  },
+  "shareCardBadgeKicker": "Badge earned",
+  "@shareCardBadgeKicker": {
+    "description": "Kicker over the badge name on the badge sticker"
   },
   "runDetailSharePr": "Share PR card",
   "@runDetailSharePr": {

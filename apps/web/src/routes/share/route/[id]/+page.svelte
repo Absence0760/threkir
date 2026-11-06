@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { fetchRouteById } from '#lib/core/data.ts';
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import RunMap from '#lib/components/RunMap.svelte';
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
@@ -132,7 +133,7 @@
 			<p class="kicker">{m('shareRoute.heroKicker')}</p>
 			<h1>{route.name}</h1>
 			<p class="route-meta">
-				<span>{formatDistance(route.distance_m)}</span>
+				<span data-testid="share-route-distance">{formatDistance(routeDisplayDistanceM(route.distance_m, route.official_distance_m))}</span>
 				{#if route.elevation_m}
 					<span class="meta-sep">&middot;</span>
 					<span>{m('shareRoute.elevationValue', { n: elevation.gain })}</span>
@@ -147,11 +148,21 @@
 		<main class="content" id="main-content">
 			{#if waypoints.length > 0}
 				<div class="map-container">
-					<RunMap track={waypoints} requireExplicitConsent />
+					<RunMap
+						track={waypoints}
+						totalDistanceM={route.distance_m}
+						officialDistanceM={route.official_distance_m}
+						requireExplicitConsent
+					/>
 				</div>
 				{#if hasPreviewableCourse(previewPoints)}
 					<div class="preview-action">
-						<CoursePreviewButton points={previewPoints} title={route.name} requireExplicitConsent />
+						<CoursePreviewButton
+							points={previewPoints}
+							title={route.name}
+							officialDistanceM={route.official_distance_m}
+							requireExplicitConsent
+						/>
 					</div>
 				{/if}
 
@@ -161,7 +172,7 @@
 						<ElevationProfile
 							elevations={elevation.profile}
 							totalGain={route.elevation_m ? elevation.gain : null}
-							totalDistance={route.distance_m}
+							totalDistance={routeDisplayDistanceM(route.distance_m, route.official_distance_m)}
 						/>
 					</section>
 				{/if}

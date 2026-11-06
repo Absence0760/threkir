@@ -1836,6 +1836,34 @@ export const FILTERED_RPC_ARGUMENTS = [
       'read-back reports false unless that stamp was written.',
   },
   {
+    file: 'dm_mark_unread_test.sql',
+    description: 'a participant can mark the conversation unread',
+    columns: ['conversation_participants.marked_unread_at'],
+    readBack: 'dm_threads reports it marked unread',
+    reason:
+      'p_unread becomes a timestamp (now(), or the existing stamp) rather than landing as given. ' +
+      'The read-back reads marked_unread_at through dm_threads(), which a server that stopped ' +
+      'stamping it would report false.',
+  },
+  {
+    file: 'dm_mark_unread_test.sql',
+    description: 'a participant can clear the mark',
+    columns: ['conversation_participants.marked_unread_at'],
+    readBack: 'dm_threads reports the mark cleared',
+    reason:
+      'p_unread = false clears marked_unread_at rather than storing the boolean; the read-back ' +
+      'follows a mark, so a server that stopped clearing it would still report true.',
+  },
+  {
+    file: 'dm_mark_unread_test.sql',
+    description: 'a participant can mark it unread again',
+    columns: ['conversation_participants.marked_unread_at'],
+    readBack: 'dm_threads reports it marked unread again',
+    reason:
+      'The read-back follows a clear, so a server that stopped stamping marked_unread_at would ' +
+      'report false.',
+  },
+  {
     file: 'plan_workout_effort_targets_test.sql',
     description: 'the owner duplicates the week',
     columns: ['plan_weeks.week_index'],

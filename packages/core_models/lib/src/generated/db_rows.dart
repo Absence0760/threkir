@@ -5844,6 +5844,7 @@ class RouteRow {
   static const String colShadowHidden = 'shadow_hidden';
   static const String colGeomPublic = 'geom_public';
   static const String colFollowersOnly = 'followers_only';
+  static const String colOfficialDistanceM = 'official_distance_m';
 
   final String id;
   final String userId;
@@ -5868,6 +5869,7 @@ class RouteRow {
   final bool shadowHidden;
   final dynamic geomPublic;
   final bool followersOnly;
+  final double? officialDistanceM;
 
   const RouteRow({
     required this.id,
@@ -5893,6 +5895,7 @@ class RouteRow {
     required this.shadowHidden,
     this.geomPublic,
     required this.followersOnly,
+    this.officialDistanceM,
   });
 
   factory RouteRow.fromJson(Map<String, dynamic> json) => RouteRow(
@@ -5919,6 +5922,7 @@ class RouteRow {
     shadowHidden: (json['shadow_hidden'] as bool?) ?? false,
     geomPublic: json['geom_public'],
     followersOnly: (json['followers_only'] as bool?) ?? false,
+    officialDistanceM: _toDoubleOrNull(json['official_distance_m']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5945,6 +5949,7 @@ class RouteRow {
     colShadowHidden: shadowHidden,
     colGeomPublic: geomPublic,
     colFollowersOnly: followersOnly,
+    colOfficialDistanceM: officialDistanceM,
   };
 
   RouteRow copyWith({
@@ -5971,6 +5976,7 @@ class RouteRow {
     bool? shadowHidden,
     dynamic geomPublic,
     bool? followersOnly,
+    double? officialDistanceM,
   }) => RouteRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -5995,6 +6001,7 @@ class RouteRow {
     shadowHidden: shadowHidden ?? this.shadowHidden,
     geomPublic: geomPublic ?? this.geomPublic,
     followersOnly: followersOnly ?? this.followersOnly,
+    officialDistanceM: officialDistanceM ?? this.officialDistanceM,
   );
 }
 

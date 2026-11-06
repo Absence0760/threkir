@@ -46,7 +46,7 @@ class PlanRacesList extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
         border: Border.all(color: theme.dividerColor),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -82,7 +82,7 @@ class PlanRacesList extends StatelessWidget {
     final badge = MediaQuery.textScalerOf(context).scale(28);
     return InkWell(
       key: ValueKey('planRace-${r.workoutId ?? 'plan'}-${r.date}'),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),

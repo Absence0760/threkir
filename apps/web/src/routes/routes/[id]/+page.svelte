@@ -49,7 +49,13 @@
 	import { PUBLIC_SITE_URL } from '$app/env/public';
 	import { currentLocale, m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
-	import { routeDetailsPatch } from '#lib/routes/route_details.ts';
+	import {
+		officialDistanceInputValue,
+		parseOfficialDistanceInput,
+		routeDetailsPatch,
+	} from '#lib/routes/route_details.ts';
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
+	import { METRES_PER_MILE } from '#lib/runs/distance_markers.ts';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
@@ -332,7 +338,7 @@
 		const wps = displayWaypoints;
 		return {
 			name: route?.name ?? 'This route',
-			distanceM: route?.distance_m ?? 0,
+			distanceM: shownDistanceM,
 			elevationM: route?.elevation_m ?? null,
 			surface: route?.surface ?? null,
 			start: wps.length > 0 ? { lat: wps[0].lat, lng: wps[0].lng } : undefined,
@@ -423,6 +429,11 @@
 	let editingDetails = $state(false);
 	let nameDraft = $state('');
 	let descriptionDraft = $state('');
+	let officialDraft = $state('');
+	const unitM = $derived(getUnit() === 'mi' ? METRES_PER_MILE : 1000);
+	const shownDistanceM = $derived(
+		route ? routeDisplayDistanceM(route.distance_m, route.official_distance_m) : 0,
+	);
 	let detailsSaving = $state(false);
 	let detailsError = $state<string | null>(null);
 
@@ -430,16 +441,41 @@
 		if (!route || !isOwner) return;
 		nameDraft = route.name;
 		descriptionDraft = route.description ?? '';
+		officialDraft = officialDistanceInputValue(route.official_distance_m, unitM);
 		detailsError = null;
 		editingDetails = true;
 	}
 
 	async function saveDetails() {
 		if (!route || !isOwner || detailsSaving) return;
-		const result = routeDetailsPatch(
+		const official = parseOfficialDistanceInput(
+			officialDraft,
+			unitM,
+			route.distance_m,
+			route.official_distance_m,
+		);
+		if (official.kind === 'notANumber' || official.kind === 'outOfRange') {
+			detailsError = m('routeDetail.officialDistanceInvalid');
+			return;
+		}
+		if (official.kind === 'tooFar') {
+			detailsError = m('routeDetail.officialDistanceTooFar', { distance: formatDistance(route.distance_m) });
+			return;
+		}
+		const details = routeDetailsPatch(
 			{ name: route.name, description: route.description },
 			{ name: nameDraft, description: descriptionDraft },
 		);
+		const result =
+			official.kind === 'set' && (details.kind === 'patch' || details.kind === 'unchanged')
+				? {
+						kind: 'patch' as const,
+						patch: {
+							...(details.kind === 'patch' ? details.patch : {}),
+							official_distance_m: official.officialM,
+						},
+					}
+				: details;
 		if (result.kind === 'unchanged') {
 			editingDetails = false;
 			return;
@@ -458,6 +494,9 @@
 			await updateRouteDetails(route.id, result.patch);
 			if (result.patch.name !== undefined) route.name = result.patch.name;
 			if (result.patch.description !== undefined) route.description = result.patch.description;
+			if (result.patch.official_distance_m !== undefined) {
+				route.official_distance_m = result.patch.official_distance_m;
+			}
 			editingDetails = false;
 			showToast(m('routeDetail.detailsSaved'), 'success');
 		} catch (e) {
@@ -791,8 +830,15 @@
 						 they read distinct from the numeric tiles. -->
 					<div class="key-stats">
 						<div class="key-stat">
-							<span class="key-stat-value">{formatDistance(route.distance_m)}</span>
-							<span class="key-stat-label">{m('routeDetail.statDistance')}</span>
+							<span class="key-stat-value" data-testid="route-key-distance">{formatDistance(shownDistanceM)}</span>
+							{#if route.official_distance_m != null}
+								<span class="key-stat-label">{m('routeDetail.statOfficialDistance')}</span>
+								<span class="key-stat-sub" data-testid="route-key-measured">
+									{m('routeDetail.measuredDistance', { distance: formatDistance(route.distance_m) })}
+								</span>
+							{:else}
+								<span class="key-stat-label">{m('routeDetail.statDistance')}</span>
+							{/if}
 						</div>
 						{#if route.elevation_m != null && route.elevation_m > 0}
 							<div class="key-stat">
@@ -851,6 +897,22 @@
 								maxlength={lengthLimit('routes.description')}
 								disabled={detailsSaving}
 							></textarea>
+							<label for="route-official-distance-input">
+								{m('routeDetail.officialDistanceLabel', { unit: getUnit() })}
+							</label>
+							<input
+								id="route-official-distance-input"
+								type="text"
+								inputmode="decimal"
+								autocomplete="off"
+								bind:value={officialDraft}
+								disabled={detailsSaving}
+								aria-describedby="route-official-distance-hint"
+								data-testid="route-official-distance-input"
+							/>
+							<p class="details-hint" id="route-official-distance-hint">
+								{m('routeDetail.officialDistanceHint', { distance: formatDistance(route.distance_m) })}
+							</p>
 							{#if route.is_public}
 								<p class="details-hint">{m('routeDetail.editPublicHint')}</p>
 							{/if}
@@ -932,6 +994,7 @@
 						points={previewPoints}
 						title={route.name}
 						climbNames={previewClimbNames}
+						officialDistanceM={route.official_distance_m}
 						videoSource={isOwner ? undefined : async () => ({ points: previewPoints })}
 					/>
 					<button class="btn btn-outline btn-sm" onclick={handleExportGpx}>GPX</button>
@@ -1052,7 +1115,7 @@
 				<section class="section preview-section">
 					<h2>{m('routeDetail.previewHeading')}</h2>
 					<RoutePreviewScrubber
-						totalDistanceM={route.distance_m}
+						totalDistanceM={shownDistanceM}
 						fraction={scrubFraction}
 						onchange={(f) => (scrubFraction = f)}
 						onscrubbing={(active) => (scrubbing = active)}
@@ -1102,7 +1165,7 @@
 							<ElevationProfile
 								elevations={elevation.profile}
 								totalGain={elevation.gain}
-								totalDistance={route.distance_m}
+								totalDistance={shownDistanceM}
 								onhover={(idx) => (chartHoverIdx = idx)}
 							/>
 						</div>
@@ -1265,6 +1328,7 @@
 					<RunMap
 						track={displayWaypoints}
 						totalDistanceM={route.distance_m}
+						officialDistanceM={route.official_distance_m}
 						hoverIdx={chartHoverIdx}
 						{previewLngLat}
 						markers={markerPins}
@@ -1460,6 +1524,11 @@
 		line-height: 1.05;
 		letter-spacing: -0.01em;
 		color: var(--color-text);
+	}
+	.key-stat-sub {
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+		font-variant-numeric: tabular-nums;
 	}
 	.key-stat-label {
 		font-size: var(--font-size-section-label);

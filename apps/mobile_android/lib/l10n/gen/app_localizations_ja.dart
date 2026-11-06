@@ -3846,6 +3846,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routeDetailStatDistance => '距離';
 
   @override
+  String get routeDetailStatOfficialDistance => '公式距離';
+
+  @override
+  String get routeDetailStatMeasured => '計測値';
+
+  @override
   String get routeDetailStatElevation => '標高';
 
   @override
@@ -7133,6 +7139,30 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get workoutAdviceWalkRun =>
       'タイム管理されたインターバルで、イージーランとウォークを交互に行いましょう。歩く休憩もワークアウトの一部です。元気でも必ず取ってください。';
+
+  @override
+  String get planDetailWeekAdviceRace => 'レース週。積み重ねた練習を信じよう。';
+
+  @override
+  String get planDetailWeekAdviceTaper => 'テーパリング。量は減らし、キレは保とう。';
+
+  @override
+  String get planDetailWeekAdviceGraduation => '最終週。初めての5kmで締めくくります。';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      '調子が良くても歩く休憩は取りましょう。それが走り続ける力になります。';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'バック・トゥ・バックの週末。2日続けてロング走、2日目は疲れた脚で。';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'イージーな強度で長時間動き続けよう。目標はペースではなく時間です。レース当日の補給を練習しましょう。';
+
+  @override
+  String get workoutAdviceUltraRace => '感覚で走り、早めに補給を。タイムは後からついてきます。';
 
   @override
   String get workoutAdviceRace => '計画を信じましょう。最初の1マイルで自己ベストを狙わないこと。';
@@ -16890,6 +16920,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get messagesArchivedToast => 'アーカイブしました。新しいメッセージが届くと受信箱に戻ります。';
 
   @override
+  String get messagesMarkUnread => '未読にする';
+
+  @override
+  String get messagesMarkedUnreadToast => '未読にしました。開くまで受信箱で目立つように表示されます。';
+
+  @override
   String get profileMessage => 'メッセージ';
 
   @override
@@ -18973,6 +19009,41 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get shareCardPrHint => '自己ベストのタイムは非公開のままです。共有されるのはこの画像だけです。';
+
+  @override
+  String get shareCardKind => 'ハイライト';
+
+  @override
+  String get shareCardKindStats => '数値';
+
+  @override
+  String get shareCardKindSplits => 'スプリット';
+
+  @override
+  String get shareCardKindPr => '自己ベスト';
+
+  @override
+  String get shareCardKindStreak => '連続記録';
+
+  @override
+  String get shareCardKindRace => 'レース';
+
+  @override
+  String get shareCardKindBadge => 'バッジ';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$countスプリット · 平均 $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => '日連続';
+
+  @override
+  String get shareCardRaceFinisher => '完走';
+
+  @override
+  String get shareCardBadgeKicker => 'バッジ獲得';
 
   @override
   String get runDetailSharePr => '自己ベストカードを共有';

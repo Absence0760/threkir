@@ -39,6 +39,7 @@ class DmThread {
     this.partnerAvatarUrl,
     this.muted = false,
     this.archived = false,
+    this.markedUnread = false,
   }) : assert(partnerId != null || deletedPartnerKey != null);
 
   /// The conversation the mute, archive and delete-for-me actions act on.
@@ -64,6 +65,10 @@ class DmThread {
   /// The viewer archived it and nothing newer has arrived since.
   final bool archived;
 
+  /// The viewer marked it unread (migration 20271109000020). [unread] already
+  /// counts it as at least one; opening the conversation clears it.
+  final bool markedUnread;
+
   /// Unique per conversation, for keys and the opened-at map.
   String get threadKey => partnerId ?? deletedPartnerKey!;
 
@@ -71,7 +76,13 @@ class DmThread {
       ? DmPartnerThread(partnerId!)
       : DmDeletedPartnerThread(deletedPartnerKey!);
 
-  DmThread copyWith({int? unread, bool? muted, bool? archived}) => DmThread(
+  DmThread copyWith({
+    int? unread,
+    bool? muted,
+    bool? archived,
+    bool? markedUnread,
+  }) =>
+      DmThread(
     conversationId: conversationId,
     partnerId: partnerId,
     deletedPartnerKey: deletedPartnerKey,
@@ -84,6 +95,7 @@ class DmThread {
     unread: unread ?? this.unread,
     muted: muted ?? this.muted,
     archived: archived ?? this.archived,
+    markedUnread: markedUnread ?? this.markedUnread,
   );
 }
 

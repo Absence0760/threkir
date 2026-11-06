@@ -506,6 +506,66 @@ test.describe('/routes/[id]', () => {
 		}
 	});
 
+	test('set an official distance → key stat shows it over the measured one → clearing restores it', async ({
+		page
+	}) => {
+		const routeId = await insertRoute({
+			user_id: USER_A.id,
+			name: `Official distance ${Date.now()}`,
+			waypoints: [
+				{ lat: 51.5007, lng: -0.1246 },
+				{ lat: 51.5033, lng: -0.1195 }
+			],
+			distance_m: 10200,
+			is_public: true
+		});
+		const admin = getAdminClient();
+		const readOfficial = async () =>
+			(
+				await readRow(
+					'routes by id',
+					admin.from('routes').select('official_distance_m').eq('id', routeId).single()
+				)
+			).official_distance_m;
+		try {
+			await page.goto(`/routes/${routeId}`);
+			await page.getByTestId('route-edit-details').click();
+			const form = page.getByTestId('route-details-form');
+			const field = page.getByTestId('route-official-distance-input');
+			await expect(field).toHaveValue('');
+
+			// More than 10% off the measured 10.2 km is refused before any write.
+			await field.fill('12');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form.getByRole('alert')).toContainText('within 10%');
+			expect(await readOfficial()).toBeNull();
+
+			await field.fill('10');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form).toBeHidden();
+			await expect(page.locator('.key-stat-label').first()).toHaveText('Official distance');
+			await expect(page.getByTestId('route-key-measured')).toContainText('Measured');
+			await expect.poll(readOfficial).toBe(10000);
+
+			await page.reload();
+			await expect(page.getByTestId('route-key-measured')).toBeVisible({ timeout: 10_000 });
+			await page.goto(`/share/route/${routeId}`);
+			await expect(page.getByTestId('share-route-distance')).toContainText('10');
+			await expect(page.getByTestId('share-route-distance')).not.toContainText('10.2');
+
+			await page.goto(`/routes/${routeId}`);
+			await page.getByTestId('route-edit-details').click();
+			await expect(field).toHaveValue('10');
+			await field.fill('');
+			await form.getByRole('button', { name: 'Save' }).click();
+			await expect(form).toBeHidden();
+			await expect(page.getByTestId('route-key-measured')).toHaveCount(0);
+			await expect.poll(readOfficial).toBeNull();
+		} finally {
+			await deleteRoute(routeId);
+		}
+	});
+
 	test('not-found: visiting a missing route id shows "Route not found" with a way back', async ({
 		page
 	}) => {

@@ -10,8 +10,10 @@
 import type { TrackPoint } from '../types';
 import { projectTrack } from '../routes/track_projection';
 import { OG_CARD_LIGHT } from './og_card_palette';
+import { OG_FONT_STACK } from './og_card_font';
 import { escapeXml } from '../util/html_escape';
 import { clipToWidthPx } from './svg_text_width';
+import { formatOfficialKmStable } from './share_meta';
 
 const W = 1200;
 const H = 630;
@@ -36,6 +38,7 @@ const TEXT_MUTED = OG_CARD_LIGHT.muted;
 export type RouteImageInput = {
 	name?: string | null;
 	distance_m?: number | null;
+	official_distance_m?: number | null;
 	surface?: string | null;
 	track: TrackPoint[];
 };
@@ -53,7 +56,7 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 
 	// Top-left: site name strap.
 	parts.push(
-		`<text x="${PAD}" y="${PAD + 24}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="28" font-weight="700" fill="${FG}">Threkir</text>`,
+		`<text x="${PAD}" y="${PAD + 24}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="700" fill="${FG}">Threkir</text>`,
 	);
 
 	// Track polyline — projected into the lower-right 800×500 viewport.
@@ -88,14 +91,14 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 	// the 1120px between the margins — a script whose glyphs are that wide
 	// still overruns it, which the single-line <text> cannot express.
 	const name = (input.name ?? '').trim() || 'Untitled route';
-	const meta = buildMetaLine(input.distance_m, input.surface);
+	const meta = buildMetaLine(input.distance_m, input.surface, input.official_distance_m);
 	const titleY = H - 160;
 	parts.push(
-		`<text x="${PAD}" y="${titleY}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="${TITLE_SIZE}" font-weight="700" fill="${TEXT_FILL}">${escapeXml(clipToWidthPx(name, W - PAD * 2, TITLE_SIZE))}</text>`,
+		`<text x="${PAD}" y="${titleY}" font-family="${OG_FONT_STACK}" font-size="${TITLE_SIZE}" font-weight="700" fill="${TEXT_FILL}">${escapeXml(clipToWidthPx(name, W - PAD * 2, TITLE_SIZE))}</text>`,
 	);
 	if (meta) {
 		parts.push(
-			`<text x="${PAD}" y="${titleY + 60}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="36" font-weight="500" fill="${TEXT_MUTED}">${escapeXml(meta)}</text>`,
+			`<text x="${PAD}" y="${titleY + 60}" font-family="${OG_FONT_STACK}" font-size="36" font-weight="500" fill="${TEXT_MUTED}">${escapeXml(meta)}</text>`,
 		);
 	}
 
@@ -106,9 +109,13 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 export function buildMetaLine(
 	distanceM: number | null | undefined,
 	surface: string | null | undefined,
+	officialDistanceM?: number | null,
 ): string {
 	const bits: string[] = [];
-	if (distanceM != null && Number.isFinite(distanceM) && distanceM >= 0) {
+	const official = formatOfficialKmStable(officialDistanceM);
+	if (official) {
+		bits.push(official);
+	} else if (distanceM != null && Number.isFinite(distanceM) && distanceM >= 0) {
 		const km = distanceM / 1000;
 		const digits = km >= 21 ? 2 : 1;
 		bits.push(`${km.toFixed(digits)} km`);

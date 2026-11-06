@@ -69,6 +69,7 @@ const Set<String> kRouteRestoreColumns = <String>{
   'followers_only',
   'is_starred',
   'name',
+  'official_distance_m',
   'run_count',
   'shadow_hidden',
   'slug',

@@ -6,7 +6,17 @@ import {
 	DEFAULT_SHARE_LOOK,
 	DEFAULT_SHARE_STATS,
 	MAX_SHARE_STATS,
+	MIN_SPLITS_STICKER_ROWS,
+	MIN_STREAK_STICKER_DAYS,
+	RUN_STICKER_KINDS,
 	SHARE_LOOK_STORAGE_KEY,
+	averageStickerPace,
+	fastestStickerSplit,
+	offeredStickerKinds,
+	splitsColumnCapacity,
+	splitsStickerForm,
+	splitsStickerMaxHeight,
+	stickerKindFor,
 	loadShareLook,
 	saveShareLook,
 	shareLookFromJson,
@@ -55,12 +65,13 @@ describe('toggleShareStat', () => {
 
 describe('share look json', () => {
 	test('round-trips every field', () => {
-		const l = look({ layout: 'hero', ink: 'brand', aspect: 'post', stats: ['distance', 'heartRate'], mark: false });
+		const l = look({ kind: 'splits', layout: 'hero', ink: 'brand', aspect: 'post', stats: ['distance', 'heartRate'], mark: false });
 		assert.deepEqual(shareLookFromJson(JSON.parse(JSON.stringify(shareLookToJson(l)))), l);
 	});
 
 	test('an unknown value takes its default and keeps the rest', () => {
-		const l = shareLookFromJson({ layout: 'carousel', ink: 'dark', aspect: 'post', stats: ['distance', 'cadence'] });
+		const l = shareLookFromJson({ kind: 'confetti', layout: 'carousel', ink: 'dark', aspect: 'post', stats: ['distance', 'cadence'] });
+		assert.equal(l.kind, 'stats');
 		assert.equal(l.layout, DEFAULT_SHARE_LOOK.layout);
 		assert.equal(l.ink, 'dark');
 		assert.equal(l.aspect, 'post');
@@ -103,6 +114,66 @@ describe('share look json', () => {
 	test('an empty or absent stat list is the default set', () => {
 		assert.deepEqual(shareLookFromJson({ stats: [] }).stats, DEFAULT_SHARE_STATS);
 		assert.deepEqual(shareLookFromJson({ layout: 'strip' }).stats, DEFAULT_SHARE_STATS);
+	});
+});
+
+describe('sticker kinds', () => {
+	const none = { splits: 0, records: 0, streakDays: 0, race: false, badge: false, route: false };
+
+	test('stats is always offered, and an occasion only when the run has its data', () => {
+		assert.deepEqual(offeredStickerKinds(none), ['stats']);
+		const all = { splits: 5, records: 1, streakDays: 9, race: true, badge: true, route: true };
+		assert.deepEqual(offeredStickerKinds(all), [...RUN_STICKER_KINDS]);
+	});
+
+	test('one split is not a splits sticker, and a first run is not a streak', () => {
+		assert.ok(!offeredStickerKinds({ ...none, splits: MIN_SPLITS_STICKER_ROWS - 1 }).includes('splits'));
+		assert.ok(offeredStickerKinds({ ...none, splits: MIN_SPLITS_STICKER_ROWS }).includes('splits'));
+		assert.ok(!offeredStickerKinds({ ...none, streakDays: MIN_STREAK_STICKER_DAYS - 1 }).includes('streak'));
+		assert.ok(offeredStickerKinds({ ...none, streakDays: MIN_STREAK_STICKER_DAYS }).includes('streak'));
+	});
+
+	test('a remembered kind the run cannot print falls back to stats', () => {
+		assert.equal(stickerKindFor('pr', ['stats', 'splits']), 'stats');
+		assert.equal(stickerKindFor('splits', ['stats', 'splits']), 'splits');
+	});
+});
+
+describe('splits sticker budget', () => {
+	test('is half of 480 usable story units, shrunk no smaller than 12 px digits', () => {
+		assert.equal(splitsStickerMaxHeight(22), 440);
+	});
+
+	test('the column capacity is what fits after the chrome, never negative', () => {
+		assert.equal(splitsColumnCapacity(22, 30, 88), 11);
+		assert.equal(splitsColumnCapacity(22, 30, 1000), 0);
+	});
+
+	test('one column, then two, then bars', () => {
+		assert.equal(splitsStickerForm(11, 11), 'single');
+		assert.equal(splitsStickerForm(12, 11), 'paired');
+		assert.equal(splitsStickerForm(22, 11), 'paired');
+		assert.equal(splitsStickerForm(23, 11), 'bars');
+	});
+
+	test('the fastest split skips a partial tail and a split with no pace', () => {
+		const rows = [
+			{ paceSecPerKm: 310, metres: 1000, partial: false },
+			{ paceSecPerKm: 0, metres: 1000, partial: false },
+			{ paceSecPerKm: 295, metres: 1000, partial: false },
+			{ paceSecPerKm: 240, metres: 200, partial: true },
+		];
+		assert.equal(fastestStickerSplit(rows), 2);
+		assert.equal(fastestStickerSplit([]), -1);
+	});
+
+	test('the average weights each split by its length', () => {
+		const avg = averageStickerPace([
+			{ paceSecPerKm: 300, metres: 1000, partial: false },
+			{ paceSecPerKm: 360, metres: 500, partial: true },
+		]);
+		assert.equal(avg, ((300 + 180) / 1500) * 1000);
+		assert.equal(averageStickerPace([]), null);
 	});
 });
 

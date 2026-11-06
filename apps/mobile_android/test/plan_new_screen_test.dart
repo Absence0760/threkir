@@ -1296,6 +1296,36 @@ void main() {
       expect(training.raceListingId, '11111111-1111-4111-8111-111111111111');
     });
 
+    testWidgets(
+        'a plan created for a Sunday race ends on race day with the race as its one named A race (#1294)',
+        (tester) async {
+      final out = DateTime.now().add(const Duration(days: 220));
+      final sunday = out.add(Duration(days: (7 - out.weekday % 7) % 7));
+      final raceIso = toIsoDate(sunday);
+      final training = _RecordingTraining();
+      await pumpRace(tester,
+          raceDateIso: raceIso,
+          name: 'Autumn Half',
+          distanceM: 21097.5,
+          training: training);
+      await tester.pump();
+      await createFromRace(tester);
+
+      final generated = training.generated!;
+      expect(toIsoDate(generated.endDate), raceIso);
+      final races = [
+        for (final w in generated.weeks)
+          for (final wo in w.workouts)
+            if (wo.kind == WorkoutKind.race) wo
+      ];
+      expect([
+        for (final r in races)
+          [toIsoDate(r.scheduledDate), r.raceName, r.racePriority]
+      ], [
+        [raceIso, 'Autumn Half', 'A'],
+      ]);
+    });
+
     testWidgets('a race the wizard could not plan for links nothing',
         (tester) async {
       final training = _RecordingTraining();

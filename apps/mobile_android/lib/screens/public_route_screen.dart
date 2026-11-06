@@ -8,6 +8,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../detail_map_height.dart';
 import '../fab_clearance.dart';
 import '../main.dart' show pendingStartRunWithRoute;
+import '../official_distance.dart';
 import '../preferences.dart';
 import '../widgets/error_state.dart';
 import '../widgets/live_run_map.dart';
@@ -31,6 +32,7 @@ cm.Route publicRouteStartTarget(cm.Route source, List<cm.Waypoint> clipped) {
     name: source.name,
     waypoints: clipped,
     distanceMetres: source.distanceMetres,
+    officialDistanceMetres: source.officialDistanceMetres,
     userId: source.userId,
     elevationGainMetres: source.elevationGainMetres,
     isPublic: source.isPublic,
@@ -307,11 +309,22 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
           child: StatGrid(
             cells: [
               StatTile.large(
-                label: l10n.publicRouteStatDistance,
+                label: route.officialDistanceMetres != null
+                    ? l10n.routeDetailStatOfficialDistance
+                    : l10n.publicRouteStatDistance,
                 value: UnitFormat.distanceValue(
-                    route.distanceMetres, activeDistanceUnit),
+                    routeDisplayDistanceM(
+                        route.distanceMetres, route.officialDistanceMetres),
+                    activeDistanceUnit),
                 unit: UnitFormat.distanceLabel(activeDistanceUnit),
               ),
+              if (route.officialDistanceMetres != null)
+                StatTile.large(
+                  label: l10n.routeDetailStatMeasured,
+                  value: UnitFormat.distanceValue(
+                      route.distanceMetres, activeDistanceUnit),
+                  unit: UnitFormat.distanceLabel(activeDistanceUnit),
+                ),
               StatTile.large(
                 label: l10n.publicRouteStatElevation,
                 value: UnitFormat.elevationValue(

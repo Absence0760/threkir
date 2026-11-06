@@ -13,6 +13,7 @@ import '../lib/screens/workout_detail_screen.dart';
 import '../lib/training.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
+import 'pump_until.dart';
 import 'supabase_test_init.dart';
 
 PlanWorkoutRow _completedWorkout({String? completedRunId = 'run-current'}) {
@@ -374,6 +375,55 @@ void main() {
           tester.widget<Text>(find.byKey(const Key('workoutDetailHeading'))).data,
           'Race');
       expect(find.text('RACE PRIORITY'), findsNothing);
+    });
+  });
+
+  group('WorkoutDetailScreen — advice read from the row', () {
+    String advice(WidgetTester tester) => tester
+        .widget<Text>(find.byKey(const Key('workoutDetailAdvice')))
+        .data!;
+
+    Future<void> pumpRow(WidgetTester tester, PlanWorkoutRow row) async {
+      tester.view.physicalSize = const Size(420, 4000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await _pumpWith(tester, _FakeTraining(row, const []));
+      await pumpUntil(
+        tester,
+        () => tester.any(find.byKey(const Key('workoutDetailAdvice'))),
+        describe: 'the workout to load and draw its advice',
+      );
+    }
+
+    testWidgets('a long run set by time with no pace is time on feet',
+        (tester) async {
+      await pumpRow(
+          tester,
+          PlanWorkoutRow(
+            id: 'fake-workout-id',
+            weekId: 'week-1',
+            scheduledDate: DateTime(2027, 2, 7),
+            kind: 'long',
+            targetDistanceM: 24000,
+            targetDurationSeconds: 10800,
+            manuallyCompleted: false,
+          ));
+      expect(advice(tester), startsWith('Time on feet at easy effort'));
+    });
+
+    testWidgets('a race past the marathon is run by effort', (tester) async {
+      await pumpRow(
+          tester,
+          PlanWorkoutRow(
+            id: 'fake-workout-id',
+            weekId: 'week-1',
+            scheduledDate: DateTime(2027, 4, 4),
+            kind: 'race',
+            targetDistanceM: 56000,
+            manuallyCompleted: false,
+          ));
+      expect(advice(tester),
+          'Run by effort and fuel early — the clock looks after itself.');
     });
   });
 

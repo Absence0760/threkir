@@ -1,7 +1,8 @@
 <script lang="ts">
 	// The run share-image editor: the map card, the runner's own photo, or a
 	// transparent sticker, in the layouts, inks, aspects and stats the phone's
-	// share sheet offers (run_share_card.dart). The preview IS the export: each
+	// share sheet offers (run_share_card.dart), and the occasion stickers the run
+	// qualifies for. The preview IS the export: each
 	// change re-renders the PNG that Share and Download hand over. On a photo,
 	// the title-and-stats block is moved and resized right on the preview.
 	import { untrack } from 'svelte';
@@ -9,7 +10,10 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { currentLocale } from '#lib/i18n/store.svelte.ts';
-	import { getUnit } from '#lib/format/units.svelte.ts';
+	import { formatPaceNoSuffix, getUnit } from '#lib/format/units.svelte.ts';
+	import type { Split } from '#lib/runs/run_stats.ts';
+	import type { AchievementTier } from '#lib/types.ts';
+	import { tierFor } from '#lib/social/badges.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import type { TrackPoint } from '#lib/types.ts';
@@ -26,6 +30,11 @@
 		RUN_SHARE_INKS,
 		RUN_STICKER_LAYOUTS,
 		loadShareLook,
+		offeredStickerKinds,
+		stickerKindFor,
+		averageStickerPace,
+		type RunStickerKind,
+		type SplitsStickerRow,
 		saveShareLook,
 		shareLookEquals,
 		toggleShareStat,
@@ -38,7 +47,13 @@
 		paintPhoto,
 		paintSticker,
 		photoCanvasSize,
+		badgeStickerBody,
+		prStickerBody,
+		raceStickerBody,
+		routeStickerBody,
+		streakStickerBody,
 		type PhotoLaid,
+		type StickerBody,
 	} from '#lib/share/run_sticker_canvas.ts';
 	import {
 		DEFAULT_SHARE_PLACEMENT,
@@ -76,6 +91,17 @@
 		recordDate?: string;
 		/// The style the editor opens on, e.g. `pr` from a PR notification.
 		initialStyle?: Style;
+		/// The run's splits, computed on the run page from the full track (never
+		/// from the clipped line, which would drop the first and last km), and
+		/// the tick they were cut at.
+		splits?: Split[];
+		splitTickMetres?: number;
+		/// The streak day this run was, as of its own day.
+		streakDays?: number;
+		/// The race this run finished, with its official time when stamped.
+		race?: { name: string; time: string | null } | null;
+		/// The single-run distance badge this run earned.
+		badge?: { badgeKey: string; tier: AchievementTier } | null;
 	}
 
 	let {
@@ -90,6 +116,11 @@
 		recordDate = '',
 		initialStyle = 'card',
 		headToHead = null,
+		splits = [],
+		splitTickMetres = 1000,
+		streakDays = 0,
+		race = null,
+		badge = null,
 	}: Props = $props();
 
 	const STYLES: { value: Style; label: MessageKey; icon: string }[] = [
@@ -118,6 +149,15 @@
 		route: 'runShare.layoutRoute',
 		strip: 'runShare.layoutStrip',
 		hero: 'runShare.layoutHero',
+	};
+	const KIND_LABELS: Record<RunStickerKind, MessageKey> = {
+		stats: 'runShare.kindStats',
+		splits: 'runShare.kindSplits',
+		pr: 'runShare.kindPr',
+		streak: 'runShare.kindStreak',
+		race: 'runShare.kindRace',
+		badge: 'runShare.kindBadge',
+		route: 'runShare.layoutRoute',
 	};
 	const INK_LABELS: Record<RunShareLook['ink'], MessageKey> = {
 		light: 'runShare.inkLight',
@@ -149,6 +189,19 @@
 
 	let available = $derived(availableShareStats(run));
 	let usesSpeed = $derived(run.activity_type === 'cycle');
+	let offeredKinds = $derived(
+		offeredStickerKinds({
+			splits: splits.length,
+			records: records.length,
+			streakDays,
+			race: race !== null,
+			badge: badge !== null,
+			route: line.length >= 2,
+		}),
+	);
+	/// The kind this run prints: the remembered one when the run has its data.
+	let kind = $derived(stickerKindFor(look.kind, offeredKinds));
+	let usesKinds = $derived(style === 'sticker' || style === 'photo');
 
 	/// `stored` with the stats this run cannot print taken out, so the cap
 	/// counts what the image shows. The stored look keeps them for the next
@@ -216,12 +269,75 @@
 		};
 	}
 
+	function splitsBody(): StickerBody {
+		const unit = getUnit();
+		const decimal = new Intl.NumberFormat(currentLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+		const rows: SplitsStickerRow[] = splits.map((sp) => ({
+			paceSecPerKm: sp.pace_s,
+			metres: sp.distance_m,
+			partial: sp.distance_m < splitTickMetres - 1,
+		}));
+		const avg = averageStickerPace(rows);
+		return {
+			kind: 'splits',
+			heading: m('runShare.splitsHeading', {
+				count: splits.length,
+				pace: avg != null ? `${formatPaceNoSuffix(avg, 1000)} /${unit}` : '--:--',
+			}),
+			entries: splits.map((sp, i) => ({
+				label: rows[i].partial ? `${decimal.format(sp.distance_m / splitTickMetres)} ${unit}` : String(sp.km),
+				pace: formatPaceNoSuffix(sp.pace_s, 1000),
+				row: rows[i],
+			})),
+		};
+	}
+
+	/// The occasion sticker for `k`, or null for `stats`, which the layouts draw.
+	function occasionBody(k: RunStickerKind, r: PrCardEntry | null): StickerBody | null {
+		const hasRoute = line.length >= 2;
+		switch (k) {
+			case 'stats':
+				return null;
+			case 'splits':
+				return splitsBody();
+			case 'pr': {
+				if (!r) throw new Error('no personal record to draw');
+				const t = prText(r);
+				return prStickerBody({ headline: t.headline, distance: t.distance, time: t.time, improvement: t.improvement }, hasRoute);
+			}
+			case 'streak':
+				return streakStickerBody({
+					kicker: m('runShare.kindStreak'),
+					days: new Intl.NumberFormat(currentLocale()).format(streakDays),
+					caption: m('runShare.streakCaption'),
+				});
+			case 'race':
+				return raceStickerBody({ name: race!.name, finisher: m('runShare.raceFinisher'), time: race!.time }, hasRoute);
+			case 'badge': {
+				const t = tierFor(badge!.badgeKey, badge!.tier);
+				return badgeStickerBody({
+					kicker: m('runShare.badgeKicker'),
+					name: t ? m(t.labelKey) : badge!.badgeKey,
+					tier: m(`badges.tier.${badge!.tier}` as MessageKey),
+				});
+			}
+			case 'route':
+				return routeStickerBody();
+		}
+	}
+
 	interface Rendered {
 		blob: Blob;
 		laid: PhotoLaid | null;
 	}
 
-	async function renderPng(s: Style, l: RunShareLook, p: ImageBitmap | null, r: PrCardEntry | null): Promise<Rendered> {
+	async function renderPng(
+		s: Style,
+		l: RunShareLook,
+		k: RunStickerKind,
+		p: ImageBitmap | null,
+		r: PrCardEntry | null,
+	): Promise<Rendered> {
 		if (s === 'card') {
 			if (cardBlob?.mark !== l.mark) cardBlob = { mark: l.mark, blob: await captureCard(l.mark) };
 			return { blob: cardBlob.blob, laid: null };
@@ -248,7 +364,8 @@
 			getUnit(),
 			{ kinds: l.stats, locale: currentLocale() },
 		);
-		const base = { layout: l.layout, ink: l.ink, stats, track: line, wordmark: l.mark ? 'Threkir' : null };
+		const body: StickerBody = occasionBody(k, r) ?? { kind: 'stats', layout: l.layout, stats, hasRoute: line.length >= 2 };
+		const base = { body, ink: l.ink, track: line, wordmark: l.mark ? 'Threkir' : null };
 		if (s === 'sticker') return { blob: await canvasToPng(paintSticker(base)), laid: null };
 		const painted = paintPhoto({
 			...base,
@@ -267,12 +384,14 @@
 		const l = $state.snapshot(look) as RunShareLook;
 		const p = photo;
 		const r = record;
+		const k = kind;
 		if (s === 'versus' || (s === 'photo' && !p)) return;
-		const key = JSON.stringify([s, l, s === 'photo' ? photoSeq : 0, s === 'pr' ? r : null]);
+		const occasion = k === 'stats' ? null : [k, r, streakDays, race, badge, splits.length];
+		const key = JSON.stringify([s, l, s === 'photo' ? photoSeq : 0, s === 'pr' ? r : null, occasion]);
 		if (preview?.key === key) return;
 		const seq = ++renderSeq;
 		rendering = true;
-		renderPng(s, l, p, r)
+		renderPng(s, l, k, p, r)
 			.then(({ blob, laid }) => {
 				if (seq !== renderSeq) return;
 				if (preview) URL.revokeObjectURL(preview.url);
@@ -620,6 +739,29 @@
 			<p class="hint">{m('runShare.stickerHint')}</p>
 		{:else if style === 'pr'}
 			<p class="hint">{m('runShare.prHint')}</p>
+		{/if}
+
+		{#if usesKinds && offeredKinds.length > 1}
+			<fieldset class="control">
+				<legend>{m('runShare.kind')}</legend>
+				<div class="chip-row" role="radiogroup" aria-label={m('runShare.kind')}>
+					{#each offeredKinds as v (v)}
+						<button
+							type="button"
+							role="radio"
+							aria-checked={kind === v}
+							class="chip"
+							class:active={kind === v}
+							disabled={busy}
+							onclick={() => setLook({ ...look, kind: v })}
+							data-testid="share-kind-{v}">{m(KIND_LABELS[v])}</button
+						>
+					{/each}
+				</div>
+			</fieldset>
+		{/if}
+
+		{#if style === 'pr' || (usesKinds && kind === 'pr')}
 			{#if records.length > 1}
 				<fieldset class="control">
 					<legend>{m('runShare.prRecord')}</legend>
@@ -642,7 +784,7 @@
 		{/if}
 
 		{#if style !== 'card'}
-			{#if style !== 'pr'}
+			{#if style !== 'pr' && kind === 'stats'}
 			<fieldset class="control">
 				<legend>{m('runShare.layout')}</legend>
 				<div class="chip-row" role="radiogroup" aria-label={m('runShare.layout')}>
@@ -697,7 +839,7 @@
 					</div>
 				</fieldset>
 			{/if}
-			{#if style !== 'pr'}
+			{#if style !== 'pr' && kind === 'stats'}
 			<fieldset class="control">
 				<legend>{m('runShare.stats')}</legend>
 				<div class="chip-row">

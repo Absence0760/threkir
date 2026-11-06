@@ -1,6 +1,8 @@
 import { expect, test } from '../fixtures/test';
 
+import { readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
+import { deletePlan } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
@@ -13,8 +15,8 @@ import { USER_A } from '../fixtures/users';
  * — `search_race_listings` only returns upcoming races, so a frozen future
  * date would eventually stop surfacing at all.
  *
- * Drives only the wizard (no plan is created), so the only server state is the
- * two seeded listings.
+ * One test creates the plan, to pin what is stored for a Sunday race (#1294),
+ * and deletes it after; the rest drive only the wizard.
  */
 test.describe('/races — train for this race', () => {
 	test.use({ storageState: USER_A.storageStatePath });
@@ -96,6 +98,42 @@ test.describe('/races — train for this race', () => {
 		// The clone-a-template sections carry their own "Start date" fields;
 		// the wizard's is the one that names the Sunday rule.
 		await expect(page.getByLabel(/first week begins/i)).toHaveValue(expectedStart);
+	});
+
+	test('a plan created for a Sunday race ends on race day with the race as its one A race (#1294)', async ({
+		page,
+	}) => {
+		const planName = `E2E Sunday Half ${stamp}`;
+		await page.goto(
+			`/plans/new?type=training&raceDate=${goalDate}&raceName=${encodeURIComponent(planName)}&raceDistance=21097`,
+		);
+		await expect(page.getByTestId('race-preset-note')).toBeVisible({ timeout: 10_000 });
+		const submit = page.getByRole('button', { name: /Create plan/ });
+		await expect(submit).toBeEnabled({ timeout: 5_000 });
+		await submit.click();
+		await page.waitForURL(/\/plans\/[0-9a-f-]+$/, { timeout: 15_000 });
+		const planId = page.url().match(/\/plans\/([0-9a-f-]+)$/)![1];
+		try {
+			const admin = getAdminClient();
+			const plan = await readRow(
+				'training_plans by id',
+				admin.from('training_plans').select('end_date').eq('id', planId).single(),
+			);
+			expect(plan.end_date).toBe(goalDate);
+			const races = await readRows(
+				'race workouts by plan',
+				admin
+					.from('plan_workouts')
+					.select('scheduled_date, race_name, race_priority, plan_weeks!inner(plan_id)')
+					.eq('plan_weeks.plan_id', planId)
+					.eq('kind', 'race'),
+			);
+			expect(races.map((r) => [r.scheduled_date, r.race_name, r.race_priority])).toEqual([
+				[goalDate, planName, 'A'],
+			]);
+		} finally {
+			await deletePlan(planId);
+		}
 	});
 
 	test('a race too close to build a plan for offers no CTA', async ({ page }) => {

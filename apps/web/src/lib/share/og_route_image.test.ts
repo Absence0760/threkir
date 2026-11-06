@@ -72,6 +72,11 @@ test('buildMetaLine — km only when surface absent', () => {
 	assert.equal(buildMetaLine(5000, null), '5.0 km');
 });
 
+test('buildMetaLine — an official distance replaces the traced one', () => {
+	assert.equal(buildMetaLine(42670, 'road', 42195), '42.195 km · road');
+	assert.equal(buildMetaLine(42670, 'road', null), '42.67 km · road');
+});
+
 test('buildMetaLine — surface only when distance absent', () => {
 	assert.equal(buildMetaLine(null, 'road'), 'road');
 });

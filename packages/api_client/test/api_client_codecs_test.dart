@@ -586,6 +586,17 @@ void main() {
       expect(route.elevationGainMetres, 145.5);
     });
 
+    test('official_distance_m maps to officialDistanceMetres, null when absent', () {
+      expect(
+        ApiClient.debugRouteFromRow(minimalRouteRow()).officialDistanceMetres,
+        isNull,
+      );
+      final route = ApiClient.debugRouteFromRow(
+        {...minimalRouteRow(), 'official_distance_m': 42195},
+      );
+      expect(route.officialDistanceMetres, 42195.0);
+    });
+
     test('null is_public is treated as false', () {
       final route = ApiClient.debugRouteFromRow(minimalRouteRow());
       expect(route.isPublic, isFalse);

@@ -317,7 +317,8 @@ class _FakeApi extends ApiClient {
   final List<(String, bool)> archives = [];
   final List<(String, String)> hides = [];
   Object? conversationError;
-  ({bool muted, DateTime? archivedAt})? conversationState;
+  ({bool muted, DateTime? archivedAt, bool markedUnread})? conversationState;
+  final List<(String, bool)> unreadMarks = [];
   final List<String> stateReads = [];
 
   @override
@@ -334,6 +335,22 @@ class _FakeApi extends ApiClient {
     if (conversationError != null) throw conversationError!;
   }
 
+  /// Like the server, a mark shows in the next list read as one unread.
+  @override
+  Future<void> setDmConversationUnread(String conversationId,
+      {required bool unread}) async {
+    unreadMarks.add((conversationId, unread));
+    if (conversationError != null) throw conversationError!;
+    threads = [
+      for (final t in threads)
+        t.conversationId == conversationId
+            ? t.copyWith(
+                markedUnread: unread,
+                unread: unread ? (t.unread < 1 ? 1 : t.unread) : 0)
+            : t,
+    ];
+  }
+
   Object? hideError;
 
   @override
@@ -344,7 +361,8 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<({bool muted, DateTime? archivedAt})?> fetchDmConversationState(
+  Future<({bool muted, DateTime? archivedAt, bool markedUnread})?>
+      fetchDmConversationState(
       String conversationId) async {
     stateReads.add(conversationId);
     return conversationState;
@@ -1173,12 +1191,95 @@ void main() {
         (tester) async {
       final api = _FakeApi()
         ..newest = [_msg('m1')]
-        ..conversationState = (muted: true, archivedAt: null);
+        ..conversationState =
+            (muted: true, archivedAt: null, markedUnread: false);
       await _pumpThread(tester, api);
 
       await openMenu(tester);
       expect(find.text(l10n.messagesUnmute), findsOneWidget);
       expect(find.text(l10n.messagesArchive), findsOneWidget);
+    });
+
+    testWidgets(
+        'Mark as unread leaves the conversation, the inbox counts it, and '
+        'reopening clears it', (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada')]
+        ..newest = [_msg('m1')];
+      await tester.pumpWidget(_app(MessagesScreen(
+          api: api, pollInterval: _quiet, threadPollInterval: _quiet)));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('dm-unread-p-1')), findsNothing);
+
+      await tester.tap(find.text('Ada'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(api.unreadMarks, isEmpty);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesMarkUnread));
+      await tester.pump();
+      // The pop lands inside that frame's microtasks, so the route's exit
+      // animation starts on the next frame and finishes on the one after.
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(api.unreadMarks, [('c-p-1', true)]);
+      expect(find.byType(MessageThreadScreen), findsNothing);
+      expect(find.text(l10n.messagesMarkedUnreadToast), findsOneWidget);
+      final pill = find.descendant(
+          of: find.byKey(const ValueKey('dm-unread-p-1')),
+          matching: find.text('1'));
+      expect(pill, findsOneWidget);
+      await _drainBanner(tester);
+
+      await tester.tap(find.text('Ada'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(api.unreadMarks.last, ('c-p-1', false));
+      tester.state<NavigatorState>(find.byType(Navigator)).pop();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(const ValueKey('dm-unread-p-1')), findsNothing);
+    });
+
+    testWidgets('a thread opened outside the inbox clears its unread mark',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..conversationState =
+            (muted: false, archivedAt: null, markedUnread: true);
+      await _pumpThread(tester, api);
+      await tester.pump();
+      expect(api.unreadMarks, [('c-1', false)]);
+    });
+
+    testWidgets('a thread opened outside the inbox with no mark writes none',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..conversationState =
+            (muted: false, archivedAt: null, markedUnread: false);
+      await _pumpThread(tester, api);
+      await tester.pump();
+      expect(api.stateReads, ['c-1']);
+      expect(api.unreadMarks, isEmpty);
+    });
+
+    testWidgets('a failed Mark as unread says so and stays in the conversation',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..conversationError = StateError('offline');
+      await _pumpThread(tester, api);
+
+      await openMenu(tester);
+      await tester.tap(find.text(l10n.messagesMarkUnread));
+      await tester.pump();
+      expect(api.unreadMarks, [('c-1', true)]);
+      expect(find.byType(MessageThreadScreen), findsOneWidget);
+      expect(find.textContaining(l10n.messagesConversationActionFailed('').trim()),
+          findsOneWidget);
+      await _drainBanner(tester);
     });
 
     testWidgets('a failed mute says so and leaves the state as it was',

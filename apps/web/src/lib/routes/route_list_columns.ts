@@ -1,7 +1,7 @@
 /// The routes-list projection: the columns the list reads, the PostgREST
 /// select string built from them, and the row type that says so.
 ///
-/// `fetchRoutes` / `fetchRoutesWithError` select eleven of `routes`' twenty-two
+/// `fetchRoutes` / `fetchRoutesWithError` select twelve of `routes`' twenty-four
 /// columns and used to hand the rows back as `Route`, which declares twenty-one
 /// of them (`shadow_hidden` left the overlay in § 1327, because every read path
 /// strips it). Ten of those fields — `description`, `tags`, `is_public`,
@@ -33,6 +33,7 @@ export const ROUTE_LIST_COLUMNS = [
 	'club_id',
 	'name',
 	'distance_m',
+	'official_distance_m',
 	'elevation_m',
 	'surface',
 	'waypoints',
@@ -51,6 +52,7 @@ export const PUBLIC_ROUTE_LIST_COLUMNS = [
 	'club_id',
 	'name',
 	'distance_m',
+	'official_distance_m',
 	'elevation_m',
 	'surface',
 	'run_count',

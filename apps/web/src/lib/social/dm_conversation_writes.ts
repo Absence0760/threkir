@@ -1,5 +1,5 @@
 /**
- * The runner's own mute / archive writes, held against the inbox list reads
+ * The runner's own mute / archive / mark-unread writes, held against the inbox list reads
  * that race them.
  *
  * The inbox polls `dm_threads()` while a write is in flight. A read that
@@ -18,12 +18,13 @@
  * Web only: the mobile store keeps its own (apps/mobile_android).
  */
 
-export type ConversationFlag = 'muted' | 'archived';
+export type ConversationFlag = 'muted' | 'archived' | 'markedUnread';
 
 export interface ConversationFlags {
 	conversationId: string;
 	muted: boolean;
 	archived: boolean;
+	markedUnread?: boolean;
 }
 
 export interface ConversationWrite {

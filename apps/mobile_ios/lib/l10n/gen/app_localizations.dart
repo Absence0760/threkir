@@ -6691,6 +6691,18 @@ abstract class AppLocalizations {
   /// **'Distance'**
   String get routeDetailStatDistance;
 
+  /// Stat label for a route's official (race-certified) distance, shown in place of the measured distance when the owner set one (issue #1291)
+  ///
+  /// In en, this message translates to:
+  /// **'Official distance'**
+  String get routeDetailStatOfficialDistance;
+
+  /// Stat label for the length of the drawn route line, shown beside its official distance
+  ///
+  /// In en, this message translates to:
+  /// **'Measured'**
+  String get routeDetailStatMeasured;
+
   /// Stat label for elevation on the route-detail screen
   ///
   /// In en, this message translates to:
@@ -12027,6 +12039,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Alternate easy running and walking on the timed intervals. The walk breaks are part of the workout — take them even when you feel fresh.'**
   String get workoutAdviceWalkRun;
+
+  /// Advice line under a race-week card on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Race week — trust the work.'**
+  String get planDetailWeekAdviceRace;
+
+  /// Advice line under a taper-week card on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Taper — volume comes down, sharpness stays.'**
+  String get planDetailWeekAdviceTaper;
+
+  /// Advice line under the final week of a couch-to-5K plan
+  ///
+  /// In en, this message translates to:
+  /// **'Final week — it ends with your first 5K.'**
+  String get planDetailWeekAdviceGraduation;
+
+  /// Advice line under a walk-run week on plan detail
+  ///
+  /// In en, this message translates to:
+  /// **'Take the walk breaks even when you feel good — they make the runs sustainable.'**
+  String get planDetailWeekAdviceWalkBreaks;
+
+  /// Advice line under an ultra plan week holding two long runs
+  ///
+  /// In en, this message translates to:
+  /// **'Back-to-back weekend — two long runs on consecutive days, the second on tired legs.'**
+  String get planDetailWeekAdviceBackToBack;
+
+  /// Advice text for a long run set by time with no pace (an ultra time-on-feet run)
+  ///
+  /// In en, this message translates to:
+  /// **'Time on feet at easy effort: the duration is the target, not the pace. Practise race-day fuelling.'**
+  String get workoutAdviceTimeOnFeet;
+
+  /// Advice text for an ultra-distance race day
+  ///
+  /// In en, this message translates to:
+  /// **'Run by effort and fuel early — the clock looks after itself.'**
+  String get workoutAdviceUltraRace;
 
   /// Advice text for race workouts
   ///
@@ -28844,6 +28898,18 @@ abstract class AppLocalizations {
   /// **'Archived. A new message brings it back to your inbox.'**
   String get messagesArchivedToast;
 
+  /// Conversation menu action: flag the conversation unread again for yourself; the other person is not told
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as unread'**
+  String get messagesMarkUnread;
+
+  /// Confirmation after marking a conversation unread, shown as the conversation closes
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as unread. It stays highlighted in your inbox until you open it.'**
+  String get messagesMarkedUnreadToast;
+
   /// Profile action opening a direct-message conversation with this runner
   ///
   /// In en, this message translates to:
@@ -32140,6 +32206,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your record times stay private. Only this image leaves when you share it.'**
   String get shareCardPrHint;
+
+  /// Label over the chips that pick what a sticker is about: its stats, or an occasion the run marks
+  ///
+  /// In en, this message translates to:
+  /// **'Highlight'**
+  String get shareCardKind;
+
+  /// Sticker kind chip: the run's numbers in a layout
+  ///
+  /// In en, this message translates to:
+  /// **'Stats'**
+  String get shareCardKindStats;
+
+  /// Sticker kind chip: the run's splits as a table or bars
+  ///
+  /// In en, this message translates to:
+  /// **'Splits'**
+  String get shareCardKindSplits;
+
+  /// Sticker kind chip: a personal record the run set
+  ///
+  /// In en, this message translates to:
+  /// **'PR'**
+  String get shareCardKindPr;
+
+  /// Sticker kind chip and the streak sticker's kicker: the day of a daily activity streak the run was
+  ///
+  /// In en, this message translates to:
+  /// **'Streak'**
+  String get shareCardKindStreak;
+
+  /// Sticker kind chip: the race the run finished
+  ///
+  /// In en, this message translates to:
+  /// **'Race'**
+  String get shareCardKindRace;
+
+  /// Sticker kind chip: the badge the run earned
+  ///
+  /// In en, this message translates to:
+  /// **'Badge'**
+  String get shareCardKindBadge;
+
+  /// Heading of the splits sticker, printed uppercase: how many splits and the average pace with its unit
+  ///
+  /// In en, this message translates to:
+  /// **'{count} splits · avg {pace}'**
+  String shareCardSplitsHeading(int count, String pace);
+
+  /// Under the day count on the streak sticker
+  ///
+  /// In en, this message translates to:
+  /// **'days in a row'**
+  String get shareCardStreakCaption;
+
+  /// The race sticker's word for having finished the race, its hero when there is no official time
+  ///
+  /// In en, this message translates to:
+  /// **'Finisher'**
+  String get shareCardRaceFinisher;
+
+  /// Kicker over the badge name on the badge sticker
+  ///
+  /// In en, this message translates to:
+  /// **'Badge earned'**
+  String get shareCardBadgeKicker;
 
   /// Run detail action that opens the share sheet on the PR card
   ///

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { onMount } from 'svelte';
 	import { compareOrdinal } from '#lib/util/ordinal_compare.ts';
 	import { page } from '$app/state';
@@ -139,6 +140,10 @@
 	// mi-mode user would still see the metric thresholds even though
 	// the labels read in miles.
 	const METRES_PER_MILE = 1609.344;
+	function shown(r: RouteListItem): number {
+		return routeDisplayDistanceM(r.distance_m, r.official_distance_m);
+	}
+
 	function inDistanceBucket(meters: number, b: DistanceBucket): boolean {
 		const unitMetres = getUnit() === 'mi' ? METRES_PER_MILE : 1000;
 		const v = meters / unitMetres;
@@ -171,7 +176,7 @@
 		const out = routes.filter((r) => {
 			if (starredOnly && !r.is_starred) return false;
 			if (surfaceFilter !== 'any' && r.surface !== surfaceFilter) return false;
-			if (!inDistanceBucket(r.distance_m, distanceFilter)) return false;
+			if (!inDistanceBucket(shown(r), distanceFilter)) return false;
 			if (q) {
 				if (!fold(r.name ?? '').includes(q)) return false;
 			}
@@ -184,10 +189,10 @@
 				);
 				break;
 			case 'longest':
-				out.sort((a, b) => b.distance_m - a.distance_m);
+				out.sort((a, b) => shown(b) - shown(a));
 				break;
 			case 'shortest':
-				out.sort((a, b) => a.distance_m - b.distance_m);
+				out.sort((a, b) => shown(a) - shown(b));
 				break;
 			case 'most_run':
 				out.sort((a, b) => (b.run_count ?? 0) - (a.run_count ?? 0));
@@ -526,7 +531,7 @@
 							<div class="route-info">
 								<h3>{route.name}</h3>
 								<div class="route-meta">
-									<span>{formatDistance(route.distance_m)}</span>
+									<span>{formatDistance(shown(route))}</span>
 									{#if route.elevation_m}
 										<span class="meta-sep">&middot;</span>
 										<span>{m('routesPage.elevation', { elevation: formatElevation(route.elevation_m) })}</span>

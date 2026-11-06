@@ -4,7 +4,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { routeDetailsPatch, type RouteDetails } from './route_details';
+import {
+	officialDistanceInputValue,
+	parseOfficialDistanceInput,
+	routeDetailsPatch,
+	type RouteDetails,
+} from './route_details';
 import { lengthLimit } from '../core/column_limits';
 
 const loaded: RouteDetails = { name: 'Allianz Richmond Marathon 2026', description: null };
@@ -64,4 +69,41 @@ test('text past the column caps is refused, and text at the caps is not', () => 
 		routeDetailsPatch(loaded, { name: 'a'.repeat(nameMax), description: 'a'.repeat(descMax) }).kind,
 		'patch',
 	);
+});
+
+const MILE = 1609.344;
+
+test('an official distance typed in km is stored in metres', () => {
+	assert.deepEqual(parseOfficialDistanceInput('42.195', 1000, 42670, null), { kind: 'set', officialM: 42195 });
+	assert.deepEqual(parseOfficialDistanceInput(' 42,195 ', 1000, 42670, null), { kind: 'set', officialM: 42195 });
+	assert.deepEqual(parseOfficialDistanceInput('21.0975', 1000, 21300, null), { kind: 'set', officialM: 21097.5 });
+});
+
+test('an official distance typed in miles converts at 1609.344 m', () => {
+	assert.deepEqual(parseOfficialDistanceInput('26.21876', MILE, 42670, null), { kind: 'set', officialM: 42195 });
+});
+
+test('a blank official distance clears a stored one and leaves none alone', () => {
+	assert.deepEqual(parseOfficialDistanceInput('  ', 1000, 42670, 42195), { kind: 'set', officialM: null });
+	assert.deepEqual(parseOfficialDistanceInput('', 1000, 42670, null), { kind: 'unchanged' });
+});
+
+test('retyping the stored official distance writes nothing', () => {
+	assert.deepEqual(parseOfficialDistanceInput('42.195', 1000, 42670, 42195), { kind: 'unchanged' });
+	assert.deepEqual(parseOfficialDistanceInput('26.219', MILE, 42670, 42195), { kind: 'unchanged' });
+});
+
+test('an official distance is refused when not a number, not positive or over 10% off', () => {
+	assert.deepEqual(parseOfficialDistanceInput('marathon', 1000, 42670, null), { kind: 'notANumber' });
+	assert.deepEqual(parseOfficialDistanceInput('0', 1000, 42670, null), { kind: 'outOfRange' });
+	assert.deepEqual(parseOfficialDistanceInput('-5', 1000, 42670, null), { kind: 'outOfRange' });
+	assert.deepEqual(parseOfficialDistanceInput('50', 1000, 42670, null), { kind: 'tooFar' });
+	assert.deepEqual(parseOfficialDistanceInput('38', 1000, 42670, null), { kind: 'tooFar' });
+});
+
+test('the edit field opens on the stored official distance in the viewer unit', () => {
+	assert.equal(officialDistanceInputValue(42195, 1000), '42.195');
+	assert.equal(officialDistanceInputValue(10000, 1000), '10');
+	assert.equal(officialDistanceInputValue(42195, MILE), '26.219');
+	assert.equal(officialDistanceInputValue(null, 1000), '');
 });

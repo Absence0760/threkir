@@ -4076,6 +4076,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get routeDetailStatDistance => 'Distância';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Distância oficial';
+
+  @override
+  String get routeDetailStatMeasured => 'Medida';
+
+  @override
   String get routeDetailStatElevation => 'Elevação';
 
   @override
@@ -7556,6 +7562,34 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get workoutAdviceWalkRun =>
       'Alterne corrida leve e caminhada nos intervalos cronometrados. As pausas para caminhar fazem parte do treino — faça-as mesmo se estiver descansado.';
+
+  @override
+  String get planDetailWeekAdviceRace =>
+      'Semana de prova — confie no treino que fez.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Polimento — o volume desce, a intensidade fica.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Última semana — termina com os seus primeiros 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Faça as pausas para caminhar mesmo quando se sente bem — tornam a corrida sustentável.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Fim de semana back-to-back — duas corridas longas em dias seguidos, a segunda com as pernas cansadas.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Tempo em movimento a ritmo leve: o objetivo é a duração, não o ritmo. Pratique a alimentação do dia da prova.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Corra pela sensação e alimente-se cedo — o tempo vem por acréscimo.';
 
   @override
   String get workoutAdviceRace =>
@@ -17723,6 +17757,13 @@ class AppLocalizationsPt extends AppLocalizations {
       'Arquivada. Uma nova mensagem trá-la de volta à sua caixa de entrada.';
 
   @override
+  String get messagesMarkUnread => 'Marcar como não lida';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marcada como não lida. Fica em destaque na sua caixa de entrada até a abrir.';
+
+  @override
   String get profileMessage => 'Mensagem';
 
   @override
@@ -19923,6 +19964,41 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get shareCardPrHint =>
       'Os seus recordes continuam privados. Só esta imagem é partilhada.';
+
+  @override
+  String get shareCardKind => 'Destaque';
+
+  @override
+  String get shareCardKindStats => 'Dados';
+
+  @override
+  String get shareCardKindSplits => 'Parciais';
+
+  @override
+  String get shareCardKindPr => 'Recorde';
+
+  @override
+  String get shareCardKindStreak => 'Sequência';
+
+  @override
+  String get shareCardKindRace => 'Prova';
+
+  @override
+  String get shareCardKindBadge => 'Medalha';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count parciais · média $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'dias seguidos';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Medalha conquistada';
 
   @override
   String get runDetailSharePr => 'Partilhar cartão de recorde';
@@ -24135,6 +24211,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get routeDetailStatDistance => 'Distância';
 
   @override
+  String get routeDetailStatOfficialDistance => 'Distância oficial';
+
+  @override
+  String get routeDetailStatMeasured => 'Medida';
+
+  @override
   String get routeDetailStatElevation => 'Elevação';
 
   @override
@@ -27617,6 +27699,34 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get workoutAdviceWalkRun =>
       'Alterne corrida leve e caminhada nos intervalos cronometrados. As pausas para caminhar fazem parte do treino — faça-as mesmo se estiver descansado.';
+
+  @override
+  String get planDetailWeekAdviceRace =>
+      'Semana de prova — confie no treino que você fez.';
+
+  @override
+  String get planDetailWeekAdviceTaper =>
+      'Polimento — o volume cai, a intensidade fica.';
+
+  @override
+  String get planDetailWeekAdviceGraduation =>
+      'Última semana — ela termina com seus primeiros 5 km.';
+
+  @override
+  String get planDetailWeekAdviceWalkBreaks =>
+      'Faça as pausas para caminhar mesmo se estiver bem — elas tornam a corrida sustentável.';
+
+  @override
+  String get planDetailWeekAdviceBackToBack =>
+      'Fim de semana back-to-back — dois longões em dias seguidos, o segundo com as pernas cansadas.';
+
+  @override
+  String get workoutAdviceTimeOnFeet =>
+      'Tempo em movimento em ritmo leve: a meta é a duração, não o ritmo. Pratique a alimentação do dia da prova.';
+
+  @override
+  String get workoutAdviceUltraRace =>
+      'Corra pela sensação e se alimente cedo — o tempo vem por consequência.';
 
   @override
   String get workoutAdviceRace =>
@@ -37772,6 +37882,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Arquivada. Uma nova mensagem traz a conversa de volta para sua caixa de entrada.';
 
   @override
+  String get messagesMarkUnread => 'Marcar como não lida';
+
+  @override
+  String get messagesMarkedUnreadToast =>
+      'Marcada como não lida. Ela fica em destaque na sua caixa de entrada até você abri-la.';
+
+  @override
   String get profileMessage => 'Mensagem';
 
   @override
@@ -39967,6 +40084,41 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get shareCardPrHint =>
       'Seus recordes continuam privados. Só esta imagem é compartilhada.';
+
+  @override
+  String get shareCardKind => 'Destaque';
+
+  @override
+  String get shareCardKindStats => 'Dados';
+
+  @override
+  String get shareCardKindSplits => 'Parciais';
+
+  @override
+  String get shareCardKindPr => 'Recorde';
+
+  @override
+  String get shareCardKindStreak => 'Sequência';
+
+  @override
+  String get shareCardKindRace => 'Prova';
+
+  @override
+  String get shareCardKindBadge => 'Medalha';
+
+  @override
+  String shareCardSplitsHeading(int count, String pace) {
+    return '$count parciais · média $pace';
+  }
+
+  @override
+  String get shareCardStreakCaption => 'dias seguidos';
+
+  @override
+  String get shareCardRaceFinisher => 'Finisher';
+
+  @override
+  String get shareCardBadgeKicker => 'Medalha conquistada';
 
   @override
   String get runDetailSharePr => 'Compartilhar card de recorde';

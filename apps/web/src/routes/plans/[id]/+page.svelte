@@ -129,7 +129,7 @@
 	import { planToMarkdown, planToJson, type ExportPlan } from '#lib/training/plan_serialize.ts';
 	import { nextRace, planRaces } from '#lib/training/plan_races.ts';
 	import { planSlug } from '#lib/training/plan_slug.ts';
-	import { workoutKindLabel, planPhaseLabel } from '#lib/training/workout_labels.ts';
+	import { workoutKindLabel, planPhaseLabel, planWeekNote } from '#lib/training/workout_labels.ts';
 	import { planWorkoutAriaLabel, planWorkoutStatusOf } from '#lib/training/plan_workout_view.ts';
 	import { planWorkoutStatusLook } from '#lib/training/plan_workout_status_style.ts';
 	import { fmtKm, fmtPace } from '#lib/format/units.svelte.ts';
@@ -2465,6 +2465,7 @@
 				{@const weekDone = weekProgress.completed}
 				{@const isPast = w.week_index < (currentWeekIndex ?? -1)}
 				{@const isFuture = w.week_index > (currentWeekIndex ?? -1)}
+				{@const weekNote = planWeekNote(w.notes, w.phase, weekWorkouts)}
 				<article
 					class="week"
 					class:current={w.week_index === currentWeekIndex}
@@ -2524,8 +2525,8 @@
 							{/if}
 						</div>
 					</header>
-					{#if w.notes}
-						<p class="week-note">{w.notes}</p>
+					{#if weekNote}
+						<p class="week-note" data-testid="plan-week-note">{weekNote}</p>
 					{/if}
 					<div class="day-grid">
 						{#each weekWorkouts as wo (wo.id)}

@@ -15,6 +15,7 @@
 		videoSummary,
 		autoOpen = false,
 		requireExplicitConsent = false,
+		officialDistanceM = null,
 	}: {
 		points: PathPoint[];
 		title: string;
@@ -30,6 +31,8 @@
 		autoOpen?: boolean;
 		/// The anonymous share page's per-view consent tap (see `RunMap`).
 		requireExplicitConsent?: boolean;
+		/// The route's official distance, which the dialog's distances scale to.
+		officialDistanceM?: number | null;
 	} = $props();
 
 	// The dialog carries the 3D map engine, so it loads on the first click
@@ -91,6 +94,7 @@
 			{videoSource}
 			{videoSummary}
 			{requireExplicitConsent}
+			{officialDistanceM}
 			unit={getUnit()}
 			onclose={() => (open = false)}
 		/>

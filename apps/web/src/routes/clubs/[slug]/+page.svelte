@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
@@ -1484,7 +1485,7 @@
 								<div class="club-route-info">
 									<h3>{route.name}</h3>
 									<div class="club-route-meta">
-										<span>{formatDistance(route.distance_m)}</span>
+										<span>{formatDistance(routeDisplayDistanceM(route.distance_m, route.official_distance_m))}</span>
 										{#if route.elevation_m}
 											<span class="meta-sep">·</span>
 											<span>{tr('clubHome.elevation', { n: route.elevation_m })}</span>

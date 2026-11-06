@@ -1,8 +1,9 @@
 // The photo and sticker share images, drawn on a 2D canvas. Web's twin of
 // `RunStickerContent` / `RunStickerShareCard` / `RunPhotoShareCard` in
 // apps/mobile_android/lib/widgets/run_share_overlays.dart: the same fixed
-// logical canvases (decisions § 2250), the same four layouts at the same
-// sizes and spacing, rasterised to 1080 px across.
+// logical canvases (decisions § 2250), the same four layouts and the same
+// occasion stickers at the same sizes and spacing, rasterised to 1080 px
+// across.
 //
 // Layout is a pure function over a text-measuring callback, so it is unit
 // tested without a canvas; `paintSticker` / `paintPhoto` only execute the ops
@@ -15,7 +16,17 @@ import type { TrackPoint } from '../types';
 import { projectTrack } from '../routes/track_projection';
 import { SHARE_STICKER_INKS, THREKIR_MARK_GRADIENT } from './og_card_palette';
 import type { RunShareStat } from './run_share_stats';
-import type { RunPhotoAspect, RunShareInk, RunStickerLayout } from './share_look';
+import {
+	averageStickerPace,
+	fastestStickerSplit,
+	splitsColumnCapacity,
+	splitsStickerForm,
+	type RunPhotoAspect,
+	type RunShareInk,
+	type RunStickerLayout,
+	type SplitsStickerForm,
+	type SplitsStickerRow,
+} from './share_look';
 import {
 	DEFAULT_SHARE_PLACEMENT,
 	minSharePlacementScale,
@@ -57,13 +68,13 @@ export interface FontSpec {
 /// Width of `text` in logical pixels at `font`, letter spacing included.
 export type MeasureText = (text: string, font: FontSpec) => number;
 
-export type InkRole = 'text' | 'muted';
+export type InkRole = 'text' | 'muted' | 'accent';
 
 export type DrawOp =
 	| {
 			kind: 'text';
 			text: string;
-			/// The run's horizontal centre, or its left edge for `align: 'left'`.
+			/// The run's horizontal centre, or its left or right edge.
 			x: number;
 			/// The alphabetic baseline.
 			y: number;
@@ -71,9 +82,10 @@ export type DrawOp =
 			ink: InkRole;
 			/// Scale-down applied about (x, y) so a long value fits its column.
 			scale: number;
-			align: 'center' | 'left';
+			align: 'center' | 'left' | 'right';
 	  }
 	| { kind: 'route'; x: number; y: number; size: number }
+	| { kind: 'bar'; x: number; y: number; w: number; h: number; ink: InkRole }
 	| { kind: 'divider'; x: number; y: number; w: number; h: number }
 	| { kind: 'mark'; x: number; y: number; size: number };
 
@@ -239,15 +251,272 @@ export function layoutStickerContent(
 	return { ops, width, height: y };
 }
 
-/// The sticker's whole canvas: its content inset by STICKER_PAD on every side.
-export function layoutSticker(
-	layout: RunStickerLayout,
-	stats: RunShareStat[],
+
+/// One line of an occasion sticker, set at one of the type steps below and
+/// centred. `maxLines` above 1 wraps on words; a single line scales down
+/// rather than overflowing the width.
+export type OccasionStep = 'label' | 'title' | 'headline' | 'display' | 'hero';
+
+export interface OccasionLine {
+	text: string;
+	step: OccasionStep;
+	ink: InkRole;
+	maxLines?: number;
+}
+
+const OCCASION_STEPS: Record<OccasionStep, FontSpec & { lineHeight: number }> = {
+	label: { size: LABEL.size, weight: LABEL.weight, letterSpacing: LABEL.letterSpacing, lineHeight: LABEL.lineHeight },
+	title: { size: STEP.titleLarge, weight: 700, letterSpacing: 0, lineHeight: 28 },
+	headline: { size: STEP.headlineMedium, weight: 800, letterSpacing: 0, lineHeight: 34 },
+	display: { size: STEP.displayLarge * 1.25, weight: 800, letterSpacing: -0.5, lineHeight: STEP.displayLarge * 1.25 * 1.05 },
+	hero: { size: STEP.displayLarge * 1.8, weight: 800, letterSpacing: -1, lineHeight: STEP.displayLarge * 1.8 },
+};
+
+/// The gap between two lines of an occasion sticker.
+export const OCCASION_LINE_GAP = 6;
+
+/// One table row of the splits sticker: the split's number (or a partial
+/// tail's length) and its pace, already formatted.
+export interface SplitsStickerEntry {
+	label: string;
+	pace: string;
+	row: SplitsStickerRow;
+}
+
+/// What a sticker draws. `stats` is the run's numbers in a layout; `lines` is
+/// an occasion as a stack of lines (a record, a streak day, a race, a badge)
+/// over an optional route; `splits` is the run's splits as a table or bars.
+/// The route-only sticker is `lines` with no lines.
+export type StickerBody =
+	| { kind: 'stats'; layout: RunStickerLayout; stats: RunShareStat[]; hasRoute: boolean }
+	| { kind: 'lines'; lines: OccasionLine[]; route: number }
+	| { kind: 'splits'; heading: string; entries: SplitsStickerEntry[] };
+
+export const OCCASION_CONTENT_WIDTH = 320;
+
+/// The splits sticker's type and pitch. The cut-overs between its forms are
+/// derived from these and the budget, never written down.
+export const SPLIT_ROW_TEXT = STEP.titleLarge;
+export const SPLIT_ROW_H = 30;
+const SPLIT_HEADING_GAP = 10;
+const SPLIT_BRAND_GAP = 12;
+const SPLIT_BARS_H = 120;
+const SPLIT_BAR_MIN = 0.2;
+const SPLIT_SINGLE_W = 220;
+const SPLIT_COLUMN_GAP = 20;
+
+/// Everything on a splits sticker that is not a row: the padding, the
+/// heading, the signature and their gaps.
+export const SPLITS_CHROME = STICKER_PAD * 2 + LABEL.lineHeight + SPLIT_HEADING_GAP + SPLIT_BRAND_GAP + BRAND_MARK;
+
+/// Rows one column holds inside SPLITS_STICKER_BUDGET.
+export function splitsCapacity(): number {
+	return splitsColumnCapacity(SPLIT_ROW_TEXT, SPLIT_ROW_H, SPLITS_CHROME);
+}
+
+export function splitsForm(rows: number): SplitsStickerForm {
+	return splitsStickerForm(rows, splitsCapacity());
+}
+
+export function bodyContentWidth(body: StickerBody): number {
+	return body.kind === 'stats' ? stickerContentWidth(body.layout) : OCCASION_CONTENT_WIDTH;
+}
+
+function centredLine(text: string, font: FontSpec, ink: InkRole, width: number, lineHeight: number, measure: MeasureText): Laid {
+	const scale = Math.min(1, width / Math.max(1, measure(text, font)));
+	return {
+		ops: [
+			{
+				kind: 'text',
+				text,
+				x: width / 2,
+				y: (lineHeight * scale) / 2 + font.size * 0.36 * scale,
+				font,
+				ink,
+				scale,
+				align: 'center',
+			},
+		],
+		width,
+		height: lineHeight * scale,
+	};
+}
+
+function layoutLines(lines: OccasionLine[], route: number, width: number, measure: MeasureText): Laid {
+	const ops: DrawOp[] = [];
+	let y = 0;
+	lines.forEach((line, i) => {
+		if (i > 0) y += OCCASION_LINE_GAP;
+		const step = OCCASION_STEPS[line.step];
+		const font: FontSpec = { size: step.size, weight: step.weight, letterSpacing: step.letterSpacing };
+		const text = line.step === 'label' ? line.text.toUpperCase() : line.text;
+		const wrapped = (line.maxLines ?? 1) > 1 ? wrapLines(text, font, width, line.maxLines!, measure) : [text];
+		for (const part of wrapped) {
+			const laid = centredLine(part, font, line.ink, width, step.lineHeight, measure);
+			ops.push(...laid.ops.map((op) => translate(op, 0, y)));
+			y += laid.height;
+		}
+	});
+	if (route > 0) {
+		if (lines.length > 0) y += 18;
+		ops.push({ kind: 'route', x: (width - route) / 2, y, size: route });
+		y += route;
+	}
+	y += 16;
+	return { ops, width, height: y };
+}
+
+function splitRows(entries: SplitsStickerEntry[], fastest: number, x: number, w: number, measure: MeasureText): DrawOp[] {
+	const font: FontSpec = { size: SPLIT_ROW_TEXT, weight: 800, letterSpacing: 0 };
+	const labelFont: FontSpec = { size: SPLIT_ROW_TEXT, weight: 700, letterSpacing: 0 };
+	return entries.flatMap((e, i) => {
+		const baseline = i * SPLIT_ROW_H + SPLIT_ROW_H / 2 + SPLIT_ROW_TEXT * 0.36;
+		const hot = i === fastest;
+		const paceW = measure(e.pace, font);
+		const labelW = measure(e.label, labelFont);
+		const scale = Math.min(1, w / Math.max(1, paceW + labelW + 12));
+		return [
+			{ kind: 'text', text: e.label, x, y: baseline, font: labelFont, ink: hot ? 'accent' : 'muted', scale, align: 'left' },
+			{ kind: 'text', text: e.pace, x: x + w, y: baseline, font, ink: hot ? 'accent' : 'text', scale, align: 'right' },
+		] satisfies DrawOp[];
+	});
+}
+
+function splitBars(entries: SplitsStickerEntry[], fastest: number, width: number): DrawOp[] {
+	const speeds = entries.map((e) => (e.row.paceSecPerKm > 0 ? 1 / e.row.paceSecPerKm : 0));
+	const live = speeds.filter((v) => v > 0);
+	const lo = Math.min(...live);
+	const hi = Math.max(...live);
+	const frac = (v: number) => (hi > lo ? SPLIT_BAR_MIN + ((1 - SPLIT_BAR_MIN) * (v - lo)) / (hi - lo) : 1);
+	const gap = entries.length > 60 ? 1 : 2;
+	const barW = (width - gap * (entries.length - 1)) / entries.length;
+	const ops: DrawOp[] = entries.map((e, i) => {
+		const h = speeds[i] > 0 ? SPLIT_BARS_H * frac(speeds[i]) : 0;
+		return {
+			kind: 'bar',
+			x: i * (barW + gap),
+			y: SPLIT_BARS_H - h,
+			w: barW,
+			h,
+			ink: i === fastest ? 'accent' : e.row.partial ? 'muted' : 'text',
+		};
+	});
+	const avg = averageStickerPace(entries.map((e) => e.row));
+	if (avg != null) {
+		const h = SPLIT_BARS_H * frac(1 / avg);
+		ops.push({ kind: 'divider', x: 0, y: SPLIT_BARS_H - h - 0.75, w: width, h: 1.5 });
+	}
+	return ops;
+}
+
+function layoutSplits(heading: string, entries: SplitsStickerEntry[], width: number, measure: MeasureText): Laid {
+	const ops: DrawOp[] = [];
+	const labelFont: FontSpec = { size: LABEL.size, weight: LABEL.weight, letterSpacing: LABEL.letterSpacing };
+	const head = centredLine(heading.toUpperCase(), labelFont, 'muted', width, LABEL.lineHeight, measure);
+	ops.push(...head.ops);
+	let y = LABEL.lineHeight + SPLIT_HEADING_GAP;
+	const fastest = fastestStickerSplit(entries.map((e) => e.row));
+	const form = splitsForm(entries.length);
+	if (form === 'bars') {
+		ops.push(...splitBars(entries, fastest, width).map((op) => translate(op, 0, y)));
+		y += SPLIT_BARS_H;
+	} else if (form === 'single') {
+		const x = (width - SPLIT_SINGLE_W) / 2;
+		ops.push(...splitRows(entries, fastest, x, SPLIT_SINGLE_W, measure).map((op) => translate(op, 0, y)));
+		y += entries.length * SPLIT_ROW_H;
+	} else {
+		const perColumn = Math.ceil(entries.length / 2);
+		const colW = (width - SPLIT_COLUMN_GAP) / 2;
+		const left = splitRows(entries.slice(0, perColumn), fastest, 0, colW, measure);
+		const right = splitRows(entries.slice(perColumn), fastest - perColumn, colW + SPLIT_COLUMN_GAP, colW, measure);
+		ops.push(...[...left, ...right].map((op) => translate(op, 0, y)));
+		y += perColumn * SPLIT_ROW_H;
+	}
+	y += SPLIT_BRAND_GAP;
+	return { ops, width, height: y };
+}
+
+/// The route's size on an occasion sticker that carries one, and on the
+/// route-only sticker.
+export const OCCASION_ROUTE = 110;
+export const ROUTE_STICKER = OCCASION_CONTENT_WIDTH * 0.82;
+
+/// A personal record: what it is, the bracket in the accent, the time, and how
+/// much it beat the old one by.
+export function prStickerBody(
+	t: { headline: string; distance: string; time: string; improvement: string | null },
 	hasRoute: boolean,
-	wordmark: string | null,
-	measure: MeasureText,
-): Laid {
-	const content = layoutStickerContent(layout, stats, hasRoute, wordmark, measure);
+): StickerBody {
+	const lines: OccasionLine[] = [
+		{ text: t.headline, step: 'label', ink: 'muted' },
+		{ text: t.distance, step: 'headline', ink: 'accent' },
+		{ text: t.time, step: 'display', ink: 'text' },
+	];
+	if (t.improvement) lines.push({ text: t.improvement, step: 'title', ink: 'text' });
+	return { kind: 'lines', lines, route: hasRoute ? OCCASION_ROUTE : 0 };
+}
+
+/// A day of a streak: the day count huge, between what it is and what it means.
+export function streakStickerBody(t: { kicker: string; days: string; caption: string }): StickerBody {
+	return {
+		kind: 'lines',
+		lines: [
+			{ text: t.kicker, step: 'label', ink: 'muted' },
+			{ text: t.days, step: 'hero', ink: 'text' },
+			{ text: t.caption, step: 'title', ink: 'accent' },
+		],
+		route: 0,
+	};
+}
+
+/// A race finish: with an official time, the time is the hero under the race;
+/// without one, the word Finisher is.
+export function raceStickerBody(t: { name: string; finisher: string; time: string | null }, hasRoute: boolean): StickerBody {
+	const lines: OccasionLine[] = t.time
+		? [
+				{ text: t.finisher, step: 'label', ink: 'muted' },
+				{ text: t.name, step: 'headline', ink: 'text', maxLines: 2 },
+				{ text: t.time, step: 'display', ink: 'accent' },
+			]
+		: [
+				{ text: t.name, step: 'headline', ink: 'text', maxLines: 2 },
+				{ text: t.finisher, step: 'display', ink: 'accent' },
+			];
+	return { kind: 'lines', lines, route: hasRoute ? OCCASION_ROUTE : 0 };
+}
+
+/// A badge the run earned: its name, and its tier in the accent.
+export function badgeStickerBody(t: { kicker: string; name: string; tier: string }): StickerBody {
+	return {
+		kind: 'lines',
+		lines: [
+			{ text: t.kicker, step: 'label', ink: 'muted' },
+			{ text: t.name, step: 'headline', ink: 'text', maxLines: 2 },
+			{ text: t.tier, step: 'label', ink: 'accent' },
+		],
+		route: 0,
+	};
+}
+
+export function routeStickerBody(): StickerBody {
+	return { kind: 'lines', lines: [], route: ROUTE_STICKER };
+}
+
+/// A body's content with its signature, `bodyContentWidth(body)` wide and as
+/// tall as it draws, with no ground of its own.
+export function layoutBodyContent(body: StickerBody, wordmark: string | null, measure: MeasureText): Laid {
+	if (body.kind === 'stats') return layoutStickerContent(body.layout, body.stats, body.hasRoute, wordmark, measure);
+	const width = OCCASION_CONTENT_WIDTH;
+	const laid =
+		body.kind === 'lines' ? layoutLines(body.lines, body.route, width, measure) : layoutSplits(body.heading, body.entries, width, measure);
+	if (wordmark === null) return laid;
+	const b = brand(width, wordmark, measure);
+	return { ops: [...laid.ops, ...b.ops.map((op) => translate(op, 0, laid.height))], width, height: laid.height + b.height };
+}
+
+/// The sticker's whole canvas: its content inset by STICKER_PAD on every side.
+export function layoutSticker(body: StickerBody, wordmark: string | null, measure: MeasureText): Laid {
+	const content = layoutBodyContent(body, wordmark, measure);
 	return {
 		ops: content.ops.map((op) => translate(op, STICKER_PAD, STICKER_PAD)),
 		width: content.width + STICKER_PAD * 2,
@@ -306,10 +575,8 @@ export interface PhotoLaid extends Laid {
 /// clear of the bottom eighth the story viewer's reply bar covers.
 export function layoutPhoto(
 	aspect: RunPhotoAspect,
-	layout: RunStickerLayout,
+	body: StickerBody,
 	title: string,
-	stats: RunShareStat[],
-	hasRoute: boolean,
 	wordmark: string | null,
 	measure: MeasureText,
 	placement: SharePlacement = DEFAULT_SHARE_PLACEMENT,
@@ -323,7 +590,7 @@ export function layoutPhoto(
 	const titleH = lines.length * TITLE.lineHeight;
 	const titleGap = lines.length > 0 ? 12 : 0;
 
-	const content = layoutStickerContent(layout, stats, hasRoute, wordmark, measure);
+	const content = layoutBodyContent(body, wordmark, measure);
 	const availH = frame.height - titleH - titleGap;
 	const contentScale = Math.min(1, boxW / content.width, availH / content.height);
 	const cw = content.width * contentScale;
@@ -350,7 +617,7 @@ export function layoutPhoto(
 		const scaled: DrawOp =
 			op.kind === 'text'
 				? { ...op, x: cx + op.x * ks, y: cy + op.y * ks, scale: op.scale * ks }
-				: op.kind === 'divider'
+				: op.kind === 'divider' || op.kind === 'bar'
 					? { ...op, x: cx + op.x * ks, y: cy + op.y * ks, w: op.w * ks, h: op.h * ks }
 					: { ...op, x: cx + op.x * ks, y: cy + op.y * ks, size: op.size * ks };
 		ops.push(scaled);
@@ -469,7 +736,7 @@ export function paintOps(
 				ctx.letterSpacing = `${op.font.letterSpacing}px`;
 				ctx.textAlign = op.align;
 				ctx.textBaseline = 'alphabetic';
-				ctx.fillStyle = op.ink === 'text' ? ink.text : ink.muted;
+				ctx.fillStyle = ink[op.ink];
 				// Shadow geometry is in device pixels, outside the transform.
 				ctx.shadowColor = ink.shadow;
 				ctx.shadowBlur = 10 * pxPerUnit * op.scale;
@@ -484,6 +751,17 @@ export function paintOps(
 			case 'divider':
 				ctx.fillStyle = ink.muted;
 				ctx.fillRect(op.x, op.y, op.w, op.h);
+				break;
+			case 'bar':
+				if (op.h <= 0) break;
+				ctx.save();
+				ctx.shadowColor = ink.shadow;
+				ctx.shadowBlur = 6 * pxPerUnit;
+				ctx.fillStyle = ink[op.ink];
+				ctx.beginPath();
+				ctx.roundRect(op.x, op.y, op.w, op.h, Math.min(op.w / 2, 3));
+				ctx.fill();
+				ctx.restore();
 				break;
 			case 'mark':
 				paintMark(ctx, op.x, op.y, op.size);
@@ -505,9 +783,8 @@ export function sizedCanvas(laid: Laid): { canvas: HTMLCanvasElement; ctx: Canva
 }
 
 export interface StickerInput {
-	layout: RunStickerLayout;
+	body: StickerBody;
 	ink: RunShareInk;
-	stats: RunShareStat[];
 	/// The clipped share line (`shareCardTrack`), never a raw track.
 	track: TrackPoint[];
 	wordmark: string | null;
@@ -517,7 +794,7 @@ export interface StickerInput {
 export function paintSticker(input: StickerInput): HTMLCanvasElement {
 	const probe = document.createElement('canvas').getContext('2d');
 	if (!probe) throw new Error('2D canvas unavailable');
-	const laid = layoutSticker(input.layout, input.stats, input.track.length >= 2, input.wordmark, canvasMeasure(probe));
+	const laid = layoutSticker(input.body, input.wordmark, canvasMeasure(probe));
 	const { canvas, ctx, k } = sizedCanvas(laid);
 	paintOps(ctx, laid.ops, input.track, input.ink, k);
 	return canvas;
@@ -539,10 +816,8 @@ export function paintPhoto(input: PhotoInput): { canvas: HTMLCanvasElement; laid
 	if (!probe) throw new Error('2D canvas unavailable');
 	const laid = layoutPhoto(
 		input.aspect,
-		input.layout,
+		input.body,
 		input.title,
-		input.stats,
-		input.track.length >= 2,
 		input.wordmark,
 		canvasMeasure(probe),
 		input.placement,

@@ -1,4 +1,4 @@
--- Pins migration 20271111000001 (decisions § 2351, issue #1300 BUG-015):
+-- Pins migration 20271111000001 (decisions § 2352, issue #1300 BUG-015):
 -- editing an event's start moves the RSVPs, waitlist entries and paid orders
 -- of its upcoming occurrences onto the matching new occurrence, leaves past
 -- occurrences alone, does nothing on an edit that leaves the start as it was,

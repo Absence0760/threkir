@@ -34,7 +34,12 @@
 	import { WEEKDAY_CHOICES } from '#lib/social/recurrence.ts';
 	import { EVENT_CATEGORIES, isAthleticCategory } from '#lib/social/event_category.ts';
 	import { gymTemplateFromInputs } from '#lib/social/event_gym_template.ts';
-	import { editorZone, startFieldsFor, startIsoFor } from '#lib/social/event_start_fields.ts';
+	import {
+		editorZone,
+		startFieldsFor,
+		startIsoFor,
+		startIsoIfMoved
+	} from '#lib/social/event_start_fields.ts';
 	import { formatDistance, getUnit } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -475,6 +480,7 @@
 					: null;
 			const athletic = isAthleticCategory(category);
 			if (existing) {
+				const movedStart = startIsoIfMoved(existing.starts_at, { date, time }, startZone);
 				await updateEvent(existing.id, {
 					title: title.trim(),
 					category,
@@ -484,7 +490,7 @@
 							? gymTemplateFromInputs(discipline.trim(), gymTemplateDurationMin)
 							: null,
 					description: description.trim() || null,
-					starts_at: startsAt,
+					...(movedStart !== null ? { starts_at: movedStart } : {}),
 					duration_min: durationMin ?? null,
 					meet_label: meetLabel.trim() || null,
 					route_id: athletic ? routeId || null : null,

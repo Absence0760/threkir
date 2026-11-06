@@ -53,6 +53,7 @@ import '../off_route_flag.dart';
 import '../preferences.dart';
 import '../privacy.dart';
 import '../off_route_alert.dart';
+import '../orphaned_recording.dart';
 import '../race_controller.dart';
 import '../race_finish.dart';
 import '../reactive_ble_watch_transport.dart';
@@ -841,14 +842,39 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     });
     // A process-killed run was recovered as resumable at cold start. Prompt
     // once, after first frame (so `_l10n` + a Navigator context exist), to
-    // Resume / Finish / Discard it — resume the primary path.
+    // Resume / Finish / Discard it — resume the primary path. A recording
+    // handed on by a torn-down predecessor is newer than any cold-start
+    // partial, and is the same session if both exist.
+    orphanedRecording.addListener(_onOrphanedRecording);
     final resumable = widget.initialResumablePartial;
-    if (resumable != null) {
+    if (orphanedRecording.value != null) {
+      _onOrphanedRecording();
+    } else if (resumable != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _promptResume(resumable);
       });
     }
+  }
+
+  /// Offer Resume / Finish / Discard on a recording a torn-down run screen
+  /// handed on ([orphanedRecording]). Listened to as well as read at
+  /// `initState`, because a replacement screen is built before the one it
+  /// replaces is disposed. Taken only while idle, so it never interrupts a
+  /// run this screen is already recording.
+  void _onOrphanedRecording() {
+    if (orphanedRecording.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final orphan = orphanedRecording.value;
+      if (!mounted ||
+          orphan == null ||
+          _state != _ScreenState.idle ||
+          _startRequested) {
+        return;
+      }
+      orphanedRecording.value = null;
+      _promptResume(orphan);
+    });
   }
 
   @override
@@ -3324,10 +3350,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// Serialise the in-progress run to disk. Runs every 10s via
   /// [_incrementalSaveTimer] so a crash mid-run is recoverable.
   Future<void> _saveInProgress() async {
+    final run = _inProgressCheckpoint();
+    if (run == null) return;
+    try {
+      await widget.runStore.saveInProgress(run);
+    } catch (e) {
+      debugPrint('Incremental save failed: $e');
+    }
+  }
+
+  /// The run so far, in the shape the in-progress file holds, or null when
+  /// nothing is recording. Built synchronously so `dispose` can take it before
+  /// the recorder and workout runner it reads are released.
+  cm.Run? _inProgressCheckpoint() {
     final id = _runId;
     final startedAt = _runStartedAtWall;
-    if (id == null || startedAt == null) return;
-    if (_state != _ScreenState.recording) return;
+    if (id == null || startedAt == null) return null;
+    if (_state != _ScreenState.recording) return null;
 
     // Mirror the indoor-estimate path in _stop() so a crash-recovered
     // treadmill run keeps its pedometer-based distance instead of being
@@ -3394,7 +3433,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       runner?.reviewMetadata(planWorkoutId: activeWorkoutId) ??
           const <String, dynamic>{},
     );
-    final run = cm.Run(
+    return cm.Run(
       id: id,
       startedAt: startedAt,
       duration: _elapsed,
@@ -3405,11 +3444,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       source: cm.RunSource.app,
       metadata: metadata,
     );
-    try {
-      await widget.runStore.saveInProgress(run);
-    } catch (e) {
-      debugPrint('Incremental save failed: $e');
-    }
   }
 
   /// Update [_gpsLost] based on GPS-backed snapshot freshness. Drives the
@@ -4135,6 +4169,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    orphanedRecording.removeListener(_onOrphanedRecording);
+    // The recorder dies with this State, so a dispose mid-run ends the GPS
+    // session; it must not also end the run. Checkpoint it while the
+    // recorder and workout runner it reads still exist: the next run screen
+    // offers to resume it in this process, and the in-progress file carries
+    // it to the next cold start (decisions § 2351).
+    // Guarded on its own so a failure here can never skip the releases below.
+    try {
+      final checkpoint = _inProgressCheckpoint();
+      if (checkpoint != null) {
+        orphanedRecording.value = checkpoint;
+        widget.runStore.saveInProgress(checkpoint).catchError((Object e) {
+          debugPrint('Tear-down checkpoint save failed: $e');
+        });
+      }
+    } catch (e) {
+      debugPrint('Tear-down checkpoint failed: $e');
+    }
     // A disposed recording surface is no longer recording, so release the
     // nav-shell swipe lock (issue #490) — leaving it latched would trap the
     // shell in non-swipeable state.

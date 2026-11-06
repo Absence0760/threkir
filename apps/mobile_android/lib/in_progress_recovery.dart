@@ -65,7 +65,7 @@ const Duration kResumableWindow = Duration(hours: 48);
 /// pedometer silent, for a minute or more.
 const Duration kResumableMinElapsed = Duration(seconds: 60);
 
-/// Classify an in-progress partial (decisions § 230, amended by § 2353).
+/// Classify an in-progress partial (decisions § 230, amended by § 2354).
 ///
 /// Recent (within [kResumableWindow]): resumable when it has any distance or
 /// at least [kResumableMinElapsed] of elapsed time. Only an empty partial — no

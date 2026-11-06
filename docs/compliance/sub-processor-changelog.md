@@ -166,3 +166,11 @@ need a notarised log of changes prior to a specific date, email
 * **Gate**: unchanged. Each request is refused without the AI disclosure version its prompt requires, and every prompt falls back to the non-AI path when the model is not called.
 * **Activation date**: the release that ships PR #1289. No objection window applies (existing sub-processor, existing features, and each change sends less or is now listed). **Security Analyst / CISO to confirm before release** that the consent bullets cover each listed field (route-AI disclosure v2 does not name the unit or the language, the plan bullets do not name the current date, the plan-edit bullet names dates, types and distances but not durations, phases, weekly distance or completion state, and the plate-photo bullet does not name the note), and to decide whether the start coordinates route-request sent before this release need any further action.
 * **Opt-out path**: don't use the AI route, plan and plate-photo features; withdraw AI consent in Settings → Account.
+
+## 2026-11-06 — MapTiler — DPA confirmed (no new sub-processor, no new data category)
+
+* **What changes**: the register's MapTiler row linked MapTiler's privacy policy, not a DPA, and the 2026-11-04 legal review read that policy as making MapTiler an independent controller of its request logs. MapTiler Support has since sent its standard Data Processing Agreement (effective 2026-03-24), which forms part of the MapTiler Terms of Service by online acceptance. Under it MapTiler AG is our **processor** for the end-user IP addresses it receives with each tile request. Support also says MapTiler stores no end-user data, and that IPs are held at the CDN for about 20 minutes so the service can work. The privacy policy's statement that a DPA is held on file is now accurate for MapTiler.
+* **Region**: MapTiler AG, Switzerland (EU adequacy). MapTiler's own sub-processors include Cloudflare (CDN, global / US) and Google Cloud (EU and US), both under the EU-US Data Privacy Framework or SCCs.
+* **Activation date**: none; this records the existing relationship.
+* **DPA**: MapTiler standard DPA, copy on file. A countersigned copy is available only on a paid plan, through sales@maptiler.com.
+* **Opt-out path**: unchanged; see the MapTiler row in [`sub-processors.md`](sub-processors.md).

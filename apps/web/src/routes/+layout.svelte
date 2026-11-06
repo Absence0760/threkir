@@ -31,6 +31,7 @@
 	import type { Modality } from '#lib/settings/modality_visibility.ts';
 	import { strayConfirmationTarget } from '#lib/core/auth_confirmation.ts';
 	import { CONSENT_PATH, ONBOARDING_PATH, holdAppShell } from '#lib/core/post_auth_route.ts';
+	import { browserSessionStore, captureFirstTouch } from '#lib/core/signup_source.ts';
 	import { PUBLIC_SUPABASE_URL } from '$app/env/public';
 
 	// Warm the connection to the Supabase origin every page hits on
@@ -76,6 +77,17 @@
 	// [data-theme] on mount.
 	onMount(() => {
 		initTheme();
+	});
+
+	// The tab's first touch, held until a sign-up sends it (decisions § 2350).
+	onMount(() => {
+		captureFirstTouch(
+			browserSessionStore(),
+			window.location.pathname,
+			window.location.search,
+			document.referrer,
+			window.location.hostname,
+		);
 	});
 
 	// Detect + apply the visitor's locale (stored choice → browser

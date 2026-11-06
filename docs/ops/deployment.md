@@ -692,6 +692,14 @@ Share-link visit counters, sign-up attribution and Your shares ([decisions § 22
 2. CISO / Security Analyst: decide whether sign-up attribution (`signup_share` in the GoTrue metadata, counted by the `auth.users` trigger) is a new purpose, and if so update [dpia.md](../compliance/dpia.md) and have counsel add its row to the privacy policy's § 3 purpose table. [sub-processors.md](../compliance/sub-processors.md) does not change: no vendor is involved.
 3. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('share_attribution', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; counting and attribution stop at once, and the existing buckets age out under `purge-share-link-daily`.
 
+### First-touch sign-up source — after the CISO / Security Analyst review
+
+Recording which platform each new account came from ([decisions § 2350](../architecture/decisions.md), migration `20271110000001`) ships closed: no migration writes the `signup_source` row of `private.feature_flags`, so no sign-up sends `signup_source` metadata and the `auth.users` trigger records nothing. The browser still keeps the tab's first touch in sessionStorage (`threkir.signup_source`), which never leaves it while the gate is closed. In order:
+
+1. CISO / Security Analyst: confirm the sessionStorage entry needs no cookie consent (first-party, per tab, sent only with a sign-up the person submits; listed on `/cookie-notice` § 2), and that legitimate interest fits the purpose row the privacy policy's § 3 now carries; update [dpia.md](../compliance/dpia.md) if it is a new purpose. Counsel reviews the added privacy-policy text (§ 2 "How you found us", § 3 row, § 7 retention). [sub-processors.md](../compliance/sub-processors.md) does not change: no vendor is involved.
+2. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('signup_source', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; recording stops at once and recorded rows stay with their accounts.
+3. Reading the counts: `select day, source, signups from private.signup_sources_daily where day >= current_date - 30 order by day desc, signups desc;` in the same SQL editor. Accounts from before step 2 count as `unknown`.
+
 ### Public plan share ("Train with me") — after the CISO / Security Analyst review
 
 The logged-out `/share/plan/[id]` page ([training.md § Train with me](../features/training.md#train-with-me--public-plan-share-page), decisions § 2262, migration `20271103000002`) ships closed: no migration writes the `public_plan_share` row of `private.feature_flags` (`seed.sql` opens it for local and CI only), so `public_plan_share(p_id)` answers null and "Copy share link" stays hidden. From training.md's checklist:

@@ -23,6 +23,7 @@
 	import { safeReturnTo as resolveReturnTo } from '#lib/core/safe_redirect.ts';
 	import { browserReturnStore, stashPendingReturn } from '#lib/core/pending_return.ts';
 	import { signupShareFor } from '#lib/share/share_attribution.ts';
+	import { signupSourceFor } from '#lib/core/signup_source_attribution.ts';
 	import { postAuthDestination } from '#lib/core/post_auth_route.ts';
 	import { googleAuthEnabled } from '#lib/core/google_auth_flag.ts';
 	import { appleAuthEnabled } from '#lib/core/apple_auth_flag.ts';
@@ -205,7 +206,12 @@
 				const stamp = new Date().toISOString();
 				// The share link this sign-up started from, when it carried its
 				// owner's ref; counted once the account is confirmed (§ 2268).
-				const signupShare = await signupShareFor(safeReturnTo());
+				// And where this tab first arrived from, recorded on
+				// confirmation (§ 2350).
+				const [signupShare, signupSource] = await Promise.all([
+					signupShareFor(safeReturnTo()),
+					signupSourceFor(),
+				]);
 				const { data, error: signUpError } = await supabase.auth.signUp({
 					email,
 					password,
@@ -226,6 +232,7 @@
 							terms_accepted_at: stamp,
 							preferred_unit: defaultUnitForLocale(navigator.language),
 							...(signupShare ? { signup_share: { ...signupShare } } : {}),
+							...(signupSource ? { signup_source: { ...signupSource } } : {}),
 						},
 					},
 				});

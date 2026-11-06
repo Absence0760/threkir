@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-11-04';
+	const lastUpdated = '2026-11-05';
 </script>
 
 <svelte:head>
@@ -141,6 +141,14 @@
 			<strong>Third-party imports</strong>: when you connect Strava, parkrun, Garmin, Health
 			Connect, or HealthKit, we receive the activity data they publish to us.
 		</li>
+		<li data-testid="signup-source">
+			<strong>How you found us</strong>: when you create an account on the website, where your
+			browser first arrived from in that visit — the campaign tags in the link you followed
+			(<code>utm_source</code>, <code>utm_medium</code>, <code>utm_campaign</code>), or else the
+			address of the site that sent you (for example <code>l.instagram.com</code>), or "direct"
+			when there was none. It is held in your browser for that tab only and sent to us only if you
+			sign up. We use it only to count which of our social accounts and links bring new members.
+		</li>
 	</ul>
 	<p data-testid="health-platform-data">
 		Data we read from <strong>Apple HealthKit</strong> or <strong>Android Health Connect</strong>
@@ -173,6 +181,7 @@
 			<tr><td>Serving a share page to a visitor without an account, and keeping it secure (request logs)</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
 			<tr><td>Loading map tiles and the 3D course preview on a share page for a visitor without an account</td><td>Consent — Art 6(1)(a) GDPR, given by the "Load map" or "Load preview" tap for that view</td></tr>
 			<tr><td>Paid event registration, fundraising donations, Pro subscription billing</td><td>Contract — Art 6(1)(b) GDPR</td></tr>
+			<tr><td>Counting which of our social accounts and links bring new members (where you first arrived from when you signed up)</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
 			<tr><td>Marketing email (only if opted in)</td><td>Consent</td></tr>
 			<tr><td>Error monitoring, abuse prevention, moderation of reported content, and keeping evidence of reported abuse for user safety and to establish or defend legal claims</td><td>Legitimate interest — Art 6(1)(f) GDPR</td></tr>
 			<tr><td>Comply with a subpoena, court order, or store demand</td><td>Legal obligation — Art 6(1)(c) GDPR</td></tr>
@@ -380,6 +389,7 @@
 	<h2>7. How long we keep it</h2>
 	<ul>
 		<li><strong>Account, runs, routes, gym workouts, food logs, body metrics</strong>: until you delete the item or the account.</li>
+		<li><strong>How you found us</strong> (where you first arrived from when you signed up): until you delete the account.</li>
 		<li><strong>Live spectator pings</strong>: 48 hours (both our database and, when enabled, the Upstash cache).</li>
 		<li><strong>Race spectator pings</strong> (organised-event live results): 48 hours.</li>
 		<li><strong>Checkpoint medical weigh-in fields</strong> (weight, medical hold/note): scrubbed 90 days after they were recorded; the in/out split times are race results and are kept.</li>

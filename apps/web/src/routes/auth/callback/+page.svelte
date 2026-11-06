@@ -9,6 +9,7 @@
 	import { postAuthDestination } from '#lib/core/post_auth_route.ts';
 	import { browserReturnStore, takePendingReturn } from '#lib/core/pending_return.ts';
 	import { signupShareFor } from '#lib/share/share_attribution.ts';
+	import { signupSourceFor } from '#lib/core/signup_source_attribution.ts';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 	import { OAUTH_PROVIDER_STASH_KEY, keepAppleRevocationCredential } from '#lib/core/apple_revocation.ts';
 	import {
@@ -151,14 +152,22 @@
 		const target = linking ? null : takePendingReturn(browserReturnStore());
 
 		// An OAuth sign-up carries no sign-up metadata, so the share link it
-		// started from is written now, on the account's first callback; the
-		// auth.users trigger counts it once (decisions § 2268).
+		// started from (decisions § 2268) and the tab's first touch (§ 2350)
+		// are written now, on the account's first callback; the auth.users
+		// triggers record each once.
 		if (oauthSignUp) {
 			try {
-				const signupShare = await signupShareFor(target);
-				if (signupShare) await supabase.auth.updateUser({ data: { signup_share: { ...signupShare } } });
+				const [signupShare, signupSource] = await Promise.all([
+					signupShareFor(target),
+					signupSourceFor(),
+				]);
+				const data = {
+					...(signupShare ? { signup_share: { ...signupShare } } : {}),
+					...(signupSource ? { signup_source: { ...signupSource } } : {}),
+				};
+				if (Object.keys(data).length > 0) await supabase.auth.updateUser({ data });
 			} catch (e) {
-				console.error('signup_share write failed', e);
+				console.error('sign-up attribution write failed', e);
 			}
 		}
 		goto(linking ? SIGN_IN_METHODS_PATH : postAuthDestination(auth.user, target ?? '/dashboard'));

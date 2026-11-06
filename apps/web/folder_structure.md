@@ -56,6 +56,8 @@ src/
     types.ts        # Run, Route, Integration type overlays on generated DB types
     database.types.ts  # Generated Supabase types (regenerate after migrations)
     core/supabase.ts     # Supabase client init
+    core/signup_source.ts # pure first-touch sign-up source (decisions § 2350): firstTouchFrom maps UTM params, else the referrer host to a platform name (instagram/facebook/tiktok/youtube/threads/x/bluesky/linkedin), else direct/other; captureFirstTouch (root layout) keeps the tab's first one in sessionStorage, never overwriting; readFirstTouch revalidates it
+    core/signup_source_attribution.ts # signupSourceFor: the stored first touch for a sign-up's `signup_source` metadata, only while the `signup_source` gate is open (login + /auth/callback)
     core/client_error_log.ts # logClientError: hooks.client.ts's handleError writes every unexpected client error to the local console under CLIENT_ERROR_LOG_PREFIX before (and independent of) the consent-gated Sentry path, so a prod 500 is diagnosable from DevTools with nothing sent. The e2e crash net (tests-e2e/fixtures/crash-net.ts) keys on the same prefix.
     core/mock-data.ts    # Fallback data when Supabase is empty
     format/units.svelte.ts # Reactive km/mi + kg/lbs preference signals + unit-aware formatters (distance/pace/elevation; weight via the format/weight.ts pure layer)

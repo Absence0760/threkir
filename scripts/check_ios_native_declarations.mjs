@@ -153,6 +153,50 @@ export const GOOGLE_REDIRECT_PHASE = /REVERSED_CLIENT_ID[\s\S]*?CFBundleURLTypes
 /// BUILD time rather than trusted at launch.
 export const FIREBASE_CORE_IMPORT = /package:firebase_core\//;
 
+/// The import that obliges push to work under this app's UIScene startup.
+export const FIREBASE_MESSAGING_IMPORT = /package:firebase_messaging\//;
+
+/// The first firebase_messaging that asks iOS for an APNs token when plugins
+/// register after launch, as they do under UIScene (FlutterFire #18620 and
+/// #18650, both in 16.7.0). Every earlier release asks only from the launch
+/// callback it never receives here, so getToken() throws and the device
+/// registers nothing (issue #1300 BUG-002).
+export const MESSAGING_UISCENE_FLOOR = '16.7.0';
+
+/// The UNUserNotificationCenter delegate has to be set before
+/// didFinishLaunching returns, which is before a UIScene app registers its
+/// plugins, so the app delegate calls this itself (the plugin's README).
+const MESSAGING_DELEGATE_CALL =
+	/FLTFirebaseMessagingPlugin\s*\.\s*configureNotificationCenterDelegate\(\s*\)/;
+
+/**
+ * The version `pubspec.lock` resolves for `name`, or null.
+ * @param {string} lock
+ * @param {string} name
+ */
+export function lockedVersion(lock, name) {
+	const block = lock.match(new RegExp(`^  ${name}:\\n((?:    .*\\n?)+)`, 'm'));
+	const version = block?.[1].match(/^    version: "([^"]+)"/m);
+	return version ? version[1] : null;
+}
+
+/**
+ * Negative, zero or positive as `a` sorts before, with or after `b`, on the
+ * numeric major.minor.patch only.
+ * @param {string} a
+ * @param {string} b
+ */
+export function compareVersions(a, b) {
+	const parts = (/** @type {string} */ v) =>
+		v.split(/[+-]/)[0].split('.').map((n) => Number.parseInt(n, 10) || 0);
+	const [x, y] = [parts(a), parts(b)];
+	for (let i = 0; i < 3; i++) {
+		const d = (x[i] ?? 0) - (y[i] ?? 0);
+		if (d !== 0) return d;
+	}
+	return 0;
+}
+
 /// The `GoogleService-Info.plist` fields that RAISE when malformed, and so
 /// cannot be left to the app to survive. `+[FLTFirebaseCorePlugin
 /// sharedInstance]` calls `+[FIRApp configureWithOptions:]` during plugin
@@ -1152,6 +1196,7 @@ export function readBundles(root = REPO_ROOT) {
  * @property {string | null} appDelegate
  * @property {string | null} pbxproj
  * @property {string | null} backgroundSyncDart
+ * @property {string | null} pubspecLock
  * @property {SourceFile[]} dartSources
  * @property {SourceFile[]} swiftSources
  * @property {string} [root]
@@ -1169,6 +1214,7 @@ export function evaluate(input) {
 		appDelegate,
 		pbxproj,
 		backgroundSyncDart,
+		pubspecLock,
 		dartSources,
 		swiftSources,
 		root = REPO_ROOT,
@@ -1503,6 +1549,48 @@ export function evaluate(input) {
 					'before bundling GoogleService-Info.plist ' +
 					'(apps/mobile_ios/lib/firebase_push_messaging.dart: `firebase_core` is imported)',
 			);
+		}
+	}
+
+	// --- Push under UIScene ------------------------------------------------
+	// Every declaration above can be right and no token still arrive: under
+	// UIScene the plugin registers after launch, so a plugin that only asks
+	// for an APNs token from the launch callback never asks at all.
+	const messagingImport = firstMatch(dartSources, FIREBASE_MESSAGING_IMPORT, root);
+	if (messagingImport) {
+		const resolved = lockedVersion(pubspecLock ?? '', 'firebase_messaging');
+		if (resolved === null) {
+			errors.push(
+				`\`firebase_messaging\` is imported (${messagingImport}), but pubspec.lock ` +
+					'resolves no version of it.\n  The lockfile moved or changed shape; ' +
+					'this guard is blind until lockedVersion() is taught the new form.',
+			);
+		} else if (compareVersions(resolved, MESSAGING_UISCENE_FLOOR) < 0) {
+			errors.push(
+				`pubspec.lock resolves firebase_messaging ${resolved}, below ` +
+					`${MESSAGING_UISCENE_FLOOR}.\n  This app starts through UIScene, so ` +
+					'plugins register after didFinishLaunching; earlier releases ask iOS ' +
+					'for an APNs token only from that callback, getToken() throws, and ' +
+					'no iPhone ever registers a device token (decisions.md § 2353).',
+			);
+		} else {
+			ok.push(
+				`firebase_messaging ${resolved} registers for APNs under UIScene ` +
+					`(floor ${MESSAGING_UISCENE_FLOOR})`,
+			);
+		}
+
+		if (!MESSAGING_DELEGATE_CALL.test(stripSwiftComments(appDelegate ?? ''))) {
+			errors.push(
+				'AppDelegate.swift does not call ' +
+					'`FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()`.\n' +
+					'  iOS reads the UNUserNotificationCenter delegate before ' +
+					'didFinishLaunching returns, and under UIScene the plugin registers ' +
+					'after that, so without the call the notification tap that launched ' +
+					'the app and foreground presentation never reach the plugin.',
+			);
+		} else {
+			ok.push('AppDelegate sets the notification-centre delegate before launch completes');
 		}
 	}
 
@@ -1858,6 +1946,7 @@ function main() {
 		appDelegate: readOrNull(join(IOS_ROOT, 'Runner/AppDelegate.swift')),
 		pbxproj: readOrNull(join(IOS_ROOT, 'Runner.xcodeproj/project.pbxproj')),
 		backgroundSyncDart: readOrNull(join(REPO_ROOT, 'apps/mobile_ios/lib/background_sync.dart')),
+		pubspecLock: readOrNull(join(REPO_ROOT, 'pubspec.lock')),
 		dartSources: collectDartSources(),
 		swiftSources: collectSwiftSources(),
 	});

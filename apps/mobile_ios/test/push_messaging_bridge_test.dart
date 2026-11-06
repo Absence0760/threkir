@@ -130,6 +130,25 @@ void main() {
     messaging.dispose();
   });
 
+  test('a token that is not ready at attach registers when it arrives',
+      () async {
+    // iOS hands out an FCM token only once APNs has, which can be after the
+    // bridge attaches (issue #1300 BUG-002); onTokenRefresh is the retry.
+    final messaging = _FakeMessaging()..token = null;
+    final api = _FakeApi();
+    final bridge = PushMessagingBridge(messaging: messaging, api: api)..attach();
+    await Future<void>.delayed(Duration.zero);
+    expect(api.registrations, isEmpty);
+
+    messaging.emitRefresh('tok-late');
+    await Future<void>.delayed(Duration.zero);
+
+    expect(api.registrations.single['token'], 'tok-late');
+    expect(bridge.currentToken, 'tok-late');
+    bridge.detach();
+    messaging.dispose();
+  });
+
   test('attach exposes the bridge as the static instance', () {
     final messaging = _FakeMessaging(available: false);
     final api = _FakeApi();

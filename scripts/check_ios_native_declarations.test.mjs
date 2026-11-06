@@ -16,14 +16,17 @@ import {
 	GOOGLE_REVERSED_SCHEME,
 	GOOGLE_SIGN_IN_IMPORT,
 	IOS_ROOT,
+	MESSAGING_UISCENE_FLOOR,
 	PLIST_FLAGS,
 	PRIVACY_API_TYPES,
 	PRIVACY_DATA_TYPES,
 	PURPOSE_STRINGS,
 	collectDartSources,
 	collectSwiftSources,
+	compareVersions,
 	evaluate,
 	evaluateBundleManifests,
+	lockedVersion,
 	parseBuildConfigurations,
 	readBundles,
 	parsePlist,
@@ -224,7 +227,24 @@ const PBX =
 
 const APP_DELEGATE =
 	'isExcludedFromBackup = true\n.documentDirectory\n' +
-	'WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "com.threkir.backgroundSync")';
+	'WorkmanagerPlugin.registerBGProcessingTask(withIdentifier: "com.threkir.backgroundSync")\n' +
+	'FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()';
+
+/** @param {string} version */
+const lockWith = (version) =>
+	'packages:\n' +
+	'  firebase_core:\n' +
+	'    dependency: transitive\n' +
+	'    version: "4.15.2"\n' +
+	'  firebase_messaging:\n' +
+	'    dependency: transitive\n' +
+	'    description:\n' +
+	'      name: firebase_messaging\n' +
+	'      url: "https://pub.dev"\n' +
+	'    source: hosted\n' +
+	`    version: "${version}"\n` +
+	'  fixnum:\n' +
+	'    version: "1.1.1"\n';
 
 const BACKGROUND_SYNC_DART =
 	"const backgroundSyncTaskName = 'com.threkir.backgroundSync';\n" +
@@ -254,6 +274,7 @@ function baseline(overrides = {}) {
 		appDelegate: APP_DELEGATE,
 		pbxproj: PBX,
 		backgroundSyncDart: BACKGROUND_SYNC_DART,
+		pubspecLock: lockWith('16.7.1'),
 		dartSources: dart(
 			'IosTextToSpeechAudioCategory.playback\n' + "import 'package:firebase_messaging/x.dart';",
 		),
@@ -275,6 +296,58 @@ const plistWith = (key, value) => new Map(baseline().infoPlist).set(key, value);
 test('the baseline passes, so every mutation below is the only cause of its failure', () => {
 	const { errors } = evaluate(baseline());
 	assert.deepEqual(errors, []);
+});
+
+test('a firebase_messaging below the UIScene floor fails (issue #1300 BUG-002)', () => {
+	const errors = evaluate(baseline({ pubspecLock: lockWith('15.2.10') })).errors;
+	assert.equal(errors.filter((e) => e.includes('below 16.7.0')).length, 1);
+	assert.deepEqual(evaluate(baseline({ pubspecLock: lockWith(MESSAGING_UISCENE_FLOOR) })).errors, []);
+	assert.deepEqual(evaluate(baseline({ pubspecLock: lockWith('17.0.1') })).errors, []);
+});
+
+test('a lockfile that resolves no firebase_messaging is a blind guard, not a pass', () => {
+	const errors = evaluate(baseline({ pubspecLock: 'packages:\n  fixnum:\n    version: "1.1.1"\n' }))
+		.errors;
+	assert.equal(errors.filter((e) => e.includes('resolves no version')).length, 1);
+	assert.equal(
+		evaluate(baseline({ pubspecLock: null })).errors.filter((e) => e.includes('resolves no version'))
+			.length,
+		1,
+	);
+});
+
+test('the notification-centre delegate call is required, and a commented-out one does not count', () => {
+	const without = APP_DELEGATE.replace(
+		'FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()',
+		'// FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()',
+	);
+	const errors = evaluate(baseline({ appDelegate: without })).errors;
+	assert.equal(errors.filter((e) => e.includes('configureNotificationCenterDelegate')).length, 1);
+});
+
+test('no firebase_messaging import, no push obligations', () => {
+	const errors = evaluate(
+		baseline({
+			dartSources: dart('IosTextToSpeechAudioCategory.playback'),
+			entitlements: new Map(),
+			pubspecLock: lockWith('15.2.10'),
+			appDelegate: APP_DELEGATE.replace(
+				'FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()',
+				'',
+			),
+		}),
+	).errors;
+	assert.equal(errors.filter((e) => /firebase_messaging|configureNotificationCenterDelegate/.test(e)).length, 0);
+});
+
+test('lockedVersion reads the named package only, and compareVersions orders numerically', () => {
+	const lock = lockWith('16.7.1');
+	assert.equal(lockedVersion(lock, 'firebase_messaging'), '16.7.1');
+	assert.equal(lockedVersion(lock, 'firebase_core'), '4.15.2');
+	assert.equal(lockedVersion(lock, 'firebase_messaging_web'), null);
+	assert.ok(compareVersions('16.10.0', '16.7.0') > 0);
+	assert.ok(compareVersions('16.6.9', '16.7.0') < 0);
+	assert.equal(compareVersions('16.7.0+1', '16.7.0'), 0);
 });
 
 test('importing app_links obliges switching off Flutter deep-link routing', () => {
@@ -962,6 +1035,7 @@ test('the committed iOS tree satisfies every rule', () => {
 			join(REPO_ROOT, 'apps/mobile_ios/lib/background_sync.dart'),
 			'utf-8',
 		),
+		pubspecLock: readFileSync(join(REPO_ROOT, 'pubspec.lock'), 'utf-8'),
 		dartSources: collectDartSources(),
 		swiftSources: [
 			{ path: 'x', text: readFileSync(join(IOS_ROOT, 'Runner/CalendarBridge.swift'), 'utf-8') },

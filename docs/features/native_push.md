@@ -142,7 +142,21 @@ works from anywhere.
    landed and a `device_tokens` row appears for that user with the right
    `platform`. No row means the client leg, not the sending leg: on Android,
    the likeliest cause is an AAB built before the secret existed, since the
-   Gradle apply is conditional and the release step only warns.
+   Gradle apply is conditional and the release step only warns. On iOS, check
+   the build's `firebase_messaging` first: this app starts through UIScene,
+   which registers plugins after `didFinishLaunching`, and before **16.7.0**
+   the plugin asked iOS for an APNs token only from that launch callback. So
+   every iPhone build up to and including `firebase_messaging` 15.2.10 had the
+   entitlement, the plist and the APNs key all correct and still registered
+   nothing — `getToken()` threw `apns-token-not-set` (issue #1300 BUG-002,
+   `decisions.md § 2353`). 16.7.0 requests the token when the plugin registers
+   late and again once Dart's `Firebase.initializeApp()` configures the app;
+   `AppDelegate` sets the notification-centre delegate itself, the plugin's
+   UIScene step, so a cold-launch tap still reaches `getInitialMessage()`.
+   `scripts/check_ios_native_declarations.mjs` fails the PR when either
+   regresses. A token that is not ready when the bridge attaches registers
+   off `onTokenRefresh` when FCM mints it, and every sign-in or session
+   refresh asks again.
 3. **A notification delivers — and the kind you pick decides whether it can.**
    `push_notifications` defaults to `important`, and `importantKinds`
    (`mailer.go`) is exactly `event_reminder`, `event_cancel`, `plan_update`,

@@ -77,7 +77,8 @@ function wrapLng(d: number): number {
 	return d;
 }
 
-function gateUsable(gate: Gate): boolean {
+/** Whether the gate can report crossings at all; an unusable gate reports none. */
+export function gateUsable(gate: Gate): boolean {
 	return (
 		Number.isFinite(gate.lat) &&
 		Number.isFinite(gate.lng) &&

@@ -109,6 +109,22 @@ final class WorkoutManagerPaceTests: XCTestCase {
         XCTAssertNil(wm.currentPace)
     }
 
+    /// The phone's shared `paceIsReady` rule (issue #1300): 50 m and 20 s,
+    /// both, so a fast first 50 m does not show a pace before 20 s.
+    func testPaceWindowWaitsForTwentySeconds() {
+        var w = PaceWindow()
+        for i in 0..<5 { w.add(t: Double(i) * 4, distanceM: Double(i) * 15) }
+        XCTAssertNil(w.secondsPerKm, "60 m in 16 s clears the distance floor, not the time one")
+        w.add(t: 20, distanceM: 75)
+        XCTAssertEqual(w.secondsPerKm ?? 0, 20.0 / 75.0 * 1000, accuracy: 1e-9)
+    }
+
+    func testPaceWindowKeepsAPaceForACyclistPast10MetresPerSecond() {
+        var w = PaceWindow()
+        for i in 0...60 { w.add(t: Double(i), distanceM: Double(i) * 15) }
+        XCTAssertEqual(w.secondsPerKm ?? 0, 1000.0 / 15, accuracy: 1e-9)
+    }
+
     // A steady 5:00/km (10/3 m/s) due north, one fix a second, each fix 1.25 m
     // either side of the true line. Every hop is then 4.17 m for 3.33 m of
     // progress, so a hop-sum reads 4:00/km. scripts/gps_distance/reference.py

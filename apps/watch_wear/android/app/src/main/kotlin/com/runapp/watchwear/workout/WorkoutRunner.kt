@@ -122,6 +122,10 @@ class WorkoutRunner(val workout: PushedWorkout) {
     private var emittedFirst = false
     private var firedWarning = false
     private var lastDriftAtMs: Long? = null
+
+    /// Trailing (step seconds, step metres) samples for the drift cue's pace,
+    /// re-seeded at each step's start: the phone's `stepLivePaceSecPerKm`.
+    private val livePace = ArrayDeque<Pair<Double, Double>>().apply { addLast(0.0 to 0.0) }
     private val results = mutableListOf<WorkoutStepResultRecord>()
 
     val currentIndex: Int get() = idx
@@ -165,6 +169,8 @@ class WorkoutRunner(val workout: PushedWorkout) {
             stepStartElapsedS = elapsedS
             out += WorkoutEvent.Transition(previousIndex = -1, currentIndex = 0)
         }
+
+        addLivePaceSample()
 
         val step = steps[idx]
         val dist = stepDistanceM
@@ -243,15 +249,38 @@ class WorkoutRunner(val workout: PushedWorkout) {
     )
 
     /// Signed drift in s/km (positive = slower) when the step is paced and
-    /// the runner is past twice its tolerance, else null.
+    /// the runner is past twice its tolerance, else null. Graded on the
+    /// step's trailing [LIVE_PACE_WINDOW_M] once that stretch spans
+    /// [PACE_READY_MIN_METRES] and [PACE_READY_MIN_SECONDS], as the phone does,
+    /// so a slow start is not still announced once the runner is on pace.
     private fun paceDrift(step: PushedStep): Int? {
         if (workout.unpaced) return null
-        val d = stepDistanceM
-        val secs = stepSecs
-        if (d < STEP_PACE_MIN_METRES || secs < STEP_PACE_MIN_SECONDS) return null
-        val actual = (secs / (d / 1000.0)).roundToLong().toInt()
+        val actual = livePaceSPerKm() ?: return null
         val diff = actual - step.paceSPerKm
         return if (abs(diff) > step.toleranceSPerKm * 2) diff else null
+    }
+
+    private fun livePaceSPerKm(): Int? {
+        val (t0, m0) = livePace.first()
+        val (t1, m1) = livePace.last()
+        val gained = m1 - m0
+        val seconds = t1 - t0
+        if (gained < PACE_READY_MIN_METRES || seconds < PACE_READY_MIN_SECONDS) return null
+        return (seconds / (gained / 1000.0)).roundToLong().toInt()
+    }
+
+    private fun addLivePaceSample() {
+        val t = stepElapsedS
+        val m = stepDistanceM
+        val (lastT, lastM) = livePace.last()
+        // Only a feed that moved the distance is a sample; the 1 s ticks
+        // between fixes would add time with no metres.
+        if (m <= lastM || t < lastT) return
+        if (t == lastT && livePace.size > 1) livePace.removeLast()
+        livePace.addLast(t to m)
+        while (livePace.size > 2 && m - livePace[1].second >= LIVE_PACE_WINDOW_M && t - livePace[1].first >= PACE_READY_MIN_SECONDS) {
+            livePace.removeFirst()
+        }
     }
 
     private fun advance(status: String, carryOvershoot: Boolean): WorkoutEvent {
@@ -287,6 +316,8 @@ class WorkoutRunner(val workout: PushedWorkout) {
         }
         firedWarning = false
         lastDriftAtMs = null
+        livePace.clear()
+        livePace.addLast(0.0 to 0.0)
         return if (isComplete) WorkoutEvent.Complete else WorkoutEvent.Transition(prev, idx)
     }
 
@@ -326,11 +357,14 @@ class WorkoutRunner(val workout: PushedWorkout) {
         /// The phone runner's drift-cue spacing.
         const val DRIFT_CUE_INTERVAL_MS = 45_000L
 
-        /// The phone runner's `kStepPaceMinMetres` / `kStepPaceMinSeconds`:
-        /// a step's pace is not graded until it has covered 50 m in 20 s, so
-        /// a standing start is not announced as way behind (issue #1300).
-        const val STEP_PACE_MIN_METRES = 50.0
-        const val STEP_PACE_MIN_SECONDS = 20
+        /// The phone's `kPaceReadyMinMetres` / `kPaceReadyMinSeconds`: no
+        /// pace is graded over less than 50 m or 20 s, so a standing start is
+        /// not announced as way behind (issue #1300).
+        const val PACE_READY_MIN_METRES = 50.0
+        const val PACE_READY_MIN_SECONDS = 20.0
+
+        /// The phone's `kStepLivePaceWindowMetres`.
+        const val LIVE_PACE_WINDOW_M = 200.0
     }
 }
 

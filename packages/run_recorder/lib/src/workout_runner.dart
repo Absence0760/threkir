@@ -1,16 +1,12 @@
 import 'dart:async';
+import 'dart:collection';
 
+import 'pace_readiness.dart';
 import 'run_snapshot.dart';
 
-/// How far into a step its average pace starts to count. The old 5 m / 1 s
-/// gate graded a standing start: 19 m in the first 15 s of a 9:20 /mi block
-/// (GPS lag included) read 20:49 /mi, flagged the runner way behind and fired
-/// the drift cue (issue #1300). 50 m is the distance run_snapshot's rolling
-/// pace waits for; 20 s keeps a burst of GPS catch-up from qualifying a few
-/// seconds in. The wrist ports (WorkoutRunner.kt, WatchWorkoutRunner.swift)
-/// hold the same pair.
-const double kStepPaceMinMetres = 50;
-const int kStepPaceMinSeconds = 20;
+/// How far back the step's live pace looks, the recorder's rolling window
+/// length. The step's window is not sealed at a GPS gap as the recorder's is.
+const double kStepLivePaceWindowMetres = 200;
 
 /// Live execution of a structured workout's expanded step list. Sits on
 /// top of the [RunRecorder] — it consumes [RunSnapshot]s, advances
@@ -48,6 +44,12 @@ class WorkoutRunner {
   bool _firedLastFifty = false;
   DateTime? _lastDriftCueAt;
 
+  // Trailing (step seconds, step metres) samples for [stepLivePaceSecPerKm],
+  // re-seeded at the step's own start whenever a step is entered so the
+  // window never reaches into the previous step.
+  final ListQueue<({double t, double m})> _livePaceSamples =
+      ListQueue()..add((t: 0, m: 0));
+
   int get currentStepIndex => _idx;
   WorkoutStep? get currentStep => _idx < steps.length ? steps[_idx] : null;
   bool get isComplete => _idx >= steps.length || _abandoned;
@@ -68,14 +70,45 @@ class WorkoutRunner {
     return el.isNegative ? Duration.zero : el;
   }
 
-  /// The step's average pace, or null until the step has covered
-  /// [kStepPaceMinMetres] in [kStepPaceMinSeconds]. It drives the band's
-  /// delta, [paceAdherence] and the drift cue.
-  int? get stepAveragePaceSecPerKm {
-    final d = stepDistanceMetres;
-    final el = stepElapsed.inSeconds;
-    if (d < kStepPaceMinMetres || el < kStepPaceMinSeconds) return null;
-    return (el / (d / 1000)).round();
+  /// The step's pace over its trailing [kStepLivePaceWindowMetres], or null
+  /// until that stretch passes [paceIsReady]. It never reaches back past the
+  /// step's start, so it reads the step's average until the step has covered
+  /// the window and the runner's current pace after. The band's delta,
+  /// [paceAdherence] and the drift cue all read it: a cumulative step average
+  /// kept a slow first minute in the badge and the cue long after the runner
+  /// had reached the target (issue #1300).
+  int? get stepLivePaceSecPerKm {
+    final first = _livePaceSamples.first;
+    final last = _livePaceSamples.last;
+    final gained = last.m - first.m;
+    final seconds = last.t - first.t;
+    if (!paceIsReady(gained, seconds)) return null;
+    return (seconds / (gained / 1000)).round();
+  }
+
+  void _addLivePaceSample() {
+    final t = stepElapsed.inMicroseconds / Duration.microsecondsPerSecond;
+    final m = stepDistanceMetres;
+    final last = _livePaceSamples.last;
+    // Only a snapshot that moved the distance is a sample: the 1 s timer
+    // re-emits between fixes, and its ticks would add time with no metres,
+    // reading a 6 s GPS hiccup on a 200 m window as 30 s/km behind.
+    if (m <= last.m || t < last.t) return;
+    if (t == last.t && _livePaceSamples.length > 1) {
+      _livePaceSamples.removeLast();
+    }
+    _livePaceSamples.addLast((t: t, m: m));
+    while (_livePaceSamples.length > 2 &&
+        m - _livePaceSamples.elementAt(1).m >= kStepLivePaceWindowMetres &&
+        t - _livePaceSamples.elementAt(1).t >= kPaceReadyMinSeconds) {
+      _livePaceSamples.removeFirst();
+    }
+  }
+
+  void _resetLivePace() {
+    _livePaceSamples
+      ..clear()
+      ..add((t: 0, m: 0));
   }
 
   double get stepRemainingMetres {
@@ -123,7 +156,7 @@ class WorkoutRunner {
   PaceAdherence get paceAdherence {
     final s = currentStep;
     if (s == null || !s.paced) return PaceAdherence.onPace;
-    final actual = stepAveragePaceSecPerKm;
+    final actual = stepLivePaceSecPerKm;
     if (actual == null) return PaceAdherence.onPace;
     final diff = actual - s.targetPaceSecPerKm; // positive = slower
     final tol = s.toleranceSecPerKm;
@@ -160,6 +193,8 @@ class WorkoutRunner {
     }
 
     if (isComplete) return;
+
+    _addLivePaceSample();
 
     final step = steps[_idx];
     final stepDist = stepDistanceMetres;
@@ -212,7 +247,7 @@ class WorkoutRunner {
       if (_lastDriftCueAt == null ||
           now.difference(_lastDriftCueAt!) >= const Duration(seconds: 45)) {
         _lastDriftCueAt = now;
-        final actual = stepAveragePaceSecPerKm;
+        final actual = stepLivePaceSecPerKm;
         if (actual != null) {
           _events.add(PaceDriftEvent(
             step: step,
@@ -270,6 +305,7 @@ class WorkoutRunner {
 
     _stepStartDistanceMetres = snap.distanceMetres;
     _stepStartElapsed = snap.elapsed;
+    _resetLivePace();
     _firedHalfway = false;
     _firedLastFifty = false;
     _lastDriftCueAt = null;
@@ -423,6 +459,7 @@ class WorkoutRunner {
       _stepStartDistanceMetres = s.distanceMetres;
       _stepStartElapsed = s.elapsed;
     }
+    _resetLivePace();
     _firedHalfway = false;
     _firedLastFifty = false;
     _lastDriftCueAt = null;

@@ -1,13 +1,15 @@
 import 'package:core_models/core_models.dart';
 
+import 'pace_readiness.dart';
+
 /// A point-in-time snapshot emitted during a live recording session.
 class RunSnapshot {
   final Duration elapsed;
   final double distanceMetres;
 
   /// Rolling pace, s/km, over the GPS distance estimator's last ~200 m. Null
-  /// until five fixes and 50 m have landed since the last pause, resume or
-  /// re-anchored GPS gap.
+  /// until five fixes have landed since the last pause, resume or re-anchored
+  /// GPS gap and the window spans [paceIsReady]'s 50 m and 20 s.
   final double? currentPaceSecondsPerKm;
 
   /// Latest GPS fix, if any. Null during the initial warmup and for indoor

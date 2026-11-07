@@ -460,4 +460,42 @@ void main() {
       expect(r.debugPaceSecondsPerKm, closeTo(175, 1e-9));
     });
   });
+
+  // The live Pace tile asks the same readiness question as Avg pace and the
+  // workout band (paceIsReady), so a fast 50 m does not light Pace up while
+  // Avg pace is still blank (issue #1300).
+  group('live pace waits for the shared readiness rule', () {
+    test('five fixes over 60 m stay null until the window spans 20 s', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      addTearDown(r.dispose);
+      r.begin();
+      for (var i = 0; i < 5; i++) {
+        r.debugAddPaceSample(i * 4.0, i * 15.0);
+      }
+      expect(r.debugPaceSecondsPerKm, isNull,
+          reason: '60 m in 16 s clears the distance floor, not the time one');
+      r.debugAddPaceSample(kPaceReadyMinSeconds.toDouble(), 75);
+      expect(r.debugPaceSecondsPerKm, closeTo(20 / 75 * 1000, 1e-9));
+    });
+
+    test('a cyclist past 10 m/s keeps a pace once the window has 20 s', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      addTearDown(r.dispose);
+      r.begin();
+      for (var i = 0; i <= 60; i++) {
+        r.debugAddPaceSample(i.toDouble(), i * 15.0);
+      }
+      expect(r.debugPaceSecondsPerKm, closeTo(1000 / 15, 1e-9));
+    });
+
+    test('20 s under 50 m stays null', () {
+      final r = RunRecorder()..debugPrepareWithoutStream();
+      addTearDown(r.dispose);
+      r.begin();
+      for (var i = 0; i < 6; i++) {
+        r.debugAddPaceSample(i * 5.0, i * 9.0);
+      }
+      expect(r.debugPaceSecondsPerKm, isNull);
+    });
+  });
 }

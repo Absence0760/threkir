@@ -1199,7 +1199,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       progress: runner.progressFraction,
       remainingMetres: runner.stepRemainingMetres,
       remainingDuration: runner.stepRemainingDuration,
-      actualPaceSecPerKm: runner.stepAveragePaceSecPerKm,
+      actualPaceSecPerKm: runner.stepLivePaceSecPerKm,
       adherence: runner.paceAdherence,
       complete: runner.isComplete && step == null,
       abandoned: false,
@@ -4675,12 +4675,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   String get _formattedPaceValue => UnitFormat.pace(_pace, _unit);
 
-  String get _formattedAvgPaceValue {
-    final d = _displayDistanceMetres;
-    if (d < 10 || _elapsed.inSeconds < 1) return '--:--';
-    final secPerKm = _elapsed.inSeconds / (d / 1000);
-    return UnitFormat.pace(secPerKm, _unit);
-  }
+  /// Gated by [paceIsReady], the rule the live Pace tile and the workout
+  /// band share, so Avg pace cannot show a standing start's 20:49 /mi while
+  /// Pace still reads blank (issue #1300).
+  String get _formattedAvgPaceValue => UnitFormat.pace(
+      readyAveragePaceSecPerKm(_displayDistanceMetres, _elapsed.inSeconds),
+      _unit);
 
   /// Average pace computed against a supplied moving time rather than the
   /// full elapsed time. Used on the finished-run screen so the headline
@@ -4692,12 +4692,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     return UnitFormat.pace(secPerKm, _unit);
   }
 
-  String get _formattedAvgSpeedValue {
-    final d = _displayDistanceMetres;
-    if (d < 10 || _elapsed.inSeconds < 1) return '--';
-    final secPerKm = _elapsed.inSeconds / (d / 1000);
-    return UnitFormat.speed(secPerKm, _unit);
-  }
+  String get _formattedAvgSpeedValue => UnitFormat.speed(
+      readyAveragePaceSecPerKm(_displayDistanceMetres, _elapsed.inSeconds),
+      _unit);
 
   String get _formattedCalories {
     // Assume 70 kg body weight; multiplier varies by activity. Uses the

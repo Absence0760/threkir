@@ -15,6 +15,7 @@ import 'package:uuid/uuid.dart';
 import 'baro_altitude_anchor.dart';
 import 'gnss_signal_quality.dart';
 import 'gps_distance_estimator.dart';
+import 'pace_readiness.dart';
 import 'run_snapshot.dart';
 
 /// Thrown by [RunRecorder.prepare] when device location services are turned
@@ -285,7 +286,6 @@ class RunRecorder {
   final ListQueue<({double t, double m})> _paceSamples = ListQueue();
   int _paceSamplesSinceSeal = 0;
   static const double _paceWindowM = 200;
-  static const double _paceMinWindowM = 50;
   static const int _paceMinSamples = 5;
   /// Latest raw GPS fix — drives the blue dot on the live map and updates
   /// on every fix, independent of the track-append threshold.
@@ -1508,7 +1508,8 @@ class RunRecorder {
     _paceSamples.addLast((t: t, m: m));
     _paceSamplesSinceSeal++;
     while (_paceSamples.length > 2 &&
-        m - _paceSamples.elementAt(1).m >= _paceWindowM) {
+        m - _paceSamples.elementAt(1).m >= _paceWindowM &&
+        t - _paceSamples.elementAt(1).t >= kPaceReadyMinSeconds) {
       _paceSamples.removeFirst();
     }
   }
@@ -2261,7 +2262,9 @@ class RunRecorder {
 
   /// Live pace, seconds per km: the estimator's distance gained over the
   /// last ~[_paceWindowM], against the time it took. Null until the window
-  /// since the last seal holds [_paceMinSamples] fixes and [_paceMinWindowM].
+  /// since the last seal holds [_paceMinSamples] fixes and spans
+  /// [paceIsReady]'s distance and time, the rule the Avg pace tile and the
+  /// workout band share.
   ///
   /// The window never reaches back across a pause, a process-kill resume or a
   /// re-anchored GPS gap (see [_sealPaceWindow]): those gaps' wall-clock time
@@ -2276,9 +2279,8 @@ class RunRecorder {
     final first = _paceSamples.first;
     final last = _paceSamples.last;
     final gained = last.m - first.m;
-    if (gained < _paceMinWindowM) return null;
     final seconds = last.t - first.t;
-    if (seconds <= 0) return null;
+    if (!paceIsReady(gained, seconds)) return null;
     return seconds / gained * 1000;
   }
 

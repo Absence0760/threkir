@@ -5599,5 +5599,14 @@
   "locationErrorPermissionDenied": "die Standortberechtigung ist deaktiviert",
   "locationErrorServicesOff": "die Standortermittlung ist auf diesem Gerät ausgeschaltet",
   "locationErrorNoFix": "noch keine Position, versuche es gleich noch einmal",
-  "routesImportNoTrack": "Import fehlgeschlagen: Die Datei enthält keine Route mit mindestens zwei Punkten."
+  "routesImportNoTrack": "Import fehlgeschlagen: Die Datei enthält keine Route mit mindestens zwei Punkten.",
+  "manualDurationErrorInvalid": "Nur ganze Zahlen verwenden",
+  "manualDurationErrorMinutes": "Minuten müssen zwischen 0 und 59 liegen",
+  "manualDurationErrorSeconds": "Sekunden müssen zwischen 0 und 59 liegen",
+  "manualDurationErrorTooLong": "Ein Lauf kann nicht länger als {hours} Stunden dauern",
+  "manualDurationSlowTitle": "Dauer prüfen",
+  "manualDurationSlowBody": "Das ist für diese Distanz weit langsamer als Gehtempo. Ist eine Zahl im falschen Feld gelandet?",
+  "manualDurationSlowSave": "Trotzdem speichern",
+  "manualDurationSlowFix": "Korrigieren",
+  "addRunStartInFuture": "Die Startzeit darf nicht in der Zukunft liegen"
 }

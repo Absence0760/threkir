@@ -5599,5 +5599,14 @@
   "locationErrorPermissionDenied": "l'autorisation de localisation est désactivée",
   "locationErrorServicesOff": "la localisation est désactivée sur cet appareil",
   "locationErrorNoFix": "pas encore de position, réessayez dans un instant",
-  "routesImportNoTrack": "Échec de l'import : ce fichier ne contient aucun itinéraire d'au moins deux points."
+  "routesImportNoTrack": "Échec de l'import : ce fichier ne contient aucun itinéraire d'au moins deux points.",
+  "manualDurationErrorInvalid": "Utilisez uniquement des nombres entiers",
+  "manualDurationErrorMinutes": "Les minutes doivent être comprises entre 0 et 59",
+  "manualDurationErrorSeconds": "Les secondes doivent être comprises entre 0 et 59",
+  "manualDurationErrorTooLong": "Une course ne peut pas durer plus de {hours} heures",
+  "manualDurationSlowTitle": "Vérifiez la durée",
+  "manualDurationSlowBody": "C'est bien plus lent que la marche pour cette distance. Un chiffre est-il dans la mauvaise case ?",
+  "manualDurationSlowSave": "Enregistrer quand même",
+  "manualDurationSlowFix": "Corriger",
+  "addRunStartInFuture": "L'heure de départ ne peut pas être dans le futur"
 }

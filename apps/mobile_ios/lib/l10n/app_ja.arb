@@ -5599,5 +5599,14 @@
   "locationErrorPermissionDenied": "位置情報の許可がオフです",
   "locationErrorServicesOff": "この端末の位置情報がオフです",
   "locationErrorNoFix": "まだ位置を取得できません。少し待ってからもう一度お試しください",
-  "routesImportNoTrack": "インポートに失敗しました: このファイルには 2 点以上のルートがありません。"
+  "routesImportNoTrack": "インポートに失敗しました: このファイルには 2 点以上のルートがありません。",
+  "manualDurationErrorInvalid": "整数のみを入力してください",
+  "manualDurationErrorMinutes": "分は0〜59で入力してください",
+  "manualDurationErrorSeconds": "秒は0〜59で入力してください",
+  "manualDurationErrorTooLong": "1回のランは{hours}時間を超えられません",
+  "manualDurationSlowTitle": "時間を確認してください",
+  "manualDurationSlowBody": "この距離にしては歩くよりはるかに遅いペースです。数字を別の欄に入力していませんか？",
+  "manualDurationSlowSave": "このまま保存",
+  "manualDurationSlowFix": "修正する",
+  "addRunStartInFuture": "開始時刻を未来に設定することはできません"
 }

@@ -20148,6 +20148,38 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Falha na importação: esse ficheiro não tem nenhuma rota com pelo menos dois pontos.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Utilize apenas números inteiros';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Os minutos têm de estar entre 0 e 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Os segundos têm de estar entre 0 e 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Uma corrida não pode durar mais de $hours horas';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Verifique a duração';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Isto é muito mais lento do que caminhar para esta distância. Algum número ficou no campo errado?';
+
+  @override
+  String get manualDurationSlowSave => 'Guardar mesmo assim';
+
+  @override
+  String get manualDurationSlowFix => 'Corrigir';
+
+  @override
+  String get addRunStartInFuture => 'A hora de início não pode estar no futuro';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -40280,4 +40312,37 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get routesImportNoTrack =>
       'Falha na importação: esse arquivo não tem nenhuma rota com pelo menos dois pontos.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Use apenas números inteiros';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Os minutos devem estar entre 0 e 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Os segundos devem estar entre 0 e 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Uma corrida não pode durar mais de $hours horas';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Confira a duração';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Isso é muito mais lento que caminhar para essa distância. Algum número foi parar no campo errado?';
+
+  @override
+  String get manualDurationSlowSave => 'Salvar mesmo assim';
+
+  @override
+  String get manualDurationSlowFix => 'Corrigir';
+
+  @override
+  String get addRunStartInFuture =>
+      'O horário de início não pode estar no futuro';
 }

@@ -5599,5 +5599,14 @@
   "locationErrorPermissionDenied": "el permiso de ubicación está desactivado",
   "locationErrorServicesOff": "la ubicación está desactivada en este dispositivo",
   "locationErrorNoFix": "aún no hay posición, inténtalo de nuevo en un momento",
-  "routesImportNoTrack": "Error al importar: ese archivo no contiene ninguna ruta con al menos dos puntos."
+  "routesImportNoTrack": "Error al importar: ese archivo no contiene ninguna ruta con al menos dos puntos.",
+  "manualDurationErrorInvalid": "Usa solo números enteros",
+  "manualDurationErrorMinutes": "Los minutos deben estar entre 0 y 59",
+  "manualDurationErrorSeconds": "Los segundos deben estar entre 0 y 59",
+  "manualDurationErrorTooLong": "Una carrera no puede durar más de {hours} horas",
+  "manualDurationSlowTitle": "Revisa la duración",
+  "manualDurationSlowBody": "Es mucho más lento que caminar para esta distancia. ¿Has puesto un número en la casilla equivocada?",
+  "manualDurationSlowSave": "Guardar igualmente",
+  "manualDurationSlowFix": "Corregir",
+  "addRunStartInFuture": "La hora de inicio no puede estar en el futuro"
 }

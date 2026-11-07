@@ -1057,14 +1057,58 @@ void main() {
       await tester.tap(find.byIcon(Icons.edit_outlined));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      final durSem = find.byWidgetPredicate(
-        (w) => w is Semantics && w.properties.label == 'Duration',
-      );
-      expect(durSem, findsNWidgets(3));
-      final field = tester.getSemantics(
-        find.descendant(of: durSem.first, matching: find.byType(TextField)),
-      );
-      expect(field.label, 'Duration');
+      for (final label in ['Hours', 'Minutes', 'Seconds']) {
+        final sem = find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.label == label,
+        );
+        expect(sem, findsOneWidget, reason: label);
+        final field = tester.getSemantics(
+          find.descendant(of: sem, matching: find.byType(TextField)),
+        );
+        expect(field.label, label);
+      }
+    });
+
+    // Reason: issue #1300 § 5. The edit dialog is the repair path for a run
+    // already saved at 12,333 hours, and it carried its own copy of a parser
+    // that refused only a zero total — so saving the bad value back was as
+    // easy as saving it in the first place.
+    testWidgets('the edit dialog refuses a duration past ten days',
+        (tester) async {
+      final run = _run(distanceMetres: 2000, duration: const Duration(hours: 12333));
+      await _pump(tester, run);
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.widgetWithText(TextField, '12333'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text("A run can't be longer than 240 hours"), findsOneWidget);
+      await tester.pump(const Duration(seconds: 8));
+    });
+
+    testWidgets('the edit dialog asks before saving a slower-than-1 km/h run',
+        (tester) async {
+      final run = _run(distanceMetres: 2000);
+      await _pump(tester, run);
+      await tester.tap(find.byIcon(Icons.edit_outlined));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.enterText(find.widgetWithText(TextField, '25'), '0');
+      await tester.enterText(find.widgetWithText(TextField, '0').first, '21');
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Check the duration'), findsOneWidget);
+      await tester.tap(find.text('Fix it'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Check the duration'), findsNothing);
     });
 
     testWidgets('renders activity type label', (tester) async {

@@ -20167,4 +20167,37 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Import fehlgeschlagen: Die Datei enthält keine Route mit mindestens zwei Punkten.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Nur ganze Zahlen verwenden';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Minuten müssen zwischen 0 und 59 liegen';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Sekunden müssen zwischen 0 und 59 liegen';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Ein Lauf kann nicht länger als $hours Stunden dauern';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Dauer prüfen';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Das ist für diese Distanz weit langsamer als Gehtempo. Ist eine Zahl im falschen Feld gelandet?';
+
+  @override
+  String get manualDurationSlowSave => 'Trotzdem speichern';
+
+  @override
+  String get manualDurationSlowFix => 'Korrigieren';
+
+  @override
+  String get addRunStartInFuture =>
+      'Die Startzeit darf nicht in der Zukunft liegen';
 }

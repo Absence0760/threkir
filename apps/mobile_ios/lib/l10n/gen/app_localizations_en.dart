@@ -19941,4 +19941,34 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Import failed: that file holds no route with at least two points.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Use whole numbers only';
+
+  @override
+  String get manualDurationErrorMinutes => 'Minutes must be between 0 and 59';
+
+  @override
+  String get manualDurationErrorSeconds => 'Seconds must be between 0 and 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'A run can\'t be longer than $hours hours';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Check the duration';
+
+  @override
+  String get manualDurationSlowBody =>
+      'That\'s far slower than walking pace for this distance. Did a number land in the wrong box?';
+
+  @override
+  String get manualDurationSlowSave => 'Save anyway';
+
+  @override
+  String get manualDurationSlowFix => 'Fix it';
+
+  @override
+  String get addRunStartInFuture => 'The start time can\'t be in the future';
 }

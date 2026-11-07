@@ -20149,4 +20149,37 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Error al importar: ese archivo no contiene ninguna ruta con al menos dos puntos.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Usa solo números enteros';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Los minutos deben estar entre 0 y 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Los segundos deben estar entre 0 y 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Una carrera no puede durar más de $hours horas';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Revisa la duración';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Es mucho más lento que caminar para esta distancia. ¿Has puesto un número en la casilla equivocada?';
+
+  @override
+  String get manualDurationSlowSave => 'Guardar igualmente';
+
+  @override
+  String get manualDurationSlowFix => 'Corregir';
+
+  @override
+  String get addRunStartInFuture =>
+      'La hora de inicio no puede estar en el futuro';
 }

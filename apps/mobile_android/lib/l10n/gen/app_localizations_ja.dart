@@ -19181,4 +19181,34 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routesImportNoTrack => 'インポートに失敗しました: このファイルには 2 点以上のルートがありません。';
+
+  @override
+  String get manualDurationErrorInvalid => '整数のみを入力してください';
+
+  @override
+  String get manualDurationErrorMinutes => '分は0〜59で入力してください';
+
+  @override
+  String get manualDurationErrorSeconds => '秒は0〜59で入力してください';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return '1回のランは$hours時間を超えられません';
+  }
+
+  @override
+  String get manualDurationSlowTitle => '時間を確認してください';
+
+  @override
+  String get manualDurationSlowBody =>
+      'この距離にしては歩くよりはるかに遅いペースです。数字を別の欄に入力していませんか？';
+
+  @override
+  String get manualDurationSlowSave => 'このまま保存';
+
+  @override
+  String get manualDurationSlowFix => '修正する';
+
+  @override
+  String get addRunStartInFuture => '開始時刻を未来に設定することはできません';
 }

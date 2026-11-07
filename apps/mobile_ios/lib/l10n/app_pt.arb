@@ -5599,5 +5599,14 @@
   "locationErrorPermissionDenied": "a permissão de localização está desativada",
   "locationErrorServicesOff": "a localização está desligada neste dispositivo",
   "locationErrorNoFix": "ainda sem posição, tente novamente daqui a pouco",
-  "routesImportNoTrack": "Falha na importação: esse ficheiro não tem nenhuma rota com pelo menos dois pontos."
+  "routesImportNoTrack": "Falha na importação: esse ficheiro não tem nenhuma rota com pelo menos dois pontos.",
+  "manualDurationErrorInvalid": "Utilize apenas números inteiros",
+  "manualDurationErrorMinutes": "Os minutos têm de estar entre 0 e 59",
+  "manualDurationErrorSeconds": "Os segundos têm de estar entre 0 e 59",
+  "manualDurationErrorTooLong": "Uma corrida não pode durar mais de {hours} horas",
+  "manualDurationSlowTitle": "Verifique a duração",
+  "manualDurationSlowBody": "Isto é muito mais lento do que caminhar para esta distância. Algum número ficou no campo errado?",
+  "manualDurationSlowSave": "Guardar mesmo assim",
+  "manualDurationSlowFix": "Corrigir",
+  "addRunStartInFuture": "A hora de início não pode estar no futuro"
 }

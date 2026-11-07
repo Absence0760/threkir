@@ -90,7 +90,7 @@ test.describe('run lifecycle journey', () => {
 					.first()
 					.fill('2026-04-29T08:00');
 				await page.locator('input[type="number"]').first().fill('5'); // distance km
-				await page.locator('input[type="number"]').nth(1).fill('25'); // duration min
+				await page.getByTestId('run-editor-minutes').fill('25'); // duration min
 				await page.locator('textarea').fill(createNotes);
 				await page.getByTestId('run-editor-audience').selectOption('public');
 

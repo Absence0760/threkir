@@ -50,6 +50,7 @@ import {
 	type PlanTargets,
 } from '../nutrition/meal_plan';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
+import { isPlausibleRunDuration } from '../runs/run_duration';
 import { prCardEntries, type PrCardEntry } from '../share/pr_card';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
@@ -1684,6 +1685,14 @@ export async function createManualRun(input: {
 	isPublic?: boolean;
 	followersOnly?: boolean;
 }): Promise<{ id: string }> {
+	// The form grades these first and says why; this is the floor for any other
+	// caller, because nothing else bounded a manual run (issue #1300 § 5).
+	if (!(input.durationS > 0) || !isPlausibleRunDuration(input.durationS)) {
+		throw new Error('createManualRun: duration out of range');
+	}
+	if (!(Date.parse(input.startedAt) <= Date.now())) {
+		throw new Error('createManualRun: start time in the future');
+	}
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;
 	if (!userId) throw new Error('Not authenticated');

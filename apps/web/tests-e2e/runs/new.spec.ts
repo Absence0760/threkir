@@ -7,7 +7,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { clearUserSettingKey, setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
-import { readRow } from '../fixtures/db-read';
+import { readCount, readRow } from '../fixtures/db-read';
 import { browserDatetimeLocal } from '../fixtures/dates';
 
 /**
@@ -574,10 +574,13 @@ test.describe('/runs/new', () => {
 
 	test('discard mid-form (back-link click) plants no row', async ({ page }) => {
 		const admin = getAdminClient();
-		const beforeCount = await admin
-			.from('runs')
-			.select('id', { count: 'exact', head: true })
-			.eq('user_id', USER_A.id);
+		const beforeCount = await readCount(
+			'runs before editing',
+			admin
+				.from('runs')
+				.select('id', { count: 'exact', head: true })
+				.eq('user_id', USER_A.id)
+		);
 
 		// The editor seeds the privacy toggle from this after two round trips.
 		// Holding that read until the form has been typed into puts the seed
@@ -615,11 +618,14 @@ test.describe('/runs/new', () => {
 		await guard.getByRole('button', { name: 'Discard' }).click();
 		await page.waitForURL(/\/runs(\?.*)?$/, { timeout: 10_000 });
 
-		const afterCount = await admin
-			.from('runs')
-			.select('id', { count: 'exact', head: true })
-			.eq('user_id', USER_A.id);
-		expect(afterCount.count).toBe(beforeCount.count);
+		const afterCount = await readCount(
+			'runs after discarding the edits',
+			admin
+				.from('runs')
+				.select('id', { count: 'exact', head: true })
+				.eq('user_id', USER_A.id)
+		);
+		expect(afterCount).toBe(beforeCount);
 	});
 
 	test('round-trip → /runs/[id] shows the new run + correct distance', async ({

@@ -8,7 +8,27 @@
 /// between the recorder's phone and the viewer's browser.
 export const FINISHED_SLACK_MS = 2 * 60 * 1000;
 
-export type PostHydrateStatus = 'live' | 'finished' | 'waiting';
+/// How often the page polls `live_run_pings` while its realtime channel is
+/// down. Twice the recorder's 5 s publish cadence: a spectator waiting on a
+/// dead socket sees the runner move within one or two pings.
+export const LIVE_POLL_FALLBACK_MS = 10_000;
+
+export type PostHydrateStatus = 'live' | 'finished' | 'waiting-gps';
+
+/// Every state the page can be in. `connecting` is "still finding the run
+/// and opening the feed"; `waiting-gps` is "the run is live and the feed is
+/// open, but the runner's phone has not published a position yet" — a phone
+/// whose GPS never clears the recorder's gate used to leave the spectator on
+/// "Connecting" for a whole walk with nothing to say why (issue #1300
+/// BUG-007).
+export type SpectatorStatus =
+	| 'connecting'
+	| 'waiting-gps'
+	| 'live'
+	| 'finished'
+	| 'error'
+	| 'not-found'
+	| 'link-closed';
 
 function runEndMs(startedAtIso: string, durationS: number): number | null {
 	if (!durationS || durationS <= 0) return null;
@@ -40,7 +60,7 @@ export function isFinishedStale(
 ///   on stop and the saved row carries the final duration, but the end is
 ///   still inside FINISHED_SLACK_MS — the old code fell through to the
 ///   synthesised demo loop here (issue #603).
-/// - Otherwise → `waiting`: an in-progress broadcast stub (duration 0)
+/// - Otherwise → `waiting-gps`: an in-progress broadcast stub (duration 0)
 ///   whose first ping hasn't arrived, or a projected end still in the
 ///   future. The caller keeps the subscription open.
 export function statusAfterHydrate(opts: {
@@ -52,5 +72,12 @@ export function statusAfterHydrate(opts: {
 	if (opts.hadBacklog) return 'live';
 	const end = runEndMs(opts.startedAtIso, opts.durationS);
 	if (end != null && end <= opts.nowMs) return 'finished';
-	return 'waiting';
+	return 'waiting-gps';
+}
+
+/// The state after a ping arrives. Only a page still waiting for one goes
+/// live: a ping that lands after the run concluded, or after a safety link
+/// closed, must not reopen a page that has already said so.
+export function statusOnPing(current: SpectatorStatus): SpectatorStatus {
+	return current === 'connecting' || current === 'waiting-gps' ? 'live' : current;
 }

@@ -10134,6 +10134,7 @@ export async function fetchSafetyLivePings(
 		elapsed_s: number | null;
 		at: string;
 		coarse: boolean;
+		weak_gps: boolean;
 	}>
 > {
 	const { data, error } = await supabase.rpc('safety_live_pings', {

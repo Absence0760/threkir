@@ -576,15 +576,18 @@ test.describe('/live/[id] — anon spectator', () => {
 		try {
 			await page.goto(`/live/${runId}`);
 
+			// The run is found and the feed is open, so the page says what it
+			// is actually waiting for — the runner's GPS — rather than staying
+			// on "Connecting" (issue #1300 BUG-007).
 			const badge = page.locator('.live-badge');
-			await expect(badge).toContainText(/Connecting/i, { timeout: 10_000 });
+			await expect(badge).toContainText(/Waiting for GPS/i, { timeout: 10_000 });
 			// Outwait the old demo timer, then re-assert nothing started
-			// synthesising: badge still connecting, elapsed still zero.
+			// synthesising: still waiting, elapsed still zero.
 			await page.waitForTimeout(7_000);
-			await expect(badge).toContainText(/Connecting/i);
+			await expect(badge).toContainText(/Waiting for GPS/i);
 			await expect(badge).not.toHaveClass(/active|finished|not-found/);
 			await expect(page.getByTestId('runner-timer')).toContainText('0:00');
-			await expect(page.locator('.live-runner-sub')).toContainText(/Waiting/i);
+			await expect(page.getByTestId('waiting-gps')).toContainText(/runner's GPS/i);
 		} finally {
 			await deleteRun(runId);
 		}

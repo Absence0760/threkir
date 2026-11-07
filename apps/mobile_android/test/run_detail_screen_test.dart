@@ -394,7 +394,8 @@ Future<void> _pump(WidgetTester tester, Run run,
     SettingsSyncService? settingsSync,
     bool showRawTrack = false,
     bool useMiles = false,
-    double textScale = 1.0}) async {
+    double textScale = 1.0,
+    RunPushBlockReason? blocked}) async {
   SharedPreferences.setMockInitialValues({
     if (bodyWeightKg != null) 'body_weight_kg': bodyWeightKg,
     if (showRawTrack) 'show_raw_track': true,
@@ -406,6 +407,12 @@ Future<void> _pump(WidgetTester tester, Run run,
   _runsDir = Directory.systemTemp.createTempSync('run_detail_screen_test_');
   final runStore = LocalRunStore();
   await runStore.init(overrideDirectory: _runsDir);
+  if (blocked != null) {
+    await tester.runAsync(() async {
+      await runStore.save(run);
+      await runStore.markBlocked({run.id: blocked});
+    });
+  }
 
   await tester.pumpWidget(
     MaterialApp(
@@ -1088,6 +1095,25 @@ void main() {
 
       expect(find.text("A run can't be longer than 240 hours"), findsOneWidget);
       await tester.pump(const Duration(seconds: 8));
+    });
+
+    // Reason: the ten-day CHECK refuses such a run on every push, so the
+    // batch push parks it (decisions § 2359). The card has to say why and
+    // offer the one action that lands it — fixing the duration — not the
+    // drop-the-trace action that fixes an oversized track.
+    testWidgets('a run parked for its duration offers Edit, not drop-the-trace',
+        (tester) async {
+      final run = _run(distanceMetres: 2000, duration: const Duration(hours: 12333));
+      await _pump(tester, run, blocked: RunPushBlockReason.durationOutOfRange);
+      await tester.pump();
+
+      expect(find.textContaining('longer than 240 hours'), findsOneWidget);
+      expect(find.text('Upload without the trace'), findsNothing);
+      expect(find.text('Export a copy'), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, 'Edit run'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.widgetWithText(TextField, '12333'), findsOneWidget);
     });
 
     testWidgets('the edit dialog asks before saving a slower-than-1 km/h run',

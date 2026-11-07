@@ -20224,4 +20224,9 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get addRunStartInFuture =>
       'L\'heure de départ ne peut pas être dans le futur';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Cette course dure plus de $hours heures, ce qu\'aucune course ne peut faire : le stockage cloud la refuse et réessayer ne fonctionnera jamais. Corrigez sa durée pour l\'envoyer.';
+  }
 }

@@ -32554,6 +32554,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The start time can\'t be in the future'**
   String get addRunStartInFuture;
+
+  /// Body of the blocked-upload card when a run is longer than the ten-day maximum the server accepts; {hours} is that maximum in hours (240)
+  ///
+  /// In en, this message translates to:
+  /// **'This run lasts longer than {hours} hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.'**
+  String runDetailBlockedDurationTooLong(int hours);
 }
 
 class _AppLocalizationsDelegate

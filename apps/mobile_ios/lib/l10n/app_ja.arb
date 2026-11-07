@@ -5608,5 +5608,6 @@
   "manualDurationSlowBody": "この距離にしては歩くよりはるかに遅いペースです。数字を別の欄に入力していませんか？",
   "manualDurationSlowSave": "このまま保存",
   "manualDurationSlowFix": "修正する",
-  "addRunStartInFuture": "開始時刻を未来に設定することはできません"
+  "addRunStartInFuture": "開始時刻を未来に設定することはできません",
+  "runDetailBlockedDurationTooLong": "このランは{hours}時間を超えており、ランとしてありえない長さのためクラウドに保存できません。再試行しても成功しません。時間を修正するとアップロードできます。"
 }

@@ -20200,4 +20200,9 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get addRunStartInFuture =>
       'Die Startzeit darf nicht in der Zukunft liegen';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Dieser Lauf dauert länger als $hours Stunden, was kein Lauf kann. Der Cloud-Speicher lehnt ihn daher ab, und ein neuer Versuch wird nie gelingen. Korrigiere die Dauer, um ihn hochzuladen.';
+  }
 }

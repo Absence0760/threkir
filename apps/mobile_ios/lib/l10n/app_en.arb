@@ -26418,5 +26418,12 @@
   "addRunStartInFuture": "The start time can't be in the future",
   "@addRunStartInFuture": {
     "description": "Shown when the add-run date and time picked lies in the future"
+  },
+  "runDetailBlockedDurationTooLong": "This run lasts longer than {hours} hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.",
+  "@runDetailBlockedDurationTooLong": {
+    "description": "Body of the blocked-upload card when a run is longer than the ten-day maximum the server accepts; {hours} is that maximum in hours (240)",
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
   }
 }

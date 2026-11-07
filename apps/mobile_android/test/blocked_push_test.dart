@@ -77,6 +77,19 @@ void main() {
               'resuming the retry it exists to stop');
     });
 
+    test('a run past the ten-day bound parks under its own reason', () async {
+      final store = await openStore();
+      await store.save(makeRun('r-long'));
+      await store.markBlocked(
+          {'r-long': RunPushBlockReason.durationOutOfRange});
+
+      final reloaded = await openStore();
+
+      expect(reloaded.blockedReason('r-long'),
+          RunPushBlockReason.durationOutOfRange);
+      expect(reloaded.unsyncedRuns, isEmpty);
+    });
+
     test('a parked run outside the window is not hydrated on cold load',
         () async {
       // The residency invariant is "the newest window ∪ everything drainable",

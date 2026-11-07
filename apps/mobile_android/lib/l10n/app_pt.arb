@@ -5608,5 +5608,6 @@
   "manualDurationSlowBody": "Isto é muito mais lento do que caminhar para esta distância. Algum número ficou no campo errado?",
   "manualDurationSlowSave": "Guardar mesmo assim",
   "manualDurationSlowFix": "Corrigir",
-  "addRunStartInFuture": "A hora de início não pode estar no futuro"
+  "addRunStartInFuture": "A hora de início não pode estar no futuro",
+  "runDetailBlockedDurationTooLong": "Esta corrida dura mais de {hours} horas, o que nenhuma corrida dura, por isso a nuvem recusa-a e tentar novamente nunca vai funcionar. Corrija a duração para a enviar."
 }

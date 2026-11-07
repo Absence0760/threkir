@@ -5608,5 +5608,6 @@
   "manualDurationSlowBody": "Das ist für diese Distanz weit langsamer als Gehtempo. Ist eine Zahl im falschen Feld gelandet?",
   "manualDurationSlowSave": "Trotzdem speichern",
   "manualDurationSlowFix": "Korrigieren",
-  "addRunStartInFuture": "Die Startzeit darf nicht in der Zukunft liegen"
+  "addRunStartInFuture": "Die Startzeit darf nicht in der Zukunft liegen",
+  "runDetailBlockedDurationTooLong": "Dieser Lauf dauert länger als {hours} Stunden, was kein Lauf kann. Der Cloud-Speicher lehnt ihn daher ab, und ein neuer Versuch wird nie gelingen. Korrigiere die Dauer, um ihn hochzuladen."
 }

@@ -19211,4 +19211,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get addRunStartInFuture => '開始時刻を未来に設定することはできません';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'このランは$hours時間を超えており、ランとしてありえない長さのためクラウドに保存できません。再試行しても成功しません。時間を修正するとアップロードできます。';
+  }
 }

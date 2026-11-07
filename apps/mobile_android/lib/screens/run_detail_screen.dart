@@ -1431,6 +1431,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             busy: _droppingTrack,
             onExport: _exportBeforeDrop,
             onDropTrack: _confirmDropTrack,
+            onEdit: run.track.isEmpty ? _editDetails : null,
           ),
         ),
 
@@ -4070,12 +4071,17 @@ class _BlockedPushCard extends StatelessWidget {
   final Future<void> Function() onExport;
   final Future<void> Function() onDropTrack;
 
+  /// Null when the run's duration is not editable here (it has a GPS track,
+  /// which the duration is derived from).
+  final Future<void> Function()? onEdit;
+
   const _BlockedPushCard({
     required this.reason,
     required this.waypoints,
     required this.busy,
     required this.onExport,
     required this.onDropTrack,
+    required this.onEdit,
   });
 
   @override
@@ -4085,7 +4091,10 @@ class _BlockedPushCard extends StatelessWidget {
     final body = switch (reason) {
       RunPushBlockReason.trackTooLarge =>
         l10n.runDetailBlockedTrackTooLarge(waypoints),
+      RunPushBlockReason.durationOutOfRange =>
+        l10n.runDetailBlockedDurationTooLong(kMaxRunDurationS ~/ 3600),
     };
+    final edit = onEdit;
     return Card(
       color: theme.colorScheme.errorContainer,
       child: Padding(
@@ -4120,16 +4129,25 @@ class _BlockedPushCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                OutlinedButton.icon(
-                  onPressed: busy ? null : () => onExport(),
-                  icon: const Icon(Icons.download_outlined),
-                  label: Text(l10n.runDetailBlockedExport),
-                ),
-                FilledButton.icon(
-                  onPressed: busy ? null : () => onDropTrack(),
-                  icon: const Icon(Icons.cloud_upload),
-                  label: Text(l10n.runDetailBlockedDropTrack),
-                ),
+                if (waypoints > 0)
+                  OutlinedButton.icon(
+                    onPressed: busy ? null : () => onExport(),
+                    icon: const Icon(Icons.download_outlined),
+                    label: Text(l10n.runDetailBlockedExport),
+                  ),
+                if (reason == RunPushBlockReason.trackTooLarge)
+                  FilledButton.icon(
+                    onPressed: busy ? null : () => onDropTrack(),
+                    icon: const Icon(Icons.cloud_upload),
+                    label: Text(l10n.runDetailBlockedDropTrack),
+                  ),
+                if (reason == RunPushBlockReason.durationOutOfRange &&
+                    edit != null)
+                  FilledButton.icon(
+                    onPressed: busy ? null : () => edit(),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: Text(l10n.runDetailEditTitle),
+                  ),
               ],
             ),
           ],

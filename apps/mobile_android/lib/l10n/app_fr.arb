@@ -5608,5 +5608,6 @@
   "manualDurationSlowBody": "C'est bien plus lent que la marche pour cette distance. Un chiffre est-il dans la mauvaise case ?",
   "manualDurationSlowSave": "Enregistrer quand même",
   "manualDurationSlowFix": "Corriger",
-  "addRunStartInFuture": "L'heure de départ ne peut pas être dans le futur"
+  "addRunStartInFuture": "L'heure de départ ne peut pas être dans le futur",
+  "runDetailBlockedDurationTooLong": "Cette course dure plus de {hours} heures, ce qu'aucune course ne peut faire : le stockage cloud la refuse et réessayer ne fonctionnera jamais. Corrigez sa durée pour l'envoyer."
 }

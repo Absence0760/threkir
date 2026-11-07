@@ -20180,6 +20180,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get addRunStartInFuture => 'A hora de início não pode estar no futuro';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, por isso a nuvem recusa-a e tentar novamente nunca vai funcionar. Corrija a duração para a enviar.';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -40345,4 +40350,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get addRunStartInFuture =>
       'O horário de início não pode estar no futuro';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, então a nuvem a recusa e tentar de novo nunca vai funcionar. Corrija a duração para enviá-la.';
+  }
 }

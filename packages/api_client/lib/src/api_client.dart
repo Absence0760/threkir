@@ -1125,7 +1125,19 @@ class ApiClient {
     final trackUrls = <String, String>{};
     final trackFailures = <String, Object>{};
     final blocked = <String, RunPushBlockReason>{};
-    final runsWithTracks = runs.where((r) => r.track.isNotEmpty).toList();
+    // `runs_duration_s_max_check` refuses a run past ten days, and a refused
+    // row fails its whole chunk — every other run in it would retry with it,
+    // forever. Such a run is parked before anything is sent (decisions § 2359).
+    for (final r in runs) {
+      if (!isPlausibleRunDuration(r.duration.inSeconds)) {
+        blocked[r.id] = RunPushBlockReason.durationOutOfRange;
+      }
+    }
+    final pushable = blocked.isEmpty
+        ? runs
+        : runs.where((r) => !blocked.containsKey(r.id)).toList();
+    if (pushable.isEmpty) return _outcome(trackFailures, blocked);
+    final runsWithTracks = pushable.where((r) => r.track.isNotEmpty).toList();
     for (var i = 0; i < runsWithTracks.length; i += uploadConcurrency) {
       final batch = runsWithTracks.skip(i).take(uploadConcurrency);
       final futures = batch.map((r) async {
@@ -1161,7 +1173,7 @@ class ApiClient {
     // otherwise write a `track_url = null` row that masks the failure
     // and loses the GPS data forever. Leaving the row unsynced means
     // the next cycle retries the track upload too.
-    final eligibleRuns = runs.where((r) {
+    final eligibleRuns = pushable.where((r) {
       if (r.track.isEmpty) return true;
       return !trackFailures.containsKey(r.id);
     }).toList();

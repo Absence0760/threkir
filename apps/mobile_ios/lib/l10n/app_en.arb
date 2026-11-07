@@ -7425,9 +7425,18 @@
       }
     }
   },
-  "clubDetailMemberFallback": "Member",
-  "@clubDetailMemberFallback": {
-    "description": "Fallback name for a club member with no display name"
+  "clubDetailNameHint": "Club members see you as {handle}.",
+  "@clubDetailNameHint": {
+    "description": "Club Members tab, shown to a member with no display name: how other members see them. {handle} is their anonymous runner handle (liveRunnerHandle); web clubHome.nameHint",
+    "placeholders": {
+      "handle": {
+        "type": "String"
+      }
+    }
+  },
+  "clubDetailNameHintAction": "You can add your name in your account settings.",
+  "@clubDetailNameHintAction": {
+    "description": "Second line of the club name hint, pointing at Settings > Account; web clubHome.nameHintAction"
   },
   "clubRoleOwner": "Owner",
   "@clubRoleOwner": {
@@ -7956,10 +7965,6 @@
   "eventNoRsvps": "No RSVPs yet — be the first.",
   "@eventNoRsvps": {
     "description": "Empty attendees state"
-  },
-  "eventAttendeeMember": "Member",
-  "@eventAttendeeMember": {
-    "description": "Fallback attendee name with no display name"
   },
   "eventAttendeeStatus": "({status})",
   "@eventAttendeeStatus": {

@@ -786,6 +786,49 @@ void main() {
     });
   });
 
+  group('ClubDetailScreen — a member with no display name (#1300)', () {
+    Future<void> openMembers(WidgetTester tester, {String? viewerName}) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ClubDetailScreen(
+            social: _ViewerSocial(),
+            training: _FakeTraining(),
+            apiClient: _ProfileApi(viewerName),
+            slug: 'track-club',
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.tap(find.text('Members'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    realtimeWidgetTest('an unnamed member is told how others see them', (
+      tester,
+    ) async {
+      await openMembers(tester);
+      expect(find.byKey(const Key('club-name-hint')), findsOneWidget);
+      expect(
+        find.text('Club members see you as Runner #ABCD.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('You can add your name in your account settings.'),
+        findsOneWidget,
+      );
+    });
+
+    realtimeWidgetTest('a named member sees no hint', (tester) async {
+      await openMembers(tester, viewerName: 'Ana Souza');
+      expect(find.byKey(const Key('club-name-hint')), findsNothing);
+    });
+  });
+
   group('ClubDetailScreen — Members tab roster (#1228)', () {
     Future<_RosterSocial> openMembers(
       WidgetTester tester, {
@@ -819,8 +862,9 @@ void main() {
       expect(find.text('Olive Owner'), findsOneWidget);
       expect(find.text('Ada Admin'), findsOneWidget);
       expect(find.text('Owner'), findsOneWidget);
-      // A member with no profile name reads as the fallback, never an id.
-      expect(find.text('Member'), findsWidgets);
+      // A member with no profile name reads as their runner handle
+      // (decisions § 2363), never the raw id.
+      expect(find.text('Runner #UNON'), findsOneWidget);
       expect(find.textContaining('u-noname'), findsNothing);
     });
 
@@ -1523,4 +1567,32 @@ class _EventSocial extends _FakeSocial {
           nextInstanceStart: DateTime.utc(2026, 3, 28, 10, 35),
         ),
       ];
+}
+
+class _ViewerSocial extends _FakeSocial {
+  @override
+  String? get currentUserId => 'abcd1234-0000-4000-8000-000000000001';
+}
+
+class _ProfileApi extends ApiClient {
+  final String? displayName;
+  _ProfileApi(this.displayName);
+
+  @override
+  String? get userId => 'abcd1234-0000-4000-8000-000000000001';
+  @override
+  Future<UserProfileRow?> fetchMyProfile() async => UserProfileRow(
+    profilePrivate: false,
+    shadowHidden: false,
+    id: 'abcd1234-0000-4000-8000-000000000001',
+    displayName: displayName,
+  );
+  @override
+  Future<List<GymRoutineRow>> fetchClubGymRoutineTemplates(
+    String clubId,
+  ) async => const [];
+  @override
+  Future<List<SessionPlanRow>> fetchClubSessionTemplates(
+    String clubId,
+  ) async => const [];
 }

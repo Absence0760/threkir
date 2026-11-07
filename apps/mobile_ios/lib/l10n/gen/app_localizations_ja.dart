@@ -5251,7 +5251,12 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'メンバー';
+  String clubDetailNameHint(String handle) {
+    return 'クラブのメンバーには$handleと表示されます。';
+  }
+
+  @override
+  String get clubDetailNameHintAction => 'アカウント設定で名前を追加できます。';
 
   @override
   String get clubRoleOwner => 'オーナー';
@@ -5604,9 +5609,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventNoRsvps => 'まだ参加表明はありません。最初になりましょう。';
-
-  @override
-  String get eventAttendeeMember => 'メンバー';
 
   @override
   String eventAttendeeStatus(String status) {

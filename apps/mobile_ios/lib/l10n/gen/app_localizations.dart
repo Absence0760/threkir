@@ -8956,11 +8956,17 @@ abstract class AppLocalizations {
   /// **'Could not post reply: {error}'**
   String clubDetailReplyFailed(String error);
 
-  /// Fallback name for a club member with no display name
+  /// Club Members tab, shown to a member with no display name: how other members see them. {handle} is their anonymous runner handle (liveRunnerHandle); web clubHome.nameHint
   ///
   /// In en, this message translates to:
-  /// **'Member'**
-  String get clubDetailMemberFallback;
+  /// **'Club members see you as {handle}.'**
+  String clubDetailNameHint(String handle);
+
+  /// Second line of the club name hint, pointing at Settings > Account; web clubHome.nameHintAction
+  ///
+  /// In en, this message translates to:
+  /// **'You can add your name in your account settings.'**
+  String get clubDetailNameHintAction;
 
   /// Club role label (club_members.role owner); web clubRole.owner
   ///
@@ -9561,12 +9567,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No RSVPs yet — be the first.'**
   String get eventNoRsvps;
-
-  /// Fallback attendee name with no display name
-  ///
-  /// In en, this message translates to:
-  /// **'Member'**
-  String get eventAttendeeMember;
 
   /// Suffix showing a non-going attendee's RSVP status
   ///

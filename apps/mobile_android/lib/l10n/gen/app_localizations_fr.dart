@@ -5588,7 +5588,13 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Membre';
+  String clubDetailNameHint(String handle) {
+    return 'Les membres du club vous voient sous le nom $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'Vous pouvez ajouter votre nom dans les paramètres de votre compte.';
 
   @override
   String get clubRoleOwner => 'Propriétaire';
@@ -5971,9 +5977,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get eventNoRsvps =>
       'Aucune réponse pour le moment — soyez le premier.';
-
-  @override
-  String get eventAttendeeMember => 'Membre';
 
   @override
   String eventAttendeeStatus(String status) {

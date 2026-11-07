@@ -5572,7 +5572,13 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Membro';
+  String clubDetailNameHint(String handle) {
+    return 'Aparece aos membros do clube como $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'Pode adicionar o seu nome nas definições da conta.';
 
   @override
   String get clubRoleOwner => 'Proprietário';
@@ -5957,9 +5963,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventNoRsvps => 'Nenhuma confirmação ainda — seja o primeiro.';
-
-  @override
-  String get eventAttendeeMember => 'Membro';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -25802,7 +25805,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Membro';
+  String clubDetailNameHint(String handle) {
+    return 'Você aparece para os membros do clube como $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'Você pode adicionar seu nome nas configurações da conta.';
 
   @override
   String get clubRoleOwner => 'Proprietário';
@@ -26186,9 +26195,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventNoRsvps => 'Nenhuma confirmação ainda — seja o primeiro.';
-
-  @override
-  String get eventAttendeeMember => 'Membro';
 
   @override
   String eventAttendeeStatus(String status) {

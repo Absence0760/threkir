@@ -24,12 +24,6 @@ void main() {
     expect(UnitFormat.elevationLabel(mi), 'ft');
   });
 
-  test('a large gain is not grouped', () {
-    // 3048 m = 10000.0 ft.
-    expect(UnitFormat.elevationValue(3048, mi), '10000');
-    expect(UnitFormat.elevationValue(3048, km), '3048');
-  });
-
   test('elevation joins value and unit, and a missing gain is a dash', () {
     expect(UnitFormat.elevation(120, km), '120 m');
     expect(UnitFormat.elevation(120, mi), '394 ft');

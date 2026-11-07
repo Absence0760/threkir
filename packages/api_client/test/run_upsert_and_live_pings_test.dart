@@ -88,23 +88,39 @@ void main() {
     // of a long race and omits the runner's current position entirely. Web hit
     // this as issue #334 and pins the same shape in data.test.ts.
     late String query;
+    late String backlog;
+    late String cursor;
 
     setUp(() {
-      final i = src.indexOf("from('live_run_pings')");
-      expect(i, greaterThanOrEqualTo(0),
+      final start = src.indexOf('Future<List<Map<String, dynamic>>> fetchLiveRunPings(');
+      expect(start, greaterThanOrEqualTo(0),
+          reason: 'could not locate fetchLiveRunPings — renamed?');
+      query = src.substring(start, src.indexOf('\n  }\n', start));
+      expect(query.contains("from('live_run_pings')"), isTrue,
           reason: 'fetchLiveRunPings must still read live_run_pings');
-      query = src.substring(i, i + 400 > src.length ? src.length : i + 400);
+      // With a cursor the fetch is a catch-up after rows already drawn, so it
+      // reads forward from the cursor; without one it is the opening backlog.
+      final split = query.indexOf('if (since != null)');
+      expect(split, greaterThanOrEqualTo(0));
+      final cursorEnd = query.indexOf('\n    }\n', split);
+      cursor = query.substring(split, cursorEnd);
+      backlog = query.substring(cursorEnd);
     });
 
     test('orders descending, never ascending', () {
-      expect(query.contains('ascending: false'), isTrue,
+      expect(backlog.contains('ascending: false'), isTrue,
           reason: 'the backlog must be newest-first (issue #334)');
-      expect(query.contains('ascending: true'), isFalse,
+      expect(backlog.contains('ascending: true'), isFalse,
           reason: 'an ascending backlog fetch is the #334 regression');
     });
 
+    test('the cursor catch-up reads only rows after the cursor, capped', () {
+      expect(cursor, contains(".gt('at', since)"));
+      expect(cursor, contains('.limit(1000)'));
+    });
+
     test('caps at 1000 rows', () {
-      expect(query.contains('.limit(1000)'), isTrue,
+      expect(backlog.contains('.limit(1000)'), isTrue,
           reason: 'mirror web: an unbounded fetch ships tens of thousands of rows');
     });
 
@@ -117,7 +133,7 @@ void main() {
     });
 
     test('replays oldest-first so the newest ping wins the trace', () {
-      expect(query.contains('.reversed'), isTrue,
+      expect(backlog.contains('.reversed'), isTrue,
           reason: 'newest-first rows must be reversed before replay');
     });
   });

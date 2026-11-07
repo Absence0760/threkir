@@ -1113,7 +1113,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder`'s `GPS_PROVIDER` and `FusedLocationProviderClient` callbacks, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 1010 tests across 96 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 1013 tests across 97 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 
@@ -1348,6 +1348,10 @@ The club and event notices of [decisions § 2358](../architecture/decisions.md) 
 ### `apps/backend/supabase/tests/event_reschedule_moves_rsvps_test.sql` — 17 tests
 
 Pins migration `20271111000001` (decisions § 2353, issue #1300 BUG-015). An organiser moving a one-off from their own session carries its paid going seat, its waitlist entry (still waitlisted) and the paid order itself (past the ledger lock, still `paid`) to the new start, and the `threkir.event_reschedule` flag is cleared afterwards. A weekly series moved 90 minutes later moves each upcoming RSVP and waitlist entry to the same session at the new time while a past session's RSVP stays; the same series restarted from a later Wednesday pairs the next session with the new series' first, not its sixth. A description edit that re-sends the same start keeps an RSVP on its instant to the second, a past one-off's RSVP stays where it was, and an edit whose per-occurrence price cannot be re-saved (the host's payout account is gone) is refused `23514` with the start and the RSVP unchanged.
+
+### `apps/backend/supabase/tests/club_exit_drops_hidden_rsvps_test.sql` — 19 tests
+
+Pins migration `20271112000001` (decisions § 2356, issue #1300 BUG-005). `private.is_event_visible_to` agrees with the events SELECT policy, evaluated as each of five viewers (owner, active member, pending, stranger, private-club member) over public / private / shadow-hidden clubs and public / members-only events, the matrix holds both outcomes, and a shadow-hidden club's public event is seen by its owner and members only. Rejecting a pending request leaves its RSVPs. The owner removing an active member from their own session drops the member's upcoming members-only RSVP and waitlist entry and promotes the next waitlister into the capped seat, while a past occurrence's RSVP and a public event in a public club stay. A member holding a paid seat keeps it and the order is untouched, and a member with a checkout still in flight keeps their waitlist row. A member leaving a private club on their own loses the RSVP to its public event; a status change out of `active` is an exit too, and a role change is not. Neither function is executable by clients, and a club delete cascading through its members still succeeds. Removing the two triggers fails five of the assertions.
 
 ### `apps/backend/supabase/functions/**/*.test.ts` — 1477 deno tests across 111 files
 

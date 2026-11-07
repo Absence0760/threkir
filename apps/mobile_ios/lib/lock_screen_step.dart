@@ -94,12 +94,9 @@ LockScreenStep? lockScreenStep(
   final String remainingText;
   if (remaining != null) {
     remainingText = l10n.runWorkoutRemainingDuration(_clock(remaining));
-  } else if (unit == DistanceUnit.mi) {
-    remainingText = l10n
-        .runWorkoutRemainingYards((runner.stepRemainingMetres * 1.09361).round());
   } else {
-    remainingText =
-        l10n.runWorkoutRemainingMetres(runner.stepRemainingMetres.round());
+    remainingText = l10n.runWorkoutRemainingDistance(
+        UnitFormat.shortDistance(runner.stepRemainingMetres, unit));
   }
   final pace = step.targetPaceSecPerKm.toDouble();
   return LockScreenStep(

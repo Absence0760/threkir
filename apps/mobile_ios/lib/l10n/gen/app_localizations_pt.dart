@@ -1973,6 +1973,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runLiveShareStopped => 'Partilha em direto terminada';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'O seu link em direto ainda não enviou nenhuma localização — os espectadores continuam à espera. Verifique o sinal.';
+
+  @override
   String get runLiveShareEndedTitle => 'Partilha em direto terminada';
 
   @override
@@ -2067,9 +2071,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runUnitKcal => 'kcal';
-
-  @override
-  String get runUnitMetres => 'm';
 
   @override
   String get runUnitSpm => 'ppm';
@@ -2199,8 +2200,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runResumeDialogTitle => 'Retomar a sua corrida?';
 
   @override
-  String get runResumeDialogBody =>
-      'Uma corrida de uma sessão anterior ainda está em curso. Retome a gravação de onde parou, finalize-a agora ou descarte-a.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Uma corrida de uma sessão anterior ainda está em curso ($distance, $duration). Retome a gravação de onde parou, finalize-a agora ou descarte-a.';
+  }
 
   @override
   String get runResumeAction => 'Retomar';
@@ -2216,6 +2218,16 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Corrida anterior descartada.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Foi guardada uma corrida inacabada de uma sessão anterior ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Foi descartada uma gravação inacabada de uma sessão anterior ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>
@@ -2453,13 +2465,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonar';
 
   @override
-  String runWorkoutRemainingYards(int yards) {
-    return 'faltam $yards yd';
-  }
+  String get runWorkoutMoreActions => 'Mais ações do treino';
 
   @override
-  String runWorkoutRemainingMetres(int metres) {
-    return 'faltam $metres m';
+  String runWorkoutRemainingDistance(String distance) {
+    return 'faltam $distance';
   }
 
   @override
@@ -3425,6 +3435,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runDetailSegDismiss => 'Dispensar';
+
+  @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
 
   @override
   String get publicRunLiveTitle => 'Em direto agora';
@@ -5249,6 +5264,43 @@ class AppLocalizationsPt extends AppLocalizations {
       'Uma ocorrência de um evento que confirmaste foi cancelada';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name pediu para entrar no seu clube';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name pediu para entrar em $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'O seu pedido para entrar num clube foi aprovado';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Já está dentro — o seu pedido para entrar em $club foi aprovado';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Um evento em que vai participar foi atualizado';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '“$title” foi atualizado — consulte os novos detalhes';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Um evento que confirmou foi cancelado';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '“$title” foi cancelado';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Uma ocorrência de “$title” foi cancelada — o seu pagamento está a ser reembolsado';
   }
@@ -6081,14 +6133,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get liveSpectatorConnectError => 'Não foi possível ligar.';
 
   @override
-  String get liveSpectatorWaiting =>
-      'A aguardar o corredor enviar o primeiro sinal…';
+  String get liveSpectatorWaitingGps =>
+      'A aguardar o GPS do corredor — a posição aparece assim que o telemóvel obtiver sinal';
 
   @override
   String get liveSpectatorBadgeLive => 'Em direto';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Parado';
+  String get liveSpectatorBadgeWaitingGps => 'A aguardar GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'A ligar';
@@ -6102,6 +6154,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get liveSpectatorApproximateSub =>
       'Visto pela última vez perto daqui — aproximado';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Aproximado — o sinal GPS do corredor está fraco';
 
   @override
   String get liveSpectatorBadgeFinished => 'Concluído';
@@ -20137,6 +20193,43 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Falha na importação: esse ficheiro não tem nenhuma rota com pelo menos dois pontos.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Utilize apenas números inteiros';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Os minutos têm de estar entre 0 e 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Os segundos têm de estar entre 0 e 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Uma corrida não pode durar mais de $hours horas';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Verifique a duração';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Isto é muito mais lento do que caminhar para esta distância. Algum número ficou no campo errado?';
+
+  @override
+  String get manualDurationSlowSave => 'Guardar mesmo assim';
+
+  @override
+  String get manualDurationSlowFix => 'Corrigir';
+
+  @override
+  String get addRunStartInFuture => 'A hora de início não pode estar no futuro';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, por isso a nuvem recusa-a e tentar novamente nunca vai funcionar. Corrija a duração para a enviar.';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -22110,6 +22203,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runLiveShareStopped => 'Compartilhamento ao vivo encerrado';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'Seu link ao vivo ainda não enviou nenhuma localização — os espectadores continuam esperando. Verifique seu sinal.';
+
+  @override
   String get runLiveShareEndedTitle => 'Compartilhamento ao vivo encerrado';
 
   @override
@@ -22204,9 +22301,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runUnitKcal => 'kcal';
-
-  @override
-  String get runUnitMetres => 'm';
 
   @override
   String get runUnitSpm => 'ppm';
@@ -22336,8 +22430,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runResumeDialogTitle => 'Retomar sua corrida?';
 
   @override
-  String get runResumeDialogBody =>
-      'Uma corrida de uma sessão anterior ainda está em andamento. Retome a gravação de onde parou, finalize-a agora ou descarte-a.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Uma corrida de uma sessão anterior ainda está em andamento ($distance, $duration). Retome a gravação de onde parou, finalize-a agora ou descarte-a.';
+  }
 
   @override
   String get runResumeAction => 'Retomar';
@@ -22353,6 +22448,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runResumeDiscardedBanner => 'Corrida anterior descartada.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Uma corrida não finalizada de uma sessão anterior foi salva ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Uma gravação não finalizada de uma sessão anterior foi descartada ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>
@@ -22589,13 +22694,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runWorkoutAbandon => 'Abandonar';
 
   @override
-  String runWorkoutRemainingYards(int yards) {
-    return 'faltam $yards yd';
-  }
+  String get runWorkoutMoreActions => 'Mais ações do treino';
 
   @override
-  String runWorkoutRemainingMetres(int metres) {
-    return 'faltam $metres m';
+  String runWorkoutRemainingDistance(String distance) {
+    return 'faltam $distance';
   }
 
   @override
@@ -23560,6 +23663,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailSegDismiss => 'Dispensar';
+
+  @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
 
   @override
   String get publicRunLiveTitle => 'Ao vivo agora';
@@ -25385,6 +25493,43 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Uma ocorrência de evento que você confirmou foi cancelada';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name pediu para entrar no seu clube';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name pediu para entrar em $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Seu pedido para entrar em um clube foi aprovado';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Você entrou — seu pedido para entrar em $club foi aprovado';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Um evento em que você vai participar foi atualizado';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '“$title” foi atualizado — confira os novos detalhes';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Um evento que você confirmou foi cancelado';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '“$title” foi cancelado';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Uma ocorrência de “$title” foi cancelada — seu pagamento está sendo reembolsado';
   }
@@ -26217,14 +26362,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get liveSpectatorConnectError => 'Não foi possível conectar.';
 
   @override
-  String get liveSpectatorWaiting =>
-      'Aguardando o corredor enviar o primeiro sinal…';
+  String get liveSpectatorWaitingGps =>
+      'Aguardando o GPS do corredor — a posição aparece assim que o celular obtiver sinal';
 
   @override
   String get liveSpectatorBadgeLive => 'Ao vivo';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Parado';
+  String get liveSpectatorBadgeWaitingGps => 'Aguardando GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Conectando';
@@ -26238,6 +26383,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get liveSpectatorApproximateSub =>
       'Visto pela última vez perto daqui — aproximado';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Aproximado — o sinal de GPS do corredor está fraco';
 
   @override
   String get liveSpectatorBadgeFinished => 'Concluído';
@@ -40258,4 +40407,42 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get routesImportNoTrack =>
       'Falha na importação: esse arquivo não tem nenhuma rota com pelo menos dois pontos.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Use apenas números inteiros';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Os minutos devem estar entre 0 e 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Os segundos devem estar entre 0 e 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Uma corrida não pode durar mais de $hours horas';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Confira a duração';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Isso é muito mais lento que caminhar para essa distância. Algum número foi parar no campo errado?';
+
+  @override
+  String get manualDurationSlowSave => 'Salvar mesmo assim';
+
+  @override
+  String get manualDurationSlowFix => 'Corrigir';
+
+  @override
+  String get addRunStartInFuture =>
+      'O horário de início não pode estar no futuro';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, então a nuvem a recusa e tentar de novo nunca vai funcionar. Corrija a duração para enviá-la.';
+  }
 }

@@ -123,7 +123,9 @@ PeriodStats computePeriodStats(List<Run> runs) {
   var totalVert = 0.0;
   for (final r in runs) {
     totalDistance += r.distanceMetres;
-    totalDurationSec += r.duration.inSeconds;
+    if (isPlausibleRunDuration(r.duration.inSeconds)) {
+      totalDurationSec += r.duration.inSeconds;
+    }
     totalVert += runVertMetres(r);
   }
   // Compute avg pace from running/walking/hiking only — mixing in cycling
@@ -133,6 +135,7 @@ PeriodStats computePeriodStats(List<Run> runs) {
   for (final r in runs) {
     final activity = r.metadata?['activity_type'] as String?;
     if (activity == 'cycle') continue;
+    if (!isPlausibleRunDuration(r.duration.inSeconds)) continue;
     paceDistance += r.distanceMetres;
     paceDurationSec += r.duration.inSeconds;
   }

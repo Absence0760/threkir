@@ -35,7 +35,8 @@ class _FakeApi extends ApiClient {
   Future<RunRow?> fetchPublicRunById(String runId) async => run;
 
   @override
-  Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId) async =>
+  Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId,
+          {String? since}) async =>
       pings;
 
   @override

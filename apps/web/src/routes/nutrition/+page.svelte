@@ -91,6 +91,7 @@
 	import NutritionPlanLibrary from '#lib/components/NutritionPlanLibrary.svelte';
 	import NutritionAdherencePanel from '#lib/components/NutritionAdherencePanel.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import { isPlausibleRunDuration } from '#lib/runs/run_duration.ts';
 
 	// The diary day the page is showing — today unless `?date=` names an
 	// earlier one. Held as state rather than derived so `load()` and every
@@ -296,7 +297,10 @@
 			// Active minutes that day = run + gym duration, for the hydration
 			// goal's sweat-replacement add (runs without a duration add nothing).
 			const activeSeconds =
-				dayRuns.reduce((s, r) => s + (r.duration_s ?? 0), 0) +
+				dayRuns.reduce(
+					(s, r) => s + (isPlausibleRunDuration(r.duration_s ?? 0) ? (r.duration_s ?? 0) : 0),
+					0,
+				) +
 				dayGym.reduce((s, w) => s + (w.duration_s ?? 0), 0);
 			exerciseMinutes = Math.round(activeSeconds / 60);
 			const prof = profileRes.data as

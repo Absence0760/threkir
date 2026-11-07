@@ -1953,6 +1953,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runLiveShareStopped => 'Live sharing stopped';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'Your live link hasn\'t sent a location yet — spectators are still waiting. Check your signal.';
+
+  @override
   String get runLiveShareEndedTitle => 'Live sharing ended';
 
   @override
@@ -2046,9 +2050,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runUnitKcal => 'kcal';
-
-  @override
-  String get runUnitMetres => 'm';
 
   @override
   String get runUnitSpm => 'spm';
@@ -2177,8 +2178,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runResumeDialogTitle => 'Resume your run?';
 
   @override
-  String get runResumeDialogBody =>
-      'A run from an earlier session is still in progress. Resume recording where you left off, finish it now, or discard it.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'A run from an earlier session is still in progress ($distance, $duration). Resume recording where you left off, finish it now, or discard it.';
+  }
 
   @override
   String get runResumeAction => 'Resume';
@@ -2194,6 +2196,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Discarded your previous run.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Saved an unfinished run from a previous session ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Discarded an unfinished recording from a previous session ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure => 'This workout has no runnable structure.';
@@ -2426,13 +2438,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandon';
 
   @override
-  String runWorkoutRemainingYards(int yards) {
-    return '$yards yd to go';
-  }
+  String get runWorkoutMoreActions => 'More workout actions';
 
   @override
-  String runWorkoutRemainingMetres(int metres) {
-    return '$metres m to go';
+  String runWorkoutRemainingDistance(String distance) {
+    return '$distance to go';
   }
 
   @override
@@ -3390,6 +3400,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runDetailSegDismiss => 'Dismiss';
+
+  @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
 
   @override
   String get publicRunLiveTitle => 'Live right now';
@@ -5199,6 +5214,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'An event occurrence you RSVP\'d to was cancelled';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name asked to join your club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name asked to join $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Your request to join a club was approved';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'You\'re in — your request to join $club was approved';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'An event you\'re going to was updated';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '\"$title\" was updated — check the new details';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'An event you RSVP\'d to was cancelled';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '\"$title\" was cancelled';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'An occurrence of \"$title\" was cancelled — your payment is being refunded';
   }
@@ -6020,14 +6072,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveSpectatorConnectError => 'Could not connect.';
 
   @override
-  String get liveSpectatorWaiting =>
-      'Waiting for the runner to send the first ping…';
+  String get liveSpectatorWaitingGps =>
+      'Waiting for the runner\'s GPS — their position appears as soon as their phone gets a fix';
 
   @override
   String get liveSpectatorBadgeLive => 'Live';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Idle';
+  String get liveSpectatorBadgeWaitingGps => 'Waiting for GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Connecting';
@@ -6040,6 +6092,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get liveSpectatorApproximateSub => 'Last seen near here — approximate';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Approximate — the runner\'s GPS signal is weak';
 
   @override
   String get liveSpectatorBadgeFinished => 'Finished';
@@ -19930,4 +19986,39 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Import failed: that file holds no route with at least two points.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Use whole numbers only';
+
+  @override
+  String get manualDurationErrorMinutes => 'Minutes must be between 0 and 59';
+
+  @override
+  String get manualDurationErrorSeconds => 'Seconds must be between 0 and 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'A run can\'t be longer than $hours hours';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Check the duration';
+
+  @override
+  String get manualDurationSlowBody =>
+      'That\'s far slower than walking pace for this distance. Did a number land in the wrong box?';
+
+  @override
+  String get manualDurationSlowSave => 'Save anyway';
+
+  @override
+  String get manualDurationSlowFix => 'Fix it';
+
+  @override
+  String get addRunStartInFuture => 'The start time can\'t be in the future';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'This run lasts longer than $hours hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.';
+  }
 }

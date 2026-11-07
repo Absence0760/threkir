@@ -29,6 +29,7 @@ import '../lib/local_gear_store.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
+import '../lib/orphaned_recording.dart';
 import '../lib/preferences.dart';
 import '../lib/race_controller.dart';
 import '../lib/screens/home_screen.dart';
@@ -105,7 +106,9 @@ Position _pos({
     altitudeAccuracy: 2,
     heading: 90,
     headingAccuracy: 5,
-    speed: 2.5,
+    // The distance estimator fuses this Doppler speed with the positions, so
+    // it matches the 12 m / 2 s step every moving fix here takes.
+    speed: 6,
     speedAccuracy: 1,
   );
 }
@@ -517,6 +520,130 @@ void main() {
       expect(find.textContaining('already on'), findsNothing);
       expect(runStore.runs, hasLength(1),
           reason: 'leaving the summary keeps the saved run');
+
+      await unmount(tester);
+    });
+  });
+
+  // BUG-001 (#1300): a Pro Max turned to landscape is 932 pt wide, past the
+  // 840 dp breakpoint where the shell swaps its bottom bar for a rail. The
+  // swap used to rebuild the page tree under a new parent, which disposed the
+  // recorder mid-run and reopened the shell on Home with Run still selected.
+  group('a run across the expanded breakpoint', () {
+    Future<void> resize(WidgetTester tester, Size physical) async {
+      tester.view.physicalSize = physical;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+    }
+
+    testWidgets(
+        'rotating a large phone mid-run keeps the same recorder on the Run '
+        'page, and the run saves as one', (tester) async {
+      const portrait = Size(1290, 2796);
+      const landscape = Size(2796, 1290);
+      tester.view.devicePixelRatio = 3.0;
+      tester.view.physicalSize = portrait;
+      addTearDown(tester.view.reset);
+      final runStore = await pumpShell(tester);
+      expect(find.byType(BottomAppBar), findsOneWidget);
+
+      await tapCentre(tester);
+      await recordARun(tester);
+      final recorder = tester.state(find.byType(RunScreen));
+
+      await resize(tester, landscape);
+      expect(find.byType(NavigationRail), findsOneWidget,
+          reason: 'landscape is past the expanded breakpoint');
+      expect(tester.state(find.byType(RunScreen)), same(recorder),
+          reason: 'the layout change kept the recorder State, so the GPS '
+              'session it owns is still live');
+      expect(runRecordingActive.value, isTrue);
+      expect(shellPage(tester), 2,
+          reason: 'the visible page is still Run, matching the selection');
+      expect(centreLabelled('Return to your run'), findsOneWidget);
+      expect(orphanedRecording.value, isNull,
+          reason: 'nothing was torn down, so nothing was handed on');
+
+      await emitFixes(tester, [
+        for (var i = 6; i < 9; i++)
+          _pos(metresEast: i * 12.0, secondsFromStart: i * 2),
+      ]);
+
+      await resize(tester, portrait);
+      expect(find.byType(BottomAppBar), findsOneWidget);
+      expect(tester.state(find.byType(RunScreen)), same(recorder),
+          reason: 'turning back is the same recorder too');
+      expect(runRecordingActive.value, isTrue);
+      expect(shellPage(tester), 2);
+      expect(find.textContaining('already on'), findsNothing);
+
+      await emitFixes(tester, [
+        for (var i = 9; i < 12; i++)
+          _pos(metresEast: i * 12.0, secondsFromStart: i * 2),
+      ]);
+      await holdDockedStop(tester);
+      expect(runStore.runs, hasLength(1),
+          reason: 'one recording through two rotations is one run');
+      // 132 m of fixes in all: 60 m before the first rotation, 96 m before
+      // the second, so losing either later batch lands at or under 96 m.
+      expect(runStore.runs.single.distanceMetres, greaterThan(120),
+          reason: 'the fixes taken after each rotation reached the same run');
+
+      await unmount(tester);
+    });
+
+    testWidgets(
+        'a run screen torn down mid-run hands the run on, and the next one '
+        'offers to resume it', (tester) async {
+      final dir = tempDir('controls_orphan_');
+      final runStore = LocalRunStore();
+      await runStore.init(overrideDirectory: dir);
+      await pumpShell(tester, runStore: runStore);
+      await tapCentre(tester);
+      await recordARun(tester);
+
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump();
+      tester.takeException();
+      final orphan = orphanedRecording.value;
+      expect(orphan, isNotNull,
+          reason: 'the tear-down checkpointed the live run, not dropped it');
+      expect(orphan!.track, isNotEmpty);
+      expect(runStore.runs, isEmpty, reason: 'a tear-down is not a Stop');
+      await pumpUntil(
+          tester, () => File('${dir.path}/in_progress.json').existsSync(),
+          describe: 'the tear-down checkpoint on disk for a cold start');
+
+      await pumpShell(tester, runStore: runStore);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      tester.takeException();
+      expect(shellPage(tester), 2,
+          reason: 'the shell opens on Run to offer the handed-on run');
+      expect(find.text('Resume your run?'), findsOneWidget);
+      expect(orphanedRecording.value, isNull,
+          reason: 'the run screen took the hand-off');
+
+      await tester.tap(find.descendant(
+          of: find.byType(AlertDialog), matching: find.text('Resume')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      tester.takeException();
+      await pumpUntil(tester, () => runRecordingActive.value,
+          describe: 'the resumed recording');
+      await tester.pump(const Duration(seconds: 1));
+      tester.takeException();
+      await emitFixes(tester, [
+        for (var i = 0; i < 3; i++)
+          _pos(metresEast: 200 + i * 12.0, secondsFromStart: 30 + i * 2),
+      ]);
+
+      await holdDockedStop(tester);
+      expect(runStore.runs, hasLength(1));
+      expect(runStore.runs.single.id, orphan.id,
+          reason: 'the resumed run is the one that was torn down');
 
       await unmount(tester);
     });

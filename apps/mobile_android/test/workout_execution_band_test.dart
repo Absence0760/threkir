@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
@@ -96,8 +97,8 @@ void main() {
       // Step counter and remaining-distance footer.
       expect(find.text('5/14'), findsOneWidget);
       expect(find.text('300 m to go'), findsOneWidget);
-      // Pace pip shows signed delta.
-      expect(find.text('−5s'), findsOneWidget);
+      // Pace pip shows the signed delta in the runner's unit.
+      expect(find.text('−5s/km'), findsOneWidget);
     });
 
     testWidgets('carries the workout\'s effort target line (decisions § 2092)',
@@ -145,8 +146,12 @@ void main() {
       await tester.pump();
       expect(skips, 1);
 
+      // Abandon lives in the overflow menu, not on the card.
+      expect(find.text('Abandon'), findsNothing);
+      await tester.tap(find.byTooltip('More workout actions'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Abandon'));
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(abandons, 1);
     });
 
@@ -167,7 +172,7 @@ void main() {
         ),
         onRewind: () => rewinds++,
       );
-      final rewindBtn = find.widgetWithText(OutlinedButton, 'Rewind');
+      final rewindBtn = find.byKey(const Key('workoutBandRewind'));
       expect(rewindBtn, findsOneWidget);
       // onPressed is null on the first step → button is disabled, taps no-op.
       await tester.tap(rewindBtn, warnIfMissed: false);
@@ -194,7 +199,7 @@ void main() {
         ),
         onRewind: () => rewinds++,
       );
-      await tester.tap(find.text('Rewind'));
+      await tester.tap(find.byTooltip('Rewind'));
       await tester.pump();
       expect(rewinds, 1);
     });
@@ -483,6 +488,47 @@ void main() {
       expect(find.textContaining('1.2 mi'), findsOneWidget);
     });
 
+    testWidgets('mi mode: a 5 mi step reads its remainder in miles (#1300)',
+        (tester) async {
+      await setUnit(true);
+      await _pumpBand(
+        tester,
+        state: WorkoutBandState(
+          step: _step(distance: 8046.72),
+          totalSteps: 3,
+          currentIndex: 1,
+          progress: 0,
+          remainingMetres: 8027.7,
+          actualPaceSecPerKm: null,
+          adherence: PaceAdherence.onPace,
+          complete: false,
+          abandoned: false,
+        ),
+      );
+      expect(find.text('4.99 mi to go'), findsOneWidget);
+      expect(find.textContaining('yd'), findsNothing);
+    });
+
+    testWidgets('mi mode: the pace pip reads per mile, saying so (#1300)',
+        (tester) async {
+      await setUnit(true);
+      await _pumpBand(
+        tester,
+        state: WorkoutBandState(
+          step: _step(distance: 8046.72, pace: 348),
+          totalSteps: 3,
+          currentIndex: 1,
+          progress: 0.1,
+          remainingMetres: 7000,
+          actualPaceSecPerKm: 776,
+          adherence: PaceAdherence.wayBehind,
+          complete: false,
+          abandoned: false,
+        ),
+      );
+      expect(find.text('+689s/mi'), findsOneWidget);
+    });
+
     testWidgets('km mode (default): 400 m renders in metres + /km pace',
         (tester) async {
       // Negative-shape pin so a regression that inverted the branch
@@ -507,6 +553,108 @@ void main() {
       expect(find.textContaining('/km'), findsOneWidget);
       expect(find.textContaining('yd'), findsNothing);
       expect(find.textContaining('/mi'), findsNothing);
+    });
+  });
+  group('WorkoutExecutionBand — controls fit a phone (issue #1300)', () {
+    const state = WorkoutBandState(
+      step: WorkoutStep(
+        kind: WorkoutStepKind.steady,
+        targetDistanceMetres: 8046.72,
+        targetPaceSecPerKm: 348,
+        label: 'Steady',
+      ),
+      totalSteps: 3,
+      currentIndex: 1,
+      progress: 0.01,
+      remainingMetres: 8000,
+      actualPaceSecPerKm: 360,
+      adherence: PaceAdherence.behind,
+      complete: false,
+      abandoned: false,
+    );
+
+    Future<void> pumpAt(WidgetTester tester, double scale,
+        {Locale locale = const Locale('en')}) async {
+      tester.view.physicalSize = const Size(360 * 3, 800 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(textScaler: TextScaler.linear(scale)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: WorkoutExecutionBand(
+              state: ValueNotifier<WorkoutBandState>(state),
+              onSkip: () {},
+              onRewind: () {},
+              onAbandon: () {},
+            ),
+          ),
+        ),
+      );
+    }
+
+    int lineCount(WidgetTester tester, Finder text) {
+      final rp = tester.renderObject<RenderParagraph>(text);
+      final plain = rp.text.toPlainText();
+      final boxes = rp.getBoxesForSelection(
+          TextSelection(baseOffset: 0, extentOffset: plain.length));
+      return boxes.map((b) => b.top.round()).toSet().length;
+    }
+
+    // German is pinned at 1.0 only: the test font draws every glyph a full
+    // em wide, so "Überspringen" at 2x is about twice as wide as on a device.
+    for (final (scale, locale) in const [
+      (1.0, Locale('en')),
+      (2.0, Locale('en')),
+      (1.0, Locale('de')),
+    ]) {
+      testWidgets(
+          'at 360dp, ${locale.languageCode}, text scale $scale: Skip is one '
+          'unbroken line and nothing overflows', (tester) async {
+        await pumpAt(tester, scale, locale: locale);
+        expect(tester.takeException(), isNull);
+        final l10n = lookupAppLocalizations(locale);
+        final skip = find.descendant(
+          of: find.byKey(const Key('workoutBandSkip')),
+          matching: find.text(l10n.runWorkoutSkip),
+        );
+        expect(skip, findsOneWidget);
+        expect(lineCount(tester, skip), 1);
+        expect(tester.renderObject<RenderParagraph>(skip).didExceedMaxLines,
+            isFalse,
+            reason: 'the Skip label must fit, not ellipsize');
+        // Rewind and Abandon carry no label on the card at all.
+        expect(find.text(l10n.runWorkoutRewind), findsNothing);
+        expect(find.text(l10n.runWorkoutAbandon), findsNothing);
+        expect(find.byTooltip(l10n.runWorkoutRewind), findsOneWidget);
+      });
+    }
+
+    for (final scale in [1.0, 2.0]) {
+      testWidgets(
+          'at 360dp, text scale $scale: Abandon is reachable from the menu',
+          (tester) async {
+        await pumpAt(tester, scale);
+        await tester.tap(find.byKey(const Key('workoutBandMore')));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(find.text('Abandon'), findsOneWidget);
+      });
+    }
+
+    testWidgets('Rewind is announced by its label', (tester) async {
+      final handle = tester.ensureSemantics();
+      await pumpAt(tester, 1.0);
+      expect(find.bySemanticsLabel('Rewind'), findsOneWidget);
+      expect(find.byTooltip('More workout actions'), findsOneWidget);
+      handle.dispose();
     });
   });
 }

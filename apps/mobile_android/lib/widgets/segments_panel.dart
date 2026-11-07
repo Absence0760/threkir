@@ -550,16 +550,8 @@ class _SegmentTile extends StatelessWidget {
     );
   }
 
-  static String _fmt(double m) {
-    final unit = activeDistanceUnit;
-    if (unit == DistanceUnit.mi) {
-      const metresPerMile = 1609.344;
-      if (m >= metresPerMile) return UnitFormat.distance(m, unit);
-      return '${(m * 1.09361).round()} yd';
-    }
-    if (m >= 1000) return UnitFormat.distance(m, unit);
-    return '${m.round()} m';
-  }
+  static String _fmt(double m) =>
+      UnitFormat.shortDistance(m, activeDistanceUnit);
 }
 
 class _TierFilters extends StatelessWidget {

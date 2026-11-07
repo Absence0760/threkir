@@ -27,6 +27,13 @@
 	let notifyReaction = $state(true);
 	let notifyCommentLike = $state(true);
 	let notifyFollowRequest = $state(true);
+	// Club and event notices in the default set (decisions § 2358): each is
+	// raised by someone else's action, so each needs a control narrower than
+	// the whole channel.
+	let notifyEventRsvp = $state(true);
+	let notifyClubJoinRequest = $state(true);
+	let notifyClubJoinApproved = $state(true);
+	let notifyEventUpdated = $state(true);
 	// Unlike the mutes above this one also withholds the inbox row:
 	// enqueue_workout_reminders raises nothing for a runner who turned it off,
 	// because a clock raises it every morning rather than someone's action.
@@ -49,6 +56,10 @@
 		notifyReaction = effective<string>(settings, 'notify_reaction', 'on') !== 'off';
 		notifyCommentLike = effective<string>(settings, 'notify_comment_like', 'on') !== 'off';
 		notifyFollowRequest = effective<string>(settings, 'notify_follow_request', 'on') !== 'off';
+		notifyEventRsvp = effective<string>(settings, 'notify_event_rsvp', 'on') !== 'off';
+		notifyClubJoinRequest = effective<string>(settings, 'notify_club_join_request', 'on') !== 'off';
+		notifyClubJoinApproved = effective<string>(settings, 'notify_club_join_approved', 'on') !== 'off';
+		notifyEventUpdated = effective<string>(settings, 'notify_event_updated', 'on') !== 'off';
 		notifyWorkoutReminder = effective<string>(settings, 'notify_workout_reminder', 'on') !== 'off';
 		emailNewDeviceAlerts = effective<string>(settings, 'email_new_device_alerts', 'on') !== 'off';
 	});
@@ -152,6 +163,54 @@
 			<span>
 				{m('prefs.notifyFollowRequest')}
 				<span class="hint">{m('prefs.notifyFollowRequestHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyEventRsvp}
+				onchange={() => prefs.save({ notify_event_rsvp: notifyEventRsvp ? 'on' : 'off' })}
+				data-testid="notify-event-rsvp"
+			/>
+			<span>
+				{m('prefs.notifyEventRsvp')}
+				<span class="hint">{m('prefs.notifyEventRsvpHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyClubJoinRequest}
+				onchange={() => prefs.save({ notify_club_join_request: notifyClubJoinRequest ? 'on' : 'off' })}
+				data-testid="notify-club-join-request"
+			/>
+			<span>
+				{m('prefs.notifyClubJoinRequest')}
+				<span class="hint">{m('prefs.notifyClubJoinRequestHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyClubJoinApproved}
+				onchange={() => prefs.save({ notify_club_join_approved: notifyClubJoinApproved ? 'on' : 'off' })}
+				data-testid="notify-club-join-approved"
+			/>
+			<span>
+				{m('prefs.notifyClubJoinApproved')}
+				<span class="hint">{m('prefs.notifyClubJoinApprovedHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyEventUpdated}
+				onchange={() => prefs.save({ notify_event_updated: notifyEventUpdated ? 'on' : 'off' })}
+				data-testid="notify-event-updated"
+			/>
+			<span>
+				{m('prefs.notifyEventUpdated')}
+				<span class="hint">{m('prefs.notifyEventUpdatedHint')}</span>
 			</span>
 		</label>
 		<label class="checkbox-row">

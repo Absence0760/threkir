@@ -2,6 +2,7 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../fab_clearance.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../local_route_store.dart';
 import '../social_service.dart';
@@ -162,6 +163,7 @@ class _SocialScreenState extends State<SocialScreen>
           ),
         ],
       ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: _activeFab(),
     );
   }

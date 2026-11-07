@@ -98,7 +98,15 @@ class _EventFormState extends State<_EventForm> {
   String? _priceError;
   String? _currencyError;
   String? _salesCloseError;
-  DateTime _starts = DateTime.now().add(const Duration(days: 1, hours: 1));
+  // Minute precision, like the pickers: the web editor reads and writes the
+  // start to the minute, so seconds here would make its first save move the
+  // instant every RSVP is keyed to.
+  DateTime _starts = _defaultStart(DateTime.now());
+
+  static DateTime _defaultStart(DateTime now) {
+    return DateTime(now.year, now.month, now.day + 1, now.hour + 1, now.minute);
+  }
+
   String _recurrence = 'none'; // none | weekly | biweekly | monthly
   bool _isPublic = true;
   bool _busy = false;

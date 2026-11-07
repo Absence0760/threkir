@@ -1225,6 +1225,7 @@ class RoutesScreenState extends State<RoutesScreen> {
         title: Text(l10n.fitnessRunsRoutes),
         actions: buildRouteAppBarActions(context),
       ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: buildRouteFabs(context),
       body: content,
     );

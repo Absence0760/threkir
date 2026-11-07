@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, StatGrid, StatTile;
+import 'package:ui_kit/ui_kit.dart' show EmptyState, ListSkeleton, StatGrid, StatTile, kStatLargeCellMinWidth;
 
 import '../backend_timeout.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -139,6 +139,7 @@ class _ShareCard extends StatelessWidget {
             Text(_title(l10n), style: theme.textTheme.titleMedium),
             const SizedBox(height: 12),
             StatGrid(
+              minCellWidth: kStatLargeCellMinWidth,
               cells: [
                 _stat(theme, l10n, l10n.sharesVisits, stat.visits, stat.refVisits),
                 _stat(theme, l10n, l10n.sharesSignups, stat.signups, 0),

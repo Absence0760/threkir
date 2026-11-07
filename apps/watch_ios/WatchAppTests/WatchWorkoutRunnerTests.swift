@@ -81,6 +81,22 @@ final class WatchWorkoutRunnerTests: XCTestCase {
         })
     }
 
+    func testAStandingStartIsNotGradedUntil50mIn20s() {
+        // Issue #1300: 19 m in 15 s read way behind under the old 5 m / 1 s gate.
+        let slow = WatchWorkoutRunner(workout: workout([rep]))
+        _ = slow.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)
+        XCTAssertEqual(slow.onTotals(distanceMetres: 19, elapsedSeconds: 15, now: 15), [])
+        XCTAssertEqual(slow.onTotals(distanceMetres: 49, elapsedSeconds: 40, now: 40), [])
+        XCTAssertEqual(slow.onTotals(distanceMetres: 50, elapsedSeconds: 40, now: 40),
+                       [.paceDrift(index: 0, ahead: false, deltaSecondsPerKm: 560)])
+
+        let fast = WatchWorkoutRunner(workout: workout([rep]))
+        _ = fast.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)
+        XCTAssertEqual(fast.onTotals(distanceMetres: 120, elapsedSeconds: 19, now: 19), [])
+        XCTAssertEqual(fast.onTotals(distanceMetres: 120, elapsedSeconds: 20, now: 20),
+                       [.paceDrift(index: 0, ahead: true, deltaSecondsPerKm: 73)])
+    }
+
     func testAWalkRunSessionNeverGradesPace() {
         let runner = WatchWorkoutRunner(workout: workout([rep], unpaced: true))
         _ = runner.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)

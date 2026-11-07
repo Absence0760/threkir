@@ -443,3 +443,15 @@ test('effortSegments drops a residual that would be negative', () => {
 	assert.equal(segs.length, 2);
 	assert.ok(segs.every((s) => s.seconds > 0 && s.metres > 0));
 });
+
+test('a run past the ten-day bound is not classified at all', () => {
+	// Issue #1300 § 5: a 2 km row stored at 44,400,094 s is 22.2M s/km — the
+	// easiest pace there is — and alone would hold the split at onGuideline.
+	const bad = r({ started_at: daysAgoIso(2), distance_m: 2000, duration_s: 44_400_094 });
+	const runs = [hardRun(1), hardRun(3), hardRun(5), hardRun(8), easyRun(10), bad];
+	const s = computeIntensity(runs, 56, NOW);
+	assert.ok(s);
+	assert.equal(s.totalRuns, 5);
+	assert.equal(s.easySeconds, 3200);
+	assert.equal(s.verdict, 'tooHard');
+});

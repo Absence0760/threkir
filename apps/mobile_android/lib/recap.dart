@@ -315,7 +315,10 @@ YearInRunningRecap buildYearInRunningRecap(
   for (final r in inYear) {
     final d = r.startedAt.toLocal();
     totalDistance += r.distanceMetres;
-    totalDuration += r.duration.inSeconds;
+    final countedS = isPlausibleRunDuration(r.duration.inSeconds)
+        ? r.duration.inSeconds
+        : 0;
+    totalDuration += countedS;
     totalElevation += _elevationOf(r);
 
     // "Longest run" + "fastest pace" are run-family headline stats — exclude
@@ -325,7 +328,10 @@ YearInRunningRecap buildYearInRunningRecap(
     final isRunFamily = ((r.metadata?['activity_type'] as String?) ?? 'run') != 'cycle';
     if (isRunFamily && r.distanceMetres > longest) longest = r.distanceMetres;
 
-    if (isRunFamily && r.distanceMetres > 500 && r.duration.inSeconds > 0) {
+    if (isRunFamily &&
+        r.distanceMetres > 500 &&
+        r.duration.inSeconds > 0 &&
+        isPlausibleRunDuration(r.duration.inSeconds)) {
       final pace = r.duration.inSeconds / (r.distanceMetres / 1000);
       if (fastestPace == null || pace < fastestPace) fastestPace = pace;
     }
@@ -342,7 +348,7 @@ YearInRunningRecap buildYearInRunningRecap(
 
     final md = monthly[d.month]!;
     md.distance += r.distanceMetres;
-    md.duration += r.duration.inSeconds;
+    md.duration += countedS;
     md.runCount += 1;
 
     final wk = _mondayOf(d);
@@ -480,7 +486,10 @@ YearInRunningRecap buildMonthInRunningRecap(
     totalElevation += _elevationOf(r);
     final isRunFamily = ((r.metadata?['activity_type'] as String?) ?? 'run') != 'cycle';
     if (isRunFamily && r.distanceMetres > longest) longest = r.distanceMetres;
-    if (isRunFamily && r.distanceMetres > 500 && r.duration.inSeconds > 0) {
+    if (isRunFamily &&
+        r.distanceMetres > 500 &&
+        r.duration.inSeconds > 0 &&
+        isPlausibleRunDuration(r.duration.inSeconds)) {
       final pace = r.duration.inSeconds / (r.distanceMetres / 1000);
       if (fastestPace == null || pace < fastestPace) fastestPace = pace;
     }

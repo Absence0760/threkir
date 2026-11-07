@@ -134,7 +134,7 @@ class WorkoutReviewSection extends StatelessWidget {
       );
     }
 
-    final delta = paceDeltaOf(s);
+    final delta = paceDeltaOf(s, l10n);
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
@@ -319,19 +319,22 @@ class PaceDelta {
   }
 }
 
-PaceDelta paceDeltaOf(WorkoutStepReview s) {
+/// The label follows the runner's unit, as the pace column beside it does;
+/// the tone stays on canonical s/km, the workout's own tolerance.
+PaceDelta paceDeltaOf(WorkoutStepReview s, AppLocalizations l10n) {
   if (s.actualPaceSecPerKm == null) {
     return const PaceDelta('—', PaceDeltaTone.neutral);
   }
   final diff = s.actualPaceSecPerKm! - s.targetPaceSecPerKm;
-  if (diff.abs() < 1) return const PaceDelta('on', PaceDeltaTone.on);
-  final sign = diff > 0 ? '+' : '−';
+  if (diff.abs() < 1) {
+    return PaceDelta(l10n.runDetailStrategyOnPace, PaceDeltaTone.on);
+  }
   final tol = s.toleranceSecPerKm;
   final mag = diff.abs();
   final tone = mag <= tol
       ? PaceDeltaTone.on
       : (mag <= tol * 2 ? PaceDeltaTone.amber : PaceDeltaTone.off);
-  return PaceDelta('$sign${mag}s', tone);
+  return PaceDelta(UnitFormat.paceDelta(diff, activeDistanceUnit), tone);
 }
 
 

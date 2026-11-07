@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { editorZone, startFieldsFor, startIsoFor } from './event_start_fields';
+import { editorZone, startFieldsFor, startIsoFor, startIsoIfMoved } from './event_start_fields';
 
 // 21:30 EDT on Wednesday 21 Oct 2026.
 const NY_WED = '2026-10-22T01:30:00.000Z';
@@ -46,4 +46,23 @@ test('editorZone takes a known stored zone and falls back to the editor clock ot
 test('with no zone the fields round-trip on the local clock', () => {
 	const fields = startFieldsFor(NY_WED, null);
 	assert.equal(startIsoFor(fields, null), NY_WED);
+});
+
+test('an untouched start is not written, so its stored seconds survive the edit', () => {
+	const withSeconds = '2026-10-22T01:30:42.000Z';
+	const zone = 'America/New_York';
+	assert.equal(startIsoIfMoved(withSeconds, startFieldsFor(withSeconds, zone), zone), null);
+	assert.equal(startIsoIfMoved(withSeconds, startFieldsFor(withSeconds, null), null), null);
+});
+
+test('a moved date or time is written as the instant the inputs name', () => {
+	const zone = 'America/New_York';
+	assert.equal(
+		startIsoIfMoved(NY_WED, { date: '2026-10-21', time: '20:30' }, zone),
+		'2026-10-22T00:30:00.000Z'
+	);
+	assert.equal(
+		startIsoIfMoved(NY_WED, { date: '2026-10-28', time: '21:30' }, zone),
+		'2026-10-29T01:30:00.000Z'
+	);
 });

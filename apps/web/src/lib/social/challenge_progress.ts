@@ -7,6 +7,8 @@
 /// offline-optimistic client estimate computed from local stores can't drift
 /// from the server board.
 
+import { isPlausibleRunDuration } from '../runs/run_duration';
+
 export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
 
 /** Fraction of the goal reached, clamped to 0..1. Null goal (pure-ranking
@@ -79,8 +81,10 @@ export function metricFromActivity(
 	switch (metric) {
 		case 'distance':
 			return numberOf(summary.distance_m);
-		case 'duration':
-			return numberOf(summary.duration_s);
+		case 'duration': {
+			const d = numberOf(summary.duration_s);
+			return isPlausibleRunDuration(d) ? d : 0;
+		}
 		case 'vert':
 			return numberOf(summary.elevation_gain_m);
 		case 'activity_count':

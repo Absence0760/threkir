@@ -98,6 +98,34 @@ void main() {
       expect(clearance, lessThan(120));
     });
 
+    testWidgets('clears a FAB lifted over the shell\'s docked button',
+        (tester) async {
+      late double clearance;
+      await _pump(
+        tester,
+        Scaffold(
+          bottomNavigationBar: const SizedBox(height: 80),
+          body: DockedFabInset(
+            height: kDockedFabOverhang,
+            child: Builder(
+              builder: (c) => Scaffold(
+                floatingActionButtonLocation: pageFabLocation(c),
+                floatingActionButton: _fab(),
+                body: Builder(builder: (c) {
+                  clearance = fabScrollClearance(c);
+                  return _body();
+                }),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(_gapNeeded(tester), 72 + kDockedFabOverhang);
+      expect(clearance, greaterThanOrEqualTo(72 + kDockedFabOverhang));
+      expect(clearance, lessThan(120 + kDockedFabOverhang));
+    });
+
     testWidgets('clears a column of two stacked FABs', (tester) async {
       late double clearance;
       await _pump(
@@ -127,6 +155,42 @@ void main() {
       final gap = tester.getRect(find.byKey(const ValueKey('body'))).bottom - top;
       expect(gap, 120 + kFabHeight + kFabStackGap);
       expect(clearance, greaterThanOrEqualTo(gap));
+    });
+  });
+
+  group('pageFabLocation (issue #1300 § 4)', () {
+    testWidgets('is plain endFloat where nothing is docked', (tester) async {
+      late FloatingActionButtonLocation location;
+      await tester.pumpWidget(Builder(builder: (c) {
+        location = pageFabLocation(c);
+        return const SizedBox();
+      }));
+      expect(location, FloatingActionButtonLocation.endFloat);
+    });
+
+    testWidgets('lifts the button by the docked inset, and only that',
+        (tester) async {
+      Future<Rect> fabRect(double inset) async {
+        await _pump(
+          tester,
+          DockedFabInset(
+            height: inset,
+            child: Builder(
+              builder: (c) => Scaffold(
+                floatingActionButtonLocation: pageFabLocation(c),
+                floatingActionButton: _fab(),
+                body: _body(),
+              ),
+            ),
+          ),
+        );
+        return tester.getRect(find.byType(FloatingActionButton));
+      }
+
+      final plain = await fabRect(0);
+      final lifted = await fabRect(kDockedFabOverhang);
+      expect(lifted.left, plain.left);
+      expect(plain.bottom - lifted.bottom, kDockedFabOverhang);
     });
   });
 }

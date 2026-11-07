@@ -202,6 +202,7 @@ class _RacesScreenState extends State<RacesScreen> {
         title: Text(l.racesTitle),
         actions: const [HelpButton(routes: ['/races'])],
       ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openSubmit,
         icon: const Icon(Icons.add),

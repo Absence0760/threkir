@@ -119,6 +119,25 @@ void main() {
       expect(seg.eleLossMetres, 0);
     });
 
+    test('places the window along the line by cumulative distance', () {
+      final track = _track(n: 21, stepM: 100, stepS: 1);
+      final cum = buildCumulativeDistances(track);
+      final seg = buildSegmentAt(track, 10, cumulative: cum)!;
+      expect(seg.startDistanceMetres, cum[seg.startIdx]);
+      expect(seg.endDistanceMetres, cum[seg.endIdx]);
+      expect(seg.startDistanceMetres, closeTo(900, 5));
+      expect(seg.endDistanceMetres, closeTo(1100, 5));
+      expect(seg.endDistanceMetres - seg.startDistanceMetres,
+          seg.distanceMetres);
+    });
+
+    test('an edge selection starts its window at the line\'s start', () {
+      final track = _track(n: 5, stepM: 100, stepS: 1);
+      final seg = buildSegmentAt(track, 0)!;
+      expect(seg.startDistanceMetres, 0);
+      expect(seg.endDistanceMetres, closeTo(100, 2));
+    });
+
     test('widens past a degenerate single-point selection at the edge', () {
       // Click at the very last index — buildSegment should expand
       // backwards by one neighbour so distance is non-zero.

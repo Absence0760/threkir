@@ -571,6 +571,13 @@ class LiveRunMap extends StatefulWidget {
   /// precise current position.
   final bool coarsePosition;
 
+  /// When true the current-position marker is the live dot inside a wide
+  /// translucent halo: a weak-GPS fix (migration 20271112000030) the
+  /// recorder kept for distance but not for its line, so the spectator
+  /// reads it as "somewhere around here". [coarsePosition] wins when both
+  /// are set.
+  final bool weakPosition;
+
   /// The live run records under an approximate location grant. With no fix
   /// to centre on, the empty map says so instead of a "Waiting for GPS"
   /// spinner, because no precise fix is coming until the runner turns
@@ -596,6 +603,7 @@ class LiveRunMap extends StatefulWidget {
     this.hoverIdx,
     this.previewPosition,
     this.coarsePosition = false,
+    this.weakPosition = false,
     this.approximateLocation = false,
     this.courseMarkers = const [],
     this.markerPlacing = false,
@@ -1440,10 +1448,18 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                     height: 48,
                     child: widget.coarsePosition
                         ? _CoarseDot(accent: accent)
-                        : _PulsingDot(
-                            animation: _pulseAnimation,
-                            ringColour: outline,
-                          ),
+                        : widget.weakPosition
+                            ? _WeakHalo(
+                                accent: accent,
+                                child: _PulsingDot(
+                                  animation: _pulseAnimation,
+                                  ringColour: outline,
+                                ),
+                              )
+                            : _PulsingDot(
+                                animation: _pulseAnimation,
+                                ringColour: outline,
+                              ),
                   ),
                 ],
               ),
@@ -1620,6 +1636,31 @@ class _CoarseDot extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _WeakHalo extends StatelessWidget {
+  final Color accent;
+  final Widget child;
+  const _WeakHalo({required this.accent, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      key: const Key('weak-position-halo'),
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: accent.withValues(alpha: 0.18),
+          ),
+        ),
+        child,
+      ],
     );
   }
 }

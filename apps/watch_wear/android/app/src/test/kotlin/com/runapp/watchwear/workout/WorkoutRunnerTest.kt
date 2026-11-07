@@ -108,6 +108,25 @@ class WorkoutRunnerTest {
     }
 
     @Test
+    fun `a standing start is not graded until 50 m in 20 s`() {
+        // Issue #1300: 19 m in 15 s read way behind under the old 5 m / 1 s gate.
+        val slow = WorkoutRunner(workoutOf(listOf(rep)))
+        slow.onTotals(0.0, 0.0, nowMs = 0)
+        assertTrue(slow.onTotals(19.0, 15.0, nowMs = 15_000).none { it is WorkoutEvent.PaceDrift })
+        assertTrue(slow.onTotals(49.0, 40.0, nowMs = 40_000).none { it is WorkoutEvent.PaceDrift })
+        val late = slow.onTotals(50.0, 40.0, nowMs = 40_000).filterIsInstance<WorkoutEvent.PaceDrift>()
+        assertEquals(560, late.single().deltaSPerKm)
+        assertFalse(late.single().ahead)
+
+        val fast = WorkoutRunner(workoutOf(listOf(rep)))
+        fast.onTotals(0.0, 0.0, nowMs = 0)
+        assertTrue(fast.onTotals(120.0, 19.0, nowMs = 19_000).none { it is WorkoutEvent.PaceDrift })
+        val due = fast.onTotals(120.0, 20.0, nowMs = 20_000).filterIsInstance<WorkoutEvent.PaceDrift>()
+        assertEquals(73, due.single().deltaSPerKm)
+        assertTrue(due.single().ahead)
+    }
+
+    @Test
     fun `a walk-run session never grades pace`() {
         val runner = WorkoutRunner(workoutOf(listOf(rep), unpaced = true))
         runner.onTotals(0.0, 0.0, nowMs = 0)

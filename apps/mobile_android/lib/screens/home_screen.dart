@@ -17,6 +17,8 @@ import '../challenge_invite_link.dart';
 import '../club_invite_link.dart' show pendingClubInviteToken;
 import '../entity_link.dart';
 import '../hr_prescription_gate.dart';
+import '../in_progress_recovery.dart'
+    show InProgressEvaluation, inProgressBannerText;
 import '../l10n/gen/app_localizations.dart';
 import '../local_food_store.dart';
 import '../local_gear_store.dart';
@@ -38,6 +40,7 @@ import '../race_service.dart';
 import '../run_stop_dock.dart';
 import '../settings_destination.dart';
 import '../settings_sync.dart';
+import '../shell_page_controller.dart';
 import '../sync_service.dart';
 import '../shared_file_import.dart' show incomingRouteImport;
 import '../social_service.dart';
@@ -68,6 +71,7 @@ import 'import_screen.dart';
 import 'message_thread_screen.dart';
 import 'messages_screen.dart';
 import '../onboarding.dart';
+import '../orphaned_recording.dart';
 import 'plan_new_screen.dart';
 import 'plans_screen.dart';
 import 'profile_screen.dart';
@@ -131,12 +135,11 @@ class HomeScreen extends StatefulWidget {
   final SyncService? syncService;
   final cm.Run? recoveredRun;
 
-  /// Banner copy emitted by the in-progress recovery helper at app
-  /// start. Surfaced once on the first build of the Home tab. Covers
-  /// both "Recovered a 2.3 km partial..." and the new
-  /// "Discarded a 38 m partial recording..." case (Casual #3). Null
-  /// when the recovery pass had nothing to say.
-  final String? recoveryBannerMessage;
+  /// The in-progress recovery pass's verdict at app start. A recovered or
+  /// discarded partial is reported once, as a banner on the first build of
+  /// the Home tab, worded by [inProgressBannerText] in the runner's unit
+  /// (Casual #3). Null when the recovery pass had nothing to say.
+  final InProgressEvaluation? recoveryEvaluation;
 
   /// A recent in-progress partial left over from a process-kill. When set,
   /// HomeScreen jumps to the Run page on first frame and RunScreen prompts the
@@ -162,7 +165,7 @@ class HomeScreen extends StatefulWidget {
     this.settingsSync,
     this.syncService,
     this.recoveredRun,
-    this.recoveryBannerMessage,
+    this.recoveryEvaluation,
     this.resumablePartial,
   });
 
@@ -253,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen>
       Listenable.merge([_currentIndex, _centreInputs]);
 
   late final PageController _pageController =
-      PageController(initialPage: _initialIndex);
+      ShellPageController(currentPage: () => _currentIndex.value);
 
   cm.Route? _preselectedRoute;
 
@@ -295,17 +298,22 @@ class _HomeScreenState extends State<HomeScreen>
       _onPendingEntityLink();
     });
     // Surface the recovery banner from main.dart's in-progress
-    // evaluation. Casual #3: this also fires on DISCARD ("Discarded a
-    // 38 m partial recording...") — pre-fix that path was silent and
-    // a casual user couldn't tell whether the app saw + dropped their
-    // tap-Start-then-quit attempt or just lost the run entirely.
-    final bannerMessage = widget.recoveryBannerMessage;
-    if (bannerMessage != null) {
+    // evaluation. Casual #3: this also fires on DISCARD — pre-fix that
+    // path was silent and a casual user couldn't tell whether the app saw
+    // + dropped their tap-Start-then-quit attempt or just lost the run.
+    final recoveryEvaluation = widget.recoveryEvaluation;
+    if (recoveryEvaluation != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        final message = inProgressBannerText(
+          AppLocalizations.of(context),
+          recoveryEvaluation,
+          widget.preferences.unit,
+        );
+        if (message == null) return;
         showTopBanner(
           context,
-          bannerMessage,
+          message,
           duration: const Duration(seconds: 6),
         );
       });
@@ -321,6 +329,8 @@ class _HomeScreenState extends State<HomeScreen>
         _goToPage(_pageRun);
       });
     }
+    orphanedRecording.addListener(_onOrphanedRecording);
+    _onOrphanedRecording();
     // Post-sign-in gates (mobile twin of web's root-layout consent and
     // `/onboarding` redirects): the GDPR Art 8 consent screen when the
     // profile records no age + terms confirmation, then the setup wizard
@@ -941,6 +951,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingClubInviteToken.removeListener(_onPendingClubInvite);
     pendingChallengeLink.removeListener(_onPendingChallengeLink);
     pendingEntityLink.removeListener(_onPendingEntityLink);
+    orphanedRecording.removeListener(_onOrphanedRecording);
     _pageController.dispose();
     _currentIndex.removeListener(_syncRunPageShown);
     _currentIndex.removeListener(_dropFocusLeftBehind);
@@ -948,6 +959,18 @@ class _HomeScreenState extends State<HomeScreen>
     _runPageShown.dispose();
     _fitnessTab.dispose();
     super.dispose();
+  }
+
+  /// A recording handed on by a run screen torn down mid-run is offered back
+  /// on the Run page, so the shell goes there for the same reason it opens
+  /// there on a cold-start partial. Deferred because the hand-off is made
+  /// from that screen's `dispose`, while the tree is locked.
+  void _onOrphanedRecording() {
+    if (orphanedRecording.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || orphanedRecording.value == null) return;
+      _goToPage(_pageRun);
+    });
   }
 
   void _startRunWithRoute(cm.Route route) {
@@ -1423,10 +1446,17 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ],
     );
-    if (expanded) {
-      return _backGuard(Scaffold(
-        body: Row(
-          children: [
+    // One tree for both shells, so the PageView and every kept-alive page in
+    // it (the live recorder among them) keep their State when the width class
+    // changes. Rotating a large phone crosses the expanded breakpoint, and two
+    // differently shaped branches unmounted the recorder mid-run, losing the
+    // run (decisions § 2352). The rail is a sibling that comes and goes beside
+    // a keyed body slot, and the phone's bar and docked button are Scaffold
+    // slots, so neither moves the body.
+    return _backGuard(Scaffold(
+      body: Row(
+        children: [
+          if (expanded) ...[
             ListenableBuilder(
               listenable: _navInputs,
               builder: (context, _) {
@@ -1463,33 +1493,37 @@ class _HomeScreenState extends State<HomeScreen>
               },
             ),
             const VerticalDivider(width: 1),
-            // This branch has no `bottomNavigationBar`, so `Scaffold` leaves
-            // the whole system bottom inset on the body's `MediaQuery` — where
-            // the phone branch below spends it on the `BottomAppBar` and
-            // `Scaffold` therefore zeroes it. The pages were written against
-            // that zero (`SafeArea(bottom: false)` on dashboard and You), so
-            // without this the last card on a tablet sits under the
-            // gesture / nav bar. `SafeArea` both pads and removes, so a page
-            // sees the same zero either way (decisions § 538); left / right
-            // stay for the pages, matching the phone branch.
-            Expanded(
-              child: SafeArea(
-                top: false,
-                left: false,
-                right: false,
+          ],
+          // The rail shell has no `bottomNavigationBar`, so `Scaffold` leaves
+          // the whole system bottom inset on the body's `MediaQuery` — where
+          // the phone shell spends it on the `BottomAppBar` and `Scaffold`
+          // therefore zeroes it. The pages were written against that zero
+          // (`SafeArea(bottom: false)` on dashboard and You), so without this
+          // the last card on a tablet sits under the gesture / nav bar.
+          // `SafeArea` both pads and removes, so a page sees the same zero
+          // either way (decisions § 538); left / right stay for the pages.
+          Expanded(
+            key: const ValueKey('shell-body'),
+            child: SafeArea(
+              top: false,
+              left: false,
+              right: false,
+              bottom: expanded,
+              child: DockedFabInset(
+                height: expanded || keyboardUp ? 0 : kDockedFabOverhang,
                 child: body,
               ),
             ),
-          ],
-        ),
-      ));
-    }
-    return _backGuard(Scaffold(
-      body: DockedFabInset(
-          height: keyboardUp ? 0 : kDockedFabOverhang, child: body),
-      floatingActionButton: keyboardUp ? null : _logFab(),
+          ),
+        ],
+      ),
+      floatingActionButton: expanded || keyboardUp ? null : _logFab(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: ListenableBuilder(
+      bottomNavigationBar: expanded ? null : _bottomBar(),
+    ));
+  }
+
+  Widget _bottomBar() => ListenableBuilder(
         listenable: _navInputs,
         builder: (context, _) {
           final index = _currentIndex.value;
@@ -1544,9 +1578,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           );
         },
-      ),
-    ));
-  }
+      );
 
   static const _railPages = [_pageHome, _pageFitness, _pageSocial, _pageYou];
 
@@ -1727,8 +1759,11 @@ class _CentreLogLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // The same metrics as the sibling items: past the scale where they drop
+    // their labels the bar is 56dp, and a caption kept at 64 overflowed it.
+    final metrics = bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
     return SizedBox(
-      height: 64,
+      height: metrics.height,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -1736,24 +1771,26 @@ class _CentreLogLabel extends StatelessWidget {
           // render, so this label lines up with theirs while the floating
           // FAB visually fills the space above it.
           const SizedBox(height: 24),
-          const SizedBox(height: 2),
-          // Shrinks to fit rather than ellipsising: at a large text size a
-          // smaller whole word reads, a clipped one does not.
-          ExcludeSemantics(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: alert
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.onSurfaceVariant,
+          if (metrics.showLabels) ...[
+            const SizedBox(height: 2),
+            // Shrinks to fit rather than ellipsising: at a large text size a
+            // smaller whole word reads, a clipped one does not.
+            ExcludeSemantics(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: alert
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
                 ),
-                maxLines: 1,
-                softWrap: false,
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

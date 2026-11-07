@@ -29,6 +29,7 @@ import '../hr_zones.dart';
 import '../run_intensity.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../manual_duration_input.dart';
 import '../metrics.dart';
 import '../pace_analysis.dart';
 import '../preferences.dart';
@@ -872,7 +873,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                       child: _durationSubField(
                         hoursCtl,
                         'h',
-                        l10n.runDetailFieldDuration,
+                        l10n.durationFieldHours,
+                        hours: true,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -880,7 +882,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                       child: _durationSubField(
                         minutesCtl,
                         'm',
-                        l10n.runDetailFieldDuration,
+                        l10n.durationFieldMinutes,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -888,7 +890,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                       child: _durationSubField(
                         secondsCtl,
                         's',
-                        l10n.runDetailFieldDuration,
+                        l10n.durationFieldSeconds,
                       ),
                     ),
                   ],
@@ -928,18 +930,28 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     Duration newDuration = run.duration;
     if (canEditStats) {
       final parsedDistance = _parseDistanceMetres(distanceCtl.text, unit);
-      final parsedDuration = _parseDuration(
+      final parsedDuration = validateManualDuration(
         hoursCtl.text,
         minutesCtl.text,
         secondsCtl.text,
       );
-      if (parsedDistance == null || parsedDuration == null) {
-        if (!mounted) return;
+      if (!mounted) return;
+      final durationError = parsedDuration.error;
+      if (durationError != null) {
+        showTopBanner(context, manualDurationErrorText(l10n, durationError));
+        return;
+      }
+      if (parsedDistance == null) {
         showTopBanner(context, l10n.runDetailEditInvalid);
         return;
       }
+      final seconds = parsedDuration.seconds!;
+      if (isImplausiblySlow(seconds, parsedDistance) &&
+          !await confirmImplausiblySlowDuration(context)) {
+        return;
+      }
       newDistance = parsedDistance;
-      newDuration = parsedDuration;
+      newDuration = Duration(seconds: seconds);
     }
 
     // Match the new web normalisation in `updateRunMetadata` — trim,
@@ -997,14 +1009,15 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   Widget _durationSubField(
     TextEditingController ctl,
     String suffix,
-    String label,
-  ) {
+    String label, {
+    bool hours = false,
+  }) {
     return Semantics(
       label: label,
       child: TextField(
         controller: ctl,
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: durationBoxFormatters(hours: hours),
         decoration: InputDecoration(
           isDense: true,
           suffixText: suffix,
@@ -1024,17 +1037,6 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final v = parseTypedDecimal(raw);
     if (v == null || v <= 0) return null;
     return unit == DistanceUnit.mi ? v * _metresPerMile : v * 1000;
-  }
-
-  static Duration? _parseDuration(String h, String m, String s) {
-    final hi = int.tryParse(h.trim().isEmpty ? '0' : h.trim());
-    final mi = int.tryParse(m.trim().isEmpty ? '0' : m.trim());
-    final si = int.tryParse(s.trim().isEmpty ? '0' : s.trim());
-    if (hi == null || mi == null || si == null) return null;
-    if (hi < 0 || mi < 0 || si < 0) return null;
-    final total = Duration(hours: hi, minutes: mi, seconds: si);
-    if (total.inSeconds <= 0) return null;
-    return total;
   }
 
   @override
@@ -1197,7 +1199,16 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       return Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(flex: 11, child: _buildMapStack(l10n)),
+          Expanded(
+            flex: 11,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildMapStack(l10n)),
+                ?_buildSegmentCard(),
+              ],
+            ),
+          ),
           Expanded(flex: 9, child: ListView(children: sections)),
         ],
       );
@@ -1219,6 +1230,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               child: _buildMapStack(l10n),
             ),
           ),
+        if (hasMap) ?_buildSegmentCard(),
         ...sections,
       ],
     );
@@ -1229,6 +1241,23 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// it, and a toggle that changes nothing is worse than none.
   bool get _mapTrackHasTiming =>
       _mapTrack.where((w) => w.timestamp != null).take(2).length == 2;
+
+  /// The tapped stretch's stats, drawn under the map rather than over it: an
+  /// overlay covered the basemap credit (§ 491) and sat under the replay
+  /// button (#1300 § 2).
+  Widget? _buildSegmentCard() {
+    final segment = _selectedSegment;
+    if (segment == null) return null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: _SegmentStatsCard(
+        key: const ValueKey('run-detail-segment-card'),
+        segment: segment,
+        unit: widget.preferences.unit,
+        onDismiss: () => setState(() => _selectedSegment = null),
+      ),
+    );
+  }
 
   Widget _buildMapStack(AppLocalizations l10n) {
     return Stack(
@@ -1297,18 +1326,6 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             );
           },
         ),
-        if (_selectedSegment != null)
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: _SegmentStatsCard(
-              segment: _selectedSegment!,
-              unit: widget.preferences.unit,
-              onDismiss: () =>
-                  setState(() => _selectedSegment = null),
-            ),
-          ),
         Builder(
           builder: (context) {
             final kind = matchPillKind(_matchInfo,
@@ -1429,6 +1446,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             busy: _droppingTrack,
             onExport: _exportBeforeDrop,
             onDropTrack: _confirmDropTrack,
+            onEdit: run.track.isEmpty ? _editDetails : null,
           ),
         ),
 
@@ -3902,6 +3920,7 @@ class _SegmentStatsCard extends StatelessWidget {
   final VoidCallback onDismiss;
 
   const _SegmentStatsCard({
+    super.key,
     required this.segment,
     required this.unit,
     required this.onDismiss,
@@ -3929,21 +3948,38 @@ class _SegmentStatsCard extends StatelessWidget {
     ];
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        padding: const EdgeInsets.fromLTRB(16, 4, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.runDetailSegRange(
+                      UnitFormat.distanceValue(
+                          segment.startDistanceMetres, unit),
+                      UnitFormat.distanceValue(segment.endDistanceMetres, unit),
+                      UnitFormat.distanceLabel(unit),
+                    ),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: l10n.runDetailSegDismiss,
+                  onPressed: onDismiss,
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
               child: Wrap(
                 spacing: 16,
                 runSpacing: 4,
                 children: stats,
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: l10n.runDetailSegDismiss,
-              onPressed: onDismiss,
             ),
           ],
         ),
@@ -4068,12 +4104,17 @@ class _BlockedPushCard extends StatelessWidget {
   final Future<void> Function() onExport;
   final Future<void> Function() onDropTrack;
 
+  /// Null when the run's duration is not editable here (it has a GPS track,
+  /// which the duration is derived from).
+  final Future<void> Function()? onEdit;
+
   const _BlockedPushCard({
     required this.reason,
     required this.waypoints,
     required this.busy,
     required this.onExport,
     required this.onDropTrack,
+    required this.onEdit,
   });
 
   @override
@@ -4083,7 +4124,10 @@ class _BlockedPushCard extends StatelessWidget {
     final body = switch (reason) {
       RunPushBlockReason.trackTooLarge =>
         l10n.runDetailBlockedTrackTooLarge(waypoints),
+      RunPushBlockReason.durationOutOfRange =>
+        l10n.runDetailBlockedDurationTooLong(kMaxRunDurationS ~/ 3600),
     };
+    final edit = onEdit;
     return Card(
       color: theme.colorScheme.errorContainer,
       child: Padding(
@@ -4118,16 +4162,25 @@ class _BlockedPushCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                OutlinedButton.icon(
-                  onPressed: busy ? null : () => onExport(),
-                  icon: const Icon(Icons.download_outlined),
-                  label: Text(l10n.runDetailBlockedExport),
-                ),
-                FilledButton.icon(
-                  onPressed: busy ? null : () => onDropTrack(),
-                  icon: const Icon(Icons.cloud_upload),
-                  label: Text(l10n.runDetailBlockedDropTrack),
-                ),
+                if (waypoints > 0)
+                  OutlinedButton.icon(
+                    onPressed: busy ? null : () => onExport(),
+                    icon: const Icon(Icons.download_outlined),
+                    label: Text(l10n.runDetailBlockedExport),
+                  ),
+                if (reason == RunPushBlockReason.trackTooLarge)
+                  FilledButton.icon(
+                    onPressed: busy ? null : () => onDropTrack(),
+                    icon: const Icon(Icons.cloud_upload),
+                    label: Text(l10n.runDetailBlockedDropTrack),
+                  ),
+                if (reason == RunPushBlockReason.durationOutOfRange &&
+                    edit != null)
+                  FilledButton.icon(
+                    onPressed: busy ? null : () => edit(),
+                    icon: const Icon(Icons.edit_outlined),
+                    label: Text(l10n.runDetailEditTitle),
+                  ),
               ],
             ),
           ],

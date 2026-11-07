@@ -1978,6 +1978,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runLiveShareStopped => 'Partage en direct arrêté';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'Votre lien en direct n\'a encore envoyé aucune position — les spectateurs attendent toujours. Vérifiez votre signal.';
+
+  @override
   String get runLiveShareEndedTitle => 'Partage en direct terminé';
 
   @override
@@ -2072,9 +2076,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runUnitKcal => 'kcal';
-
-  @override
-  String get runUnitMetres => 'm';
 
   @override
   String get runUnitSpm => 'ppm';
@@ -2206,8 +2207,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runResumeDialogTitle => 'Reprendre votre course ?';
 
   @override
-  String get runResumeDialogBody =>
-      'Une course d\'une session précédente est toujours en cours. Reprenez l\'enregistrement là où vous vous êtes arrêté, terminez-la maintenant ou supprimez-la.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Une course d\'une session précédente est toujours en cours ($distance, $duration). Reprenez l\'enregistrement là où vous vous êtes arrêté, terminez-la maintenant ou supprimez-la.';
+  }
 
   @override
   String get runResumeAction => 'Reprendre';
@@ -2223,6 +2225,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Course précédente supprimée.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Course inachevée d\'une session précédente enregistrée ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Enregistrement inachevé d\'une session précédente supprimé ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>
@@ -2460,13 +2472,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonner';
 
   @override
-  String runWorkoutRemainingYards(int yards) {
-    return '$yards yd restants';
-  }
+  String get runWorkoutMoreActions => 'Autres actions de la séance';
 
   @override
-  String runWorkoutRemainingMetres(int metres) {
-    return '$metres m restants';
+  String runWorkoutRemainingDistance(String distance) {
+    return 'encore $distance';
   }
 
   @override
@@ -3434,6 +3444,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runDetailSegDismiss => 'Ignorer';
+
+  @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
 
   @override
   String get publicRunLiveTitle => 'En direct maintenant';
@@ -5265,6 +5280,43 @@ class AppLocalizationsFr extends AppLocalizations {
       'Une occurrence d\'événement à laquelle vous avez répondu a été annulée';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name demande à rejoindre votre club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name demande à rejoindre $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Votre demande d\'adhésion à un club a été acceptée';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'C\'est fait — votre demande pour rejoindre $club a été acceptée';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Un événement auquel vous participez a été modifié';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '« $title » a été modifié — consultez les nouveaux détails';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Un événement auquel vous aviez répondu a été annulé';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '« $title » a été annulé';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Une occurrence de « $title » a été annulée — votre paiement est en cours de remboursement';
   }
@@ -6095,13 +6147,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get liveSpectatorConnectError => 'Connexion impossible.';
 
   @override
-  String get liveSpectatorWaiting => 'En attente du premier signal du coureur…';
+  String get liveSpectatorWaitingGps =>
+      'En attente du GPS du coureur : sa position apparaîtra dès que son téléphone captera un signal';
 
   @override
   String get liveSpectatorBadgeLive => 'En direct';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Inactif';
+  String get liveSpectatorBadgeWaitingGps => 'En attente du GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Connexion';
@@ -6115,6 +6168,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get liveSpectatorApproximateSub =>
       'Vu pour la dernière fois près d\'ici — approximatif';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Approximatif — le signal GPS du coureur est faible';
 
   @override
   String get liveSpectatorBadgeFinished => 'Terminé';
@@ -20179,4 +20236,43 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Échec de l\'import : ce fichier ne contient aucun itinéraire d\'au moins deux points.';
+
+  @override
+  String get manualDurationErrorInvalid =>
+      'Utilisez uniquement des nombres entiers';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Les minutes doivent être comprises entre 0 et 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Les secondes doivent être comprises entre 0 et 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Une course ne peut pas durer plus de $hours heures';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Vérifiez la durée';
+
+  @override
+  String get manualDurationSlowBody =>
+      'C\'est bien plus lent que la marche pour cette distance. Un chiffre est-il dans la mauvaise case ?';
+
+  @override
+  String get manualDurationSlowSave => 'Enregistrer quand même';
+
+  @override
+  String get manualDurationSlowFix => 'Corriger';
+
+  @override
+  String get addRunStartInFuture =>
+      'L\'heure de départ ne peut pas être dans le futur';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Cette course dure plus de $hours heures, ce qu\'aucune course ne peut faire : le stockage cloud la refuse et réessayer ne fonctionnera jamais. Corrigez sa durée pour l\'envoyer.';
+  }
 }

@@ -18,6 +18,7 @@ class _FakeApiClient extends ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     callCount++;
     calls.add({
@@ -28,6 +29,7 @@ class _FakeApiClient extends ApiClient {
       'elapsed_s': elapsedS,
       'bpm': bpm,
       'ele': ele,
+      'weak_gps': weakGps,
     });
     if (errorToThrow != null) throw errorToThrow!;
   }
@@ -69,7 +71,16 @@ void main() {
         'elapsed_s': 5,
         'bpm': 130,
         'ele': 12,
+        'weak_gps': false,
       });
+    });
+
+    test('a weak-GPS ping carries its flag to the table', () async {
+      final api = _FakeApiClient();
+      final lb = LiveBroadcaster(api);
+      lb.attach('run-1');
+      await lb.pushPing(lat: 1, lng: 2, weakGps: true);
+      expect(api.calls.single['weak_gps'], true);
     });
 
     test('throttles back-to-back pings within the 5s window', () async {
@@ -190,6 +201,94 @@ void main() {
       // either — failure is just a missed ping; next 5 s tick takes
       // its place.
       expect(api.callCount, 0);
+    });
+  });
+
+  group('LiveBroadcaster delivery tracking', () {
+    test('a weak-GPS ping carries its flag to the hub, a precise one omits it',
+        () async {
+      final bodies = <Map<String, dynamic>>[];
+      var now = DateTime(2026, 11, 6, 9);
+      final hub = LiveHubClient(
+        baseUrl: 'https://live.threkir.com',
+        fetcher: (_, b, __) async {
+          bodies.add(b);
+          return 202;
+        },
+      );
+      final lb = LiveBroadcaster(_FakeApiClient(),
+          hubClient: hub, now: () => now);
+      lb.attach('run-1');
+      await lb.pushPing(lat: 1, lng: 2, weakGps: true);
+      now = now.add(const Duration(seconds: 6));
+      await lb.pushPing(lat: 1, lng: 2);
+      expect(bodies[0]['weak_gps'], true);
+      expect(bodies[1].containsKey('weak_gps'), false);
+    });
+
+    test('an accepted ping is recorded; a refused hub answer is not',
+        () async {
+      var status = 403;
+      var now = DateTime(2026, 11, 6, 9);
+      final hub = LiveHubClient(
+        baseUrl: 'https://live.threkir.com',
+        fetcher: (_, __, ___) async => status,
+      );
+      final lb = LiveBroadcaster(_FakeApiClient(),
+          hubClient: hub, now: () => now);
+      lb.attach('run-1');
+      await lb.pushPing(lat: 1, lng: 2);
+      expect(lb.lastSuccessAt, isNull,
+          reason: 'a 403 from the hub delivered nothing');
+      status = 202;
+      now = now.add(const Duration(seconds: 6));
+      await lb.pushPing(lat: 1, lng: 2);
+      expect(lb.lastSuccessAt, now);
+    });
+
+    test('warns once when nothing is accepted within 30 s of sharing',
+        () async {
+      var now = DateTime(2026, 11, 6, 9);
+      final api = _FakeApiClient()..errorToThrow = StateError('offline');
+      final lb = LiveBroadcaster(api, now: () => now);
+      lb.attach('run-1');
+      await lb.pushPing(lat: 1, lng: 2);
+      now = now.add(const Duration(seconds: 29));
+      expect(lb.takeNoPingWarning(), false);
+      now = now.add(const Duration(seconds: 1));
+      expect(lb.takeNoPingWarning(), true);
+      expect(lb.takeNoPingWarning(), false,
+          reason: 'the runner is told once per share, not every tick');
+    });
+
+    test('no warning once a ping has been accepted', () async {
+      var now = DateTime(2026, 11, 6, 9);
+      final lb = LiveBroadcaster(_FakeApiClient(), now: () => now);
+      lb.attach('run-1');
+      await lb.pushPing(lat: 1, lng: 2);
+      now = now.add(const Duration(minutes: 5));
+      expect(lb.takeNoPingWarning(), false);
+    });
+
+    test('re-attaching starts a fresh window and a fresh warning', () async {
+      var now = DateTime(2026, 11, 6, 9);
+      final lb = LiveBroadcaster(_FakeApiClient(), now: () => now);
+      lb.attach('run-1');
+      now = now.add(const Duration(seconds: 31));
+      expect(lb.takeNoPingWarning(), true);
+      lb.attach('run-2');
+      expect(lb.takeNoPingWarning(), false);
+      now = now.add(const Duration(seconds: 30));
+      expect(lb.takeNoPingWarning(), true);
+    });
+
+    test('a detached broadcaster never warns', () {
+      var now = DateTime(2026, 11, 6, 9);
+      final lb = LiveBroadcaster(_FakeApiClient(), now: () => now);
+      lb.attach('run-1');
+      lb.detach();
+      now = now.add(const Duration(minutes: 1));
+      expect(lb.takeNoPingWarning(), false);
     });
   });
 

@@ -259,6 +259,25 @@ class _LinkApi extends _WizardApi {
       (route: null, ownerId: null);
 }
 
+/// A signed-in account that has finished onboarding, so no wizard covers
+/// the shell.
+class _OnboardedApi extends _LinkApi {
+  @override
+  Future<cm.UserProfileRow?> fetchMyProfile() async {
+    final row = await super.fetchMyProfile();
+    if (row == null) return null;
+    return cm.UserProfileRow(
+      profilePrivate: false,
+      shadowHidden: false,
+      id: row.id,
+      displayName: 'Runner',
+      ageConfirmedAt: row.ageConfirmedAt,
+      termsAcceptedAt: row.termsAcceptedAt,
+      onboardedAt: DateTime.utc(2026, 10, 6),
+    );
+  }
+}
+
 class _StampApi extends ApiClient {
   int markOnboardedCalls = 0;
   bool failStamp = false;
@@ -1161,6 +1180,123 @@ void main() {
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(tester.widget<RunStopDock>(find.byType(RunStopDock)).docked,
           isTrue);
+    });
+  });
+
+  // Each page's own Scaffold floated its FAB at plain `endFloat`, 16dp above
+  // the bar, while the centre button rises 28dp into the page; a long
+  // extended label reached across the middle into it (issue #1300 § 4).
+  group('page FABs clear the docked centre button', () {
+    const pages = <(String, String)>[
+      ('Fitness', 'Runs'),
+      ('Fitness', 'Gym'),
+      ('Social', 'Clubs'),
+      ('Social', 'Challenges'),
+    ];
+
+    Finder fabInPage({required bool inPage}) => find.byElementPredicate((e) =>
+        e.widget is FloatingActionButton &&
+        (e.findAncestorWidgetOfExactType<PageView>() != null) == inPage);
+    Finder pageFab() => fabInPage(inPage: true).hitTestable();
+
+    // Through the controller: at a large text size the scrolling strip can
+    // hold the tab off-screen, and the geometry under test is the FAB's.
+    Future<void> selectTab(WidgetTester tester, String tab) async {
+      final bar = find.byType(TabBar).hitTestable().first;
+      final labels = find
+          .descendant(of: bar, matching: find.byType(Text))
+          .evaluate()
+          .map((e) => (e.widget as Text).data)
+          .toList();
+      expect(labels, contains(tab));
+      (tester.widget<TabBar>(bar).controller ??
+              DefaultTabController.of(tester.element(bar)))
+          .index = labels.indexOf(tab);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> openPage(WidgetTester tester, String nav, String tab) async {
+      // By the item's semantics label: past text scale 1.6 the bar drops
+      // its visible labels.
+      await tester.tap(find.descendant(
+          of: find.byType(BottomAppBar),
+          matching: find.byWidgetPredicate(
+              (w) => w is Semantics && w.properties.label == nav)));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await selectTab(tester, tab);
+      await pumpUntil(tester, () => pageFab().evaluate().isNotEmpty,
+          describe: 'the $nav → $tab page FAB');
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Future<void> pumpPhone(WidgetTester tester, {double textScale = 1}) async {
+      tester.view.physicalSize = const Size(411, 891);
+      tester.view.devicePixelRatio = 1.0;
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      // Signed in, so Social mounts its tabs rather than the sign-in state.
+      await _pump(tester, s, api: _OnboardedApi()..uid = 'u1');
+    }
+
+    for (final textScale in [1.0, 2.0]) {
+      for (final (nav, tab) in pages) {
+        testWidgets('$nav → $tab at 411dp, text scale $textScale',
+            (tester) async {
+          await pumpPhone(tester, textScale: textScale);
+          await openPage(tester, nav, tab);
+          final centre = tester.getRect(fabInPage(inPage: false));
+          final page = tester.getRect(pageFab());
+          expect(centre.center.dx, closeTo(411 / 2, 1),
+              reason: 'the shell\'s button sits in the middle of the bar');
+          expect(page.overlaps(centre), isFalse,
+              reason: 'the $tab FAB ($page) covers the centre button '
+                  '($centre)');
+          expect(page.bottom, lessThanOrEqualTo(centre.top - 16 + 0.01),
+              reason: 'a page FAB keeps its own 16dp margin above the '
+                  'centre button');
+        });
+      }
+    }
+
+    // Past text scale 1.6 the items drop their labels and the bar is 56dp;
+    // the centre caption kept its 64dp slot and overflowed it.
+    testWidgets('the bar lays out at text scale 2.0, captions dropped',
+        (tester) async {
+      await pumpPhone(tester, textScale: 2.0);
+      expect(tester.takeException(), isNull);
+      expect(
+          find.descendant(
+              of: find.byType(BottomAppBar), matching: find.byType(Text)),
+          findsNothing);
+    });
+
+    testWidgets('the rail docks nothing, so a page FAB stays at endFloat',
+        (tester) async {
+      tester.view.physicalSize = const Size(2560, 1440);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.reset);
+      final s = await _makeStores();
+      await _seedLoggedLift(tester, s);
+      await _pump(tester, s);
+      await tester.tap(find.descendant(
+          of: find.byType(NavigationRail), matching: find.text('Fitness')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await selectTab(tester, 'Runs');
+      await pumpUntil(tester, () => pageFab().evaluate().isNotEmpty,
+          describe: 'the Runs page FAB on the rail');
+      expect(tester.widget<DockedFabInset>(find.byType(DockedFabInset)).height,
+          0);
+      final page = tester.widget<Scaffold>(find
+          .ancestor(of: pageFab(), matching: find.byType(Scaffold))
+          .first);
+      expect(page.floatingActionButtonLocation,
+          FloatingActionButtonLocation.endFloat);
     });
   });
 

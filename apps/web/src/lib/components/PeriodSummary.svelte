@@ -11,6 +11,8 @@
 	import ThisWeekStrip from '#lib/components/ThisWeekStrip.svelte';
 	import { periodNeedsFullHistory, type PeriodType } from '#lib/core/dashboard_runs.ts';
 	import type { PeriodSummaryRun } from '#lib/core/data.ts';
+	import { isPlausibleRunDuration } from '#lib/runs/run_duration.ts';
+	import { periodPaceTotals } from '#lib/runs/period_pace.ts';
 
 	interface Props {
 		runs: PeriodSummaryRun[];
@@ -153,7 +155,10 @@
 
 	let stats = $derived.by(() => {
 		const d = periodRuns.reduce((s, r) => s + r.distance_m, 0);
-		const t = periodRuns.reduce((s, r) => s + r.duration_s, 0);
+		const t = periodRuns.reduce(
+			(s, r) => s + (isPlausibleRunDuration(r.duration_s) ? r.duration_s : 0),
+			0,
+		);
 		const longest = periodRuns.length
 			? Math.max(...periodRuns.map((r) => r.distance_m))
 			: 0;
@@ -163,7 +168,16 @@
 			(s, r) => s + (r.elevation_gain_m != null && r.elevation_gain_m > 0 ? r.elevation_gain_m : 0),
 			0,
 		);
-		return { distance: d, duration: t, count: periodRuns.length, longest, climb };
+		const pace = periodPaceTotals(periodRuns);
+		return {
+			distance: d,
+			duration: t,
+			count: periodRuns.length,
+			longest,
+			climb,
+			paceDistance: pace.distanceM,
+			paceDuration: pace.durationS,
+		};
 	});
 
 	// The day strip draws only the calendar week holding today, so it shows
@@ -182,7 +196,9 @@
 		];
 		if (stats.count > 0) {
 			lines.push(`${m('periodSummary.shareLongest')}: ${formatDistance(stats.longest)}`);
-			lines.push(`${m('periodSummary.shareAvgPace')}: ${formatPace(stats.duration, stats.distance)}`);
+			if (stats.paceDistance > 0) {
+				lines.push(`${m('periodSummary.shareAvgPace')}: ${formatPace(stats.paceDuration, stats.paceDistance)}`);
+			}
 		}
 		const text = lines.join('\n');
 		try {
@@ -265,8 +281,8 @@
 		<div class="stat-card">
 			<span class="stat-label">{m('periodSummary.avgPace')}</span>
 			<span class="stat-value">
-				{stats.count > 0 && stats.distance > 0
-					? formatPace(stats.duration, stats.distance)
+				{stats.count > 0 && stats.paceDistance > 0
+					? formatPace(stats.paceDuration, stats.paceDistance)
 					: '—'}
 			</span>
 		</div>

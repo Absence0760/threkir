@@ -1,6 +1,19 @@
 import 'package:flutter/material.dart';
 
+import 'stat_grid.dart';
+
 const double _valueInset = 4;
+
+/// Narrowest a [StatTile.medium] cell may be at 1.0x text scale: a tabular
+/// "11:23" at the 22 sp title size plus a "/km" unit and the two value insets.
+const double kStatMediumCellMinWidth = 84;
+
+/// Narrowest a [StatTile.large] cell may be at 1.0x text scale: "11:23" at the
+/// 28 sp headline size plus a "/km" unit and the two value insets, so a pace
+/// reads at full size and only an hour-long time has to scale down. Three
+/// hero cells still share a 360 dp phone's 320 dp row; four on a 411 dp phone
+/// do not, and reflow to two by two instead of shrinking until they touch.
+const double kStatLargeCellMinWidth = 104;
 
 enum _StatEmphasis { small, medium, large }
 
@@ -24,7 +37,14 @@ enum _StatEmphasis { small, medium, large }
 /// instead of the number shrinking. Lay these out with `StatGrid`, which
 /// bounds every cell by construction, or with `Expanded`. The label may
 /// ellipsise — a stat whose name is clipped is still identifiable beside its
-/// neighbours and its icon, a clipped number is not.
+/// neighbours and its icon, a clipped number is not. A small tile's label gets
+/// two lines before it ellipsises, because its cell is the narrowest and a
+/// name like "Grade-Adj. Pace" — longer still in German or French — rarely
+/// fits one.
+///
+/// `large` and `medium` draw the value in a slot one unscaled line tall,
+/// bottom-aligned, so a value `BoxFit.scaleDown` shrank does not lift the
+/// label under it: every label in a row sits at the same height.
 ///
 /// Muted text is `onSurfaceVariant`, not `colorScheme.outline`: `outline` is
 /// a 3:1 boundary token and reads 4.058:1 on the light card, under WCAG
@@ -73,6 +93,14 @@ class StatTile extends StatelessWidget {
 
   final _StatEmphasis _emphasis;
 
+  /// The narrowest cell this tile's value reads in at 1.0x text scale, which
+  /// [StatGrid] scales by the OS text scale to choose its column count.
+  double get minCellWidth => switch (_emphasis) {
+        _StatEmphasis.small => kStatCellMinWidth,
+        _StatEmphasis.medium => kStatMediumCellMinWidth,
+        _StatEmphasis.large => kStatLargeCellMinWidth,
+      };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -82,7 +110,7 @@ class StatTile extends StatelessWidget {
     final labelText = Text(
       label,
       textAlign: TextAlign.center,
-      maxLines: 1,
+      maxLines: _emphasis == _StatEmphasis.small ? 2 : 1,
       overflow: TextOverflow.ellipsis,
       style: (large ? theme.textTheme.bodySmall : theme.textTheme.labelSmall)
           ?.copyWith(color: muted),
@@ -94,7 +122,7 @@ class StatTile extends StatelessWidget {
           Icon(icon, size: 16, color: muted),
           const SizedBox(height: 2),
         ],
-        _value(theme, muted),
+        _value(context, theme, muted),
         SizedBox(
             height: switch (_emphasis) {
           _StatEmphasis.small => 0,
@@ -117,7 +145,7 @@ class StatTile extends StatelessWidget {
     );
   }
 
-  Widget _value(ThemeData theme, Color muted) {
+  Widget _value(BuildContext context, ThemeData theme, Color muted) {
     if (_emphasis == _StatEmphasis.small) {
       return Text(
         value,
@@ -129,41 +157,57 @@ class StatTile extends StatelessWidget {
       );
     }
     final large = _emphasis == _StatEmphasis.large;
+    final valueStyle = large
+        ? theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700)
+        : theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          );
     // The inset keeps a gutter between neighbouring cells: without it a value
     // scaled down to its cell's full width runs straight into the next one,
     // and "3:00:58" beside "3:00:55" reads as one number.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: _valueInset),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              value,
-              style: large
-                  ? theme.textTheme.headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)
-                  : theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-            ),
-            if (unit != null) ...[
-              SizedBox(width: large ? 4 : 2),
-              Text(
-                unit!,
-                style: (large
-                        ? theme.textTheme.bodySmall
-                        : theme.textTheme.labelSmall)
-                    ?.copyWith(color: muted),
-              ),
+      child: SizedBox(
+        height: _lineHeight(context, valueStyle),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.bottomCenter,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(value, style: valueStyle),
+              if (unit != null) ...[
+                SizedBox(width: large ? 4 : 2),
+                Text(
+                  unit!,
+                  style: (large
+                          ? theme.textTheme.bodySmall
+                          : theme.textTheme.labelSmall)
+                      ?.copyWith(color: muted),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  static double _lineHeight(BuildContext context, TextStyle? style) {
+    final painter = TextPainter(
+      text: TextSpan(
+        text: '0',
+        style: DefaultTextStyle.of(context).style.merge(style),
+      ),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height;
   }
 }

@@ -37,9 +37,10 @@ void main() {
     // orphans every run already parked under the old spelling — which then
     // reads as retryable again and resumes the loop the park exists to stop.
     expect(RunPushBlockReason.trackTooLarge.name, 'trackTooLarge');
-    expect(RunPushBlockReason.values, hasLength(1),
+    expect(RunPushBlockReason.durationOutOfRange.name, 'durationOutOfRange');
+    expect(RunPushBlockReason.values, hasLength(2),
         reason: 'decisions § 986 refused a taxonomy with no reachable member; '
-            'a second member is earned by measuring a second permanent '
-            'failure, and brings a sidecar-compatibility question with it');
+            'each member is earned by measuring a permanent failure (§ 1009, '
+            '§ 2359), and brings a sidecar-compatibility question with it');
   });
 }

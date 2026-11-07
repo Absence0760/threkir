@@ -120,6 +120,7 @@ class ChallengesScreenState extends State<ChallengesScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.challengesTitle)),
       body: body,
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: buildCreateChallengeFab(context),
     );
   }

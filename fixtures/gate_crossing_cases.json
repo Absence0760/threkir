@@ -1,6 +1,6 @@
 {
  "spec": "gate_crossing v1",
- "reference": "docs/architecture/parity_pairs.md (gate_crossing, TS<->Dart and Dart<->Kotlin); issue #1304 section 1; decisions § 1856 (this file's schema convention), § 2362 (the v1 spec and its provisional constants)",
+ "reference": "docs/architecture/parity_pairs.md (gate_crossing, TS<->Dart and Dart<->Kotlin); issue #1304 section 1; decisions § 1856 (this file's schema convention), § 2363 (the v1 spec and its provisional constants)",
  "readers": [
   "apps/web/src/lib/geo/gate_crossing.test.ts",
   "apps/mobile_android/test/gate_crossing_test.dart",
@@ -15,7 +15,7 @@
    "distanceToleranceM applies to every compared distance (s, u, offsetM, coveredM); timeToleranceS to every compared time; fractionTolerance to every compared fraction. Every other comparison (direction, gapped, afterFix, crossing count) is exact.",
    "Every expected value was computed by hand from the geometry in the case's note, never from a port's output."
   ],
-  "constants": "EARTH_RADIUS_M, MAX_GAP_S, MAX_HOP_M, REJECT_GAP_S, HALF_WIDTH_RACE_M, HALF_WIDTH_SEGMENT_M. Each reader asserts its own constants equal these. Every constant but EARTH_RADIUS_M is PROVISIONAL until the #1304 calibration session (decisions § 2362).",
+  "constants": "EARTH_RADIUS_M, MAX_GAP_S, MAX_HOP_M, REJECT_GAP_S, HALF_WIDTH_RACE_M, HALF_WIDTH_SEGMENT_M. Each reader asserts its own constants equal these. Every constant but EARTH_RADIUS_M is PROVISIONAL until the #1304 calibration session (decisions § 2363).",
   "gate": "{lat, lng, bearingDeg, halfWidthM}: the line through (lat, lng) perpendicular to the direction of travel bearingDeg (clockwise from north), reaching halfWidthM either side of the centre.",
   "position": "Either {lat, lng}, used as given, or {eastM, northM} relative to the case's gate centre: lat = gate.lat + northM / K, lng = gate.lng + eastM / (K * cos(gate.lat in radians)), K = EARTH_RADIUS_M * PI / 180. The second form is the exact inverse of the helper's projection, so a local-frame case's s and u are its eastM / northM rotated by the bearing, to rounding.",
   "projection": "{name, note, gate, point: position, expect: {s, u}}: gateProjection(gate, point.lat, point.lng). s = p . d is the signed distance past the line along the direction of travel d = (sin b, cos b); u = p . g the lateral offset along g = (cos b, -sin b), positive to the right of travel. p = (x east, y north) on the tangent plane at the gate centre.",

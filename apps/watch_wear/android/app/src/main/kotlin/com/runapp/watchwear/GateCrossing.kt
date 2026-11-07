@@ -6,7 +6,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /// Timing-line ("gate") crossing detection, spec `gate_crossing v1` (issue
-/// #1304, decisions § 2362). A pure port of the `gate_crossing` pair (Dart
+/// #1304, decisions § 2363). A pure port of the `gate_crossing` pair (Dart
 /// side `apps/mobile_android/lib/gate_crossing.dart`, web side
 /// `apps/web/src/lib/geo/gate_crossing.ts`). No Android, no I/O, no clock.
 /// All three read `fixtures/gate_crossing_cases.json`, so a rule changes there

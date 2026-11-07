@@ -1,5 +1,5 @@
 /// Timing-line ("gate") crossing detection, spec `gate_crossing v1` (issue
-/// #1304, decisions § 2362). Pure: no Flutter, no clock, no I/O.
+/// #1304, decisions § 2363). Pure: no Flutter, no clock, no I/O.
 ///
 /// Web twin: `apps/web/src/lib/geo/gate_crossing.ts`; Kotlin twin:
 /// `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/GateCrossing.kt`

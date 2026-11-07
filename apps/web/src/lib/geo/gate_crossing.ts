@@ -1,5 +1,5 @@
 // Timing-line ("gate") crossing detection, spec `gate_crossing v1` (issue
-// #1304, decisions § 2362). Pure: every instant is handed in.
+// #1304, decisions § 2363). Pure: every instant is handed in.
 //
 // Parity pair with apps/mobile_android/lib/gate_crossing.dart, which is itself
 // paired with Wear OS's GateCrossing.kt. All three read

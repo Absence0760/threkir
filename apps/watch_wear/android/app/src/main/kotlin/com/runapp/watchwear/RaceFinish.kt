@@ -6,7 +6,7 @@ import kotlin.math.abs
 /// Race-mode finish detection, a pure port of the `race_finish` parity pair
 /// (Dart side `apps/mobile_android/lib/race_finish.dart`, web side
 /// `apps/web/src/lib/races/race_finish.ts`), spec `race_finish v2` (decisions
-/// § 2363). No Android, no I/O, no clock: every timestamp it handles arrives
+/// § 2364). No Android, no I/O, no clock: every timestamp it handles arrives
 /// on a [Fix]. All three read their cases from `fixtures/race_finish_cases.json`
 /// at the repo root, so a rule changes there or nowhere.
 ///
@@ -215,7 +215,7 @@ class ServerClockOffset {
 ///
 /// Without a usable line, in a gun mode, it is v1's closest approach (the
 /// rule on [RaceFinish]). With lines (the Dart twin's class comment carries
-/// the rules in full, decisions § 2363):
+/// the rules in full, decisions § 2364):
 /// - Start, gun mode with a start line: the runner's side of the line at GO
 ///   decides. On or past it, the start is GO; behind it, the first forward
 ///   crossing after GO followed by [RaceFinish.START_COMMIT_M] of covered

@@ -44,6 +44,11 @@ type Ping struct {
 	// (Unix ms). The hub passes it through unchanged so a spectator
 	// can compute end-to-end latency against their own clock.
 	SentAtMs int64 `json:"sent_at_ms,omitempty"`
+	// WeakGPS marks a fix the recorder kept for distance but not for its
+	// line (stated accuracy worse than its map gate). Spectators draw it as
+	// an approximate position and never join it into the trace. Mirrors
+	// `live_run_pings.weak_gps` (decisions § 2357).
+	WeakGPS bool `json:"weak_gps,omitempty"`
 }
 
 // Validate enforces a sane envelope on every field. Rejects NaN /

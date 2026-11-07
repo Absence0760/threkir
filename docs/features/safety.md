@@ -481,6 +481,44 @@ matters most.
   only the odometer on that side — an idiomatic shape difference, not a
   divergence.
 
+## Live link delivery: what is sent and what the viewer says (2026-11-06, decisions § 2357)
+
+> **STATUS: shipped web + mobile (Android + iOS twin).** Issue #1300 BUG-003 / BUG-007.
+
+Two field reports from one walk: the live link drew straight lines across the
+route the saved run did not have, and on a budget Android phone it never left
+"Connecting".
+
+- **Publisher (mobile `run_screen` → `LiveBroadcaster`).** A ping carries
+  `livePublishPoint(snapshot)`: the end of the recorder's line while a fix has
+  cleared the 20 m map gate within the 10 s GPS-lost window, never
+  `currentPosition` (which includes the fixes the movement filter rejected).
+  While no fix clears the gate but the distance estimator took one, the ping
+  is that fix, flagged `live_run_pings.weak_gps` (migration `20271112000030`).
+  The race ping uses the same point without the weak fallback. A share that
+  has delivered nothing 30 s after it started shows a one-off top banner
+  (`runLiveShareNoPingYet`, skipped while paused); a Go-hub answer outside 2xx
+  now counts as a failure. All of it stays L4: a failed ping or banner never
+  touches the recording.
+- **Viewer (web `/live/[id]`, mobile `live_spectator_screen.dart`).** Subscribe
+  first, then read the backlog. Every ping goes through the `live_trace` pair,
+  which keeps the trace in time order and drops duplicates; only the newest
+  ping drives the stat strip and marker, so a late one never rewinds them. A
+  weak ping is the live dot inside a translucent halo with an "Approximate —
+  weak GPS" line, never joined into the trace — distinct from the amber
+  privacy-zone `coarse` ring. A live run with no ping yet reads **Waiting for
+  GPS** (`waiting-gps` in `live_spectator_status.ts`), not Connecting. When the
+  realtime channel errors or times out, the page polls `live_run_pings` from the
+  newest `at` it has seen every 10 s (`LIVE_POLL_FALLBACK_MS`) until the channel
+  is back, then catches up once from the same cursor. The Go-hub path keeps its
+  own reconnect loop and gains the ordering and dedupe.
+- **Watches.** Wear OS and watchOS publish race pings only, never the live
+  link, and both already send the last ACCEPTED fix (`latestPoint` is set only
+  for a track point on Wear; `lastAcceptedFix` on watchOS), so neither shares
+  BUG-003. Wear's race ping has no freshness gate of its own (it re-sends the
+  last accepted point every 10 s through a GNSS loss); that is the race board's
+  staleness question, not this one, and is left as it is.
+
 ## Off-route → auto-notify trusted contact (feature D, 2026-07-13, ADR §241)
 
 > **STATUS: code shipped, prod-gated.** Built against the

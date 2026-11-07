@@ -5892,7 +5892,7 @@ class _StatsOverlay extends StatelessWidget {
                           Icon(
                             Icons.flag_outlined,
                             size: 24,
-                            color: theme.colorScheme.primary,
+                            color: theme.colorScheme.onPrimaryContainer,
                           ),
                           if (lapCount > 0)
                             Positioned(

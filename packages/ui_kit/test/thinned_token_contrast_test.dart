@@ -74,16 +74,14 @@ void main() {
     });
 
     group('$name repaired sites', () {
-      test('the coach-card subtitle: 0.8 failed AA, full does not', () {
+      test('the coach-card subtitle takes onPrimaryContainer at full', () {
+        // 0.8 read 4.470:1 on the violet container this was measured on. The
+        // coral pair moved it to 4.559:1, which no longer fails, so the revert
+        // direction cannot be pinned by contrast; thinned_token_register_test
+        // still counts the site, which keeps a new alpha from slipping in.
         final bg = s.primaryContainer;
         expect(_contrast(s.onPrimaryContainer, bg),
             greaterThanOrEqualTo(_aaText));
-        if (name == 'light') {
-          // 4.470:1 — under AA by a margin no eye would catch, which is why it
-          // shipped. Dark read 5.276:1, so only one brightness ever failed.
-          expect(_contrast(_thin(s.onPrimaryContainer, 0.8, bg), bg),
-              lessThan(_aaText));
-        }
       });
 
       test('the map-tiles hint border is its only boundary', () {

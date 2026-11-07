@@ -781,7 +781,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             Text(
               AppLocalizations.of(context).clubDetailNextEvent,
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
+                color: theme.colorScheme.onPrimaryContainer,
                 letterSpacing: 0.8,
                 fontWeight: FontWeight.w700,
               ),
@@ -797,7 +797,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             Row(
               children: [
                 Icon(Icons.calendar_today, size: 14,
-                    color: theme.colorScheme.outline),
+                    color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
@@ -809,7 +809,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                 ),
                 const SizedBox(width: 12),
                 Icon(Icons.group, size: 14,
-                    color: theme.colorScheme.outline),
+                    color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Text(
                   AppLocalizations.of(context)

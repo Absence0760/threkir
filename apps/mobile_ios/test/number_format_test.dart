@@ -8,6 +8,33 @@ import '../lib/preferences.dart';
 void main() {
   tearDown(() => registerActiveLocaleTag('en'));
 
+  group('formatInteger', () {
+    // Mirrors apps/web/src/lib/format/number.test.ts.
+    test('groups thousands per locale', () {
+      expect(formatInteger(1234, 'en'), '1,234');
+      expect(formatInteger(1234, 'de'), '1.234');
+      expect(formatInteger(1234, 'ja'), '1,234');
+      expect(formatInteger(842, 'en'), '842');
+      expect(formatInteger(842, 'de'), '842');
+    });
+
+    test('rounds to the nearest whole number', () {
+      expect(formatInteger(1234.4, 'en'), '1,234');
+      expect(formatInteger(1234.5, 'en'), '1,235');
+      expect(formatInteger(0.4, 'en'), '0');
+    });
+
+    test('a non-finite value is a dash, never NaN or infinity', () {
+      expect(formatInteger(double.nan, 'en'), '—');
+      expect(formatInteger(double.infinity, 'en'), '—');
+      expect(formatInteger(double.negativeInfinity, 'de'), '—');
+    });
+
+    test('repeated calls are stable', () {
+      expect(formatInteger(1234, 'de'), formatInteger(1234, 'de'));
+    });
+  });
+
   group('formatFixed', () {
     test('en matches the old toStringAsFixed exactly', () {
       expect(formatFixed(5.214, 2, 'en'), '5.21');

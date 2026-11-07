@@ -104,8 +104,7 @@ class _EventFormState extends State<_EventForm> {
   DateTime _starts = _defaultStart(DateTime.now());
 
   static DateTime _defaultStart(DateTime now) {
-    final t = now.add(const Duration(days: 1, hours: 1));
-    return DateTime(t.year, t.month, t.day, t.hour, t.minute);
+    return DateTime(now.year, now.month, now.day + 1, now.hour + 1, now.minute);
   }
 
   String _recurrence = 'none'; // none | weekly | biweekly | monthly

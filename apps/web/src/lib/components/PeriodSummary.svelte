@@ -196,7 +196,9 @@
 		];
 		if (stats.count > 0) {
 			lines.push(`${m('periodSummary.shareLongest')}: ${formatDistance(stats.longest)}`);
-			lines.push(`${m('periodSummary.shareAvgPace')}: ${formatPace(stats.paceDuration, stats.paceDistance)}`);
+			if (stats.paceDistance > 0) {
+				lines.push(`${m('periodSummary.shareAvgPace')}: ${formatPace(stats.paceDuration, stats.paceDistance)}`);
+			}
 		}
 		const text = lines.join('\n');
 		try {

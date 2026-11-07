@@ -3521,12 +3521,6 @@ abstract class AppLocalizations {
   /// **'kcal'**
   String get runUnitKcal;
 
-  /// Unit suffix for the elevation stat (metres)
-  ///
-  /// In en, this message translates to:
-  /// **'m'**
-  String get runUnitMetres;
-
   /// Unit suffix for the cadence stat (steps per minute)
   ///
   /// In en, this message translates to:

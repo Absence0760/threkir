@@ -2690,10 +2690,6 @@
   "@runUnitKcal": {
     "description": "Unit suffix for the calories stat"
   },
-  "runUnitMetres": "m",
-  "@runUnitMetres": {
-    "description": "Unit suffix for the elevation stat (metres)"
-  },
   "runUnitSpm": "spm",
   "@runUnitSpm": {
     "description": "Unit suffix for the cadence stat (steps per minute)"

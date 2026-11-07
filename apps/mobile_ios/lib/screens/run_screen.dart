@@ -4702,7 +4702,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     return '$cals';
   }
 
-  String get _formattedElevation => '${_elevationGain.gainMetres.round()}';
+  String get _formattedElevation =>
+      UnitFormat.elevationValue(_elevationGain.gainMetres, _unit);
 
   // ──────────────── Build ────────────────
 
@@ -5411,6 +5412,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       : l10n.runStatAvgPace,
                   calories: _formattedCalories,
                   elevation: _formattedElevation,
+                  elevationUnit: UnitFormat.elevationLabel(_unit),
                   steps: '$_steps',
                   cadence: '$_cadence',
                   bpm: _currentBpm,
@@ -5661,6 +5663,7 @@ class _StatsOverlay extends StatelessWidget {
   final String secondaryLabel;
   final String calories;
   final String elevation;
+  final String elevationUnit;
   final String steps;
   final String cadence;
   final int? bpm;
@@ -5692,6 +5695,7 @@ class _StatsOverlay extends StatelessWidget {
     required this.secondaryLabel,
     required this.calories,
     required this.elevation,
+    required this.elevationUnit,
     required this.steps,
     required this.cadence,
     required this.bpm,
@@ -5744,7 +5748,7 @@ class _StatsOverlay extends StatelessWidget {
                 children: [
                   Expanded(child: StatTile.medium(label: l10n.runStatCalories, value: calories, unit: l10n.runUnitKcal)),
                   _divider(theme),
-                  Expanded(child: StatTile.medium(label: l10n.runStatElevation, value: elevation, unit: l10n.runUnitMetres)),
+                  Expanded(child: StatTile.medium(label: l10n.runStatElevation, value: elevation, unit: elevationUnit)),
                   _divider(theme),
                   Expanded(child: StatTile.medium(label: l10n.runStatSteps, value: steps)),
                   _divider(theme),

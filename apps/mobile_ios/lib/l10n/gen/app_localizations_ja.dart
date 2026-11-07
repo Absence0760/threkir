@@ -1983,9 +1983,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runUnitKcal => 'kcal';
 
   @override
-  String get runUnitMetres => 'm';
-
-  @override
   String get runUnitSpm => 'spm';
 
   @override

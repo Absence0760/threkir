@@ -562,7 +562,6 @@
   "runStatCadence": "Schrittfrequenz",
   "runStatHeartRate": "Herzfrequenz",
   "runUnitKcal": "kcal",
-  "runUnitMetres": "m",
   "runUnitSpm": "S/min",
   "runUnitBpm": "S/min",
   "runMutePaceCues": "Tempohinweise stumm",

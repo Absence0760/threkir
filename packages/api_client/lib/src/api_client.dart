@@ -1125,17 +1125,7 @@ class ApiClient {
     final trackUrls = <String, String>{};
     final trackFailures = <String, Object>{};
     final blocked = <String, RunPushBlockReason>{};
-    // `runs_duration_s_max_check` refuses a run past ten days, and a refused
-    // row fails its whole chunk — every other run in it would retry with it,
-    // forever. Such a run is parked before anything is sent (decisions § 2359).
-    for (final r in runs) {
-      if (!isPlausibleRunDuration(r.duration.inSeconds)) {
-        blocked[r.id] = RunPushBlockReason.durationOutOfRange;
-      }
-    }
-    final pushable = blocked.isEmpty
-        ? runs
-        : runs.where((r) => !blocked.containsKey(r.id)).toList();
+    final pushable = _parkOutOfBoundDurations(runs, blocked);
     if (pushable.isEmpty) return _outcome(trackFailures, blocked);
     final runsWithTracks = pushable.where((r) => r.track.isNotEmpty).toList();
     for (var i = 0; i < runsWithTracks.length; i += uploadConcurrency) {
@@ -1306,6 +1296,23 @@ class ApiClient {
       e.code == '23503' &&
       (e.message.contains('runs_event_id_fkey') ||
           '${e.details}'.contains('(${RunRow.colEventId})'));
+
+  /// `runs_duration_s_max_check` refuses a run past ten days, and Postgres
+  /// refuses a multi-row upsert whole, so one such run would fail every run in
+  /// its chunk on every cycle. It is parked into [blocked] before anything is
+  /// sent, and the rest are returned (decisions § 2359).
+  static List<Run> _parkOutOfBoundDurations(
+    List<Run> runs,
+    Map<String, RunPushBlockReason> blocked,
+  ) {
+    for (final r in runs) {
+      if (!isPlausibleRunDuration(r.duration.inSeconds)) {
+        blocked[r.id] = RunPushBlockReason.durationOutOfRange;
+      }
+    }
+    if (blocked.isEmpty) return runs;
+    return runs.where((r) => !blocked.containsKey(r.id)).toList();
+  }
 
   static RunPushOutcome _outcome(
     Map<String, Object> trackFailures,

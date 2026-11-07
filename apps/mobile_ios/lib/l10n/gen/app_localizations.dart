@@ -5723,6 +5723,12 @@ abstract class AppLocalizations {
   /// **'Dismiss'**
   String get runDetailSegDismiss;
 
+  /// Header of the run-detail segment card: where along the run the tapped stretch starts and ends, e.g. 1.05–1.35 km. start and end are locale-formatted numbers; unit is km or mi
+  ///
+  /// In en, this message translates to:
+  /// **'{start}–{end} {unit}'**
+  String runDetailSegRange(String start, String end, String unit);
+
   /// Heading on the public run view when the run is still being broadcast live
   ///
   /// In en, this message translates to:

@@ -1520,6 +1520,7 @@ export const en = {
 	"runDetail.queueing": "Queueing…",
 	"runDetail.rematch": "Re-match",
 	"runDetail.segmentEyebrow": "SEGMENT",
+	"runDetail.segmentRange": "{start}–{end} {unit}",
 	"runDetail.closeSegmentDetails": "Close segment details",
 	"runDetail.distance": "Distance",
 	"runDetail.time": "Time",

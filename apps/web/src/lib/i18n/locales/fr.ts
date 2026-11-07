@@ -1507,6 +1507,7 @@ export const messages = {
 	"runDetail.queueing": "Mise en file…",
 	"runDetail.rematch": "Réaligner",
 	"runDetail.segmentEyebrow": "SEGMENT",
+	"runDetail.segmentRange": "{start}–{end} {unit}",
 	"runDetail.closeSegmentDetails": "Fermer les détails du segment",
 	"runDetail.distance": "Distance",
 	"runDetail.time": "Temps",

@@ -1507,6 +1507,7 @@ export const messages = {
 	"runDetail.queueing": "Wird eingereiht…",
 	"runDetail.rematch": "Neu abgleichen",
 	"runDetail.segmentEyebrow": "SEGMENT",
+	"runDetail.segmentRange": "{start}–{end} {unit}",
 	"runDetail.closeSegmentDetails": "Segmentdetails schließen",
 	"runDetail.distance": "Distanz",
 	"runDetail.time": "Zeit",

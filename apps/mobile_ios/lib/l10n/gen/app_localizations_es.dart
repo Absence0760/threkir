@@ -3438,6 +3438,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailSegDismiss => 'Descartar';
 
   @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
+
+  @override
   String get publicRunLiveTitle => 'En directo ahora';
 
   @override

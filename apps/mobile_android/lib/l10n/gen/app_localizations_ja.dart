@@ -3271,6 +3271,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailSegDismiss => '閉じる';
 
   @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start〜$end $unit';
+  }
+
+  @override
   String get publicRunLiveTitle => 'ただいまライブ中';
 
   @override

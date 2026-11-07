@@ -28,6 +28,7 @@
 	import { minMax } from '#lib/util/min_max.ts';
 	import type { TrackPoint } from '#lib/types.ts';
 	import { lineLngLat } from '#lib/runs/track_line.ts';
+	import { buildCumulative, buildSegment, type SelectedSegment } from '#lib/runs/track_segment.ts';
 	import {
 		PACE_GRADIENT_RAMP,
 		paceGradientColour,
@@ -38,29 +39,10 @@
 	import { snapToPolyline } from '#lib/routes/route_snap.ts';
 	import { computeDistanceMarkers, METRES_PER_MILE } from '#lib/runs/distance_markers.ts';
 	import {
-		haversineMetres as haversine,
 		buildTrackIndex,
 		nearestIndex,
 		type TrackIndex,
 	} from '#lib/routes/nearest_track_point.ts';
-
-	/// Segment-detail callback. When set, clicks anywhere on the map
-	/// snap to the nearest track point, compute a small window (±150 m
-	/// of cumulative track distance) around it, and fire `onSegmentSelect`
-	/// with stats for that window. The host page renders the popup. Set
-	/// to `null` from the host to clear the highlight.
-	export interface SelectedSegment {
-		startIdx: number;
-		endIdx: number;
-		clickIdx: number;
-		distance_m: number;
-		duration_s: number | null;
-		avg_pace_sec_per_km: number | null;
-		avg_bpm: number | null;
-		ele_gain_m: number;
-		ele_loss_m: number;
-		mid: TrackPoint;
-	}
 
 	/// A course marker to paint on the map. `color` is the shared hex from
 	/// ROUTE_MARKER_KINDS so a pin matches the schedule list + the mobile twin.
@@ -75,6 +57,9 @@
 	interface Props {
 		track: TrackPoint[];
 		animatable?: boolean;
+		/// When set, a click snaps to the nearest track point and fires with
+		/// the ±150 m stretch around it (`runs/track_segment.ts`); the host
+		/// renders the card. Set the host's segment to `null` to clear it.
 		onSegmentSelect?: (seg: SelectedSegment | null) => void;
 		/// When provided AND the polyline distance is shorter than the
 		/// authoritative route distance, scale the marker positions so
@@ -367,96 +352,12 @@
 	/// Computed once when the track is mounted.
 	let cumulativeM: number[] = [];
 
-	function buildCumulative(coords: [number, number][]): number[] {
-		const out = new Array(coords.length).fill(0);
-		for (let i = 1; i < coords.length; i++) {
-			out[i] = out[i - 1] + haversine(coords[i - 1], coords[i]);
-		}
-		return out;
-	}
-
 	/// Spatial index over the track for tap-to-select. Built once with
 	/// `cumulativeM` when the track mounts so per-tap nearest-point
 	/// lookup stays bounded on a 150k+-point ultra track (a plain linear
 	/// scan visibly lagged); small tracks fall through to an exact
 	/// linear scan inside `nearestIndex`.
 	let trackIndex: TrackIndex = { coords: [], grid: null };
-
-	/// Build a segment of the track centred on `clickIdx`, expanding
-	/// outwards until the distance window (±150 m of cumulative track
-	/// length) is reached. Computes pace + HR + elevation deltas.
-	const SEGMENT_RADIUS_M = 150;
-
-	function buildSegment(clickIdx: number): SelectedSegment | null {
-		if (track.length < 2 || cumulativeM.length !== track.length) return null;
-		const target = cumulativeM[clickIdx];
-		let startIdx = clickIdx;
-		while (startIdx > 0 && cumulativeM[startIdx - 1] >= target - SEGMENT_RADIUS_M) startIdx--;
-		let endIdx = clickIdx;
-		while (
-			endIdx < cumulativeM.length - 1 &&
-			cumulativeM[endIdx + 1] <= target + SEGMENT_RADIUS_M
-		)
-			endIdx++;
-		if (startIdx === endIdx) {
-			// Edge of the track — widen by one neighbour so we have a real
-			// segment rather than a single-point degenerate.
-			if (endIdx < cumulativeM.length - 1) endIdx++;
-			else if (startIdx > 0) startIdx--;
-		}
-
-		const distance_m = cumulativeM[endIdx] - cumulativeM[startIdx];
-
-		// Duration + pace come from per-point timestamps when present.
-		const startTs = track[startIdx]?.ts;
-		const endTs = track[endIdx]?.ts;
-		let duration_s: number | null = null;
-		let avg_pace_sec_per_km: number | null = null;
-		if (startTs && endTs) {
-			const dt = (Date.parse(endTs) - Date.parse(startTs)) / 1000;
-			if (Number.isFinite(dt) && dt > 0) {
-				duration_s = Math.round(dt);
-				if (distance_m > 10) {
-					avg_pace_sec_per_km = Math.round(dt / (distance_m / 1000));
-				}
-			}
-		}
-
-		// HR + elevation deltas walk only the segment slice.
-		let bpmSum = 0;
-		let bpmCount = 0;
-		let eleGain = 0;
-		let eleLoss = 0;
-		for (let i = startIdx; i <= endIdx; i++) {
-			const b = track[i]?.bpm;
-			if (typeof b === 'number' && b >= 30 && b <= 230) {
-				bpmSum += b;
-				bpmCount++;
-			}
-			if (i > startIdx) {
-				const prev = track[i - 1]?.ele;
-				const cur = track[i]?.ele;
-				if (typeof prev === 'number' && typeof cur === 'number') {
-					const delta = cur - prev;
-					if (delta > 0) eleGain += delta;
-					else eleLoss += -delta;
-				}
-			}
-		}
-
-		return {
-			startIdx,
-			endIdx,
-			clickIdx,
-			distance_m,
-			duration_s,
-			avg_pace_sec_per_km,
-			avg_bpm: bpmCount > 0 ? Math.round(bpmSum / bpmCount) : null,
-			ele_gain_m: Math.round(eleGain),
-			ele_loss_m: Math.round(eleLoss),
-			mid: track[clickIdx],
-		};
-	}
 
 	/// Update / re-create the highlighted segment overlay on the map.
 	/// Idempotent — safe to call repeatedly with different segments.
@@ -898,7 +799,7 @@
 				if (!onSegmentSelect) return;
 				if (trackCoords.length < 2) return;
 				const idx = nearestIndex(trackIndex, e.lngLat.lng, e.lngLat.lat);
-				const seg = buildSegment(idx);
+				const seg = buildSegment(track, cumulativeM, idx);
 				renderSegmentHighlight(seg);
 				onSegmentSelect(seg);
 			});

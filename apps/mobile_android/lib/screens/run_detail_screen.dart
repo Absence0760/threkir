@@ -3948,21 +3948,38 @@ class _SegmentStatsCard extends StatelessWidget {
     ];
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        padding: const EdgeInsets.fromLTRB(16, 4, 8, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.runDetailSegRange(
+                      UnitFormat.distanceValue(
+                          segment.startDistanceMetres, unit),
+                      UnitFormat.distanceValue(segment.endDistanceMetres, unit),
+                      UnitFormat.distanceLabel(unit),
+                    ),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: l10n.runDetailSegDismiss,
+                  onPressed: onDismiss,
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
               child: Wrap(
                 spacing: 16,
                 runSpacing: 4,
                 children: stats,
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: l10n.runDetailSegDismiss,
-              onPressed: onDismiss,
             ),
           ],
         ),

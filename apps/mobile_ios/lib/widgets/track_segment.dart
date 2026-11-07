@@ -4,13 +4,18 @@ import 'package:latlong2/latlong.dart';
 import '../run_stats.dart' show haversineMetres;
 
 /// The result of tapping the run-detail map. Mirrors `SelectedSegment`
-/// in `apps/web/src/lib/components/RunMap.svelte`. Carries the index
+/// in `apps/web/src/lib/runs/track_segment.ts`. Carries the index
 /// range and a few aggregate stats for the slice of track within
 /// ±150 m of the tapped point.
 class SelectedSegment {
   final int startIdx;
   final int endIdx;
   final int clickIdx;
+
+  /// Cumulative distance along the drawn line where the stretch starts and
+  /// ends, so the card can say which part of the run it measures.
+  final double startDistanceMetres;
+  final double endDistanceMetres;
   final double distanceMetres;
   final Duration? duration;
   final double? paceSecondsPerKm;
@@ -23,6 +28,8 @@ class SelectedSegment {
     required this.startIdx,
     required this.endIdx,
     required this.clickIdx,
+    required this.startDistanceMetres,
+    required this.endDistanceMetres,
     required this.distanceMetres,
     required this.duration,
     required this.paceSecondsPerKm,
@@ -34,7 +41,7 @@ class SelectedSegment {
 }
 
 /// ±150 m window around the tapped track point. Matches `SEGMENT_RADIUS_M`
-/// on web — keep in lockstep so a click on web and a tap on mobile
+/// in `runs/track_segment.ts` on web — keep in lockstep so a click on web and a tap on mobile
 /// produce visually identical highlights and stats.
 const double segmentRadiusMetres = 150;
 
@@ -106,7 +113,9 @@ SelectedSegment? buildSegmentAt(List<Waypoint> track, int clickIdx,
     }
   }
 
-  final distanceM = cum[endIdx] - cum[startIdx];
+  final startM = cum[startIdx];
+  final endM = cum[endIdx];
+  final distanceM = endM - startM;
 
   // Duration + pace come from per-point timestamps when present.
   final startTs = track[startIdx].timestamp;
@@ -152,6 +161,8 @@ SelectedSegment? buildSegmentAt(List<Waypoint> track, int clickIdx,
     startIdx: startIdx,
     endIdx: endIdx,
     clickIdx: clickIdx,
+    startDistanceMetres: startM,
+    endDistanceMetres: endM,
     distanceMetres: distanceM,
     duration: duration,
     paceSecondsPerKm: paceSecondsPerKm,

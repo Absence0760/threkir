@@ -3402,6 +3402,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runDetailSegDismiss => 'Dismiss';
 
   @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
+
+  @override
   String get publicRunLiveTitle => 'Live right now';
 
   @override

@@ -3437,6 +3437,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runDetailSegDismiss => 'Dispensar';
 
   @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
+
+  @override
   String get publicRunLiveTitle => 'Em direto agora';
 
   @override
@@ -23658,6 +23663,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailSegDismiss => 'Dispensar';
+
+  @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start–$end $unit';
+  }
 
   @override
   String get publicRunLiveTitle => 'Ao vivo agora';

@@ -4532,6 +4532,21 @@
   "@runDetailSegDismiss": {
     "description": "Tooltip on the segment card's close button"
   },
+  "runDetailSegRange": "{start}–{end} {unit}",
+  "@runDetailSegRange": {
+    "description": "Header of the run-detail segment card: where along the run the tapped stretch starts and ends, e.g. 1.05–1.35 km. start and end are locale-formatted numbers; unit is km or mi",
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
   "publicRunLiveTitle": "Live right now",
   "@publicRunLiveTitle": {
     "description": "Heading on the public run view when the run is still being broadcast live"

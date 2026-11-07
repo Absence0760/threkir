@@ -10,7 +10,9 @@
 
 	const METRES_PER_MILE = 1609.344;
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_SITE_URL, PUBLIC_TILE_STYLE_URL as PUBLIC_TILE_STYLE_URL_ENV } from '$app/env/public';
-	import RunMap, { type SelectedSegment } from '#lib/components/RunMap.svelte';
+	import RunMap from '#lib/components/RunMap.svelte';
+	import type { SelectedSegment } from '#lib/runs/track_segment.ts';
+	import { formatDecimal } from '#lib/format/number.ts';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
 	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
 	import { hasPreviewableCourse, trackPreview } from '#lib/routes/course_preview_points.ts';
@@ -196,6 +198,17 @@
 	/// re-clicking the same area is reset by the next selection. Drives
 	/// the floating "Segment details" card overlaying the map.
 	let selectedSegment = $state<SelectedSegment | null>(null);
+
+	function segmentRangeLabel(seg: SelectedSegment): string {
+		const unit = getUnit();
+		const perUnit = unit === 'mi' ? METRES_PER_MILE : 1000;
+		const locale = currentLocale();
+		return m('runDetail.segmentRange', {
+			start: formatDecimal(seg.start_m / perUnit, 2, locale),
+			end: formatDecimal(seg.end_m / perUnit, 2, locale),
+			unit,
+		});
+	}
 	let editing = $state(false);
 	let editTitle = $state('');
 	let editNotes = $state('');
@@ -1848,7 +1861,10 @@
 		{#if selectedSegment}
 			<aside class="segment-card">
 				<header class="segment-card-head">
-					<span class="segment-eyebrow">{m('runDetail.segmentEyebrow')}</span>
+					<div class="segment-title">
+						<span class="segment-eyebrow">{m('runDetail.segmentEyebrow')}</span>
+						<span class="segment-range">{segmentRangeLabel(selectedSegment)}</span>
+					</div>
 					<button
 						class="segment-close"
 						aria-label={m('runDetail.closeSegmentDetails')}
@@ -3294,6 +3310,19 @@
 		justify-content: space-between;
 		gap: 0.5rem;
 		margin-bottom: 0.4rem;
+	}
+
+	.segment-title {
+		display: flex;
+		flex-direction: column;
+		gap: 0.1rem;
+		min-width: 0;
+	}
+
+	.segment-range {
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: var(--color-text);
 	}
 
 	.segment-eyebrow {

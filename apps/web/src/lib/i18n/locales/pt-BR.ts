@@ -1506,6 +1506,7 @@ export const messages = {
 	"runDetail.queueing": "Na fila…",
 	"runDetail.rematch": "Reajustar",
 	"runDetail.segmentEyebrow": "SEGMENTO",
+	"runDetail.segmentRange": "{start}–{end} {unit}",
 	"runDetail.closeSegmentDetails": "Fechar detalhes do segmento",
 	"runDetail.distance": "Distância",
 	"runDetail.time": "Tempo",

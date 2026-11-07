@@ -929,6 +929,7 @@
   "runDetailSegStatHr": "心拍",
   "runDetailSegStatGain": "獲得標高",
   "runDetailSegDismiss": "閉じる",
+  "runDetailSegRange": "{start}〜{end} {unit}",
   "publicRunLiveTitle": "ただいまライブ中",
   "publicRunLiveSub": "このランはまだ進行中です。ライブトラッカーで追いかけましょう。",
   "publicRunWatchLive": "ライブで見る",

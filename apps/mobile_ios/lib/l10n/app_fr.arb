@@ -929,6 +929,7 @@
   "runDetailSegStatHr": "FC",
   "runDetailSegStatGain": "Dénivelé +",
   "runDetailSegDismiss": "Ignorer",
+  "runDetailSegRange": "{start}–{end} {unit}",
   "publicRunLiveTitle": "En direct maintenant",
   "publicRunLiveSub": "Cette course est toujours en cours. Suivez-la sur le suivi en direct.",
   "publicRunWatchLive": "Suivre en direct",

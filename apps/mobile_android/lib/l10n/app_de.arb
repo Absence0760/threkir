@@ -929,6 +929,7 @@
   "runDetailSegStatHr": "HF",
   "runDetailSegStatGain": "Aufstieg",
   "runDetailSegDismiss": "Verwerfen",
+  "runDetailSegRange": "{start}–{end} {unit}",
   "publicRunLiveTitle": "Jetzt live",
   "publicRunLiveSub": "Dieser Lauf läuft noch. Verfolge ihn im Live-Tracker.",
   "publicRunWatchLive": "Live ansehen",

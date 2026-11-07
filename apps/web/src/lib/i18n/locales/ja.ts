@@ -1502,6 +1502,7 @@ export const messages = {
 	"runDetail.queueing": "キューに追加中…",
 	"runDetail.rematch": "再マッチ",
 	"runDetail.segmentEyebrow": "セグメント",
+	"runDetail.segmentRange": "{start}〜{end} {unit}",
 	"runDetail.closeSegmentDetails": "セグメントの詳細を閉じる",
 	"runDetail.distance": "距離",
 	"runDetail.time": "時間",

@@ -68,12 +68,13 @@ Future<void> _pump(WidgetTester tester, Size size) async {
   await tester.pump(Duration.zero);
 }
 
-Future<void> _selectSegment(WidgetTester tester) async {
+Future<SelectedSegment> _selectSegment(WidgetTester tester) async {
   final map = tester.widget<LiveRunMap>(find.byType(LiveRunMap));
   final segment = buildSegmentAt(map.track, 20);
   expect(segment, isNotNull);
   map.onSegmentSelect!(segment!);
   await tester.pump();
+  return segment;
 }
 
 final _card = find.byKey(const ValueKey('run-detail-segment-card'));
@@ -116,6 +117,22 @@ void main() {
     await tester.tap(find.descendant(of: _card, matching: find.byIcon(Icons.close)));
     await tester.pump();
     expect(_card, findsNothing);
+  });
+
+  testWidgets('the card says which stretch of the run it measures',
+      (tester) async {
+    await _pump(tester, const Size(411, 900));
+    final segment = await _selectSegment(tester);
+    // Track point 20 of 40, ~50 m apart: the ±150 m window snaps to the
+    // fixes at ~0.90 and ~1.10 km.
+    expect(segment.startDistanceMetres, closeTo(900, 2));
+    expect(segment.endDistanceMetres, closeTo(1100, 2));
+    final start = (segment.startDistanceMetres / 1000).toStringAsFixed(2);
+    final end = (segment.endDistanceMetres / 1000).toStringAsFixed(2);
+    expect(
+      find.descendant(of: _card, matching: find.text('$start–$end km')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('on an expanded layout the card sits under the map pane',

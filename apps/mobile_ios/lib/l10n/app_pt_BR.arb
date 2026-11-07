@@ -929,6 +929,7 @@
   "runDetailSegStatHr": "FC",
   "runDetailSegStatGain": "Ganho",
   "runDetailSegDismiss": "Dispensar",
+  "runDetailSegRange": "{start}–{end} {unit}",
   "publicRunLiveTitle": "Ao vivo agora",
   "publicRunLiveSub": "Esta corrida ainda está em andamento. Acompanhe no rastreador ao vivo.",
   "publicRunWatchLive": "Assistir ao vivo",

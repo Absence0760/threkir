@@ -26,7 +26,7 @@ import 'store_write_watch.dart';
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   installStoreWriteWatch();
   // A test that ends mid-recording disposes its run screen, which hands the
-  // run on (decisions § 2351). Left set, it would open the next test's run
+  // run on (decisions § 2352). Left set, it would open the next test's run
   // screen on a Resume prompt for a run that test never recorded.
   tearDown(() => orphanedRecording.value = null);
   await testMain();

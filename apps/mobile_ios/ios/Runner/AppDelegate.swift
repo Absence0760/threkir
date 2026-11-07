@@ -67,7 +67,7 @@ import workmanager_apple
     // cannot claim the delegate in time and the tap that launched the app
     // would never reach getInitialMessage(). The plugin's README step for
     // UIScene apps. The APNs token itself needs no call here: from 16.7 the
-    // plugin requests it when it registers late (decisions.md § 2353).
+    // plugin requests it when it registers late (decisions.md § 2354).
     FLTFirebaseMessagingPlugin.configureNotificationCenterDelegate()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

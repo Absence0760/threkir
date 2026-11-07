@@ -122,7 +122,7 @@ Numbers are USD/month at the launch tier (1000 active users, ~5 runs/user/month)
 | Fly.io — job_worker | shared-cpu-1x, 256 MB | $5 |
 | Fly.io — OSRM | performance-2x, 8 GB RAM, 20 GB Volume | $30 |
 | Fly.io — bandwidth | mostly internal 6PN (free); Storage egress goes through Supabase | <$5 |
-| MapTiler Cloud | Free tier (100k tile reqs/mo) → paid ~$25 above | $0 → $25 |
+| MapTiler Cloud | Free tier (100k tile reqs/mo) covers development, testing and a closed pre-launch only (MapTiler Support, 2026-11-06); a public commercial launch needs a paid plan, which is also what makes a countersigned DPA available | $0 pre-launch → paid plan at launch |
 | Anthropic API | Coach usage at ~$0.003 per chat turn × ~5k turns/mo | $15 |
 | Domain | Cloudflare Registrar (.app cost) | ~$1.5 |
 | Email (Resend) | Free tier 3k emails/mo → $20 above | $0 → $20 |
@@ -691,6 +691,14 @@ Share-link visit counters, sign-up attribution and Your shares ([decisions § 22
 1. CISO / Security Analyst: confirm the aggregate counter (`private.share_link_daily`, written by the anon-callable `record_share_visit` from the share page; no cookie, IP, user agent, user id or browser storage) needs no cookie consent, and review the bounded write path (public entities only, capped daily counters, 90-day purge).
 2. CISO / Security Analyst: decide whether sign-up attribution (`signup_share` in the GoTrue metadata, counted by the `auth.users` trigger) is a new purpose, and if so update [dpia.md](../compliance/dpia.md) and have counsel add its row to the privacy policy's § 3 purpose table. [sub-processors.md](../compliance/sub-processors.md) does not change: no vendor is involved.
 3. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('share_attribution', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; counting and attribution stop at once, and the existing buckets age out under `purge-share-link-daily`.
+
+### First-touch sign-up source — after the CISO / Security Analyst review
+
+Recording which platform each new account came from ([decisions § 2350](../architecture/decisions.md), migration `20271110000001`) ships closed: no migration writes the `signup_source` row of `private.feature_flags`, so no sign-up sends `signup_source` metadata and the `auth.users` trigger records nothing. The browser still keeps the tab's first touch in sessionStorage (`threkir.signup_source`), which never leaves it while the gate is closed. In order:
+
+1. CISO / Security Analyst: confirm the sessionStorage entry needs no cookie consent (first-party, per tab, sent only with a sign-up the person submits; listed on `/cookie-notice` § 2), and that legitimate interest fits the purpose row the privacy policy's § 3 now carries; update [dpia.md](../compliance/dpia.md) if it is a new purpose. Counsel reviews the added privacy-policy text (§ 2 "How you found us", § 3 row, § 7 retention). [sub-processors.md](../compliance/sub-processors.md) does not change: no vendor is involved.
+2. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('signup_source', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; recording stops at once and recorded rows stay with their accounts.
+3. Reading the counts: `select day, source, signups from private.signup_sources_daily where day >= current_date - 30 order by day desc, signups desc;` in the same SQL editor. Accounts from before step 2 count as `unknown`.
 
 ### Public plan share ("Train with me") — after the CISO / Security Analyst review
 

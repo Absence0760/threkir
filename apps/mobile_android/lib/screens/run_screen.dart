@@ -4177,7 +4177,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // session; it must not also end the run. Checkpoint it while the
     // recorder and workout runner it reads still exist: the next run screen
     // offers to resume it in this process, and the in-progress file carries
-    // it to the next cold start (decisions § 2351).
+    // it to the next cold start (decisions § 2352).
     // Guarded on its own so a failure here can never skip the releases below.
     try {
       final checkpoint = _inProgressCheckpoint();

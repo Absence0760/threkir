@@ -1,10 +1,10 @@
--- Pins migrations 20270415_001 and 20271110000001 (function search_path
+-- Pins migrations 20270415_001 and 20271110000002 (function search_path
 -- pins). Catch-all over pg_proc: EVERY function in an app-owned schema
 -- (public and private) must carry a pinned search_path in proconfig, so a
 -- future migration can't ship a function whose unqualified references
 -- resolve against the caller's mutable session search_path (Supabase advisor
 -- lint 0011). The advisor reads every non-system schema, so a test that read
--- only public let two private helpers reach prod unpinned (decisions § 2350).
+-- only public let two private helpers reach prod unpinned (decisions § 2351).
 -- Extension-owned functions are excluded (none live in these schemas today,
 -- but an extension update must not fail this suite). The failure message
 -- names the offending functions.

@@ -1450,7 +1450,7 @@ class _HomeScreenState extends State<HomeScreen>
     // it (the live recorder among them) keep their State when the width class
     // changes. Rotating a large phone crosses the expanded breakpoint, and two
     // differently shaped branches unmounted the recorder mid-run, losing the
-    // run (decisions § 2351). The rail is a sibling that comes and goes beside
+    // run (decisions § 2352). The rail is a sibling that comes and goes beside
     // a keyed body slot, and the phone's bar and docked button are Scaffold
     // slots, so neither moves the body.
     return _backGuard(Scaffold(

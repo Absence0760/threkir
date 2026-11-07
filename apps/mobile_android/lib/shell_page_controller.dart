@@ -7,7 +7,7 @@ import 'package:flutter/widgets.dart';
 /// which after the first page change is no longer the page the shell has
 /// selected. A remounted PageView then showed Home while the shell's index
 /// still said Run, so the nav marked Run selected and the Log button answered
-/// "already on Run" over a recording nobody could reach (decisions § 2351).
+/// "already on Run" over a recording nobody could reach (decisions § 2352).
 /// `keepPage` is off because the shell's index is the one record of the
 /// selected page, and a PageStorage copy of it could only disagree.
 class ShellPageController extends PageController {

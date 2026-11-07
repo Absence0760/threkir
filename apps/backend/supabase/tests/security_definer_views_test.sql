@@ -1,6 +1,6 @@
 -- Pins the set of views in the app schemas (public, private) that run as
 -- their owner rather than the caller. Each one is a Supabase advisor
--- "Security Definer View" finding, accepted by decisions § 244 and § 2350
+-- "Security Definer View" finding, accepted by decisions § 244 and § 2351
 -- because the view is the redaction layer and the only read path to rows
 -- whose base tables are owner-only: the public_* views pre-filter
 -- is_public = true, and shared_runs / shared_routes / coached_runs carry

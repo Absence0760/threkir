@@ -7895,6 +7895,7 @@ export type Database = {
       }
       sign_in_browser_class: { Args: { p_ua: string }; Returns: string }
       sign_in_platform_class: { Args: { p_ua: string }; Returns: string }
+      signup_source_enabled: { Args: never; Returns: boolean }
       spend_coach_usage_slot: {
         Args: { p_user_id: string }
         Returns: {

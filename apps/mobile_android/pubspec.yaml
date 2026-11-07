@@ -128,7 +128,7 @@ dependencies:
   # plugins register after didFinishLaunching, and every earlier release asks
   # iOS for an APNs token only from that launch callback. No APNs token means
   # getToken() throws and no ios row reaches device_tokens (issue #1300
-  # BUG-002, decisions.md § 2353). 17.x needs Xcode 26.2 and is its own bump.
+  # BUG-002, decisions.md § 2354). 17.x needs Xcode 26.2 and is its own bump.
   firebase_core: ^4.15.2
   firebase_messaging: ^16.7.1
   # OS "Open with" / share-target for GPX/KML → route import (device-led,

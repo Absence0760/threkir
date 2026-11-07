@@ -149,7 +149,7 @@ works from anywhere.
    every iPhone build up to and including `firebase_messaging` 15.2.10 had the
    entitlement, the plist and the APNs key all correct and still registered
    nothing — `getToken()` threw `apns-token-not-set` (issue #1300 BUG-002,
-   `decisions.md § 2353`). 16.7.0 requests the token when the plugin registers
+   `decisions.md § 2354`). 16.7.0 requests the token when the plugin registers
    late and again once Dart's `Firebase.initializeApp()` configures the app;
    `AppDelegate` sets the notification-centre delegate itself, the plugin's
    UIScene step, so a cold-launch tap still reaches `getInitialMessage()`.

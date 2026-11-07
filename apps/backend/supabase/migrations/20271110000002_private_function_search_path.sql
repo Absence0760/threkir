@@ -1,5 +1,5 @@
 -- Pin search_path on the two private-schema constants the prod security
--- advisor flags as "Function Search Path Mutable" (decisions § 2350).
+-- advisor flags as "Function Search Path Mutable" (decisions § 2351).
 --
 -- private.event_waitlist_claim_window() (20270726000002) and
 -- private.share_link_daily_cap() (20271104000004) are `language sql

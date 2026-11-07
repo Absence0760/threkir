@@ -1571,7 +1571,7 @@ export function evaluate(input) {
 					`${MESSAGING_UISCENE_FLOOR}.\n  This app starts through UIScene, so ` +
 					'plugins register after didFinishLaunching; earlier releases ask iOS ' +
 					'for an APNs token only from that callback, getToken() throws, and ' +
-					'no iPhone ever registers a device token (decisions.md § 2353).',
+					'no iPhone ever registers a device token (decisions.md § 2354).',
 			);
 		} else {
 			ok.push(

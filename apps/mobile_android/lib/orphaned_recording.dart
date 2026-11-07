@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 ///
 /// The recorder lives in the run screen's State, so anything that unmounts
 /// that State mid-run ends the GPS session with it. The shell is built so
-/// that a layout change cannot (decisions § 2351), but a State dispose is the
+/// that a layout change cannot (decisions § 2352), but a State dispose is the
 /// last line, not the first: whatever caused it, the run is handed on here and
 /// written to the in-progress file rather than dropped. Cleared at sign-out
 /// with the in-progress file it mirrors ([wipeInProgressRecording]).

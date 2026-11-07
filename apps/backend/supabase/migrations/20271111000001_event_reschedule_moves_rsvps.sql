@@ -1,4 +1,4 @@
--- Moving an event moves its upcoming RSVPs with it (decisions § 2352, issue
+-- Moving an event moves its upcoming RSVPs with it (decisions § 2353, issue
 -- #1300 BUG-015).
 --
 -- Every RSVP, waitlist entry and paid order is keyed to one occurrence by

@@ -357,7 +357,7 @@ The run file carries the L0/L1 half: it holds the store's chain open through a `
 
 Pure-function tests for the top-level `smoothTrack(List<LatLng>)` helper extracted from `widgets/live_run_map.dart` (1-2-3-2-1 weighted polyline smoother used to reduce GPS jitter on the live map). Pins: short-track passthrough (length < 5), first-two-and-last-two preservation, the explicit `(a + 2b + 3c + 2d + e) / 9` weighted-mean formula, co-linear evenly-spaced points are unchanged, the no-mutation contract (returns a new list), length-0/1 inputs handled, length-5 input smooths exactly index 2, and constant-coordinate input (weights sum to 9) returns its input.
 
-### `apps/mobile_android/test/period_summary_test.dart` — 27 tests
+### `apps/mobile_android/test/period_summary_test.dart` — 28 tests
 
 Pure-function tests for the period summary screen's extracted helpers in `lib/screens/period_summary_screen.dart`:
 
@@ -389,7 +389,7 @@ Pure-function tests for the period summary screen's extracted helpers in `lib/sc
 - `shortDate`: day + abbreviated month
 - `monthName`: full month name for all positions
 
-### `apps/mobile_android/test/goals_test.dart` — 36 tests
+### `apps/mobile_android/test/goals_test.dart` — 37 tests
 
 Pure-function tests for `evaluateGoal` and `RunGoal` JSON serialisation in `lib/goals.dart`:
 - Period bounds (week start = Monday 00:00, month end wraps to next year), and `weekStartLocal` across a late-Saturday / early-Sunday seam on both week starts
@@ -459,7 +459,7 @@ Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`l
 - `phaseFor`: 2 tests (phase splits, final week)
 - `generatePlan`: 7 tests (week count, day distribution, taper volume, race week, intervals, no-input fallback, stepback)
 
-### `apps/mobile_android/test/training_load_test.dart` — 29 tests
+### `apps/mobile_android/test/training_load_test.dart` — 30 tests
 
 Dart mirror of `apps/web/src/lib/training_load.test.ts`. The Dart engine (`lib/training_load.dart`) must produce the same Fitness / Fatigue / Form curves as the TypeScript engine for the same inputs. Covers `computeStress` (distance fallback ~50 for an easy 5k, TRIMP path lights up with `avg_bpm` + resting + max, zero-input → 0), `aggregateDailyStress` (sums same-day runs), `computeTrainingLoadSeries` (emits exactly `windowDays` entries, TSB rises during a 14-day taper, all-zero with no runs), and `hasTrimpSignal` (no `avg_bpm` / has `avg_bpm` + prefs / prefs missing).
 
@@ -800,7 +800,7 @@ Pure-Dart-equivalent tests for the read side at `lib/backup_reader.ts` — `pars
 
 **extractEventIds (2 tests):** distinct ids extracted; nulls / undefineds / empty strings / non-strings / missing-key entries all dropped.
 
-### `apps/web/src/lib/training/training_load.test.ts` — 33 tests
+### `apps/web/src/lib/training/training_load.test.ts` — 34 tests
 
 TypeScript unit tests for the training-load curves (`lib/training_load.ts`, decisions §34). Run with `npx tsx --test src/lib/training_load.test.ts` from `apps/web`.
 
@@ -940,7 +940,7 @@ The run share-image editor end to end, reading the downloaded PNG: an occasion s
 
 Web-only (no Dart twin — mobile does not read `event_exceptions` outside its own event-detail screen). Pure tests for `lib/social/event_occurrence.ts`, the layer that subtracts cancelled occurrences from a recurrence expansion. `isOccurrenceCancelled` covers both ISO renderings of one instant matching (PostgREST `+00:00` vs a client `.000Z`), a different instant / empty list / null / undefined not matching, and an unparseable cancelled instant never matching. `nextLiveInstance` covers the nothing-cancelled fast path, skipping the cancelled next occurrence, skipping a run of consecutive cancellations, a cancellation further out leaving the next one alone, already-past cancellations not eating the search budget, every remaining occurrence cancelled returning null, an exhausted series returning null either way, and a cancelled one-off. `upcomingCancelledOccurrences` covers future-only + oldest-first ordering, an unparseable instant being dropped rather than sorted to an edge, and an occurrence starting exactly now counting as ahead.
 
-### `apps/web/src/lib/training/goals.test.ts` — 34 tests
+### `apps/web/src/lib/training/goals.test.ts` — 35 tests
 
 Mirror of `apps/mobile_android/test/goals_test.dart`. Pure tests for `lib/goals.ts`. `weekStartLocal` is pinned across a late-Saturday / early-Sunday seam on both week starts; `periodStart` / `periodEnd` cover Monday-default + Sunday-override week anchoring, month start = 1st, week end = start + 7 days, December → January wrap. `formatPaceSecPerKm` covers em-dash for non-positive / non-finite, m:ss/km formatting with zero-padded seconds, half-up rounding. `evaluateGoal` covers empty list = 0%, runs outside the period excluded, distance target accumulation + complete-on-hit, pace target excluding cycling rides from the distance-weighted average, pace target with no qualifying runs reporting 0% + em-dash currentLabel, lower-is-better partial progress, time + runCount targets, multi-target complete-only-when-every-hit, `overallPercent` as the mean of target percents, and zero / negative targets being filtered out of the targets list. `markedDoneTally` counts hand-marked sessions from the period start through today only, and `evaluateGoal` adds them to the distance and run-count targets but not time or pace (decisions § 1813). `newGoalId` covers uniqueness across 100 calls. `loadGoals` / `saveGoals` cover empty when no data, save / load round-trip preservation, per-user keying isolating two users on the same browser, null userId returns empty, the legacy unscoped-key migration on first load (with the legacy key removed afterwards), accepting both legacy camelCase and canonical snake_case wire shapes, and corrupt-JSON returning empty.
 
@@ -1397,7 +1397,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,453 declared tests across 643 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,457 declared tests across 643 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

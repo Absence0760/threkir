@@ -139,6 +139,8 @@ Tapping a run opens the detail view:
 
 A weekly summary card at the top of the history list shows total distance and run count for the current week.
 
+A run added by hand is graded before it is saved: the duration is typed as hours, minutes and seconds (minutes and seconds 0–59), it must be above zero and at most ten days, a pace slower than 1 km/h over the typed distance asks first, and the start cannot be in the future. Every duration total — the weekly summary, period summaries, the recap, goals, training load and the `duration` challenge board — skips a stored run longer than ten days rather than summing it, so one bad legacy or imported row cannot swamp a week ([decisions § 2359](../architecture/decisions.md), issue #1300 § 5).
+
 **Done when:**
 - All recorded and synced runs appear in list within 1 second of opening
 - Map renders correctly for runs with and without GPS tracks (parkrun/race imports have no GPS)

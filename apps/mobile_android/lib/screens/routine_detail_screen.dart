@@ -322,6 +322,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
           ),
         ],
       ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: r == null
           ? null
           : FloatingActionButton.extended(

@@ -228,6 +228,7 @@ class _PublicRouteScreenState extends State<PublicRouteScreen> {
             ),
         ],
       ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: canStartRun
           ? FloatingActionButton.extended(
               heroTag: 'public_route_start_run',

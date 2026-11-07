@@ -106,8 +106,8 @@ no longer applies.
 
 ## Host tests — the current figure, and where NOT to read one
 
-`watch_core` carries **2467 host tests in `watch_core`** today: the `#[test]`
-fns across the 111 modules `core/src/lib.rs` declares. That is the number
+`watch_core` carries **2472 host tests in `watch_core`** today: the `#[test]`
+fns across the 112 modules `core/src/lib.rs` declares. That is the number
 `check_watch_doc_counts.mjs` re-derives on every PR, so it is the one to quote.
 Re-measure the runtime figure with
 `cd apps/custom_watch && cargo test --target "$(rustc -vV | sed -n 's|host: ||p')" -p watch_core`

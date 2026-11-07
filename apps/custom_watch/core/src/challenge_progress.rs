@@ -19,6 +19,7 @@
 //! Pure logic, no peripherals, no allocator.
 
 use crate::pacer::ON_PACE_BAND;
+use crate::run_duration::is_plausible_run_duration;
 use heapless::Vec;
 
 /// Whole-milliseconds in a day — the challenge-window unit web computes in.
@@ -130,7 +131,14 @@ pub fn metric_from_activity(
     }
     match metric {
         ChallengeMetric::Distance => number_of(&summary.distance_m),
-        ChallengeMetric::Duration => number_of(&summary.duration_s),
+        ChallengeMetric::Duration => {
+            let d = number_of(&summary.duration_s);
+            if is_plausible_run_duration(d) {
+                d
+            } else {
+                0.0
+            }
+        }
         ChallengeMetric::Vert => number_of(&summary.elevation_gain_m),
         ChallengeMetric::ActivityCount => 1.0,
         ChallengeMetric::StreakDays => 1.0,
@@ -411,6 +419,18 @@ mod tests {
         assert_eq!(
             metric_from_activity(&s, ChallengeMetric::Duration, None),
             1800.0
+        );
+    }
+
+    #[test]
+    fn metric_from_activity_duration_past_the_ten_day_bound_is_zero() {
+        let s = ActivitySummary {
+            duration_s: SummaryValue::Num(44_400_094.0),
+            ..Default::default()
+        };
+        assert_eq!(
+            metric_from_activity(&s, ChallengeMetric::Duration, None),
+            0.0
         );
     }
 

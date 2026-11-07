@@ -18640,6 +18640,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planDetailHideEarlierWeeks => 'Frühere Wochen ausblenden';
 
   @override
+  String get planDetailGoToThisWeek => 'Zu dieser Woche springen';
+
+  @override
   String get planNewStartingPoint => 'Wo stehst du gerade?';
 
   @override

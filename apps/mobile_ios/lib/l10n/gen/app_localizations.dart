@@ -30187,6 +30187,12 @@ abstract class AppLocalizations {
   /// **'Hide earlier weeks'**
   String get planDetailHideEarlierWeeks;
 
+  /// Hint on the plan header's week pill: tapping it scrolls the week list to the current week
+  ///
+  /// In en, this message translates to:
+  /// **'Go to this week'**
+  String get planDetailGoToThisWeek;
+
   /// Plan wizard: the first question, which decides the fields that apply
   ///
   /// In en, this message translates to:

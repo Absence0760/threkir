@@ -17744,6 +17744,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get planDetailHideEarlierWeeks => 'これまでの週を隠す';
 
   @override
+  String get planDetailGoToThisWeek => '今週へ移動';
+
+  @override
   String get planNewStartingPoint => '今のあなたの状態は？';
 
   @override

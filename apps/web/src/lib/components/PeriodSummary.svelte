@@ -11,6 +11,7 @@
 	import ThisWeekStrip from '#lib/components/ThisWeekStrip.svelte';
 	import { periodNeedsFullHistory, type PeriodType } from '#lib/core/dashboard_runs.ts';
 	import type { PeriodSummaryRun } from '#lib/core/data.ts';
+	import { isPlausibleRunDuration } from '#lib/runs/run_duration.ts';
 
 	interface Props {
 		runs: PeriodSummaryRun[];
@@ -153,7 +154,10 @@
 
 	let stats = $derived.by(() => {
 		const d = periodRuns.reduce((s, r) => s + r.distance_m, 0);
-		const t = periodRuns.reduce((s, r) => s + r.duration_s, 0);
+		const t = periodRuns.reduce(
+			(s, r) => s + (isPlausibleRunDuration(r.duration_s) ? r.duration_s : 0),
+			0,
+		);
 		const longest = periodRuns.length
 			? Math.max(...periodRuns.map((r) => r.distance_m))
 			: 0;

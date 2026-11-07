@@ -520,4 +520,20 @@ void main() {
     expect(isTrimpLowConfidence(false, true), isFalse);
     expect(isTrimpLowConfidence(false, false), isFalse);
   });
+
+  // Issue #1300 § 5: TRIMP is linear in duration, so a 12,333-hour row would
+  // put one day's load in the hundreds of thousands and flatten every curve.
+  test('a duration past the ten-day bound falls back to the distance proxy',
+      () {
+    final bad = _run(
+      distanceM: 2000,
+      durationS: 44400094,
+      startedAt: DateTime.utc(2026, 4, 1, 7),
+      metadata: {'avg_bpm': 150},
+    );
+    expect(
+      computeStress(bad, const HrPrefs(restingHrBpm: 50, maxHrBpm: 190)),
+      20,
+    );
+  });
 }

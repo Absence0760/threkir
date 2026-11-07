@@ -780,4 +780,27 @@ void main() {
       expect(json['currentStreakDays'], 4);
     });
   });
+
+  // Issue #1300 § 5: 2 km stored at 44,400,094 s (12,333 h). Its distance and
+  // its count still stand; its time cannot swamp the year.
+  test('a duration past the ten-day bound adds no time', () {
+    final r = buildYearInRunningRecap([
+      _run(
+        id: 'ok',
+        startedAt: DateTime.utc(2026, 11, 4, 10),
+        distanceM: 5000,
+        duration: const Duration(seconds: 1500),
+      ),
+      _run(
+        id: 'bad',
+        startedAt: DateTime.utc(2026, 11, 5, 10),
+        distanceM: 2000,
+        duration: const Duration(seconds: 44400094),
+      ),
+    ], 2026);
+    expect(r.runCount, 2);
+    expect(r.totalDistanceM, 7000);
+    expect(r.totalDurationS, 1500);
+    expect(r.monthly[10].durationS, 1500);
+  });
 }

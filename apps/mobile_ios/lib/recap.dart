@@ -315,7 +315,10 @@ YearInRunningRecap buildYearInRunningRecap(
   for (final r in inYear) {
     final d = r.startedAt.toLocal();
     totalDistance += r.distanceMetres;
-    totalDuration += r.duration.inSeconds;
+    final countedS = isPlausibleRunDuration(r.duration.inSeconds)
+        ? r.duration.inSeconds
+        : 0;
+    totalDuration += countedS;
     totalElevation += _elevationOf(r);
 
     // "Longest run" + "fastest pace" are run-family headline stats — exclude
@@ -342,7 +345,7 @@ YearInRunningRecap buildYearInRunningRecap(
 
     final md = monthly[d.month]!;
     md.distance += r.distanceMetres;
-    md.duration += r.duration.inSeconds;
+    md.duration += countedS;
     md.runCount += 1;
 
     final wk = _mondayOf(d);

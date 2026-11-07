@@ -150,6 +150,7 @@ StressCalibration computeCalibration(
     final avgBpm = _numericOrNull(r.metadata?['avg_bpm']);
     final km = r.distanceMetres / 1000.0;
     if (avgBpm == null || km <= 0 || r.duration.inSeconds <= 0) continue;
+    if (!isPlausibleRunDuration(r.duration.inSeconds)) continue;
     final trimp = _banisterTrimp(r.duration.inSeconds, avgBpm, rest, max);
     if (trimp > 0) trimpsPerKm.add(trimp / km);
   }
@@ -199,7 +200,11 @@ double computeStress(
   if (cal.mode == 'trimp') {
     final km = run.distanceMetres / 1000.0;
     final rate = cal.trimpPerKmFallback ?? 7;
-    if (avgBpm != null && rest != null && max != null && max > rest) {
+    if (avgBpm != null &&
+        rest != null &&
+        max != null &&
+        max > rest &&
+        isPlausibleRunDuration(run.duration.inSeconds)) {
       final trimp = _banisterTrimp(run.duration.inSeconds, avgBpm, rest, max);
       // A run whose avg_bpm <= resting_hr (misconfigured resting HR, strap
       // dropout, a genuine recovery shuffle) computes hrr=0 → trimp=0, and

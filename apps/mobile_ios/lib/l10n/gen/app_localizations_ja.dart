@@ -4957,6 +4957,40 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileNotifEventCancel => '参加表明していたイベントの開催がキャンセルされました';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$nameさんがクラブへの参加をリクエストしました';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$nameさんが$clubへの参加をリクエストしました';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved => 'クラブへの参加リクエストが承認されました';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return '$clubへの参加リクエストが承認されました';
+  }
+
+  @override
+  String get profileNotifEventUpdated => '参加予定のイベントが更新されました';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '「$title」が更新されました。新しい詳細を確認してください';
+  }
+
+  @override
+  String get profileNotifEventDeleted => '参加表明していたイベントが中止されました';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '「$title」は中止されました';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return '「$title」の開催が1回キャンセルされました。お支払いは返金手続き中です';
   }

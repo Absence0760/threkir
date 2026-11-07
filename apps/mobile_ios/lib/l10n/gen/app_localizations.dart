@@ -8428,6 +8428,54 @@ abstract class AppLocalizations {
   /// **'An event occurrence you RSVP\'d to was cancelled'**
   String get profileNotifEventCancel;
 
+  /// Notification text to a club owner or admin: someone asked to join the club, club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'{name} asked to join your club'**
+  String profileNotifClubJoinRequest(String name);
+
+  /// Notification text to a club owner or admin: someone asked to join the named club
+  ///
+  /// In en, this message translates to:
+  /// **'{name} asked to join {club}'**
+  String profileNotifClubJoinRequestNamed(String name, String club);
+
+  /// Notification text: the recipient's request to join a club was approved, club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Your request to join a club was approved'**
+  String get profileNotifClubJoinApproved;
+
+  /// Notification text: the recipient's request to join the named club was approved
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re in — your request to join {club} was approved'**
+  String profileNotifClubJoinApprovedNamed(String club);
+
+  /// Notification text: the time, place or description of an event the recipient is going to changed, title unknown
+  ///
+  /// In en, this message translates to:
+  /// **'An event you\'re going to was updated'**
+  String get profileNotifEventUpdated;
+
+  /// Notification text: the time, place or description of the titled event the recipient is going to changed
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" was updated — check the new details'**
+  String profileNotifEventUpdatedTitled(String title);
+
+  /// Notification text: a whole event the recipient RSVP'd to was deleted by its organiser, title unknown
+  ///
+  /// In en, this message translates to:
+  /// **'An event you RSVP\'d to was cancelled'**
+  String get profileNotifEventDeleted;
+
+  /// Notification text: the titled event the recipient RSVP'd to was deleted by its organiser
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" was cancelled'**
+  String profileNotifEventDeletedTitled(String title);
+
   /// Notification text for a cancelled event occurrence the recipient had paid for, when the event title is known. The refund has been issued, not necessarily received, so say it is being refunded.
   ///
   /// In en, this message translates to:

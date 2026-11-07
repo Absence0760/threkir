@@ -5260,6 +5260,43 @@ class AppLocalizationsPt extends AppLocalizations {
       'Uma ocorrência de um evento que confirmaste foi cancelada';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name pediu para entrar no seu clube';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name pediu para entrar em $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'O seu pedido para entrar num clube foi aprovado';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Já está dentro — o seu pedido para entrar em $club foi aprovado';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Um evento em que vai participar foi atualizado';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '“$title” foi atualizado — consulte os novos detalhes';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Um evento que confirmou foi cancelado';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '“$title” foi cancelado';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Uma ocorrência de “$title” foi cancelada — o seu pagamento está a ser reembolsado';
   }
@@ -25405,6 +25442,43 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get profileNotifEventCancel =>
       'Uma ocorrência de evento que você confirmou foi cancelada';
+
+  @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name pediu para entrar no seu clube';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name pediu para entrar em $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Seu pedido para entrar em um clube foi aprovado';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Você entrou — seu pedido para entrar em $club foi aprovado';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Um evento em que você vai participar foi atualizado';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '“$title” foi atualizado — confira os novos detalhes';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Um evento que você confirmou foi cancelado';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '“$title” foi cancelado';
+  }
 
   @override
   String profileNotifEventCancelRefundedTitled(String title) {

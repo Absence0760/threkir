@@ -14,6 +14,15 @@
 	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
+	import ConfirmDialog from './ConfirmDialog.svelte';
+	import {
+		HOURS_MAX_DIGITS,
+		MAX_RUN_DURATION_S,
+		MINUTES_SECONDS_MAX_DIGITS,
+		isImplausiblySlow,
+		validateManualDuration,
+		type ManualDurationError,
+	} from '#lib/runs/run_duration.ts';
 
 	interface Props {
 		oncreated?: (run: { id: string }) => void;
@@ -31,8 +40,12 @@
 
 	let unit = $state<'km' | 'mi'>('km');
 	let startedAt = $state(nowLocalIso());
-	let durationMin = $state(30);
-	let durationSec = $state(0);
+	// Text, not number, inputs: `type="number"` honoured neither `max` nor a
+	// width, so "12333" in a box that meant minutes reached the save as-is
+	// (issue #1300 § 5). The parity pair grades the three strings.
+	let durationH = $state('');
+	let durationMin = $state('30');
+	let durationSec = $state('');
 	let distance = $state(5);
 	let activityType = $state<ActivityType>('run');
 	let notes = $state('');
@@ -54,6 +67,7 @@
 	const dirty = trackDirty(() => ({
 		unit,
 		startedAt,
+		durationH,
 		durationMin,
 		durationSec,
 		distance,
@@ -104,24 +118,61 @@
 		}
 	});
 
-	async function handleSubmit(e: Event) {
+	function durationErrorCopy(error: ManualDurationError): string {
+		switch (error) {
+			case 'invalid':
+				return m('runEditor.durationInvalid');
+			case 'minutesOutOfRange':
+				return m('runEditor.durationMinutesRange');
+			case 'secondsOutOfRange':
+				return m('runEditor.durationSecondsRange');
+			case 'tooLong':
+				return m('runEditor.durationTooLong', { hours: MAX_RUN_DURATION_S / 3600 });
+			case 'zero':
+				return m('runEditor.distanceDurationRequired');
+		}
+	}
+
+	let slowConfirmOpen = $state(false);
+	let pending = $state<{ startedAt: string; durationS: number; distanceM: number } | null>(null);
+
+	function handleSubmit(e: Event) {
 		e.preventDefault();
 		if (submitting) return;
-		const totalSec =
-			Math.max(0, Math.floor(durationMin)) * 60 + Math.max(0, Math.floor(durationSec));
+		const duration = validateManualDuration(durationH, durationMin, durationSec);
+		if (!duration.ok) {
+			showToast(durationErrorCopy(duration.error), 'error');
+			return;
+		}
 		const perUnitMetres = unit === 'mi' ? METRES_PER_MILE : 1000;
 		const distanceM = Math.max(0, distance * perUnitMetres);
-		if (totalSec <= 0 || distanceM <= 0) {
+		if (distanceM <= 0) {
 			showToast(m('runEditor.distanceDurationRequired'), 'error');
 			return;
 		}
+		const start = new Date(startedAt);
+		if (start.getTime() > Date.now()) {
+			showToast(m('runEditor.startInFuture'), 'error');
+			return;
+		}
+		pending = { startedAt: start.toISOString(), durationS: duration.seconds, distanceM };
+		if (isImplausiblySlow(duration.seconds, distanceM)) {
+			slowConfirmOpen = true;
+			return;
+		}
+		void save();
+	}
+
+	async function save() {
+		const run = pending;
+		slowConfirmOpen = false;
+		if (run === null || submitting) return;
 		submitting = true;
 		try {
-			const iso = new Date(startedAt).toISOString();
 			const { id } = await createManualRun({
-				startedAt: iso,
-				durationS: totalSec,
-				distanceM,
+				startedAt: run.startedAt,
+				durationS: run.durationS,
+				distanceM: run.distanceM,
 				activityType,
 				notes: notes.trim() || null,
 				routeId: routeId || null,
@@ -195,27 +246,39 @@
 				/>
 			</label>
 			<label class="field">
-				<span class="field-label">{m('runEditor.durationMin')}</span>
+				<span class="field-label">{m('runEditor.durationHours')}</span>
 				<input
-					type="number"
-					min="0"
-					step="1"
-					bind:value={durationMin}
-					required
+					type="text"
+					inputmode="numeric"
+					maxlength={HOURS_MAX_DIGITS}
+					bind:value={durationH}
 					class="input"
 					aria-describedby="run-effort-hint"
+					data-testid="run-editor-hours"
+				/>
+			</label>
+			<label class="field">
+				<span class="field-label">{m('runEditor.durationMin')}</span>
+				<input
+					type="text"
+					inputmode="numeric"
+					maxlength={MINUTES_SECONDS_MAX_DIGITS}
+					bind:value={durationMin}
+					class="input"
+					aria-describedby="run-effort-hint"
+					data-testid="run-editor-minutes"
 				/>
 			</label>
 			<label class="field">
 				<span class="field-label">{m('runEditor.durationSec')}</span>
 				<input
-					type="number"
-					min="0"
-					max="59"
-					step="1"
+					type="text"
+					inputmode="numeric"
+					maxlength={MINUTES_SECONDS_MAX_DIGITS}
 					bind:value={durationSec}
 					class="input"
 					aria-describedby="run-effort-hint"
+					data-testid="run-editor-seconds"
 				/>
 			</label>
 		</div>
@@ -303,6 +366,20 @@
 	</div>
 </form>
 
+<ConfirmDialog
+	open={slowConfirmOpen}
+	title={m('runEditor.slowConfirmTitle')}
+	message={m('runEditor.slowConfirmBody')}
+	confirmLabel={m('runEditor.slowConfirmSave')}
+	cancelLabel={m('runEditor.slowConfirmFix')}
+	onconfirm={save}
+	oncancel={() => {
+		slowConfirmOpen = false;
+		pending = null;
+	}}
+	data-testid="run-editor-slow-confirm"
+/>
+
 <style>
 	.run-editor {
 		gap: 1.1rem;
@@ -320,7 +397,7 @@
 	.toggle-input { margin-top: 0.2rem; }
 	.activity-field { border: 0; padding: 0; margin: 0; }
 	.activity-field .field-label { padding: 0; }
-	.row { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.75rem; }
+	.row { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0.75rem; }
 	@media (max-width: 30rem) {
 		.row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}

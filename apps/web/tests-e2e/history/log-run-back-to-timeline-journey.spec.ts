@@ -53,7 +53,7 @@ test.describe('/history — log a run, then back to the timeline', () => {
 					.first()
 					.fill(browserDatetimeLocal(Date.now() - 3600 * 1000));
 				await dialog.locator('input[type="number"]').first().fill('6');
-				await dialog.locator('input[type="number"]').nth(1).fill('33');
+				await dialog.getByTestId('run-editor-minutes').fill('33');
 				await dialog.locator('textarea').fill(notes);
 				await dialog.locator('form button[type="submit"]').click();
 

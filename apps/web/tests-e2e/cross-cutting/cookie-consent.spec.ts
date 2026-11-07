@@ -120,7 +120,7 @@ test.describe('Cookie consent banner', () => {
 			await page.getByRole('radio', { name: 'Walk', exact: true }).click();
 			const numberInputs = page.locator('input[type="number"]');
 			await numberInputs.nth(0).fill('1.0');
-			await numberInputs.nth(1).fill('5');
+			await page.getByTestId('run-editor-minutes').fill('5');
 			const saveBtn = page.getByRole('button', { name: 'Save run' });
 			await expect(saveBtn).toBeVisible();
 			// Click resolves within the assertion timeout — used to

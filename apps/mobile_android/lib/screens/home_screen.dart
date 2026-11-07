@@ -1759,8 +1759,11 @@ class _CentreLogLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // The same metrics as the sibling items: past the scale where they drop
+    // their labels the bar is 56dp, and a caption kept at 64 overflowed it.
+    final metrics = bottomNavMetrics(MediaQuery.textScalerOf(context).scale(1));
     return SizedBox(
-      height: 64,
+      height: metrics.height,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -1768,24 +1771,26 @@ class _CentreLogLabel extends StatelessWidget {
           // render, so this label lines up with theirs while the floating
           // FAB visually fills the space above it.
           const SizedBox(height: 24),
-          const SizedBox(height: 2),
-          // Shrinks to fit rather than ellipsising: at a large text size a
-          // smaller whole word reads, a clipped one does not.
-          ExcludeSemantics(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: alert
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.onSurfaceVariant,
+          if (metrics.showLabels) ...[
+            const SizedBox(height: 2),
+            // Shrinks to fit rather than ellipsising: at a large text size a
+            // smaller whole word reads, a clipped one does not.
+            ExcludeSemantics(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: alert
+                        ? theme.colorScheme.error
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  softWrap: false,
                 ),
-                maxLines: 1,
-                softWrap: false,
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

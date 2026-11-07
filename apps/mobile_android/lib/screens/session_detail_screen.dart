@@ -241,6 +241,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                       ),
                   ],
                 ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: (_loading || _steps.isEmpty || widget.gymStore == null)
           ? null
           : FloatingActionButton.extended(

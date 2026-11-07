@@ -231,7 +231,7 @@ test.describe('onboarding → first run → dashboard journey', () => {
 				// number inputs are distance (#0), duration-min (#1),
 				// duration-sec (#2). The single <textarea> is the run notes.
 				await page.locator('input[type="number"]').first().fill('5'); // distance (mi pref)
-				await page.locator('input[type="number"]').nth(1).fill('30'); // duration min
+				await page.getByTestId('run-editor-minutes').fill('30'); // duration min
 				await page.locator('textarea').fill(runNotes);
 
 				await page.locator('form button[type="submit"]').click();

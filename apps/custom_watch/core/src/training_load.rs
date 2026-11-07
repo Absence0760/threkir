@@ -20,6 +20,8 @@
 //! Pure logic, no peripherals, no allocator — like the rest of `core`. f64 is
 //! kept (not f32) so the EWMA + `libm::exp` outputs match the web numbers.
 
+use crate::run_duration::is_plausible_run_duration;
+
 /// Consecutive run-less days after which fitness is treated as lost and the
 /// CTL/ATL EWMAs reset to zero. Four weeks past any taper or rest week and into
 /// genuine detraining — without it a long layoff leaves a phantom CTL that
@@ -236,7 +238,7 @@ pub fn compute_calibration(runs: &[RunForLoad], prefs: &HrPrefs) -> StressCalibr
             continue;
         };
         let km = r.distance_m / 1000.0;
-        if km <= 0.0 || r.duration_s == 0 {
+        if km <= 0.0 || r.duration_s == 0 || !is_plausible_run_duration(r.duration_s as f64) {
             continue;
         }
         let trimp = banister_trimp(r.duration_s, avg, rest, max);
@@ -295,7 +297,7 @@ pub fn compute_stress(
             let km = run.distance_m / 1000.0;
             let rate = cal.trimp_per_km_fallback.unwrap_or(7.0);
             if let (Some(a), Some(r), Some(m)) = (avg_bpm, rest, max) {
-                if m > r {
+                if m > r && is_plausible_run_duration(run.duration_s as f64) {
                     let trimp = banister_trimp(run.duration_s, a, r, m);
                     // avg_bpm <= resting (misconfig, strap dropout, recovery
                     // shuffle) → hrr=0 → trimp=0; the stress<=0 skip would drop
@@ -551,6 +553,23 @@ mod tests {
     #[test]
     fn compute_stress_distance_fallback_easy_5k() {
         assert_eq!(compute_stress(&easy_5k(), &no_prefs(), None), 50.0);
+    }
+
+    #[test]
+    fn compute_stress_past_the_ten_day_bound_falls_back_to_distance() {
+        let bad = RunForLoad {
+            day: REF,
+            duration_s: 44_400_094,
+            distance_m: 2000.0,
+            avg_bpm: Some(150.0),
+        };
+        let prefs = hr_prefs(50.0, 190.0);
+        assert_eq!(compute_stress(&bad, &prefs, None), 20.0);
+        let cal = StressCalibration {
+            mode: StressMode::Trimp,
+            trimp_per_km_fallback: Some(7.0),
+        };
+        assert_eq!(compute_stress(&bad, &prefs, Some(&cal)), 14.0);
     }
 
     #[test]

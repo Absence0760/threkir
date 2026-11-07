@@ -20,6 +20,7 @@ import type { Run } from '../types';
 /// the whole row would make the caller assert one it never fetched.
 import { paceMinutesSeconds } from '../format/pace_format';
 import { formatHoursMinutes } from '../format/time';
+import { isPlausibleRunDuration } from '../runs/run_duration';
 
 export type GoalPeriod = 'week' | 'month';
 
@@ -266,11 +267,16 @@ export function evaluateGoal(
 	const marked = markedDoneTally(planWorkouts, startDate, now);
 	const activityCount = inPeriod.length + marked.count;
 	const totalMetres = inPeriod.reduce((s, r) => s + r.distance_m, 0) + marked.distanceM;
-	const totalSeconds = inPeriod.reduce((s, r) => s + r.duration_s, 0);
+	const totalSeconds = inPeriod.reduce(
+		(s, r) => s + (isPlausibleRunDuration(r.duration_s) ? r.duration_s : 0),
+		0,
+	);
 
 	// Pace calculations exclude cycling — a distance-weighted average
 	// would otherwise be dominated by a single long bike ride.
-	const paceEligible = inPeriod.filter((r) => r.activity_type !== 'cycle');
+	const paceEligible = inPeriod.filter(
+		(r) => r.activity_type !== 'cycle' && isPlausibleRunDuration(r.duration_s),
+	);
 
 	const targets: TargetProgress[] = [];
 

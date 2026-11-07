@@ -65,6 +65,19 @@ void main() {
       expect(day.gym, isEmpty);
     });
 
+    // Issue #1300 § 5: a 12,333-hour row still counts as a run that day, but
+    // adds no active minutes to the hydration goal.
+    test('a duration past the ten-day bound adds no active seconds', () {
+      final day = exerciseInputsForDay([
+        row(ActivityRow.kindRun, DateTime(2026, 7, 24, 7),
+            {'duration_s': 44400094, 'distance_m': 2000}),
+        row(ActivityRow.kindRun, DateTime(2026, 7, 24, 18),
+            {'duration_s': 1800, 'distance_m': 5000}),
+      ], start, end);
+      expect(day.runs.length, 2);
+      expect(day.seconds, 1800);
+    });
+
     test('a missing duration contributes zero rather than throwing', () {
       final day = exerciseInputsForDay([
         row(ActivityRow.kindLift, DateTime(2026, 7, 24, 18), const {}),

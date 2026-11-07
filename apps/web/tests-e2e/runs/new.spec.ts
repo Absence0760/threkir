@@ -8,6 +8,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { clearUserSettingKey, setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { readRow } from '../fixtures/db-read';
+import { browserDatetimeLocal } from '../fixtures/dates';
 
 /**
  * The chip's visible word, read out of the en catalogue.
@@ -85,7 +86,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('6');
-		await numberInputs.nth(1).fill('30');
+		await page.getByTestId('run-editor-minutes').fill('30');
 		await page.getByTestId('run-editor-audience').selectOption('public');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
@@ -120,7 +121,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('7');
-		await numberInputs.nth(1).fill('40');
+		await page.getByTestId('run-editor-minutes').fill('40');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 		await page.waitForLoadState('networkidle');
@@ -150,7 +151,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('8');
-		await numberInputs.nth(1).fill('45');
+		await page.getByTestId('run-editor-minutes').fill('45');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 		await page.waitForLoadState('networkidle');
@@ -197,7 +198,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('3.14');
-		await numberInputs.nth(1).fill('25');
+		await page.getByTestId('run-editor-minutes').fill('25');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 
@@ -238,7 +239,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('0');
-		await numberInputs.nth(1).fill('25');
+		await page.getByTestId('run-editor-minutes').fill('25');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 
@@ -268,8 +269,8 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('5');
-		await numberInputs.nth(1).fill('0');
-		await numberInputs.nth(2).fill('0');
+		await page.getByTestId('run-editor-minutes').fill('0');
+		await page.getByTestId('run-editor-seconds').fill('0');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 
@@ -283,7 +284,7 @@ test.describe('/runs/new', () => {
 		expect(afterCount.count).toBe(beforeCount.count);
 	});
 
-	test('negative duration is rejected by the min=0 input or clamped to zero', async ({
+	test('a minus sign in the duration is refused, never clamped', async ({
 		page
 	}) => {
 		const admin = getAdminClient();
@@ -299,7 +300,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('5');
-		await numberInputs.nth(1).fill('-10');
+		await page.getByTestId('run-editor-minutes').fill('-10');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 
@@ -313,6 +314,98 @@ test.describe('/runs/new', () => {
 		expect(afterCount.count).toBe(beforeCount.count);
 	});
 
+	// Issue #1300 § 5: "12333" in the Hours box saved a 2 km run lasting
+	// 12,333 hours. Each case below must leave no row and no navigation.
+	async function expectNoRunSaved(page: Page, before: number | null): Promise<void> {
+		await page.waitForTimeout(500);
+		await expect(page).toHaveURL(/\/runs\/new$/);
+		const after = await getAdminClient()
+			.from('runs')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', USER_A.id);
+		expect(after.count).toBe(before);
+	}
+
+	async function runCount(): Promise<number | null> {
+		const { count } = await getAdminClient()
+			.from('runs')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', USER_A.id);
+		return count;
+	}
+
+	test('the hours box holds three digits and a duration past 240 h is refused', async ({
+		page
+	}) => {
+		const before = await runCount();
+		await page.goto('/runs/new');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Add a run' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await page.locator('input[type="number"]').nth(0).fill('2');
+		await page.getByTestId('run-editor-hours').pressSequentially('12333');
+		await expect(page.getByTestId('run-editor-hours')).toHaveValue('123');
+
+		await page.getByTestId('run-editor-hours').fill('240');
+		await page.getByTestId('run-editor-minutes').fill('1');
+		await page.getByRole('button', { name: /Save/ }).click();
+		await expect(page.getByText("A run can't be longer than 240 hours.")).toBeVisible();
+		await expectNoRunSaved(page, before);
+	});
+
+	test('minutes past 59 are refused', async ({ page }) => {
+		const before = await runCount();
+		await page.goto('/runs/new');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Add a run' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await page.locator('input[type="number"]').nth(0).fill('5');
+		await page.getByTestId('run-editor-minutes').fill('75');
+		await page.getByRole('button', { name: /Save/ }).click();
+		await expect(page.getByText('Minutes must be between 0 and 59.')).toBeVisible();
+		await expectNoRunSaved(page, before);
+	});
+
+	test('a duration slower than 1 km/h asks first, and Fix it saves nothing', async ({
+		page
+	}) => {
+		const before = await runCount();
+		await page.goto('/runs/new');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Add a run' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await page.locator('input[type="number"]').nth(0).fill('2');
+		await page.getByTestId('run-editor-hours').fill('21');
+		await page.getByTestId('run-editor-minutes').fill('');
+		await page.getByRole('button', { name: /Save/ }).click();
+		const dialog = page.getByTestId('run-editor-slow-confirm');
+		await expect(dialog.getByText('Check the duration')).toBeVisible();
+		await dialog.getByRole('button', { name: 'Fix it' }).click();
+		await expect(dialog).toBeHidden();
+		await expectNoRunSaved(page, before);
+	});
+
+	test('a start time in the future is refused', async ({ page }) => {
+		const before = await runCount();
+		await page.goto('/runs/new');
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Add a run' })
+		).toBeVisible({ timeout: 10_000 });
+
+		await page
+			.locator('input[type="datetime-local"]')
+			.first()
+			.fill(browserDatetimeLocal(Date.now() + 3 * 3600 * 1000));
+		await page.locator('input[type="number"]').nth(0).fill('5');
+		await page.getByTestId('run-editor-minutes').fill('30');
+		await page.getByRole('button', { name: /Save/ }).click();
+		await expect(page.getByText("The start time can't be in the future.")).toBeVisible();
+		await expectNoRunSaved(page, before);
+	});
+
 	test('distance accepts decimal km values (5.27 km → 5270 m)', async ({
 		page
 	}) => {
@@ -324,7 +417,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('5.27');
-		await numberInputs.nth(1).fill('30');
+		await page.getByTestId('run-editor-minutes').fill('30');
 
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
@@ -355,7 +448,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('4');
-		await numberInputs.nth(1).fill('20');
+		await page.getByTestId('run-editor-minutes').fill('20');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 
@@ -389,7 +482,7 @@ test.describe('/runs/new', () => {
 
 			const numberInputs = page.locator('input[type="number"]');
 			await numberInputs.nth(0).fill('4');
-			await numberInputs.nth(1).fill('20');
+			await page.getByTestId('run-editor-minutes').fill('20');
 			await page.getByRole('button', { name: /Save/ }).click();
 			const newId = await captureCreatedRunId(page);
 
@@ -420,7 +513,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('2.5');
-		await numberInputs.nth(1).fill('15');
+		await page.getByTestId('run-editor-minutes').fill('15');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 
@@ -506,7 +599,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('7.7');
-		await numberInputs.nth(1).fill('45');
+		await page.getByTestId('run-editor-minutes').fill('45');
 		await page.locator('textarea').fill('Should never persist');
 
 		const routesLoaded = page.waitForResponse(/\/rest\/v1\/routes\b/);
@@ -540,7 +633,7 @@ test.describe('/runs/new', () => {
 
 		const numberInputs = page.locator('input[type="number"]');
 		await numberInputs.nth(0).fill('10');
-		await numberInputs.nth(1).fill('50');
+		await page.getByTestId('run-editor-minutes').fill('50');
 		await page.getByRole('button', { name: /Save/ }).click();
 		const newId = await captureCreatedRunId(page);
 

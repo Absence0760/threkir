@@ -5264,6 +5264,43 @@ class AppLocalizationsPt extends AppLocalizations {
       'Uma ocorrência de um evento que confirmaste foi cancelada';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name pediu para entrar no seu clube';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name pediu para entrar em $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'O seu pedido para entrar num clube foi aprovado';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Já está dentro — o seu pedido para entrar em $club foi aprovado';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Um evento em que vai participar foi atualizado';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '“$title” foi atualizado — consulte os novos detalhes';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Um evento que confirmou foi cancelado';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '“$title” foi cancelado';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Uma ocorrência de “$title” foi cancelada — o seu pagamento está a ser reembolsado';
   }
@@ -20156,6 +20193,43 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Falha na importação: esse ficheiro não tem nenhuma rota com pelo menos dois pontos.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Utilize apenas números inteiros';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Os minutos têm de estar entre 0 e 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Os segundos têm de estar entre 0 e 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Uma corrida não pode durar mais de $hours horas';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Verifique a duração';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Isto é muito mais lento do que caminhar para esta distância. Algum número ficou no campo errado?';
+
+  @override
+  String get manualDurationSlowSave => 'Guardar mesmo assim';
+
+  @override
+  String get manualDurationSlowFix => 'Corrigir';
+
+  @override
+  String get addRunStartInFuture => 'A hora de início não pode estar no futuro';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, por isso a nuvem recusa-a e tentar novamente nunca vai funcionar. Corrija a duração para a enviar.';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -25417,6 +25491,43 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get profileNotifEventCancel =>
       'Uma ocorrência de evento que você confirmou foi cancelada';
+
+  @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name pediu para entrar no seu clube';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name pediu para entrar em $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Seu pedido para entrar em um clube foi aprovado';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Você entrou — seu pedido para entrar em $club foi aprovado';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Um evento em que você vai participar foi atualizado';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '“$title” foi atualizado — confira os novos detalhes';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Um evento que você confirmou foi cancelado';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '“$title” foi cancelado';
+  }
 
   @override
   String profileNotifEventCancelRefundedTitled(String title) {
@@ -40296,4 +40407,42 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get routesImportNoTrack =>
       'Falha na importação: esse arquivo não tem nenhuma rota com pelo menos dois pontos.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Use apenas números inteiros';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Os minutos devem estar entre 0 e 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Os segundos devem estar entre 0 e 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Uma corrida não pode durar mais de $hours horas';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Confira a duração';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Isso é muito mais lento que caminhar para essa distância. Algum número foi parar no campo errado?';
+
+  @override
+  String get manualDurationSlowSave => 'Salvar mesmo assim';
+
+  @override
+  String get manualDurationSlowFix => 'Corrigir';
+
+  @override
+  String get addRunStartInFuture =>
+      'O horário de início não pode estar no futuro';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, então a nuvem a recusa e tentar de novo nunca vai funcionar. Corrija a duração para enviá-la.';
+  }
 }

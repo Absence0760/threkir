@@ -116,6 +116,30 @@ void main() {
       expect(s.totalDuration, const Duration(hours: 2, minutes: 45));
     });
 
+    // Issue #1300 § 5: "This week · 2 runs · 4.43 km · 12333h 49m". The bad
+    // row's distance and count still stand; its 12,333 hours do not.
+    test('summariseRuns skips a duration past the ten-day bound', () {
+      final s = summariseRuns([
+        Run(
+          id: 'ok',
+          startedAt: DateTime(2026, 11, 4),
+          duration: const Duration(minutes: 28, seconds: 15),
+          distanceMetres: 2430,
+          source: RunSource.app,
+        ),
+        Run(
+          id: 'bad',
+          startedAt: DateTime(2026, 11, 5),
+          duration: const Duration(seconds: 44400094),
+          distanceMetres: 2000,
+          source: RunSource.app,
+        ),
+      ]);
+      expect(s.runCount, 2);
+      expect(s.totalDistanceM, 4430);
+      expect(s.totalDuration, const Duration(minutes: 28, seconds: 15));
+    });
+
     test('preserves run order within each section', () {
       // Caller hands in newest-first; the helper must not reorder.
       final r1 = _r(DateTime(2026, 5, 18, 7));

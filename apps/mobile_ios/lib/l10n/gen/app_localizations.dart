@@ -8434,6 +8434,54 @@ abstract class AppLocalizations {
   /// **'An event occurrence you RSVP\'d to was cancelled'**
   String get profileNotifEventCancel;
 
+  /// Notification text to a club owner or admin: someone asked to join the club, club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'{name} asked to join your club'**
+  String profileNotifClubJoinRequest(String name);
+
+  /// Notification text to a club owner or admin: someone asked to join the named club
+  ///
+  /// In en, this message translates to:
+  /// **'{name} asked to join {club}'**
+  String profileNotifClubJoinRequestNamed(String name, String club);
+
+  /// Notification text: the recipient's request to join a club was approved, club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Your request to join a club was approved'**
+  String get profileNotifClubJoinApproved;
+
+  /// Notification text: the recipient's request to join the named club was approved
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re in — your request to join {club} was approved'**
+  String profileNotifClubJoinApprovedNamed(String club);
+
+  /// Notification text: the time, place or description of an event the recipient is going to changed, title unknown
+  ///
+  /// In en, this message translates to:
+  /// **'An event you\'re going to was updated'**
+  String get profileNotifEventUpdated;
+
+  /// Notification text: the time, place or description of the titled event the recipient is going to changed
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" was updated — check the new details'**
+  String profileNotifEventUpdatedTitled(String title);
+
+  /// Notification text: a whole event the recipient RSVP'd to was deleted by its organiser, title unknown
+  ///
+  /// In en, this message translates to:
+  /// **'An event you RSVP\'d to was cancelled'**
+  String get profileNotifEventDeleted;
+
+  /// Notification text: the titled event the recipient RSVP'd to was deleted by its organiser
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" was cancelled'**
+  String profileNotifEventDeletedTitled(String title);
+
   /// Notification text for a cancelled event occurrence the recipient had paid for, when the event title is known. The refund has been issued, not necessarily received, so say it is being refunded.
   ///
   /// In en, this message translates to:
@@ -32512,6 +32560,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import failed: that file holds no route with at least two points.'**
   String get routesImportNoTrack;
+
+  /// Validation error on a typed hours/minutes/seconds run duration when a box holds anything other than digits
+  ///
+  /// In en, this message translates to:
+  /// **'Use whole numbers only'**
+  String get manualDurationErrorInvalid;
+
+  /// Validation error when the minutes box of a typed run duration is above 59
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes must be between 0 and 59'**
+  String get manualDurationErrorMinutes;
+
+  /// Validation error when the seconds box of a typed run duration is above 59
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds must be between 0 and 59'**
+  String get manualDurationErrorSeconds;
+
+  /// Validation error when a typed run duration exceeds the ten-day maximum; {hours} is that maximum in hours (240)
+  ///
+  /// In en, this message translates to:
+  /// **'A run can\'t be longer than {hours} hours'**
+  String manualDurationErrorTooLong(int hours);
+
+  /// Title of the confirm shown when a typed duration works out slower than 1 km/h over the typed distance
+  ///
+  /// In en, this message translates to:
+  /// **'Check the duration'**
+  String get manualDurationSlowTitle;
+
+  /// Body of the slower-than-walking confirm: the likely cause is a figure typed into the wrong box (hours instead of minutes)
+  ///
+  /// In en, this message translates to:
+  /// **'That\'s far slower than walking pace for this distance. Did a number land in the wrong box?'**
+  String get manualDurationSlowBody;
+
+  /// Confirm button: save the run with the duration exactly as typed
+  ///
+  /// In en, this message translates to:
+  /// **'Save anyway'**
+  String get manualDurationSlowSave;
+
+  /// Cancel button: go back to the form to correct the duration
+  ///
+  /// In en, this message translates to:
+  /// **'Fix it'**
+  String get manualDurationSlowFix;
+
+  /// Shown when the add-run date and time picked lies in the future
+  ///
+  /// In en, this message translates to:
+  /// **'The start time can\'t be in the future'**
+  String get addRunStartInFuture;
+
+  /// Body of the blocked-upload card when a run is longer than the ten-day maximum the server accepts; {hours} is that maximum in hours (240)
+  ///
+  /// In en, this message translates to:
+  /// **'This run lasts longer than {hours} hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.'**
+  String runDetailBlockedDurationTooLong(int hours);
 }
 
 class _AppLocalizationsDelegate

@@ -615,3 +615,18 @@ test('the recap week is ISO Monday-anchored, deliberately unlike the dashboard s
 	assert.equal(mondayOf(new Date(2026, 2, 8)), '2026-03-02');
 	assert.equal(mondayOf(new Date(2026, 2, 9)), '2026-03-09');
 });
+
+test('buildYearInRunningRecap: a duration past the ten-day bound adds no time', () => {
+	// Issue #1300 § 5: 2 km stored at 44,400,094 s (12,333 h). Its distance and
+	// its count still stand; its time cannot swamp the year.
+	const runs = [
+		mkRun({ startedAt: '2026-11-04T10:00:00Z', distance_m: 5000, duration_s: 1500 }),
+		mkRun({ startedAt: '2026-11-05T10:00:00Z', distance_m: 2000, duration_s: 44_400_094 }),
+	];
+	const r = buildYearInRunningRecap(runs, 2026);
+	assert.equal(r.runCount, 2);
+	assert.equal(r.totalDistanceM, 7000);
+	assert.equal(r.totalDurationS, 1500);
+	assert.equal(r.monthly[10].durationS, 1500);
+	assert.equal(buildYearInRunningRecap([runs[1]], 2026).fastestPaceSecPerKm, null);
+});

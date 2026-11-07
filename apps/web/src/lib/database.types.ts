@@ -2789,6 +2789,7 @@ export type Database = {
           email_sent_at: string | null
           event_id: string | null
           event_instance_start: string | null
+          event_title: string | null
           id: string
           kind: string
           native_push_sent_at: string | null
@@ -2811,6 +2812,7 @@ export type Database = {
           email_sent_at?: string | null
           event_id?: string | null
           event_instance_start?: string | null
+          event_title?: string | null
           id?: string
           kind: string
           native_push_sent_at?: string | null
@@ -2833,6 +2835,7 @@ export type Database = {
           email_sent_at?: string | null
           event_id?: string | null
           event_instance_start?: string | null
+          event_title?: string | null
           id?: string
           kind?: string
           native_push_sent_at?: string | null

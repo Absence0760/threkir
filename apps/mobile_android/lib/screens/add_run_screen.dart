@@ -1,7 +1,6 @@
 import '../activity_type_labels.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
-import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 import '../auth_error.dart';
@@ -10,6 +9,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
+import '../manual_duration_input.dart';
 import '../preferences.dart';
 import '../typed_decimal.dart';
 import '../widgets/confirm_discard.dart';
@@ -26,12 +26,14 @@ class AddRunScreen extends StatefulWidget {
   final LocalRunStore runStore;
   final LocalRouteStore routeStore;
   final Preferences preferences;
+  final DateTime Function() now;
 
   const AddRunScreen({
     super.key,
     required this.runStore,
     required this.routeStore,
     required this.preferences,
+    this.now = DateTime.now,
   });
 
   @override
@@ -59,7 +61,7 @@ class _AddRunScreenState extends State<AddRunScreen> {
   @override
   void initState() {
     super.initState();
-    final now = DateTime.now();
+    final now = widget.now();
     _startedAt = DateTime(now.year, now.month, now.day, now.hour);
     _initialStartedAt = _startedAt;
   }
@@ -91,7 +93,7 @@ class _AddRunScreenState extends State<AddRunScreen> {
       context: context,
       initialDate: _startedAt,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      lastDate: widget.now(),
     );
     if (picked == null) return;
     if (!mounted) return;
@@ -106,6 +108,9 @@ class _AddRunScreenState extends State<AddRunScreen> {
     });
   }
 
+  /// The date picker stops at today, but a time of day has no such bound,
+  /// so a start later today than now has to be refused here — and again at
+  /// save, because a date moved back to today keeps the earlier time.
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
@@ -113,15 +118,18 @@ class _AddRunScreenState extends State<AddRunScreen> {
     );
     if (picked == null) return;
     if (!mounted) return;
-    setState(() {
-      _startedAt = DateTime(
-        _startedAt.year,
-        _startedAt.month,
-        _startedAt.day,
-        picked.hour,
-        picked.minute,
-      );
-    });
+    final next = DateTime(
+      _startedAt.year,
+      _startedAt.month,
+      _startedAt.day,
+      picked.hour,
+      picked.minute,
+    );
+    if (next.isAfter(widget.now())) {
+      showTopBanner(context, AppLocalizations.of(context).addRunStartInFuture);
+      return;
+    }
+    setState(() => _startedAt = next);
   }
 
   void _onRouteSelected(Route? route) {
@@ -164,23 +172,25 @@ class _AddRunScreenState extends State<AddRunScreen> {
         : v * 1000;
   }
 
-  Duration? _parseDuration() {
-    final h = int.tryParse(_hoursCtl.text.trim().isEmpty ? '0' : _hoursCtl.text.trim());
-    final m = int.tryParse(_minutesCtl.text.trim().isEmpty ? '0' : _minutesCtl.text.trim());
-    final s = int.tryParse(_secondsCtl.text.trim().isEmpty ? '0' : _secondsCtl.text.trim());
-    if (h == null || m == null || s == null) return null;
-    if (h < 0 || m < 0 || s < 0) return null;
-    final total = Duration(hours: h, minutes: m, seconds: s);
-    if (total.inSeconds <= 0) return null;
-    return total;
-  }
+  ManualDurationResult _duration() => validateManualDuration(
+      _hoursCtl.text, _minutesCtl.text, _secondsCtl.text);
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
     final distance = _parseDistanceMetres(_distanceCtl.text);
-    final duration = _parseDuration();
-    if (distance == null || duration == null) return;
+    final seconds = _duration().seconds;
+    if (distance == null || seconds == null) return;
+    if (_startedAt.isAfter(widget.now())) {
+      showTopBanner(context, AppLocalizations.of(context).addRunStartInFuture);
+      return;
+    }
+    if (isImplausiblySlow(seconds, distance) &&
+        !await confirmImplausiblySlowDuration(context)) {
+      return;
+    }
+    if (!mounted) return;
+    final duration = Duration(seconds: seconds);
 
     setState(() => _saving = true);
 
@@ -360,8 +370,12 @@ class _AddRunScreenState extends State<AddRunScreen> {
             Text(l10n.addRunSectionDuration, style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             FormField<Duration>(
-              validator: (_) =>
-                  _parseDuration() == null ? l10n.addRunDurationInvalid : null,
+              validator: (_) {
+                final error = _duration().error;
+                return error == null
+                    ? null
+                    : manualDurationErrorText(l10n, error);
+              },
               builder: (state) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,7 +384,8 @@ class _AddRunScreenState extends State<AddRunScreen> {
                       children: [
                         Expanded(
                             child: _durationField(_hoursCtl, 'h', state,
-                                l10n.durationFieldHours)),
+                                l10n.durationFieldHours,
+                                hours: true)),
                         const SizedBox(width: 8),
                         Expanded(
                             child: _durationField(_minutesCtl, 'm', state,
@@ -436,15 +451,16 @@ class _AddRunScreenState extends State<AddRunScreen> {
     TextEditingController ctl,
     String suffix,
     FormFieldState<Duration> state,
-    String label,
-  ) {
+    String label, {
+    bool hours = false,
+  }) {
     return Semantics(
       label: label,
       textField: true,
       child: TextField(
         controller: ctl,
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: durationBoxFormatters(hours: hours),
         onChanged: (_) => state.didChange(null),
         decoration: InputDecoration(
           suffixText: suffix,

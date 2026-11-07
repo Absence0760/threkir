@@ -3335,6 +3335,12 @@ abstract class AppLocalizations {
   /// **'Live sharing stopped'**
   String get runLiveShareStopped;
 
+  /// Banner shown once if a live share has delivered no position to spectators within 30 s of starting
+  ///
+  /// In en, this message translates to:
+  /// **'Your live link hasn\'t sent a location yet — spectators are still waiting. Check your signal.'**
+  String get runLiveShareNoPingYet;
+
   /// Title of the post-stop dialog asking whether a live-shared run should stay public
   ///
   /// In en, this message translates to:
@@ -3755,11 +3761,11 @@ abstract class AppLocalizations {
   /// **'Resume your run?'**
   String get runResumeDialogTitle;
 
-  /// Body of the cold-start resume prompt explaining the Resume / Finish / Discard choice
+  /// Body of the resume prompt shown when a recording was interrupted (app closed, crashed or torn down) explaining the Resume / Finish / Discard choice. distance is in the runner's unit (km or mi, ~ prefix when pedometer-estimated); duration is elapsed time as a clock (mm:ss or h:mm:ss)
   ///
   /// In en, this message translates to:
-  /// **'A run from an earlier session is still in progress. Resume recording where you left off, finish it now, or discard it.'**
-  String get runResumeDialogBody;
+  /// **'A run from an earlier session is still in progress ({distance}, {duration}). Resume recording where you left off, finish it now, or discard it.'**
+  String runResumeDialogBody(String distance, String duration);
 
   /// Primary action on the resume prompt — re-hydrate the recorder and continue the same run
   ///
@@ -3790,6 +3796,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Discarded your previous run.'**
   String get runResumeDiscardedBanner;
+
+  /// Banner at app start when an interrupted recording older than 48 hours was saved as a finished run without asking. distance is in the runner's unit; duration is elapsed time as a clock
+  ///
+  /// In en, this message translates to:
+  /// **'Saved an unfinished run from a previous session ({distance}, {duration}).'**
+  String runRecoveryRecoveredBanner(String distance, String duration);
+
+  /// Banner at app start when an interrupted recording was too small to keep (no distance and under a minute, or older than 48 hours and below the size floor) and was deleted. distance is in the runner's unit; duration is elapsed time as a clock
+  ///
+  /// In en, this message translates to:
+  /// **'Discarded an unfinished recording from a previous session ({distance}, {duration}).'**
+  String runRecoveryDiscardedBanner(String distance, String duration);
 
   /// Banner shown when a selected workout has no runnable steps
   ///
@@ -8416,6 +8434,54 @@ abstract class AppLocalizations {
   /// **'An event occurrence you RSVP\'d to was cancelled'**
   String get profileNotifEventCancel;
 
+  /// Notification text to a club owner or admin: someone asked to join the club, club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'{name} asked to join your club'**
+  String profileNotifClubJoinRequest(String name);
+
+  /// Notification text to a club owner or admin: someone asked to join the named club
+  ///
+  /// In en, this message translates to:
+  /// **'{name} asked to join {club}'**
+  String profileNotifClubJoinRequestNamed(String name, String club);
+
+  /// Notification text: the recipient's request to join a club was approved, club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Your request to join a club was approved'**
+  String get profileNotifClubJoinApproved;
+
+  /// Notification text: the recipient's request to join the named club was approved
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re in — your request to join {club} was approved'**
+  String profileNotifClubJoinApprovedNamed(String club);
+
+  /// Notification text: the time, place or description of an event the recipient is going to changed, title unknown
+  ///
+  /// In en, this message translates to:
+  /// **'An event you\'re going to was updated'**
+  String get profileNotifEventUpdated;
+
+  /// Notification text: the time, place or description of the titled event the recipient is going to changed
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" was updated — check the new details'**
+  String profileNotifEventUpdatedTitled(String title);
+
+  /// Notification text: a whole event the recipient RSVP'd to was deleted by its organiser, title unknown
+  ///
+  /// In en, this message translates to:
+  /// **'An event you RSVP\'d to was cancelled'**
+  String get profileNotifEventDeleted;
+
+  /// Notification text: the titled event the recipient RSVP'd to was deleted by its organiser
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" was cancelled'**
+  String profileNotifEventDeletedTitled(String title);
+
   /// Notification text for a cancelled event occurrence the recipient had paid for, when the event title is known. The refund has been issued, not necessarily received, so say it is being refunded.
   ///
   /// In en, this message translates to:
@@ -9808,11 +9874,11 @@ abstract class AppLocalizations {
   /// **'Could not connect.'**
   String get liveSpectatorConnectError;
 
-  /// Empty state before any ping arrives
+  /// Live spectator empty state while the run is live but the runner's phone has not published a position yet (no GPS fix)
   ///
   /// In en, this message translates to:
-  /// **'Waiting for the runner to send the first ping…'**
-  String get liveSpectatorWaiting;
+  /// **'Waiting for the runner\'s GPS — their position appears as soon as their phone gets a fix'**
+  String get liveSpectatorWaitingGps;
 
   /// Status badge — live
   ///
@@ -9820,11 +9886,11 @@ abstract class AppLocalizations {
   /// **'Live'**
   String get liveSpectatorBadgeLive;
 
-  /// Status badge — idle
+  /// Live spectator status badge while waiting for the runner's first GPS position
   ///
   /// In en, this message translates to:
-  /// **'Idle'**
-  String get liveSpectatorBadgeIdle;
+  /// **'Waiting for GPS'**
+  String get liveSpectatorBadgeWaitingGps;
 
   /// Status badge — connecting
   ///
@@ -9849,6 +9915,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last seen near here — approximate'**
   String get liveSpectatorApproximateSub;
+
+  /// Live spectator sub-line when the latest position is a weak-GPS fix (20-50 m accuracy): the dot is approximate
+  ///
+  /// In en, this message translates to:
+  /// **'Approximate — the runner\'s GPS signal is weak'**
+  String get liveSpectatorWeakGpsSub;
 
   /// Status badge — the run has finished (terminal state, distinct from a stale signal)
   ///
@@ -32488,6 +32560,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Import failed: that file holds no route with at least two points.'**
   String get routesImportNoTrack;
+
+  /// Validation error on a typed hours/minutes/seconds run duration when a box holds anything other than digits
+  ///
+  /// In en, this message translates to:
+  /// **'Use whole numbers only'**
+  String get manualDurationErrorInvalid;
+
+  /// Validation error when the minutes box of a typed run duration is above 59
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes must be between 0 and 59'**
+  String get manualDurationErrorMinutes;
+
+  /// Validation error when the seconds box of a typed run duration is above 59
+  ///
+  /// In en, this message translates to:
+  /// **'Seconds must be between 0 and 59'**
+  String get manualDurationErrorSeconds;
+
+  /// Validation error when a typed run duration exceeds the ten-day maximum; {hours} is that maximum in hours (240)
+  ///
+  /// In en, this message translates to:
+  /// **'A run can\'t be longer than {hours} hours'**
+  String manualDurationErrorTooLong(int hours);
+
+  /// Title of the confirm shown when a typed duration works out slower than 1 km/h over the typed distance
+  ///
+  /// In en, this message translates to:
+  /// **'Check the duration'**
+  String get manualDurationSlowTitle;
+
+  /// Body of the slower-than-walking confirm: the likely cause is a figure typed into the wrong box (hours instead of minutes)
+  ///
+  /// In en, this message translates to:
+  /// **'That\'s far slower than walking pace for this distance. Did a number land in the wrong box?'**
+  String get manualDurationSlowBody;
+
+  /// Confirm button: save the run with the duration exactly as typed
+  ///
+  /// In en, this message translates to:
+  /// **'Save anyway'**
+  String get manualDurationSlowSave;
+
+  /// Cancel button: go back to the form to correct the duration
+  ///
+  /// In en, this message translates to:
+  /// **'Fix it'**
+  String get manualDurationSlowFix;
+
+  /// Shown when the add-run date and time picked lies in the future
+  ///
+  /// In en, this message translates to:
+  /// **'The start time can\'t be in the future'**
+  String get addRunStartInFuture;
+
+  /// Body of the blocked-upload card when a run is longer than the ten-day maximum the server accepts; {hours} is that maximum in hours (240)
+  ///
+  /// In en, this message translates to:
+  /// **'This run lasts longer than {hours} hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.'**
+  String runDetailBlockedDurationTooLong(int hours);
 }
 
 class _AppLocalizationsDelegate

@@ -1015,6 +1015,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     // outcome) — nothing meaningful to start.
     final canStartRun = _displayWaypoints.length >= 2;
     return Scaffold(
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: canStartRun
           ? FloatingActionButton.extended(
               heroTag: 'route_detail_start_run',

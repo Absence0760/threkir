@@ -1859,14 +1859,12 @@ export const periodSummaryWithheldReadsDoNotCompile = (r: PeriodSummaryRun) => [
 	// @ts-expect-error — the jsonb bag the drilldown does not read
 	r.metadata,
 	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS
-	r.activity_type,
-	// @ts-expect-error — not in PERIOD_SUMMARY_RUN_COLUMNS
 	r.is_dnf,
 	// @ts-expect-error — a lazy Storage download, never a column
 	r.track_url,
 ];
 
-/// The five it does read have to stay readable, or the narrowing has gone too
+/// The six it does read have to stay readable, or the narrowing has gone too
 /// far and the pin above is the only thing still passing.
 export const periodSummaryReadsCompile = (r: PeriodSummaryRun) => [
 	r.id,
@@ -1874,6 +1872,7 @@ export const periodSummaryReadsCompile = (r: PeriodSummaryRun) => [
 	r.distance_m,
 	r.duration_s,
 	r.source,
+	r.activity_type,
 ];
 
 test('every routes read hands back a normalised row, never the raw one', () => {

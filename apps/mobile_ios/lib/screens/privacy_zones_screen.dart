@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../auth_error.dart';
+import '../fab_clearance.dart';
 import '../geocoding.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../privacy.dart';
@@ -336,6 +337,7 @@ class _PrivacyZonesScreenState extends State<PrivacyZonesScreen> {
               TextButton(onPressed: _save, child: Text(l10n.privacyZonesSave)),
           ],
         ),
+        floatingActionButtonLocation: pageFabLocation(context),
         floatingActionButton: FloatingActionButton.small(
           heroTag: 'privacy_zones_locate_fab',
           tooltip: l10n.privacyZonesLocateMe,

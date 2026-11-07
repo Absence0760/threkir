@@ -100,7 +100,9 @@ HistoryFilterSummary summariseRuns(List<Run> runs) {
   var totalS = 0;
   for (final r in runs) {
     distance += r.distanceMetres;
-    totalS += r.duration.inSeconds;
+    if (isPlausibleRunDuration(r.duration.inSeconds)) {
+      totalS += r.duration.inSeconds;
+    }
   }
   return HistoryFilterSummary(
     runCount: runs.length,

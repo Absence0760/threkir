@@ -590,27 +590,27 @@ void main() {
       );
     });
 
-    test('_saveInProgress stamps workout review metadata', () {
+    test('the in-progress checkpoint stamps workout review metadata', () {
       // Reason: a crash mid-workout must preserve the planned-vs-actual
       // review trail. The in-progress save path calls
       // `WorkoutRunner.reviewMetadata` so the recovered run lands with
       // `plan_workout_id`, `workout_step_results`, and
       // `workout_adherence` already on its metadata bag. If a future
-      // refactor removes the call from _saveInProgress, a crashed
+      // refactor removes the call from _inProgressCheckpoint, a crashed
       // workout silently drops the review trail again. (7d in followups)
       final body = _extractMethodBody(
         source,
-        r'Future<void> _saveInProgress\(\)\s*async\s*\{',
+        r'cm\.Run\? _inProgressCheckpoint\(\)\s*\{',
       );
       expect(
         body,
         contains('reviewMetadata'),
-        reason: '_saveInProgress must call WorkoutRunner.reviewMetadata '
+        reason: '_inProgressCheckpoint must call WorkoutRunner.reviewMetadata '
             'so a crashed workout keeps its review on recovery.',
       );
     });
 
-    test('_saveInProgress checkpoints the stored track, not the line', () {
+    test('the in-progress checkpoint holds the stored track, not the line', () {
       // Reason: the recorder stores every fix its distance estimator took,
       // off-track ones flagged, so the server can replay the run's own
       // input (gps_distance.md § Stored track). The live line drops those
@@ -618,7 +618,7 @@ void main() {
       // a crash recovery, and its `track_complete` would then be false.
       final body = _extractMethodBody(
         source,
-        r'Future<void> _saveInProgress\(\)\s*async\s*\{',
+        r'cm\.Run\? _inProgressCheckpoint\(\)\s*\{',
       );
       expect(body, contains('List.unmodifiable(_storedTrack)'),
           reason: 'the checkpoint must persist the stored track');
@@ -5703,6 +5703,10 @@ void main() {
       // Explains what a derived metric IS. Its only action is dismissal;
       // nothing is decided here and nothing can be lost by tapping it.
       'widgets/metric_label.dart::metricText(l10n, metric)': 1,
+      // Asks before saving a manual run slower than walking pace. Saving keeps
+      // the typed figures and "Fix it" returns to the form, so neither button
+      // discards anything.
+      'manual_duration_input.dart::l10n.manualDurationSlowTitle': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

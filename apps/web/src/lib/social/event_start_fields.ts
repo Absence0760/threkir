@@ -43,3 +43,17 @@ export function startIsoFor(fields: StartFields, zone: string | null): string {
 	const [hour, minute] = fields.time.split(':').map(Number);
 	return instantForWallClock({ year, month, day, hour, minute, second: 0 }, zone).toISOString();
 }
+
+/** The start an edit should write, or null when the organiser left the date
+ * and time as they were read. An untouched start is not re-derived from the
+ * minute-precision inputs: that would drop the stored seconds, move the
+ * instant, and move every RSVP keyed to it with it. */
+export function startIsoIfMoved(
+	existingIso: string,
+	fields: StartFields,
+	zone: string | null
+): string | null {
+	const before = startFieldsFor(existingIso, zone);
+	if (before.date === fields.date && before.time === fields.time) return null;
+	return startIsoFor(fields, zone);
+}

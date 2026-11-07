@@ -40,6 +40,7 @@ import '../activity_type_labels.dart';
 import '../hold_to_stop_hint.dart';
 import '../hr_prescription_gate.dart';
 import '../workout_target_label.dart';
+import '../in_progress_recovery.dart' show inProgressStats;
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../l10n/number_format.dart';
@@ -47,12 +48,14 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../live_broadcaster.dart';
 import '../live_hub_client.dart';
+import '../live_publish_point.dart';
 import '../main.dart' show pendingArmGuidedRun, pendingStartWorkout;
 import '../live_cutoff_eta.dart';
 import '../off_route_flag.dart';
 import '../preferences.dart';
 import '../privacy.dart';
 import '../off_route_alert.dart';
+import '../orphaned_recording.dart';
 import '../race_controller.dart';
 import '../race_finish.dart';
 import '../reactive_ble_watch_transport.dart';
@@ -841,14 +844,39 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     });
     // A process-killed run was recovered as resumable at cold start. Prompt
     // once, after first frame (so `_l10n` + a Navigator context exist), to
-    // Resume / Finish / Discard it — resume the primary path.
+    // Resume / Finish / Discard it — resume the primary path. A recording
+    // handed on by a torn-down predecessor is newer than any cold-start
+    // partial, and is the same session if both exist.
+    orphanedRecording.addListener(_onOrphanedRecording);
     final resumable = widget.initialResumablePartial;
-    if (resumable != null) {
+    if (orphanedRecording.value != null) {
+      _onOrphanedRecording();
+    } else if (resumable != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         _promptResume(resumable);
       });
     }
+  }
+
+  /// Offer Resume / Finish / Discard on a recording a torn-down run screen
+  /// handed on ([orphanedRecording]). Listened to as well as read at
+  /// `initState`, because a replacement screen is built before the one it
+  /// replaces is disposed. Taken only while idle, so it never interrupts a
+  /// run this screen is already recording.
+  void _onOrphanedRecording() {
+    if (orphanedRecording.value == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final orphan = orphanedRecording.value;
+      if (!mounted ||
+          orphan == null ||
+          _state != _ScreenState.idle ||
+          _startRequested) {
+        return;
+      }
+      orphanedRecording.value = null;
+      _promptResume(orphan);
+    });
   }
 
   @override
@@ -2328,8 +2356,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         Timer.periodic(_incrementalSaveInterval, (_) => _saveInProgress());
 
     // GPS-lost banner watchdog — flag stale signal in the UI.
-    _gpsLostCheckTimer =
-        Timer.periodic(const Duration(seconds: 2), (_) => _checkGpsHealth());
+    _gpsLostCheckTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _checkGpsHealth();
+      _checkLivePublishHealth();
+    });
 
     // Location permission watchdog — catch cases where the runner toggles
     // permission off in Android settings while the run is in flight.
@@ -2359,12 +2389,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// (no barrier-dismiss) so the partial isn't silently left in limbo.
   Future<void> _promptResume(cm.Run partial) async {
     if (!mounted || _state != _ScreenState.idle) return;
+    final stats = inProgressStats(partial, _unit);
     final choice = await showDialog<_ResumeChoice>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text(_l10n.runResumeDialogTitle),
-        content: Text(_l10n.runResumeDialogBody),
+        content:
+            Text(_l10n.runResumeDialogBody(stats.distance, stats.duration)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, _ResumeChoice.discard),
@@ -2856,12 +2888,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         debugPrint('guided-run cue dispatch failed: $e');
       }
 
-      // L4 — Live race spectator ping. Requires a real, FRESH GPS fix;
-      // cadence throttled inside RaceController. Network / Supabase realtime
-      // can throw; swallow and keep going.
+      // L4 — Live race spectator ping. Requires a real, FRESH GPS fix that
+      // the recorder accepted onto its line (race_pings has no weak flag, so
+      // a weak fix is not offered); cadence throttled inside RaceController.
+      // Network / Supabase realtime can throw; swallow and keep going.
       try {
-        final pos = snapshot.currentPosition;
-        if (pos != null && positionFresh) {
+        final pos = livePublishPoint(
+          snapshot,
+          now: DateTime.now(),
+          freshWithin: _gpsLostThreshold,
+          allowWeak: false,
+        )?.point;
+        if (pos != null) {
           widget.raceController?.pushPing(
             lat: pos.lat,
             lng: pos.lng,
@@ -2877,7 +2915,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // L4 — Live-race finish detection. A paused runner is not racing, so
       // a paused pass through the zone is not a finish. The device clock at
       // receipt is the fix's instant: it is the clock the server offset is
-      // measured against.
+      // measured against. A fix the movement filter rejected (a teleport)
+      // is not offered: it could land inside the finish zone.
       try {
         final rc = widget.raceController;
         final pos = snapshot.currentPosition;
@@ -2885,6 +2924,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             rc.isHosting &&
             pos != null &&
             positionFresh &&
+            snapshot.positionTrusted &&
             !_manualPaused &&
             !_stopRequested) {
           final finish = rc.offerFix(
@@ -2904,17 +2944,29 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // inside the broadcaster. Same swallow-on-fail rule as race pings.
       // Gated on freshness so the spectator's live_freshness reads an
       // honest "updated N min ago" during a signal blackout instead of a
-      // fresh, stationary runner re-pinged off a frozen coordinate.
+      // fresh, stationary runner re-pinged off a frozen coordinate. The
+      // point is the end of the recorder's line, never a rejected fix, and
+      // a weak-GPS fix is published flagged while nothing clears the gate
+      // (livePublishPoint).
       try {
-        final pos = snapshot.currentPosition;
-        if (pos != null && positionFresh) {
-          _liveBroadcaster?.pushPing(
+        final lb = _liveBroadcaster;
+        final publish = lb == null || !lb.isActive
+            ? null
+            : livePublishPoint(
+                snapshot,
+                now: DateTime.now(),
+                freshWithin: _gpsLostThreshold,
+              );
+        if (lb != null && publish != null) {
+          final pos = publish.point;
+          lb.pushPing(
             lat: pos.lat,
             lng: pos.lng,
             distanceM: snapshot.distanceMetres,
             elapsedS: snapshot.elapsed.inSeconds,
             bpm: _currentBpm,
             ele: pos.elevationMetres,
+            weakGps: publish.weakGps,
           );
         }
       } catch (e) {
@@ -3324,10 +3376,23 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// Serialise the in-progress run to disk. Runs every 10s via
   /// [_incrementalSaveTimer] so a crash mid-run is recoverable.
   Future<void> _saveInProgress() async {
+    final run = _inProgressCheckpoint();
+    if (run == null) return;
+    try {
+      await widget.runStore.saveInProgress(run);
+    } catch (e) {
+      debugPrint('Incremental save failed: $e');
+    }
+  }
+
+  /// The run so far, in the shape the in-progress file holds, or null when
+  /// nothing is recording. Built synchronously so `dispose` can take it before
+  /// the recorder and workout runner it reads are released.
+  cm.Run? _inProgressCheckpoint() {
     final id = _runId;
     final startedAt = _runStartedAtWall;
-    if (id == null || startedAt == null) return;
-    if (_state != _ScreenState.recording) return;
+    if (id == null || startedAt == null) return null;
+    if (_state != _ScreenState.recording) return null;
 
     // Mirror the indoor-estimate path in _stop() so a crash-recovered
     // treadmill run keeps its pedometer-based distance instead of being
@@ -3394,7 +3459,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       runner?.reviewMetadata(planWorkoutId: activeWorkoutId) ??
           const <String, dynamic>{},
     );
-    final run = cm.Run(
+    return cm.Run(
       id: id,
       startedAt: startedAt,
       duration: _elapsed,
@@ -3405,11 +3470,6 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       source: cm.RunSource.app,
       metadata: metadata,
     );
-    try {
-      await widget.runStore.saveInProgress(run);
-    } catch (e) {
-      debugPrint('Incremental save failed: $e');
-    }
   }
 
   /// Update [_gpsLost] based on GPS-backed snapshot freshness. Drives the
@@ -3438,6 +3498,26 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         _weakGps = weak;
         _preciseLocationOff = preciseOff;
       });
+    }
+  }
+
+  /// L4 — tells the runner, once per share, when their live link has not
+  /// delivered a single position (issue #1300 BUG-007). Every publish
+  /// failure is swallowed so the recording is never touched, which also
+  /// meant nobody ever learned a spectator was watching "Connecting".
+  /// Non-blocking: a top banner, and the run carries on either way.
+  void _checkLivePublishHealth() {
+    try {
+      // Paused, the recorder takes no fixes, so there is nothing to send.
+      if (_manualPaused) return;
+      final lb = _liveBroadcaster;
+      if (lb == null || !lb.takeNoPingWarning()) return;
+      _showTopBanner(
+        _l10n.runLiveShareNoPingYet,
+        duration: const Duration(seconds: 6),
+      );
+    } catch (e) {
+      debugPrint('live publish health check failed: $e');
     }
   }
 
@@ -4135,6 +4215,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    orphanedRecording.removeListener(_onOrphanedRecording);
+    // The recorder dies with this State, so a dispose mid-run ends the GPS
+    // session; it must not also end the run. Checkpoint it while the
+    // recorder and workout runner it reads still exist: the next run screen
+    // offers to resume it in this process, and the in-progress file carries
+    // it to the next cold start (decisions § 2352).
+    // Guarded on its own so a failure here can never skip the releases below.
+    try {
+      final checkpoint = _inProgressCheckpoint();
+      if (checkpoint != null) {
+        orphanedRecording.value = checkpoint;
+        widget.runStore.saveInProgress(checkpoint).catchError((Object e) {
+          debugPrint('Tear-down checkpoint save failed: $e');
+        });
+      }
+    } catch (e) {
+      debugPrint('Tear-down checkpoint failed: $e');
+    }
     // A disposed recording surface is no longer recording, so release the
     // nav-shell swipe lock (issue #490) — leaving it latched would trap the
     // shell in non-swipeable state.

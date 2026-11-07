@@ -1975,6 +1975,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runLiveShareStopped => 'Live-Teilen beendet';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'Dein Live-Link hat noch keinen Standort gesendet – Zuschauer warten noch. Prüfe deinen Empfang.';
+
+  @override
   String get runLiveShareEndedTitle => 'Live-Teilen beendet';
 
   @override
@@ -2202,8 +2206,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runResumeDialogTitle => 'Lauf fortsetzen?';
 
   @override
-  String get runResumeDialogBody =>
-      'Ein Lauf aus einer früheren Sitzung läuft noch. Setze die Aufzeichnung dort fort, wo du aufgehört hast, beende ihn jetzt oder verwirf ihn.';
+  String runResumeDialogBody(String distance, String duration) {
+    return 'Ein Lauf aus einer früheren Sitzung läuft noch ($distance, $duration). Setze die Aufzeichnung dort fort, wo du aufgehört hast, beende ihn jetzt oder verwirf ihn.';
+  }
 
   @override
   String get runResumeAction => 'Fortsetzen';
@@ -2219,6 +2224,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => 'Vorheriger Lauf verworfen.';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return 'Unvollendeten Lauf aus einer früheren Sitzung gespeichert ($distance, $duration).';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return 'Unvollendete Aufzeichnung aus einer früheren Sitzung verworfen ($distance, $duration).';
+  }
 
   @override
   String get runWorkoutNoStructure =>
@@ -5265,6 +5280,43 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ein Event-Termin, für den du zugesagt hattest, wurde abgesagt';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name möchte deinem Club beitreten';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name möchte $club beitreten';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Deine Beitrittsanfrage für einen Club wurde angenommen';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Du bist dabei – deine Beitrittsanfrage für $club wurde angenommen';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Ein Event, für das du zugesagt hast, wurde geändert';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '„$title“ wurde geändert – sieh dir die neuen Details an';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Ein Event, für das du zugesagt hattest, wurde abgesagt';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '„$title“ wurde abgesagt';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Ein Termin von „$title“ wurde abgesagt – deine Zahlung wird erstattet';
   }
@@ -6095,13 +6147,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get liveSpectatorConnectError => 'Verbindung nicht möglich.';
 
   @override
-  String get liveSpectatorWaiting => 'Warte auf den ersten Ping des Läufers …';
+  String get liveSpectatorWaitingGps =>
+      'Warte auf das GPS-Signal des Läufers – die Position erscheint, sobald das Handy einen Fix hat';
 
   @override
   String get liveSpectatorBadgeLive => 'Live';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Inaktiv';
+  String get liveSpectatorBadgeWaitingGps => 'Warte auf GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Verbinde';
@@ -6115,6 +6168,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get liveSpectatorApproximateSub =>
       'Zuletzt hier in der Nähe gesehen — ungefähr';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Ungefähr — das GPS-Signal des Läufers ist schwach';
 
   @override
   String get liveSpectatorBadgeFinished => 'Beendet';
@@ -20156,4 +20213,42 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Import fehlgeschlagen: Die Datei enthält keine Route mit mindestens zwei Punkten.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Nur ganze Zahlen verwenden';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Minuten müssen zwischen 0 und 59 liegen';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Sekunden müssen zwischen 0 und 59 liegen';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Ein Lauf kann nicht länger als $hours Stunden dauern';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Dauer prüfen';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Das ist für diese Distanz weit langsamer als Gehtempo. Ist eine Zahl im falschen Feld gelandet?';
+
+  @override
+  String get manualDurationSlowSave => 'Trotzdem speichern';
+
+  @override
+  String get manualDurationSlowFix => 'Korrigieren';
+
+  @override
+  String get addRunStartInFuture =>
+      'Die Startzeit darf nicht in der Zukunft liegen';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Dieser Lauf dauert länger als $hours Stunden, was kein Lauf kann. Der Cloud-Speicher lehnt ihn daher ab, und ein neuer Versuch wird nie gelingen. Korrigiere die Dauer, um ihn hochzuladen.';
+  }
 }

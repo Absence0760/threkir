@@ -121,7 +121,7 @@ test.describe('gear lifecycle journey', () => {
 				await page.goto('/runs/new');
 				const numberInputs = page.locator('input[type="number"]');
 				await numberInputs.nth(0).fill('6'); // distance km
-				await numberInputs.nth(1).fill('35'); // duration min
+				await page.getByTestId('run-editor-minutes').fill('35'); // duration min
 				await page.getByRole('button', { name: 'Save run' }).click();
 				await page.waitForURL(/\/runs\/[0-9a-f-]+$/, { timeout: 15_000 });
 				runId = page.url().match(/\/runs\/([0-9a-f-]+)$/)![1];

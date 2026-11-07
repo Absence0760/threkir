@@ -1611,6 +1611,7 @@ void main() {
       WidgetTester tester, {
       String? routeId,
       List<cm.Route> seedRoutes = const [],
+      cm.Run? partial,
     }) async {
       final runStore = _CapturingRunStore();
       await runStore.init(overrideDirectory: runsDir);
@@ -1633,7 +1634,8 @@ void main() {
             training: s.training,
             heartRate: s.heartRate,
             treadmill: s.treadmill,
-            initialResumablePartial: resumablePartial(routeId: routeId),
+            initialResumablePartial:
+                partial ?? resumablePartial(routeId: routeId),
           ),
         ),
       );
@@ -1649,6 +1651,36 @@ void main() {
       expect(find.text('Resume'), findsOneWidget);
       expect(find.text('Finish now'), findsOneWidget);
       expect(find.text('Discard'), findsOneWidget);
+    });
+
+    testWidgets(
+        'the prompt shows the partial\'s distance and elapsed time '
+        '(BUG-006)', (tester) async {
+      // An 11-minute stationary session: the old banner said "11m" and meant
+      // metres. The prompt now states both, in the runner's unit.
+      await pumpResume(
+        tester,
+        partial: cm.Run(
+          id: 'stationary-1',
+          startedAt: DateTime(2026, 4, 10, 9, 0, 0),
+          duration: const Duration(minutes: 11, seconds: 2),
+          distanceMetres: 11,
+          track: const [],
+          source: cm.RunSource.app,
+          metadata: {
+            'activity_type': 'run',
+            'in_progress_saved_at':
+                DateTime(2026, 4, 10, 9, 11, 2).toIso8601String(),
+          },
+        ),
+      );
+      expect(find.text('Resume your run?'), findsOneWidget);
+      expect(
+        find.text('A run from an earlier session is still in progress '
+            '(0.01 km, 11:02). Resume recording where you left off, finish '
+            'it now, or discard it.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('Discard clears the in-progress file and returns to idle',

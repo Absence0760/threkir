@@ -80,7 +80,7 @@ test.describe('Plan auto-complete from linked run', () => {
 			const distanceKm = target / 1000;
 			const numberInputs = page.locator('input[type="number"]');
 			await numberInputs.nth(0).fill(distanceKm.toString());
-			await numberInputs.nth(1).fill('30');
+			await page.getByTestId('run-editor-minutes').fill('30');
 
 			await page.getByRole('button', { name: 'Save run' }).click();
 			await page.waitForURL(/\/runs\/[0-9a-f-]+$/, { timeout: 15_000 });

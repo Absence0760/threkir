@@ -69,9 +69,28 @@ func TestInsertLivePing_OmitsAbsentOptionalFields(t *testing.T) {
 	if _, ok := capturedBody["ele"]; ok {
 		t.Errorf("ele should be omitted when absent, body=%+v", capturedBody)
 	}
+	if _, ok := capturedBody["weak_gps"]; ok {
+		t.Errorf("weak_gps should be omitted for a precise fix, body=%+v", capturedBody)
+	}
 	// distance_m / elapsed_s are always sent — 0 at the start line is real.
 	if _, ok := capturedBody["distance_m"]; !ok {
 		t.Errorf("distance_m must always be sent, body=%+v", capturedBody)
+	}
+}
+
+func TestInsertLivePing_CarriesWeakGPS(t *testing.T) {
+	var capturedBody map[string]any
+	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		_ = json.Unmarshal(b, &capturedBody)
+		w.WriteHeader(http.StatusCreated)
+	})
+	p := livehub.Ping{Lat: 1, Lng: 2, WeakGPS: true}
+	if err := client.InsertLivePing(context.Background(), "run-1", "user-A", p); err != nil {
+		t.Fatalf("InsertLivePing: %v", err)
+	}
+	if capturedBody["weak_gps"] != true {
+		t.Errorf("weak_gps=%v, want true", capturedBody["weak_gps"])
 	}
 }
 
@@ -91,7 +110,7 @@ func TestMaxLivePingID_And_ReadSince(t *testing.T) {
 		}
 		_, _ = w.Write([]byte(`[
 			{"id":6,"run_id":"run-1","lat":51.5,"lng":-0.1,"ele":10,"elapsed_s":60,"distance_m":100,"bpm":140,"coarse":false},
-			{"id":7,"run_id":"run-2","lat":1,"lng":2,"coarse":true}
+			{"id":7,"run_id":"run-2","lat":1,"lng":2,"coarse":true,"weak_gps":true}
 		]`))
 	})
 
@@ -110,8 +129,11 @@ func TestMaxLivePingID_And_ReadSince(t *testing.T) {
 	if rows[0].ID != 6 || rows[0].RunID != "run-1" || rows[0].Ele == nil || *rows[0].Ele != 10 || rows[0].BPM == nil || *rows[0].BPM != 140 {
 		t.Errorf("row0 decoded wrong: %+v", rows[0])
 	}
-	if rows[1].ID != 7 || !rows[1].Coarse {
-		t.Errorf("row1 coarse flag not decoded: %+v", rows[1])
+	if rows[1].ID != 7 || !rows[1].Coarse || !rows[1].WeakGPS {
+		t.Errorf("row1 coarse / weak_gps flags not decoded: %+v", rows[1])
+	}
+	if rows[0].WeakGPS {
+		t.Errorf("row0 weak_gps should default false: %+v", rows[0])
 	}
 	if rows[1].Ele != nil || rows[1].BPM != nil {
 		t.Errorf("row1 absent optionals should be nil: %+v", rows[1])

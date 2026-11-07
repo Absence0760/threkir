@@ -466,8 +466,9 @@ class _GymScreenState extends State<GymScreen>
       // — the exercise catalogue — reaches an already-open sheet through its
       // own listenable (§ 1571).
       //
-      // The tag is per-mount because the hub's Gym tab and the shell's Gym
-      // capture page are both alive at once.
+      // The tag is per-mount because the hub's Gym tab stays alive under a
+      // GymScreen pushed from Home or the run list.
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: ObjectKey(this),
         onPressed: _create,

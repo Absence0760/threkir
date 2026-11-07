@@ -17,6 +17,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../live_cutoff_eta.dart';
 import '../live_freshness.dart';
 import '../live_motion.dart';
+import '../live_trace.dart';
 import '../preferences.dart';
 import '../roadbook.dart';
 import '../route_geometry.dart';
@@ -64,7 +65,18 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
   bool _loading = true;
   Object? _loadError;
   String _status = 'connecting';
-  final List<Waypoint> _trace = [];
+  // Every ping received, in time order whatever order it arrived in
+  // (issue #1300 BUG-003). The map draws the line from its precise fixes
+  // and the marker at its newest ping.
+  final LiveTrace _trace = LiveTrace();
+  List<Waypoint> _line = const [];
+  Waypoint? _newestPoint;
+  // The newest `at` seen, where the catch-up and the poll fallback resume.
+  String? _cursor;
+  Timer? _fallbackPoll;
+  bool _transportsTornDown = false;
+  Future<void> _backlogDone = Future<void>.value();
+  static const Duration _pollFallbackInterval = Duration(seconds: 10);
   double _distanceM = 0;
   int _elapsedS = 0;
   // The newest ping's heart rate. The server keeps bpm on a ping only with
@@ -90,6 +102,10 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
   // not read it as a precise current position.
   bool _lastPingCoarse = false;
 
+  // True once the latest ping is a weak-GPS fix (migration 20271112000030):
+  // kept for distance but not for the line, so the dot reads approximate.
+  bool _lastPingWeak = false;
+
   // The run's own start + conclusion instants, off the `public_runs` row an
   // anonymous spectator can already read. They anchor the race clock, which is
   // a different quantity from the ping's `elapsed_s` and used to be rendered
@@ -109,7 +125,7 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
   // distance/elapsed samples. The pace used for the projection is the average
   // over the buffer (oldest→newest), so a single noisy fix can't swing the ETA.
   ({double lat, double lng})? _latestPos;
-  final List<({double distanceM, int elapsedS})> _recentSamples = [];
+  List<({double distanceM, int elapsedS})> _recentSamples = const [];
   static const int _paceWindow = 5;
 
   // Two windows over one stream, deliberately different lengths: pace is the
@@ -120,7 +136,7 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
   // it without bound — a cadence fast enough to hit the cap just shortens the
   // held span, which `motionFor` then reports as an "at least" floor rather
   // than a wrong figure.
-  final List<MotionSample> _motionSamples = [];
+  List<MotionSample> _motionSamples = const [];
   static const int _motionBufferMs = 60 * 60 * 1000;
   static const int _motionBufferMax = 1000;
 
@@ -131,7 +147,8 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
     _freshnessTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() => _nowMs = DateTime.now().millisecondsSinceEpoch);
-      if (_status == 'live' && ++_concludedCheckTick % 15 == 0) {
+      if ((_status == 'live' || _status == 'waiting-gps') &&
+          ++_concludedCheckTick % 15 == 0) {
         _maybeCheckConcluded();
       }
     });
@@ -140,12 +157,22 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
   @override
   void dispose() {
     _freshnessTimer?.cancel();
-    final ch = _channel;
-    if (ch != null) Supabase.instance.client.removeChannel(ch);
+    _teardownTransports();
     super.dispose();
   }
 
+  void _teardownTransports() {
+    _transportsTornDown = true;
+    _stopFallbackPoll();
+    final ch = _channel;
+    _channel = null;
+    if (ch != null) Supabase.instance.client.removeChannel(ch);
+  }
+
   Future<void> _hydrate() async {
+    // A retry after a failed hydrate starts its transports afresh.
+    _teardownTransports();
+    _transportsTornDown = false;
     try {
       // Resolve the run's terminal state first (mirror web's
       // `ensureRunIsVisible` reading `public_runs` → `runIsFinished`). A
@@ -161,7 +188,15 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
       _concludedAtMs = run?.concludedAt?.toUtc().millisecondsSinceEpoch;
       await _loadCutoffLegs(run?.routeId, run?.startedAt);
       if (!mounted) return;
-      final rows = await widget.api.fetchLiveRunPings(widget.runId);
+      final terminal = run != null &&
+          (run.isDnf || run.concludedAt != null || runIsFinished(run));
+      // Subscribe BEFORE reading the backlog: a ping written between the
+      // two reached neither when the backlog came first. A terminal run
+      // opens no feed at all.
+      if (!terminal) _subscribe();
+      final backlog = widget.api.fetchLiveRunPings(widget.runId);
+      _backlogDone = backlog.then((_) {}, onError: (_) {});
+      final rows = await backlog;
       if (!mounted) return;
       for (final row in rows) {
         _ingest(row);
@@ -191,16 +226,55 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
       }
       setState(() {
         _loading = false;
-        _status = _trace.isEmpty ? 'idle' : 'live';
+        if (_status == 'connecting') {
+          _status = _trace.isEmpty ? 'waiting-gps' : 'live';
+        }
       });
-      _subscribe();
     } catch (e) {
       if (!mounted) return;
+      _teardownTransports();
       setState(() {
         _loadError = e;
         _loading = false;
       });
     }
+  }
+
+  /// A page still waiting for its first ping goes live on one; a ping that
+  /// lands after the run concluded must not reopen it. Mirrors web's
+  /// `statusOnPing`.
+  static String _statusOnPing(String current) =>
+      current == 'connecting' || current == 'waiting-gps' ? 'live' : current;
+
+  Future<void> _pollPings() async {
+    if (_transportsTornDown) return;
+    try {
+      final rows =
+          await widget.api.fetchLiveRunPings(widget.runId, since: _cursor);
+      if (!mounted || _transportsTornDown) return;
+      setState(() {
+        for (final row in rows) {
+          _ingest(row);
+        }
+        if (!_trace.isEmpty) _status = _statusOnPing(_status);
+      });
+    } catch (e) {
+      debugPrint('live ping poll failed: $e');
+    }
+  }
+
+  // Realtime is the fast path, but a channel that errors or times out
+  // delivered nothing and said nothing. Poll from the cursor until it is
+  // back.
+  void _startFallbackPoll() {
+    if (_fallbackPoll != null || _transportsTornDown) return;
+    _fallbackPoll = Timer.periodic(_pollFallbackInterval, (_) => _pollPings());
+    _pollPings();
+  }
+
+  void _stopFallbackPoll() {
+    _fallbackPoll?.cancel();
+    _fallbackPoll = null;
   }
 
   /// Resolve the route's cutoff legs + waypoints for the next-cutoff card.
@@ -269,54 +343,112 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
             if (!mounted) return;
             setState(() {
               _ingest(row);
-              _status = 'live';
+              _status = _statusOnPing(_status);
             });
           },
         )
-        .subscribe();
+        .subscribe((state, _) {
+          if (!mounted || _transportsTornDown) return;
+          if (state == RealtimeSubscribeStatus.subscribed) {
+            // Anything written between the backlog read and the channel
+            // going live (or while it was down) reached no one: catch up
+            // from the cursor once the backlog has set it.
+            _stopFallbackPoll();
+            _backlogDone.then((_) => _pollPings());
+          } else {
+            _startFallbackPoll();
+          }
+        });
   }
 
   void _ingest(Map<String, dynamic> row) {
     final lat = (row['lat'] as num?)?.toDouble();
     final lng = (row['lng'] as num?)?.toDouble();
     if (lat == null || lng == null) return;
-    final ele = (row['ele'] as num?)?.toDouble();
     final at = row['at'] as String?;
-    // tryParse never throws — a manually-edited row or future format
-    // change would otherwise crash the realtime callback (no outer
-    // catch) and tear down live tracking for the spectator.
-    final parsedAt = at == null ? null : DateTime.tryParse(at);
-    // Absolute epoch-ms (UTC-normalised) so the freshness age is correct
-    // regardless of the spectator's device time zone.
-    if (parsedAt != null) {
-      _lastPingAtMs = parsedAt.toUtc().millisecondsSinceEpoch;
-    }
-    _trace.add(Waypoint(
+    // pingTimeMs uses tryParse, which never throws — a manually-edited row
+    // or future format change would otherwise crash the realtime callback
+    // (no outer catch) and tear down live tracking for the spectator. The
+    // instant is absolute epoch-ms (UTC-normalised) so the freshness age is
+    // correct regardless of the spectator's device time zone.
+    final result = _trace.insertPing(TracePing(
       lat: lat,
       lng: lng,
-      elevationMetres: ele,
-      timestamp: parsedAt,
+      ele: (row['ele'] as num?)?.toDouble(),
+      distanceM: (row['distance_m'] as num?)?.toDouble(),
+      elapsedS: (row['elapsed_s'] as num?)?.toInt(),
+      bpm: (row['bpm'] as num?)?.toInt(),
+      atMs: pingTimeMs(at),
+      coarse: row['coarse'] == true,
+      weakGps: row['weak_gps'] == true,
     ));
-    _latestPos = (lat: lat, lng: lng);
-    _lastPingCoarse = row['coarse'] == true;
-    final dist = (row['distance_m'] as num?)?.toDouble();
-    if (dist != null) _distanceM = dist;
-    final elapsed = (row['elapsed_s'] as num?)?.toInt();
-    if (elapsed != null) _elapsedS = elapsed;
-    _bpm = (row['bpm'] as num?)?.toInt();
-    if (dist != null && elapsed != null) {
-      _recentSamples.add((distanceM: dist, elapsedS: elapsed));
-      if (_recentSamples.length > _paceWindow) _recentSamples.removeAt(0);
+    if (result == InsertResult.duplicate) return;
+    final atMs = pingTimeMs(at);
+    final cursor = _cursor;
+    if (at != null &&
+        atMs != null &&
+        (cursor == null || atMs > (pingTimeMs(cursor) ?? 0))) {
+      _cursor = at;
     }
-    // The motion window is stamped from the ping's own clock, never the
-    // device's: a backlog replayed on hydrate would otherwise land as a
-    // burst of "now" and collapse an hour of history into a few seconds.
-    if (dist != null && parsedAt != null) {
-      final atMs = parsedAt.toUtc().millisecondsSinceEpoch;
-      _motionSamples.add(MotionSample(distanceM: dist, atMs: atMs));
-      if (_motionSamples.length > _motionBufferMax) _motionSamples.removeAt(0);
-      _motionSamples.removeWhere((s) => s.atMs < atMs - _motionBufferMs);
+    _line = [
+      for (final p in _trace.lineFixes())
+        Waypoint(
+          lat: p.lat,
+          lng: p.lng,
+          elevationMetres: p.ele,
+          timestamp: p.atMs == null
+              ? null
+              : DateTime.fromMillisecondsSinceEpoch(p.atMs!, isUtc: true),
+        ),
+    ];
+    _rebuildSamples();
+    // The readout follows the newest ping only, so a late arrival redraws
+    // the line without rewinding it.
+    if (result != InsertResult.newest) return;
+    final newest = _trace.newest!;
+    if (newest.atMs != null) _lastPingAtMs = newest.atMs;
+    _newestPoint = Waypoint(
+      lat: newest.lat,
+      lng: newest.lng,
+      elevationMetres: newest.ele,
+    );
+    _latestPos = (lat: newest.lat, lng: newest.lng);
+    _lastPingCoarse = newest.coarse;
+    _lastPingWeak = newest.weakGps;
+    if (newest.distanceM != null) _distanceM = newest.distanceM!;
+    if (newest.elapsedS != null) _elapsedS = newest.elapsedS!;
+    _bpm = newest.bpm;
+  }
+
+  /// The pace window and the motion window, rebuilt from the ordered trace
+  /// so a ping that arrives late lands in its place. The motion window is
+  /// stamped from each ping's own clock, never the device's: a backlog
+  /// replayed on hydrate would otherwise land as a burst of "now" and
+  /// collapse an hour of history into a few seconds.
+  void _rebuildSamples() {
+    final pings = _trace.pings;
+    final recent = <({double distanceM, int elapsedS})>[];
+    for (var i = pings.length - 1; i >= 0 && recent.length < _paceWindow; i--) {
+      final p = pings[i];
+      if (p.distanceM != null && p.elapsedS != null) {
+        recent.add((distanceM: p.distanceM!, elapsedS: p.elapsedS!));
+      }
     }
+    _recentSamples = recent.reversed.toList();
+    final motion = <MotionSample>[];
+    for (var i = pings.length - 1;
+        i >= 0 && motion.length < _motionBufferMax;
+        i--) {
+      final p = pings[i];
+      if (p.distanceM != null && p.atMs != null) {
+        motion.add(MotionSample(distanceM: p.distanceM!, atMs: p.atMs!));
+      }
+    }
+    final newestMs = motion.isEmpty ? null : motion.first.atMs;
+    _motionSamples = [
+      for (final m in motion.reversed)
+        if (newestMs == null || m.atMs >= newestMs - _motionBufferMs) m,
+    ];
   }
 
   /// Average pace over the recent-samples buffer (oldest→newest), in
@@ -396,16 +528,13 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
   /// switch to the conclusion view. Best-effort: a transient fetch error
   /// just defers to the next interval and never disturbs the live feed.
   Future<void> _maybeCheckConcluded() async {
-    if (_status != 'live') return;
+    bool watching() => _status == 'live' || _status == 'waiting-gps';
+    if (!watching()) return;
     try {
       final run = await widget.api.fetchPublicRunById(widget.runId);
-      if (!mounted || _status != 'live' || run == null) return;
+      if (!mounted || !watching() || run == null) return;
       if (run.concludedAt == null) return;
-      final ch = _channel;
-      if (ch != null) {
-        Supabase.instance.client.removeChannel(ch);
-        _channel = null;
-      }
+      _teardownTransports();
       setState(() {
         _status = 'finished';
         _concludedAtMs = run.concludedAt?.toUtc().millisecondsSinceEpoch;
@@ -444,6 +573,7 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
     // its saved totals, so we never surface the approximate treatment for
     // one.
     final coarse = !terminal && _lastPingCoarse;
+    final weak = !terminal && !coarse && _lastPingWeak;
     // The strip renders two different quantities that used to share one
     // label. `_elapsedS` is the runner's own recording timer as of the last
     // fix: it stops when they tap pause and it freezes the moment the pings
@@ -507,12 +637,12 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
               : Column(
                   children: [
                     Expanded(
-                      child: _trace.isEmpty
+                      child: _newestPoint == null
                           ? Center(
                               child: Padding(
                                 padding: const EdgeInsets.all(32),
                                 child: Text(
-                                  l10n.liveSpectatorWaiting,
+                                  l10n.liveSpectatorWaitingGps,
                                   textAlign: TextAlign.center,
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: theme.colorScheme.onSurfaceVariant,
@@ -521,11 +651,12 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
                               ),
                             )
                           : LiveRunMap(
-                              track: _trace,
+                              track: _line,
                               plannedRoute: const [],
                               followRunner: true,
-                              currentPosition: _trace.last,
+                              currentPosition: _newestPoint,
                               coarsePosition: coarse,
+                              weakPosition: weak,
                             ),
                     ),
                     Container(
@@ -545,6 +676,19 @@ class _LiveSpectatorScreenState extends State<LiveSpectatorScreen> {
                               textAlign: TextAlign.center,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: semantic.warning,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (weak) ...[
+                            Text(
+                              l10n.liveSpectatorWeakGpsSub,
+                              key: const Key('weak-gps-sub'),
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.4,
                               ),
@@ -763,8 +907,8 @@ class _StatusBadge extends StatelessWidget {
       'live' when stale =>
         (l10n.liveSpectatorBadgeStale, semantic.warning),
       'live' => (l10n.liveSpectatorBadgeLive, semantic.success),
-      'idle' => (
-          l10n.liveSpectatorBadgeIdle,
+      'waiting-gps' => (
+          l10n.liveSpectatorBadgeWaitingGps,
           theme.colorScheme.onSurfaceVariant,
         ),
       _ => (

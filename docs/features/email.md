@@ -738,6 +738,25 @@ neither, and neither carries a `List-Unsubscribe` header.
   exists as well as in `kindMuted`. One per runner per local day, claimed in
   `private.workout_reminder_claims`. The kind widen is the `NOT VALID` half in
   `20270913000001` and the `VALIDATE` in `20270913000002`.
+- [x] **Club and event notices** — issue #1300 BUG-009 / 010 / 016,
+  `decisions.md § 2358`, migrations `20271112000010`-`13` (the kind widen's
+  `VALIDATE` is `20271112000011`). `club_join_request` (to a request-to-join
+  club's owner and admins), `club_join_approved` (to the member an admin let
+  in) and `event_updated` (to the upcoming attendees when an event's time,
+  place or description changes, at most one per event per 15 minutes) are in
+  `importantKinds`, so the default mode emails and pushes them. `event_rsvp`
+  moved into `pushImportantKinds`: the default mode now pushes an organiser
+  each RSVP and still emails it only under `all`, because a busy event raises
+  one per RSVP. Each has an opt-OUT mute (`notify_club_join_request`,
+  `notify_club_join_approved`, `notify_event_updated`, `notify_event_rsvp`;
+  web Settings → Notifications), subtract-only like the others. Deep links:
+  the join kinds go to `/clubs/{club_id}`, `event_updated` to
+  `/events/{event_id}`. Deleting an event now leaves each upcoming attendee
+  an `event_cancel` with no `event_id` (the cascade would have erased a
+  linked one) and the club in `club_id`, so `pathForKind` sends it to
+  `/clubs/{club_id}` rather than the hub; its copy is the existing
+  `event_cancel` catalogue entry. Copy for the three new kinds in all seven
+  locales.
 
 ### Not planned (with reason)
 

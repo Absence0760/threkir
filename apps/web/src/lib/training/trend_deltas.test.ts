@@ -183,3 +183,12 @@ test('non-finite timestamps and metrics do not poison the totals', () => {
 	assert.equal(t.week.distanceM.current, 5000);
 	assert.equal(t.week.durationS.current, 1500);
 });
+
+test('a duration past the ten-day bound adds no time to the trend', () => {
+	// Issue #1300 § 5: one 12,333-hour row read as a +1,000,000 % week.
+	const runs = [run(daysBefore(0), 5000, 1500), run(daysBefore(1), 2000, 44_400_094)];
+	const t = computeTrendDeltas(runs, 'monday', NOW);
+	assert.equal(t.week.runs.current, 2);
+	assert.equal(t.week.distanceM.current, 7000);
+	assert.equal(t.week.durationS.current, 1500);
+});

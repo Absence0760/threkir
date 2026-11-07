@@ -363,6 +363,7 @@ class ClubsScreenState extends State<ClubsScreen> {
           ),
         ],
       ),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: buildCreateClubFab(context),
       body: _buildBody(context, inlineSegments: true),
     );

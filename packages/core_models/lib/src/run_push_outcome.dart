@@ -1,9 +1,9 @@
 /// Why a run's cloud push cannot be retried.
 ///
-/// One member, deliberately. decisions § 986 refused to build a terminal-error
-/// taxonomy while the category had no reachable member; § 1009 measured the
-/// first one. A second member is earned by measuring a second permanent
-/// failure, not by anticipating one.
+/// decisions § 986 refused to build a terminal-error taxonomy while the
+/// category had no reachable member; § 1009 measured the first one, and the
+/// ten-day `runs_duration_s_max_check` (§ 2359) is the second: a server
+/// refusal that no retry of the same payload can pass.
 ///
 /// The reason is persisted by id in `LocalRunStore`'s `blocked_runs.json`
 /// sidecar, so its `name` is an on-disk value: renaming a member orphans the
@@ -14,6 +14,10 @@ enum RunPushBlockReason {
   /// The same waypoints gzip to the same bytes on every attempt, so the drain
   /// re-sends a payload the server has already refused, forever (§ 1009).
   trackTooLarge,
+
+  /// The run lasts longer than the ten-day bound `runs_duration_s_max_check`
+  /// holds (`kMaxRunDurationS`). Only an edit of its duration can land it.
+  durationOutOfRange,
 }
 
 /// The per-run verdict of a batch push.

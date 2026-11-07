@@ -36,6 +36,7 @@ class _FakeApi extends ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     if (pingError != null) throw pingError!;
     pings.add({

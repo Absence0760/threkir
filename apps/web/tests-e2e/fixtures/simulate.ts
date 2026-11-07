@@ -658,6 +658,7 @@ export async function insertLivePings(opts: {
 		elapsed_s?: number;
 		at?: string;
 		coarse?: boolean;
+		weak_gps?: boolean;
 		bpm?: number;
 	}>;
 }): Promise<void> {
@@ -677,6 +678,7 @@ export async function insertLivePings(opts: {
 		elapsed_s: p.elapsed_s ?? null,
 		at: p.at ?? new Date(Date.now() - (opts.points.length - i) * 1000).toISOString(),
 		coarse: p.coarse ?? false,
+		weak_gps: p.weak_gps ?? false,
 		bpm: p.bpm ?? null
 	}));
 	const { error } = await getAdminClient().from('live_run_pings').insert(rows);

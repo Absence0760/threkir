@@ -49,6 +49,7 @@
 
 import { METADATA_KEYS } from '../core/schema';
 import type { Run } from '../types';
+import { isPlausibleRunDuration } from '../runs/run_duration';
 import {
 	currentVdot,
 	qualifyingRuns,
@@ -200,6 +201,9 @@ export function computeIntensity(
 	for (const r of qualifyingRuns(runs)) {
 		const t = new Date(r.started_at).getTime();
 		if (!Number.isFinite(t) || t < cutoffMs || t > nowMs) continue;
+		// A run past the ten-day bound reads as tens of millions of easy
+		// seconds and would hold the split at "on guideline" on its own.
+		if (!isPlausibleRunDuration(r.duration_s)) continue;
 		let easy = 0;
 		let hard = 0;
 		for (const seg of effortSegments(r)) {

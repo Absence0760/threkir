@@ -357,6 +357,7 @@ pub mod route_geometry;
 pub mod route_gpx;
 pub mod route_markers;
 pub mod route_simplify;
+pub mod run_duration;
 pub mod run_heatmap;
 pub mod run_stats;
 pub mod run_store;

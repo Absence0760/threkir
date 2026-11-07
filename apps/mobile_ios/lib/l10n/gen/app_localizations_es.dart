@@ -2468,13 +2468,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runWorkoutMoreActions => 'Más acciones del entrenamiento';
 
   @override
-  String runWorkoutRemainingYards(int yards) {
-    return 'faltan $yards yd';
-  }
-
-  @override
-  String runWorkoutRemainingMetres(int metres) {
-    return 'faltan $metres m';
+  String runWorkoutRemainingDistance(String distance) {
+    return 'faltan $distance';
   }
 
   @override

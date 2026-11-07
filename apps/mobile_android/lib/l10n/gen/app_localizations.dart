@@ -4139,17 +4139,11 @@ abstract class AppLocalizations {
   /// **'More workout actions'**
   String get runWorkoutMoreActions;
 
-  /// Workout-execution band remaining-distance label in yards
+  /// Workout-execution band and lock-screen remaining-distance label. {distance} is already formatted with its unit: 4.99 mi, 437 yd, 1.20 km or 400 m
   ///
   /// In en, this message translates to:
-  /// **'{yards} yd to go'**
-  String runWorkoutRemainingYards(int yards);
-
-  /// Workout-execution band remaining-distance label in metres
-  ///
-  /// In en, this message translates to:
-  /// **'{metres} m to go'**
-  String runWorkoutRemainingMetres(int metres);
+  /// **'{distance} to go'**
+  String runWorkoutRemainingDistance(String distance);
 
   /// Workout-execution band remaining-time label for duration-based steps
   ///

@@ -488,6 +488,27 @@ void main() {
       expect(find.textContaining('1.2 mi'), findsOneWidget);
     });
 
+    testWidgets('mi mode: a 5 mi step reads its remainder in miles (#1300)',
+        (tester) async {
+      await setUnit(true);
+      await _pumpBand(
+        tester,
+        state: WorkoutBandState(
+          step: _step(distance: 8046.72),
+          totalSteps: 3,
+          currentIndex: 1,
+          progress: 0,
+          remainingMetres: 8027.7,
+          actualPaceSecPerKm: null,
+          adherence: PaceAdherence.onPace,
+          complete: false,
+          abandoned: false,
+        ),
+      );
+      expect(find.text('4.99 mi to go'), findsOneWidget);
+      expect(find.textContaining('yd'), findsNothing);
+    });
+
     testWidgets('km mode (default): 400 m renders in metres + /km pace',
         (tester) async {
       // Negative-shape pin so a regression that inverted the branch

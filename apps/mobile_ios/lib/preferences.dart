@@ -1115,6 +1115,25 @@ class UnitFormat {
     return formatFixed(value, 2, activeLocaleTag);
   }
 
+  /// A distance in the unit a runner reads at that size: "4.99 mi" from one
+  /// mile up and "437 yd" below it, "5.23 km" / "400 m" for metric. For a
+  /// value that shrinks through the small unit (what is left of a step, a
+  /// segment's length); [distance] always uses the large one. Twin of web's
+  /// `formatShortDistance` in apps/web/src/lib/format/short_distance.ts.
+  static String shortDistance(double metres, DistanceUnit unit,
+      [String? localeTag]) {
+    final tag = localeTag ?? activeLocaleTag;
+    if (unit == DistanceUnit.mi) {
+      final miles = metres / kMetresPerMile;
+      if (miles >= 1) return '${formatFixed(miles, 2, tag)} mi';
+      return '${formatInteger(metres * _yardsPerMetre, tag)} yd';
+    }
+    if (metres >= 1000) return '${formatFixed(metres / 1000, 2, tag)} km';
+    return '${formatInteger(metres, tag)} m';
+  }
+
+  static const _yardsPerMetre = 1.09361;
+
   /// Distance unit label.
   static String distanceLabel(DistanceUnit unit) =>
       unit == DistanceUnit.mi ? 'mi' : 'km';

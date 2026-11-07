@@ -228,21 +228,8 @@ class _EffortRow extends StatelessWidget {
     );
   }
 
-  static String _fmtKm(double m) {
-    // The function name is legacy ("_fmtKm" predates the unit-aware
-    // sweep); the implementation now honours the user's active unit
-    // pref. Sub-1 unit values render in metres / yards so a 500 m
-    // segment doesn't display as "0.50 km" / "0.31 mi" — the
-    // shorter unit reads more naturally for segments.
-    final unit = activeDistanceUnit;
-    if (unit == DistanceUnit.mi) {
-      const metresPerMile = 1609.344;
-      if (m >= metresPerMile) return UnitFormat.distance(m, unit);
-      return '${(m * 1.09361).round()} yd';
-    }
-    if (m >= 1000) return UnitFormat.distance(m, unit);
-    return '${m.round()} m';
-  }
+  static String _fmtKm(double m) =>
+      UnitFormat.shortDistance(m, activeDistanceUnit);
 }
 
 /// One catalogue-segment effort. Tappable, unlike the route-segment row above:

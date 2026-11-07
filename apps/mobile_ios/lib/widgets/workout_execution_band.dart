@@ -338,13 +338,8 @@ class _Band extends StatelessWidget {
       return l10n.runWorkoutRemainingDuration(
           _fmtDuration(state.remainingDuration));
     }
-    // Sub-1-unit fragments are the typical case mid-rep, so always
-    // render in the small unit (m / yd).
-    if (activeDistanceUnit == DistanceUnit.mi) {
-      final yards = (state.remainingMetres * 1.09361).round();
-      return l10n.runWorkoutRemainingYards(yards);
-    }
-    return l10n.runWorkoutRemainingMetres(state.remainingMetres.round());
+    return l10n.runWorkoutRemainingDistance(
+        UnitFormat.shortDistance(state.remainingMetres, activeDistanceUnit));
   }
 }
 

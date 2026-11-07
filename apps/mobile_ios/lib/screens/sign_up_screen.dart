@@ -309,6 +309,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
           code: credential.authorizationCode,
           nativeFlow: appleUsesNativeFlow(),
         ),
+        givenName: credential.givenName,
+        familyName: credential.familyName,
         affirmedAgeAndTerms: true,
       );
       if (mounted) Navigator.pop(context, true);

@@ -1973,6 +1973,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runLiveShareStopped => 'Partilha em direto terminada';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'O seu link em direto ainda não enviou nenhuma localização — os espectadores continuam à espera. Verifique o sinal.';
+
+  @override
   String get runLiveShareEndedTitle => 'Partilha em direto terminada';
 
   @override
@@ -6092,14 +6096,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get liveSpectatorConnectError => 'Não foi possível ligar.';
 
   @override
-  String get liveSpectatorWaiting =>
-      'A aguardar o corredor enviar o primeiro sinal…';
+  String get liveSpectatorWaitingGps =>
+      'A aguardar o GPS do corredor — a posição aparece assim que o telemóvel obtiver sinal';
 
   @override
   String get liveSpectatorBadgeLive => 'Em direto';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Parado';
+  String get liveSpectatorBadgeWaitingGps => 'A aguardar GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'A ligar';
@@ -6113,6 +6117,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get liveSpectatorApproximateSub =>
       'Visto pela última vez perto daqui — aproximado';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Aproximado — o sinal GPS do corredor está fraco';
 
   @override
   String get liveSpectatorBadgeFinished => 'Concluído';
@@ -22121,6 +22129,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runLiveShareStopped => 'Compartilhamento ao vivo encerrado';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'Seu link ao vivo ainda não enviou nenhuma localização — os espectadores continuam esperando. Verifique seu sinal.';
+
+  @override
   String get runLiveShareEndedTitle => 'Compartilhamento ao vivo encerrado';
 
   @override
@@ -26239,14 +26251,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get liveSpectatorConnectError => 'Não foi possível conectar.';
 
   @override
-  String get liveSpectatorWaiting =>
-      'Aguardando o corredor enviar o primeiro sinal…';
+  String get liveSpectatorWaitingGps =>
+      'Aguardando o GPS do corredor — a posição aparece assim que o celular obtiver sinal';
 
   @override
   String get liveSpectatorBadgeLive => 'Ao vivo';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Parado';
+  String get liveSpectatorBadgeWaitingGps => 'Aguardando GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Conectando';
@@ -26260,6 +26272,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get liveSpectatorApproximateSub =>
       'Visto pela última vez perto daqui — aproximado';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Aproximado — o sinal de GPS do corredor está fraco';
 
   @override
   String get liveSpectatorBadgeFinished => 'Concluído';

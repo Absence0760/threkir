@@ -1953,6 +1953,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runLiveShareStopped => 'Live sharing stopped';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'Your live link hasn\'t sent a location yet — spectators are still waiting. Check your signal.';
+
+  @override
   String get runLiveShareEndedTitle => 'Live sharing ended';
 
   @override
@@ -6031,14 +6035,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get liveSpectatorConnectError => 'Could not connect.';
 
   @override
-  String get liveSpectatorWaiting =>
-      'Waiting for the runner to send the first ping…';
+  String get liveSpectatorWaitingGps =>
+      'Waiting for the runner\'s GPS — their position appears as soon as their phone gets a fix';
 
   @override
   String get liveSpectatorBadgeLive => 'Live';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Idle';
+  String get liveSpectatorBadgeWaitingGps => 'Waiting for GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Connecting';
@@ -6051,6 +6055,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get liveSpectatorApproximateSub => 'Last seen near here — approximate';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Approximate — the runner\'s GPS signal is weak';
 
   @override
   String get liveSpectatorBadgeFinished => 'Finished';

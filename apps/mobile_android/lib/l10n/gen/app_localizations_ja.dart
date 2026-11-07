@@ -1884,6 +1884,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runLiveShareStopped => 'ライブ共有を停止しました';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'ライブリンクからまだ位置情報が送信されていません。観戦者は待機中です。電波状況を確認してください。';
+
+  @override
   String get runLiveShareEndedTitle => 'ライブ共有が終了しました';
 
   @override
@@ -5735,13 +5739,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get liveSpectatorConnectError => '接続できませんでした。';
 
   @override
-  String get liveSpectatorWaiting => 'ランナーの最初の位置情報を待っています…';
+  String get liveSpectatorWaitingGps =>
+      'ランナーのGPSを待っています — スマートフォンが位置を取得するとすぐに表示されます';
 
   @override
   String get liveSpectatorBadgeLive => 'ライブ';
 
   @override
-  String get liveSpectatorBadgeIdle => '停止中';
+  String get liveSpectatorBadgeWaitingGps => 'GPS待機中';
 
   @override
   String get liveSpectatorBadgeConnecting => '接続中';
@@ -5754,6 +5759,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get liveSpectatorApproximateSub => 'この付近で最後に確認 — おおよその位置';
+
+  @override
+  String get liveSpectatorWeakGpsSub => 'おおよその位置 — ランナーのGPS信号が弱くなっています';
 
   @override
   String get liveSpectatorBadgeFinished => '終了';

@@ -3335,6 +3335,12 @@ abstract class AppLocalizations {
   /// **'Live sharing stopped'**
   String get runLiveShareStopped;
 
+  /// Banner shown once if a live share has delivered no position to spectators within 30 s of starting
+  ///
+  /// In en, this message translates to:
+  /// **'Your live link hasn\'t sent a location yet — spectators are still waiting. Check your signal.'**
+  String get runLiveShareNoPingYet;
+
   /// Title of the post-stop dialog asking whether a live-shared run should stay public
   ///
   /// In en, this message translates to:
@@ -9820,11 +9826,11 @@ abstract class AppLocalizations {
   /// **'Could not connect.'**
   String get liveSpectatorConnectError;
 
-  /// Empty state before any ping arrives
+  /// Live spectator empty state while the run is live but the runner's phone has not published a position yet (no GPS fix)
   ///
   /// In en, this message translates to:
-  /// **'Waiting for the runner to send the first ping…'**
-  String get liveSpectatorWaiting;
+  /// **'Waiting for the runner\'s GPS — their position appears as soon as their phone gets a fix'**
+  String get liveSpectatorWaitingGps;
 
   /// Status badge — live
   ///
@@ -9832,11 +9838,11 @@ abstract class AppLocalizations {
   /// **'Live'**
   String get liveSpectatorBadgeLive;
 
-  /// Status badge — idle
+  /// Live spectator status badge while waiting for the runner's first GPS position
   ///
   /// In en, this message translates to:
-  /// **'Idle'**
-  String get liveSpectatorBadgeIdle;
+  /// **'Waiting for GPS'**
+  String get liveSpectatorBadgeWaitingGps;
 
   /// Status badge — connecting
   ///
@@ -9861,6 +9867,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last seen near here — approximate'**
   String get liveSpectatorApproximateSub;
+
+  /// Live spectator sub-line when the latest position is a weak-GPS fix (20-50 m accuracy): the dot is approximate
+  ///
+  /// In en, this message translates to:
+  /// **'Approximate — the runner\'s GPS signal is weak'**
+  String get liveSpectatorWeakGpsSub;
 
   /// Status badge — the run has finished (terminal state, distinct from a stale signal)
   ///

@@ -2553,6 +2553,10 @@
   "@runLiveShareStopped": {
     "description": "Confirmation banner shown after the runner stops the live-tracking share mid-run"
   },
+  "runLiveShareNoPingYet": "Your live link hasn't sent a location yet — spectators are still waiting. Check your signal.",
+  "@runLiveShareNoPingYet": {
+    "description": "Banner shown once if a live share has delivered no position to spectators within 30 s of starting"
+  },
   "runLiveShareEndedTitle": "Live sharing ended",
   "@runLiveShareEndedTitle": {
     "description": "Title of the post-stop dialog asking whether a live-shared run should stay public"
@@ -8109,17 +8113,17 @@
   "@liveSpectatorConnectError": {
     "description": "Error state when the live feed fails to connect"
   },
-  "liveSpectatorWaiting": "Waiting for the runner to send the first ping…",
-  "@liveSpectatorWaiting": {
-    "description": "Empty state before any ping arrives"
+  "liveSpectatorWaitingGps": "Waiting for the runner's GPS — their position appears as soon as their phone gets a fix",
+  "@liveSpectatorWaitingGps": {
+    "description": "Live spectator empty state while the run is live but the runner's phone has not published a position yet (no GPS fix)"
   },
   "liveSpectatorBadgeLive": "Live",
   "@liveSpectatorBadgeLive": {
     "description": "Status badge — live"
   },
-  "liveSpectatorBadgeIdle": "Idle",
-  "@liveSpectatorBadgeIdle": {
-    "description": "Status badge — idle"
+  "liveSpectatorBadgeWaitingGps": "Waiting for GPS",
+  "@liveSpectatorBadgeWaitingGps": {
+    "description": "Live spectator status badge while waiting for the runner's first GPS position"
   },
   "liveSpectatorBadgeConnecting": "Connecting",
   "@liveSpectatorBadgeConnecting": {
@@ -8136,6 +8140,10 @@
   "liveSpectatorApproximateSub": "Last seen near here — approximate",
   "@liveSpectatorApproximateSub": {
     "description": "Sub-line shown when the latest position is a coarse privacy-zone last-seen fix"
+  },
+  "liveSpectatorWeakGpsSub": "Approximate — the runner's GPS signal is weak",
+  "@liveSpectatorWeakGpsSub": {
+    "description": "Live spectator sub-line when the latest position is a weak-GPS fix (20-50 m accuracy): the dot is approximate"
   },
   "liveSpectatorBadgeFinished": "Finished",
   "@liveSpectatorBadgeFinished": {

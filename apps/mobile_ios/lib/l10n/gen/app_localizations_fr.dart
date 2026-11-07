@@ -1978,6 +1978,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runLiveShareStopped => 'Partage en direct arrêté';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'Votre lien en direct n\'a encore envoyé aucune position — les spectateurs attendent toujours. Vérifiez votre signal.';
+
+  @override
   String get runLiveShareEndedTitle => 'Partage en direct terminé';
 
   @override
@@ -6106,13 +6110,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get liveSpectatorConnectError => 'Connexion impossible.';
 
   @override
-  String get liveSpectatorWaiting => 'En attente du premier signal du coureur…';
+  String get liveSpectatorWaitingGps =>
+      'En attente du GPS du coureur : sa position apparaîtra dès que son téléphone captera un signal';
 
   @override
   String get liveSpectatorBadgeLive => 'En direct';
 
   @override
-  String get liveSpectatorBadgeIdle => 'Inactif';
+  String get liveSpectatorBadgeWaitingGps => 'En attente du GPS';
 
   @override
   String get liveSpectatorBadgeConnecting => 'Connexion';
@@ -6126,6 +6131,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get liveSpectatorApproximateSub =>
       'Vu pour la dernière fois près d\'ici — approximatif';
+
+  @override
+  String get liveSpectatorWeakGpsSub =>
+      'Approximatif — le signal GPS du coureur est faible';
 
   @override
   String get liveSpectatorBadgeFinished => 'Terminé';

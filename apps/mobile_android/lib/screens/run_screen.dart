@@ -48,6 +48,7 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../live_broadcaster.dart';
 import '../live_hub_client.dart';
+import '../live_publish_point.dart';
 import '../main.dart' show pendingArmGuidedRun, pendingStartWorkout;
 import '../live_cutoff_eta.dart';
 import '../off_route_flag.dart';
@@ -2355,8 +2356,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         Timer.periodic(_incrementalSaveInterval, (_) => _saveInProgress());
 
     // GPS-lost banner watchdog — flag stale signal in the UI.
-    _gpsLostCheckTimer =
-        Timer.periodic(const Duration(seconds: 2), (_) => _checkGpsHealth());
+    _gpsLostCheckTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      _checkGpsHealth();
+      _checkLivePublishHealth();
+    });
 
     // Location permission watchdog — catch cases where the runner toggles
     // permission off in Android settings while the run is in flight.
@@ -2885,12 +2888,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         debugPrint('guided-run cue dispatch failed: $e');
       }
 
-      // L4 — Live race spectator ping. Requires a real, FRESH GPS fix;
-      // cadence throttled inside RaceController. Network / Supabase realtime
-      // can throw; swallow and keep going.
+      // L4 — Live race spectator ping. Requires a real, FRESH GPS fix that
+      // the recorder accepted onto its line (race_pings has no weak flag, so
+      // a weak fix is not offered); cadence throttled inside RaceController.
+      // Network / Supabase realtime can throw; swallow and keep going.
       try {
-        final pos = snapshot.currentPosition;
-        if (pos != null && positionFresh) {
+        final pos = livePublishPoint(
+          snapshot,
+          now: DateTime.now(),
+          freshWithin: _gpsLostThreshold,
+          allowWeak: false,
+        )?.point;
+        if (pos != null) {
           widget.raceController?.pushPing(
             lat: pos.lat,
             lng: pos.lng,
@@ -2906,7 +2915,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // L4 — Live-race finish detection. A paused runner is not racing, so
       // a paused pass through the zone is not a finish. The device clock at
       // receipt is the fix's instant: it is the clock the server offset is
-      // measured against.
+      // measured against. A fix the movement filter rejected (a teleport)
+      // is not offered: it could land inside the finish zone.
       try {
         final rc = widget.raceController;
         final pos = snapshot.currentPosition;
@@ -2914,6 +2924,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             rc.isHosting &&
             pos != null &&
             positionFresh &&
+            snapshot.positionTrusted &&
             !_manualPaused &&
             !_stopRequested) {
           final finish = rc.offerFix(
@@ -2933,17 +2944,29 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       // inside the broadcaster. Same swallow-on-fail rule as race pings.
       // Gated on freshness so the spectator's live_freshness reads an
       // honest "updated N min ago" during a signal blackout instead of a
-      // fresh, stationary runner re-pinged off a frozen coordinate.
+      // fresh, stationary runner re-pinged off a frozen coordinate. The
+      // point is the end of the recorder's line, never a rejected fix, and
+      // a weak-GPS fix is published flagged while nothing clears the gate
+      // (livePublishPoint).
       try {
-        final pos = snapshot.currentPosition;
-        if (pos != null && positionFresh) {
-          _liveBroadcaster?.pushPing(
+        final lb = _liveBroadcaster;
+        final publish = lb == null || !lb.isActive
+            ? null
+            : livePublishPoint(
+                snapshot,
+                now: DateTime.now(),
+                freshWithin: _gpsLostThreshold,
+              );
+        if (lb != null && publish != null) {
+          final pos = publish.point;
+          lb.pushPing(
             lat: pos.lat,
             lng: pos.lng,
             distanceM: snapshot.distanceMetres,
             elapsedS: snapshot.elapsed.inSeconds,
             bpm: _currentBpm,
             ele: pos.elevationMetres,
+            weakGps: publish.weakGps,
           );
         }
       } catch (e) {
@@ -3475,6 +3498,26 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         _weakGps = weak;
         _preciseLocationOff = preciseOff;
       });
+    }
+  }
+
+  /// L4 — tells the runner, once per share, when their live link has not
+  /// delivered a single position (issue #1300 BUG-007). Every publish
+  /// failure is swallowed so the recording is never touched, which also
+  /// meant nobody ever learned a spectator was watching "Connecting".
+  /// Non-blocking: a top banner, and the run carries on either way.
+  void _checkLivePublishHealth() {
+    try {
+      // Paused, the recorder takes no fixes, so there is nothing to send.
+      if (_manualPaused) return;
+      final lb = _liveBroadcaster;
+      if (lb == null || !lb.takeNoPingWarning()) return;
+      _showTopBanner(
+        _l10n.runLiveShareNoPingYet,
+        duration: const Duration(seconds: 6),
+      );
+    } catch (e) {
+      debugPrint('live publish health check failed: $e');
     }
   }
 

@@ -122,6 +122,16 @@ func TestBridge_ForwardsRealtimePingToSubscribedRoom(t *testing.T) {
 	}
 }
 
+func TestBridge_ForwardsWeakGPSFlag(t *testing.T) {
+	hub := newFakeBridgeHub()
+	hub.subCount["run-1"] = 1
+	b := newTestBridge(hub, &fakeReader{})
+	b.forward(PersistedPing{ID: 1, RunID: "run-1", Lat: 51.5, Lng: -0.1, WeakGPS: true})
+	if len(hub.published) != 1 || !hub.published[0].ping.WeakGPS {
+		t.Fatalf("weak_gps not carried through the bridge: %+v", hub.published)
+	}
+}
+
 func TestBridge_SkipsRunWithNoSubscribers(t *testing.T) {
 	hub := newFakeBridgeHub() // subCount defaults to 0
 	b := newTestBridge(hub, &fakeReader{})

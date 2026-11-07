@@ -69,6 +69,7 @@ class _FakeApi extends ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     pings.add({'lat': lat, 'lng': lng});
   }

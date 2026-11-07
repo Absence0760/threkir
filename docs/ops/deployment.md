@@ -322,7 +322,11 @@ job caches the remote-derived halves of `apps/mobile_ios/build/ios/SourcePackage
 of resolving the graph a second time into DerivedData. Before that, one
 dropped download failed the lane on a PR that touched no iOS code (run
 37947299387). A fetch failure that still gets through is reported as a Swift
-package download failure, not as "does not compile".
+package download failure, not as "does not compile". After the build, the job
+fails if Xcode rewrote either committed `Package.resolved`: a pubspec bump that
+moves a plugin's exact Swift package requirement must land with regenerated
+pins, or the build runs on pins nobody committed and the cache stays keyed on
+the stale ones (run 42412145141, where that re-resolution crashed xcodebuild).
 
 A `needs:` entry is scoped to its own workflow, so a job in a sibling workflow
 file can never be waited on directly. Two workflows reach the gate anyway by

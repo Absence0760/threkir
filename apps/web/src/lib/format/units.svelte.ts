@@ -14,6 +14,7 @@ import type { PreferredUnit } from '../types';
 import { currentLocale } from '../i18n/store.svelte';
 import { formatDecimal, formatInteger } from './number';
 import { paceMinutesSeconds, isMeaningfulPace, paceToleranceLabel } from './pace_format';
+import { formatShortDistance } from './short_distance';
 import {
 	type WeightUnit,
 	parseWeightUnit,
@@ -85,15 +86,7 @@ export function weightUnitLabel(): WeightUnit {
 /// metric distances render in metres; sub-mile imperial distances
 /// render in yards for parity with how runners read race distances.
 export function formatDistance(metres: number): string {
-	const loc = currentLocale();
-	if (unit.value === 'mi') {
-		const miles = metres / METRES_PER_MILE;
-		if (miles >= 1) return `${formatDecimal(miles, 2, loc)} mi`;
-		const yards = Math.round(metres * 1.09361);
-		return `${formatInteger(yards, loc)} yd`;
-	}
-	if (metres >= 1000) return `${formatDecimal(metres / 1000, 2, loc)} km`;
-	return `${formatInteger(Math.round(metres), loc)} m`;
+	return formatShortDistance(metres, unit.value, currentLocale());
 }
 
 /// Pace label: "m:ss" with the appropriate per-unit suffix baked in

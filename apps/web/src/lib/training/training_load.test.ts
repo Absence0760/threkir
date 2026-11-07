@@ -503,3 +503,17 @@ test('isTrimpLowConfidence — only an HR-read curve for a medication-affected r
 	assert.equal(isTrimpLowConfidence(false, true), false);
 	assert.equal(isTrimpLowConfidence(false, false), false);
 });
+
+test('computeStress — a duration past the ten-day bound falls back to the distance proxy', () => {
+	// Issue #1300 § 5: TRIMP is linear in duration, so a 12,333-hour row would
+	// put one day's load in the hundreds of thousands and flatten every curve.
+	const bad: RunForLoad = {
+		started_at: '2026-04-01T07:00:00Z',
+		duration_s: 44_400_094,
+		distance_m: 2000,
+		metadata: { avg_bpm: 150 },
+	};
+	const prefs = { resting_hr_bpm: 50, max_hr_bpm: 190 };
+	assert.equal(computeStress(bad, prefs), 20);
+	assert.equal(computeStress(bad, prefs, { mode: 'trimp', trimpPerKmFallback: 7 }), 14);
+});

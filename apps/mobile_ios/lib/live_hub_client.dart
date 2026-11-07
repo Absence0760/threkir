@@ -78,6 +78,7 @@ class LiveHubClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     final trimmed = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
@@ -92,6 +93,7 @@ class LiveHubClient {
       if (elapsedS != null) 'elapsed_s': elapsedS,
       if (bpm != null) 'bpm': bpm,
       if (ele != null) 'ele': ele,
+      if (weakGps) 'weak_gps': true,
       'sent_at_ms': DateTime.now().millisecondsSinceEpoch,
     };
     return (fetcher ?? _defaultFetcher)(url, body, accessToken);

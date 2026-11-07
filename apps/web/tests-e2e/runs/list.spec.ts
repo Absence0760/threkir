@@ -582,7 +582,7 @@ test.describe('/runs', () => {
 		// passes the runs CHECK constraint (distance > 0).
 		await page.locator('input[type="datetime-local"]').first().fill('2026-04-29T08:00');
 		await page.locator('input[type="number"]').first().fill('5'); // distance km
-		await page.locator('input[type="number"]').nth(1).fill('25'); // duration min
+		await page.getByTestId('run-editor-minutes').fill('25');
 		await page.locator('textarea').fill(title);
 
 		await page.locator('form button[type="submit"]').click();

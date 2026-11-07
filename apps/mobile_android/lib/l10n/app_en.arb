@@ -2553,6 +2553,10 @@
   "@runLiveShareStopped": {
     "description": "Confirmation banner shown after the runner stops the live-tracking share mid-run"
   },
+  "runLiveShareNoPingYet": "Your live link hasn't sent a location yet — spectators are still waiting. Check your signal.",
+  "@runLiveShareNoPingYet": {
+    "description": "Banner shown once if a live share has delivered no position to spectators within 30 s of starting"
+  },
   "runLiveShareEndedTitle": "Live sharing ended",
   "@runLiveShareEndedTitle": {
     "description": "Title of the post-stop dialog asking whether a live-shared run should stay public"
@@ -2685,10 +2689,6 @@
   "runUnitKcal": "kcal",
   "@runUnitKcal": {
     "description": "Unit suffix for the calories stat"
-  },
-  "runUnitMetres": "m",
-  "@runUnitMetres": {
-    "description": "Unit suffix for the elevation stat (metres)"
   },
   "runUnitSpm": "spm",
   "@runUnitSpm": {
@@ -2866,9 +2866,19 @@
   "@runResumeDialogTitle": {
     "description": "Title of the cold-start prompt when a process-killed in-progress run is recovered"
   },
-  "runResumeDialogBody": "A run from an earlier session is still in progress. Resume recording where you left off, finish it now, or discard it.",
+  "runResumeDialogBody": "A run from an earlier session is still in progress ({distance}, {duration}). Resume recording where you left off, finish it now, or discard it.",
   "@runResumeDialogBody": {
-    "description": "Body of the cold-start resume prompt explaining the Resume / Finish / Discard choice"
+    "description": "Body of the resume prompt shown when a recording was interrupted (app closed, crashed or torn down) explaining the Resume / Finish / Discard choice. distance is in the runner's unit (km or mi, ~ prefix when pedometer-estimated); duration is elapsed time as a clock (mm:ss or h:mm:ss)",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "0.01 km"
+      },
+      "duration": {
+        "type": "String",
+        "example": "11:02"
+      }
+    }
   },
   "runResumeAction": "Resume",
   "@runResumeAction": {
@@ -2889,6 +2899,34 @@
   "runResumeDiscardedBanner": "Discarded your previous run.",
   "@runResumeDiscardedBanner": {
     "description": "Banner shown after the user discards a recovered partial from the resume prompt"
+  },
+  "runRecoveryRecoveredBanner": "Saved an unfinished run from a previous session ({distance}, {duration}).",
+  "@runRecoveryRecoveredBanner": {
+    "description": "Banner at app start when an interrupted recording older than 48 hours was saved as a finished run without asking. distance is in the runner's unit; duration is elapsed time as a clock",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "2.30 km"
+      },
+      "duration": {
+        "type": "String",
+        "example": "15:00"
+      }
+    }
+  },
+  "runRecoveryDiscardedBanner": "Discarded an unfinished recording from a previous session ({distance}, {duration}).",
+  "@runRecoveryDiscardedBanner": {
+    "description": "Banner at app start when an interrupted recording was too small to keep (no distance and under a minute, or older than 48 hours and below the size floor) and was deleted. distance is in the runner's unit; duration is elapsed time as a clock",
+    "placeholders": {
+      "distance": {
+        "type": "String",
+        "example": "0.00 km"
+      },
+      "duration": {
+        "type": "String",
+        "example": "00:05"
+      }
+    }
   },
   "runWorkoutNoStructure": "This workout has no runnable structure.",
   "@runWorkoutNoStructure": {
@@ -3191,21 +3229,16 @@
   "@runWorkoutAbandon": {
     "description": "Button to abandon the structured workout and continue as a free run"
   },
-  "runWorkoutRemainingYards": "{yards} yd to go",
-  "@runWorkoutRemainingYards": {
-    "description": "Workout-execution band remaining-distance label in yards",
-    "placeholders": {
-      "yards": {
-        "type": "int"
-      }
-    }
+  "runWorkoutMoreActions": "More workout actions",
+  "@runWorkoutMoreActions": {
+    "description": "Tooltip and accessibility label of the workout band overflow menu that holds Abandon"
   },
-  "runWorkoutRemainingMetres": "{metres} m to go",
-  "@runWorkoutRemainingMetres": {
-    "description": "Workout-execution band remaining-distance label in metres",
+  "runWorkoutRemainingDistance": "{distance} to go",
+  "@runWorkoutRemainingDistance": {
+    "description": "Workout-execution band and lock-screen remaining-distance label. {distance} is already formatted with its unit: 4.99 mi, 437 yd, 1.20 km or 400 m",
     "placeholders": {
-      "metres": {
-        "type": "int"
+      "distance": {
+        "type": "String"
       }
     }
   },
@@ -4498,6 +4531,21 @@
   "runDetailSegDismiss": "Dismiss",
   "@runDetailSegDismiss": {
     "description": "Tooltip on the segment card's close button"
+  },
+  "runDetailSegRange": "{start}–{end} {unit}",
+  "@runDetailSegRange": {
+    "description": "Header of the run-detail segment card: where along the run the tapped stretch starts and ends, e.g. 1.05–1.35 km. start and end are locale-formatted numbers; unit is km or mi",
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
   },
   "publicRunLiveTitle": "Live right now",
   "@publicRunLiveTitle": {
@@ -6966,6 +7014,66 @@
   "@profileNotifEventCancel": {
     "description": "Notification text for a cancelled event occurrence, when the title is unavailable"
   },
+  "profileNotifClubJoinRequest": "{name} asked to join your club",
+  "@profileNotifClubJoinRequest": {
+    "description": "Notification text to a club owner or admin: someone asked to join the club, club name unknown",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifClubJoinRequestNamed": "{name} asked to join {club}",
+  "@profileNotifClubJoinRequestNamed": {
+    "description": "Notification text to a club owner or admin: someone asked to join the named club",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifClubJoinApproved": "Your request to join a club was approved",
+  "@profileNotifClubJoinApproved": {
+    "description": "Notification text: the recipient's request to join a club was approved, club name unknown"
+  },
+  "profileNotifClubJoinApprovedNamed": "You're in — your request to join {club} was approved",
+  "@profileNotifClubJoinApprovedNamed": {
+    "description": "Notification text: the recipient's request to join the named club was approved",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifEventUpdated": "An event you're going to was updated",
+  "@profileNotifEventUpdated": {
+    "description": "Notification text: the time, place or description of an event the recipient is going to changed, title unknown"
+  },
+  "profileNotifEventUpdatedTitled": "\"{title}\" was updated — check the new details",
+  "@profileNotifEventUpdatedTitled": {
+    "description": "Notification text: the time, place or description of the titled event the recipient is going to changed",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifEventDeleted": "An event you RSVP'd to was cancelled",
+  "@profileNotifEventDeleted": {
+    "description": "Notification text: a whole event the recipient RSVP'd to was deleted by its organiser, title unknown"
+  },
+  "profileNotifEventDeletedTitled": "\"{title}\" was cancelled",
+  "@profileNotifEventDeletedTitled": {
+    "description": "Notification text: the titled event the recipient RSVP'd to was deleted by its organiser",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "profileNotifEventCancelRefundedTitled": "An occurrence of \"{title}\" was cancelled — your payment is being refunded",
   "@profileNotifEventCancelRefundedTitled": {
     "description": "Notification text for a cancelled event occurrence the recipient had paid for, when the event title is known. The refund has been issued, not necessarily received, so say it is being refunded.",
@@ -8071,17 +8179,17 @@
   "@liveSpectatorConnectError": {
     "description": "Error state when the live feed fails to connect"
   },
-  "liveSpectatorWaiting": "Waiting for the runner to send the first ping…",
-  "@liveSpectatorWaiting": {
-    "description": "Empty state before any ping arrives"
+  "liveSpectatorWaitingGps": "Waiting for the runner's GPS — their position appears as soon as their phone gets a fix",
+  "@liveSpectatorWaitingGps": {
+    "description": "Live spectator empty state while the run is live but the runner's phone has not published a position yet (no GPS fix)"
   },
   "liveSpectatorBadgeLive": "Live",
   "@liveSpectatorBadgeLive": {
     "description": "Status badge — live"
   },
-  "liveSpectatorBadgeIdle": "Idle",
-  "@liveSpectatorBadgeIdle": {
-    "description": "Status badge — idle"
+  "liveSpectatorBadgeWaitingGps": "Waiting for GPS",
+  "@liveSpectatorBadgeWaitingGps": {
+    "description": "Live spectator status badge while waiting for the runner's first GPS position"
   },
   "liveSpectatorBadgeConnecting": "Connecting",
   "@liveSpectatorBadgeConnecting": {
@@ -8098,6 +8206,10 @@
   "liveSpectatorApproximateSub": "Last seen near here — approximate",
   "@liveSpectatorApproximateSub": {
     "description": "Sub-line shown when the latest position is a coarse privacy-zone last-seen fix"
+  },
+  "liveSpectatorWeakGpsSub": "Approximate — the runner's GPS signal is weak",
+  "@liveSpectatorWeakGpsSub": {
+    "description": "Live spectator sub-line when the latest position is a weak-GPS fix (20-50 m accuracy): the dot is approximate"
   },
   "liveSpectatorBadgeFinished": "Finished",
   "@liveSpectatorBadgeFinished": {
@@ -26339,5 +26451,53 @@
   "routesImportNoTrack": "Import failed: that file holds no route with at least two points.",
   "@routesImportNoTrack": {
     "description": "Banner when an imported route file parses but holds no line of two or more points (or is not a route file at all)."
+  },
+  "manualDurationErrorInvalid": "Use whole numbers only",
+  "@manualDurationErrorInvalid": {
+    "description": "Validation error on a typed hours/minutes/seconds run duration when a box holds anything other than digits"
+  },
+  "manualDurationErrorMinutes": "Minutes must be between 0 and 59",
+  "@manualDurationErrorMinutes": {
+    "description": "Validation error when the minutes box of a typed run duration is above 59"
+  },
+  "manualDurationErrorSeconds": "Seconds must be between 0 and 59",
+  "@manualDurationErrorSeconds": {
+    "description": "Validation error when the seconds box of a typed run duration is above 59"
+  },
+  "manualDurationErrorTooLong": "A run can't be longer than {hours} hours",
+  "@manualDurationErrorTooLong": {
+    "description": "Validation error when a typed run duration exceeds the ten-day maximum; {hours} is that maximum in hours (240)",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "manualDurationSlowTitle": "Check the duration",
+  "@manualDurationSlowTitle": {
+    "description": "Title of the confirm shown when a typed duration works out slower than 1 km/h over the typed distance"
+  },
+  "manualDurationSlowBody": "That's far slower than walking pace for this distance. Did a number land in the wrong box?",
+  "@manualDurationSlowBody": {
+    "description": "Body of the slower-than-walking confirm: the likely cause is a figure typed into the wrong box (hours instead of minutes)"
+  },
+  "manualDurationSlowSave": "Save anyway",
+  "@manualDurationSlowSave": {
+    "description": "Confirm button: save the run with the duration exactly as typed"
+  },
+  "manualDurationSlowFix": "Fix it",
+  "@manualDurationSlowFix": {
+    "description": "Cancel button: go back to the form to correct the duration"
+  },
+  "addRunStartInFuture": "The start time can't be in the future",
+  "@addRunStartInFuture": {
+    "description": "Shown when the add-run date and time picked lies in the future"
+  },
+  "runDetailBlockedDurationTooLong": "This run lasts longer than {hours} hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.",
+  "@runDetailBlockedDurationTooLong": {
+    "description": "Body of the blocked-upload card when a run is longer than the ten-day maximum the server accepts; {hours} is that maximum in hours (240)",
+    "placeholders": {
+      "hours": {"type": "int"}
+    }
   }
 }

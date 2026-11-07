@@ -205,6 +205,31 @@ test('groupNotifications: club posts collapse per club', () => {
 	assert.equal(groups[0].otherCount, 1);
 });
 
+test('groupNotifications: join requests collapse per club, edits per event, deleted-event cancels never', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'j1', kind: 'club_join_request', club_id: 'c1', actor_id: 'u1', created_at: ago(1000) }),
+			n({ id: 'j2', kind: 'club_join_request', club_id: 'c1', actor_id: 'u2', created_at: ago(2000) }),
+			n({ id: 'j3', kind: 'club_join_request', club_id: 'c2', actor_id: 'u3', created_at: ago(1500) }),
+			n({ id: 'u1', kind: 'event_updated', event_id: 'ev1', created_at: ago(3000) }),
+			n({ id: 'u2', kind: 'event_updated', event_id: 'ev1', created_at: ago(4000) }),
+			n({ id: 'x1', kind: 'event_cancel', club_id: 'c1', created_at: ago(5000) }),
+			n({ id: 'x2', kind: 'event_cancel', club_id: 'c1', created_at: ago(6000) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		groups.map((g) => [g.lead.id, g.otherCount]),
+		[
+			['j1', 1],
+			['j3', 0],
+			['u1', 1],
+			['x1', 0],
+			['x2', 0],
+		],
+	);
+});
+
 test('groupNotifications: messages collapse per actor, distinct actors split', () => {
 	const groups = groupNotifications(
 		[

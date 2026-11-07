@@ -237,14 +237,21 @@ GoalProgress evaluateGoal(RunGoal goal, List<Run> runs, DateTime now,
   // Pace calculations exclude cycling — a distance-weighted average would
   // otherwise be dominated by a single long bike ride.
   final paceEligible = inPeriod
-      .where((r) => r.metadata?['activity_type'] != 'cycle')
+      .where((r) =>
+          r.metadata?['activity_type'] != 'cycle' &&
+          isPlausibleRunDuration(r.duration.inSeconds))
       .toList();
 
   final totalMetres =
       inPeriod.fold<double>(0, (s, r) => s + r.distanceMetres) +
           marked.distanceM;
-  final totalSeconds =
-      inPeriod.fold<int>(0, (s, r) => s + r.duration.inSeconds);
+  final totalSeconds = inPeriod.fold<int>(
+      0,
+      (s, r) =>
+          s +
+          (isPlausibleRunDuration(r.duration.inSeconds)
+              ? r.duration.inSeconds
+              : 0));
 
   final targets = <TargetProgress>[];
 

@@ -185,6 +185,13 @@ test.describe('/runs/[id] — the map adopts the matched line', () => {
 
 		await expect(page.locator('.segment-card')).toBeVisible({ timeout: 10_000 });
 		await expect.poll(() => segmentBpm(page), { timeout: 10_000 }).toBe(RAW_BPM);
+
+		// The card says which stretch it measures (#1300 § 2): a range along
+		// the run in the runner's unit, opening before it closes.
+		const range = ((await page.locator('.segment-range').textContent()) ?? '').trim();
+		const parts = range.match(/^(\d+\.\d{2})–(\d+\.\d{2}) km$/);
+		expect(parts, `segment range "${range}"`).not.toBeNull();
+		expect(Number(parts![1])).toBeLessThan(Number(parts![2]));
 	});
 
 	// MapLibre fires `load` only once the first frame's tiles are in, so

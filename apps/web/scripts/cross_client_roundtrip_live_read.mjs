@@ -12,7 +12,7 @@
 //        .eq('id', id).maybeSingle()        // only present when is_public = true
 //
 //   2. catch-up:   supabase.from('live_run_pings')
-//        .select('lat, lng, distance_m, elapsed_s, at, coarse')
+//        .select('lat, lng, distance_m, elapsed_s, at, coarse, weak_gps')
 //        .eq('run_id', id).order('at', { ascending: true })
 //
 // and asserts field-for-field equality against the fixture the Dart half
@@ -86,7 +86,7 @@ if (!runRow.started_at) fail(`public_runs row ${fixture.run_id} carries no start
 //    the same columns, ordered by `at asc`.
 const { data: pings, error: pingErr } = await supabase
 	.from('live_run_pings')
-	.select('lat, lng, distance_m, elapsed_s, at, coarse')
+	.select('lat, lng, distance_m, elapsed_s, at, coarse, weak_gps')
 	.eq('run_id', fixture.run_id)
 	.order('at', { ascending: true });
 if (pingErr || !pings) fail(`live_run_pings read failed for ${fixture.run_id}: ${pingErr?.message ?? 'no rows'}`);
@@ -133,7 +133,12 @@ const checks = [
 	// part of the catch-up read shape — assert it round-trips false on every
 	// ping so the spectator never renders a precise live fix as approximate.
 	['first ping coarse', first?.coarse, fixture.coarse, 'bool'],
-	['last ping coarse', last?.coarse, fixture.coarse, 'bool']
+	['last ping coarse', last?.coarse, fixture.coarse, 'bool'],
+	// weak_gps (migration 20271112000030) is the recorder's own flag: the
+	// Dart half publishes the last ping weak, so a spectator draws it as an
+	// approximate position rather than joining it into the line.
+	['first ping weak_gps', first?.weak_gps, fixture.first_weak_gps, 'bool'],
+	['last ping weak_gps', last?.weak_gps, fixture.last_weak_gps, 'bool']
 ];
 
 const failures = [];

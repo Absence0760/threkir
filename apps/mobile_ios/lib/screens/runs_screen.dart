@@ -1035,6 +1035,7 @@ class _RunsScreenState extends State<RunsScreen>
                   Expanded(child: _buildBody(theme, l10n, unit, totalCount)),
                 ],
               ),
+        floatingActionButtonLocation: pageFabLocation(context),
         floatingActionButton:
             (_selecting || !widget.showAddFab) ? null : _buildAddFab(l10n),
       ),

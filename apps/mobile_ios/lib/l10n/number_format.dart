@@ -44,6 +44,22 @@ String formatFixed(double value, int digits, String localeTag) {
   return fmt.format(value);
 }
 
+final Map<String, NumberFormat> _integerFormatters = <String, NumberFormat>{};
+
+/// [value] rounded to a whole number WITH [localeTag]'s thousands grouping:
+/// `1,500` (en), `1.500` (de). [formatFixed] deliberately never groups; this
+/// is for a label that matches web's `formatInteger` in
+/// apps/web/src/lib/format/number.ts.
+String formatInteger(double value, String localeTag) {
+  if (!value.isFinite) return '—';
+  final fmt = _integerFormatters.putIfAbsent(
+      localeTag,
+      () => NumberFormat.decimalPattern(localeTag)
+        ..minimumFractionDigits = 0
+        ..maximumFractionDigits = 0);
+  return fmt.format(value.round());
+}
+
 final Map<String, NumberFormat> _percentFormatters = <String, NumberFormat>{};
 
 /// [fraction] (0.42) as a whole percentage in [localeTag]'s pattern: `42%`

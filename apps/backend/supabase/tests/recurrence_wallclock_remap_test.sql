@@ -17,9 +17,14 @@
 --   e6  e1's shape, with a member who RSVP'd both an O instant and its target,
 --       beside another member at the same O instant.
 --   e7  a series in 'UTC', whose two clocks are the same.
+--
+-- Every RSVP below also leaves the organiser an `event_rsvp` notice keyed to
+-- its occurrence (20271112000010, decisions § 2358), and `notifications` is
+-- one of the instance-keyed tables the remap moves, so each `moved` count
+-- includes those notices: they must follow their occurrence like the RSVP.
 
 begin;
-select plan(41);
+select plan(43);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at, instance_id, aud, role)
 values
@@ -120,6 +125,12 @@ create function pg_temp.keys(p_event uuid, p_user uuid) returns text language sq
     from event_attendees where event_id = p_event and user_id = p_user;
 $$;
 
+select is(
+  (select count(*)::int from notifications n join ids on ids.id = n.event_id
+    where n.kind = 'event_rsvp' and n.event_instance_start is not null),
+  15,
+  'each of the fifteen fixture RSVPs left the organiser a notice keyed to its occurrence, which the moved counts below include');
+
 -- ── the gate ────────────────────────────────────────────────────────────────
 
 select ok(
@@ -172,7 +183,7 @@ select ok(private.is_event_occurrence('eeeeeeee-0000-0000-1918-000000000001', '2
 
 select is(
   (select moved from private.remap_recurrence_wallclock(p_event_ids => array['eeeeeeee-0000-0000-1918-000000000001'::uuid])),
-  6::bigint,
+  8::bigint,
   'a dry run reports the rows the remap would move');
 select is(pg_temp.keys('eeeeeeee-0000-0000-1918-000000000001', '99999999-9999-9999-9999-99991918a002'),
   '2026-09-09T01:30Z 2026-09-16T01:30Z',
@@ -212,8 +223,14 @@ select is(
 
 select is(
   (select array[moved, conflicts, unmapped] from run1 where event_id = 'eeeeeeee-0000-0000-1918-000000000002'),
-  array[7, 0, 0]::bigint[],
-  'e2: adjacent weekdays move all seven rows with no collision');
+  array[12, 0, 0]::bigint[],
+  'e2: adjacent weekdays move all seven rows and their five RSVP notices with no collision');
+select is(
+  (select string_agg(to_char(event_instance_start at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI"Z"'), ' '
+                     order by event_instance_start)
+     from notifications where event_id = 'eeeeeeee-0000-0000-1918-000000000002' and kind = 'event_rsvp'),
+  pg_temp.keys('eeeeeeee-0000-0000-1918-000000000002', '99999999-9999-9999-9999-99991918a003'),
+  'e2: the organiser''s RSVP notices land on the same occurrences as the RSVPs they announce');
 select is(pg_temp.keys('eeeeeeee-0000-0000-1918-000000000002', '99999999-9999-9999-9999-99991918a003'),
   '2026-10-21T01:30Z 2026-10-27T01:30Z 2026-10-28T01:30Z 2026-11-03T02:30Z 2026-11-04T02:30Z',
   'e2: every RSVP keeps its weekday code (UTC Monday -> local Monday), onto local Mon + Tue at 21:30');
@@ -233,7 +250,7 @@ select is(pg_temp.keys('eeeeeeee-0000-0000-1918-000000000004', '99999999-9999-99
 
 select is(
   (select array[moved, conflicts] from run1 where event_id = 'eeeeeeee-0000-0000-1918-000000000006'),
-  array[1, 1]::bigint[],
+  array[3, 1]::bigint[],
   'e6: a row whose target the same member already holds is left in place and counted, and the others at that instant still move');
 select is(pg_temp.keys('eeeeeeee-0000-0000-1918-000000000006', '99999999-9999-9999-9999-99991918a004'),
   '2026-09-09T01:30Z 2026-09-10T01:30Z',
@@ -289,8 +306,8 @@ select throws_ok(
 create temp table run2 on commit drop as
   select r.* from private.remap_recurrence_wallclock(100, true, (select at from sweep_at), array(select id from ids)) r;
 
-select is((select moved from run2 where event_id = 'eeeeeeee-0000-0000-1918-000000000001'), 2::bigint,
-  'the sweep moves exactly the two rows written after the remap');
+select is((select moved from run2 where event_id = 'eeeeeeee-0000-0000-1918-000000000001'), 3::bigint,
+  'the sweep moves exactly the two rows written after the remap, and the RSVP''s notice');
 select is(pg_temp.keys('eeeeeeee-0000-0000-1918-000000000001', '99999999-9999-9999-9999-99991918a003'),
   '2026-10-01T01:30Z',
   'onto the same pairing the first pass used');

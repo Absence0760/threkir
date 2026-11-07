@@ -37,7 +37,7 @@ func pushPrefs(mode string) map[string]interface{} {
 }
 
 func TestShouldEmail_Matrix(t *testing.T) {
-	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request"}
+	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request", "club_join_request", "club_join_approved", "event_updated"}
 	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp", "reaction", "comment_like", "workout_reminder"}
 
 	for _, k := range important {
@@ -209,6 +209,11 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"event_cancel", NotificationRow{Kind: "event_cancel", EventID: &ev}, base + "/events/evt-1"},
 		{"event_rsvp", NotificationRow{Kind: "event_rsvp", EventID: &ev}, base + "/events/evt-1"},
 		{"event_waitlist_slot", NotificationRow{Kind: "event_waitlist_slot", EventID: &ev}, base + "/events/evt-1"},
+		{"event_updated", NotificationRow{Kind: "event_updated", EventID: &ev}, base + "/events/evt-1"},
+		// A deleted event's notice carries its club and no event (decisions § 2358).
+		{"event_cancel for a deleted event", NotificationRow{Kind: "event_cancel", ClubID: &club}, base + "/clubs/club-1"},
+		{"club_join_request", NotificationRow{Kind: "club_join_request", ClubID: &club}, base + "/clubs/club-1"},
+		{"club_join_approved", NotificationRow{Kind: "club_join_approved", ClubID: &club}, base + "/clubs/club-1"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},
 		// Sent to the assigning coach, whose view of the athlete's plan is the
@@ -318,7 +323,12 @@ func TestPathForKind(t *testing.T) {
 		{"event_cancel", "event_cancel", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event_rsvp", "event_rsvp", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event_waitlist_slot", "event_waitlist_slot", NotificationRow{EventID: &ev}, base + "/events/e1"},
+		{"event_updated", "event_updated", NotificationRow{EventID: &ev}, base + "/events/e1"},
 		{"event nil id → /clubs", "event_reminder", NotificationRow{}, base + "/clubs"},
+		// A deleted event's cancel links no event (the cascade would erase a
+		// row that did) and lands on its club; with the club gone too, the hub.
+		{"deleted event's cancel → its club", "event_cancel", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
+		{"deleted event's cancel, club gone → /clubs", "event_cancel", NotificationRow{}, base + "/clubs"},
 		// Plan family → /plans (there is NO /training route — the old target
 		// was a dead deep link).
 		{"plan_update → /plans", "plan_update", NotificationRow{}, base + "/plans"},
@@ -328,6 +338,8 @@ func TestPathForKind(t *testing.T) {
 		// an id lookup and redirects to the canonical slug URL.
 		{"club_post", "club_post", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
 		{"club nil id → /clubs", "club_post", NotificationRow{}, base + "/clubs"},
+		{"club_join_request", "club_join_request", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
+		{"club_join_approved", "club_join_approved", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
 		// Engagement on the recipient's OWN run → the owner-scoped detail page.
 		// comment_reply folds to run.
 		{"kudos", "kudos", NotificationRow{RunID: &run}, base + "/runs/r1"},

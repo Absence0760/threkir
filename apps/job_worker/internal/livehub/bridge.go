@@ -50,6 +50,7 @@ type PersistedPing struct {
 	DistanceM *float64
 	BPM       *int
 	Coarse    bool
+	WeakGPS   bool
 }
 
 // PingReader fetches `live_run_pings` rows for the Bridge. Implemented
@@ -196,6 +197,7 @@ func (b *Bridge) forward(row PersistedPing) {
 		ElapsedS:  derefI(row.ElapsedS),
 		BPM:       row.BPM,
 		Elevation: row.Ele,
+		WeakGPS:   row.WeakGPS,
 		// SentAtMs deliberately 0: the recorder's original send clock
 		// wasn't persisted, and the row's server `at` is a different
 		// clock. A bridged ping simply carries no end-to-end latency

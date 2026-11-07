@@ -65,6 +65,7 @@ class _LiveApi extends ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {}
 
   @override

@@ -1115,6 +1115,25 @@ class UnitFormat {
     return formatFixed(value, 2, activeLocaleTag);
   }
 
+  /// A distance in the unit a runner reads at that size: "4.99 mi" from one
+  /// mile up and "437 yd" below it, "5.23 km" / "400 m" for metric. For a
+  /// value that shrinks through the small unit (what is left of a step, a
+  /// segment's length); [distance] always uses the large one. Twin of web's
+  /// `formatShortDistance` in apps/web/src/lib/format/short_distance.ts.
+  static String shortDistance(double metres, DistanceUnit unit,
+      [String? localeTag]) {
+    final tag = localeTag ?? activeLocaleTag;
+    if (unit == DistanceUnit.mi) {
+      final miles = metres / kMetresPerMile;
+      if (miles >= 1) return '${formatFixed(miles, 2, tag)} mi';
+      return '${formatInteger(metres * _yardsPerMetre, tag)} yd';
+    }
+    if (metres >= 1000) return '${formatFixed(metres / 1000, 2, tag)} km';
+    return '${formatInteger(metres, tag)} m';
+  }
+
+  static const _yardsPerMetre = 1.09361;
+
   /// Distance unit label.
   static String distanceLabel(DistanceUnit unit) =>
       unit == DistanceUnit.mi ? 'mi' : 'km';
@@ -1150,6 +1169,18 @@ class UnitFormat {
     final m = total ~/ 60;
     final s = total % 60;
     return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  /// A pace difference stored as seconds per km, in the unit the pace beside
+  /// it is read in and saying so: "+16s/mi", "−10s/km". A bare "+428s" next
+  /// to a /mi target was s/km (issue #1300). Twin of web's `paceDeltaLabel`
+  /// in apps/web/src/lib/format/pace_delta.ts.
+  static String paceDelta(num deltaSecPerKm, DistanceUnit unit) {
+    // floor(x + 0.5) is JS Math.round; Dart's round() takes -0.5 to -1.
+    final d = (paceSecPerUnit(deltaSecPerKm.toDouble(), unit) + 0.5).floor();
+    final sign = d > 0 ? '+' : (d < 0 ? '−' : '');
+    final label = unit == DistanceUnit.mi ? 'mi' : 'km';
+    return '$sign${d.abs()}s/$label';
   }
 
   /// Pace unit label e.g. "/km" or "/mi".

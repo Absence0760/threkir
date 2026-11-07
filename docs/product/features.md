@@ -79,7 +79,7 @@ During recording, the screen shows a dark full-screen map with:
 
 **Background recording**: GPS tracking continues when the screen is off or the user switches apps, via the foreground service notification. Requires the user to grant location permission as "Allow all the time" and to disable battery optimisation for the app.
 
-**Crash-safe persistence**: the current run state is serialised to disk every 10 seconds. If the app is killed mid-run (OOM, force-stop, battery), the next launch promotes the partial data to a completed run tagged `recovered_from_crash` and shows a snackbar: *"Recovered unfinished run — X.XX km, Y min"*. Tiny runs (< 3 waypoints or < 50 m) are dropped silently.
+**Crash-safe persistence**: the current run state is serialised to disk every 10 seconds. If the app is killed mid-run (OOM, force-stop, battery), the next launch offers **Resume** / **Finish now** / **Discard** for any partial saved within 48 h that has some distance or a minute of time, showing its distance and elapsed time; only an empty one is dropped, with a banner. An older partial is saved as a completed run tagged `recovered_from_crash` when it has ≥ 3 waypoints and ≥ 50 m, and dropped with a banner otherwise (decisions § 230, § 2355).
 
 **Hardening**: the GPS filter chain rejects fixes with accuracy > 20 m, implausible speeds (per-activity, e.g. > 10 m/s for run), and single-hop jumps > 100 m. The elapsed-time clock is a monotonic `Stopwatch` so NTP sync or timezone changes can't corrupt the duration. The pedometer stream auto-resubscribes on error with exponential backoff. A permission watchdog polls `Geolocator.checkPermission()` every 5 seconds and surfaces a banner if the user revokes location mid-run. Activity type is locked once the user has tapped Start.
 
@@ -138,6 +138,8 @@ Tapping a run opens the detail view:
 - Source label ("Recorded", "Strava", "parkrun")
 
 A weekly summary card at the top of the history list shows total distance and run count for the current week.
+
+A run added by hand is graded before it is saved: the duration is typed as hours, minutes and seconds (minutes and seconds 0–59), it must be above zero and at most ten days, a pace slower than 1 km/h over the typed distance asks first, and the start cannot be in the future. Every duration total — the weekly summary, period summaries, the recap, goals, training load and the `duration` challenge board — skips a stored run longer than ten days rather than summing it, so one bad legacy or imported row cannot swamp a week ([decisions § 2359](../architecture/decisions.md), issue #1300 § 5).
 
 **Done when:**
 - All recorded and synced runs appear in list within 1 second of opening

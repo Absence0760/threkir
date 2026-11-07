@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/local_run_store.dart';
+
 /// Pump frames until [condition] holds, giving the REAL event loop a slice
 /// between them.
 ///
@@ -33,6 +35,26 @@ Future<void> pumpUntil(
         () => Future<void>.delayed(const Duration(milliseconds: 5)));
     await tester.pump();
   }
+}
+
+/// Pump until [store]'s in-progress recording path is quiet.
+///
+/// A `RunScreen` unmounted mid-recording checkpoints the run from `dispose`
+/// (decisions § 2352), and that write starts on the fake zone, so only
+/// pumping delivers its completion. A `tearDown` that awaits
+/// `debugInProgressSettled` cannot pump, and waits on it forever instead of
+/// failing. Call this after the unmount, while the tester can still pump.
+Future<void> pumpUntilInProgressSettles(
+  WidgetTester tester,
+  LocalRunStore store,
+) async {
+  var settled = false;
+  unawaited(store.debugInProgressSettled().whenComplete(() => settled = true));
+  await pumpUntil(
+    tester,
+    () => settled,
+    describe: 'the in-progress recording write to finish',
+  );
 }
 
 /// Complete a Finish hold on a mounted `RunScreen`, then wait for the stop

@@ -57,6 +57,17 @@ void main() {
       runner.dispose();
     });
 
+    test('miles: a long step left reads in miles, not thousands of yards',
+        () {
+      // Issue #1300: a 5 mi steady block 19 m in read "8779 yd to go".
+      final runner = WorkoutRunner(steps: [_rep(1, 1, metres: 8046.72)])
+        ..onSnapshot(_at(0, 0))
+        ..onSnapshot(_at(15, 19));
+      final step = lockScreenStep(runner, l10n: _en, unit: DistanceUnit.mi)!;
+      expect(step.remainingText, '4.99 mi to go');
+      runner.dispose();
+    });
+
     test('a timed walk: time left as a clock, no pace target', () {
       final runner = WorkoutRunner(steps: [_walk()])
         ..onSnapshot(_at(0, 0))
@@ -74,7 +85,7 @@ void main() {
       final runner = WorkoutRunner(steps: [_rep(2, 5)])..onSnapshot(_at(0, 0));
       final step = lockScreenStep(runner, l10n: _de, unit: DistanceUnit.km)!;
       expect(step.name, _de.ttsStepRepOf(2, 5));
-      expect(step.remainingText, _de.runWorkoutRemainingMetres(400));
+      expect(step.remainingText, _de.runWorkoutRemainingDistance('400 m'));
       expect(step.name, isNot(contains('Rep 2/5')));
       runner.dispose();
     });

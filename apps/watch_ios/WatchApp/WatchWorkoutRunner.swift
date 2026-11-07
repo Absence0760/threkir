@@ -104,6 +104,11 @@ final class WatchWorkoutRunner {
     static let completed = "completed"
     static let skipped = "skipped"
     static let driftCueIntervalSeconds: TimeInterval = 45
+    /// The phone runner's `kStepPaceMinMetres` / `kStepPaceMinSeconds`: a
+    /// step's pace is not graded until it has covered 50 m in 20 s, so a
+    /// standing start is not announced as way behind (issue #1300).
+    static let stepPaceMinMetres: Double = 50
+    static let stepPaceMinSeconds = 20
 
     let workout: PushedWorkout
     var steps: [PushedStep] { workout.steps }
@@ -249,7 +254,7 @@ final class WatchWorkoutRunner {
         if workout.unpaced { return nil }
         let d = stepDistance
         let secs = stepSecs
-        if d < 5 || secs < 1 { return nil }
+        if d < Self.stepPaceMinMetres || secs < Self.stepPaceMinSeconds { return nil }
         let actual = Int((Double(secs) / (d / 1000)).rounded())
         let diff = actual - step.paceSecondsPerKm
         return abs(diff) > step.toleranceSecondsPerKm * 2 ? diff : nil

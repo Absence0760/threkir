@@ -36,6 +36,7 @@ use heapless::{String, Vec};
 
 use crate::current_week::dow_of;
 use crate::locale_defaults::DistanceUnit;
+use crate::run_duration::is_plausible_run_duration;
 /// The streak walk and its day-buffer cap, taken from [`crate::streaks`] rather
 /// than restated here. This module carried a second, private copy of the whole
 /// algorithm and its own 512 cap beside it — one crate, two implementations of
@@ -412,14 +413,23 @@ pub fn build_year_in_running_recap<'a>(
         }
         in_year_count += 1;
         total_distance += r.distance_m;
-        total_duration += r.duration_s;
+        let counted_s = if is_plausible_run_duration(r.duration_s) {
+            r.duration_s
+        } else {
+            0.0
+        };
+        total_duration += counted_s;
         total_elevation += r.elevation_m;
 
         let is_run_family = r.activity.unwrap_or("run") != "cycle";
         if is_run_family && r.distance_m > longest {
             longest = r.distance_m;
         }
-        if is_run_family && r.distance_m > 500.0 && r.duration_s > 0.0 {
+        if is_run_family
+            && r.distance_m > 500.0
+            && r.duration_s > 0.0
+            && is_plausible_run_duration(r.duration_s)
+        {
             let pace = r.duration_s / (r.distance_m / 1000.0);
             fastest = Some(fastest.map_or(pace, |f| f.min(pace)));
         }
@@ -429,7 +439,7 @@ pub fn build_year_in_running_recap<'a>(
 
         let md = &mut monthly[(rm - 1) as usize];
         md.distance_m += r.distance_m;
-        md.duration_s += r.duration_s;
+        md.duration_s += counted_s;
         md.run_count += 1;
 
         let wk = monday_of(r.day);
@@ -551,7 +561,11 @@ pub fn build_month_in_running_recap<'a>(
         if is_run_family && r.distance_m > longest {
             longest = r.distance_m;
         }
-        if is_run_family && r.distance_m > 500.0 && r.duration_s > 0.0 {
+        if is_run_family
+            && r.distance_m > 500.0
+            && r.duration_s > 0.0
+            && is_plausible_run_duration(r.duration_s)
+        {
             let pace = r.duration_s / (r.distance_m / 1000.0);
             fastest = Some(fastest.map_or(pace, |f| f.min(pace)));
         }
@@ -674,6 +688,19 @@ mod tests {
             route_id: None,
             activity: None,
         }
+    }
+
+    #[test]
+    fn a_duration_past_the_ten_day_bound_adds_no_time() {
+        let ok = run(2026, 11, 4, 10, 0, 5000.0, 1500.0);
+        let bad = run(2026, 11, 5, 10, 0, 2000.0, 44_400_094.0);
+        let r = build_year_in_running_recap(&[ok, bad], 2026, &RecapExtras::default());
+        assert_eq!(r.run_count, 2);
+        assert_eq!(r.total_distance_m, 7000.0);
+        assert_eq!(r.total_duration_s, 1500.0);
+        assert_eq!(r.monthly[10].duration_s, 1500.0);
+        let lone = build_year_in_running_recap(&[bad], 2026, &RecapExtras::default());
+        assert_eq!(lone.fastest_pace_s_per_km, None);
     }
 
     #[test]

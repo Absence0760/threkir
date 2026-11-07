@@ -68,8 +68,11 @@ function targetKeyFor(n: GroupableNotification): string {
 		case 'event_rsvp':
 		case 'event_cancel':
 		case 'event_reminder':
+		case 'event_updated':
 			return n.event_id ? `event:${n.event_id}` : solo;
 		case 'club_post':
+		case 'club_join_request':
+		case 'club_join_approved':
 			return n.club_id ? `club:${n.club_id}` : solo;
 		case 'plan_update':
 		case 'plan_assigned':

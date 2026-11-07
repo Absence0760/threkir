@@ -688,7 +688,7 @@ func (c *SupabaseClient) ReadLivePingsSince(
 ) ([]livehub.PersistedPing, error) {
 	q := url.Values{}
 	q.Set("id", "gt."+strconv.FormatInt(afterID, 10))
-	q.Set("select", "id,run_id,lat,lng,ele,elapsed_s,distance_m,bpm,coarse")
+	q.Set("select", "id,run_id,lat,lng,ele,elapsed_s,distance_m,bpm,coarse,weak_gps")
 	q.Set("order", "id.asc")
 	q.Set("limit", strconv.Itoa(limit))
 	u := c.BaseURL + "/rest/v1/" + schema.TableLiveRunPings + "?" + q.Encode()
@@ -710,6 +710,7 @@ func (c *SupabaseClient) ReadLivePingsSince(
 		DistanceM *float64 `json:"distance_m"`
 		BPM       *int     `json:"bpm"`
 		Coarse    bool     `json:"coarse"`
+		WeakGPS   bool     `json:"weak_gps"`
 	}
 	if err := json.Unmarshal(body, &rows); err != nil {
 		return nil, err
@@ -726,6 +727,7 @@ func (c *SupabaseClient) ReadLivePingsSince(
 			DistanceM: r.DistanceM,
 			BPM:       r.BPM,
 			Coarse:    r.Coarse,
+			WeakGPS:   r.WeakGPS,
 		}
 	}
 	return out, nil
@@ -757,6 +759,9 @@ func (c *SupabaseClient) InsertLivePing(
 	row["distance_m"] = p.DistanceM
 	if p.BPM != nil {
 		row["bpm"] = *p.BPM
+	}
+	if p.WeakGPS {
+		row["weak_gps"] = true
 	}
 	payload, err := json.Marshal(row)
 	if err != nil {

@@ -25,7 +25,8 @@ class _FakeApi extends ApiClient {
   Future<RunRow?> fetchPublicRunById(String runId) async => run;
 
   @override
-  Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId) async =>
+  Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId,
+          {String? since}) async =>
       pings;
 }
 
@@ -51,6 +52,7 @@ RunRow _run({
 Map<String, dynamic> _ping(
   DateTime at, {
   bool coarse = false,
+  bool weakGps = false,
   double distanceM = 2000,
   int elapsedS = 600,
   int? bpm,
@@ -61,6 +63,7 @@ Map<String, dynamic> _ping(
   'elapsed_s': elapsedS,
   'at': at.toUtc().toIso8601String(),
   'coarse': coarse,
+  'weak_gps': weakGps,
   if (bpm != null) 'bpm': bpm,
 };
 
@@ -202,7 +205,10 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(CircularProgressIndicator), findsNothing);
         expect(
-          find.text('Waiting for the runner to send the first ping…'),
+          find.text(
+            "Waiting for the runner's GPS — their position appears as soon "
+            'as their phone gets a fix',
+          ),
           findsNothing,
         );
       },
@@ -482,6 +488,67 @@ void main() {
         });
       },
     );
+  });
+
+  // Issue #1300 BUG-003 / BUG-007: pings land in time order whatever order
+  // they arrive in, a weak-GPS fix reads approximate, and a live run with no
+  // ping yet says it is waiting for the runner's GPS.
+  group('LiveSpectatorScreen — ping order and weak GPS', () {
+    realtimeWidgetTest('the readout follows the newest ping, not the last '
+        'one to arrive', (tester) async {
+      final now = DateTime.now().toUtc();
+      final api = _FakeApi(
+        run: _run(durationS: 0, startedAt: now.subtract(const Duration(minutes: 20))),
+        pings: [
+          _ping(now.subtract(const Duration(seconds: 5)),
+              distanceM: 3000, elapsedS: 900),
+          _ping(now.subtract(const Duration(seconds: 60)),
+              distanceM: 1000, elapsedS: 300),
+        ],
+      );
+      await tester.runAsync(() async {
+        await _pumpApi(tester, api);
+        await tester.pump();
+        await tester.pump();
+        expect(_metricValue(tester, 'runner-timer'), '15:00');
+        await tester.pumpWidget(const SizedBox());
+      });
+    });
+
+    realtimeWidgetTest('a weak-GPS ping goes live with an approximate halo', (
+      tester,
+    ) async {
+      final now = DateTime.now().toUtc();
+      final api = _FakeApi(
+        run: _run(durationS: 0, startedAt: now.subtract(const Duration(minutes: 5))),
+        pings: [_ping(now.subtract(const Duration(seconds: 2)), weakGps: true)],
+      );
+      await tester.runAsync(() async {
+        await _pumpApi(tester, api);
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('Live'), findsOneWidget);
+        expect(find.byKey(const Key('weak-gps-sub')), findsOneWidget);
+        expect(find.byKey(const Key('weak-position-halo')), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+      });
+    });
+
+    realtimeWidgetTest('a live run with no ping yet waits for the runner\'s '
+        'GPS', (tester) async {
+      final now = DateTime.now().toUtc();
+      final api = _FakeApi(
+        run: _run(durationS: 0, startedAt: now.subtract(const Duration(minutes: 1))),
+      );
+      await tester.runAsync(() async {
+        await _pumpApi(tester, api);
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('Waiting for GPS'), findsOneWidget);
+        expect(find.text('Connecting'), findsNothing);
+        await tester.pumpWidget(const SizedBox());
+      });
+    });
   });
 
   // decisions § 2265: bpm reaches a ping only with the runner's health-data

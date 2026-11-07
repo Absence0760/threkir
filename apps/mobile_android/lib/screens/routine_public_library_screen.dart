@@ -373,6 +373,7 @@ class _RoutinePublicPreviewScreenState
     final author = widget.entry.authorHandle ?? l10n.gymLibraryAnonymous;
     return Scaffold(
       appBar: AppBar(title: Text(r.title)),
+      floatingActionButtonLocation: pageFabLocation(context),
       floatingActionButton: _loading
           ? null
           : FloatingActionButton.extended(

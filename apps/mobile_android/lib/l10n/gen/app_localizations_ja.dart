@@ -1884,6 +1884,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runLiveShareStopped => 'ライブ共有を停止しました';
 
   @override
+  String get runLiveShareNoPingYet =>
+      'ライブリンクからまだ位置情報が送信されていません。観戦者は待機中です。電波状況を確認してください。';
+
+  @override
   String get runLiveShareEndedTitle => 'ライブ共有が終了しました';
 
   @override
@@ -1977,9 +1981,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runUnitKcal => 'kcal';
-
-  @override
-  String get runUnitMetres => 'm';
 
   @override
   String get runUnitSpm => 'spm';
@@ -2107,8 +2108,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runResumeDialogTitle => 'ランを再開しますか？';
 
   @override
-  String get runResumeDialogBody =>
-      '前回のセッションのランがまだ進行中です。中断したところから記録を再開するか、今すぐ終了するか、破棄してください。';
+  String runResumeDialogBody(String distance, String duration) {
+    return '前回のセッションのランがまだ進行中です（$distance、$duration）。中断したところから記録を再開するか、今すぐ終了するか、破棄してください。';
+  }
 
   @override
   String get runResumeAction => '再開';
@@ -2124,6 +2126,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runResumeDiscardedBanner => '前回のランを破棄しました。';
+
+  @override
+  String runRecoveryRecoveredBanner(String distance, String duration) {
+    return '前回のセッションの未完了のランを保存しました（$distance、$duration）。';
+  }
+
+  @override
+  String runRecoveryDiscardedBanner(String distance, String duration) {
+    return '前回のセッションの未完了の記録を破棄しました（$distance、$duration）。';
+  }
 
   @override
   String get runWorkoutNoStructure => 'このワークアウトには実行可能な構成がありません。';
@@ -2322,13 +2334,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runWorkoutAbandon => '中止';
 
   @override
-  String runWorkoutRemainingYards(int yards) {
-    return '残り $yards yd';
-  }
+  String get runWorkoutMoreActions => 'ワークアウトのその他の操作';
 
   @override
-  String runWorkoutRemainingMetres(int metres) {
-    return '残り $metres m';
+  String runWorkoutRemainingDistance(String distance) {
+    return '残り $distance';
   }
 
   @override
@@ -3259,6 +3269,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runDetailSegDismiss => '閉じる';
+
+  @override
+  String runDetailSegRange(String start, String end, String unit) {
+    return '$start〜$end $unit';
+  }
 
   @override
   String get publicRunLiveTitle => 'ただいまライブ中';
@@ -4946,6 +4961,40 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileNotifEventCancel => '参加表明していたイベントの開催がキャンセルされました';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$nameさんがクラブへの参加をリクエストしました';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$nameさんが$clubへの参加をリクエストしました';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved => 'クラブへの参加リクエストが承認されました';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return '$clubへの参加リクエストが承認されました';
+  }
+
+  @override
+  String get profileNotifEventUpdated => '参加予定のイベントが更新されました';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '「$title」が更新されました。新しい詳細を確認してください';
+  }
+
+  @override
+  String get profileNotifEventDeleted => '参加表明していたイベントが中止されました';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '「$title」は中止されました';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return '「$title」の開催が1回キャンセルされました。お支払いは返金手続き中です';
   }
@@ -5724,13 +5773,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get liveSpectatorConnectError => '接続できませんでした。';
 
   @override
-  String get liveSpectatorWaiting => 'ランナーの最初の位置情報を待っています…';
+  String get liveSpectatorWaitingGps =>
+      'ランナーのGPSを待っています — スマートフォンが位置を取得するとすぐに表示されます';
 
   @override
   String get liveSpectatorBadgeLive => 'ライブ';
 
   @override
-  String get liveSpectatorBadgeIdle => '停止中';
+  String get liveSpectatorBadgeWaitingGps => 'GPS待機中';
 
   @override
   String get liveSpectatorBadgeConnecting => '接続中';
@@ -5743,6 +5793,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get liveSpectatorApproximateSub => 'この付近で最後に確認 — おおよその位置';
+
+  @override
+  String get liveSpectatorWeakGpsSub => 'おおよその位置 — ランナーのGPS信号が弱くなっています';
 
   @override
   String get liveSpectatorBadgeFinished => '終了';
@@ -19170,4 +19223,39 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routesImportNoTrack => 'インポートに失敗しました: このファイルには 2 点以上のルートがありません。';
+
+  @override
+  String get manualDurationErrorInvalid => '整数のみを入力してください';
+
+  @override
+  String get manualDurationErrorMinutes => '分は0〜59で入力してください';
+
+  @override
+  String get manualDurationErrorSeconds => '秒は0〜59で入力してください';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return '1回のランは$hours時間を超えられません';
+  }
+
+  @override
+  String get manualDurationSlowTitle => '時間を確認してください';
+
+  @override
+  String get manualDurationSlowBody =>
+      'この距離にしては歩くよりはるかに遅いペースです。数字を別の欄に入力していませんか？';
+
+  @override
+  String get manualDurationSlowSave => 'このまま保存';
+
+  @override
+  String get manualDurationSlowFix => '修正する';
+
+  @override
+  String get addRunStartInFuture => '開始時刻を未来に設定することはできません';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'このランは$hours時間を超えており、ランとしてありえない長さのためクラウドに保存できません。再試行しても成功しません。時間を修正するとアップロードできます。';
+  }
 }

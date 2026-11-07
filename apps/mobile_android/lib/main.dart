@@ -308,15 +308,10 @@ void main() async {
   TodayWidgetBridge().refreshOn(Listenable.merge([prefs, localeNotifier]));
 
   // Recover a run that was in progress when the app was last killed
-  // (crash, force-stop, OOM). We promote the partial data to a regular
-  // completed run so at least the user keeps whatever was captured. Only
-  // runs with meaningful content are kept — tiny "I tapped start then
-  // backgrounded" runs are dropped silently.
-  //
-  // An indoor (pedometer-only) run has no track and its distance came
-  // from `steps × stride`. For those, we accept the run if duration ≥ 60s
-  // instead of requiring GPS waypoints — a treadmill session that crashed
-  // after 10 minutes shouldn't evaporate just because there are no fixes.
+  // (crash, force-stop, OOM). The thresholds live in
+  // `evaluateInProgressPartial`: a recent partial with any distance or a
+  // minute of elapsed time is offered back, a stale one is finalized when it
+  // clears the size floor, and only an empty one is dropped — with a banner.
   cm.Run? recoveredRun;
   // A recent, non-empty partial is RESUMABLE — instead of finalizing it into a
   // separate finished Run (which split one continuous multi-day effort into two
@@ -325,12 +320,11 @@ void main() async {
   // in-progress file is deliberately NOT cleared in this branch; the run screen
   // appends to it on resume (or clears it on Finish / Discard).
   cm.Run? resumablePartial;
-  // Persona-hunt Casual #3: surface a one-time banner when a partial
-  // is recovered OR discarded, so a "the app ate my run" suspicion
-  // becomes "the app noticed and dropped a 38 m partial". Null when
-  // nothing happened (and null for the resumable branch, which prompts
-  // interactively on the run screen rather than passively).
-  String? recoveryBannerMessage;
+  // Persona-hunt Casual #3: Home words a one-time banner from this when a
+  // partial is recovered OR discarded, so "the app ate my run" becomes "the
+  // app noticed and dropped an empty recording". Worded there, not here,
+  // because the catalogue and the runner's unit only exist under `runApp`.
+  InProgressEvaluation? recoveryEvaluation;
 
   final audioCues = AudioCues();
 
@@ -397,7 +391,7 @@ void main() async {
       case InProgressOutcome.none:
         break;
     }
-    recoveryBannerMessage = evaluation.bannerMessage;
+    recoveryEvaluation = evaluation;
   } catch (e) {
     debugPrint('In-progress recovery failed: $e');
   }
@@ -675,7 +669,7 @@ void main() async {
       heartRate: heartRate,
       treadmill: treadmill,
       recoveredRun: recoveredRun,
-      recoveryBannerMessage: recoveryBannerMessage,
+      recoveryEvaluation: recoveryEvaluation,
       resumablePartial: resumablePartial,
     ));
   }
@@ -838,7 +832,7 @@ class RunApp extends StatefulWidget {
   final BleHeartRate heartRate;
   final BleTreadmill treadmill;
   final cm.Run? recoveredRun;
-  final String? recoveryBannerMessage;
+  final InProgressEvaluation? recoveryEvaluation;
   final cm.Run? resumablePartial;
   const RunApp({
     super.key,
@@ -858,7 +852,7 @@ class RunApp extends StatefulWidget {
     required this.heartRate,
     required this.treadmill,
     this.recoveredRun,
-    this.recoveryBannerMessage,
+    this.recoveryEvaluation,
     this.resumablePartial,
   });
 
@@ -925,7 +919,7 @@ class _RunAppState extends State<RunApp> {
                     settingsSync: widget.settingsSync,
                     syncService: widget.syncService,
                     recoveredRun: widget.recoveredRun,
-                    recoveryBannerMessage: widget.recoveryBannerMessage,
+                    recoveryEvaluation: widget.recoveryEvaluation,
                     resumablePartial: widget.resumablePartial,
                   )
                 : OnboardingScreen(

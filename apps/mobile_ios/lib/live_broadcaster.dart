@@ -50,7 +50,10 @@ class LiveBroadcaster {
     this._api, {
     this.hubClient,
     this.privacyZonesProvider,
-  });
+    DateTime Function() now = DateTime.now,
+  }) : _now = now;
+
+  final DateTime Function() _now;
 
   final ApiClient _api;
   final LiveHubClient? hubClient;
@@ -66,11 +69,38 @@ class LiveBroadcaster {
   String? _runId;
   bool _active = false;
   DateTime _lastPingAt = DateTime.fromMillisecondsSinceEpoch(0);
+  DateTime? _attachedAt;
+  DateTime? _lastSuccessAt;
+  bool _noPingWarned = false;
 
   static const Duration _pingInterval = Duration(seconds: 5);
 
+  /// How long after [attach] a share may go without one accepted ping
+  /// before the runner is told (issue #1300 BUG-007). Six publish
+  /// intervals: long enough that a slow first fix is not news, short
+  /// enough that the runner hears it while still at the start.
+  static const Duration noPingWarnAfter = Duration(seconds: 30);
+
   bool get isActive => _active;
   String? get runId => _runId;
+
+  /// When a transport last accepted a ping for the current share, or null
+  /// while none has.
+  DateTime? get lastSuccessAt => _lastSuccessAt;
+
+  /// True exactly once per [attach]: the first call made [noPingWarnAfter]
+  /// or more after it while no ping has been accepted. Every failure on the
+  /// wire is swallowed (L4), so without this the runner had no way to learn
+  /// that spectators were looking at nothing.
+  bool takeNoPingWarning() {
+    final at = _attachedAt;
+    if (!_active || at == null || _lastSuccessAt != null || _noPingWarned) {
+      return false;
+    }
+    if (_now().difference(at) < noPingWarnAfter) return false;
+    _noPingWarned = true;
+    return true;
+  }
 
   /// Mark the broadcaster as live for [runId]. Caller must have
   /// already pre-created the parent `runs` row via
@@ -80,6 +110,9 @@ class LiveBroadcaster {
     _runId = runId;
     _active = true;
     _lastPingAt = DateTime.fromMillisecondsSinceEpoch(0);
+    _attachedAt = _now();
+    _lastSuccessAt = null;
+    _noPingWarned = false;
   }
 
   /// Stop publishing. The run screen calls this after the final
@@ -94,6 +127,10 @@ class LiveBroadcaster {
   /// so it must be cheap on the no-op path: when inactive, when no
   /// GPS fix has landed yet, or when the throttle window hasn't
   /// elapsed since the last successful insert.
+  ///
+  /// [weakGps] marks a fix the recorder kept for distance but not for its
+  /// line; spectators draw it as an approximate position (decisions
+  /// § 2357).
   Future<void> pushPing({
     required double lat,
     required double lng,
@@ -101,10 +138,11 @@ class LiveBroadcaster {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     final id = _runId;
     if (!_active || id == null) return;
-    final now = DateTime.now();
+    final now = _now();
     if (now.difference(_lastPingAt) < _pingInterval) return;
     // Privacy-zone drop BEFORE updating _lastPingAt so dropped pings
     // don't burn the throttle window — when the runner leaves the zone
@@ -125,7 +163,7 @@ class LiveBroadcaster {
         // authorizer's owner-on-push check passes. Token may be
         // null on a degraded session — the L4 swallow below
         // absorbs the resulting 403. /audit/livehub May 2026 C1.
-        await hub.pushPing(
+        final status = await hub.pushPing(
           runId: id,
           lat: lat,
           lng: lng,
@@ -134,7 +172,13 @@ class LiveBroadcaster {
           elapsedS: elapsedS,
           bpm: bpm,
           ele: ele,
+          weakGps: weakGps,
         );
+        // The fetcher returns the status rather than throwing, so a 403 or
+        // a 5xx read as delivered and the share looked healthy.
+        if (status < 200 || status >= 300) {
+          throw StateError('live hub answered $status');
+        }
       } else {
         await _api.insertLivePing(
           runId: id,
@@ -144,8 +188,10 @@ class LiveBroadcaster {
           elapsedS: elapsedS,
           bpm: bpm,
           ele: ele,
+          weakGps: weakGps,
         );
       }
+      if (_runId == id) _lastSuccessAt = _now();
     } catch (e) {
       debugPrint('[LiveBroadcaster.pushPing] $e');
     }

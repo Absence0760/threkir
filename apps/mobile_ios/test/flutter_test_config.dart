@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter_test/flutter_test.dart';
+
+import '../lib/orphaned_recording.dart';
 import 'store_write_watch.dart';
 
 /// Suite-wide instrumentation for the store write chain, applied to every test
@@ -22,5 +25,9 @@ import 'store_write_watch.dart';
 /// that names neither the store nor the call site (decisions § 1093, row 5).
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   installStoreWriteWatch();
+  // A test that ends mid-recording disposes its run screen, which hands the
+  // run on (decisions § 2352). Left set, it would open the next test's run
+  // screen on a Resume prompt for a run that test never recorded.
+  tearDown(() => orphanedRecording.value = null);
   await testMain();
 }

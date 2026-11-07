@@ -116,7 +116,9 @@ IntensityBreakdown computeIntensityBreakdown(
     } else {
       idx = 4;
     }
-    zoneSeconds[idx] += r.duration.inSeconds;
+    if (isPlausibleRunDuration(r.duration.inSeconds)) {
+      zoneSeconds[idx] += r.duration.inSeconds;
+    }
   }
   final total = zoneSeconds.fold<int>(0, (a, b) => a + b);
   return IntensityBreakdown(

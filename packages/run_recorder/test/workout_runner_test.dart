@@ -912,6 +912,77 @@ void main() {
       runner.dispose();
     });
 
+    group('warm-up gate (issue #1300)', () {
+      WorkoutRunner steady() => WorkoutRunner(steps: [
+            _step(kind: WorkoutStepKind.steady, distance: 8046.72, pace: 348),
+          ]);
+
+      test('a standing start 15 s into a 5 mi block is not graded', () async {
+        final runner = steady();
+        final drift = <PaceDriftEvent>[];
+        runner.events.listen((e) {
+          if (e is PaceDriftEvent) drift.add(e);
+        });
+        runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+        // 19 m in 15 s: 789 s/km against 348, which the old 5 m / 1 s gate
+        // graded wayBehind and announced.
+        runner.onSnapshot(_snap(distance: 19, elapsedSec: 15));
+        await Future<void>.delayed(Duration.zero);
+        expect(runner.stepAveragePaceSecPerKm, isNull);
+        expect(runner.paceAdherence, PaceAdherence.onPace);
+        expect(drift, isEmpty);
+        runner.dispose();
+      });
+
+      test('the distance floor holds however long the step has run', () {
+        final runner = steady();
+        runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+        runner.onSnapshot(_snap(
+            distance: kStepPaceMinMetres - 1, elapsedSec: 60));
+        expect(runner.stepAveragePaceSecPerKm, isNull);
+        runner.dispose();
+      });
+
+      test('the time floor holds however far the step has gone', () {
+        final runner = steady();
+        runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+        runner.onSnapshot(
+            _snap(distance: 120, elapsedSec: kStepPaceMinSeconds - 1));
+        expect(runner.stepAveragePaceSecPerKm, isNull);
+        runner.dispose();
+      });
+
+      test('grades once both floors are met', () async {
+        final runner = steady();
+        final drift = <PaceDriftEvent>[];
+        runner.events.listen((e) {
+          if (e is PaceDriftEvent) drift.add(e);
+        });
+        runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+        runner.onSnapshot(_snap(
+            distance: kStepPaceMinMetres, elapsedSec: kStepPaceMinSeconds));
+        await Future<void>.delayed(Duration.zero);
+        // 50 m in 20 s = 400 s/km, 52 s slow against a 10 s tolerance.
+        expect(runner.stepAveragePaceSecPerKm, 400);
+        expect(runner.paceAdherence, PaceAdherence.wayBehind);
+        expect(drift.single.deltaSecPerKm, 52);
+        runner.dispose();
+      });
+
+      test('the floors restart with each step', () {
+        final runner = WorkoutRunner(steps: [
+          _step(distance: 200, pace: 240),
+          _step(distance: 400, pace: 240),
+        ]);
+        runner.onSnapshot(_snap(distance: 0, elapsedSec: 0));
+        runner.onSnapshot(_snap(distance: 200, elapsedSec: 48));
+        expect(runner.currentStepIndex, 1);
+        runner.onSnapshot(_snap(distance: 230, elapsedSec: 56));
+        expect(runner.stepAveragePaceSecPerKm, isNull);
+        runner.dispose();
+      });
+    });
+
     test('an unpaced step reports onPace and never emits a drift cue',
         () async {
       // A C25K walk interval at a brisk walk (~12:00/km) against the plan's

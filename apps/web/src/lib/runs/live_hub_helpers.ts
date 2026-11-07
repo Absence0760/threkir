@@ -16,6 +16,10 @@ export interface LivePing {
 	/// The spectator surface must render it as approximate, never as a
 	/// precise current position.
 	coarse?: boolean | null;
+	/// A fix the recorder kept for distance but not for its line (migration
+	/// 20271112000030). Drawn as an approximate position, never joined into
+	/// the trace. Mirrors `WeakGPS` in `livehub/types.go`.
+	weak_gps?: boolean | null;
 }
 
 /// Strip a trailing slash from a base URL so concatenated paths

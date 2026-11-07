@@ -123,6 +123,7 @@
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { isPlausibleRunDuration } from '#lib/runs/run_duration.ts';
 	import {
 		loadGoals,
 		saveGoals,
@@ -483,7 +484,7 @@
 			else if (avg < z.z3) idx = 2;
 			else if (avg < z.z4) idx = 3;
 			else idx = 4;
-			zoneSeconds[idx] += r.duration_s;
+			if (isPlausibleRunDuration(r.duration_s)) zoneSeconds[idx] += r.duration_s;
 		}
 		const total = zoneSeconds.reduce((a, b) => a + b, 0);
 		return { zoneSeconds, total, hrTrackedRuns };

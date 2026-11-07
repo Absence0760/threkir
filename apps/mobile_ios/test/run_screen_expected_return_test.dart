@@ -24,6 +24,7 @@ import '../lib/social_service.dart';
 import '../lib/widgets/live_share_indicator.dart';
 import '../lib/training_service.dart';
 import 'pre_run_dialogs.dart';
+import 'pump_until.dart';
 import 'supabase_test_init.dart';
 
 /// The per-run "not back by X" deadline, driven end-to-end from the
@@ -65,6 +66,7 @@ class _LiveApi extends ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {}
 
   @override
@@ -372,6 +374,7 @@ void main() {
   Future<void> drainAndUnmount(WidgetTester tester) async {
     tester.takeException();
     await tester.pumpWidget(const SizedBox());
+    await pumpUntilInProgressSettles(tester, lastRunStore!);
     for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }

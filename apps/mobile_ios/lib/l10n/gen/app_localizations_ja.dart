@@ -4957,6 +4957,40 @@ class AppLocalizationsJa extends AppLocalizations {
   String get profileNotifEventCancel => '参加表明していたイベントの開催がキャンセルされました';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$nameさんがクラブへの参加をリクエストしました';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$nameさんが$clubへの参加をリクエストしました';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved => 'クラブへの参加リクエストが承認されました';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return '$clubへの参加リクエストが承認されました';
+  }
+
+  @override
+  String get profileNotifEventUpdated => '参加予定のイベントが更新されました';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '「$title」が更新されました。新しい詳細を確認してください';
+  }
+
+  @override
+  String get profileNotifEventDeleted => '参加表明していたイベントが中止されました';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '「$title」は中止されました';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return '「$title」の開催が1回キャンセルされました。お支払いは返金手続き中です';
   }
@@ -19181,4 +19215,39 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routesImportNoTrack => 'インポートに失敗しました: このファイルには 2 点以上のルートがありません。';
+
+  @override
+  String get manualDurationErrorInvalid => '整数のみを入力してください';
+
+  @override
+  String get manualDurationErrorMinutes => '分は0〜59で入力してください';
+
+  @override
+  String get manualDurationErrorSeconds => '秒は0〜59で入力してください';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return '1回のランは$hours時間を超えられません';
+  }
+
+  @override
+  String get manualDurationSlowTitle => '時間を確認してください';
+
+  @override
+  String get manualDurationSlowBody =>
+      'この距離にしては歩くよりはるかに遅いペースです。数字を別の欄に入力していませんか？';
+
+  @override
+  String get manualDurationSlowSave => 'このまま保存';
+
+  @override
+  String get manualDurationSlowFix => '修正する';
+
+  @override
+  String get addRunStartInFuture => '開始時刻を未来に設定することはできません';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'このランは$hours時間を超えており、ランとしてありえない長さのためクラウドに保存できません。再試行しても成功しません。時間を修正するとアップロードできます。';
+  }
 }

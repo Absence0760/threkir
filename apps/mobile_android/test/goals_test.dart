@@ -31,6 +31,36 @@ void main() {
     return progress.targets.firstWhere((t) => t.kind == kind);
   }
 
+  // Issue #1300 § 5: one 12,333-hour row completed every time goal at once.
+  test('a duration past the ten-day bound counts toward no time or pace target',
+      () {
+    const goal = RunGoal(
+      id: 'g-bound',
+      period: GoalPeriod.week,
+      timeSeconds: 3600,
+      avgPaceSecPerKm: 360,
+    );
+    final p = evaluateGoal(goal, [
+      makeRun(
+        id: 'ok',
+        startedAt: DateTime(2026, 4, 13, 7),
+        distance: 5000,
+        duration: const Duration(seconds: 1800),
+      ),
+      makeRun(
+        id: 'bad',
+        startedAt: DateTime(2026, 4, 14, 7),
+        distance: 2000,
+        duration: const Duration(seconds: 44400094),
+      ),
+    ], now);
+    final time = targetOf(p, GoalTargetKind.time);
+    expect(time.percent, 0.5);
+    expect(time.complete, isFalse);
+    expect(targetOf(p, GoalTargetKind.avgPace).complete, isTrue);
+    expect(p.runCount, 2);
+  });
+
   group('period bounds', () {
     test('week start is Monday 00:00 local', () {
       expect(

@@ -36,6 +36,7 @@
 
 use core::fmt::Write;
 
+use crate::run_duration::is_plausible_run_duration;
 use heapless::Vec;
 
 /// Upper bound for every formatted label this module returns. A "10000.0 km"
@@ -253,8 +254,11 @@ pub fn evaluate_goal(
         if r.day >= start && r.day < end {
             in_count += 1;
             total_metres += r.distance_m;
-            total_seconds += r.duration_s;
-            if !r.is_cycle {
+            let plausible = is_plausible_run_duration(r.duration_s);
+            if plausible {
+                total_seconds += r.duration_s;
+            }
+            if !r.is_cycle && plausible {
                 pace_metres += r.distance_m;
                 pace_seconds += r.duration_s;
             }
@@ -392,6 +396,27 @@ mod tests {
 
     fn find(p: &GoalProgress, kind: TargetKind) -> &TargetProgress {
         p.targets.iter().find(|t| t.kind == kind).unwrap()
+    }
+
+    #[test]
+    fn a_duration_past_the_ten_day_bound_counts_toward_no_time_or_pace_target() {
+        let goal = RunGoal {
+            period: GoalPeriod::Week,
+            distance_metres: None,
+            time_seconds: Some(3600.0),
+            pace_sec_per_km: Some(360.0),
+            run_count: None,
+        };
+        let runs = [
+            grun(idx(2026, 4, 6), 5000.0, 1800.0),
+            grun(idx(2026, 4, 7), 2000.0, 44_400_094.0),
+        ];
+        let p = evaluate_goal(&goal, &runs, now(), WeekStart::Monday);
+        let time = find(&p, TargetKind::Time);
+        assert_eq!(time.percent, 0.5);
+        assert!(!time.complete);
+        assert!(find(&p, TargetKind::Pace).complete);
+        assert_eq!(p.run_count, 2);
     }
 
     // ─────────────── period_start / period_end ───────────────

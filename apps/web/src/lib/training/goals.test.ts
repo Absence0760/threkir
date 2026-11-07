@@ -514,3 +514,17 @@ test('loadGoals — corrupt JSON is swallowed and returns empty', () => {
 	storage.set('run_app.goals_v1:user-a', 'not json');
 	assert.deepEqual(loadGoals('user-a'), []);
 });
+
+test('evaluateGoal — a duration past the ten-day bound counts toward no time or pace target', () => {
+	// Issue #1300 § 5: one 12,333-hour row completed every time goal at once.
+	const goal: RunGoal = { id: 'g1', period: 'week', timeSeconds: 3600, paceSecPerKm: 360 };
+	const ok = run({ started_at: '2026-04-06T07:00:00', distance_m: 5000, duration_s: 1800 });
+	const bad = run({ started_at: '2026-04-07T07:00:00', distance_m: 2000, duration_s: 44_400_094 });
+	const p = evaluateGoal(goal, [ok, bad], NOW);
+	const time = p.targets.find((t) => t.kind === 'time')!;
+	assert.equal(time.percent, 0.5);
+	assert.equal(time.complete, false);
+	const pace = p.targets.find((t) => t.kind === 'pace')!;
+	assert.equal(pace.complete, true);
+	assert.equal(p.runCount, 2);
+});

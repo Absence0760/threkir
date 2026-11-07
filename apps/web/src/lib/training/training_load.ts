@@ -9,6 +9,8 @@
 // stays runnable under `npx tsx --test` without dragging in the
 // Supabase generated types. Callers shape Run rows into RunForLoad.
 
+import { isPlausibleRunDuration } from '../runs/run_duration';
+
 export interface RunForLoad {
 	started_at: string;
 	duration_s: number;
@@ -69,6 +71,7 @@ export function computeCalibration(
 		const avgBpm = numericOrNull(r.metadata?.['avg_bpm']);
 		const km = (r.distance_m ?? 0) / 1000;
 		if (avgBpm == null || km <= 0 || (r.duration_s ?? 0) <= 0) continue;
+		if (!isPlausibleRunDuration(r.duration_s)) continue;
 		const trimp = banisterTrimp(r.duration_s, avgBpm, rest, max);
 		if (trimp > 0) trimpsPerKm.push(trimp / km);
 	}
@@ -124,7 +127,13 @@ export function computeStress(
 	if (cal.mode === 'trimp') {
 		const km = (run.distance_m ?? 0) / 1000;
 		const rate = cal.trimpPerKmFallback ?? 7; // sane default if cal is per-run + HR-less
-		if (avgBpm != null && rest != null && max != null && max > rest) {
+		if (
+			avgBpm != null &&
+			rest != null &&
+			max != null &&
+			max > rest &&
+			isPlausibleRunDuration(run.duration_s)
+		) {
 			const trimp = banisterTrimp(run.duration_s, avgBpm, rest, max);
 			// A run whose avg_bpm <= resting_hr (misconfigured resting HR, strap
 			// dropout, a genuine recovery shuffle) computes hrr=0 → trimp=0, and

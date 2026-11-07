@@ -5210,6 +5210,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'An event occurrence you RSVP\'d to was cancelled';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name asked to join your club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name asked to join $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Your request to join a club was approved';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'You\'re in — your request to join $club was approved';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'An event you\'re going to was updated';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '\"$title\" was updated — check the new details';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'An event you RSVP\'d to was cancelled';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '\"$title\" was cancelled';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'An occurrence of \"$title\" was cancelled — your payment is being refunded';
   }
@@ -19941,4 +19978,39 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Import failed: that file holds no route with at least two points.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Use whole numbers only';
+
+  @override
+  String get manualDurationErrorMinutes => 'Minutes must be between 0 and 59';
+
+  @override
+  String get manualDurationErrorSeconds => 'Seconds must be between 0 and 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'A run can\'t be longer than $hours hours';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Check the duration';
+
+  @override
+  String get manualDurationSlowBody =>
+      'That\'s far slower than walking pace for this distance. Did a number land in the wrong box?';
+
+  @override
+  String get manualDurationSlowSave => 'Save anyway';
+
+  @override
+  String get manualDurationSlowFix => 'Fix it';
+
+  @override
+  String get addRunStartInFuture => 'The start time can\'t be in the future';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'This run lasts longer than $hours hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.';
+  }
 }

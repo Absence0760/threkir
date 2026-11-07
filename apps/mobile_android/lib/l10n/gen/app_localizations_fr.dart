@@ -5276,6 +5276,43 @@ class AppLocalizationsFr extends AppLocalizations {
       'Une occurrence d\'événement à laquelle vous avez répondu a été annulée';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name demande à rejoindre votre club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name demande à rejoindre $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Votre demande d\'adhésion à un club a été acceptée';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'C\'est fait — votre demande pour rejoindre $club a été acceptée';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Un événement auquel vous participez a été modifié';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '« $title » a été modifié — consultez les nouveaux détails';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Un événement auquel vous aviez répondu a été annulé';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '« $title » a été annulé';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Une occurrence de « $title » a été annulée — votre paiement est en cours de remboursement';
   }
@@ -20190,4 +20227,43 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Échec de l\'import : ce fichier ne contient aucun itinéraire d\'au moins deux points.';
+
+  @override
+  String get manualDurationErrorInvalid =>
+      'Utilisez uniquement des nombres entiers';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Les minutes doivent être comprises entre 0 et 59';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Les secondes doivent être comprises entre 0 et 59';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Une course ne peut pas durer plus de $hours heures';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Vérifiez la durée';
+
+  @override
+  String get manualDurationSlowBody =>
+      'C\'est bien plus lent que la marche pour cette distance. Un chiffre est-il dans la mauvaise case ?';
+
+  @override
+  String get manualDurationSlowSave => 'Enregistrer quand même';
+
+  @override
+  String get manualDurationSlowFix => 'Corriger';
+
+  @override
+  String get addRunStartInFuture =>
+      'L\'heure de départ ne peut pas être dans le futur';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Cette course dure plus de $hours heures, ce qu\'aucune course ne peut faire : le stockage cloud la refuse et réessayer ne fonctionnera jamais. Corrigez sa durée pour l\'envoyer.';
+  }
 }

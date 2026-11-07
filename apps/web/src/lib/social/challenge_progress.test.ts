@@ -64,6 +64,11 @@ test('metricFromActivity duration reads duration_s', () => {
 	assert.equal(metricFromActivity({ duration_s: 1800 }, 'duration', null), 1800);
 });
 
+test('metricFromActivity duration past the ten-day bound is 0, as the SQL aggregate skips it', () => {
+	assert.equal(metricFromActivity({ duration_s: 44_400_094 }, 'duration', null), 0);
+	assert.equal(metricFromActivity({ duration_s: 864_000 }, 'duration', null), 864_000);
+});
+
 test('metricFromActivity vert reads elevation_gain_m (number or string, missing → 0)', () => {
 	assert.equal(metricFromActivity({ elevation_gain_m: 640 }, 'vert', null), 640);
 	assert.equal(metricFromActivity({ elevation_gain_m: '640' }, 'vert', null), 640);

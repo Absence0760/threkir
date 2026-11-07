@@ -46,12 +46,20 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			// own profile may be closed to the recipient.
 			return '/follow-requests';
 		case 'event_rsvp':
-		case 'event_cancel':
 		case 'event_reminder':
 		case 'event_waitlist_slot':
+		case 'event_updated':
 			return r.event_id && item.event_club_slug
 				? `/clubs/${item.event_club_slug}/events/${r.event_id}`
 				: null;
+		case 'event_cancel':
+			// A deleted event's notice links no event (it would have been
+			// erased with it, 20271112000013); the club it belonged to is the
+			// nearest page that still exists.
+			if (r.event_id) {
+				return item.event_club_slug ? `/clubs/${item.event_club_slug}/events/${r.event_id}` : null;
+			}
+			return item.club_slug ? `/clubs/${item.club_slug}` : null;
 		case 'plan_update':
 		case 'plan_assigned':
 		case 'plan_ai_edit':
@@ -60,6 +68,9 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'message':
 			return r.actor_id ? `/messages/${r.actor_id}` : null;
 		case 'club_post':
+		case 'club_join_approved':
+		case 'club_join_request':
+			// A request's approve and decline sit on the club page for its admins.
 			return item.club_slug ? `/clubs/${item.club_slug}` : null;
 		case 'achievement':
 			// The recipient earned it, so it is on their own Achievements tab —

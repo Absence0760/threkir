@@ -35,8 +35,9 @@ Future<void> _pump(
   WidgetTester tester,
   LocalRunStore runStore,
   LocalRouteStore routeStore,
-  Preferences prefs,
-) {
+  Preferences prefs, {
+  DateTime Function() now = DateTime.now,
+}) {
   return tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -45,6 +46,7 @@ Future<void> _pump(
         runStore: runStore,
         routeStore: routeStore,
         preferences: prefs,
+        now: now,
       ),
     ),
   );
@@ -124,6 +126,103 @@ void main() {
       await tester.pumpAndSettle();
       // Form validation blocks save — store remains empty.
       expect(s.runs.runs, isEmpty);
+    });
+
+    Finder durationBox(String label) => find.descendant(
+          of: find.bySemanticsLabel(label),
+          matching: find.byType(TextField),
+        );
+
+    // Reason: issue #1300 § 5 — "12333" in the Hours box saved a 2 km run
+    // lasting 12,333 hours. The box now holds three digits (240 h is the whole
+    // bound), and a total past ten days is refused with its own message.
+    testWidgets('the hours box takes three digits and 240 h is the ceiling',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s.runs, s.routes, s.prefs);
+
+      await tester.enterText(find.byType(TextFormField).first, '2');
+      await tester.enterText(durationBox('Hours'), '12333');
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(durationBox('Hours')).controller!.text,
+        '123',
+      );
+
+      await tester.enterText(durationBox('Hours'), '240');
+      await tester.enterText(durationBox('Minutes'), '1');
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+
+      expect(find.text("A run can't be longer than 240 hours"), findsOneWidget);
+      expect(s.runs.runs, isEmpty);
+    });
+
+    testWidgets('minutes past 59 are refused rather than carried into hours',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s.runs, s.routes, s.prefs);
+
+      await tester.enterText(find.byType(TextFormField).first, '5');
+      await tester.enterText(durationBox('Minutes'), '750');
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(durationBox('Minutes')).controller!.text,
+        '75',
+      );
+      await tester.tap(find.text('Save'));
+      await tester.pump();
+
+      expect(find.text('Minutes must be between 0 and 59'), findsOneWidget);
+      expect(s.runs.runs, isEmpty);
+    });
+
+    // Reason: 21 typed into Hours instead of Minutes is a valid duration, so
+    // only its pace gives it away — 2 km in 21 h is under 0.1 km/h.
+    testWidgets('a duration slower than 1 km/h asks before saving',
+        (tester) async {
+      final s = await _makeStores();
+      await _pump(tester, s.runs, s.routes, s.prefs);
+
+      await tester.enterText(find.byType(TextFormField).first, '2');
+      await tester.enterText(durationBox('Hours'), '21');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Check the duration'), findsOneWidget);
+      await tester.tap(find.text('Fix it'));
+      await tester.pumpAndSettle();
+      expect(find.text('Check the duration'), findsNothing);
+      expect(s.runs.runs, isEmpty);
+    });
+
+    // Reason: the date picker stops at today, but the time picker let a run
+    // start at 22:00 when it was 10:26 (issue #1300 § 5).
+    testWidgets('a start time later today than now is refused', (tester) async {
+      final s = await _makeStores();
+      final now = DateTime(2026, 11, 5, 10, 26);
+      await _pump(tester, s.runs, s.routes, s.prefs, now: () => now);
+
+      await tester.tap(find.text('10:00'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.keyboard_outlined));
+      await tester.pumpAndSettle();
+      final fields = find.descendant(
+        of: find.byType(Dialog),
+        matching: find.byType(TextField),
+      );
+      await tester.enterText(fields.at(0), '10');
+      await tester.enterText(fields.at(1), '00');
+      await tester.pumpAndSettle();
+      final pm = find.text('PM');
+      if (pm.evaluate().isNotEmpty) await tester.tap(pm);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pump();
+
+      expect(find.text("The start time can't be in the future"), findsOneWidget);
+      expect(find.text('10:00'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 8));
     });
 
     // Reason: five of the seven shipped locales (de, es, fr, pt, pt_BR) put a

@@ -357,7 +357,7 @@ The run file carries the L0/L1 half: it holds the store's chain open through a `
 
 Pure-function tests for the top-level `smoothTrack(List<LatLng>)` helper extracted from `widgets/live_run_map.dart` (1-2-3-2-1 weighted polyline smoother used to reduce GPS jitter on the live map). Pins: short-track passthrough (length < 5), first-two-and-last-two preservation, the explicit `(a + 2b + 3c + 2d + e) / 9` weighted-mean formula, co-linear evenly-spaced points are unchanged, the no-mutation contract (returns a new list), length-0/1 inputs handled, length-5 input smooths exactly index 2, and constant-coordinate input (weights sum to 9) returns its input.
 
-### `apps/mobile_android/test/period_summary_test.dart` — 27 tests
+### `apps/mobile_android/test/period_summary_test.dart` — 28 tests
 
 Pure-function tests for the period summary screen's extracted helpers in `lib/screens/period_summary_screen.dart`:
 
@@ -389,7 +389,7 @@ Pure-function tests for the period summary screen's extracted helpers in `lib/sc
 - `shortDate`: day + abbreviated month
 - `monthName`: full month name for all positions
 
-### `apps/mobile_android/test/goals_test.dart` — 36 tests
+### `apps/mobile_android/test/goals_test.dart` — 37 tests
 
 Pure-function tests for `evaluateGoal` and `RunGoal` JSON serialisation in `lib/goals.dart`:
 - Period bounds (week start = Monday 00:00, month end wraps to next year), and `weekStartLocal` across a late-Saturday / early-Sunday seam on both week starts
@@ -459,7 +459,7 @@ Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`l
 - `phaseFor`: 2 tests (phase splits, final week)
 - `generatePlan`: 7 tests (week count, day distribution, taper volume, race week, intervals, no-input fallback, stepback)
 
-### `apps/mobile_android/test/training_load_test.dart` — 29 tests
+### `apps/mobile_android/test/training_load_test.dart` — 30 tests
 
 Dart mirror of `apps/web/src/lib/training_load.test.ts`. The Dart engine (`lib/training_load.dart`) must produce the same Fitness / Fatigue / Form curves as the TypeScript engine for the same inputs. Covers `computeStress` (distance fallback ~50 for an easy 5k, TRIMP path lights up with `avg_bpm` + resting + max, zero-input → 0), `aggregateDailyStress` (sums same-day runs), `computeTrainingLoadSeries` (emits exactly `windowDays` entries, TSB rises during a 14-day taper, all-zero with no runs), and `hasTrimpSignal` (no `avg_bpm` / has `avg_bpm` + prefs / prefs missing).
 
@@ -804,7 +804,7 @@ Pure-Dart-equivalent tests for the read side at `lib/backup_reader.ts` — `pars
 
 **extractEventIds (2 tests):** distinct ids extracted; nulls / undefineds / empty strings / non-strings / missing-key entries all dropped.
 
-### `apps/web/src/lib/training/training_load.test.ts` — 33 tests
+### `apps/web/src/lib/training/training_load.test.ts` — 34 tests
 
 TypeScript unit tests for the training-load curves (`lib/training_load.ts`, decisions §34). Run with `npx tsx --test src/lib/training_load.test.ts` from `apps/web`.
 
@@ -944,7 +944,7 @@ The run share-image editor end to end, reading the downloaded PNG: an occasion s
 
 Web-only (no Dart twin — mobile does not read `event_exceptions` outside its own event-detail screen). Pure tests for `lib/social/event_occurrence.ts`, the layer that subtracts cancelled occurrences from a recurrence expansion. `isOccurrenceCancelled` covers both ISO renderings of one instant matching (PostgREST `+00:00` vs a client `.000Z`), a different instant / empty list / null / undefined not matching, and an unparseable cancelled instant never matching. `nextLiveInstance` covers the nothing-cancelled fast path, skipping the cancelled next occurrence, skipping a run of consecutive cancellations, a cancellation further out leaving the next one alone, already-past cancellations not eating the search budget, every remaining occurrence cancelled returning null, an exhausted series returning null either way, and a cancelled one-off. `upcomingCancelledOccurrences` covers future-only + oldest-first ordering, an unparseable instant being dropped rather than sorted to an edge, and an occurrence starting exactly now counting as ahead.
 
-### `apps/web/src/lib/training/goals.test.ts` — 34 tests
+### `apps/web/src/lib/training/goals.test.ts` — 35 tests
 
 Mirror of `apps/mobile_android/test/goals_test.dart`. Pure tests for `lib/goals.ts`. `weekStartLocal` is pinned across a late-Saturday / early-Sunday seam on both week starts; `periodStart` / `periodEnd` cover Monday-default + Sunday-override week anchoring, month start = 1st, week end = start + 7 days, December → January wrap. `formatPaceSecPerKm` covers em-dash for non-positive / non-finite, m:ss/km formatting with zero-padded seconds, half-up rounding. `evaluateGoal` covers empty list = 0%, runs outside the period excluded, distance target accumulation + complete-on-hit, pace target excluding cycling rides from the distance-weighted average, pace target with no qualifying runs reporting 0% + em-dash currentLabel, lower-is-better partial progress, time + runCount targets, multi-target complete-only-when-every-hit, `overallPercent` as the mean of target percents, and zero / negative targets being filtered out of the targets list. `markedDoneTally` counts hand-marked sessions from the period start through today only, and `evaluateGoal` adds them to the distance and run-count targets but not time or pace (decisions § 1813). `newGoalId` covers uniqueness across 100 calls. `loadGoals` / `saveGoals` cover empty when no data, save / load round-trip preservation, per-user keying isolating two users on the same browser, null userId returns empty, the legacy unscoped-key migration on first load (with the legacy key removed afterwards), accepting both legacy camelCase and canonical snake_case wire shapes, and corrupt-JSON returning empty.
 
@@ -1053,9 +1053,9 @@ The segment-effort standing (was 13). Six added cases cover the coercion hole [�
 
 The stored-goal contract (was 16). Four added cases read the SQL rail the pair claims to mirror — `challenges_goal_ck`'s own comment says "Mirrored client-side by `checkChallengeGoal` / `maxStreakDaysInWindow` on both platforms" and nothing read it. The migration's strict `> 0` floor, the fact that only `streak_days` is window-bounded on both rails, and the window ceiling DERIVED from the migration text (`floor(epoch / 86400) + 1`, inclusive) and evaluated against the client over a spread of windows rather than restated beside it. Planting `+ 0` in the migration fails by name.
 
-### `apps/web/src/lib/social/notification_link.test.ts` — 18 tests
+### `apps/web/src/lib/social/notification_link.test.ts` — 20 tests
 
-The notification → deep-link routing (was 13). `row.kind` is typed `string` so the module stays free of a runtime import from `core/data.ts`, which also means `tsc` gives no exhaustiveness and the module is not a registered rail for `notifications.kind` in `check_constraint_unions.mjs`. Three added cases parse the live kind set from the last migration that re-adds `notifications_kind_check` and assert every value is routed by an explicit `case` rather than the `default` arm, that every routed kind reaches a destination when given its ids, and that the `DELIBERATELY_UNLINKED` register (its one entry is `content_hidden`) does not name a kind the column has dropped.
+The notification → deep-link routing (was 13). Two cases from [decisions § 2358](../architecture/decisions.md): a deleted event's `event_cancel`, which carries no `event_id`, links to its club (or nowhere once the club is gone too), and `club_join_request` / `club_join_approved` link to the club home. `row.kind` is typed `string` so the module stays free of a runtime import from `core/data.ts`, which also means `tsc` gives no exhaustiveness and the module is not a registered rail for `notifications.kind` in `check_constraint_unions.mjs`. Three added cases parse the live kind set from the last migration that re-adds `notifications_kind_check` and assert every value is routed by an explicit `case` rather than the `default` arm, that every routed kind reaches a destination when given its ids, and that the `DELIBERATELY_UNLINKED` register (its one entry is `content_hidden`) does not name a kind the column has dropped.
 
 ### `apps/web/src/lib/social/feed_merge.test.ts` — 23 tests
 
@@ -1117,7 +1117,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder`'s `GPS_PROVIDER` and `FusedLocationProviderClient` callbacks, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 1010 tests across 96 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 1013 tests across 97 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 
@@ -1271,7 +1271,7 @@ Round 31. The HTTP boundary of the loop-generator sidecar, which had no test for
 
 Round 31, *host-tested*. Both modules had been edited hours earlier by the round-30 sweep, so the date comparison that produced the firmware followups list read them as in sync — the divergences here are ones the port never had, not ones it lost. `track_projection`'s `or_epsilon` was the falsy-only JS `value || 1e-6`, which catches an exact zero and lets a `1e-7` span through: a centimetre of jitter fitted the whole 92 px band where web collapses it to about 8 px. `isTrackRenderable`, the module's other export and the gate in front of the projection, had never been ported at all; its four web cases come across, including the antimeridian one where a raw min/max reads a stationary cluster as a 359.99° span and passes exactly the standing-still track the gate exists to catch. In `route_simplify`, `compute_elevation_gain` carried neither of the two rules web's own doc calls load-bearing — no `ELEVATION_GAIN_MIN_DELTA_M` noise gate, and a `None` broke the chain instead of carrying the last reading across — and `summarize_route_from_track` graded the SIMPLIFIED polyline, so a straight road over a summit collapsed to two endpoints and its 50 m climb read as 0. A test named "null elevations are skipped" asserted a gain of 0 across the dropout, encoding the divergence as intent; it is replaced by web's own case. Seven mutations across the two modules, all red. [decisions § 925](../architecture/decisions.md).
 
-### `apps/custom_watch/core/src/training_load.rs` — 36 tests (2 added) and `race_predictor.rs` — 15 (2 added)
+### `apps/custom_watch/core/src/training_load.rs` — 37 tests (2 added) and `race_predictor.rs` — 15 (2 added)
 
 Round 31, *host-tested*. Two panics reachable from data rather than from a coding mistake, on a device where a panic is a reset. `predict_race_ladder` seeds both anchor loops with `f64::INFINITY` and takes the strict `<`, so a candidate whose Riegel equivalent IS infinity never wins — a positive-but-denormal distance overflows `libm::pow` — and `best.unwrap()` panicked on a function whose doc already promises `None` for a pool it cannot anchor; the second case pins that one clean effort beside the bad row still predicts, so the guard fails closed on the pool and not on the presence of one row. `compute_calibration` graded the numerator, and `km <= 0.0` is false for a NaN distance, so `trimp / NaN` reached the list: one such row made the window's fallback rate NaN and a second beside it panicked `median`'s `partial_cmp().unwrap()`. Both rails are pinned separately — the source guard by the infinite-distance case, the `total_cmp` comparator by the NaN one. [decisions § 926](../architecture/decisions.md).
 
@@ -1345,9 +1345,17 @@ The behavioural guard on the § 1286 / § 1489 negative: no uniqueness on `gym_r
 
 Pins migration `20270808000011` (decisions § 1918). The gate: no API role can run `private.remap_recurrence_wallclock` or close the transition window, nothing in the database calls the remap, and its default call is a dry run that reports the real counts and moves and records nothing; a dry run (or dry-run sweep) smaller than the series it would select is refused `22023`, so a batched dry-run loop cannot spin, while one covering them all runs. The window: the migration seeds `recurrence_utc_clock_legacy` enabled and a deleted row reads strict; before the close `is_event_occurrence` accepts both the UTC-clock and the wall-clock instant on its default and only the wall-clock one for a strict caller, and after it only the wall-clock one; the close refuses while a row still sits on a UTC-clock-only instant and, when it succeeds, leaves the flag disabled. The remap: a New York Wednesday-evening series pairs each Tuesday row with the Wednesday after it (shift 1) across attendees, the cancellation, the reminder, the event post and the host photo; an adjacent MO/TU series moves seven rows through a chain of instants without a primary-key or result unique-key collision; the monthly 28 February clamp and the April EDT move; the 07:00 fall-back move; a row whose target its owner already holds stays and is counted while the others at that instant move; a paid order written on an old instant moves onto the wall-clock one through the strict occurrence trigger; a UTC series moves nothing. A second run is a no-op, and a sweep moves only the rows an old build wrote afterwards, leaving a wall-clock RSVP whose instant is also a UTC-clock one where it is. Every one of the fifteen mutations recorded in § 1918 fails it, the vectors file or `event_order_occurrence_test.sql`.
 
+### `apps/backend/supabase/tests/club_join_notifications_test.sql` — 11 tests · `event_change_notifications_test.sql` — 16 tests · `event_rsvp_notification_window_test.sql` — 6 tests
+
+The club and event notices of [decisions § 2358](../architecture/decisions.md) (migrations `20271112000010`-`13`, issue #1300 BUG-009 / 010 / 016). Join requests reach the owner and admins and not an event organiser, once per asker per 24 h; an admin's approval reaches the member and a token self-redemption does not. An edit to the time, place or description reaches each upcoming going / maybe attendee once, never the editor, a past attendee or one on a cancelled occurrence; a title-only edit reaches no one; a second edit inside 15 minutes adds nothing; a reschedule notifies the attendees `events_move_rescheduled_rows` moved, at their new instant. A delete leaves each upcoming attendee an unlinked `event_cancel` with the title and club, a club delete cascading to the event still succeeds and tells them without the club link, and an organiser's account delete succeeds while they hold a paid place on their own event, telling the others and never naming them. RSVP notices reach the club owner and an admin who did not author the event, carry the occurrence, and notify again for another occurrence or after 24 h.
+
 ### `apps/backend/supabase/tests/event_reschedule_moves_rsvps_test.sql` — 17 tests
 
 Pins migration `20271111000001` (decisions § 2353, issue #1300 BUG-015). An organiser moving a one-off from their own session carries its paid going seat, its waitlist entry (still waitlisted) and the paid order itself (past the ledger lock, still `paid`) to the new start, and the `threkir.event_reschedule` flag is cleared afterwards. A weekly series moved 90 minutes later moves each upcoming RSVP and waitlist entry to the same session at the new time while a past session's RSVP stays; the same series restarted from a later Wednesday pairs the next session with the new series' first, not its sixth. A description edit that re-sends the same start keeps an RSVP on its instant to the second, a past one-off's RSVP stays where it was, and an edit whose per-occurrence price cannot be re-saved (the host's payout account is gone) is refused `23514` with the start and the RSVP unchanged.
+
+### `apps/backend/supabase/tests/club_exit_drops_hidden_rsvps_test.sql` — 19 tests
+
+Pins migration `20271112000001` (decisions § 2356, issue #1300 BUG-005). `private.is_event_visible_to` agrees with the events SELECT policy, evaluated as each of five viewers (owner, active member, pending, stranger, private-club member) over public / private / shadow-hidden clubs and public / members-only events, the matrix holds both outcomes, and a shadow-hidden club's public event is seen by its owner and members only. Rejecting a pending request leaves its RSVPs. The owner removing an active member from their own session drops the member's upcoming members-only RSVP and waitlist entry and promotes the next waitlister into the capped seat, while a past occurrence's RSVP and a public event in a public club stay. A member holding a paid seat keeps it and the order is untouched, and a member with a checkout still in flight keeps their waitlist row. A member leaving a private club on their own loses the RSVP to its public event; a status change out of `active` is an exit too, and a role change is not. Neither function is executable by clients, and a club delete cascading through its members still succeeds. Removing the two triggers fails five of the assertions.
 
 ### `apps/backend/supabase/functions/**/*.test.ts` — 1477 deno tests across 111 files
 
@@ -1401,7 +1409,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,453 declared tests across 643 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,457 declared tests across 643 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

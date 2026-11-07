@@ -339,6 +339,13 @@ var importantKinds = map[string]bool{
 	// and the asker sees nothing until they do. A plain follow stays out:
 	// it has already happened and asks nothing of the recipient.
 	"follow_request": true,
+	// The club notices of decisions § 2358. A join request is a follow request
+	// for a club: the asker sees nothing until an owner or admin acts. An
+	// approval answers a request the member is waiting on. An edit to an event
+	// the recipient is going to changes their plans the way a cancel does.
+	"club_join_request":  true,
+	"club_join_approved": true,
+	"event_updated":      true,
 }
 
 // pushImportantKinds are carried by the default "important" PUSH mode but not
@@ -348,6 +355,11 @@ var importantKinds = map[string]bool{
 // email is opt-in through email_notifications = all (decisions § 2098).
 var pushImportantKinds = map[string]bool{
 	"workout_reminder": true,
+	// An organiser plans the run around who is coming, and a run they cannot
+	// see RSVPs for is the complaint that put this here (decisions § 2358). A
+	// busy event raises one per RSVP, so the default is the push only; the
+	// email is opt-in through email_notifications = all.
+	"event_rsvp": true,
 }
 
 // kindMutePrefKey maps a notification kind to the user_settings.prefs key
@@ -388,6 +400,12 @@ var kindMutePrefKey = map[string]string{
 	// at all for a muted runner; this entry holds the mute for a row that was
 	// raised before the runner turned it off.
 	"workout_reminder": "notify_workout_reminder",
+	// Each raised by someone else's action and each in a default set
+	// (decisions § 2358), so each needs a control narrower than the channel.
+	"event_rsvp":         "notify_event_rsvp",
+	"club_join_request":  "notify_club_join_request",
+	"club_join_approved": "notify_club_join_approved",
+	"event_updated":      "notify_event_updated",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the
@@ -516,8 +534,20 @@ const notificationPrefsPath = "/settings/notifications"
 // UUID fallback on /clubs/[slug].
 func pathForKind(kind, base string, n NotificationRow) string {
 	switch kind {
-	case "event_reminder", "event_cancel", "event_rsvp", "event_waitlist_slot":
+	case "event_reminder", "event_rsvp", "event_waitlist_slot", "event_updated":
 		return eventPath(base, n)
+	case "event_cancel":
+		// A deleted event's notice links no event, because the delete's cascade
+		// would erase a row that did (20271112000013); its club is the nearest
+		// page that still exists.
+		if n.EventID == nil && n.ClubID != nil {
+			return clubPath(base, n)
+		}
+		return eventPath(base, n)
+	case "club_join_request", "club_join_approved":
+		// The club home, where a request's approve and decline sit for its
+		// admins and where an approved member lands.
+		return clubPath(base, n)
 	case "plan_update", "plan_assigned":
 		// Training plans live at /plans — there is no /training route, so the
 		// old target was a dead deep link. Both kinds carry plan_id and both

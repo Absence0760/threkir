@@ -5276,6 +5276,43 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ein Event-Termin, für den du zugesagt hattest, wurde abgesagt';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name möchte deinem Club beitreten';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name möchte $club beitreten';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Deine Beitrittsanfrage für einen Club wurde angenommen';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Du bist dabei – deine Beitrittsanfrage für $club wurde angenommen';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Ein Event, für das du zugesagt hast, wurde geändert';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '„$title“ wurde geändert – sieh dir die neuen Details an';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Ein Event, für das du zugesagt hattest, wurde abgesagt';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '„$title“ wurde abgesagt';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Ein Termin von „$title“ wurde abgesagt – deine Zahlung wird erstattet';
   }
@@ -20167,4 +20204,42 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get routesImportNoTrack =>
       'Import fehlgeschlagen: Die Datei enthält keine Route mit mindestens zwei Punkten.';
+
+  @override
+  String get manualDurationErrorInvalid => 'Nur ganze Zahlen verwenden';
+
+  @override
+  String get manualDurationErrorMinutes =>
+      'Minuten müssen zwischen 0 und 59 liegen';
+
+  @override
+  String get manualDurationErrorSeconds =>
+      'Sekunden müssen zwischen 0 und 59 liegen';
+
+  @override
+  String manualDurationErrorTooLong(int hours) {
+    return 'Ein Lauf kann nicht länger als $hours Stunden dauern';
+  }
+
+  @override
+  String get manualDurationSlowTitle => 'Dauer prüfen';
+
+  @override
+  String get manualDurationSlowBody =>
+      'Das ist für diese Distanz weit langsamer als Gehtempo. Ist eine Zahl im falschen Feld gelandet?';
+
+  @override
+  String get manualDurationSlowSave => 'Trotzdem speichern';
+
+  @override
+  String get manualDurationSlowFix => 'Korrigieren';
+
+  @override
+  String get addRunStartInFuture =>
+      'Die Startzeit darf nicht in der Zukunft liegen';
+
+  @override
+  String runDetailBlockedDurationTooLong(int hours) {
+    return 'Dieser Lauf dauert länger als $hours Stunden, was kein Lauf kann. Der Cloud-Speicher lehnt ihn daher ab, und ein neuer Versuch wird nie gelingen. Korrigiere die Dauer, um ihn hochzuladen.';
+  }
 }

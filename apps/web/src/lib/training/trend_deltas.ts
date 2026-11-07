@@ -20,6 +20,7 @@
  */
 
 import { weekStartLocal } from './goals';
+import { isPlausibleRunDuration } from '../runs/run_duration';
 
 export type WeekStartDay = 'monday' | 'sunday';
 export type TrendDirection = 'up' | 'down' | 'flat';
@@ -66,7 +67,7 @@ function summarise(runs: RunLike[], startMs: number, endMs: number): WindowTotal
 		const t = new Date(r.started_at).getTime();
 		if (!Number.isFinite(t) || t < startMs || t >= endMs) continue;
 		distanceM += Number.isFinite(r.distance_m) ? r.distance_m : 0;
-		durationS += Number.isFinite(r.duration_s) ? r.duration_s : 0;
+		durationS += isPlausibleRunDuration(r.duration_s) ? r.duration_s : 0;
 		count += 1;
 	}
 	return { distanceM, durationS, runs: count };

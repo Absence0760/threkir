@@ -143,6 +143,27 @@ void main() {
       expect(computePeriodStats([]).totalVertMetres, 0);
     });
 
+    test('a duration past the ten-day bound adds no time and no pace', () {
+      final stats = computePeriodStats([
+        _makeRun(
+          id: 'ok',
+          startedAt: DateTime(2026, 4, 14),
+          distanceMetres: 5000,
+          durationSeconds: 1500,
+        ),
+        _makeRun(
+          id: 'bad',
+          startedAt: DateTime(2026, 4, 15),
+          distanceMetres: 2000,
+          durationSeconds: 44400094,
+        ),
+      ]);
+      expect(stats.runCount, 2);
+      expect(stats.totalDistanceMetres, 7000);
+      expect(stats.totalDurationSec, 1500);
+      expect(stats.avgPaceSecPerKm, 300);
+    });
+
     test('empty list gives zeroes and null pace', () {
       final stats = computePeriodStats([]);
       expect(stats.runCount, 0);

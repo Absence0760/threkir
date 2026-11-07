@@ -180,6 +180,28 @@ void main() {
       expect(groups[0].otherCount, 1);
     });
 
+    test('join requests collapse per club, edits per event, deleted-event cancels never', () {
+      final groups = groupNotifications([
+        n(id: 'j1', kind: 'club_join_request', clubId: 'c1', actorId: 'u1', createdAt: ago(1000)),
+        n(id: 'j2', kind: 'club_join_request', clubId: 'c1', actorId: 'u2', createdAt: ago(2000)),
+        n(id: 'j3', kind: 'club_join_request', clubId: 'c2', actorId: 'u3', createdAt: ago(1500)),
+        n(id: 'u1', kind: 'event_updated', eventId: 'ev1', createdAt: ago(3000)),
+        n(id: 'u2', kind: 'event_updated', eventId: 'ev1', createdAt: ago(4000)),
+        n(id: 'x1', kind: 'event_cancel', clubId: 'c1', createdAt: ago(5000)),
+        n(id: 'x2', kind: 'event_cancel', clubId: 'c1', createdAt: ago(6000)),
+      ], nowMs: now);
+      expect(
+        groups.map((g) => [g.lead.id, g.otherCount]).toList(),
+        [
+          ['j1', 1],
+          ['j3', 0],
+          ['u1', 1],
+          ['x1', 0],
+          ['x2', 0],
+        ],
+      );
+    });
+
     test('messages collapse per actor, distinct actors split', () {
       final groups = groupNotifications([
         n(id: 'm1', kind: 'message', actorId: 'u1', createdAt: ago(1000)),

@@ -11,6 +11,7 @@
 import type { Run } from '../types';
 import { computeRunStreaks } from './streaks';
 import { storedElevationGainM } from './key_stats';
+import { isPlausibleRunDuration } from './run_duration';
 
 /// What the recap aggregator reads off a run. A structural bound rather than
 /// `Run`, matching `plan_ramp`'s `RunForVolume` and `consistency`'s
@@ -291,7 +292,8 @@ export function buildYearInRunningRecap(
 	for (const r of inYear) {
 		const d = new Date(r.started_at);
 		totalDistance += r.distance_m;
-		totalDuration += r.duration_s;
+		const countedS = isPlausibleRunDuration(r.duration_s) ? r.duration_s : 0;
+		totalDuration += countedS;
 		totalElevation += storedElevationGainM(r) ?? 0;
 
 		// "Longest run" + "fastest pace" are run-family headline stats —
@@ -305,7 +307,7 @@ export function buildYearInRunningRecap(
 
 		// Pace, in s/km, only on runs with non-trivial distance so a 200 m
 		// stroll doesn't dominate.
-		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0) {
+		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0 && isPlausibleRunDuration(r.duration_s)) {
 			const pace = r.duration_s / (r.distance_m / 1000);
 			if (fastestPaceSecPerKm == null || pace < fastestPaceSecPerKm) {
 				fastestPaceSecPerKm = pace;
@@ -324,7 +326,7 @@ export function buildYearInRunningRecap(
 
 		const md = monthly[d.getMonth()];
 		md.distanceM += r.distance_m;
-		md.durationS += r.duration_s;
+		md.durationS += countedS;
 		md.runCount += 1;
 
 		const wk = mondayOf(d);
@@ -464,7 +466,7 @@ export function buildMonthInRunningRecap(
 		totalElevation += storedElevationGainM(r) ?? 0;
 		const isRunFamily = (r.activity_type ?? 'run') !== 'cycle';
 		if (isRunFamily && r.distance_m > longest) longest = r.distance_m;
-		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0) {
+		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0 && isPlausibleRunDuration(r.duration_s)) {
 			const pace = r.duration_s / (r.distance_m / 1000);
 			if (fastestPaceSecPerKm == null || pace < fastestPaceSecPerKm) fastestPaceSecPerKm = pace;
 		}

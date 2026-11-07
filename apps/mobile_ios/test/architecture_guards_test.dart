@@ -5703,6 +5703,10 @@ void main() {
       // Explains what a derived metric IS. Its only action is dismissal;
       // nothing is decided here and nothing can be lost by tapping it.
       'widgets/metric_label.dart::metricText(l10n, metric)': 1,
+      // Asks before saving a manual run slower than walking pace. Saving keeps
+      // the typed figures and "Fix it" returns to the form, so neither button
+      // discards anything.
+      'manual_duration_input.dart::l10n.manualDurationSlowTitle': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

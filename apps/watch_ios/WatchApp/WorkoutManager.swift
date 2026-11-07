@@ -1296,6 +1296,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 struct PaceWindow {
     static let windowM = 200.0
     static let minWindowM = 50.0
+    static let minWindowS = 20.0
     static let minSamples = 5
 
     private var samples: [(t: Double, m: Double)] = []
@@ -1312,21 +1313,23 @@ struct PaceWindow {
         samples.append((t: t, m: distanceM))
         sinceSeal += 1
         var drop = 0
-        while samples.count - drop > 2, distanceM - samples[drop + 1].m >= Self.windowM {
+        while samples.count - drop > 2, distanceM - samples[drop + 1].m >= Self.windowM,
+              t - samples[drop + 1].t >= Self.minWindowS {
             drop += 1
         }
         if drop > 0 { samples.removeFirst(drop) }
     }
 
     /// Null until the window since the last seal holds `minSamples` fixes and
-    /// `minWindowM`.
+    /// spans `minWindowM` and `minWindowS`, the phone's shared `paceIsReady`
+    /// rule (issue #1300).
     var secondsPerKm: Double? {
         guard sinceSeal >= Self.minSamples, let first = samples.first, let last = samples.last else {
             return nil
         }
         let gained = last.m - first.m
         let seconds = last.t - first.t
-        guard gained >= Self.minWindowM, seconds > 0 else { return nil }
+        guard gained >= Self.minWindowM, seconds >= Self.minWindowS else { return nil }
         return seconds / gained * 1000
     }
 }

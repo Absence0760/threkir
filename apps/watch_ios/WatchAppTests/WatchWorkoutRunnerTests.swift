@@ -97,6 +97,71 @@ final class WatchWorkoutRunnerTests: XCTestCase {
                        [.paceDrift(index: 0, ahead: true, deltaSecondsPerKm: 73)])
     }
 
+    func testDriftReadsTheStepsTrailing200mNotItsWholeAverage() {
+        // Issue #1300: a slow first 50 m kept the cumulative average way behind
+        // long after the runner reached the target.
+        let steady = PushedStep(kind: .steady, repIndex: nil, repTotal: nil, distanceMetres: 8047, durationSeconds: nil, paceSecondsPerKm: 348, toleranceSecondsPerKm: 10)
+        let runner = WatchWorkoutRunner(workout: workout([steady]))
+        _ = runner.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)
+        XCTAssertFalse(runner.onTotals(distanceMetres: 50, elapsedSeconds: 40, now: 40).isEmpty)
+        // Until the step passes 250 m its window still holds the slow start.
+        for i in 1...6 {
+            _ = runner.onTotals(distanceMetres: 50 + Double(i) * 28.736, elapsedSeconds: 40 + Double(i) * 10, now: 40 + Double(i) * 10)
+        }
+        var later: [WatchWorkoutEvent] = []
+        for i in 7...21 {
+            later += runner.onTotals(distanceMetres: 50 + Double(i) * 28.736, elapsedSeconds: 40 + Double(i) * 10, now: 40 + Double(i) * 10)
+        }
+        // The average stays way behind (383 s/km at the end); the last 200 m read 348.
+        XCTAssertFalse(later.contains { if case .paceDrift = $0 { return true }; return false })
+    }
+
+    func testTheDriftWindowRestartsWithEachStep() {
+        let shortRep = PushedStep(kind: .rep, repIndex: 1, repTotal: 1, distanceMetres: 400, durationSeconds: nil, paceSecondsPerKm: 240, toleranceSecondsPerKm: 10)
+        let recovery = PushedStep(kind: .recovery, repIndex: nil, repTotal: nil, distanceMetres: 400, durationSeconds: nil, paceSecondsPerKm: 400, toleranceSecondsPerKm: 10)
+        let runner = WatchWorkoutRunner(workout: workout([shortRep, recovery]))
+        _ = runner.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)
+        for i in 1...24 {
+            _ = runner.onTotals(distanceMetres: Double(i) * 400 / 24, elapsedSeconds: Double(i) * 4, now: Double(i) * 4)
+        }
+        XCTAssertEqual(runner.currentIndex, 1)
+        // The recovery at its own 400 s/km; a window reaching into the rep would read fast.
+        var events: [WatchWorkoutEvent] = []
+        for i in 1...6 {
+            events += runner.onTotals(distanceMetres: 400 + Double(i) * 10, elapsedSeconds: 96 + Double(i) * 4, now: 96 + Double(i) * 4)
+        }
+        XCTAssertFalse(events.contains { if case .paceDrift = $0 { return true }; return false })
+    }
+
+    func testACarriedOvershootIsTimedFromTheNewStepsOwnStart() {
+        let shortRep = PushedStep(kind: .rep, repIndex: 1, repTotal: 1, distanceMetres: 100, durationSeconds: nil, paceSecondsPerKm: 240, toleranceSecondsPerKm: 10)
+        let steady = PushedStep(kind: .steady, repIndex: nil, repTotal: nil, distanceMetres: 400, durationSeconds: nil, paceSecondsPerKm: 240, toleranceSecondsPerKm: 10)
+        let runner = WatchWorkoutRunner(workout: workout([shortRep, steady]))
+        _ = runner.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)
+        // 150 m in 45 s crosses the rep and carries 50 m and 15 s into the steady.
+        _ = runner.onTotals(distanceMetres: 150, elapsedSeconds: 45, now: 45)
+        XCTAssertEqual(runner.currentIndex, 1)
+        XCTAssertEqual(runner.onTotals(distanceMetres: 160, elapsedSeconds: 48, now: 48), [])
+        // 70 m in 21 s of the step = 300 s/km, 60 behind a 10 s tolerance.
+        XCTAssertEqual(runner.onTotals(distanceMetres: 170, elapsedSeconds: 51, now: 51),
+                       [.paceDrift(index: 1, ahead: false, deltaSecondsPerKm: 60)])
+    }
+
+    func testTicksBetweenFixesDoNotReadAsASlowdown() {
+        let steady = PushedStep(kind: .steady, repIndex: nil, repTotal: nil, distanceMetres: 1000, durationSeconds: nil, paceSecondsPerKm: 300, toleranceSecondsPerKm: 10)
+        let runner = WatchWorkoutRunner(workout: workout([steady]))
+        _ = runner.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)
+        for i in 1...10 {
+            _ = runner.onTotals(distanceMetres: Double(i) * 20, elapsedSeconds: Double(i) * 6, now: Double(i) * 6)
+        }
+        // A 6 s GPS hiccup: 200 m over 66 s would read 330 s/km, way behind.
+        var ticks: [WatchWorkoutEvent] = []
+        for s in 61...66 {
+            ticks += runner.onTotals(distanceMetres: 200, elapsedSeconds: Double(s), now: Double(s))
+        }
+        XCTAssertFalse(ticks.contains { if case .paceDrift = $0 { return true }; return false })
+    }
+
     func testAWalkRunSessionNeverGradesPace() {
         let runner = WatchWorkoutRunner(workout: workout([rep], unpaced: true))
         _ = runner.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)

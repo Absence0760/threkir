@@ -500,10 +500,16 @@ class ApiClient {
   /// the native flow issued it (iOS) or the Services-ID web flow (Android).
   /// It is handed on without being awaited: sign-in is done either way.
   /// [affirmedAgeAndTerms] as for [signInWithGoogleIdToken].
+  /// [givenName] and [familyName] are the credential's name parts, which
+  /// Apple sends only on the first authorization and never in the identity
+  /// token. They are written to the user metadata as `full_name`, where a
+  /// trigger fills a still-empty display name from them (decisions § 2363).
   Future<String> signInWithAppleIdToken({
     required String idToken,
     ({String code, bool nativeFlow})? appleCode,
     bool affirmedAgeAndTerms = false,
+    String? givenName,
+    String? familyName,
   }) async {
     final settled = affirmedAgeAndTerms ? _beginAffirmedSignIn() : null;
     try {
@@ -511,6 +517,16 @@ class ApiClient {
         provider: OAuthProvider.apple,
         idToken: idToken,
       );
+      final fullName = appleFullName(givenName, familyName);
+      if (fullName != null) {
+        try {
+          await _client.auth
+              .updateUser(UserAttributes(data: {'full_name': fullName}));
+        } catch (e) {
+          debugPrint(
+              'ApiClient.signInWithAppleIdToken name write failed: ${safeErrorLabel(e)}');
+        }
+      }
       if (appleCode != null && appleCode.code.isNotEmpty) {
         unawaited(keepAppleRevocationCredential(
           appleCode.code,
@@ -522,6 +538,17 @@ class ApiClient {
     } finally {
       settled?.complete();
     }
+  }
+
+  /// The Apple credential's name parts joined with a space, or null when
+  /// both are empty.
+  @visibleForTesting
+  static String? appleFullName(String? givenName, String? familyName) {
+    final joined = [givenName, familyName]
+        .map((p) => p?.trim() ?? '')
+        .where((p) => p.isNotEmpty)
+        .join(' ');
+    return joined.isEmpty ? null : joined;
   }
 
   Completer<void>? _affirmedSignIn;

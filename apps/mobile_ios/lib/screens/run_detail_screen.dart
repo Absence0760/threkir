@@ -1199,7 +1199,16 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       return Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(flex: 11, child: _buildMapStack(l10n)),
+          Expanded(
+            flex: 11,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildMapStack(l10n)),
+                ?_buildSegmentCard(),
+              ],
+            ),
+          ),
           Expanded(flex: 9, child: ListView(children: sections)),
         ],
       );
@@ -1221,6 +1230,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               child: _buildMapStack(l10n),
             ),
           ),
+        if (hasMap) ?_buildSegmentCard(),
         ...sections,
       ],
     );
@@ -1231,6 +1241,23 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// it, and a toggle that changes nothing is worse than none.
   bool get _mapTrackHasTiming =>
       _mapTrack.where((w) => w.timestamp != null).take(2).length == 2;
+
+  /// The tapped stretch's stats, drawn under the map rather than over it: an
+  /// overlay covered the basemap credit (§ 491) and sat under the replay
+  /// button (#1300 § 2).
+  Widget? _buildSegmentCard() {
+    final segment = _selectedSegment;
+    if (segment == null) return null;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: _SegmentStatsCard(
+        key: const ValueKey('run-detail-segment-card'),
+        segment: segment,
+        unit: widget.preferences.unit,
+        onDismiss: () => setState(() => _selectedSegment = null),
+      ),
+    );
+  }
 
   Widget _buildMapStack(AppLocalizations l10n) {
     return Stack(
@@ -1299,18 +1326,6 @@ class _RunDetailScreenState extends State<RunDetailScreen>
             );
           },
         ),
-        if (_selectedSegment != null)
-          Positioned(
-            left: 12,
-            right: 12,
-            bottom: 12,
-            child: _SegmentStatsCard(
-              segment: _selectedSegment!,
-              unit: widget.preferences.unit,
-              onDismiss: () =>
-                  setState(() => _selectedSegment = null),
-            ),
-          ),
         Builder(
           builder: (context) {
             final kind = matchPillKind(_matchInfo,
@@ -3905,6 +3920,7 @@ class _SegmentStatsCard extends StatelessWidget {
   final VoidCallback onDismiss;
 
   const _SegmentStatsCard({
+    super.key,
     required this.segment,
     required this.unit,
     required this.onDismiss,

@@ -37,7 +37,10 @@ enum _StatEmphasis { small, medium, large }
 /// instead of the number shrinking. Lay these out with `StatGrid`, which
 /// bounds every cell by construction, or with `Expanded`. The label may
 /// ellipsise — a stat whose name is clipped is still identifiable beside its
-/// neighbours and its icon, a clipped number is not.
+/// neighbours and its icon, a clipped number is not. A small tile's label gets
+/// two lines before it ellipsises, because its cell is the narrowest and a
+/// name like "Grade-Adj. Pace" — longer still in German or French — rarely
+/// fits one.
 ///
 /// `large` and `medium` draw the value in a slot one unscaled line tall,
 /// bottom-aligned, so a value `BoxFit.scaleDown` shrank does not lift the
@@ -107,7 +110,7 @@ class StatTile extends StatelessWidget {
     final labelText = Text(
       label,
       textAlign: TextAlign.center,
-      maxLines: 1,
+      maxLines: _emphasis == _StatEmphasis.small ? 2 : 1,
       overflow: TextOverflow.ellipsis,
       style: (large ? theme.textTheme.bodySmall : theme.textTheme.labelSmall)
           ?.copyWith(color: muted),

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ui_kit/ui_kit.dart';
 
@@ -189,6 +190,63 @@ void main() {
       expect(value.maxLines, 1);
       expect(value.overflow, TextOverflow.ellipsis);
       expect(find.byIcon(Icons.favorite), findsOneWidget);
+    });
+  });
+
+  // Issue #1300 § 2: "Grade-Adj. P..." in a ~92 dp secondary cell.
+  group('StatTile.small — a label gets two centred lines', () {
+    testWidgets('a long label wraps instead of ellipsising on line one',
+        (tester) async {
+      await _pump(
+        tester,
+        const StatTile.small(
+          icon: Icons.trending_up,
+          label: 'Grade-Adj. Pace',
+          value: '5:40',
+        ),
+        width: 92,
+      );
+      expect(tester.takeException(), isNull);
+      final label = _textOf(tester, 'Grade-Adj. Pace');
+      expect(label.maxLines, 2);
+      expect(label.overflow, TextOverflow.ellipsis);
+      expect(label.textAlign, TextAlign.center);
+
+      final paragraph = tester.renderObject<RenderParagraph>(
+          find.text('Grade-Adj. Pace'));
+      // flutter_test's font is fixed-advance, so whether the whole name fits
+      // two lines cannot be claimed here (§ 500); that it took a second line
+      // rather than ellipsising the first can.
+      final lineHeight = paragraph.getFullHeightForCaret(
+          const TextPosition(offset: 0));
+      expect(paragraph.size.height, greaterThan(lineHeight * 1.5),
+          reason: 'the label took a second line');
+    });
+
+    testWidgets('a label longer than two lines still ellipsises',
+        (tester) async {
+      await _pump(
+        tester,
+        const StatTile.small(
+          icon: Icons.trending_up,
+          label: 'Durchschnittliche steigungsbereinigte Geschwindigkeit',
+          value: '5:40',
+        ),
+        width: 92,
+      );
+      expect(tester.takeException(), isNull);
+      final paragraph = tester.renderObject<RenderParagraph>(find
+          .text('Durchschnittliche steigungsbereinigte Geschwindigkeit'));
+      expect(paragraph.didExceedMaxLines, isTrue);
+    });
+
+    testWidgets('a hero label stays on one line', (tester) async {
+      await _pump(
+        tester,
+        const StatTile.large(label: 'Grade-Adj. Pace', value: '5:40'),
+        width: 92,
+      );
+      expect(_textOf(tester, 'Grade-Adj. Pace').maxLines, 1);
     });
   });
 

@@ -3140,3 +3140,14 @@ insert into private.feature_flags (name, enabled) values ('share_attribution', t
 -- § 2350). Local stacks and CI open it so the sign-up path exercises it.
 insert into private.feature_flags (name, enabled) values ('signup_source', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Display name from provider gate (20271111000002) ───────────────────
+--
+-- Filling a null display_name from the Google / Apple name is fail-closed
+-- behind a private.feature_flags row no migration writes, so prod stays off
+-- until the CISO + counsel sign-off in docs/ops/deployment.md (decisions
+-- § 2363). Local stacks and CI open it so OAuth sign-ups exercise it. The
+-- seed's own profiles were inserted above, before the gate opened, so their
+-- names are exactly what the seed wrote.
+insert into private.feature_flags (name, enabled) values ('display_name_from_provider', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

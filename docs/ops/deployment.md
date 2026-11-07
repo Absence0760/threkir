@@ -704,6 +704,14 @@ Recording which platform each new account came from ([decisions § 2350](../arch
 2. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('signup_source', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; recording stops at once and recorded rows stay with their accounts.
 3. Reading the counts: `select day, source, signups from private.signup_sources_daily where day >= current_date - 30 order by day desc, signups desc;` in the same SQL editor. Accounts from before step 2 count as `unknown`.
 
+### Display name from the sign-in provider — after the CISO + counsel review
+
+Filling an empty `display_name` from the name Google or Apple supplied ([decisions § 2363](../architecture/decisions.md), migration `20271111000002`, issue #1300 BUG-013) ships closed: no migration writes the `display_name_from_provider` row of `private.feature_flags`, so new profiles stay unnamed until the person types a name, as before. Mobile already writes an Apple sign-in's name to the user metadata as `full_name`; nothing reads it while the gate is closed. In order:
+
+1. CISO + counsel: confirm that showing club members, attendees and public-profile viewers the provider name by default is acceptable, and that the backfill (step 3) may name accounts that never typed one. Update the privacy policy's § 2 "Account" line, which today calls the display name optional and typed by the person, to say a Google / Apple sign-in supplies it and it can be changed or cleared in Settings → Account. No sub-processor changes.
+2. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('display_name_from_provider', true) on conflict (name) do update set enabled = true, updated_at = now();`. Closing it again is the same statement with `false`; names already filled stay.
+3. Once, in the same SQL editor: `select private.backfill_display_names_from_provider();` — returns how many existing profiles it named. Skip it if step 1 limited the change to new sign-ups.
+
 ### Public plan share ("Train with me") — after the CISO / Security Analyst review
 
 The logged-out `/share/plan/[id]` page ([training.md § Train with me](../features/training.md#train-with-me--public-plan-share-page), decisions § 2262, migration `20271103000002`) ships closed: no migration writes the `public_plan_share` row of `private.feature_flags` (`seed.sql` opens it for local and CI only), so `public_plan_share(p_id)` answers null and "Copy share link" stays hidden. From training.md's checklist:

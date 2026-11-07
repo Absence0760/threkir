@@ -70,7 +70,8 @@ private fun wrapLng(d: Double): Double = when {
     else -> d
 }
 
-private fun gateUsable(gate: Gate): Boolean =
+/// Whether [gate] can report crossings at all; an unusable gate reports none.
+fun gateUsable(gate: Gate): Boolean =
     gate.lat.isFinite() && gate.lng.isFinite() && gate.bearingDeg.isFinite() &&
         gate.halfWidthM.isFinite() && gate.halfWidthM >= 0.0 &&
         abs(gate.lat) < 90.0 && abs(gate.lng) <= 180.0

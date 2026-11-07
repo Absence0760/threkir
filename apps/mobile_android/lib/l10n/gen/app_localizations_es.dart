@@ -5256,6 +5256,43 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se canceló una ocurrencia de un evento al que confirmaste asistencia';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name pidió unirse a tu club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name pidió unirse a $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Se aprobó tu solicitud para unirte a un club';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Ya estás dentro: se aprobó tu solicitud para unirte a $club';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Se actualizó un evento al que vas a ir';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '«$title» se actualizó: revisa los nuevos detalles';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Se canceló un evento al que confirmaste asistencia';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return 'Se canceló «$title»';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Se canceló una ocurrencia de «$title»: te estamos reembolsando el pago';
   }

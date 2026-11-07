@@ -5210,6 +5210,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'An event occurrence you RSVP\'d to was cancelled';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name asked to join your club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name asked to join $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Your request to join a club was approved';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'You\'re in — your request to join $club was approved';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'An event you\'re going to was updated';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '\"$title\" was updated — check the new details';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'An event you RSVP\'d to was cancelled';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '\"$title\" was cancelled';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'An occurrence of \"$title\" was cancelled — your payment is being refunded';
   }

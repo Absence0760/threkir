@@ -6787,8 +6787,11 @@ class ApiClient {
         runDistanceM:
             row.runId == null ? null : runDistanceById[row.runId!],
         commentExcerpt: excerpt(row.commentId),
-        eventTitle:
-            event != null && event.title.isNotEmpty ? event.title : null,
+        // A deleted event's cancel notice links no event and carries the
+        // title on the row itself (decisions § 2358).
+        eventTitle: event != null && event.title.isNotEmpty
+            ? event.title
+            : row.eventTitle,
         eventClubSlug: eventClubSlug,
         clubName: (linkedClub?.name.isNotEmpty ?? false) ? linkedClub!.name : null,
         clubSlug: (linkedClub?.slug.isNotEmpty ?? false) ? linkedClub!.slug : null,

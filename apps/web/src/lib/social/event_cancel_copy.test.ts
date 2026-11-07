@@ -44,8 +44,22 @@ test('a free attendee, or a row from before the column, reads the plain sentence
 	}
 });
 
+test('a row with no event reads as the whole event cancelled, titled from the row', () => {
+	assert.deepEqual(eventCancelMessage('notificationBell', { refunded: false, event_id: null }, 'Barre'), {
+		key: 'notificationBell.eventDeletedTitled',
+		params: { title: 'Barre' },
+	});
+	assert.deepEqual(eventCancelMessage('notificationsList', { refunded: false, event_id: null }, null), {
+		key: 'notificationsList.verbEventDeleted',
+	});
+	// An occurrence cancel always links its event.
+	assert.deepEqual(eventCancelMessage('notificationsList', { refunded: false, event_id: 'e1' }, null), {
+		key: 'notificationsList.verbEventCancel',
+	});
+});
+
 test('every event_cancel key exists in every locale, the refund ones differ from the plain ones', async () => {
-	assert.equal(EVENT_CANCEL_KEYS.length, 8);
+	assert.equal(EVENT_CANCEL_KEYS.length, 12);
 	for (const loc of SUPPORTED_LOCALES) {
 		const dict = (await CATALOGUE_LOADERS[loc]()) as Record<string, string>;
 		for (const key of EVENT_CANCEL_KEYS) {
@@ -61,10 +75,16 @@ test('every event_cancel key exists in every locale, the refund ones differ from
 			for (const title of ['Barre', null]) {
 				const plain = eventCancelMessage(surface, { refunded: false }, title);
 				const paid = eventCancelMessage(surface, { refunded: true }, title);
+				const deleted = eventCancelMessage(surface, { refunded: false, event_id: null }, title);
 				assert.notEqual(
 					dict[paid.key],
 					dict[plain.key],
 					`[${loc}] ${surface} reads the same for a paid registrant as for a free one`,
+				);
+				assert.notEqual(
+					dict[deleted.key],
+					dict[plain.key],
+					`[${loc}] ${surface} reads the same for a deleted event as for one cancelled occurrence`,
 				);
 			}
 		}

@@ -57,7 +57,7 @@ test('a follow request links to the requests page, with or without an actor', ()
 });
 
 test('event kinds link to the club event, needing both event id and club slug', () => {
-	for (const kind of ['event_rsvp', 'event_cancel', 'event_reminder', 'event_waitlist_slot']) {
+	for (const kind of ['event_rsvp', 'event_cancel', 'event_reminder', 'event_waitlist_slot', 'event_updated']) {
 		assert.equal(
 			notificationLinkFor(make({ kind, event_id: 'e1', event_club_slug: 'trail-club' })),
 			'/clubs/trail-club/events/e1',
@@ -65,6 +65,19 @@ test('event kinds link to the club event, needing both event id and club slug', 
 		// Either half missing → no link (avoids a /clubs/null/events/e1 dead route).
 		assert.equal(notificationLinkFor(make({ kind, event_id: 'e1' })), null);
 		assert.equal(notificationLinkFor(make({ kind, event_club_slug: 'trail-club' })), null);
+	}
+});
+
+test('a deleted event\'s cancel notice links to its club, the page that still exists', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'event_cancel', club_slug: 'trail-club' })), '/clubs/trail-club');
+	// The club went with it: a plain message.
+	assert.equal(notificationLinkFor(make({ kind: 'event_cancel' })), null);
+});
+
+test('join requests and approvals link to the club home', () => {
+	for (const kind of ['club_join_request', 'club_join_approved']) {
+		assert.equal(notificationLinkFor(make({ kind, club_slug: 'road-runners' })), '/clubs/road-runners');
+		assert.equal(notificationLinkFor(make({ kind })), null);
 	}
 });
 

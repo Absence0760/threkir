@@ -5276,6 +5276,43 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ein Event-Termin, für den du zugesagt hattest, wurde abgesagt';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name möchte deinem Club beitreten';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name möchte $club beitreten';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Deine Beitrittsanfrage für einen Club wurde angenommen';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'Du bist dabei – deine Beitrittsanfrage für $club wurde angenommen';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Ein Event, für das du zugesagt hast, wurde geändert';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '„$title“ wurde geändert – sieh dir die neuen Details an';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Ein Event, für das du zugesagt hattest, wurde abgesagt';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '„$title“ wurde abgesagt';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Ein Termin von „$title“ wurde abgesagt – deine Zahlung wird erstattet';
   }

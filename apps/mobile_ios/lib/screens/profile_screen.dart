@@ -1479,7 +1479,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else if ((kind == 'event_rsvp' ||
             kind == 'event_cancel' ||
             kind == 'event_reminder' ||
-            kind == 'event_waitlist_slot') &&
+            kind == 'event_waitlist_slot' ||
+            kind == 'event_updated') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(
@@ -1491,7 +1492,13 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
-    } else if (kind == 'club_post' && item.clubSlug != null) {
+    } else if ((kind == 'club_post' ||
+            kind == 'club_join_request' ||
+            kind == 'club_join_approved' ||
+            // A deleted event's cancel links no event, only the club it
+            // belonged to (decisions § 2358).
+            (kind == 'event_cancel' && item.row.eventId == null)) &&
+        item.clubSlug != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ClubDetailScreen(
@@ -1613,9 +1620,28 @@ class _ProfileScreenState extends State<ProfileScreen>
               ? l10n.profileNotifEventCancelRefundedTitled(item.eventTitle!)
               : l10n.profileNotifEventCancelRefunded;
         }
+        // No event id: the whole event was deleted, and the notice was
+        // written unlinked so the delete could not erase it (decisions § 2358).
+        if (item.row.eventId == null) {
+          return item.eventTitle != null
+              ? l10n.profileNotifEventDeletedTitled(item.eventTitle!)
+              : l10n.profileNotifEventDeleted;
+        }
         return item.eventTitle != null
             ? l10n.profileNotifEventCancelTitled(item.eventTitle!)
             : l10n.profileNotifEventCancel;
+      case 'event_updated':
+        return item.eventTitle != null
+            ? l10n.profileNotifEventUpdatedTitled(item.eventTitle!)
+            : l10n.profileNotifEventUpdated;
+      case 'club_join_request':
+        return item.clubName != null
+            ? l10n.profileNotifClubJoinRequestNamed(name, item.clubName!)
+            : l10n.profileNotifClubJoinRequest(name);
+      case 'club_join_approved':
+        return item.clubName != null
+            ? l10n.profileNotifClubJoinApprovedNamed(item.clubName!)
+            : l10n.profileNotifClubJoinApproved;
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)

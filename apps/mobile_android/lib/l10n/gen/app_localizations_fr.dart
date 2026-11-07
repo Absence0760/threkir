@@ -5276,6 +5276,43 @@ class AppLocalizationsFr extends AppLocalizations {
       'Une occurrence d\'événement à laquelle vous avez répondu a été annulée';
 
   @override
+  String profileNotifClubJoinRequest(String name) {
+    return '$name demande à rejoindre votre club';
+  }
+
+  @override
+  String profileNotifClubJoinRequestNamed(String name, String club) {
+    return '$name demande à rejoindre $club';
+  }
+
+  @override
+  String get profileNotifClubJoinApproved =>
+      'Votre demande d\'adhésion à un club a été acceptée';
+
+  @override
+  String profileNotifClubJoinApprovedNamed(String club) {
+    return 'C\'est fait — votre demande pour rejoindre $club a été acceptée';
+  }
+
+  @override
+  String get profileNotifEventUpdated =>
+      'Un événement auquel vous participez a été modifié';
+
+  @override
+  String profileNotifEventUpdatedTitled(String title) {
+    return '« $title » a été modifié — consultez les nouveaux détails';
+  }
+
+  @override
+  String get profileNotifEventDeleted =>
+      'Un événement auquel vous aviez répondu a été annulé';
+
+  @override
+  String profileNotifEventDeletedTitled(String title) {
+    return '« $title » a été annulé';
+  }
+
+  @override
   String profileNotifEventCancelRefundedTitled(String title) {
     return 'Une occurrence de « $title » a été annulée — votre paiement est en cours de remboursement';
   }

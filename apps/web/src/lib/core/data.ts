@@ -10786,6 +10786,8 @@ export interface NotificationRow {
 	challenge_id: string | null;
 	read_at: string | null;
 	refunded: boolean;
+	/** A deleted event's title, on the unlinked cancel notice its delete leaves (§ 2358). */
+	event_title: string | null;
 	created_at: string;
 }
 
@@ -10901,7 +10903,7 @@ export async function fetchNotificationsWithError(
 				run_distance_m: run?.distance_m ?? null,
 				run_started_at: run?.started_at ?? null,
 				comment_excerpt: body ? (body.length > 120 ? body.slice(0, 117) + '…' : body) : null,
-				event_title: ev?.title ?? null,
+				event_title: ev?.title ?? r.event_title ?? null,
 				event_club_slug: ev?.club_slug ?? null,
 				club_name: club?.name ?? null,
 				club_slug: club?.slug ?? null,

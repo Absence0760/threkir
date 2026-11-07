@@ -100,7 +100,8 @@ double _wrapLng(double d) {
   return d;
 }
 
-bool _gateUsable(Gate gate) =>
+/// Whether [gate] can report crossings at all; an unusable gate reports none.
+bool gateUsable(Gate gate) =>
     gate.lat.isFinite &&
     gate.lng.isFinite &&
     gate.bearingDeg.isFinite &&
@@ -131,7 +132,7 @@ class _Projected {
 /// crossing returns it. [settle] ends the stream and returns every crossing.
 class GateCrossingDetector {
   GateCrossingDetector(this.gate, [this.options = const GateCrossingOptions()])
-      : _usable = _gateUsable(gate);
+      : _usable = gateUsable(gate);
 
   final Gate gate;
   final GateCrossingOptions options;

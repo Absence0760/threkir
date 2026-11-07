@@ -1,0 +1,570 @@
+{
+ "spec": "gate_crossing v1",
+ "reference": "docs/architecture/parity_pairs.md (gate_crossing, TS<->Dart and Dart<->Kotlin); issue #1304 section 1; decisions § 1856 (this file's schema convention), § 2362 (the v1 spec and its provisional constants)",
+ "readers": [
+  "apps/web/src/lib/geo/gate_crossing.test.ts",
+  "apps/mobile_android/test/gate_crossing_test.dart",
+  "apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/GateCrossingTest.kt"
+ ],
+ "schema": {
+  "general": [
+   "Every reader loads this whole file and runs every case in every section below, and fails on a section it does not know; a section a reader skips is a rule that side no longer has to keep.",
+   "A number field may instead hold the string \"NaN\", \"Infinity\" or \"-Infinity\" (JSON has no literal for them); readers decode those to the IEEE value. Every number in a gate, a position or a fix is number-or-special.",
+   "Times are seconds relative to t0EpochMs (UTC). A reader hands the helper tMs = t0EpochMs + atS * 1000, and compares a crossing's (tMs - t0EpochMs) / 1000 with the expected atS.",
+   "A field documented as nullable is present with the JSON value null when absent; readers must not treat a missing key as null.",
+   "distanceToleranceM applies to every compared distance (s, u, offsetM, coveredM); timeToleranceS to every compared time; fractionTolerance to every compared fraction. Every other comparison (direction, gapped, afterFix, crossing count) is exact.",
+   "Every expected value was computed by hand from the geometry in the case's note, never from a port's output."
+  ],
+  "constants": "EARTH_RADIUS_M, MAX_GAP_S, MAX_HOP_M, REJECT_GAP_S, HALF_WIDTH_RACE_M, HALF_WIDTH_SEGMENT_M. Each reader asserts its own constants equal these. Every constant but EARTH_RADIUS_M is PROVISIONAL until the #1304 calibration session (decisions § 2362).",
+  "gate": "{lat, lng, bearingDeg, halfWidthM}: the line through (lat, lng) perpendicular to the direction of travel bearingDeg (clockwise from north), reaching halfWidthM either side of the centre.",
+  "position": "Either {lat, lng}, used as given, or {eastM, northM} relative to the case's gate centre: lat = gate.lat + northM / K, lng = gate.lng + eastM / (K * cos(gate.lat in radians)), K = EARTH_RADIUS_M * PI / 180. The second form is the exact inverse of the helper's projection, so a local-frame case's s and u are its eastM / northM rotated by the bearing, to rounding.",
+  "projection": "{name, note, gate, point: position, expect: {s, u}}: gateProjection(gate, point.lat, point.lng). s = p . d is the signed distance past the line along the direction of travel d = (sin b, cos b); u = p . g the lateral offset along g = (cos b, -sin b), positive to the right of travel. p = (x east, y north) on the tangent plane at the gate centre.",
+  "crossings": "{name, note, gate, options: {maxGapS, maxHopM, rejectGapS}|null (null: the constants), fixes: [position + {atS, coveredM}], fixesAfterSettle: [same]|null, expect: [{afterFix, direction: 'forward'|'backward', fraction, atS, coveredM, offsetM, gapped}]}. Streaming: build a GateCrossingDetector(gate, options) and offer the fixes in order; offer(fixes[afterFix]) returns that crossing and every other offer returns null. settle() then returns the whole expect list in order. Each of fixesAfterSettle, offered after settle(), returns null and leaves settle() unchanged. Batch: crossingsOf(fixes, gate, options) returns the same list."
+ },
+ "constants": {
+  "EARTH_RADIUS_M": 6371008.8,
+  "MAX_GAP_S": 10,
+  "MAX_HOP_M": 50,
+  "REJECT_GAP_S": 60,
+  "HALF_WIDTH_RACE_M": 15,
+  "HALF_WIDTH_SEGMENT_M": 15
+ },
+ "t0EpochMs": 1780000000000,
+ "distanceToleranceM": 1e-6,
+ "timeToleranceS": 1e-6,
+ "fractionTolerance": 1e-9,
+ "projection": [
+  {
+   "name": "due north of a north-facing gate is past it by one arc",
+   "note": "K = 6371008.8 * pi / 180 = 111195.08023353292 m/deg. 0.0001 deg of latitude = 11.119508023353292 m. Bearing 0: d = (0, 1), g = (1, 0), so s = y and u = x = 0.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "point": {"lat": 51.5001, "lng": -0.1},
+   "expect": {"s": 11.119508023353292, "u": 0}
+  },
+  {
+   "name": "65 degrees north shrinks a degree of longitude by cos 65",
+   "note": "x = 0.0002 * K * cos(65 deg) = 0.0002 * 111195.08023353292 * 0.42261826174069944 = 9.398614304482658 m. Bearing 90: d = (1, 0), so s = x; g = (0, -1), so u = -y = 0.",
+   "gate": {"lat": 65, "lng": 10, "bearingDeg": 90, "halfWidthM": 15},
+   "point": {"lat": 65, "lng": 10.0002},
+   "expect": {"s": 9.398614304482658, "u": 0}
+  },
+  {
+   "name": "north of an east-facing gate is to the left of travel",
+   "note": "y = 0.0001 * K = 11.119508023353292 m, x = 0. Bearing 90: s = x = 0, u = -y = -11.119508023353292 (negative: left of travel).",
+   "gate": {"lat": 65, "lng": 10, "bearingDeg": 90, "halfWidthM": 15},
+   "point": {"lat": 65.0001, "lng": 10},
+   "expect": {"s": 0, "u": -11.119508023353292}
+  },
+  {
+   "name": "the antimeridian is an ordinary step east",
+   "note": "lng - lng0 = -179.9999 - 179.9999 = -359.9998, which wraps (< -180, add 360) to +0.0002 deg. x = 0.0002 * K * cos 0 = 22.239016046706585 m. Unwrapped it would be -40 000 km. Bearing 90: s = x, u = -y = 0.",
+   "gate": {"lat": 0, "lng": 179.9999, "bearingDeg": 90, "halfWidthM": 15},
+   "point": {"lat": 0, "lng": -179.9999},
+   "expect": {"s": 22.239016046706585, "u": 0}
+  },
+  {
+   "name": "a south-facing gate puts north behind the line",
+   "note": "y = 11.119508023353292, x = 0. Bearing 180: d = (0, -1), s = -y; g = (-1, 0), u = -x = 0.",
+   "gate": {"lat": 0, "lng": 0, "bearingDeg": 180, "halfWidthM": 15},
+   "point": {"lat": 0.0001, "lng": 0},
+   "expect": {"s": -11.119508023353292, "u": 0}
+  }
+ ],
+ "crossings": [
+  {
+   "name": "a crossing at 90 degrees",
+   "note": "Bearing 0, so s = northM and u = eastM. s: -6 -> 4, f = 6 / (4 - -6) = 0.6. t = 100 + 0.6 * 2 = 101.2 s. covered = 1000 + 0.6 * 10 = 1006 m. u = 0.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 100, "coveredM": 1000},
+    {"eastM": 0, "northM": 4, "atS": 102, "coveredM": 1010}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 101.2, "coveredM": 1006, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a crossing at 60 degrees",
+   "note": "The path heads 30 deg east of north (60 deg to the line) through (5, 0): 6 m before it is (5 - 6 sin 30, -6 cos 30) = (2, -5.196152423), 4 m after (5 + 4 sin 30, 4 cos 30) = (7, 3.464101615). f = 5.196152423 / 8.660254038 = 0.6. t = 101.2, covered = 1006. u = 2 + 0.6 * 5 = 5.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 2, "northM": -5.196152423, "atS": 100, "coveredM": 1000},
+    {"eastM": 7, "northM": 3.464101615, "atS": 102, "coveredM": 1010}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 101.2, "coveredM": 1006, "offsetM": 5, "gapped": false}
+   ]
+  },
+  {
+   "name": "a crossing at 30 degrees",
+   "note": "The path heads 60 deg east of north (30 deg to the line) through (-4, 0): (-4 - 6 sin 60, -6 cos 60) = (-9.196152423, -3) and (-4 + 4 sin 60, 4 cos 60) = (-0.535898385, 2). f = 3 / 5 = 0.6. t = 101.2, covered = 1006. u = -9.196152423 + 0.6 * 8.660254038 = -4.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": -9.196152423, "northM": -3, "atS": 100, "coveredM": 1000},
+    {"eastM": -0.535898385, "northM": 2, "atS": 102, "coveredM": 1010}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 101.2, "coveredM": 1006, "offsetM": -4, "gapped": false}
+   ]
+  },
+  {
+   "name": "a fix exactly on the line is past it",
+   "note": "s: -5, 0, 5. The first pair has s_i = -5 < 0 <= 0 = s_i+1: forward, f = 5 / 5 = 1, so the crossing is the on-line fix itself (t = 1, covered = 5, u = 1). The second pair starts at s = 0, which is not < 0, so it is not a second crossing.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 1, "northM": -5, "atS": 0, "coveredM": 0},
+    {"eastM": 1, "northM": 0, "atS": 1, "coveredM": 5},
+    {"eastM": 1, "northM": 5, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 1, "atS": 1, "coveredM": 5, "offsetM": 1, "gapped": false}
+   ]
+  },
+  {
+   "name": "starting on the line and moving on is no crossing",
+   "note": "s: 0, 5. s_i = 0 is not < 0 (no forward) and s_i+1 = 5 is not < 0 (no backward).",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": 0, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 5, "atS": 1, "coveredM": 5}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "the wrong direction is a backward crossing",
+   "note": "s: 6 -> -4, so s_i >= 0 > s_i+1: backward. f = -6 / (-4 - 6) = 0.6, t = 1.2, covered = 6, u = 0.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": 6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": -4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "backward", "fraction": 0.6, "atS": 1.2, "coveredM": 6, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "outside the half-width is no crossing",
+   "note": "Crosses s = 0 at u = 20 > 15.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 20, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 20, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "just inside the end of the line counts",
+   "note": "u = 14.999 <= 15. (The inclusive edge itself is not tested: 15 m through the projection's round trip can land 1e-12 either side.) f = 0.6, t = 1.2, covered = 6.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 14.999, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 14.999, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 1.2, "coveredM": 6, "offsetM": 14.999, "gapped": false}
+   ]
+  },
+  {
+   "name": "just beyond the end of the line is no crossing",
+   "note": "u = -15.001, |u| > 15.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": -15.001, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": -15.001, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "both fixes outside the half-width but the crossing inside counts",
+   "note": "(-20, -2) -> (20, 2): f = 2 / 4 = 0.5, u = -20 + 0.5 * 40 = 0. The acceptance test reads the interpolated u, not the fixes'. t = 2, covered = 20. Hop = hypot(40, 4) = 40.2 m <= 50.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": -20, "northM": -2, "atS": 0, "coveredM": 0},
+    {"eastM": 20, "northM": 2, "atS": 4, "coveredM": 40}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.5, "atS": 2, "coveredM": 20, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a fix inside the half-width but the crossing outside does not count",
+   "note": "(10, -2) -> (30, 2): f = 0.5, u = 10 + 0.5 * 20 = 20 > 15.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 10, "northM": -2, "atS": 0, "coveredM": 0},
+    {"eastM": 30, "northM": 2, "atS": 4, "coveredM": 20}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "a hairpin is a forward then a backward crossing",
+   "note": "s: -6, 4, -4. Pair 1 forward: f = 6 / 10 = 0.6, t = 1.2, covered = 6, u = 0 + 0.6 * 2 = 1.2. Pair 2 backward: f = -4 / (-4 - 4) = 0.5, t = 2 + 0.5 * 2 = 3, covered = 10 + 0.5 * 8 = 14, u = 2 + 0.5 * 2 = 3.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 2, "northM": 4, "atS": 2, "coveredM": 10},
+    {"eastM": 4, "northM": -4, "atS": 4, "coveredM": 18}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 1.2, "coveredM": 6, "offsetM": 1.2, "gapped": false},
+    {"afterFix": 2, "direction": "backward", "fraction": 0.5, "atS": 3, "coveredM": 14, "offsetM": 3, "gapped": false}
+   ]
+  },
+  {
+   "name": "jitter on the line reports every crossing",
+   "note": "s: -1, 1, -1, 1 at 1 s steps, covered 0, 2, 4, 6. Each pair has f = 0.5: forward at t 0.5 (covered 1), backward at 1.5 (3), forward at 2.5 (5). The helper reports them all; deciding which one commits is race_finish v2's job, not this one's.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -1, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 1, "atS": 1, "coveredM": 2},
+    {"eastM": 0, "northM": -1, "atS": 2, "coveredM": 4},
+    {"eastM": 0, "northM": 1, "atS": 3, "coveredM": 6}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.5, "atS": 0.5, "coveredM": 1, "offsetM": 0, "gapped": false},
+    {"afterFix": 2, "direction": "backward", "fraction": 0.5, "atS": 1.5, "coveredM": 3, "offsetM": 0, "gapped": false},
+    {"afterFix": 3, "direction": "forward", "fraction": 0.5, "atS": 2.5, "coveredM": 5, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a parallel path 20 m to the side is no crossing",
+   "note": "A path heading the same way 20 m east passes s = 0 at u = 20 > 15.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 20, "northM": -30, "atS": 0, "coveredM": 0},
+    {"eastM": 20, "northM": -10, "atS": 4, "coveredM": 20},
+    {"eastM": 20, "northM": 10, "atS": 8, "coveredM": 40},
+    {"eastM": 20, "northM": 30, "atS": 12, "coveredM": 60}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "a parallel path 40 m to the side is no crossing",
+   "note": "As the 20 m case at u = -40.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": -40, "northM": -30, "atS": 0, "coveredM": 0},
+    {"eastM": -40, "northM": -10, "atS": 4, "coveredM": 20},
+    {"eastM": -40, "northM": 10, "atS": 8, "coveredM": 40},
+    {"eastM": -40, "northM": 30, "atS": 12, "coveredM": 60}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "running along the line just short of it is no crossing",
+   "note": "s = -1 throughout; it never changes sign.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": -30, "northM": -1, "atS": 0, "coveredM": 0},
+    {"eastM": -10, "northM": -1, "atS": 4, "coveredM": 20},
+    {"eastM": 10, "northM": -1, "atS": 8, "coveredM": 40},
+    {"eastM": 30, "northM": -1, "atS": 12, "coveredM": 60}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "a gap within the limit yields a crossing flagged gapped",
+   "note": "dt = 30 s > MAX_GAP_S (10) and <= REJECT_GAP_S (60). f = 0.6, t = 0.6 * 30 = 18, covered = 6.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 30, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 18, "coveredM": 6, "offsetM": 0, "gapped": true}
+   ]
+  },
+  {
+   "name": "a pair exactly MAX_GAP_S apart is not gapped",
+   "note": "dt = 10 s is not more than 10. t = 0.6 * 10 = 6.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 10, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 6, "coveredM": 6, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a pair exactly REJECT_GAP_S apart is kept, gapped",
+   "note": "dt = 60 s is not more than 60, so not rejected; it is more than 10, so gapped. t = 0.6 * 60 = 36.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 60, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 36, "coveredM": 6, "offsetM": 0, "gapped": true}
+   ]
+  },
+  {
+   "name": "a gap beyond the hard limit yields none, and the stream carries on",
+   "note": "Pair 1: dt = 61 s > 60, no crossing. The second fix still becomes the previous fix. Pair 2: s 4 -> -4, dt 2 s, backward, f = 0.5, t = 61 + 0.5 * 2 = 62, covered = 10 + 0.5 * 8 = 14.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 61, "coveredM": 10},
+    {"eastM": 0, "northM": -4, "atS": 63, "coveredM": 18}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 2, "direction": "backward", "fraction": 0.5, "atS": 62, "coveredM": 14, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a hop over MAX_HOP_M is flagged gapped",
+   "note": "(0, -30) -> (0, 30): hop 60 m > 50 in 2 s. f = 0.5, t = 1, covered = 30.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -30, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 30, "atS": 2, "coveredM": 60}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.5, "atS": 1, "coveredM": 30, "offsetM": 0, "gapped": true}
+   ]
+  },
+  {
+   "name": "a hop just under MAX_HOP_M is not gapped",
+   "note": "(0, -24.995) -> (0, 24.995): hop 49.99 m <= 50. f = 0.5, t = 1, covered = 25.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -24.995, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 24.995, "atS": 2, "coveredM": 50}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.5, "atS": 1, "coveredM": 25, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "the gap limits can be overridden",
+   "note": "options maxGapS 5, rejectGapS 20. Pair 1: dt 6 > 5, gapped; f = 0.6, t = 3.6, covered = 6. Pair 2: dt 21 > 20, no crossing.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": {"maxGapS": 5, "maxHopM": 50, "rejectGapS": 20},
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 6, "coveredM": 10},
+    {"eastM": 0, "northM": -4, "atS": 27, "coveredM": 18}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 3.6, "coveredM": 6, "offsetM": 0, "gapped": true}
+   ]
+  },
+  {
+   "name": "a non-finite latitude is skipped",
+   "note": "Fix 1 has a NaN position and is skipped, so the pair is fix 0 -> fix 2: f = 0.6, t = 1.2, covered = 6.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": "NaN", "atS": 1, "coveredM": 5},
+    {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 2, "direction": "forward", "fraction": 0.6, "atS": 1.2, "coveredM": 6, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a non-finite longitude is skipped",
+   "note": "Fix 1's longitude is +Infinity. The pair is fix 0 -> fix 2: f = 0.6, t = 1.2, covered = 6.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": "Infinity", "northM": 2, "atS": 1, "coveredM": 5},
+    {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 2, "direction": "forward", "fraction": 0.6, "atS": 1.2, "coveredM": 6, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a non-finite time is skipped",
+   "note": "Fix 1's time is NaN; the pair is fix 0 -> fix 2.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 2, "atS": "NaN", "coveredM": 5},
+    {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 2, "direction": "forward", "fraction": 0.6, "atS": 1.2, "coveredM": 6, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a non-finite covered distance is skipped",
+   "note": "Fix 1's covered distance is -Infinity; the pair is fix 0 -> fix 2.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 2, "atS": 1, "coveredM": "-Infinity"},
+    {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 2, "direction": "forward", "fraction": 0.6, "atS": 1.2, "coveredM": 6, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a fix not later than the last one is skipped",
+   "note": "Fixes 1 (t = 10, equal) and 2 (t = 9, earlier) are not distinct fixes and are skipped. The pair is fix 0 (t 10) -> fix 3 (t 12): f = 0.6, t = 11.2, covered = 6.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 10, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 10, "coveredM": 10},
+    {"eastM": 0, "northM": 4, "atS": 9, "coveredM": 10},
+    {"eastM": 0, "northM": 4, "atS": 12, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 3, "direction": "forward", "fraction": 0.6, "atS": 11.2, "coveredM": 6, "offsetM": 0, "gapped": false}
+   ]
+  },
+  {
+   "name": "a gate with a non-finite bearing yields nothing",
+   "note": "An unusable gate reports no crossing for a track that would otherwise cross it.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": "NaN", "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "a gate with a negative half-width yields nothing",
+   "note": "halfWidthM < 0 is an unusable gate.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": -1},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "an oblique gate interpolates on the rotated axes",
+   "note": "Bearing 135: d = (sin 135, cos 135) = (h, -h), g = (cos 135, -sin 135) = (-h, -h), h = sqrt(1/2). Fix 0 (-4, 2): s = h(-4 - 2) = -6h, u = h(4 - 2) = 2h. Fix 1 (3, -5): s = h(3 + 5) = 8h, u = h(-3 + 5) = 2h. f = 6h / 14h = 3/7 = 0.42857142857142855. t = 7 * 3/7 = 3, covered = 500 + 14 * 3/7 = 506, u = 2h = 1.4142135623730951.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 135, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": -4, "northM": 2, "atS": 0, "coveredM": 500},
+    {"eastM": 3, "northM": -5, "atS": 7, "coveredM": 514}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.42857142857142855, "atS": 3, "coveredM": 506, "offsetM": 1.4142135623730951, "gapped": false}
+   ]
+  },
+  {
+   "name": "time, covered distance and offset interpolate by the same fraction",
+   "note": "(3, -7.5) at t 50, covered 200 -> (-5, 2.5) at t 53, covered 212.6. f = 7.5 / 10 = 0.75. t = 50 + 0.75 * 3 = 52.25. covered = 200 + 0.75 * 12.6 = 209.45. u = 3 + 0.75 * (-8) = -3.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 3, "northM": -7.5, "atS": 50, "coveredM": 200},
+    {"eastM": -5, "northM": 2.5, "atS": 53, "coveredM": 212.6}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.75, "atS": 52.25, "coveredM": 209.45, "offsetM": -3, "gapped": false}
+   ]
+  },
+  {
+   "name": "a crossing on the antimeridian",
+   "note": "Gate at lng 179.9999 facing east. Fix 0 lng 179.9998: dlng = -0.0001. Fix 1 lng -179.9999: dlng = -359.9998, wrapped to +0.0002. s = x, so f = 0.0001 / 0.0003 = 1/3 (the scale K cos 0 cancels). t = 3 / 3 = 1, covered = 30 / 3 = 10. Both fixes are 0.0001 deg north: u = -y = -0.0001 K = -11.119508023353292. Hop = 0.0003 K = 33.4 m.",
+   "gate": {"lat": 0, "lng": 179.9999, "bearingDeg": 90, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"lat": 0.0001, "lng": 179.9998, "atS": 0, "coveredM": 0},
+    {"lat": 0.0001, "lng": -179.9999, "atS": 3, "coveredM": 30}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.3333333333333333, "atS": 1, "coveredM": 10, "offsetM": -11.119508023353292, "gapped": false}
+   ]
+  },
+  {
+   "name": "a crossing at 65 degrees latitude",
+   "note": "Gate (65, 10) bearing 45, so s = h(x + y), u = h(x - y), h = sqrt(1/2). L = 0.0001 K = 11.119508023353292, c = cos 65 = 0.42261826174069944. Fix 0 (64.9999, 10): x = 0, y = -L: s = -hL, u = hL. Fix 1 (65, 10.0002): x = 2Lc, y = 0: s = u = 2hLc. f = 1 / (1 + 2c) = 0.54193594548698 (without the cos it would be 1/3). t = 4f = 2.16774378194792, covered = 20f = 10.8387189097396. u = hL(1 + f(2c - 1)) = hL * 4c / (1 + 2c) = 7.203221726738782. Hop = L sqrt(1 + 4c^2) = 14.56 m.",
+   "gate": {"lat": 65, "lng": 10, "bearingDeg": 45, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"lat": 64.9999, "lng": 10, "atS": 0, "coveredM": 0},
+    {"lat": 65, "lng": 10.0002, "atS": 4, "coveredM": 20}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.54193594548698, "atS": 2.16774378194792, "coveredM": 10.8387189097396, "offsetM": 7.203221726738782, "gapped": false}
+   ]
+  },
+  {
+   "name": "settle closes the stream",
+   "note": "One forward crossing (f = 0.6, t = 1.2, covered = 6), then settle(). The fix offered after it would make a backward crossing and must be ignored.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": [
+    {"eastM": 0, "northM": -4, "atS": 4, "coveredM": 18}
+   ],
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.6, "atS": 1.2, "coveredM": 6, "offsetM": 0, "gapped": false}
+   ]
+  }
+ ]
+}

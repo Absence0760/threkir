@@ -26,6 +26,7 @@
 	} from '#lib/routes/route_geometry.ts';
 	import { nextCutoffEta } from '#lib/runs/live_cutoff_eta.ts';
 	import { supabase } from '#lib/core/supabase.ts';
+	import { dbError } from '#lib/core/supabase_error.ts';
 	import { TABLES } from '#lib/core/schema.ts';
 	import { hasAcceptedConsent } from '#lib/settings/consent.svelte.ts';
 	import {
@@ -438,7 +439,7 @@
 		const { data: rows, error } = await (since == null
 			? base.order('at', { ascending: false }).limit(1000)
 			: base.gt('at', since).order('at', { ascending: true }).limit(1000));
-		if (error) throw error;
+		if (error) throw dbError(error);
 		return (rows ?? []) as PingRow[];
 	}
 

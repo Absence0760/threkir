@@ -423,7 +423,8 @@ void main() {
       // run (~3600 waypoints) that's millions of iterator steps per
       // minute. Now maintained incrementally in _onSnapshot.
       final match = RegExp(
-        r"String get _formattedElevation =>\s*'\$\{_elevationGain\.gainMetres\.round\(\)\}';",
+        r'String get _formattedElevation =>\s*'
+        r'UnitFormat\.elevationValue\(_elevationGain\.gainMetres, _unit\);',
       ).firstMatch(source);
       expect(
         match,

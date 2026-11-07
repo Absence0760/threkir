@@ -3336,6 +3336,26 @@ jobs:
             echo "Reproduce with: cd apps/mobile_ios && flutter build ios --simulator --no-codesign (needs Xcode; no Apple Developer account, certificate or provisioning profile is involved)."
             exit 1
           fi
+      # The build re-resolves the Swift package graph against the plugins'
+      # own Package.swift requirements and rewrites both Package.resolved
+      # files when the committed pins no longer satisfy them. A pubspec bump
+      # that moves a plugin's exact SDK pin (firebase_core 3.15.2 -> 4.15.2
+      # took firebase-ios-sdk from 11.15.0 to an exact 12.19.3 and dropped the
+      # remote flutterfire package) then builds from pins nobody committed,
+      # and the SourcePackages cache above stays keyed on the stale ones. In
+      # run 42412145141 (PR #1302) that re-resolution over the restored cache
+      # crashed xcodebuild itself (NSInvalidArgumentException in
+      # IDESPMWorkspaceDelegate) before a line of code compiled. A rewritten
+      # pin is the signal, so it fails here, naming the fix.
+      - name: The committed Swift package pins are the ones the build resolved
+        run: |
+          if ! git diff --exit-code -- \
+            apps/mobile_ios/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved \
+            apps/mobile_ios/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved; then
+            echo "::error::The iOS build re-resolved Swift packages to pins that differ from the committed Package.resolved files (the diff is above). A pubspec.lock change moved a plugin's Swift package requirement and the pins were not regenerated. Nothing here is a compile error: the build step above passed."
+            echo "Fix on a Mac: cd apps/mobile_ios && flutter build ios --simulator --no-codesign --config-only && xcodebuild -resolvePackageDependencies -workspace ios/Runner.xcworkspace -scheme Runner, then commit both Package.resolved files."
+            exit 1
+          fi
       # Resolve the simulator by UDID rather than by name, for the reason
       # test-watch-ios records: `xcodebuild test` needs a concrete bootable
       # device, and the model names rotate with every Xcode release, so a

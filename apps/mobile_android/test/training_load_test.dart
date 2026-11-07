@@ -531,9 +531,15 @@ void main() {
       startedAt: DateTime.utc(2026, 4, 1, 7),
       metadata: {'avg_bpm': 150},
     );
+    const prefs = HrPrefs(restingHrBpm: 50, maxHrBpm: 190);
+    expect(computeStress(bad, prefs), 20);
     expect(
-      computeStress(bad, const HrPrefs(restingHrBpm: 50, maxHrBpm: 190)),
-      20,
+      computeStress(
+        bad,
+        prefs,
+        const StressCalibration(mode: 'trimp', trimpPerKmFallback: 7),
+      ),
+      14,
     );
   });
 }

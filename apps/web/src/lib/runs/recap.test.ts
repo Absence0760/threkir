@@ -628,4 +628,5 @@ test('buildYearInRunningRecap: a duration past the ten-day bound adds no time', 
 	assert.equal(r.totalDistanceM, 7000);
 	assert.equal(r.totalDurationS, 1500);
 	assert.equal(r.monthly[10].durationS, 1500);
+	assert.equal(buildYearInRunningRecap([runs[1]], 2026).fastestPaceSecPerKm, null);
 });

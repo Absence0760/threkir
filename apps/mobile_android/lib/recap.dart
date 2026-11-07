@@ -328,7 +328,10 @@ YearInRunningRecap buildYearInRunningRecap(
     final isRunFamily = ((r.metadata?['activity_type'] as String?) ?? 'run') != 'cycle';
     if (isRunFamily && r.distanceMetres > longest) longest = r.distanceMetres;
 
-    if (isRunFamily && r.distanceMetres > 500 && r.duration.inSeconds > 0) {
+    if (isRunFamily &&
+        r.distanceMetres > 500 &&
+        r.duration.inSeconds > 0 &&
+        isPlausibleRunDuration(r.duration.inSeconds)) {
       final pace = r.duration.inSeconds / (r.distanceMetres / 1000);
       if (fastestPace == null || pace < fastestPace) fastestPace = pace;
     }
@@ -483,7 +486,10 @@ YearInRunningRecap buildMonthInRunningRecap(
     totalElevation += _elevationOf(r);
     final isRunFamily = ((r.metadata?['activity_type'] as String?) ?? 'run') != 'cycle';
     if (isRunFamily && r.distanceMetres > longest) longest = r.distanceMetres;
-    if (isRunFamily && r.distanceMetres > 500 && r.duration.inSeconds > 0) {
+    if (isRunFamily &&
+        r.distanceMetres > 500 &&
+        r.duration.inSeconds > 0 &&
+        isPlausibleRunDuration(r.duration.inSeconds)) {
       final pace = r.duration.inSeconds / (r.distanceMetres / 1000);
       if (fastestPace == null || pace < fastestPace) fastestPace = pace;
     }

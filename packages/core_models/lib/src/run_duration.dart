@@ -18,9 +18,11 @@ const int kMaxRunDurationS = 864000;
 
 /// 1 km/h. A typed duration this slow for its distance is almost certainly a
 /// figure in the wrong box, so the form asks before saving rather than
-/// refusing: the slowest legitimate whole-activity pace is a steep alpine hike
-/// (Naismith: about 600 m of climbing an hour), still above 1.4 km/h over the
-/// ground, and a 240-mile ultra finishing at its 112 h cutoff averages 3.4 km/h.
+/// refusing. By Naismith's rule (5 km/h, plus an hour per 600 m climbed) a
+/// sustained 45 % grade still moves about 1.15 km/h along the slope; only
+/// vertical-kilometre terrain near 60 % drops under 1 km/h, and that rare case
+/// gets the question, not a refusal. A 240-mile ultra finishing at its 112 h
+/// cutoff averages 3.4 km/h.
 const int kSlowPaceConfirmSecPerKm = 3600;
 
 /// Input widths. Three hour digits hold 240 h, the whole bound; two are the

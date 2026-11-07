@@ -50,7 +50,7 @@ import {
 	type PlanTargets,
 } from '../nutrition/meal_plan';
 import { challengesToRecomputeForRun } from '../social/challenge_progress';
-import { isPlausibleRunDuration } from '../runs/run_duration';
+import { MAX_RUN_DURATION_S, isPlausibleRunDuration } from '../runs/run_duration';
 import { prCardEntries, type PrCardEntry } from '../share/pr_card';
 import { mergeMyProgress } from '../social/challenge_list';
 import { selectEffectivePricing } from '../social/event_instance';
@@ -606,7 +606,8 @@ export async function fetchRunStreaks(
 /// Exactly the columns `PeriodSummary` reads. The period drilldown has to
 /// ship every row — it lists them — so the saving is per-row width, not row
 /// count: no `metadata` jsonb bag, no DNF flag. The climb tile reads the
-/// `elevation_gain_m` column, not the bag's `elevation_m` mirror.
+/// `elevation_gain_m` column, not the bag's `elevation_m` mirror, and the
+/// average pace reads `activity_type` to leave rides out of it.
 export const PERIOD_SUMMARY_RUN_COLUMNS = [
 	'id',
 	'started_at',
@@ -614,13 +615,14 @@ export const PERIOD_SUMMARY_RUN_COLUMNS = [
 	'duration_s',
 	'source',
 	'elevation_gain_m',
+	'activity_type',
 ] as const satisfies RunColumns;
 
-/// A run as the period drilldown reads it — the six values it renders, and
+/// A run as the period drilldown reads it — the seven values it renders, and
 /// nothing it can read `undefined` off.
 export type PeriodSummaryRun = Pick<Run, (typeof PERIOD_SUMMARY_RUN_COLUMNS)[number]>;
 
-/// Complete run history for a `PeriodSummary`, column-narrowed to the six
+/// Complete run history for a `PeriodSummary`, column-narrowed to the seven
 /// values it renders. Both drilldown entry points use it: the standalone
 /// /dashboard/period route, and the dashboard modal's lazy load when the
 /// requested period reaches past `DASHBOARD_RUNS_WINDOW_DAYS`. Throws on a
@@ -1687,11 +1689,16 @@ export async function createManualRun(input: {
 }): Promise<{ id: string }> {
 	// The form grades these first and says why; this is the floor for any other
 	// caller, because nothing else bounded a manual run (issue #1300 § 5).
-	if (!(input.durationS > 0) || !isPlausibleRunDuration(input.durationS)) {
-		throw new Error('createManualRun: duration out of range');
+	if (!(input.durationS > 0)) {
+		throw new AppError('runEditor.distanceDurationRequired');
+	}
+	if (!isPlausibleRunDuration(input.durationS)) {
+		throw new AppError('runEditor.durationTooLong', {
+			params: { hours: MAX_RUN_DURATION_S / 3600 },
+		});
 	}
 	if (!(Date.parse(input.startedAt) <= Date.now())) {
-		throw new Error('createManualRun: start time in the future');
+		throw new AppError('runEditor.startInFuture');
 	}
 	const { data: authUser } = await supabase.auth.getUser();
 	const userId = authUser.user?.id;

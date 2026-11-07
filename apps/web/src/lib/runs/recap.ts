@@ -307,7 +307,7 @@ export function buildYearInRunningRecap(
 
 		// Pace, in s/km, only on runs with non-trivial distance so a 200 m
 		// stroll doesn't dominate.
-		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0) {
+		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0 && isPlausibleRunDuration(r.duration_s)) {
 			const pace = r.duration_s / (r.distance_m / 1000);
 			if (fastestPaceSecPerKm == null || pace < fastestPaceSecPerKm) {
 				fastestPaceSecPerKm = pace;
@@ -466,7 +466,7 @@ export function buildMonthInRunningRecap(
 		totalElevation += storedElevationGainM(r) ?? 0;
 		const isRunFamily = (r.activity_type ?? 'run') !== 'cycle';
 		if (isRunFamily && r.distance_m > longest) longest = r.distance_m;
-		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0) {
+		if (isRunFamily && r.distance_m > 500 && r.duration_s > 0 && isPlausibleRunDuration(r.duration_s)) {
 			const pace = r.duration_s / (r.distance_m / 1000);
 			if (fastestPaceSecPerKm == null || pace < fastestPaceSecPerKm) fastestPaceSecPerKm = pace;
 		}

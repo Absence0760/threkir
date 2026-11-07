@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:core_models/core_models.dart' show isPlausibleRunDuration;
 
 import 'exercise_calories.dart';
 
@@ -36,7 +37,9 @@ import 'exercise_calories.dart';
     final at = a.startedAt.toLocal();
     if (at.isBefore(start) || !at.isBefore(end)) continue;
     final durationS = (a.summary['duration_s'] as num?)?.toDouble();
-    seconds += durationS ?? 0;
+    if (durationS != null && isPlausibleRunDuration(durationS)) {
+      seconds += durationS;
+    }
     if (a.kind == ActivityRow.kindRun) {
       runs.add(RunForCalories((a.summary['distance_m'] as num?)?.toDouble()));
     } else {

@@ -513,5 +513,7 @@ test('computeStress — a duration past the ten-day bound falls back to the dist
 		distance_m: 2000,
 		metadata: { avg_bpm: 150 },
 	};
-	assert.equal(computeStress(bad, { resting_hr_bpm: 50, max_hr_bpm: 190 }), 20);
+	const prefs = { resting_hr_bpm: 50, max_hr_bpm: 190 };
+	assert.equal(computeStress(bad, prefs), 20);
+	assert.equal(computeStress(bad, prefs, { mode: 'trimp', trimpPerKmFallback: 7 }), 14);
 });

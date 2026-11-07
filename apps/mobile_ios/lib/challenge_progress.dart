@@ -10,6 +10,8 @@
 /// Pure functions, no Flutter / Supabase deps.
 library;
 
+import 'package:core_models/core_models.dart' show isPlausibleRunDuration;
+
 enum ChallengeMetric { distance, duration, vert, activityCount, streakDays }
 
 /// Fraction of the goal reached, clamped to 0..1. Null goal (pure-ranking
@@ -81,7 +83,8 @@ num metricFromActivity(
     case ChallengeMetric.distance:
       return _numberOf(summary['distance_m']);
     case ChallengeMetric.duration:
-      return _numberOf(summary['duration_s']);
+      final d = _numberOf(summary['duration_s']);
+      return isPlausibleRunDuration(d) ? d : 0;
     case ChallengeMetric.vert:
       return _numberOf(summary['elevation_gain_m']);
     case ChallengeMetric.activityCount:

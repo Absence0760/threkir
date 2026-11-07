@@ -8,6 +8,7 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
 	import { initial, hashHue } from '#lib/format/avatar.ts';
+	import { runnerHandle } from '#lib/social/runner_handle.ts';
 	import { formatDuration as baseDuration, activeFormatLocale } from '#lib/format/time.ts';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
@@ -137,6 +138,18 @@
 	import { hasEventPhotoWindowOpened } from '#lib/social/event_photo_window.ts';
 	import { consent } from '#lib/settings/consent.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
+
+	// An attendee with no display name is shown as their runnerHandle rather
+	// than an indistinguishable "Member" (decisions § 2363).
+	function shownName(name: string | null | undefined, userId: string): string {
+		return (
+			name ??
+			runnerHandle(userId, {
+				handle: (slug) => m('live.runnerHandle', { slug }),
+				anonymous: m('live.runnerAnonymous'),
+			})
+		);
+	}
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { rsvpStatusLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
@@ -2742,9 +2755,9 @@
 					{#each eventPosts as p (p.id)}
 						<article class="post">
 							<div class="post-author">
-								<Avatar url={p.author_avatar_url} name={p.author_display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(p.author_id)} />
+								<Avatar url={p.author_avatar_url} name={shownName(p.author_display_name, p.author_id)} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(p.author_id)} />
 								<div>
-									<strong>{p.author_display_name ?? m('clubEvent.memberFallback')}</strong>
+									<strong>{shownName(p.author_display_name, p.author_id)}</strong>
 									<span class="when">{fmtRelative(p.created_at ?? new Date().toISOString())}</span>
 								</div>
 							</div>
@@ -3298,9 +3311,9 @@
 				<div class="attendees">
 					{#each attendees as a (a.user_id)}
 						<div class="attendee" class:maybe={a.status === 'maybe'} class:declined={a.status === 'declined'}>
-							<Avatar url={a.avatar_url} name={a.display_name} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(a.user_id)} />
+							<Avatar url={a.avatar_url} name={shownName(a.display_name, a.user_id)} size="2rem" font="0.85rem" bg="seed" seedHue={hashHue(a.user_id)} />
 							<div class="att-info">
-								<strong>{a.display_name ?? m('clubEvent.memberFallback')}</strong>
+								<strong>{shownName(a.display_name, a.user_id)}</strong>
 								<span class="status">{rsvpStatusLabel(a.status)}</span>
 							</div>
 							{#if canMarkAttendance}

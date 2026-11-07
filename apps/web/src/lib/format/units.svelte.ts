@@ -12,9 +12,10 @@
 
 import type { PreferredUnit } from '../types';
 import { currentLocale } from '../i18n/store.svelte';
-import { formatDecimal, formatInteger } from './number';
+import { formatDecimal } from './number';
 import { paceMinutesSeconds, isMeaningfulPace, paceToleranceLabel } from './pace_format';
 import { formatShortDistance } from './short_distance';
+import { formatElevationIn } from './elevation';
 import {
 	type WeightUnit,
 	parseWeightUnit,
@@ -143,19 +144,14 @@ export function fmtKm(metres: number | null | undefined, digits = 1): string {
 	return `${formatDecimal(metres / 1000, digits, loc)} km`;
 }
 
-const FEET_PER_METRE = 3.28084;
-
 /// Elevation gain label: `Xm` / `Xft` with the unit baked in. Used
 /// for vert ("vertical metres climbed") stats on dashboards + run
 /// lists. Persona-hunt Round 3 finding Ultra #4 — pro / ultra
 /// runners track vert as a first-class metric and the dashboard
-/// hid it. null / undefined → '—'. Rounds to integer because
-/// sub-metre precision on cumulative gain is GPS-noise floor.
+/// hid it. null / undefined → '—'. The arithmetic lives in
+/// `elevation.ts`; this supplies the unit + locale signals.
 export function formatElevation(metres: number | null | undefined): string {
-	if (metres == null) return '—';
-	const loc = currentLocale();
-	if (unit.value === 'mi') return `${formatInteger(Math.round(metres * FEET_PER_METRE), loc)} ft`;
-	return `${formatInteger(Math.round(metres), loc)} m`;
+	return formatElevationIn(metres, unit.value, currentLocale());
 }
 
 /// Plan-surface pace formatter. Input is always seconds-per-km (the

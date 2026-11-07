@@ -7284,13 +7284,24 @@ class ApiClient {
   /// 100-miler opened six hours in, the spectator sees the start of the trail
   /// and nothing since, until the next realtime insert happens to arrive.
   /// Web fixed exactly this (issue #334) and pins the shape in data.test.ts.
-  Future<List<Map<String, dynamic>>> fetchLiveRunPings(String runId) async {
-    final rows = await _client
+  ///
+  /// With [since] (an `at` already seen), every ping after it, oldest first:
+  /// the spectator's catch-up after a (re)subscribe and its poll while
+  /// realtime is down (issue #1300 BUG-007).
+  Future<List<Map<String, dynamic>>> fetchLiveRunPings(
+    String runId, {
+    String? since,
+  }) async {
+    final query = _client
         .from('live_run_pings')
-        .select('lat, lng, ele, distance_m, elapsed_s, at, coarse, bpm')
-        .eq('run_id', runId)
-        .order('at', ascending: false)
-        .limit(1000);
+        .select('lat, lng, ele, distance_m, elapsed_s, at, coarse, weak_gps, bpm')
+        .eq('run_id', runId);
+    if (since != null) {
+      final rows =
+          await query.gt('at', since).order('at', ascending: true).limit(1000);
+      return (rows as List).cast<Map<String, dynamic>>();
+    }
+    final rows = await query.order('at', ascending: false).limit(1000);
     return (rows as List).cast<Map<String, dynamic>>().reversed.toList();
   }
 
@@ -7413,6 +7424,10 @@ class ApiClient {
   /// called from the recorder's per-snapshot hot path, throttled by
   /// the caller to ~5 s (more than that overwhelms the spectator map
   /// and Realtime fanout). Failures are L4 — caller swallows.
+  ///
+  /// [weakGps] marks a fix the recorder kept for distance but not for its
+  /// line (`live_run_pings.weak_gps`, decisions § 2357); spectators draw it
+  /// as an approximate position. Sent only when true.
   Future<void> insertLivePing({
     required String runId,
     required double lat,
@@ -7421,6 +7436,7 @@ class ApiClient {
     int? elapsedS,
     int? bpm,
     double? ele,
+    bool weakGps = false,
   }) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw Exception('Not authenticated');
@@ -7433,6 +7449,7 @@ class ApiClient {
       if (elapsedS != null) 'elapsed_s': elapsedS,
       if (bpm != null) 'bpm': bpm,
       if (ele != null) 'ele': ele,
+      if (weakGps) 'weak_gps': true,
     });
   }
 

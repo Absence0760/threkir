@@ -123,3 +123,53 @@ PlanDistanceProgress planDistanceBanked(
   }
   return PlanDistanceProgress(completedMetres, plannedMetres);
 }
+
+/// A planned workout as far as the session counts care.
+class CountableWorkout {
+  final String kind;
+  final String? completedRunId;
+  final bool? manuallyCompleted;
+  final String? skippedAt;
+  const CountableWorkout({
+    required this.kind,
+    this.completedRunId,
+    this.manuallyCompleted,
+    this.skippedAt,
+  });
+}
+
+class PlanWorkoutProgress {
+  final int completed;
+  final int total;
+  final int pct;
+  const PlanWorkoutProgress(this.completed, this.total, this.pct);
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlanWorkoutProgress &&
+      other.completed == completed &&
+      other.total == total &&
+      other.pct == pct;
+
+  @override
+  int get hashCode => Object.hash(completed, total, pct);
+
+  @override
+  String toString() => 'PlanWorkoutProgress($completed, $total, $pct)';
+}
+
+/// Session counts behind every "N / M workouts" readout. Rest days are not
+/// sessions, so a ticked rest day counts on neither side; skipped sessions
+/// leave both sides, matching [planDistanceBanked].
+PlanWorkoutProgress planWorkoutProgress(List<CountableWorkout> workouts) {
+  var completed = 0;
+  var total = 0;
+  for (final w in workouts) {
+    if (w.kind == 'rest') continue;
+    if (w.skippedAt != null) continue;
+    total += 1;
+    if (w.manuallyCompleted == true || w.completedRunId != null) completed += 1;
+  }
+  return PlanWorkoutProgress(
+      completed, total, total == 0 ? 0 : (completed / total * 100).round());
+}

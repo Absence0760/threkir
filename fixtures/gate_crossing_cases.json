@@ -63,6 +63,13 @@
    "expect": {"s": 22.239016046706585, "u": 0}
   },
   {
+   "name": "the antimeridian is an ordinary step west",
+   "note": "lng - lng0 = 179.9999 - -179.9999 = 359.9998, which wraps (>= 180, subtract 360) to -0.0002 deg. x = -22.239016046706585 m. Bearing 90: s = x, u = -y = 0.",
+   "gate": {"lat": 0, "lng": -179.9999, "bearingDeg": 90, "halfWidthM": 15},
+   "point": {"lat": 0, "lng": 179.9999},
+   "expect": {"s": -22.239016046706585, "u": 0}
+  },
+  {
    "name": "a south-facing gate puts north behind the line",
    "note": "y = 11.119508023353292, x = 0. Bearing 180: d = (0, -1), s = -y; g = (-1, 0), u = -x = 0.",
    "gate": {"lat": 0, "lng": 0, "bearingDeg": 180, "halfWidthM": 15},
@@ -126,6 +133,22 @@
    "fixesAfterSettle": null,
    "expect": [
     {"afterFix": 1, "direction": "forward", "fraction": 1, "atS": 1, "coveredM": 5, "offsetM": 1, "gapped": false}
+   ]
+  },
+  {
+   "name": "touching the line and turning back is a forward then a backward crossing",
+   "note": "s: -5, 0, -5. Pair 1 is forward with f = 1 (the on-line fix: t 1, covered 5). Pair 2 has s_i = 0 >= 0 > -5 = s_i+1: backward, f = -0 / (-5 - 0) = 0, so it is the same on-line fix again (t 1, covered 5). The two rules are mirror images, so an on-line fix is past the line both ways.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 2, "northM": -5, "atS": 0, "coveredM": 0},
+    {"eastM": 2, "northM": 0, "atS": 1, "coveredM": 5},
+    {"eastM": 2, "northM": -5, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 1, "atS": 1, "coveredM": 5, "offsetM": 2, "gapped": false},
+    {"afterFix": 2, "direction": "backward", "fraction": 0, "atS": 1, "coveredM": 5, "offsetM": 2, "gapped": false}
    ]
   },
   {
@@ -474,6 +497,18 @@
    "name": "a gate with a non-finite bearing yields nothing",
    "note": "An unusable gate reports no crossing for a track that would otherwise cross it.",
    "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": "NaN", "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
+    {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "a gate with a non-finite half-width yields nothing",
+   "note": "NaN compares false, so |u| > NaN would pass every crossing; the gate is refused up front instead.",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": "NaN"},
    "options": null,
    "fixes": [
     {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},

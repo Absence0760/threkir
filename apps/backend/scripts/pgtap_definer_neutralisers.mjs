@@ -402,10 +402,10 @@ $neutralised$;`,
     {
       why: 'drops `private.safety_link_admits`, the whole access control (token, gate, safety_audience, live stub, confirmed contact, 48 h); keeps `p.run_id = p_run_id` and the `p_since` cursor, which select the rows asked about',
       sql: `create or replace function public.safety_live_pings(p_run_id uuid, p_token uuid, p_since timestamptz default null)
- returns table(lat double precision, lng double precision, distance_m double precision, elapsed_s integer, at timestamptz, coarse boolean)
+ returns table(lat double precision, lng double precision, distance_m double precision, elapsed_s integer, at timestamptz, coarse boolean, weak_gps boolean)
  language sql stable security definer set search_path to 'public', 'private'
 as $neutralised$
-  select p.lat, p.lng, p.distance_m::double precision, p.elapsed_s, p.at, p.coarse
+  select p.lat, p.lng, p.distance_m::double precision, p.elapsed_s, p.at, p.coarse, p.weak_gps
     from live_run_pings p
    where p.run_id = p_run_id
      and (p_since is null or p.at > p_since)

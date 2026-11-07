@@ -397,7 +397,9 @@
 				preferred_unit: preferredUnit,
 				onboarded_at: new Date().toISOString(),
 			};
-			if (displayName.trim()) profileUpdate.display_name = displayName.trim();
+			// A cleared field is written as null: the step is prefilled with the
+			// provider's name (decisions § 2363), and clearing it must stick.
+			profileUpdate.display_name = displayName.trim() || null;
 			// DOB writes to user_profiles whenever supplied, NOT only under
 			// Art 9 consent (persona round-5 family-club): the under-18
 			// minor-exclusion floor in search_user_profiles keys off this

@@ -3999,22 +3999,14 @@ class ApiClient {
     if (healthDataConsent) {
       await grantHealthDataConsent();
     }
-    final update = <String, dynamic>{
-      UserProfileRow.colPreferredUnit: preferredUnit,
-      UserProfileRow.colOnboardedAt:
-          DateTime.now().toUtc().toIso8601String(),
-    };
-    final trimmedName = displayName?.trim();
-    if (trimmedName != null && trimmedName.isNotEmpty) {
-      update[UserProfileRow.colDisplayName] = trimmedName;
-    }
-    if (dateOfBirth != null) {
-      update[UserProfileRow.colDateOfBirth] = dateOnly(dateOfBirth);
-    }
-    if (healthDataConsent) {
-      update[UserProfileRow.colGender] =
-          (gender != null && gender.isNotEmpty) ? gender : null;
-    }
+    final update = onboardingProfileUpdate(
+      displayName: displayName,
+      preferredUnit: preferredUnit,
+      dateOfBirth: dateOfBirth,
+      gender: gender,
+      healthDataConsent: healthDataConsent,
+      now: DateTime.now(),
+    );
     final updated = await _client
         .from(UserProfileRow.table)
         .update(update)
@@ -4026,6 +4018,38 @@ class ApiClient {
         ...update,
       });
     }
+  }
+
+  /// The `user_profiles` columns [completeOnboarding] writes. A
+  /// [displayName] the wizard cleared is written as null rather than left
+  /// out, so clearing the provider name the step was prefilled with
+  /// (decisions § 2363) is honoured; a null [displayName] leaves the column
+  /// alone.
+  @visibleForTesting
+  static Map<String, dynamic> onboardingProfileUpdate({
+    String? displayName,
+    required String preferredUnit,
+    DateTime? dateOfBirth,
+    String? gender,
+    required bool healthDataConsent,
+    required DateTime now,
+  }) {
+    final update = <String, dynamic>{
+      UserProfileRow.colPreferredUnit: preferredUnit,
+      UserProfileRow.colOnboardedAt: now.toUtc().toIso8601String(),
+    };
+    if (displayName != null) {
+      final trimmed = displayName.trim();
+      update[UserProfileRow.colDisplayName] = trimmed.isEmpty ? null : trimmed;
+    }
+    if (dateOfBirth != null) {
+      update[UserProfileRow.colDateOfBirth] = dateOnly(dateOfBirth);
+    }
+    if (healthDataConsent) {
+      update[UserProfileRow.colGender] =
+          (gender != null && gender.isNotEmpty) ? gender : null;
+    }
+    return update;
   }
 
   /// `YYYY-MM-DD` for a `date`-typed column. The wizard's DOB picker is a

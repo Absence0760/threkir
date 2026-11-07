@@ -154,6 +154,44 @@ test.describe('/onboarding gate — user whose onboarded_at is null', () => {
 		expect(data.onboarded_at).not.toBeNull();
 	});
 
+	test('the name step shows the stored name, and clearing it writes null', async ({
+		page,
+	}) => {
+		// The profile may arrive named from the sign-in provider
+		// (decisions § 2363); the step shows that name and a cleared field
+		// must reach the row as null rather than leave the provider name.
+		test.setTimeout(45_000);
+		const admin = getAdminClient();
+		await admin.from('user_profiles').update({ display_name: 'Grace Provider' }).eq('id', USER_A.id);
+		await page.goto('/onboarding');
+		const name = page.getByLabel('Display name');
+		await expect(name).toHaveValue('Grace Provider');
+		await name.fill('');
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await expect(page.getByRole('heading', { name: /Kilometres or miles/i })).toBeVisible();
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await expect(page.getByRole('heading', { name: /main goal/i })).toBeVisible();
+		await page.getByRole('button', { name: 'Skip', exact: true }).click();
+		await expect(page.getByRole('heading', { name: /A bit about you/i })).toBeVisible();
+		await page.getByRole('button', { name: 'Skip', exact: true }).click();
+		await expect(page.getByRole('heading', { name: /Who can see your runs/i })).toBeVisible();
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await expect(page.getByRole('heading', { name: /What do you want to track/i })).toBeVisible();
+		await page.getByRole('button', { name: 'Continue' }).click();
+		await expect(page.getByRole('heading', { name: /Bring your running history/i })).toBeVisible();
+		await page.getByRole('button', { name: 'Skip for now' }).click();
+		await expect(page.getByRole('heading', { name: /All set/i })).toBeVisible();
+		await page.getByRole('button', { name: 'Open dashboard' }).click();
+		await page.waitForURL(/\/dashboard/, { timeout: 20_000 });
+
+		const row = await readRow(
+			'user_profiles by id',
+			admin.from('user_profiles').select('display_name, onboarded_at').eq('id', USER_A.id).maybeSingle(),
+		);
+		expect(row.onboarded_at).not.toBeNull();
+		expect(row.display_name).toBeNull();
+	});
+
 	test('step-by-step Continue flow writes the answers and exits to /dashboard', async ({
 		page,
 	}) => {

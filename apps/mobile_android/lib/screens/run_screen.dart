@@ -212,9 +212,15 @@ class RunScreen extends StatefulWidget {
   /// on another device or the web would otherwise stay "to do" here.
   final ValueListenable<bool>? shown;
 
+  /// The live broadcaster's throttle clock. Tests advance it instead of
+  /// sleeping out the real 5 s ping window.
+  @visibleForTesting
+  final DateTime Function()? liveClock;
+
   const RunScreen({
     super.key,
     this.apiClient,
+    this.liveClock,
     required this.runStore,
     required this.routeStore,
     required this.preferences,
@@ -1859,6 +1865,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final hubUrl = dotenv.env['LIVE_HUB_URL'] ?? '';
     _liveBroadcaster ??= LiveBroadcaster(
       api,
+      now: widget.liveClock ?? DateTime.now,
       hubClient: hubUrl.isNotEmpty
           ? LiveHubClient(baseUrl: hubUrl)
           : null,

@@ -219,7 +219,10 @@ void main() {
     }
   });
 
+  var clockSkew = Duration.zero;
+
   setUp(() async {
+    clockSkew = Duration.zero;
     geolocator = _FakeGeolocatorPlatform();
     GeolocatorPlatform.instance = geolocator;
     WakelockPlusPlatformInterface.instance = _NoOpWakelock();
@@ -287,6 +290,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: RunScreen(
           apiClient: api,
+          liveClock: () => DateTime.now().add(clockSkew),
           runStore: runStore,
           routeStore: LocalRouteStore(),
           preferences: prefs,
@@ -323,11 +327,9 @@ void main() {
     tester.takeException(); // LiveRunMap tile-fetch noise
   }
 
-  /// The broadcaster throttles on the wall clock, so the next ping waits
-  /// out its real 5 s window.
-  Future<void> outlastPingThrottle(WidgetTester tester) async {
-    await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 5200)));
+  /// Moves the broadcaster's clock past its 5 s ping window.
+  void outlastPingThrottle() {
+    clockSkew += const Duration(milliseconds: 5200);
   }
 
   Future<void> drainAndUnmount(WidgetTester tester) async {
@@ -352,7 +354,7 @@ void main() {
       tester.takeException();
       expect(s.api.pings, isNotEmpty);
 
-      await outlastPingThrottle(tester);
+      outlastPingThrottle();
       // 3 km east two seconds later: an implausible hop the movement
       // filter rejects, while the fix itself is fresh and precise.
       geolocator.emit(_pos(metresEast: 3000, secondsFromStart: 6));

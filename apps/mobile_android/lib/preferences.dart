@@ -1171,6 +1171,18 @@ class UnitFormat {
     return '$m:${s.toString().padLeft(2, '0')}';
   }
 
+  /// A pace difference stored as seconds per km, in the unit the pace beside
+  /// it is read in and saying so: "+16s/mi", "−10s/km". A bare "+428s" next
+  /// to a /mi target was s/km (issue #1300). Twin of web's `paceDeltaLabel`
+  /// in apps/web/src/lib/format/pace_delta.ts.
+  static String paceDelta(num deltaSecPerKm, DistanceUnit unit) {
+    // floor(x + 0.5) is JS Math.round; Dart's round() takes -0.5 to -1.
+    final d = (paceSecPerUnit(deltaSecPerKm.toDouble(), unit) + 0.5).floor();
+    final sign = d > 0 ? '+' : (d < 0 ? '−' : '');
+    final label = unit == DistanceUnit.mi ? 'mi' : 'km';
+    return '$sign${d.abs()}s/$label';
+  }
+
   /// Pace unit label e.g. "/km" or "/mi".
   static String paceLabel(DistanceUnit unit) =>
       unit == DistanceUnit.mi ? '/mi' : '/km';

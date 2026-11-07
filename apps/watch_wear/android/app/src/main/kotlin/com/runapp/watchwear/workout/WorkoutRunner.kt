@@ -248,7 +248,7 @@ class WorkoutRunner(val workout: PushedWorkout) {
         if (workout.unpaced) return null
         val d = stepDistanceM
         val secs = stepSecs
-        if (d < 5 || secs < 1) return null
+        if (d < STEP_PACE_MIN_METRES || secs < STEP_PACE_MIN_SECONDS) return null
         val actual = (secs / (d / 1000.0)).roundToLong().toInt()
         val diff = actual - step.paceSPerKm
         return if (abs(diff) > step.toleranceSPerKm * 2) diff else null
@@ -325,6 +325,12 @@ class WorkoutRunner(val workout: PushedWorkout) {
 
         /// The phone runner's drift-cue spacing.
         const val DRIFT_CUE_INTERVAL_MS = 45_000L
+
+        /// The phone runner's `kStepPaceMinMetres` / `kStepPaceMinSeconds`:
+        /// a step's pace is not graded until it has covered 50 m in 20 s, so
+        /// a standing start is not announced as way behind (issue #1300).
+        const val STEP_PACE_MIN_METRES = 50.0
+        const val STEP_PACE_MIN_SECONDS = 20
     }
 }
 

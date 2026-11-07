@@ -2,6 +2,16 @@ import 'dart:async';
 
 import 'run_snapshot.dart';
 
+/// How far into a step its average pace starts to count. The old 5 m / 1 s
+/// gate graded a standing start: 19 m in the first 15 s of a 9:20 /mi block
+/// (GPS lag included) read 20:49 /mi, flagged the runner way behind and fired
+/// the drift cue (issue #1300). 50 m is the distance run_snapshot's rolling
+/// pace waits for; 20 s keeps a burst of GPS catch-up from qualifying a few
+/// seconds in. The wrist ports (WorkoutRunner.kt, WatchWorkoutRunner.swift)
+/// hold the same pair.
+const double kStepPaceMinMetres = 50;
+const int kStepPaceMinSeconds = 20;
+
 /// Live execution of a structured workout's expanded step list. Sits on
 /// top of the [RunRecorder] — it consumes [RunSnapshot]s, advances
 /// through its steps, and emits [WorkoutExecEvent]s the run screen
@@ -58,10 +68,13 @@ class WorkoutRunner {
     return el.isNegative ? Duration.zero : el;
   }
 
+  /// The step's average pace, or null until the step has covered
+  /// [kStepPaceMinMetres] in [kStepPaceMinSeconds]. It drives the band's
+  /// delta, [paceAdherence] and the drift cue.
   int? get stepAveragePaceSecPerKm {
     final d = stepDistanceMetres;
     final el = stepElapsed.inSeconds;
-    if (d < 5 || el < 1) return null;
+    if (d < kStepPaceMinMetres || el < kStepPaceMinSeconds) return null;
     return (el / (d / 1000)).round();
   }
 

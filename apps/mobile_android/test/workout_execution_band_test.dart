@@ -97,8 +97,8 @@ void main() {
       // Step counter and remaining-distance footer.
       expect(find.text('5/14'), findsOneWidget);
       expect(find.text('300 m to go'), findsOneWidget);
-      // Pace pip shows signed delta.
-      expect(find.text('−5s'), findsOneWidget);
+      // Pace pip shows the signed delta in the runner's unit.
+      expect(find.text('−5s/km'), findsOneWidget);
     });
 
     testWidgets('carries the workout\'s effort target line (decisions § 2092)',
@@ -507,6 +507,26 @@ void main() {
       );
       expect(find.text('4.99 mi to go'), findsOneWidget);
       expect(find.textContaining('yd'), findsNothing);
+    });
+
+    testWidgets('mi mode: the pace pip reads per mile, saying so (#1300)',
+        (tester) async {
+      await setUnit(true);
+      await _pumpBand(
+        tester,
+        state: WorkoutBandState(
+          step: _step(distance: 8046.72, pace: 348),
+          totalSteps: 3,
+          currentIndex: 1,
+          progress: 0.1,
+          remainingMetres: 7000,
+          actualPaceSecPerKm: 776,
+          adherence: PaceAdherence.wayBehind,
+          complete: false,
+          abandoned: false,
+        ),
+      );
+      expect(find.text('+689s/mi'), findsOneWidget);
     });
 
     testWidgets('km mode (default): 400 m renders in metres + /km pace',

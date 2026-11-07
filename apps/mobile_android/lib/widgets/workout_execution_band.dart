@@ -358,13 +358,9 @@ class _PacePip extends StatelessWidget {
       PaceAdherence.wayAhead || PaceAdherence.wayBehind =>
         theme.colorScheme.error,
     };
-    String label;
-    if (delta == null) {
-      label = '—';
-    } else {
-      final sign = delta! >= 0 ? '+' : '−';
-      label = '$sign${delta!.abs()}s';
-    }
+    final label = delta == null
+        ? '—'
+        : UnitFormat.paceDelta(delta!, activeDistanceUnit);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [

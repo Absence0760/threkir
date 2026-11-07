@@ -3,6 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import '../lib/training.dart' show fmtPace;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/widgets/workout_review_section.dart';
+import '../lib/preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+final _l10n = lookupAppLocalizations(const Locale('en'));
 
 Map<String, dynamic> _step({
   required String kind,
@@ -170,8 +174,33 @@ void main() {
           ),
         ],
       });
-      expect(find.text('−5s'), findsOneWidget);
-      expect(find.text('+12s'), findsOneWidget);
+      expect(find.text('−5s/km'), findsOneWidget);
+      expect(find.text('+12s/km'), findsOneWidget);
+    });
+
+    testWidgets('a miles runner reads the delta per mile, saying so (#1300)',
+        (tester) async {
+      SharedPreferences.setMockInitialValues({'use_miles': true});
+      final prefs = Preferences();
+      await prefs.init();
+      registerActivePreferences(prefs);
+      addTearDown(resetActivePreferencesForTest);
+      await _pump(tester, metadata: {
+        'workout_step_results': [
+          _step(kind: 'steady', targetPaceSecPerKm: 348, actualPaceSecPerKm: 776),
+        ],
+      });
+      expect(find.text('+689s/mi'), findsOneWidget);
+    });
+
+    testWidgets('a step on its target reads "on pace", localized',
+        (tester) async {
+      await _pump(tester, metadata: {
+        'workout_step_results': [
+          _step(kind: 'rep', targetPaceSecPerKm: 240, actualPaceSecPerKm: 240),
+        ],
+      });
+      expect(find.text('on pace'), findsOneWidget);
     });
 
     test('paceDeltaOf returns "on" when within tolerance', () {
@@ -182,7 +211,7 @@ void main() {
         'target_distance_m': 400,
         'actual_distance_m': 400,
       });
-      expect(paceDeltaOf(s).tone, PaceDeltaTone.on);
+      expect(paceDeltaOf(s, _l10n).tone, PaceDeltaTone.on);
     });
 
     test('paceDeltaOf returns "amber" between 1× and 2× tolerance', () {
@@ -193,7 +222,7 @@ void main() {
         'target_distance_m': 400,
         'actual_distance_m': 400,
       });
-      expect(paceDeltaOf(s).tone, PaceDeltaTone.amber);
+      expect(paceDeltaOf(s, _l10n).tone, PaceDeltaTone.amber);
     });
 
     test('paceDeltaOf returns "off" beyond 2× tolerance', () {
@@ -204,7 +233,7 @@ void main() {
         'target_distance_m': 400,
         'actual_distance_m': 400,
       });
-      expect(paceDeltaOf(s).tone, PaceDeltaTone.off);
+      expect(paceDeltaOf(s, _l10n).tone, PaceDeltaTone.off);
     });
 
     test('fmtPace produces m:ss/km, em-dash for invalid', () {

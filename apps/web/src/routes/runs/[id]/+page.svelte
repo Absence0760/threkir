@@ -41,6 +41,7 @@
 	import { formatPace, formatSpeed, formatDistance, sourceLabel } from '#lib/core/mock-data.ts';
 	import { sourceColor } from '#lib/runs/source_badge.ts';
 	import { formatDate, formatDuration } from '#lib/format/time.ts';
+	import { paceDeltaLabel as unitPaceDelta } from '#lib/format/pace_delta.ts';
 	import {
 		fetchRunById,
 		fetchRunPersonalRecords,
@@ -606,14 +607,9 @@
 		if (s.actual_pace_sec_per_km == null) return '—';
 		const dPerKm = s.actual_pace_sec_per_km - s.target_pace_sec_per_km;
 		if (Math.abs(dPerKm) < 1) return m('runDetail.onPace');
-		// The pace column shows /mi for miles users; the delta must match
-		// or "+12s" reads as sec/km against a sec/mi pace. Convert the
-		// displayed seconds to the preferred unit (the on/amber/off colour
-		// band in paceDeltaClass stays canonical sec/km — the workout's own
-		// adherence tolerance, not a display number).
-		const d = getUnit() === 'mi' ? dPerKm * (METRES_PER_MILE / 1000) : dPerKm;
-		const sign = d > 0 ? '+' : '−';
-		return `${sign}${Math.abs(Math.round(d))}s`;
+		// The on/amber/off band in paceDeltaClass stays canonical sec/km: it
+		// is the workout's own tolerance, not a display number.
+		return unitPaceDelta(dPerKm, getUnit());
 	}
 
 	function paceDeltaClass(s: WorkoutStepResult): string {

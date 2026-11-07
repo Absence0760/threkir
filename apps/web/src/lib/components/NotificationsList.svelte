@@ -208,6 +208,18 @@
 				const msg = eventCancelMessage('notificationsList', item.row, item.event_title);
 				return m(msg.key, msg.params);
 			}
+			case 'event_updated':
+				return item.event_title
+					? m('notificationsList.verbEventUpdatedTitled', { title: item.event_title })
+					: m('notificationsList.verbEventUpdated');
+			case 'club_join_request':
+				return item.club_name
+					? m('notificationsList.verbClubJoinRequestNamed', { name, club: item.club_name })
+					: m('notificationsList.verbClubJoinRequest', { name });
+			case 'club_join_approved':
+				return item.club_name
+					? m('notificationsList.verbClubJoinApprovedNamed', { club: item.club_name })
+					: m('notificationsList.verbClubJoinApproved');
 			case 'event_waitlist_slot': {
 				const msg = waitlistSlotMessage('notificationsList', item.event_title);
 				return m(msg.key, msg.params);

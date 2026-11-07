@@ -106,7 +106,9 @@ Position _pos({
     altitudeAccuracy: 2,
     heading: 90,
     headingAccuracy: 5,
-    speed: 2.5,
+    // The distance estimator fuses this Doppler speed with the positions, so
+    // it matches the 12 m / 2 s step every moving fix here takes.
+    speed: 6,
     speedAccuracy: 1,
   );
 }
@@ -583,7 +585,9 @@ void main() {
       await holdDockedStop(tester);
       expect(runStore.runs, hasLength(1),
           reason: 'one recording through two rotations is one run');
-      expect(runStore.runs.single.distanceMetres, greaterThan(60),
+      // 132 m of fixes in all: 60 m before the first rotation, 96 m before
+      // the second, so losing either later batch lands at or under 96 m.
+      expect(runStore.runs.single.distanceMetres, greaterThan(120),
           reason: 'the fixes taken after each rotation reached the same run');
 
       await unmount(tester);

@@ -890,25 +890,37 @@ test('/live/[id] hydrateBacklog fetches newest-first + capped, then replays reve
 	assert.ok(start >= 0, 'Could not locate hydrateBacklog — rename?');
 	const next = source.indexOf('\n\tfunction subscribeLive', start + 1);
 	const body = source.slice(start, next > start ? next : undefined);
-	// Isolate the Supabase-Realtime fallback query (the Go-hub branch above
-	// it returns early before this fetch).
-	const queryStart = body.indexOf(".from('live_run_pings')");
-	assert.ok(queryStart >= 0, 'hydrateBacklog must still read live_run_pings.');
-	const query = body.slice(queryStart);
+	// The Supabase-Realtime fallback reads through fetchTablePings with no
+	// cursor; the Go-hub branch above it returns early before this fetch.
 	assert.match(
-		query,
+		body,
+		/fetchTablePings\(null\)/,
+		'hydrateBacklog must read the backlog through fetchTablePings(null).',
+	);
+	const fetchStart = source.indexOf('async function fetchTablePings');
+	assert.ok(fetchStart >= 0, 'Could not locate fetchTablePings — rename?');
+	const fetchBody = source.slice(fetchStart, source.indexOf('\n\t}\n', fetchStart));
+	assert.ok(
+		fetchBody.includes(".from('live_run_pings')"),
+		'fetchTablePings must still read live_run_pings.',
+	);
+	// The no-cursor branch is the backlog; the cursor branch only asks for
+	// rows after the newest one already drawn, so ascending is right there.
+	const backlog = /since == null\s*\?([\s\S]*?)\n\s*:\s*base\.gt/.exec(fetchBody)?.[1] ?? '';
+	assert.match(
+		backlog,
 		/\.order\('at',\s*\{\s*ascending:\s*false\s*\}\)/,
 		'The backlog fetch must be newest-first — an ascending fetch surfaces the OLDEST rows under a row cap (issue #334).',
 	);
 	assert.match(
-		query,
+		backlog,
 		/\.limit\(1000\)/,
 		'The backlog fetch must cap at 1000 rows — mirror fetchRecentRacePings; an unbounded fetch ships ~34.5k rows on an anon load (issue #334).',
 	);
-	assert.doesNotMatch(
-		query,
-		/ascending:\s*true/,
-		'The backlog fetch must not order ascending (issue #334 regression).',
+	assert.match(
+		fetchBody,
+		/\.gt\('at', since\)[\s\S]*\.limit\(1000\)/,
+		'The cursor fetch must stay bounded to rows after the cursor and capped.',
 	);
 	// Descending rows must be replayed in reverse so the last pushPing is the
 	// newest ping (matches the /live/event replay).

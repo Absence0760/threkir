@@ -1777,6 +1777,16 @@ create table live_run_pings (
   shown. No client in the tree sets `at`; the service role (the Go live hub,
   e2e fixtures) and the table owner (pgTAP, cron) keep the value they write.
   Pinned by `live_overlay_test.sql`.
+- **`weak_gps boolean not null default false` marks an approximate fix**
+  (`20271112000030`, [decisions § 2357](../architecture/decisions.md)). The
+  recorder publishes the distance estimator's latest kept fix, flagged, while
+  no fix has cleared its 20 m map gate within the GPS-lost window, so a phone
+  stuck above 20 m still reaches the spectator. Every spectator surface draws
+  a weak ping as an approximate position (a halo) and never joins it into the
+  trace line. Deliberately separate from `coarse` (the privacy-zone last-seen,
+  `20270121_001`), whose trigger deletes the run's earlier coarse rows: an
+  in-zone ping must not sweep a weak stretch away. Pinned by
+  `live_run_pings_weak_gps_test.sql`.
 - Added to `supabase_realtime` publication so change streams fan out to
   subscribed browsers.
 - RLS: `select` when the parent run is public or owned by the caller;
@@ -2837,7 +2847,7 @@ Whether a live share may run on the safety-contacts audience (migration `2027082
 
 ### `safety_live_run(p_run_id uuid, p_token uuid)` / `safety_live_pings(p_run_id uuid, p_token uuid, p_since timestamptz default null)`
 
-The token holder's read path for a safety-audience live run (migration `20270821000001`). SECURITY DEFINER, STABLE, granted to `anon`, `authenticated` and `service_role` (registered in `anon_execute_contract_test.sql`: a contact with no account opens the emailed link). Both return nothing unless `private.safety_link_admits` admits the token. `safety_live_run` returns `started_at`, `duration_s`, `distance_m`, `route_id` (only when the route is public) and `owner_name` — no `user_id`. `safety_live_pings` returns the stored (already privacy-clipped) pings: the newest 1000 newest-first without `p_since`, else those after it oldest-first, which is the web page's 5 s poll. Called with POST so the token stays out of request-URL logs. Pinned by `safety_live_audience_test.sql`.
+The token holder's read path for a safety-audience live run (migration `20270821000001`). SECURITY DEFINER, STABLE, granted to `anon`, `authenticated` and `service_role` (registered in `anon_execute_contract_test.sql`: a contact with no account opens the emailed link). Both return nothing unless `private.safety_link_admits` admits the token. `safety_live_run` returns `started_at`, `duration_s`, `distance_m`, `route_id` (only when the route is public) and `owner_name` — no `user_id`. `safety_live_pings` returns the stored (already privacy-clipped) pings with their `coarse` and `weak_gps` flags (the latter since `20271112000030`, which dropped and re-created the function for the new return column and re-issued its grants): the newest 1000 newest-first without `p_since`, else those after it oldest-first, which is the web page's 5 s poll. Called with POST so the token stays out of request-URL logs. Pinned by `safety_live_audience_test.sql`.
 
 ### `audience_sharing_enabled() → boolean`
 

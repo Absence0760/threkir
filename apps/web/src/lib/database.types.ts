@@ -2617,6 +2617,7 @@ export type Database = {
           lng: number
           run_id: string
           user_id: string
+          weak_gps: boolean
         }
         Insert: {
           at?: string
@@ -2630,6 +2631,7 @@ export type Database = {
           lng: number
           run_id: string
           user_id: string
+          weak_gps?: boolean
         }
         Update: {
           at?: string
@@ -2643,6 +2645,7 @@ export type Database = {
           lng?: number
           run_id?: string
           user_id?: string
+          weak_gps?: boolean
         }
         Relationships: [
           {
@@ -7652,6 +7655,7 @@ export type Database = {
           elapsed_s: number
           lat: number
           lng: number
+          weak_gps: boolean
         }[]
       }
       safety_live_run: {

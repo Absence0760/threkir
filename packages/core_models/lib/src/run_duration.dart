@@ -63,10 +63,17 @@ class ManualDurationResult {
 }
 
 final RegExp _digits = RegExp(r'^\d*$');
+final RegExp _leadingZeros = RegExp(r'^0+');
+
+/// Past nine significant digits a box is over every bound, and `int.parse`
+/// would throw where TS's `Number` returns Infinity — so both halves read it
+/// as this one value instead.
+const int _overflow = 1000000000;
 
 int? _part(String raw) {
   final t = raw.trim();
   if (!_digits.hasMatch(t)) return null;
+  if (t.replaceFirst(_leadingZeros, '').length > 9) return _overflow;
   return t.isEmpty ? 0 : int.parse(t);
 }
 

@@ -54,6 +54,15 @@ void main() {
         _failed(ManualDurationError.invalid));
   });
 
+  test('a box too long for any integer type is out of range, not a crash', () {
+    const huge = '99999999999999999999';
+    expect(validateManualDuration(huge, '', ''),
+        _failed(ManualDurationError.tooLong));
+    expect(validateManualDuration('', huge, ''),
+        _failed(ManualDurationError.minutesOutOfRange));
+    expect(validateManualDuration('0000000000001', '', ''), _ok(3600));
+  });
+
   test('isPlausibleRunDuration is the inclusive 0..bound range', () {
     expect(isPlausibleRunDuration(0), isTrue);
     expect(isPlausibleRunDuration(864000), isTrue);

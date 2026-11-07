@@ -50,6 +50,13 @@ test('anything but digits is invalid, never reinterpreted', () => {
 	assert.deepEqual(validateManualDuration('', '3e1', ''), { ok: false, error: 'invalid' });
 });
 
+test('a box too long for any integer type is out of range, not a crash', () => {
+	const huge = '99999999999999999999';
+	assert.deepEqual(validateManualDuration(huge, '', ''), { ok: false, error: 'tooLong' });
+	assert.deepEqual(validateManualDuration('', huge, ''), { ok: false, error: 'minutesOutOfRange' });
+	assert.deepEqual(validateManualDuration('0000000000001', '', ''), { ok: true, seconds: 3600 });
+});
+
 test('isPlausibleRunDuration is the inclusive 0..bound range', () => {
 	assert.equal(isPlausibleRunDuration(0), true);
 	assert.equal(isPlausibleRunDuration(864_000), true);

@@ -39,9 +39,15 @@ export type ManualDurationResult =
 
 const DIGITS = /^\d*$/;
 
+/// Past nine significant digits a box is over every bound, and Dart's
+/// `int.parse` would throw where `Number` returns Infinity — so both halves
+/// read it as this one value instead.
+const OVERFLOW = 1_000_000_000;
+
 function part(raw: string): number | null {
 	const t = raw.trim();
 	if (!DIGITS.test(t)) return null;
+	if (t.replace(/^0+/, '').length > 9) return OVERFLOW;
 	return t === '' ? 0 : Number(t);
 }
 

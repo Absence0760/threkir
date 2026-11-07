@@ -72,7 +72,8 @@ private fun wrapLng(d: Double): Double = when {
 
 private fun gateUsable(gate: Gate): Boolean =
     gate.lat.isFinite() && gate.lng.isFinite() && gate.bearingDeg.isFinite() &&
-        gate.halfWidthM.isFinite() && gate.halfWidthM >= 0.0
+        gate.halfWidthM.isFinite() && gate.halfWidthM >= 0.0 &&
+        abs(gate.lat) < 90.0 && abs(gate.lng) <= 180.0
 
 /// ([lat], [lng]) on the tangent plane at the gate centre, on the gate's axes.
 fun gateProjection(gate: Gate, lat: Double, lng: Double): GateProjection {

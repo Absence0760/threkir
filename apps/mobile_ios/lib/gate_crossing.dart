@@ -105,7 +105,9 @@ bool _gateUsable(Gate gate) =>
     gate.lng.isFinite &&
     gate.bearingDeg.isFinite &&
     gate.halfWidthM.isFinite &&
-    gate.halfWidthM >= 0;
+    gate.halfWidthM >= 0 &&
+    gate.lat.abs() < 90 &&
+    gate.lng.abs() <= 180;
 
 /// ([lat], [lng]) on the tangent plane at the gate centre, on the gate's axes.
 GateProjection gateProjection(Gate gate, double lat, double lng) {

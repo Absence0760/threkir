@@ -389,6 +389,20 @@
    ]
   },
   {
+   "name": "a sideways hop over MAX_HOP_M is flagged gapped",
+   "note": "(-20, -30) -> (20, 10): ds = 40 alone is under 50, but the hop is hypot(40, 40) = 56.57 m > 50, so the hop must be measured on both axes. f = 30 / 40 = 0.75, t = 0.75 * 2 = 1.5, covered = 0.75 * 60 = 45, u = -20 + 0.75 * 40 = 10. (The exact 50 m edge is not tested: like the half-width edge it can land 1e-12 either side through the projection.)",
+   "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"eastM": -20, "northM": -30, "atS": 0, "coveredM": 0},
+    {"eastM": 20, "northM": 10, "atS": 2, "coveredM": 60}
+   ],
+   "fixesAfterSettle": null,
+   "expect": [
+    {"afterFix": 1, "direction": "forward", "fraction": 0.75, "atS": 1.5, "coveredM": 45, "offsetM": 10, "gapped": true}
+   ]
+  },
+  {
    "name": "a hop just under MAX_HOP_M is not gapped",
    "note": "(0, -24.995) -> (0, 24.995): hop 49.99 m <= 50. f = 0.5, t = 1, covered = 25.",
    "gate": {"lat": 51.5, "lng": -0.1, "bearingDeg": 0, "halfWidthM": 15},
@@ -513,6 +527,30 @@
    "fixes": [
     {"eastM": 0, "northM": -6, "atS": 0, "coveredM": 0},
     {"eastM": 0, "northM": 4, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "a gate at a pole yields nothing",
+   "note": "At |lat| = 90, cos(lat) = 0 and every fix projects to x = 0, so the plane is meaningless; the gate needs |lat| < 90.",
+   "gate": {"lat": 90, "lng": 0, "bearingDeg": 90, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"lat": 89.9999, "lng": -0.001, "atS": 0, "coveredM": 0},
+    {"lat": 89.9999, "lng": 0.001, "atS": 2, "coveredM": 10}
+   ],
+   "fixesAfterSettle": null,
+   "expect": []
+  },
+  {
+   "name": "a gate with a longitude outside +-180 yields nothing",
+   "note": "lng 540 is past what the single wrap of a longitude difference can bring back; the gate needs |lng| <= 180. These fixes would cross a gate at lng 180.",
+   "gate": {"lat": 0, "lng": 540, "bearingDeg": 90, "halfWidthM": 15},
+   "options": null,
+   "fixes": [
+    {"lat": 0, "lng": 179.9999, "atS": 0, "coveredM": 0},
+    {"lat": 0, "lng": -179.9999, "atS": 2, "coveredM": 20}
    ],
    "fixesAfterSettle": null,
    "expect": []

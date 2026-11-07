@@ -83,7 +83,9 @@ function gateUsable(gate: Gate): boolean {
 		Number.isFinite(gate.lng) &&
 		Number.isFinite(gate.bearingDeg) &&
 		Number.isFinite(gate.halfWidthM) &&
-		gate.halfWidthM >= 0
+		gate.halfWidthM >= 0 &&
+		Math.abs(gate.lat) < 90 &&
+		Math.abs(gate.lng) <= 180
 	);
 }
 
@@ -120,8 +122,8 @@ export class GateCrossingDetector {
 		this.usable = gateUsable(gate);
 	}
 
-	get crossings(): readonly GateCrossing[] {
-		return this.found;
+	get crossings(): GateCrossing[] {
+		return [...this.found];
 	}
 
 	offer(fix: GateFix): GateCrossing | null {

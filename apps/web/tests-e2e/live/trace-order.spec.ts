@@ -133,7 +133,7 @@ test.describe('/live/[id] — ping order and weak GPS (anon)', () => {
 			await page.goto(`/live/${runId}`);
 			await expect(page.locator('.live-badge')).toHaveClass(/active/, { timeout: 10_000 });
 			await expect(page.getByTestId('weak-gps')).toContainText(/weak GPS/i);
-			await expect(page.getByTestId('live-distance')).toContainText('0.4');
+			await expect(page.getByTestId('live-distance')).toContainText('400 m');
 		} finally {
 			await deleteRun(runId);
 		}

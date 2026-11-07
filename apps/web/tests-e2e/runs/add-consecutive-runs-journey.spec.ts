@@ -48,7 +48,7 @@ test.describe('runs — add two runs back to back', () => {
 
 			await page.locator('input[type="datetime-local"]').first().fill(startedAt);
 			await page.locator('input[type="number"]').first().fill(km);
-			await page.locator('input[type="number"]').nth(1).fill(min);
+			await page.getByTestId('run-editor-minutes').fill(min);
 			await notesField.fill(notes);
 			await page.locator('form button[type="submit"]').click();
 

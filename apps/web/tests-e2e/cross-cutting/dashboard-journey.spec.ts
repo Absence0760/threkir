@@ -124,7 +124,7 @@ test.describe('dashboard end-to-end journey', () => {
 				.first()
 				.fill(browserDatetimeLocal(Date.now() - 60_000));
 			await page.locator('input[type="number"]').first().fill('10');
-			await page.getByTestId('run-editor-minutes').fill('60');
+			await page.getByTestId('run-editor-hours').fill('1');
 			await page.locator('textarea').fill('e2e-dashboard-journey');
 			await page.locator('form button[type="submit"]').click();
 

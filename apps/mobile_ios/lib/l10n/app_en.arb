@@ -3229,6 +3229,10 @@
   "@runWorkoutAbandon": {
     "description": "Button to abandon the structured workout and continue as a free run"
   },
+  "runWorkoutMoreActions": "More workout actions",
+  "@runWorkoutMoreActions": {
+    "description": "Tooltip and accessibility label of the workout band overflow menu that holds Abandon"
+  },
   "runWorkoutRemainingYards": "{yards} yd to go",
   "@runWorkoutRemainingYards": {
     "description": "Workout-execution band remaining-distance label in yards",

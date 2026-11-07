@@ -2465,6 +2465,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonar';
 
   @override
+  String get runWorkoutMoreActions => 'Más acciones del entrenamiento';
+
+  @override
   String runWorkoutRemainingYards(int yards) {
     return 'faltan $yards yd';
   }

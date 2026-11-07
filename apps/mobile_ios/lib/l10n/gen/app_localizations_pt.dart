@@ -2465,6 +2465,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonar';
 
   @override
+  String get runWorkoutMoreActions => 'Mais ações do treino';
+
+  @override
   String runWorkoutRemainingYards(int yards) {
     return 'faltam $yards yd';
   }
@@ -22689,6 +22692,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runWorkoutAbandon => 'Abandonar';
+
+  @override
+  String get runWorkoutMoreActions => 'Mais ações do treino';
 
   @override
   String runWorkoutRemainingYards(int yards) {

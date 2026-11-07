@@ -4133,6 +4133,12 @@ abstract class AppLocalizations {
   /// **'Abandon'**
   String get runWorkoutAbandon;
 
+  /// Tooltip and accessibility label of the workout band overflow menu that holds Abandon
+  ///
+  /// In en, this message translates to:
+  /// **'More workout actions'**
+  String get runWorkoutMoreActions;
+
   /// Workout-execution band remaining-distance label in yards
   ///
   /// In en, this message translates to:

@@ -2472,6 +2472,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runWorkoutAbandon => 'Abandonner';
 
   @override
+  String get runWorkoutMoreActions => 'Autres actions de la séance';
+
+  @override
   String runWorkoutRemainingYards(int yards) {
     return '$yards yd restants';
   }

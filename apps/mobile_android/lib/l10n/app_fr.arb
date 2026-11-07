@@ -664,6 +664,7 @@
   "runWorkoutRewind": "Reculer",
   "runWorkoutSkip": "Passer",
   "runWorkoutAbandon": "Abandonner",
+  "runWorkoutMoreActions": "Autres actions de la séance",
   "runWorkoutRemainingYards": "{yards} yd restants",
   "runWorkoutRemainingMetres": "{metres} m restants",
   "runWorkoutRemainingDuration": "{duration} restant",

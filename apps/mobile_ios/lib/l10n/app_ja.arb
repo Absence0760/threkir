@@ -664,6 +664,7 @@
   "runWorkoutRewind": "戻る",
   "runWorkoutSkip": "スキップ",
   "runWorkoutAbandon": "中止",
+  "runWorkoutMoreActions": "ワークアウトのその他の操作",
   "runWorkoutRemainingYards": "残り {yards} yd",
   "runWorkoutRemainingMetres": "残り {metres} m",
   "runWorkoutRemainingDuration": "残り {duration}",

@@ -44,6 +44,10 @@ export function orderForTable(table: string): string {
 	return ORDER_BY_TABLE[table] ?? 'id';
 }
 
+/** Every direct_messages column but read_at (see the sent spec below). */
+export const DIRECT_MESSAGES_SENT_SELECT =
+	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id';
+
 /// Build the full table-spec list. Pure — only takes the caller's
 /// user id. Mirrors the Go worker's `FetchExportPersonalDataTables`
 /// shape so the EF rollback path is functionally equivalent. See
@@ -237,11 +241,14 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		// direct_messages — private 1:1 conversations, both directions.
 		// `body` is the subject's own correspondence and ships verbatim.
 		// audit/data-export-completeness (2026-05-30) Critical.
+		// The sent side leaves out read_at: it is the recipient's own read
+		// time, withheld from the sender by a column grant (20271113000001).
+		// seen_at is what the recipient chose to share.
 		{
 			entry: 'direct_messages_sent.json',
 			table: 'direct_messages',
 			filter: `sender_id=eq.${uid}`,
-			select: '*',
+			select: DIRECT_MESSAGES_SENT_SELECT,
 		},
 		{
 			entry: 'direct_messages_received.json',

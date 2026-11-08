@@ -319,6 +319,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             routeStore: widget.routeStore,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
+            social: widget.social,
             gymStore: widget.gymStore,
             foodStore: widget.foodStore,
             showKindChips: false,
@@ -337,6 +338,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
             routeStore: widget.routeStore,
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
+            social: widget.social,
             surfacePeers: [
               SurfacePeer(label: l10n.fitnessTabRuns),
               SurfacePeer(label: l10n.fitnessRunsRoutes, onTap: _openRoutes),

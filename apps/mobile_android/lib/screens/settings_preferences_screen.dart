@@ -131,6 +131,12 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   bool _profilePrivate = false;
   bool _profilePrivateSaving = false;
 
+  /// user_settings.dm_read_receipts, a column because the server reads it when
+  /// a message is marked read (migration 20271113000001). Null until read: the
+  /// switch stays disabled rather than claim a state it has not seen.
+  bool? _readReceipts;
+  bool _readReceiptsSaving = false;
+
   /// Date of birth lives in two stores under two rules (decisions § 718).
   /// [_profileDob] is the `user_profiles` age record behind the under-18
   /// discoverability floor — written whenever the runner picks a date — and
@@ -150,6 +156,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeBackfillLocale());
     if (_nearbyGate) _loadNearbyAreaLabel();
     _loadProfilePrivate();
+    _loadReadReceipts();
     _loadHealthProfile();
   }
 
@@ -1137,6 +1144,39 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     }
   }
 
+  Future<void> _loadReadReceipts() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final value = await api.fetchMyDmReadReceipts();
+      if (!mounted) return;
+      setState(() => _readReceipts = value);
+    } catch (e) {
+      debugPrint('read receipts read failed: $e');
+    }
+  }
+
+  /// Rolls back on a refused write, so the switch never claims a privacy
+  /// choice the server did not take.
+  Future<void> _editReadReceipts(bool next) async {
+    final api = widget.apiClient;
+    if (api == null || _readReceiptsSaving) return;
+    setState(() {
+      _readReceipts = next;
+      _readReceiptsSaving = true;
+    });
+    try {
+      await api.setDmReadReceipts(next);
+    } catch (e) {
+      debugPrint('read receipts write failed: $e');
+      if (!mounted) return;
+      setState(() => _readReceipts = !next);
+      showTopBanner(context, AppLocalizations.of(context).prefsReadReceiptsFailed);
+    } finally {
+      if (mounted) setState(() => _readReceiptsSaving = false);
+    }
+  }
+
   Future<void> _openFollowRequests() async {
     final api = widget.apiClient;
     if (api == null) return;
@@ -1851,6 +1891,16 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       enabled: _bagReady,
                       onTap: _editCoachInMessages,
                     ),
+                    if (widget.apiClient != null)
+                      SwitchListTile(
+                        key: const Key('prefsReadReceipts'),
+                        title: Text(l10n.prefsReadReceipts),
+                        subtitle: Text(l10n.prefsReadReceiptsHint),
+                        value: _readReceipts ?? false,
+                        onChanged: _readReceipts == null || _readReceiptsSaving
+                            ? null
+                            : _editReadReceipts,
+                      ),
                   ],
                 ),
                 // Showing the resolved state takes the stores (unset means

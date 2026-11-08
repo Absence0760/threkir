@@ -9,6 +9,8 @@
 		fetchMyDiscoverableArea,
 		fetchMyProfilePrivate,
 		setProfilePrivate,
+		fetchMyDmReadReceipts,
+		setDmReadReceipts,
 	} from '#lib/core/data.ts';
 	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
 	import { geocodePlace } from '#lib/routes/geocoding.ts';
@@ -31,6 +33,10 @@
 	// it (decisions § 1967), so it is written straight to the profile row.
 	let profilePrivate = $state(false);
 	let profilePrivateSaving = $state(false);
+	// A column on user_settings, not a prefs key: the server reads it when a
+	// message is marked read (migration 20271113000001).
+	let readReceipts = $state(true);
+	let readReceiptsSaving = $state(false);
 	let nearbyAreaLabel = $state<string | null>(null);
 	let nearbyAreaInput = $state('');
 	let nearbySavingArea = $state(false);
@@ -59,7 +65,22 @@
 		}
 		privacyZones = effective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY) ?? [];
 		profilePrivate = await fetchMyProfilePrivate();
+		readReceipts = await fetchMyDmReadReceipts();
 	});
+
+	async function saveReadReceipts() {
+		if (readReceiptsSaving) return;
+		const next = readReceipts;
+		readReceiptsSaving = true;
+		try {
+			await setDmReadReceipts(next);
+		} catch (e) {
+			readReceipts = !next;
+			showToast(m('prefs.readReceiptsFailed', { error: errorCopy(e, m, 'prefs.readReceiptsFailed') }), 'error');
+		} finally {
+			readReceiptsSaving = false;
+		}
+	}
 
 	// A refused write must not read as saved: the switch is a promise about who
 	// sees the runner's activity, so the checkbox rolls back on failure.
@@ -251,6 +272,25 @@
 					</div>
 				</div>
 			{/if}
+		</div>
+	</section>
+
+	<section class="card">
+		<h2>{m('prefs.messagesHeading')}</h2>
+		<div class="form-stack">
+			<label class="checkbox-row">
+				<input
+					type="checkbox"
+					data-testid="read-receipts-toggle"
+					bind:checked={readReceipts}
+					disabled={readReceiptsSaving}
+					onchange={saveReadReceipts}
+				/>
+				<span>
+					{m('prefs.readReceipts')}
+					<span class="hint">{m('prefs.readReceiptsHint')}</span>
+				</span>
+			</label>
 		</div>
 	</section>
 

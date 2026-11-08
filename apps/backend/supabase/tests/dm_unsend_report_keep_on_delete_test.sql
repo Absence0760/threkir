@@ -52,7 +52,7 @@ select throws_ok(
   '42501', null,
   'the recipient cannot stamp unsent_at on the sender''s message');
 select lives_ok(
-  $$update direct_messages set read_at = now() where id = 'd5000000-0000-0000-0000-0000000000a1'$$,
+  $$select mark_direct_messages_read('d5000000-0000-0000-0000-00000000000a', 'd5000000-0000-0000-0000-0000000000a1')$$,
   'the recipient can still mark a message read');
 select throws_ok(
   $$select unsend_direct_message('d5000000-0000-0000-0000-0000000000a2')$$,

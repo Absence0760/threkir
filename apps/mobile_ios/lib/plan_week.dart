@@ -75,3 +75,23 @@ PlanRaceCountdown planRaceCountdown(
   }
   return PlanRaceCountdown(PlanRaceCountdownKind.raceIn, end - today);
 }
+
+/// How many leading weeks of a plan the week list folds into one summary row:
+/// every week before the current one while the plan is running. Before the
+/// start nothing is behind the runner yet, and after the race no week is
+/// current, so a finished plan reads as the whole record with nothing folded.
+/// Twin of `foldedPlanWeekCount` in `plan_week.ts`.
+int foldedPlanWeekCount(
+  String startDateIso,
+  String endDateIso,
+  String todayIso,
+  int weekCount,
+) {
+  if (weekCount <= 0) return 0;
+  final today = _isoToEpochDay(todayIso);
+  if (today < _isoToEpochDay(startDateIso) ||
+      today > _isoToEpochDay(endDateIso)) {
+    return 0;
+  }
+  return currentPlanWeekIndex(startDateIso, todayIso, weekCount);
+}

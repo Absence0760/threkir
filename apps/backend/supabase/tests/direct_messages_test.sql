@@ -76,11 +76,9 @@ select is(
   1,
   'the recipient can read the message');
 
-update direct_messages set read_at = now()
-  where id = '11111111-0000-0000-0000-0000000000d5';
-select isnt(
-  (select read_at from direct_messages where id = '11111111-0000-0000-0000-0000000000d5'),
-  null,
+select is(
+  mark_direct_messages_read('99999999-9999-9999-9999-99990000d5a1', '11111111-0000-0000-0000-0000000000d5'),
+  1,
   'the recipient can mark the message read');
 
 -- ── notification fired to B ──

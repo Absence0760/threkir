@@ -9,6 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show StatTile;
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import '../lib/audio_cues.dart';
@@ -134,8 +135,35 @@ class _CapturingRunStore extends LocalRunStore {
 /// `RunRecorder.prepare` throws `LocationServiceDisabledError` — the
 /// documented indoor / permission-denied start path.
 class _ServicesOffGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  int openedLocationSettings = 0;
+
   @override
   Future<bool> isLocationServiceEnabled() async => false;
+
+  @override
+  Future<bool> openLocationSettings() async {
+    openedLocationSettings++;
+    return true;
+  }
+}
+
+/// Geolocator fake whose location permission was refused at START.
+class _DeniedGeolocatorPlatform extends _FakeGeolocatorPlatform {
+  int openedAppSettings = 0;
+
+  @override
+  Future<LocationPermission> checkPermission() async =>
+      LocationPermission.denied;
+
+  @override
+  Future<LocationPermission> requestPermission() async =>
+      LocationPermission.denied;
+
+  @override
+  Future<bool> openAppSettings() async {
+    openedAppSettings++;
+    return true;
+  }
 }
 
 /// Geolocator fake granting only approximate location (iOS Precise Location
@@ -184,6 +212,20 @@ class _SpyRaceController extends RaceController {
 /// Captures the spoken turn cues without touching the TTS engine.
 class _SpyAudioCues extends AudioCues {
   final List<String?> turnDistances = [];
+  final List<double?> splitAverages = [];
+
+  @override
+  Future<void> announceSplit({
+    required int distanceTicks,
+    required double? paceSecondsPerKm,
+    required cm.DistanceUnit unit,
+    bool useSpeed = false,
+    double tickIntervalMetres = 1000,
+    double? averagePaceSecondsPerKm,
+    String paceMode = SplitPaceMode.split,
+  }) async {
+    splitAverages.add(averagePaceSecondsPerKm);
+  }
 
   @override
   Future<void> announceTurn(TurnDirection direction, {String? distance}) async {
@@ -752,6 +794,162 @@ void main() {
           reason: 'widget tree must still be alive after GPS feed');
     });
 
+    testWidgets(
+        'standing still shows Stopped and holds Avg pace on moving time (#1300)',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      String avgPace() => tester
+          .widget<StatTile>(find.byWidgetPredicate(
+              (w) => w is StatTile && w.label == 'Avg Pace'))
+          .value;
+
+      // 60 s at 3 m/s by the fix clock. The wall clock barely moves in a
+      // widget test, so an average over elapsed time is still unready here;
+      // one over moving time is not.
+      for (var i = 0; i <= 60; i++) {
+        geolocator.emit(
+            _pos(metresEast: i * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      final running = avgPace();
+      expect(running, isNot('--:--'));
+      expect(find.text('Stopped'), findsNothing);
+
+      // Then 20 s standing on the same spot.
+      for (var i = 61; i <= 80; i++) {
+        geolocator.emit(
+            _pos(metresEast: 180, secondsFromStart: i, speed: 0));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      expect(avgPace(), running,
+          reason: 'a stop adds no moving time, so Avg pace must not worsen');
+      expect(find.text('Stopped'), findsOneWidget);
+
+      // Moving again clears it.
+      for (var i = 81; i <= 84; i++) {
+        geolocator.emit(_pos(
+            metresEast: 180 + (i - 80) * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      expect(find.text('Stopped'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
+
+    testWidgets(
+        'canopy fixes off the line still count as moving time (#1300)',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      // 30 s in the open, then 30 s under trees at the same 3 m/s: 30 m
+      // fixes the estimator keeps but the line does not.
+      for (var i = 0; i <= 60; i++) {
+        geolocator.emit(_pos(
+            metresEast: i * 3.0,
+            secondsFromStart: i,
+            speed: 3,
+            accuracy: i <= 30 ? 5 : 30));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+
+      final text = tester
+          .widget<StatTile>(find.byWidgetPredicate(
+              (w) => w is StatTile && w.label == 'Avg Pace'))
+          .value;
+      final parts = text.split(':').map(int.parse).toList();
+      final secPerKm = parts[0] * 60 + parts[1];
+      // 3 m/s is 333 s/km; dividing by the line's 30 s alone reads ~167.
+      expect(secPerKm, inInclusiveRange(290, 380), reason: text);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
+
+    testWidgets('the spoken split average divides by moving time too (#1300)',
+        (tester) async {
+      final s = await makeStores();
+      await s.prefs.setAudioCues(true);
+      await s.prefs.setSplitIntervalMetres(100);
+      final cues = _SpyAudioCues();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: s.runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: cues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      for (var i = 0; i <= 50; i++) {
+        geolocator.emit(
+            _pos(metresEast: i * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+
+      // 3 m/s is 333 s/km. The wall clock barely moves in a widget test, so
+      // an average over elapsed time would be null here.
+      expect(cues.splitAverages, isNotEmpty);
+      expect(cues.splitAverages.first, isNotNull);
+      expect(cues.splitAverages.first!, closeTo(333, 60));
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
+
     testWidgets('holding Finish saves the run through runStore.save',
         (tester) async {
       // Spy store captures the save synchronously (see _CapturingRunStore).
@@ -1102,6 +1300,8 @@ void main() {
 
       await tester.tap(find.text('START'));
       await tester.pump();
+      await tester.tap(find.text('Record time only'));
+      await tester.pump();
       // prepare() rejects here, ~3 s before _begin awaits it.
       await tester.pump(const Duration(milliseconds: 50));
       expect(tester.takeException(), isNull,
@@ -1115,10 +1315,13 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
       tester.takeException(); // LiveRunMap tile-fetch noise
 
+      expect(find.byType(LiveRunMap), findsOneWidget,
+          reason: 'a time-only run the runner chose still records');
       expect(
         find.text('No GPS — tracking will start when Location is on.'),
-        findsOneWidget,
-        reason: 'the indoor fallback still tells the runner why',
+        findsNothing,
+        reason: 'the runner was told at START and chose time only; the '
+            'banner would repeat it',
       );
 
       await tester.pumpWidget(const SizedBox());
@@ -1127,6 +1330,201 @@ void main() {
       }
       tester.takeException();
       await off.dispose();
+    });
+
+    Future<_CapturingRunStore> pumpCapturing(WidgetTester tester) async {
+      final runStore = _CapturingRunStore();
+      await runStore.init(overrideDirectory: runsDir);
+      final s = await makeStores();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: s.audioCues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      return runStore;
+    }
+
+    Future<void> countIntoRecording(WidgetTester tester) async {
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException(); // LiveRunMap tile-fetch noise
+    }
+
+    Future<void> unmountScreen(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    testWidgets('a denied location stops START at a dialog, and Cancel does '
+        'not start a run (#1300 BUG-012)', (tester) async {
+      final denied = _DeniedGeolocatorPlatform();
+      GeolocatorPlatform.instance = denied;
+      final runStore = await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      expect(find.text('Start without GPS?'), findsOneWidget);
+      expect(
+        find.text('Location access is off for this app, so this run would '
+            'record time only — no route, distance or pace.'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('START'), findsOneWidget,
+          reason: 'nobody chose a time-only run, so none starts');
+      expect(find.byType(LiveRunMap), findsNothing);
+      expect(runStore.captured, isEmpty);
+      expect(denied.openedAppSettings, 0);
+
+      await unmountScreen(tester);
+      await denied.dispose();
+    });
+
+    testWidgets('Open settings on a denied start opens app settings and '
+        'starts nothing', (tester) async {
+      final denied = _DeniedGeolocatorPlatform();
+      GeolocatorPlatform.instance = denied;
+      await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.tap(find.text('Open settings'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(denied.openedAppSettings, 1);
+      expect(find.text('START'), findsOneWidget,
+          reason: 'the runner comes back from Settings and taps START again');
+
+      await unmountScreen(tester);
+      await denied.dispose();
+    });
+
+    testWidgets('Open settings with Location off opens the location settings',
+        (tester) async {
+      final off = _ServicesOffGeolocatorPlatform();
+      GeolocatorPlatform.instance = off;
+      await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      expect(
+        find.text('Location is off on this phone, so this run would record '
+            'time only — no route, distance or pace.'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Open settings'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(off.openedLocationSettings, 1);
+      expect(find.text('START'), findsOneWidget);
+
+      await unmountScreen(tester);
+      await off.dispose();
+    });
+
+    testWidgets('Record time only starts the run and saves it as indoor '
+        'without asking again at Stop', (tester) async {
+      final denied = _DeniedGeolocatorPlatform();
+      GeolocatorPlatform.instance = denied;
+      final runStore = await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.tap(find.text('Record time only'));
+      await tester.pump();
+      await countIntoRecording(tester);
+      expect(find.byType(LiveRunMap), findsOneWidget);
+
+      await holdFinish(tester);
+      tester.takeException();
+
+      expect(find.text('No distance recorded'), findsNothing,
+          reason: 'time only was chosen at START');
+      expect(runStore.captured, hasLength(1));
+      final saved = runStore.captured.single as cm.Run;
+      expect(saved.distanceMetres, 0);
+      expect(saved.metadata?[cm.MetadataKeys.indoor], true,
+          reason: 'no GPS measured it, so it stays out of the VDOT ceiling');
+
+      await unmountScreen(tester);
+      await denied.dispose();
+    });
+
+    testWidgets('a GPS run that ends with no fix asks, and Discard saves '
+        'nothing', (tester) async {
+      final runStore = await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      expect(find.text('Start without GPS?'), findsNothing,
+          reason: 'GPS is available, so START goes straight to the count');
+      await countIntoRecording(tester);
+
+      final stopped = await holdFinish(
+        tester,
+        until: () => find.text('No distance recorded').evaluate().isNotEmpty,
+        describe: 'the no-distance question',
+      );
+      await tester.tap(find.text('Discard'));
+      await pumpUntil(tester, stopped, describe: 'the stop path to finish');
+      tester.takeException();
+
+      expect(runStore.captured, isEmpty,
+          reason: 'the runner discarded the 0 km run');
+      expect(runStore.clearInProgressCalls, greaterThan(0),
+          reason: 'a discarded run leaves no recovery file behind');
+      expect(find.text('START'), findsOneWidget);
+
+      await unmountScreen(tester);
+    });
+
+    testWidgets('a GPS run that ends with no fix can be saved as time only',
+        (tester) async {
+      final runStore = await pumpCapturing(tester);
+
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await countIntoRecording(tester);
+
+      final stopped = await holdFinish(
+        tester,
+        until: () => find.text('No distance recorded').evaluate().isNotEmpty,
+        describe: 'the no-distance question',
+      );
+      await tester.tap(find.text('Save as time-only'));
+      await pumpUntil(tester, stopped, describe: 'the stop path to finish');
+      tester.takeException();
+
+      expect(runStore.captured, hasLength(1));
+      final saved = runStore.captured.single as cm.Run;
+      expect(saved.metadata?[cm.MetadataKeys.indoor], true);
+
+      await unmountScreen(tester);
     });
 
     testWidgets('an approximate-only grant still records and says why the '

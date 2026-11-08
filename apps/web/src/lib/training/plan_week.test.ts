@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { currentPlanWeekIndex, planRaceCountdown } from './plan_week';
+import { currentPlanWeekIndex, foldedPlanWeekCount, planRaceCountdown } from './plan_week';
 
 // Regression for the DST undercount (issue #338): the old code subtracted two
 // local-midnight Date.getTime() values and divided by 86.4M ms. The
@@ -73,4 +73,16 @@ test('planRaceCountdown counts whole days across a DST change', () => {
 		kind: 'race_in',
 		days: 14
 	});
+});
+
+test('foldedPlanWeekCount folds every week before the current one mid-plan', () => {
+	assert.equal(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-06-01', 13), 0);
+	assert.equal(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-06-22', 13), 3);
+	assert.equal(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-08-30', 13), 12);
+});
+
+test('foldedPlanWeekCount folds nothing before the start or after the race', () => {
+	assert.equal(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-05-31', 13), 0);
+	assert.equal(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-08-31', 13), 0);
+	assert.equal(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-06-22', 0), 0);
 });

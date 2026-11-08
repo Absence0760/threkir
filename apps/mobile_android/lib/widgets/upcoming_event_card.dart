@@ -92,7 +92,7 @@ class UpcomingEventCard extends StatelessWidget {
                   Text(
                     l10n.upcomingEventBadge(relative),
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
+                      color: theme.colorScheme.onPrimaryContainer,
                       letterSpacing: 0.7,
                       fontWeight: FontWeight.w700,
                     ),
@@ -110,7 +110,7 @@ class UpcomingEventCard extends StatelessWidget {
                   Row(
                     children: [
                       Icon(Icons.schedule, size: 14,
-                          color: theme.colorScheme.outline),
+                          color: theme.colorScheme.onSurfaceVariant),
                       const SizedBox(width: 3),
                       Flexible(
                         child: Text(
@@ -123,7 +123,7 @@ class UpcomingEventCard extends StatelessWidget {
                       if (event.row.meetLabel != null) ...[
                         const SizedBox(width: 10),
                         Icon(Icons.place, size: 14,
-                            color: theme.colorScheme.outline),
+                            color: theme.colorScheme.onSurfaceVariant),
                         const SizedBox(width: 3),
                         Expanded(
                           child: Text(

@@ -250,6 +250,10 @@ fi
 # from a 20k-wide range, and Renode aborts on AddressAlreadyInUse with the same
 # invisible symptom the phone port has. Unlike the phone port this one has no
 # fixed value to honour, so a taken candidate is answered by drawing again.
+# The range stays below Linux's ephemeral floor (32768), and the probe counts a
+# socket in ANY state: an outbound connection can hold a port above that floor
+# as its source port without listening, which a LISTEN-only probe cannot see
+# and which aborted the storm session of CI run 42491803811 on port 33962.
 # (Renode's own default, 1234, collides across concurrent or stale instances,
 # which is why it is per-run at all.) The telnet monitor also lets you poke the
 # machine mid-run:
@@ -262,16 +266,16 @@ fi
 # (e.g. `{ echo "<cmd>"; sleep 2; } | ncat localhost <port>`).
 MONITOR_PORT=""
 for _ in $(seq 1 20); do
-	CANDIDATE=$(( 20000 + RANDOM % 20000 ))
+	CANDIDATE=$(( 20000 + RANDOM % 12768 ))
 	if [[ "$HAVE_FLOCK" == 1 ]]; then
 		exec 9>"${TMPDIR:-/tmp}/watch-sim.monitor-$CANDIDATE.lock"
 		flock -n 9 || continue
 	fi
-	[[ -n "$(ss -tlnH "sport = :$CANDIDATE" 2>/dev/null || true)" ]] && continue
+	[[ -n "$(ss -tanH "sport = :$CANDIDATE" 2>/dev/null || true)" ]] && continue
 	MONITOR_PORT="$CANDIDATE"
 	break
 done
-[[ -n "$MONITOR_PORT" ]] || fatal "could not claim a free Renode monitor port in 20 draws from 20000-39999 — something is holding most of that range."
+[[ -n "$MONITOR_PORT" ]] || fatal "could not claim a free Renode monitor port in 20 draws from 20000-32767 — something is holding most of that range."
 
 RENODE_FLAGS=(-P "$MONITOR_PORT" --pid-file "$RUN_DIR/renode.pid")
 echo "$MONITOR_PORT" > "$RUN_DIR/monitor.port"

@@ -66,4 +66,19 @@ void main() {
     expect(planRaceCountdown('2026-01-01', '2026-03-15', '2026-03-01'),
         const PlanRaceCountdown(PlanRaceCountdownKind.raceIn, 14));
   });
+
+  test('foldedPlanWeekCount folds every week before the current one mid-plan',
+      () {
+    expect(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-06-01', 13), 0);
+    expect(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-06-22', 13), 3);
+    expect(
+        foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-08-30', 13), 12);
+  });
+
+  test('foldedPlanWeekCount folds nothing before the start or after the race',
+      () {
+    expect(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-05-31', 13), 0);
+    expect(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-08-31', 13), 0);
+    expect(foldedPlanWeekCount('2026-06-01', '2026-08-30', '2026-06-22', 0), 0);
+  });
 }

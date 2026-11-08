@@ -64,6 +64,32 @@ void main() {
     });
   });
 
+  group('periodHasEnded', () {
+    final week = DateTime(2026, 4, 15); // Mon 13 Apr .. Sun 19 Apr
+
+    test('a week is not over on its last evening', () {
+      expect(
+          periodHasEnded(PeriodType.week, week, DateTime(2026, 4, 19, 23, 30)),
+          isFalse);
+    });
+
+    test('a week is over at the next one\'s midnight', () {
+      expect(periodHasEnded(PeriodType.week, week, DateTime(2026, 4, 20)),
+          isTrue);
+    });
+
+    test('a month is not over on its last day', () {
+      expect(
+          periodHasEnded(
+              PeriodType.month, DateTime(2026, 4, 2), DateTime(2026, 4, 30, 9)),
+          isFalse);
+      expect(
+          periodHasEnded(
+              PeriodType.month, DateTime(2026, 4, 2), DateTime(2026, 5, 1, 9)),
+          isTrue);
+    });
+  });
+
   // ── periodTitle / periodLabel ────────────────────────────────────────
 
   group('periodTitle', () {

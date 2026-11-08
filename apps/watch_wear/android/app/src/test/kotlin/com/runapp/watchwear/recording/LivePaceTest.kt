@@ -71,6 +71,23 @@ class LivePaceTest {
     }
 
     @Test
+    fun `pace is withheld until the window spans 20 s`() {
+        // The phone's shared paceIsReady rule (issue #1300): 50 m and 20 s.
+        val w = LivePaceWindow()
+        for (i in 0..4) w.add(i * 4.0, i * 15.0)
+        assertNull("60 m in 16 s clears the distance floor, not the time one", w.secondsPerKm)
+        w.add(20.0, 75.0)
+        assertEquals(20.0 / 75.0 * 1000, w.secondsPerKm!!, 1e-9)
+    }
+
+    @Test
+    fun `a cyclist past 10 m per s keeps a pace once the window has 20 s`() {
+        val w = LivePaceWindow()
+        for (i in 0..60) w.add(i.toDouble(), i * 15.0)
+        assertEquals(1000.0 / 15, w.secondsPerKm!!, 1e-9)
+    }
+
+    @Test
     fun `a seal drops the pre-pause window`() {
         val w = LivePaceWindow()
         for (i in 0..4) w.add(i * 10.0, i * 50.0)

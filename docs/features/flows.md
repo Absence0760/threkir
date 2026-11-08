@@ -117,8 +117,9 @@ If the phone isn't reachable (out of range / not yet paired / not signed in), th
       apps/mobile_android/lib/screens/home_screen.dart
 2.  _maybeRequestPermission() — FINE_LOCATION + POST_NOTIFICATIONS
       (ACTIVITY_RECOGNITION is handled at first launch in
-      onboarding_screen.dart, not here). Non-blocking: denial drops the
-      run into time-only mode rather than aborting.
+      onboarding_screen.dart, not here). Location off or denied then
+      stops at Open settings / Record time only / Cancel before the
+      countdown (_confirmStartWithoutGps); only Record time only starts.
 3.  Navigator pushes RunScreen
       apps/mobile_android/lib/screens/run_screen.dart
 4.  initState: 3-second countdown begins, _preload() runs in parallel
@@ -131,8 +132,8 @@ If the phone isn't reachable (out of range / not yet paired / not signed in), th
       - GPS fixes during countdown drive the blue dot but don't accumulate
 5.  Countdown hits 0 → _begin()
       - Awaits _prepareFuture — on error, _notifyGpsUnavailable shows a
-        snackbar with a Settings shortcut; the run continues as a
-        time-only indoor session
+        snackbar with a Settings shortcut (unless time only was already
+        chosen at START); the run continues as a time-only indoor session
       - RunRecorder.begin() flips recording on, starts the Stopwatch
       - Stable run id generated (uuid v4)
       - Incremental-save timer starts (every 10s → runs/in_progress.json)

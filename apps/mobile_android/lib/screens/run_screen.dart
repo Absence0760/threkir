@@ -249,6 +249,10 @@ enum _ScreenState { idle, countdown, recording, paused, finished }
 /// partial: continue the same run, finalize it as-is, or drop it.
 enum _ResumeChoice { resume, finish, discard }
 
+enum _GpsStartBlock { servicesOff, permissionDenied }
+
+enum _NoGpsStartChoice { openSettings, timeOnly }
+
 class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   _ScreenState _state = _ScreenState.idle;
 
@@ -285,6 +289,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   StreamSubscription<TreadmillSample>? _treadmillSub;
   StreamSubscription<BleTreadmillStatus>? _treadmillStatusSub;
   bool _treadmillMode = false;
+
+  // A belt fed distance at some point this run, so the GPS line no longer
+  // spans it and averages fall back to the clock.
+  bool _treadmillUsed = false;
   bool _treadmillPaired = false;
   BleTreadmillStatus _treadmillStatus = BleTreadmillStatus.disconnected;
   double? _treadmillSpeedKmh;
@@ -549,6 +557,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // snapshot.currentPosition; reset on discard.
   bool _everHadGpsFix = false;
 
+  bool _timeOnlyChosen = false;
+
   // Running elevation gain, updated incrementally as new waypoints arrive
   // in _onSnapshot. The naive O(n) rescan of the full track on every
   // build was the hottest per-frame work in the run screen — a 60-minute
@@ -564,6 +574,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // must see each fix once at its own instant, not the last one again on
   // every recorder tick (#1304 section 4).
   DateTime? _raceFixOfferedAt;
+
+  // Same rule the finished summary applies ([movingTimeOf]), so the live
+  // Avg pace cannot disagree with it.
+  final MovingTimeAccumulator _moving = MovingTimeAccumulator();
+
+  // Wall-clock time recording last started or resumed; null while paused or
+  // idle. The first fix accepted after it sets [_stillSince], the fix-clock
+  // anchor of the "Stopped" chip, so the chip cannot open on a resume.
+  DateTime? _activeSince;
+  DateTime? _stillSince;
+  DateTime? _latestFixAt;
 
   // Reentrancy guard on start — prevents rapid taps from spawning
   // multiple recorders.
@@ -1204,7 +1225,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       progress: runner.progressFraction,
       remainingMetres: runner.stepRemainingMetres,
       remainingDuration: runner.stepRemainingDuration,
-      actualPaceSecPerKm: runner.stepAveragePaceSecPerKm,
+      actualPaceSecPerKm: runner.stepLivePaceSecPerKm,
       adherence: runner.paceAdherence,
       complete: runner.isComplete && step == null,
       abandoned: false,
@@ -1292,13 +1313,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     setState(() {});
   }
 
-  /// Ask for location + notification permissions but don't block the run on
-  /// the result — denying location drops the run into a time-only indoor
-  /// mode rather than stopping it outright. Denying notifications disables
-  /// the live lock-screen stats via [RunNotificationBridge] but otherwise
-  /// lets the run proceed. The downstream [RunRecorder.prepare] call
-  /// surfaces the denied location case as a snackbar via
-  /// [_notifyGpsUnavailable].
+  /// Ask for location + notification permissions; [_confirmStartWithoutGps]
+  /// judges the location result. Denying notifications only disables the
+  /// live lock-screen stats via [RunNotificationBridge].
   Future<void> _maybeRequestPermission() async {
     await Permission.location.request();
     // POST_NOTIFICATIONS on Android 13+ — without this,
@@ -1327,6 +1344,109 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         );
       }
     }
+  }
+
+  /// A failed check does not block: the recorder's own error path still
+  /// reports it.
+  Future<_GpsStartBlock?> _gpsStartBlock() async {
+    if (_treadmillMode) return null;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return _GpsStartBlock.servicesOff;
+      }
+      final p = await Geolocator.checkPermission();
+      if (p == LocationPermission.denied ||
+          p == LocationPermission.deniedForever) {
+        return _GpsStartBlock.permissionDenied;
+      }
+    } catch (e) {
+      debugPrint('GPS start check failed: $e');
+    }
+    return null;
+  }
+
+  /// Only an explicit "Record time only" starts a run that can get no fix.
+  Future<bool> _confirmStartWithoutGps() async {
+    _timeOnlyChosen = false;
+    final block = await _gpsStartBlock();
+    if (block == null) return true;
+    if (!mounted) return false;
+    final choice = await showDialog<_NoGpsStartChoice>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.runNoGpsStartTitle),
+          content: Text(block == _GpsStartBlock.servicesOff
+              ? l10n.runNoGpsStartServicesOffBody
+              : l10n.runNoGpsStartPermissionBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _NoGpsStartChoice.timeOnly),
+              child: Text(l10n.runNoGpsStartTimeOnly),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, _NoGpsStartChoice.openSettings),
+              child: Text(l10n.runOpenSettings),
+            ),
+          ],
+        );
+      },
+    );
+    switch (choice) {
+      case _NoGpsStartChoice.timeOnly:
+        _timeOnlyChosen = true;
+        return true;
+      case _NoGpsStartChoice.openSettings:
+        try {
+          if (block == _GpsStartBlock.servicesOff) {
+            await Geolocator.openLocationSettings();
+          } else {
+            await Geolocator.openAppSettings();
+          }
+        } catch (e) {
+          debugPrint('Opening location settings failed: $e');
+        }
+        return false;
+      case null:
+        return false;
+    }
+  }
+
+  /// The dialog is the discard's one guard (conventions.md § Destructive
+  /// actions). Dismissing it keeps the run, as does an unmounted screen,
+  /// where nobody can be asked.
+  Future<bool> _keepRunWithoutDistance() async {
+    if (!mounted) return true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.runNoDistanceTitle),
+          content: Text(l10n.runNoDistanceBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(
+                foregroundColor: AppSemanticColors.of(ctx).danger,
+              ),
+              child: Text(l10n.runDiscard),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.runNoDistanceSaveTimeOnly),
+            ),
+          ],
+        );
+      },
+    );
+    return discard != true;
   }
 
   /// Android 11+ only grants "while in use" from the initial dialog;
@@ -1494,6 +1614,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _startRequested = true;
     await _maybeRequestPermission();
     if (!mounted) {
+      _startRequested = false;
+      return;
+    }
+    final proceedWithoutGps = await _confirmStartWithoutGps();
+    if (!mounted || !proceedWithoutGps) {
       _startRequested = false;
       return;
     }
@@ -2092,13 +2217,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // countdown, so this await is a no-op. On a slow device it waits for
     // the GPS stream to come up before starting the clock. If prepare
     // failed (location services off, permission denied), the recorder is
-    // still marked prepared and we proceed into an indoor/time-only run —
-    // the stopwatch ticks, distance stays 0, and the live map shows its
-    // "Waiting for GPS..." placeholder until a fix arrives (if ever).
+    // still marked prepared and we proceed into a time-only run — the
+    // stopwatch ticks, distance stays 0, and the live map shows its
+    // "Waiting for GPS..." placeholder until a fix arrives (if ever). The
+    // runner chose that at START (_confirmStartWithoutGps), so it is only
+    // reported here when it was not foreseen there.
     await _prepareFuture;
     final prepareError = _prepareError;
     if (prepareError != null) {
-      _notifyGpsUnavailable(prepareError);
+      if (!_timeOnlyChosen) _notifyGpsUnavailable(prepareError);
     } else if (_recorder?.preciseLocationOff == true) {
       _notifyPreciseLocationOff();
     }
@@ -2718,6 +2845,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         }
         setState(() {
           _treadmillMode = true;
+          _treadmillUsed = true;
           _treadmillSpeedKmh = null;
         });
         // A belt that was off / out of range at launch reports connectFailed
@@ -2813,6 +2941,20 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         _elevationGain.add(track[i]);
       }
       _elevationProcessedCount = track.length;
+      // The stored track, not the line: off-line canopy fixes still carry
+      // the distance they credited.
+      _moving.extend(snapshot.storedTrack);
+      if (!_manualPaused) {
+        final activeSince = _activeSince ??= DateTime.now();
+        final fixAt = snapshot.currentPosition?.timestamp;
+        _latestFixAt = fixAt;
+        if (_stillSince == null &&
+            fixAt != null &&
+            fixedAt != null &&
+            !fixedAt.isBefore(activeSince)) {
+          _stillSince = fixAt;
+        }
+      }
 
       // Update the mirror fields so internal consumers (_saveInProgress,
       // _refreshLockScreenNotification, the _formattedX getters) see the
@@ -3275,8 +3417,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           );
           if (widget.preferences.audioCues &&
               widget.preferences.voiceCueEnabled(VoiceCue.splits)) {
-            final avgPace =
-                averagePaceSecPerKm(tickDistance, _elapsed.inSeconds);
+            final avgPace = averagePaceSecPerKm(tickDistance,
+                _averagingTime(_moving.movingTime).inSeconds);
             _ttsCue('announceSplit', () => widget.audioCues.announceSplit(
                   distanceTicks: currentTick,
                   paceSecondsPerKm: _pace,
@@ -3689,11 +3831,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (_recorder == null) return;
     if (_manualPaused) {
       _recorder!.resume();
-      setState(() => _manualPaused = false);
+      setState(() {
+        _manualPaused = false;
+        _activeSince = DateTime.now();
+        _stillSince = null;
+      });
       _announceA11yState(_l10n.runA11yResumed);
     } else {
       _recorder!.pause();
-      setState(() => _manualPaused = true);
+      setState(() {
+        _manualPaused = true;
+        _activeSince = null;
+      });
       _announceA11yState(_l10n.runA11yPaused);
     }
   }
@@ -3786,6 +3935,27 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _treadmillSub = null;
     await _treadmillStatusSub?.cancel();
     _treadmillStatusSub = null;
+
+    // A belt run was chosen as indoor, and a hosted race keeps its run: its
+    // result is already decided at this Stop.
+    final noDistance = !_everHadGpsFix &&
+        raw.distanceMetres == 0 &&
+        _displayDistanceMetres == 0;
+    var timeOnly = _timeOnlyChosen && !_everHadGpsFix;
+    if (noDistance &&
+        !_timeOnlyChosen &&
+        !_treadmillMode &&
+        widget.raceController?.isHosting != true) {
+      if (!await _keepRunWithoutDistance()) {
+        if (_liveBroadcaster?.isActive ?? false) await _stopLiveShare();
+        _discard();
+        return;
+      }
+      timeOnly = true;
+    }
+    // No GPS ever measured this run, so it stays out of the VDOT ceiling the
+    // same way the pedometer and belt sources do.
+    if (timeOnly) metadata[cm.MetadataKeys.indoor] = true;
 
     // Structured-workout review trail. Three keys are registered in
     // [docs/backend/metadata.md]: plan_workout_id, workout_step_results,
@@ -4190,9 +4360,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastCutoffCueStatus = null;
     _permissionLost = false;
     _everHadGpsFix = false;
+    _timeOnlyChosen = false;
     _elevationGain.reset();
     _elevationProcessedCount = 0;
     _raceFixOfferedAt = null;
+    _moving.reset();
+    _treadmillUsed = false;
+    _activeSince = null;
+    _stillSince = null;
+    _latestFixAt = null;
     _statsNotifier.value = _LiveStats.empty;
     // Fire-and-forget — if we discarded mid-run, drop the in-progress file.
     widget.runStore.clearInProgress();
@@ -4685,28 +4861,37 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   String get _formattedPaceValue => UnitFormat.pace(_pace, _unit);
 
-  String get _formattedAvgPaceValue {
-    final d = _displayDistanceMetres;
-    if (d < 10 || _elapsed.inSeconds < 1) return '--:--';
-    final secPerKm = _elapsed.inSeconds / (d / 1000);
-    return UnitFormat.pace(secPerKm, _unit);
-  }
+  Duration _averagingTime(Duration movingTime) => averagingTime(
+      gpsMeasured: _everHadGpsFix && !_treadmillUsed,
+      movingTime: movingTime,
+      elapsed: _elapsed);
 
-  /// Average pace computed against a supplied moving time rather than the
-  /// full elapsed time. Used on the finished-run screen so the headline
-  /// pace excludes stops.
-  String _formattedAvgPaceValueFromMoving(Duration movingTime) {
-    final d = _displayDistanceMetres;
-    if (d < 10 || movingTime.inSeconds < 1) return '--:--';
-    final secPerKm = movingTime.inSeconds / (d / 1000);
-    return UnitFormat.pace(secPerKm, _unit);
-  }
+  /// Gated by [paceIsReady], the rule the live Pace tile and the workout
+  /// band share, so Avg pace cannot show a standing start's 20:49 /mi while
+  /// Pace still reads blank (issue #1300). Live and finished pass their
+  /// moving time through the one formula.
+  String _formattedAvgPaceValue(Duration movingTime) => UnitFormat.pace(
+      readyAveragePaceSecPerKm(
+          _displayDistanceMetres, _averagingTime(movingTime).inSeconds),
+      _unit);
 
-  String get _formattedAvgSpeedValue {
-    final d = _displayDistanceMetres;
-    if (d < 10 || _elapsed.inSeconds < 1) return '--';
-    final secPerKm = _elapsed.inSeconds / (d / 1000);
-    return UnitFormat.speed(secPerKm, _unit);
+  String _formattedAvgSpeedValue(Duration movingTime) => UnitFormat.speed(
+      readyAveragePaceSecPerKm(
+          _displayDistanceMetres, _averagingTime(movingTime).inSeconds),
+      _unit);
+
+  /// Display only: the clock keeps running (decisions § 4).
+  bool get _standingStill {
+    if (_state != _ScreenState.recording || _manualPaused) return false;
+    final last = _lastSnapshotAt;
+    if (last == null || DateTime.now().difference(last) > _gpsLostThreshold) {
+      return false;
+    }
+    return isStandingStill(
+      latestFixAt: _latestFixAt,
+      lastMovingAt: _moving.lastMovingAt,
+      since: _stillSince,
+    );
   }
 
   String get _formattedCalories {
@@ -5422,8 +5607,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       ? l10n.runStatSpeed
                       : l10n.runStatPace,
                   secondaryValue: _activityType.usesSpeed
-                      ? _formattedAvgSpeedValue
-                      : _formattedAvgPaceValue,
+                      ? _formattedAvgSpeedValue(_moving.movingTime)
+                      : _formattedAvgPaceValue(_moving.movingTime),
                   secondaryLabel: _activityType.usesSpeed
                       ? l10n.runStatAvgSpeed
                       : l10n.runStatAvgPace,
@@ -5435,6 +5620,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                   bpm: _currentBpm,
                   lapCount: _lapCount,
                   paused: _manualPaused,
+                  stopped: _standingStill,
                   onHoldComplete: dockedStop ? null : _requestStop,
                   onDiscard: _confirmDiscardMidRun,
                   onPauseToggle: _toggleManualPause,
@@ -5517,9 +5703,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // The line, exactly what the live map drew; off-track fixes are stored
     // for the server's distance replay only.
     final track = cm.trackLine(_finishedRun?.track ?? <cm.Waypoint>[]);
-    // Derived metric: "moving time" — elapsed with stops excluded, computed
-    // from the GPS track. Replaces the old live auto-pause.
-    final movingTime = movingTimeOf(track);
+    // Over every stored fix, as the live tile, run detail and web fold it.
+    final movingTime = movingTimeOf(_finishedRun?.track ?? <cm.Waypoint>[]);
 
     return Column(
       children: [
@@ -5538,8 +5723,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 ? l10n.runStatAvgSpeed
                 : l10n.runStatPace,
             primaryValue: _activityType.usesSpeed
-                ? _formattedAvgSpeedValue
-                : _formattedAvgPaceValueFromMoving(movingTime),
+                ? _formattedAvgSpeedValue(movingTime)
+                : _formattedAvgPaceValue(movingTime),
             primaryUnit: _activityType.usesSpeed
                 ? UnitFormat.speedLabel(_unit)
                 : UnitFormat.paceLabel(_unit),
@@ -5668,6 +5853,38 @@ class FinishedSummary extends StatelessWidget {
   }
 }
 
+class _StoppedChip extends StatelessWidget {
+  final String label;
+
+  const _StoppedChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: scheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Frosted glass stats bar overlaid on the map during recording.
 class _StatsOverlay extends StatelessWidget {
   final String time;
@@ -5686,6 +5903,10 @@ class _StatsOverlay extends StatelessWidget {
   final int? bpm;
   final int lapCount;
   final bool paused;
+
+  /// Moving slower than [kMovingMinSpeedMps] for [kStoppedAfter] while
+  /// recording. Shows a chip beside the clock; changes nothing else.
+  final bool stopped;
 
   /// Null when the shell's docked centre button is the Stop ([RunStopDock]),
   /// which leaves the row Discard · Pause · Lap.
@@ -5718,6 +5939,7 @@ class _StatsOverlay extends StatelessWidget {
     required this.bpm,
     required this.lapCount,
     required this.paused,
+    this.stopped = false,
     required this.onHoldComplete,
     required this.onDiscard,
     required this.onPauseToggle,
@@ -5737,12 +5959,33 @@ class _StatsOverlay extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            time,
-            style: theme.textTheme.displayMedium?.copyWith(
-              fontFeatures: [const FontFeature.tabularFigures()],
-              fontWeight: FontWeight.w700,
-            ),
+          // Equal flex either side keeps the clock centred whether or not
+          // the chip is showing.
+          Row(
+            children: [
+              const Spacer(),
+              Text(
+                time,
+                style: theme.textTheme.displayMedium?.copyWith(
+                  fontFeatures: [const FontFeature.tabularFigures()],
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: stopped
+                      ? Padding(
+                          padding: const EdgeInsetsDirectional.only(start: 8),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: _StoppedChip(label: l10n.runStoppedChip),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(
@@ -5902,7 +6145,7 @@ class _StatsOverlay extends StatelessWidget {
                           Icon(
                             Icons.flag_outlined,
                             size: 24,
-                            color: theme.colorScheme.primary,
+                            color: theme.colorScheme.onPrimaryContainer,
                           ),
                           if (lapCount > 0)
                             Positioned(

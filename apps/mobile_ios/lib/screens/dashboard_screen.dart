@@ -812,6 +812,8 @@ class _DashboardScreenState extends State<DashboardScreen>
           runStore: widget.runStore,
           routeStore: widget.routeStore,
           preferences: widget.preferences,
+          apiClient: widget.apiClient,
+          social: widget.social,
         ),
       ),
     );

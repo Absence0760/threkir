@@ -25,6 +25,7 @@ import '../local_run_store.dart';
 import '../missing_run_pull.dart';
 import '../preferences.dart';
 import '../runs_history_items.dart';
+import '../social_service.dart';
 import '../settings_sync.dart';
 import '../widgets/activity_timeline_list.dart';
 import '../widgets/error_state.dart';
@@ -51,6 +52,10 @@ class RunsScreen extends StatefulWidget {
   final LocalRouteStore routeStore;
   final Preferences preferences;
   final SettingsSyncService? settingsSync;
+
+  /// Handed to the route builder Add run opens from an empty route field,
+  /// which offers the user's clubs as owners for the new route.
+  final SocialService? social;
 
   /// Gym store, present only when History is mounted from the multi-modal
   /// home shell. When null (or [apiClient] is signed out) the unified
@@ -113,6 +118,7 @@ class RunsScreen extends StatefulWidget {
     required this.routeStore,
     required this.preferences,
     this.settingsSync,
+    this.social,
     this.gymStore,
     this.foodStore,
     this.showKindChips = true,
@@ -1136,6 +1142,8 @@ class _RunsScreenState extends State<RunsScreen>
           runStore: widget.runStore,
           routeStore: widget.routeStore,
           preferences: widget.preferences,
+          apiClient: widget.apiClient,
+          social: widget.social,
         ),
       ),
     );
@@ -1514,6 +1522,7 @@ class _RunsScreenState extends State<RunsScreen>
               routeStore: widget.routeStore,
               preferences: widget.preferences,
               settingsSync: widget.settingsSync,
+              social: widget.social,
               centreStartsRun: widget.centreStartsRun,
             ),
           ),

@@ -1,5 +1,5 @@
 // Finish-line detection and race timing, spec `race_finish v2` (issue #1304,
-// decisions § 2364). Pure: no clock, no I/O. Every instant is epoch
+// decisions § 2378). Pure: no clock, no I/O. Every instant is epoch
 // milliseconds handed in, so the same fixes always produce the same finish,
 // which is what re-timing a race from a saved track (#1307) relies on.
 //
@@ -147,7 +147,7 @@ function lineStart(x: GateCrossing): RaceStart {
 /**
  * Finish detection over a stream of fixes. The rules are the Dart twin's
  * (race_finish.dart's class comment carries them in full) and decisions
- * § 2364's: without any line in a gun mode it is v1's closest approach; with
+ * § 2378's: without any line in a gun mode it is v1's closest approach; with
  * lines the start is a committed start-line crossing (or GO for a runner
  * already past the line), coverage runs from it, the finish is the first
  * forward finish-line crossing that clears coverage, and with a finish line

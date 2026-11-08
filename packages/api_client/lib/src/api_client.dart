@@ -500,10 +500,16 @@ class ApiClient {
   /// the native flow issued it (iOS) or the Services-ID web flow (Android).
   /// It is handed on without being awaited: sign-in is done either way.
   /// [affirmedAgeAndTerms] as for [signInWithGoogleIdToken].
+  /// [givenName] and [familyName] are the credential's name parts, which
+  /// Apple sends only on the first authorization and never in the identity
+  /// token. They are written to the user metadata as `full_name`, where a
+  /// trigger fills a still-empty display name from them (decisions § 2365).
   Future<String> signInWithAppleIdToken({
     required String idToken,
     ({String code, bool nativeFlow})? appleCode,
     bool affirmedAgeAndTerms = false,
+    String? givenName,
+    String? familyName,
   }) async {
     final settled = affirmedAgeAndTerms ? _beginAffirmedSignIn() : null;
     try {
@@ -511,6 +517,16 @@ class ApiClient {
         provider: OAuthProvider.apple,
         idToken: idToken,
       );
+      final fullName = appleFullName(givenName, familyName);
+      if (fullName != null) {
+        try {
+          await _client.auth
+              .updateUser(UserAttributes(data: {'full_name': fullName}));
+        } catch (e) {
+          debugPrint(
+              'ApiClient.signInWithAppleIdToken name write failed: ${safeErrorLabel(e)}');
+        }
+      }
       if (appleCode != null && appleCode.code.isNotEmpty) {
         unawaited(keepAppleRevocationCredential(
           appleCode.code,
@@ -522,6 +538,17 @@ class ApiClient {
     } finally {
       settled?.complete();
     }
+  }
+
+  /// The Apple credential's name parts joined with a space, or null when
+  /// both are empty.
+  @visibleForTesting
+  static String? appleFullName(String? givenName, String? familyName) {
+    final joined = [givenName, familyName]
+        .map((p) => p?.trim() ?? '')
+        .where((p) => p.isNotEmpty)
+        .join(' ');
+    return joined.isEmpty ? null : joined;
   }
 
   Completer<void>? _affirmedSignIn;
@@ -3972,22 +3999,14 @@ class ApiClient {
     if (healthDataConsent) {
       await grantHealthDataConsent();
     }
-    final update = <String, dynamic>{
-      UserProfileRow.colPreferredUnit: preferredUnit,
-      UserProfileRow.colOnboardedAt:
-          DateTime.now().toUtc().toIso8601String(),
-    };
-    final trimmedName = displayName?.trim();
-    if (trimmedName != null && trimmedName.isNotEmpty) {
-      update[UserProfileRow.colDisplayName] = trimmedName;
-    }
-    if (dateOfBirth != null) {
-      update[UserProfileRow.colDateOfBirth] = dateOnly(dateOfBirth);
-    }
-    if (healthDataConsent) {
-      update[UserProfileRow.colGender] =
-          (gender != null && gender.isNotEmpty) ? gender : null;
-    }
+    final update = onboardingProfileUpdate(
+      displayName: displayName,
+      preferredUnit: preferredUnit,
+      dateOfBirth: dateOfBirth,
+      gender: gender,
+      healthDataConsent: healthDataConsent,
+      now: DateTime.now(),
+    );
     final updated = await _client
         .from(UserProfileRow.table)
         .update(update)
@@ -3999,6 +4018,38 @@ class ApiClient {
         ...update,
       });
     }
+  }
+
+  /// The `user_profiles` columns [completeOnboarding] writes. A
+  /// [displayName] the wizard cleared is written as null rather than left
+  /// out, so clearing the provider name the step was prefilled with
+  /// (decisions § 2365) is honoured; a null [displayName] leaves the column
+  /// alone.
+  @visibleForTesting
+  static Map<String, dynamic> onboardingProfileUpdate({
+    String? displayName,
+    required String preferredUnit,
+    DateTime? dateOfBirth,
+    String? gender,
+    required bool healthDataConsent,
+    required DateTime now,
+  }) {
+    final update = <String, dynamic>{
+      UserProfileRow.colPreferredUnit: preferredUnit,
+      UserProfileRow.colOnboardedAt: now.toUtc().toIso8601String(),
+    };
+    if (displayName != null) {
+      final trimmed = displayName.trim();
+      update[UserProfileRow.colDisplayName] = trimmed.isEmpty ? null : trimmed;
+    }
+    if (dateOfBirth != null) {
+      update[UserProfileRow.colDateOfBirth] = dateOnly(dateOfBirth);
+    }
+    if (healthDataConsent) {
+      update[UserProfileRow.colGender] =
+          (gender != null && gender.isNotEmpty) ? gender : null;
+    }
+    return update;
   }
 
   /// `YYYY-MM-DD` for a `date`-typed column. The wizard's DOB picker is a
@@ -9514,6 +9565,14 @@ class ApiClient {
     );
   }
 
+  /// Every column a client may select on `direct_messages`: `read_at`, the
+  /// recipient's own read time, is withheld by a column grant (migration
+  /// 20271113000001), so a bare `select()` is refused. Mirrors web
+  /// `DM_COLUMNS`.
+  static const String dmColumns =
+      'id, sender_id, recipient_id, body, created_at, seen_at, route_id, '
+      'unsent_at, deleted_partner_key, conversation_id';
+
   /// One page of a conversation, oldest message first. A partner thread is
   /// both directions between the viewer and the partner; a deleted-partner
   /// thread is the viewer's own messages under that partner's key, since the
@@ -9536,7 +9595,7 @@ class ApiClient {
     if (me == null) {
       return const DmThreadPage(messages: [], hasMore: false);
     }
-    var query = _client.from(DirectMessageRow.table).select();
+    var query = _client.from(DirectMessageRow.table).select(dmColumns);
     switch (target) {
       case DmPartnerThread(:final partnerId):
         final pair = [me, partnerId];
@@ -9598,7 +9657,7 @@ class ApiClient {
             DirectMessageRow.colRouteId:
                 attached == null || attached.isEmpty ? null : attached,
           })
-          .select()
+          .select(dmColumns)
           .single();
       return DirectMessageRow.fromJson(row);
     } on PostgrestException catch (e) {
@@ -9621,33 +9680,55 @@ class ApiClient {
   }
 
   /// Mark the messages [otherId] sent the viewer as read, up to and including
-  /// [through] on the thread's `(created_at, id)` order. RLS lets only the
-  /// recipient stamp `read_at`.
+  /// [through] on the thread's `(created_at, id)` order, through the
+  /// `mark_direct_messages_read` RPC (migration 20271113000001). The server
+  /// shares the read with the sender as `seen_at` only when both have read
+  /// receipts on. Mirrors web `markDmThreadRead`.
   ///
-  /// [through] is the newest message the reader has on screen. Web's
-  /// `markDmThreadRead` has no bound and stamps everything, so a reply that
-  /// lands between the read that drew the conversation and this write is
-  /// marked read without ever having been shown.
+  /// [through] is the newest message the reader has on screen, so a reply
+  /// that lands between the read that drew the conversation and this write
+  /// stays unread until it is shown.
   Future<void> markDmThreadRead(
     String otherId, {
     required DirectMessageRow through,
   }) async {
-    final me = _client.auth.currentUser?.id;
-    if (me == null) throw StateError('not signed in');
-    final at = through.createdAt.toUtc().toIso8601String();
-    await _client
-        .from(DirectMessageRow.table)
-        .update({
-          DirectMessageRow.colReadAt: DateTime.now().toUtc().toIso8601String(),
-        })
-        .eq(DirectMessageRow.colSenderId, otherId)
-        .eq(DirectMessageRow.colRecipientId, me)
-        .isFilter(DirectMessageRow.colReadAt, null)
-        .or(
-          '${DirectMessageRow.colCreatedAt}.lt."$at",'
-          'and(${DirectMessageRow.colCreatedAt}.eq."$at",'
-          '${DirectMessageRow.colId}.lte.${through.id})',
-        );
+    if (_client.auth.currentUser?.id == null) {
+      throw StateError('not signed in');
+    }
+    await _client.rpc('mark_direct_messages_read', params: {
+      'p_partner_id': otherId,
+      'p_through_message_id': through.id,
+    });
+  }
+
+  /// The viewer's read-receipts setting (`user_settings.dm_read_receipts`, a
+  /// column because the server reads it). Off: their reads are not shared and
+  /// they see no one else's. No row yet reads as the default, on. Mirrors web
+  /// `fetchMyDmReadReceipts`.
+  Future<bool> fetchMyDmReadReceipts() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return true;
+    final row = await _client
+        .from(UserSettingRow.table)
+        .select(UserSettingRow.colDmReadReceipts)
+        .eq(UserSettingRow.colUserId, viewerId)
+        .maybeSingle();
+    return row?[UserSettingRow.colDmReadReceipts] != false;
+  }
+
+  /// Turning receipts off also withdraws every receipt already shown, both
+  /// ways (a trigger does it in the same statement). Mirrors web
+  /// `setDmReadReceipts`.
+  Future<void> setDmReadReceipts(bool on) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    await _client.from(UserSettingRow.table).upsert(
+      {
+        UserSettingRow.colUserId: viewerId,
+        UserSettingRow.colDmReadReceipts: on,
+      },
+      onConflict: UserSettingRow.colUserId,
+    );
   }
 
   static String _isoDate(DateTime d) =>

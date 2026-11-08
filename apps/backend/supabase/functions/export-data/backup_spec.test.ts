@@ -379,6 +379,23 @@ Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {
 	assertEquals(received.filter, `recipient_id=eq.${TEST_UID}`);
 });
 
+Deno.test('the sent-messages export leaves out the recipient\'s read_at', () => {
+	// read_at is the recipient's own read time, withheld from the sender by a
+	// column grant (20271113000001); an export must not hand it back. seen_at is
+	// what the recipient chose to share. The received side is the subject's own
+	// read_at and keeps every column.
+	const specs = buildBackupSpecs(TEST_UID);
+	const sent = specs.find((s) => s.entry === 'direct_messages_sent.json');
+	const received = specs.find((s) => s.entry === 'direct_messages_received.json');
+	assertExists(sent);
+	assertExists(received);
+	const cols = sent.select.split(',');
+	assertEquals(cols.includes('read_at'), false);
+	assertEquals(cols.includes('seen_at'), true);
+	assertEquals(cols.includes('body'), true);
+	assertEquals(received.select, '*');
+});
+
 Deno.test('coach_athletes exported both ways without the invite_token credential', () => {
 	// audit/data-export-completeness (2026-05-30) Critical. The
 	// subject's coaching links (as coach and as athlete) are their own

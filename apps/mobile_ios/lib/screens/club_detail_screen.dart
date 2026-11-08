@@ -21,12 +21,14 @@ import '../local_route_store.dart';
 import '../local_routine_store.dart';
 import '../plan_overlap.dart';
 import '../preferences.dart';
+import '../runner_handle.dart';
 import '../social_service.dart';
 import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/activity_waiver_dialog.dart';
 import '../widgets/club_form_sheet.dart';
+import '../widgets/club_invite_card.dart';
 import '../widgets/club_photos.dart';
 import '../widgets/collapsing_tab_host.dart';
 import '../widgets/confirm_destructive.dart';
@@ -79,6 +81,9 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   List<ClubMemberView> _pending = const [];
   final Set<String> _pendingBusy = {};
   List<ClubMemberView> _members = const [];
+  /// Whether the signed-in member has no display name, so the Members tab
+  /// can tell them how others see them (decisions § 2365).
+  bool _viewerUnnamed = false;
   List<Object?>? _membersNext;
   bool _membersLoading = true;
   bool _membersLoadingMore = false;
@@ -146,6 +151,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
         _loading = false;
       });
       unawaited(_loadMembers());
+      if (club.isMember) unawaited(_checkViewerName());
       if (_channel == null) {
         _channel = widget.social.subscribeToClub(club.row.id, _onRealtimeChange);
       }
@@ -258,7 +264,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       context,
       title: l10n.clubDetailRemoveMemberTitle,
       body: l10n.clubDetailRemoveMemberBody(
-        m.displayName ?? l10n.clubDetailMemberFallback,
+        _shownName(l10n, m.displayName, m.userId),
         c.row.name,
       ),
       confirmLabel: l10n.clubDetailRemoveMemberConfirm,
@@ -519,6 +525,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
           ],
         ),
         actions: [
+          if (c.isAdmin)
+            ClubInviteButton(social: widget.social, club: c)
+          else if (canShareClub(c))
+            ClubShareButton(club: c),
           if (c.isAdmin)
             IconButton(
               tooltip: AppLocalizations.of(context).clubDetailEditClub,
@@ -781,7 +791,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             Text(
               AppLocalizations.of(context).clubDetailNextEvent,
               style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
+                color: theme.colorScheme.onPrimaryContainer,
                 letterSpacing: 0.8,
                 fontWeight: FontWeight.w700,
               ),
@@ -797,7 +807,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             Row(
               children: [
                 Icon(Icons.calendar_today, size: 14,
-                    color: theme.colorScheme.outline),
+                    color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
@@ -809,7 +819,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                 ),
                 const SizedBox(width: 12),
                 Icon(Icons.group, size: 14,
-                    color: theme.colorScheme.outline),
+                    color: theme.colorScheme.onSurfaceVariant),
                 const SizedBox(width: 4),
                 Text(
                   AppLocalizations.of(context)
@@ -874,7 +884,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
             children: [
               IdentityAvatar(
                   seed: p.row.authorId,
-                  name: p.authorName,
+                  name: _shownName(l10n, p.authorName, p.row.authorId),
                   imageUrl: p.authorAvatarUrl,
                   size: 32,
                   fontSize: 14),
@@ -884,7 +894,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      p.authorName ?? l10n.clubDetailMemberFallback,
+                      _shownName(l10n, p.authorName, p.row.authorId),
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     Text(
@@ -954,7 +964,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                             children: [
                               Text(
                                 l10n.clubDetailReplyAuthorLine(
-                                    r.authorName ?? l10n.clubDetailMemberFallback,
+                                    _shownName(l10n, r.authorName, r.row.authorId),
                                     fmtRelative(
                                         r.row.createdAt ?? DateTime.now(),
                                         localeToTag(Localizations.localeOf(context)))),
@@ -1239,6 +1249,20 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     }
   }
 
+  /// L4: a failed profile read only leaves the hint hidden.
+  Future<void> _checkViewerName() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final profile = await api.fetchMyProfile();
+      if (!mounted) return;
+      setState(() => _viewerUnnamed =
+          profile != null && _namedOrNull(profile.displayName) == null);
+    } catch (e) {
+      debugPrint('ClubDetailScreen._checkViewerName failed: $e');
+    }
+  }
+
   Widget _buildMembersTab(ThemeData theme, ClubView c) {
     final l10n = AppLocalizations.of(context);
     return RefreshIndicator(
@@ -1247,6 +1271,18 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
+          if (c.isMember && _viewerUnnamed) ...[
+            Card(
+              key: const Key('club-name-hint'),
+              child: ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text(l10n.clubDetailNameHint(_shownName(
+                    l10n, null, widget.social.currentUserId ?? ''))),
+                subtitle: Text(l10n.clubDetailNameHintAction),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (c.isAdmin && _pending.isNotEmpty) ...[
             Text(
               l10n.clubDetailPendingRequests(_pending.length),
@@ -1261,7 +1297,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                     children: [
                       IdentityAvatar(
                         seed: m.userId,
-                        name: m.displayName,
+                        name: _shownName(l10n, m.displayName, m.userId),
                         imageUrl: m.avatarUrl,
                         size: 32,
                         fontSize: 14,
@@ -1269,7 +1305,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          m.displayName ?? l10n.clubDetailMemberFallback,
+                          _shownName(l10n, m.displayName, m.userId),
                           style: theme.textTheme.bodyMedium,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1381,13 +1417,13 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
           : () => _openMemberProfile(m.userId),
       leading: IdentityAvatar(
         seed: m.userId,
-        name: m.displayName,
+        name: _shownName(l10n, m.displayName, m.userId),
         imageUrl: m.avatarUrl,
         size: 36,
         fontSize: 15,
       ),
       title: Text(
-        m.displayName ?? l10n.clubDetailMemberFallback,
+        _shownName(l10n, m.displayName, m.userId),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -2022,3 +2058,22 @@ class _ClubDescription extends StatelessWidget {
     );
   }
 }
+
+/// A member with no display name is shown as their runner handle rather than
+/// an indistinguishable "Member" (decisions § 2365). Twin of the web club
+/// pages' `shownName`.
+/// A display name others can read, or null when it is absent or blank: the one
+/// rule the roster and the viewer's own name hint share, so a whitespace name
+/// is never shown as a blank row while the hint promises the runner handle.
+String? _namedOrNull(String? displayName) {
+  final trimmed = displayName?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+String _shownName(AppLocalizations l10n, String? displayName, String userId) =>
+    _namedOrNull(displayName) ??
+    runnerHandle(
+      userId,
+      handle: (slug) => l10n.liveRunnerHandle(slug),
+      anonymous: l10n.liveRunnerAnonymous,
+    );

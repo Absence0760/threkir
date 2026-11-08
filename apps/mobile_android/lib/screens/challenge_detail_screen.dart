@@ -282,13 +282,13 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
       Text(byTeam ? l10n.challengesStandingTitleTeam : l10n.challengesStandingTitle,
           style: const TextStyle(fontWeight: FontWeight.w700)),
       Text(l10n.challengesStandingRank(s.rank, s.total),
-          style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+          style: TextStyle(fontWeight: FontWeight.w700, color: scheme.onPrimaryContainer)),
       if (s.tiedWith > 0)
         Text(
           s.tiedWith == 1
               ? l10n.challengesStandingTiedOne
               : l10n.challengesStandingTiedMany(s.tiedWith),
-          style: TextStyle(color: Theme.of(context).hintColor),
+          style: TextStyle(color: scheme.onSurfaceVariant),
         ),
       if (s.chasing != null)
         Text(
@@ -296,7 +296,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
             challengeValueLabel(l10n, c.metric, s.chasing!.delta),
             _entrantName(s.chasing!.entry, byTeam),
           ),
-          style: TextStyle(color: Theme.of(context).hintColor),
+          style: TextStyle(color: scheme.onSurfaceVariant),
         )
       else if (s.tiedWith == 0)
         Text(l10n.challengesStandingLeading,
@@ -307,7 +307,7 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
             challengeValueLabel(l10n, c.metric, s.chasedBy!.delta),
             _entrantName(s.chasedBy!.entry, byTeam),
           ),
-          style: TextStyle(color: Theme.of(context).hintColor),
+          style: TextStyle(color: scheme.onSurfaceVariant),
         ),
     ];
     return Container(

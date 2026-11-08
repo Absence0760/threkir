@@ -119,7 +119,7 @@
 		upcomingRaceIso,
 	} from '#lib/training/plan_restart.ts';
 	import { shiftIsoDate } from '#lib/training/plan_bulk_ops.ts';
-	import { currentPlanWeekIndex } from '#lib/training/plan_week.ts';
+	import { currentPlanWeekIndex, foldedPlanWeekCount } from '#lib/training/plan_week.ts';
 	import {
 		orderedPlanPhases,
 		longestCompletedLongRunMetres,
@@ -1672,6 +1672,27 @@
 	let totalActive = $derived(progress.total);
 	let pct = $derived(progress.pct);
 
+	let foldedWeeks = $derived(
+		plan ? foldedPlanWeekCount(plan.start_date, plan.end_date, today, weeks.length) : 0
+	);
+	let showEarlierWeeks = $state(false);
+	let earlierWeeksProgress = $derived(
+		planWorkoutProgress(
+			weeks
+				.filter((w) => w.week_index < foldedWeeks)
+				.flatMap((w) => workoutsByWeek.get(w.id) ?? [])
+		)
+	);
+
+	async function goToCurrentWeek(): Promise<void> {
+		setDisclosure('weeks', true);
+		await tick();
+		const el = document.getElementById('plan-week-current');
+		if (!el) return;
+		el.scrollIntoView({ block: 'start' });
+		el.focus({ preventScroll: true });
+	}
+
 	let currentWeek = $derived(
 		currentWeekIndex != null ? (weeks[currentWeekIndex] ?? null) : null
 	);
@@ -1999,9 +2020,15 @@
 			<div class="hero-position">
 				{#if planPosition}
 					{#if today >= plan.start_date}
-						<span class="week-pill" data-testid="week-pill">
+						<button
+							type="button"
+							class="week-pill"
+							data-testid="week-pill"
+							title={m('planDetail.goToThisWeek')}
+							onclick={goToCurrentWeek}
+						>
 							{m('planDetail.weekPillPrefix', { n: planPosition.weekIndex })} <em>{m('planDetail.weekPillOf', { total: planPosition.totalWeeks })}</em>
-						</span>
+						</button>
 					{/if}
 					<span
 						class="relation-pill"
@@ -2458,7 +2485,27 @@
 			ontoggle={(o) => setDisclosure('weeks', o)}
 			sectionClass="weeks"
 		>
-			{#each weeks as w (w.id)}
+			{#if foldedWeeks > 0}
+				<button
+					type="button"
+					class="earlier-weeks"
+					data-testid="plan-earlier-weeks"
+					aria-expanded={showEarlierWeeks}
+					onclick={() => (showEarlierWeeks = !showEarlierWeeks)}
+				>
+					<span class="earlier-weeks-label">{m('planDetail.earlierWeeks', { n: foldedWeeks })}</span>
+					<span class="week-progress">
+						{earlierWeeksProgress.completed}<em> / {earlierWeeksProgress.total}</em> {m('planDetail.done')}
+					</span>
+					<span class="material-symbols earlier-weeks-chevron" aria-hidden="true"
+						>{showEarlierWeeks ? 'expand_less' : 'expand_more'}</span
+					>
+					<span class="visually-hidden"
+						>{showEarlierWeeks ? m('planDetail.hideEarlierWeeks') : m('planDetail.showEarlierWeeks')}</span
+					>
+				</button>
+			{/if}
+			{#each weeks.filter((w) => showEarlierWeeks || w.week_index >= foldedWeeks) as w (w.id)}
 				{@const weekWorkouts = workoutsByWeek.get(w.id) ?? []}
 				{@const weekProgress = planWorkoutProgress(weekWorkouts)}
 				{@const weekActive = weekProgress.total}
@@ -2468,6 +2515,9 @@
 				{@const weekNote = planWeekNote(w.notes, w.phase, weekWorkouts)}
 				<article
 					class="week"
+					id={w.week_index === currentWeekIndex ? 'plan-week-current' : undefined}
+					tabindex={w.week_index === currentWeekIndex ? -1 : undefined}
+					data-testid="plan-week"
 					class:current={w.week_index === currentWeekIndex}
 					class:past={isPast}
 					class:future={isFuture}
@@ -3267,10 +3317,22 @@
 		min-width: 9rem;
 	}
 	.week-pill {
+		font: inherit;
 		font-size: 1.05rem;
 		font-weight: 700;
 		color: var(--color-text);
 		font-variant-numeric: tabular-nums;
+		background: none;
+		border: none;
+		padding: 0;
+		min-height: 2.75rem;
+		cursor: pointer;
+		text-align: end;
+		text-decoration: underline dotted var(--color-text-tertiary);
+		text-underline-offset: 0.25em;
+	}
+	.week-pill:hover {
+		color: var(--color-primary);
 	}
 	.week-pill em {
 		font-style: normal;
@@ -3771,6 +3833,40 @@
 	.week.current {
 		box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 35%, transparent);
 		opacity: 1;
+		scroll-margin-top: var(--space-xl);
+	}
+	.week.current:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.earlier-weeks {
+		display: flex;
+		align-items: center;
+		gap: var(--space-md);
+		width: 100%;
+		min-height: 2.75rem;
+		margin-bottom: var(--space-sm);
+		padding: var(--space-sm) var(--space-md);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		color: inherit;
+		font: inherit;
+		text-align: start;
+		cursor: pointer;
+		font-variant-numeric: tabular-nums;
+	}
+	.earlier-weeks:hover {
+		border-color: var(--color-primary);
+	}
+	.earlier-weeks-label {
+		font-weight: 700;
+		flex: 1;
+		min-width: 0;
+	}
+	.earlier-weeks-chevron {
+		color: var(--color-text-tertiary);
+		font-size: 1.25rem;
 	}
 	.week-header {
 		display: flex;
@@ -3834,7 +3930,7 @@
 		}
 	}
 	.day {
-		--day-line: var(--wo-border, var(--color-border));
+		--day-line: var(--wo-border, transparent);
 		display: flex;
 		flex-direction: column;
 		gap: 0.15rem;

@@ -1,10 +1,7 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SelectionHint;
@@ -17,11 +14,7 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../official_distance.dart';
 import '../preferences.dart';
-import '../shared_file_import.dart'
-    show
-        kRouteImportPickerExtensions,
-        routeTextFromImportedBytes,
-        routesFromImportedFile;
+import '../route_file_import.dart';
 import '../social_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
@@ -701,71 +694,9 @@ class RoutesScreenState extends State<RoutesScreen> {
     if (_fabBusy) return;
     setState(() => _fabBusy = true);
     try {
-      await _pickAndImport();
+      await pickAndImportRouteFile(context, widget.routeStore);
     } finally {
       if (mounted) setState(() => _fabBusy = false);
-    }
-  }
-
-  Future<void> _pickAndImport() async {
-    try {
-      // Inside the try: the picker throws a PlatformException when the OS
-      // refuses it (no document provider, one already open), and outside it
-      // that reached the zone as an unhandled error with nothing shown.
-      final result = await FilePicker.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: kRouteImportPickerExtensions,
-      );
-      if (result == null || result.files.isEmpty) return;
-      // path can be null when the picker hands back a content URI it
-      // couldn't resolve to a real file (Drive / OneDrive document
-      // providers do this). readAsString may also throw on permission
-      // errors or if the user revokes access mid-read — both stay
-      // inside the try so the snackbar handles them, not an uncaught
-      // unhandled-async-error crash.
-      final path = result.files.first.path;
-      if (path == null) {
-        if (mounted) {
-          showTopBanner(context,
-              AppLocalizations.of(context).routesImportFailedLocalOnly);
-        }
-        return;
-      }
-      final ext = result.files.first.extension?.toLowerCase();
-      // BYTES, not text: a KMZ is a zip and `readAsString` throws on one
-      // before any dispatch is reached (decisions § 1025).
-      final bytes = await File(path).readAsBytes();
-      final routes =
-          await compute(_parseRouteFile, _RouteParseRequest(ext, bytes));
-      // A route needs two points to have a line, a distance, or a map. Saving
-      // a degenerate one and reporting success is how a silently-dropped
-      // track became "Route imported!".
-      final usable =
-          routes.where((r) => r.waypoints.length >= 2).toList(growable: false);
-      if (usable.isEmpty) {
-        if (mounted) {
-          showTopBanner(
-              context, AppLocalizations.of(context).routesImportNoTrack);
-        }
-        return;
-      }
-      for (final route in usable) {
-        await widget.routeStore.save(route);
-      }
-      if (mounted) {
-        final l10n = AppLocalizations.of(context);
-        showTopBanner(
-            context,
-            usable.length == 1
-                ? l10n.routesImported(usable.first.name)
-                : l10n.routesImportedMany(usable.length));
-      }
-    } catch (e) {
-      debugPrint('routes import failed: $e');
-      if (mounted) {
-        showTopBanner(
-            context, AppLocalizations.of(context).routesImportFailed(friendlyError(AppLocalizations.of(context), e)));
-      }
     }
   }
 
@@ -1428,24 +1359,6 @@ String routeStatsLine(cm.Route route, cm.DistanceUnit unit) {
   String glued(String s) => s.replaceAll(' ', '\u00A0');
   return '${glued(UnitFormat.distance(_shownM(route), unit))}'
       '  •  ${glued('${UnitFormat.elevation(route.elevationGainMetres, unit)} ↑')}';
-}
-
-class _RouteParseRequest {
-  final String? ext;
-  final Uint8List bytes;
-  const _RouteParseRequest(this.ext, this.bytes);
-}
-
-List<cm.Route> _parseRouteFile(_RouteParseRequest req) {
-  // Resolved rather than inferred from the extension alone: this path used to
-  // read `ext == 'kml' ? 'kml' : 'gpx'`, a third dispatch that could name only
-  // two of the four formats and parsed everything else as GPX. The KMZ unwrap
-  // runs here too, in the isolate, for the same reason the parse does.
-  final decoded =
-      routeTextFromImportedBytes(extension: req.ext, bytes: req.bytes);
-  if (decoded == null) return const <cm.Route>[];
-  return routesFromImportedFile(
-      format: decoded.format, content: decoded.content);
 }
 
 /// Filter toolbar for the routes list. Stateless — every change goes

@@ -2,6 +2,7 @@ import type { Browser, Page } from '@playwright/test';
 import { expect, test } from '../fixtures/test';
 
 import { browserDate } from '../fixtures/dates';
+import { showAllPlanWeeks } from '../fixtures/helpers';
 import { readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
@@ -192,6 +193,7 @@ test.describe('repeating a plan week', () => {
 		await expect(page.getByRole('heading', { level: 1, name: 'e2e repeat race' })).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByTestId('repeat-week-offer')).toHaveCount(0);
 
+		await showAllPlanWeeks(page);
 		const lastWeek = page.locator('article.week').nth(3);
 		await expect(page.locator('article.week').nth(2).getByTestId('repeat-week-btn')).toHaveCount(0);
 		await lastWeek.getByTestId('repeat-week-btn').click();

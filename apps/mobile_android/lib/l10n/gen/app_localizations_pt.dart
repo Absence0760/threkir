@@ -2052,6 +2052,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runStatAvgPace => 'Ritmo médio';
 
   @override
+  String get runStoppedChip => 'Parado';
+
+  @override
   String get runStatAvgSpeed => 'Veloc. média';
 
   @override
@@ -2371,6 +2374,30 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get runGpsPermissionPending =>
       'Sem GPS — o rastreio começará quando a permissão for concedida.';
+
+  @override
+  String get runNoGpsStartTitle => 'Começar sem GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'A localização está desligada neste telemóvel, por isso esta corrida só registaria o tempo — sem percurso, distância nem ritmo.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'O acesso à localização está desligado para esta app, por isso esta corrida só registaria o tempo — sem percurso, distância nem ritmo.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Registar só o tempo';
+
+  @override
+  String get runNoDistanceTitle => 'Nenhuma distância registada';
+
+  @override
+  String get runNoDistanceBody =>
+      'Esta corrida não obteve sinal GPS nem distância por passos. Guardá-la só com o tempo ou descartá-la?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Guardar só o tempo';
 
   @override
   String get runBackgroundLocationPaused =>
@@ -2892,6 +2919,12 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get addRunNoRoutes =>
       'Ainda não há rotas guardadas — crie ou importe uma para anexá-la aqui';
+
+  @override
+  String get addRunBuildRoute => 'Criar uma rota';
+
+  @override
+  String get addRunImportRoute => 'Importar um ficheiro';
 
   @override
   String get addRunDistanceInvalid => 'Insira uma distância maior que 0';
@@ -5572,7 +5605,13 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Membro';
+  String clubDetailNameHint(String handle) {
+    return 'Aparece aos membros do clube como $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'Pode adicionar o seu nome nas definições da conta.';
 
   @override
   String get clubRoleOwner => 'Proprietário';
@@ -5957,9 +5996,6 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventNoRsvps => 'Nenhuma confirmação ainda — seja o primeiro.';
-
-  @override
-  String get eventAttendeeMember => 'Membro';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -14580,6 +14616,59 @@ class AppLocalizationsPt extends AppLocalizations {
   String get challengeInviteSharePage => 'Partilhar a página do desafio';
 
   @override
+  String get clubInviteLinkTitle => 'Link de convite';
+
+  @override
+  String get clubInviteBodyInvite => 'Só quem tiver esta ligação pode aderir.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Quem tiver esta ligação adere de imediato, sem esperar por aprovação.';
+
+  @override
+  String get clubInviteBodyOpen =>
+      'Qualquer pessoa com esta ligação pode aderir.';
+
+  @override
+  String get clubInviteGenerate => 'Criar ligação de convite';
+
+  @override
+  String get clubInviteShare => 'Partilhar link';
+
+  @override
+  String get clubInviteCopy => 'Copiar link';
+
+  @override
+  String get clubInviteCopied => 'Ligação de convite copiada';
+
+  @override
+  String get clubInviteCopyFailed => 'Não foi possível copiar o link.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'Não foi possível carregar o link de convite.';
+
+  @override
+  String get clubInviteRotate => 'Repor link';
+
+  @override
+  String get clubInviteRotateTitle => 'Repor o link de convite?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'O link atual deixa de funcionar de imediato. Quem já entrou continua no clube.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Não foi possível atualizar a ligação de convite. Tente novamente.';
+
+  @override
+  String get clubShareClub => 'Partilhar clube';
+
+  @override
+  String get clubShareLinkCopied => 'Ligação do clube copiada';
+
+  @override
   String get challengesLeaderboardEmpty => 'Nenhum progresso registado ainda.';
 
   @override
@@ -17728,6 +17817,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'Envio da mensagem anulado';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Vista $time';
+  }
+
+  @override
   String get messagesUnsend => 'Anular envio';
 
   @override
@@ -18620,6 +18714,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
+
+  @override
+  String get planDetailGoToThisWeek => 'Ir para esta semana';
 
   @override
   String get planNewStartingPoint => 'De onde está a partir?';
@@ -19717,6 +19814,17 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'Coach de IA nas Mensagens';
+
+  @override
+  String get prefsReadReceipts => 'Confirmações de leitura';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Mostra às outras pessoas quando leu as mensagens delas. Se desativar, também não verá quando leram as suas.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'Não foi possível alterar as confirmações de leitura.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Fixado no topo';
@@ -22282,6 +22390,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runStatAvgPace => 'Ritmo médio';
 
   @override
+  String get runStoppedChip => 'Parado';
+
+  @override
   String get runStatAvgSpeed => 'Veloc. média';
 
   @override
@@ -22600,6 +22711,30 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runGpsPermissionPending =>
       'Sem GPS — o rastreamento começará quando a permissão for concedida.';
+
+  @override
+  String get runNoGpsStartTitle => 'Começar sem GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'A localização está desativada neste celular, então esta corrida só registraria o tempo — sem trajeto, distância nem ritmo.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'O acesso à localização está desativado para este app, então esta corrida só registraria o tempo — sem trajeto, distância nem ritmo.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Registrar só o tempo';
+
+  @override
+  String get runNoDistanceTitle => 'Nenhuma distância registrada';
+
+  @override
+  String get runNoDistanceBody =>
+      'Esta corrida não obteve sinal de GPS nem distância por passos. Salvá-la só com o tempo ou descartá-la?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Salvar só o tempo';
 
   @override
   String get runBackgroundLocationPaused =>
@@ -23122,6 +23257,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get addRunNoRoutes =>
       'Ainda não há rotas salvas — crie ou importe uma para anexá-la aqui';
+
+  @override
+  String get addRunBuildRoute => 'Criar uma rota';
+
+  @override
+  String get addRunImportRoute => 'Importar um arquivo';
 
   @override
   String get addRunDistanceInvalid => 'Insira uma distância maior que 0';
@@ -25802,7 +25943,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Membro';
+  String clubDetailNameHint(String handle) {
+    return 'Você aparece para os membros do clube como $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'Você pode adicionar seu nome nas configurações da conta.';
 
   @override
   String get clubRoleOwner => 'Proprietário';
@@ -26186,9 +26333,6 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventNoRsvps => 'Nenhuma confirmação ainda — seja o primeiro.';
-
-  @override
-  String get eventAttendeeMember => 'Membro';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -34800,6 +34944,58 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get challengeInviteSharePage => 'Compartilhar a página do desafio';
 
   @override
+  String get clubInviteLinkTitle => 'Link de convite';
+
+  @override
+  String get clubInviteBodyInvite => 'Só quem tiver este link pode entrar.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Quem tiver este link entra na hora, sem esperar aprovação.';
+
+  @override
+  String get clubInviteBodyOpen => 'Qualquer pessoa com este link pode entrar.';
+
+  @override
+  String get clubInviteGenerate => 'Criar link de convite';
+
+  @override
+  String get clubInviteShare => 'Compartilhar link';
+
+  @override
+  String get clubInviteCopy => 'Copiar link';
+
+  @override
+  String get clubInviteCopied => 'Link de convite copiado';
+
+  @override
+  String get clubInviteCopyFailed => 'Não foi possível copiar o link.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'Não foi possível carregar o link de convite.';
+
+  @override
+  String get clubInviteRotate => 'Redefinir link';
+
+  @override
+  String get clubInviteRotateTitle => 'Redefinir o link de convite?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'O link atual deixa de funcionar na hora. Quem já entrou continua no clube.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Não foi possível atualizar o link de convite. Tente de novo.';
+
+  @override
+  String get clubShareClub => 'Compartilhar clube';
+
+  @override
+  String get clubShareLinkCopied => 'Link do clube copiado';
+
+  @override
   String get challengesLeaderboardEmpty => 'Nenhum progresso registrado ainda.';
 
   @override
@@ -37946,6 +38142,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get messagesUnsentPlaceholder => 'Mensagem removida';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Vista $time';
+  }
+
+  @override
   String get messagesUnsend => 'Desfazer envio';
 
   @override
@@ -38836,6 +39037,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
+
+  @override
+  String get planDetailGoToThisWeek => 'Ir para esta semana';
 
   @override
   String get planNewStartingPoint => 'De onde você está começando?';
@@ -39931,6 +40135,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsCoachInMessages => 'Coach de IA em Mensagens';
+
+  @override
+  String get prefsReadReceipts => 'Confirmações de leitura';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Mostra às pessoas quando você leu as mensagens delas. Se desativar, você também não verá quando elas leram as suas.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'Não foi possível alterar as confirmações de leitura.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Fixado no topo';

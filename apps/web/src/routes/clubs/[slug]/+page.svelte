@@ -13,6 +13,7 @@
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
+	import { runnerHandle } from '#lib/social/runner_handle.ts';
 	import { page } from '$app/state';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { PUBLIC_SITE_URL } from '$app/env/public';
@@ -182,6 +183,19 @@
 	// admin rights — the DB RLS (is_event_organiser) already permits it.
 	let canManageEvents = $derived(isAdmin || club?.viewer_role === 'event_organiser');
 	let isMember = $derived(club?.viewer_role != null);
+
+	// A member with no display name is shown as their runnerHandle rather than
+	// a "Member" that made several unnamed people indistinguishable
+	// (decisions § 2365).
+	function shownName(name: string | null | undefined, userId: string): string {
+		return (
+			name ??
+			runnerHandle(userId, {
+				handle: (slug) => tr('live.runnerHandle', { slug }),
+				anonymous: tr('live.runnerAnonymous'),
+			})
+		);
+	}
 
 	// `target` is passed explicitly through the id → slug forward below rather
 	// than re-read from the reactive `slug`: after `goto` resolves, the derived
@@ -662,21 +676,73 @@
 		}
 	}
 
-	async function copyInvite() {
+	// A public share link only for a club anon can read: /share/club/[slug]
+	// renders nothing for a private or moderation-hidden club, so handing
+	// that link out would only send people to a dead end.
+	let canShareClub = $derived(!!club && club.is_public && !club.shadow_hidden);
+	let inviteBusy = $state(false);
+
+	function inviteUrl(token: string): string {
+		return `${location.origin}/clubs/join/${encodeURIComponent(token)}`;
+	}
+
+	async function copyLink(url: string, copiedMessage: string) {
+		try {
+			await navigator.clipboard.writeText(url);
+			showToast(copiedMessage, 'success');
+		} catch (e) {
+			console.error('club link copy failed', e);
+			showToast(tr('clubHome.copyFailed'), 'error');
+		}
+	}
+
+	async function shareLink(url: string, title: string, copiedMessage: string) {
+		if (typeof navigator.share === 'function') {
+			try {
+				await navigator.share({ title, url });
+				return;
+			} catch (e) {
+				if (e instanceof DOMException && e.name === 'AbortError') return;
+				console.warn('club share sheet failed, copying instead', e);
+			}
+		}
+		await copyLink(url, copiedMessage);
+	}
+
+	function copyInvite() {
 		if (!club?.invite_token) return;
-		const link = `${location.origin}/clubs/join/${club.invite_token}`;
-		await navigator.clipboard.writeText(link);
-		error = tr('clubHome.inviteCopied');
+		void copyLink(inviteUrl(club.invite_token), tr('clubHome.inviteCopied'));
+	}
+
+	function shareInvite() {
+		if (!club?.invite_token) return;
+		void shareLink(inviteUrl(club.invite_token), club.name, tr('clubHome.inviteCopied'));
+	}
+
+	function shareClub() {
+		if (!club || !canShareClub) return;
+		void shareLink(
+			buildClubShareCanonical(location.origin, club.slug),
+			club.name,
+			tr('clubHome.shareLinkCopied')
+		);
 	}
 
 	function regenerateInvite() {
 		if (!club) return;
-		showRegenConfirm = true;
+		// Only replacing a live link breaks anything; minting the first one does not.
+		if (club.invite_token) showRegenConfirm = true;
+		else void writeInviteToken();
 	}
 
-	async function confirmRegenerate() {
-		if (!club) return;
+	function confirmRegenerate() {
 		showRegenConfirm = false;
+		void writeInviteToken();
+	}
+
+	async function writeInviteToken() {
+		if (!club || inviteBusy) return;
+		inviteBusy = true;
 		try {
 			const token = await regenerateInviteToken(club.id);
 			club = { ...club, invite_token: token };
@@ -685,6 +751,8 @@
 				tr('clubHome.regenerateFailed', { error: errorCopy(e, tr, 'clubHome.regenerateFailed') }),
 				'error'
 			);
+		} finally {
+			inviteBusy = false;
 		}
 	}
 
@@ -1018,6 +1086,12 @@
 						{tr('clubHome.editClub')}
 					</button>
 				{/if}
+				{#if canShareClub}
+					<button class="btn-secondary" type="button" onclick={shareClub} data-testid="club-share">
+						<span class="material-symbols" aria-hidden="true">share</span>
+						{tr('clubHome.shareClub')}
+					</button>
+				{/if}
 				{#if !isAdmin && auth.loggedIn}
 					<button
 						class="btn-secondary btn-icon-only"
@@ -1036,27 +1110,40 @@
 			<p class="error" role="alert">{error}</p>
 		{/if}
 
-		{#if isAdmin && (club.join_policy === 'invite' || club.invite_token)}
-			<section class="admin-card">
+		{#if isAdmin}
+			<section class="admin-card" data-testid="club-invite-card">
 				<div class="admin-card-title">
 					<span class="material-symbols" aria-hidden="true">link</span>
 					<strong>{tr('clubHome.inviteLink')}</strong>
 					<span class="policy-chip">{joinPolicyLabel(club.join_policy)}</span>
 				</div>
+				<p class="invite-body">
+					{club.join_policy === 'invite'
+						? tr('clubHome.inviteBodyInvite')
+						: club.join_policy === 'request'
+							? tr('clubHome.inviteBodyRequest')
+							: tr('clubHome.inviteBodyOpen')}
+				</p>
 				{#if club.invite_token}
 					<div class="invite-row">
-						<code class="invite-link">{location.origin}/clubs/join/{club.invite_token}</code>
+						<code class="invite-link">{inviteUrl(club.invite_token)}</code>
 						<button class="btn-ghost" onclick={copyInvite}>
 							<span class="material-symbols" aria-hidden="true">content_copy</span>
 							{tr('clubHome.copy')}
 						</button>
-						<button class="btn-ghost" onclick={regenerateInvite}>
+						<button class="btn-ghost" onclick={shareInvite}>
+							<span class="material-symbols" aria-hidden="true">share</span>
+							{tr('clubHome.share')}
+						</button>
+						<button class="btn-ghost" onclick={regenerateInvite} disabled={inviteBusy}>
 							<span class="material-symbols" aria-hidden="true">refresh</span>
 							{tr('clubHome.rotate')}
 						</button>
 					</div>
 				{:else}
-					<button class="btn-secondary" onclick={regenerateInvite}>{tr('clubHome.generateInviteLink')}</button>
+					<button class="btn-secondary" onclick={regenerateInvite} disabled={inviteBusy}>
+						{tr('clubHome.generateInviteLink')}
+					</button>
 				{/if}
 			</section>
 		{/if}
@@ -1090,9 +1177,9 @@
 				<div class="pending-list">
 					{#each pending as p (p.user_id)}
 						<div class="pending-row">
-							<Avatar url={p.avatar_url} name={p.display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(p.user_id)} />
+							<Avatar url={p.avatar_url} name={shownName(p.display_name, p.user_id)} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(p.user_id)} />
 							<div class="pending-info">
-								<strong>{p.display_name ?? tr('clubHome.memberFallback')}</strong>
+								<strong>{shownName(p.display_name, p.user_id)}</strong>
 								<span class="when">{tr('clubHome.requestedRelative', { time: fmtRelative(p.joined_at ?? new Date().toISOString()) })}</span>
 							</div>
 							<button class="btn-primary btn-sm" onclick={() => approve(p.user_id)} disabled={pendingBusy.has(p.user_id)}>{tr('clubHome.approve')}</button>
@@ -1101,6 +1188,16 @@
 					{/each}
 				</div>
 			</section>
+		{/if}
+
+		{#if isMember && auth.user && !auth.user.display_name}
+			<aside class="name-hint" data-testid="club-name-hint">
+				<span class="material-symbols" aria-hidden="true">info</span>
+				<p>
+					{tr('clubHome.nameHint', { handle: shownName(null, auth.user.id) })}
+					<a href="/settings/account">{tr('clubHome.nameHintAction')}</a>
+				</p>
+			</aside>
 		{/if}
 
 		<!-- tabindex=-1: keydown bubbles here from the focused tab; the tabs
@@ -1241,9 +1338,9 @@
 						<article class="post">
 							<div class="post-author">
 								<a href="/u/{post.author_id}" class="author-link">
-									<Avatar url={post.author_avatar_url} name={post.author_display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(post.author_id)} />
+									<Avatar url={post.author_avatar_url} name={shownName(post.author_display_name, post.author_id)} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(post.author_id)} />
 									<div>
-										<strong>{post.author_display_name ?? tr('clubHome.memberFallback')}</strong>
+										<strong>{shownName(post.author_display_name, post.author_id)}</strong>
 										<span class="when">{fmtRelative(post.created_at ?? new Date().toISOString())}</span>
 									</div>
 								</a>
@@ -1286,11 +1383,11 @@
 												<!-- Redundant image link for the same destination as the
 												     author-name link below (WCAG technique H2). See RunSocial. -->
 												<a href="/u/{reply.author_id}" class="reply-author-link" tabindex="-1" aria-hidden="true">
-													<Avatar url={reply.author_avatar_url} name={reply.author_display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(reply.author_id)} />
+													<Avatar url={reply.author_avatar_url} name={shownName(reply.author_display_name, reply.author_id)} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(reply.author_id)} />
 												</a>
 												<div class="reply-body">
 													<div class="reply-head">
-														<a href="/u/{reply.author_id}" class="author-link"><strong>{reply.author_display_name ?? tr('clubHome.memberFallback')}</strong></a>
+														<a href="/u/{reply.author_id}" class="author-link"><strong>{shownName(reply.author_display_name, reply.author_id)}</strong></a>
 														<span class="when">{fmtRelative(reply.created_at ?? new Date().toISOString())}</span>
 													</div>
 													<p>{reply.body}</p>
@@ -1665,9 +1762,9 @@
 					{#each members as m (m.user_id)}
 						<div class="member">
 							<a href="/u/{m.user_id}" class="member-link">
-								<Avatar url={m.avatar_url} name={m.display_name} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(m.user_id)} />
+								<Avatar url={m.avatar_url} name={shownName(m.display_name, m.user_id)} size="2.1rem" font="0.9rem" bg="seed" seedHue={hashHue(m.user_id)} />
 								<div class="member-name">
-									<strong>{m.display_name ?? tr('clubHome.memberFallback')}</strong>
+									<strong>{shownName(m.display_name, m.user_id)}</strong>
 									{#if m.role !== 'member' && (!isAdmin || m.role === 'owner' || m.user_id === club?.owner_id)}
 										<span class="role-badge role-{m.role}">{clubRoleLabel(m.role)}</span>
 									{/if}
@@ -2039,6 +2136,12 @@
 		border-radius: var(--radius-sm);
 		background: var(--color-bg-tertiary);
 		color: var(--color-text-secondary);
+	}
+
+	.invite-body {
+		margin: 0 0 0.6rem;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
 	}
 
 	.invite-row {
@@ -2859,4 +2962,19 @@
 	}
 
 	/* .modal-* classes live in app.css. */
+	.name-hint {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		margin: 0 0 1rem;
+		padding: 0.7rem 0.9rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-surface);
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.name-hint p {
+		margin: 0;
+	}
 </style>

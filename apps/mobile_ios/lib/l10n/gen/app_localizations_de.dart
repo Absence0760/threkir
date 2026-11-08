@@ -2054,6 +2054,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runStatAvgPace => 'Ø Tempo';
 
   @override
+  String get runStoppedChip => 'Angehalten';
+
+  @override
   String get runStatAvgSpeed => 'Ø Geschwindigkeit';
 
   @override
@@ -2373,6 +2376,30 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get runGpsPermissionPending =>
       'Kein GPS — die Aufzeichnung startet, sobald die Berechtigung erteilt ist.';
+
+  @override
+  String get runNoGpsStartTitle => 'Ohne GPS starten?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'Der Standort ist auf diesem Telefon ausgeschaltet, daher würde dieser Lauf nur die Zeit aufzeichnen — keine Route, keine Distanz, kein Tempo.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'Der Standortzugriff ist für diese App ausgeschaltet, daher würde dieser Lauf nur die Zeit aufzeichnen — keine Route, keine Distanz, kein Tempo.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Nur Zeit aufzeichnen';
+
+  @override
+  String get runNoDistanceTitle => 'Keine Distanz aufgezeichnet';
+
+  @override
+  String get runNoDistanceBody =>
+      'Dieser Lauf hatte weder ein GPS-Signal noch eine Schrittdistanz. Als reine Zeitaktivität speichern oder verwerfen?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Nur mit Zeit speichern';
 
   @override
   String get runBackgroundLocationPaused =>
@@ -2898,6 +2925,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get addRunNoRoutes =>
       'Noch keine gespeicherten Routen – erstelle oder importiere eine, um sie hier anzuhängen';
+
+  @override
+  String get addRunBuildRoute => 'Route erstellen';
+
+  @override
+  String get addRunImportRoute => 'Datei importieren';
 
   @override
   String get addRunDistanceInvalid => 'Gib eine Distanz größer als 0 ein';
@@ -5588,7 +5621,13 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Mitglied';
+  String clubDetailNameHint(String handle) {
+    return 'Clubmitglieder sehen dich als $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'Du kannst deinen Namen in deinen Kontoeinstellungen hinzufügen.';
 
   @override
   String get clubRoleOwner => 'Inhaber';
@@ -5972,9 +6011,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventNoRsvps => 'Noch keine Zusagen – sei die/der Erste.';
-
-  @override
-  String get eventAttendeeMember => 'Mitglied';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -14595,6 +14631,58 @@ class AppLocalizationsDe extends AppLocalizations {
   String get challengeInviteSharePage => 'Challenge-Seite teilen';
 
   @override
+  String get clubInviteLinkTitle => 'Einladungslink';
+
+  @override
+  String get clubInviteBodyInvite => 'Nur wer diesen Link hat, kann beitreten.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Wer diesen Link hat, tritt sofort bei, ohne auf eine Freigabe zu warten.';
+
+  @override
+  String get clubInviteBodyOpen => 'Jeder mit diesem Link kann beitreten.';
+
+  @override
+  String get clubInviteGenerate => 'Einladungslink erstellen';
+
+  @override
+  String get clubInviteShare => 'Link teilen';
+
+  @override
+  String get clubInviteCopy => 'Link kopieren';
+
+  @override
+  String get clubInviteCopied => 'Einladungslink kopiert';
+
+  @override
+  String get clubInviteCopyFailed => 'Der Link konnte nicht kopiert werden.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'Der Einladungslink konnte nicht geladen werden.';
+
+  @override
+  String get clubInviteRotate => 'Link zurücksetzen';
+
+  @override
+  String get clubInviteRotateTitle => 'Einladungslink zurücksetzen?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'Der aktuelle Link funktioniert sofort nicht mehr. Wer schon beigetreten ist, bleibt dabei.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Der Einladungslink konnte nicht aktualisiert werden. Versuche es erneut.';
+
+  @override
+  String get clubShareClub => 'Club teilen';
+
+  @override
+  String get clubShareLinkCopied => 'Club-Link kopiert';
+
+  @override
   String get challengesLeaderboardEmpty => 'Noch kein Fortschritt erfasst.';
 
   @override
@@ -17747,6 +17835,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'Nachricht zurückgezogen';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Gesehen $time';
+  }
+
+  @override
   String get messagesUnsend => 'Zurückziehen';
 
   @override
@@ -18638,6 +18731,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planDetailHideEarlierWeeks => 'Frühere Wochen ausblenden';
+
+  @override
+  String get planDetailGoToThisWeek => 'Zu dieser Woche springen';
 
   @override
   String get planNewStartingPoint => 'Wo stehst du gerade?';
@@ -19736,6 +19832,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'KI-Coach in Nachrichten';
+
+  @override
+  String get prefsReadReceipts => 'Lesebestätigungen';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Andere sehen, wann du ihre Nachrichten gelesen hast. Wenn du das ausschaltest, siehst du auch nicht, wann sie deine gelesen haben.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'Lesebestätigungen konnten nicht geändert werden.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Oben angeheftet';

@@ -1,11 +1,12 @@
 -- Class guard for the column-level SELECT lockdowns: which public tables
 -- withhold which columns from anon + authenticated, and why.
 --
--- Six tables revoke table-level SELECT from anon/authenticated and re-grant
+-- Seven tables revoke table-level SELECT from anon/authenticated and re-grant
 -- column by column (user_profiles 20260707_001 + 20260810_001, clubs + events
 -- 20260818_001 redoing 20260801_001 / 20260723_001 / 20260806_001,
 -- checkpoint_crossings 20270201_001, donations + instructor_payout_accounts
--- 20270621_001, matrix re-asserted by 20270408_001). Every withholding below
+-- 20270621_001, matrix re-asserted by 20270408_001, direct_messages
+-- 20271113000001). Every withholding below
 -- is a security decision with a named replacement read path, not an accident
 -- of reaching for `grant select (a, b, c)`.
 --
@@ -83,6 +84,12 @@ insert into lockdown_registry (tbl, col, reason) values
   ('events',               'meet_lat',             'precise meet-point coordinate; read through get_event_meet_point() after a visibility check'),
   ('events',               'meet_lng',             'precise meet-point coordinate; read through get_event_meet_point() after a visibility check'),
   ('events',               'host_user_id',         'Stripe Connect payout recipient; no client read site (also pinned by event_gym_template_grants_test)'),
+
+  -- direct_messages — 20271113000001 (issue #1216). The row is readable by
+  -- both participants under RLS, and a column grant cannot depend on the row.
+  -- The recipient's unread count reads it through dm_threads(), SECURITY
+  -- DEFINER; the sender reads seen_at, written only while both have receipts on.
+  ('direct_messages',      'read_at',              'the recipient''s own read time; granting it shows the sender a read the recipient turned receipts off to keep private'),
 
   -- donations — 20270621_001, making 20270213_001's column revoke real. The
   -- table carries NO permissive client SELECT policy: every client read is

@@ -331,8 +331,9 @@ backgrounding, low-memory kills).
   wake lock. Live pace (the screen, the tile, the split cue and the
   pace alert) is `recording/LivePace.kt`'s `LivePaceWindow`: the
   estimator's distance gained over the last ~200 m, sealed with every
-  segment and across a re-anchored GPS gap. It was the whole-run average
-  (elapsed / distance) until #1090.
+  segment and across a re-anchored GPS gap, and null until the window spans
+  50 m and 20 s (the phone's `paceIsReady`, decisions § 2364). It was the
+  whole-run average (elapsed / distance) until #1090.
 - `recording/CheckpointStore.kt` — DataStore snapshot of an in-progress
   run, written every 15s during recording. On next launch a surviving
   checkpoint is graded (below); one that still holds the only copy of a

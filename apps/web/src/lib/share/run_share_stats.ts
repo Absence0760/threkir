@@ -6,8 +6,9 @@
 // arithmetic as Dart's `UnitFormat`.
 
 import type { PreferredUnit, TrackPoint } from '../types';
-import { formatDecimal, formatInteger } from '../format/number';
+import { formatDecimal } from '../format/number';
 import { paceMinutesSeconds } from '../format/pace_format';
+import { formatElevationValue } from '../format/elevation';
 import { computeRunElevationGain } from '../runs/run_altitude';
 import { movingTimeSeconds } from '../runs/run_stats';
 import { activityUsesSpeed } from '../runs/activity_type';
@@ -48,7 +49,6 @@ export interface RunShareStatLabels {
 }
 
 const METRES_PER_MILE = 1609.344;
-const FEET_PER_METRE = 3.28084;
 
 /// The moving time every share image prints, in whole seconds: the moving
 /// time of the stored track, or the elapsed duration when there is no track
@@ -124,10 +124,6 @@ function speedValue(secPerKm: number | null, unit: PreferredUnit, locale: string
 	return formatDecimal(unit === 'mi' ? kmh / 1.609344 : kmh, 1, locale);
 }
 
-function elevationValue(metres: number, unit: PreferredUnit, locale: string | undefined): string {
-	return formatInteger(Math.round(unit === 'mi' ? metres * FEET_PER_METRE : metres), locale);
-}
-
 /// The stats a share image prints for `run`, in display order: the `kinds`
 /// asked for that the run has a number for. Never empty: a look whose every
 /// pick is unavailable on this run falls back to distance.
@@ -165,7 +161,7 @@ export function runShareStats(
 				return {
 					kind,
 					label: labels.climb,
-					value: elevationValue(runShareClimbMetres(run) as number, unit, locale),
+					value: formatElevationValue(runShareClimbMetres(run) as number, unit, locale),
 					unit: unit === 'mi' ? 'ft' : 'm',
 				};
 			case 'heartRate':

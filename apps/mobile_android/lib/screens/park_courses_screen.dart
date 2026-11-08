@@ -11,7 +11,8 @@ import 'package:ui_kit/ui_kit.dart'
         IdentityAvatar,
         ListSkeleton,
         StatGrid,
-        StatTile;
+        StatTile,
+        TextLane;
 
 import '../auth_error.dart';
 import '../backend_timeout.dart';
@@ -754,7 +755,7 @@ class _ParkBoardRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          SizedBox(
+          TextLane(
             width: 32,
             child: Text(
               '#$rank',

@@ -43,7 +43,7 @@ class DisclosureSection extends StatelessWidget {
       builder: (sheet) => SafeArea(
         child: ListTile(
           key: const Key('disclosureSectionHide'),
-          leading: const Icon(Icons.visibility_off_outlined),
+          leading: const Icon(Icons.visibility_off),
           title: Text(hideLabel ?? ''),
           onTap: () => Navigator.of(sheet).pop(true),
         ),

@@ -55,7 +55,7 @@ Future<bool> confirmRacePreflight(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(
-                      blocked ? Icons.error_outline : Icons.warning_amber,
+                      blocked ? Icons.error_outline : Icons.warning_amber_rounded,
                       size: 18,
                       color: blocked
                           ? Theme.of(ctx).colorScheme.error

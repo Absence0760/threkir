@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:ui_kit/ui_kit.dart' show ChoiceChipOption, ChoiceChipRow;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../audio_cues.dart';
@@ -391,24 +392,18 @@ class _CourseDriveScreenState extends State<CourseDriveScreen> {
                 ),
               Text(l.courseDriveMapsApp, style: theme.textTheme.labelLarge),
               const SizedBox(height: 8),
-              SegmentedButton<MapsApp>(
-                segments: [
-                  ButtonSegment(
-                    value: MapsApp.google,
-                    label: Text(l.courseDriveAppGoogle),
-                  ),
-                  ButtonSegment(
-                    value: MapsApp.apple,
-                    label: Text(l.courseDriveAppApple),
-                  ),
-                  ButtonSegment(
-                    value: MapsApp.waze,
-                    label: Text(l.courseDriveAppWaze),
-                  ),
+              ChoiceChipRow<MapsApp>(
+                options: [
+                  ChoiceChipOption(
+                      value: MapsApp.google, label: l.courseDriveAppGoogle),
+                  ChoiceChipOption(
+                      value: MapsApp.apple, label: l.courseDriveAppApple),
+                  ChoiceChipOption(
+                      value: MapsApp.waze, label: l.courseDriveAppWaze),
                 ],
-                selected: {_app},
-                onSelectionChanged: (s) => setState(() {
-                  _app = s.first;
+                selected: _app,
+                onChanged: (app) => setState(() {
+                  _app = app;
                   _legIndex = 0;
                 }),
               ),

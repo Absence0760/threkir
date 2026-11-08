@@ -63,7 +63,7 @@ IconData badgeIconData(String name) {
     case 'flag':
       return Icons.flag_outlined;
     case 'park':
-      return Icons.park;
+      return Icons.park_outlined;
     case 'hiking':
       return Icons.hiking;
     case 'forest':
@@ -73,7 +73,7 @@ IconData badgeIconData(String name) {
     case 'flag_circle':
       return Icons.flag_circle;
     case 'map':
-      return Icons.map;
+      return Icons.map_outlined;
     default:
       return Icons.military_tech;
   }

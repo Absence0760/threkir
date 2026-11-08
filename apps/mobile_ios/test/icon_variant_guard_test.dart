@@ -45,7 +45,16 @@ const _roots = ['lib', '../../packages/ui_kit/lib'];
 /// row's pin `IconButton(isSelected: pinned)` in `messages_screen.dart` draws
 /// it outlined while the Coach is unpinned and filled while it is pinned to
 /// the top of the inbox, so again the variant IS the state.
-const _selectionPairs = <String>{'cloud_upload', 'emoji_events', 'push_pin'};
+///
+/// `verified` is a status toggle: `club_verification_status_card.dart` draws
+/// it filled while the club is verified and outlined while it is not, so the
+/// variant IS the state.
+const _selectionPairs = <String>{
+  'cloud_upload',
+  'emoji_events',
+  'push_pin',
+  'verified',
+};
 
 String _stem(String name) =>
     name.replaceAll(RegExp(r'_(outlined|rounded|sharp)$'), '');

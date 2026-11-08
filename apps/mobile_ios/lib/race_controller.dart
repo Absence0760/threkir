@@ -191,7 +191,7 @@ class PendingRaceResult {
 
 /// The course a racer is running: what the finish detector and the coverage
 /// gate need, resolved once when the recorder attaches. Read off the race's
-/// frozen copy of the course (`race_session_courses`, decisions § 2390) when
+/// frozen copy of the course (`race_session_courses`, decisions § 2391) when
 /// it has one, else the `event_courses` row — never the route.
 class RaceCourse {
   const RaceCourse({

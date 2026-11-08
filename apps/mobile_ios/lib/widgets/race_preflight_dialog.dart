@@ -22,7 +22,7 @@ String preflightIssueText(
   };
 }
 
-/// The Arm preflight (#1305, decisions § 2390). True when the race should be
+/// The Arm preflight (#1305, decisions § 2391). True when the race should be
 /// armed: no issues at all, or only warnings the director chose to arm
 /// through. An error blocks, with nothing to choose but to close.
 Future<bool> confirmRacePreflight(

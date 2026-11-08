@@ -166,7 +166,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   RaceSessionRow? _raceSession;
 
   /// The occurrence's courses as frozen when its race session was created
-  /// (decisions § 2390), keyed by course id. Empty without a frozen copy, in
+  /// (decisions § 2391), keyed by course id. Empty without a frozen copy, in
   /// which case the course map reads the live course row.
   Map<String, FrozenRaceCourse> _frozenCourses = const {};
   DateTime? _activeInstance;

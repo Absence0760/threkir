@@ -293,7 +293,7 @@ class EventCourseView {
 }
 
 /// One `race_session_courses` row: a course as it was frozen when its race
-/// session was created (Arm, for Host GO; decisions § 2390). Devices and the
+/// session was created (Arm, for Host GO; decisions § 2391). Devices and the
 /// race screen read this rather than the live course row, so a route or zone
 /// edit mid-race moves only the next race.
 class FrozenRaceCourse {

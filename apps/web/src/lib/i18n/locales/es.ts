@@ -3760,6 +3760,8 @@ export const messages = {
 	"runEditor.routeOptional": "Ruta (opcional)",
 	"runEditor.noRoute": "— Sin ruta —",
 	"runEditor.routeHint": "Vincula esta carrera a una de tus rutas guardadas — o déjalo en blanco para registrarla sin ruta.",
+	"runEditor.noSavedRoutes": "Aún no tienes rutas guardadas.",
+	"runEditor.buildRoute": "Crea una",
 	"runEditor.notesOptional": "Notas (opcional)",
 	"runEditor.notesPlaceholder": "¿Cómo te sentiste? ¿Qué tiempo hacía?",
 	"runEditor.notesHint": "Se guarda con la carrera y se muestra en su página, así que quien pueda ver la carrera podrá leer la nota.",

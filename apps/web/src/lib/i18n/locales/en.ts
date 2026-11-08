@@ -3773,6 +3773,8 @@ export const en = {
 	"runEditor.routeOptional": "Route (optional)",
 	"runEditor.noRoute": "— No route —",
 	"runEditor.routeHint": "Link this run to one of your saved routes — or leave blank to log it without a route.",
+	"runEditor.noSavedRoutes": "You have no saved routes yet.",
+	"runEditor.buildRoute": "Build one",
 	"runEditor.notesOptional": "Notes (optional)",
 	"runEditor.notesPlaceholder": "How did it feel? What was the weather like?",
 	"runEditor.notesHint": "Saved with the run and shown on its page, so anyone who can see the run can read the note.",

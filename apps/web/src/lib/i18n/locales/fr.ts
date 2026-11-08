@@ -3760,6 +3760,8 @@ export const messages = {
 	"runEditor.routeOptional": "Itinéraire (facultatif)",
 	"runEditor.noRoute": "— Aucun itinéraire —",
 	"runEditor.routeHint": "Associez cette course à l'un de vos itinéraires enregistrés — ou laissez vide pour l'enregistrer sans itinéraire.",
+	"runEditor.noSavedRoutes": "Vous n'avez encore aucun itinéraire enregistré.",
+	"runEditor.buildRoute": "Créez-en un",
 	"runEditor.notesOptional": "Notes (facultatif)",
 	"runEditor.notesPlaceholder": "Comment c'était ? Quel temps faisait-il ?",
 	"runEditor.notesHint": "Enregistrée avec la sortie et affichée sur sa page : toute personne qui peut voir la sortie peut donc lire la note.",

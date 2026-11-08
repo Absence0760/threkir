@@ -3755,6 +3755,8 @@ export const messages = {
 	"runEditor.routeOptional": "ルート (任意)",
 	"runEditor.noRoute": "— ルートなし —",
 	"runEditor.routeHint": "このランを保存済みのルートに紐付けるか、空欄のままにしてルートなしで記録します。",
+	"runEditor.noSavedRoutes": "保存済みのルートはまだありません。",
+	"runEditor.buildRoute": "ルートを作成",
 	"runEditor.notesOptional": "メモ (任意)",
 	"runEditor.notesPlaceholder": "調子はどうでしたか？天気はどうでしたか？",
 	"runEditor.notesHint": "ランと一緒に保存され、そのページに表示されます。ランを見られる人はメモも読めます。",

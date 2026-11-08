@@ -3759,6 +3759,8 @@ export const messages = {
 	"runEditor.routeOptional": "Rota (opcional)",
 	"runEditor.noRoute": "— Sem rota —",
 	"runEditor.routeHint": "Vincule esta corrida a uma de suas rotas salvas — ou deixe em branco para registrá-la sem rota.",
+	"runEditor.noSavedRoutes": "Você ainda não tem rotas salvas.",
+	"runEditor.buildRoute": "Crie uma",
 	"runEditor.notesOptional": "Notas (opcional)",
 	"runEditor.notesPlaceholder": "Como foi? Como estava o tempo?",
 	"runEditor.notesHint": "Salva junto com a corrida e exibida na página dela, então quem puder ver a corrida também lê a nota.",

@@ -2347,6 +2347,30 @@ class AppLocalizationsEn extends AppLocalizations {
       'No GPS — tracking will start when permission is granted.';
 
   @override
+  String get runNoGpsStartTitle => 'Start without GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'Location is off on this phone, so this run would record time only — no route, distance or pace.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'Location access is off for this app, so this run would record time only — no route, distance or pace.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Record time only';
+
+  @override
+  String get runNoDistanceTitle => 'No distance recorded';
+
+  @override
+  String get runNoDistanceBody =>
+      'This run got no GPS fix and no step distance. Save it as a time-only activity, or discard it?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Save as time-only';
+
+  @override
   String get runBackgroundLocationPaused =>
       'Tracking paused while you were away — your run kept timing and nothing was lost, but distance covered off screen wasn’t counted. Set Location to \"Allow all the time\" to track in the background.';
 

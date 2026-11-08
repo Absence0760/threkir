@@ -2375,6 +2375,30 @@ class AppLocalizationsDe extends AppLocalizations {
       'Kein GPS — die Aufzeichnung startet, sobald die Berechtigung erteilt ist.';
 
   @override
+  String get runNoGpsStartTitle => 'Ohne GPS starten?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'Der Standort ist auf diesem Telefon ausgeschaltet, daher würde dieser Lauf nur die Zeit aufzeichnen — keine Route, keine Distanz, kein Tempo.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'Der Standortzugriff ist für diese App ausgeschaltet, daher würde dieser Lauf nur die Zeit aufzeichnen — keine Route, keine Distanz, kein Tempo.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Nur Zeit aufzeichnen';
+
+  @override
+  String get runNoDistanceTitle => 'Keine Distanz aufgezeichnet';
+
+  @override
+  String get runNoDistanceBody =>
+      'Dieser Lauf hatte weder ein GPS-Signal noch eine Schrittdistanz. Als reine Zeitaktivität speichern oder verwerfen?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Nur mit Zeit speichern';
+
+  @override
   String get runBackgroundLocationPaused =>
       'Die Aufzeichnung pausierte, während du weg warst — die Zeit lief weiter und nichts ging verloren, aber die Distanz außerhalb des Bildschirms wurde nicht gezählt. Stelle den Standort auf „Immer zulassen“, um im Hintergrund aufzuzeichnen.';
 

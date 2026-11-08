@@ -3105,6 +3105,34 @@
   "@runGpsPermissionPending": {
     "description": "Banner shown when location permission is denied (not permanently) at run start"
   },
+  "runNoGpsStartTitle": "Start without GPS?",
+  "@runNoGpsStartTitle": {
+    "description": "Title of the dialog shown at START when a GPS run can get no fix (location off or denied)"
+  },
+  "runNoGpsStartServicesOffBody": "Location is off on this phone, so this run would record time only — no route, distance or pace.",
+  "@runNoGpsStartServicesOffBody": {
+    "description": "Body of the no-GPS start dialog when device location services are off"
+  },
+  "runNoGpsStartPermissionBody": "Location access is off for this app, so this run would record time only — no route, distance or pace.",
+  "@runNoGpsStartPermissionBody": {
+    "description": "Body of the no-GPS start dialog when the app has no location permission"
+  },
+  "runNoGpsStartTimeOnly": "Record time only",
+  "@runNoGpsStartTimeOnly": {
+    "description": "Button on the no-GPS start dialog that starts the run as a time-only activity"
+  },
+  "runNoDistanceTitle": "No distance recorded",
+  "@runNoDistanceTitle": {
+    "description": "Title of the dialog shown at Stop when the run has no GPS fix and no step distance"
+  },
+  "runNoDistanceBody": "This run got no GPS fix and no step distance. Save it as a time-only activity, or discard it?",
+  "@runNoDistanceBody": {
+    "description": "Body of the no-distance stop dialog offering to save as time-only or discard"
+  },
+  "runNoDistanceSaveTimeOnly": "Save as time-only",
+  "@runNoDistanceSaveTimeOnly": {
+    "description": "Button on the no-distance stop dialog that saves the run as a time-only activity"
+  },
   "runBackgroundLocationPaused": "Tracking paused while you were away — your run kept timing and nothing was lost, but distance covered off screen wasn’t counted. Set Location to \"Allow all the time\" to track in the background.",
   "@runBackgroundLocationPaused": {
     "description": "Banner shown on returning to a recording run after the app was backgrounded under a foreground-only location grant and no fix arrived while away"

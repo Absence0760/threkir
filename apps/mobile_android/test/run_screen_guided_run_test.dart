@@ -68,6 +68,11 @@ class _FakeGeolocatorPlatform extends GeolocatorPlatform {
     return _positions!.stream;
   }
 
+  void emit(Position p) {
+    _positions ??= StreamController<Position>.broadcast();
+    _positions!.add(p);
+  }
+
   Future<void> dispose() async {
     await _positions?.close();
     _positions = null;
@@ -320,6 +325,21 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
     // LiveRunMap's tile fetches log DioExceptions in the test env.
     tester.takeException();
+    // One fix, so a finished run is a GPS run rather than the no-distance
+    // run _stop asks about (issue #1300 BUG-012).
+    geolocator.emit(Position(
+      latitude: 47.37,
+      longitude: 8.54,
+      timestamp: DateTime.now(),
+      accuracy: 5,
+      altitude: 400,
+      altitudeAccuracy: 2,
+      heading: 90,
+      headingAccuracy: 5,
+      speed: 3,
+      speedAccuracy: 1,
+    ));
+    await tester.pump(const Duration(milliseconds: 50));
     for (var i = 0; i < ticks; i++) {
       await tester.pump(const Duration(seconds: 1));
     }

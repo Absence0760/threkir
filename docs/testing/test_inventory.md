@@ -287,7 +287,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 55 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 61 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 
@@ -304,6 +304,8 @@ Tests: tapping START transitions the screen into countdown state (text "3" appea
 Live race (decisions § 1843), three more: Stop during a hosted race pauses and opens the Resume race / Finish race sheet without saving, and Resume race closes it with the race still hosted; Finish race stops, saves the run and submits a `manual` finish (no course resolved, so the 90% gate passes); after the host ends the race, Stop stops outright, still saves the run, and submits nothing.
 
 Precise location (decisions § 1985), one more: an approximate-only grant still starts the run past the countdown and shows the `runPreciseLocationOff` banner with its Settings action. Decisions § 2151 adds one: an approximate grant that never delivers a fix shows the approximate strip and the map's precise-location-off state from the first second, its "Turn on precise location" action opens app settings, and a precise fix clears the strip.
+
+No-GPS start and no-distance stop (issue #1300 BUG-012, decisions § 2369), six more: a denied location stops START at the Start without GPS? dialog and Cancel starts nothing; Open settings on a denied start opens the app settings and starts nothing; with Location off it opens the location settings; Record time only starts the run and saves it with `metadata.indoor` and no Stop prompt; and a GPS run that ends with no fix asks at Stop, Discard saving nothing (and clearing the recovery file) while Save as time-only saves it with `metadata.indoor`. The GPS-unavailable start case now passes through Record time only and asserts the banner stays quiet.
 
 ### `apps/mobile_android/test/run_screen_idle_setup_test.dart` — 14 tests
 

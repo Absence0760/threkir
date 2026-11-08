@@ -249,6 +249,10 @@ enum _ScreenState { idle, countdown, recording, paused, finished }
 /// partial: continue the same run, finalize it as-is, or drop it.
 enum _ResumeChoice { resume, finish, discard }
 
+enum _GpsStartBlock { servicesOff, permissionDenied }
+
+enum _NoGpsStartChoice { openSettings, timeOnly }
+
 class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   _ScreenState _state = _ScreenState.idle;
 
@@ -548,6 +552,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   // GPS never produced a fix. Flipped true on the first non-null
   // snapshot.currentPosition; reset on discard.
   bool _everHadGpsFix = false;
+
+  bool _timeOnlyChosen = false;
 
   // Running elevation gain, updated incrementally as new waypoints arrive
   // in _onSnapshot. The naive O(n) rescan of the full track on every
@@ -1287,13 +1293,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     setState(() {});
   }
 
-  /// Ask for location + notification permissions but don't block the run on
-  /// the result — denying location drops the run into a time-only indoor
-  /// mode rather than stopping it outright. Denying notifications disables
-  /// the live lock-screen stats via [RunNotificationBridge] but otherwise
-  /// lets the run proceed. The downstream [RunRecorder.prepare] call
-  /// surfaces the denied location case as a snackbar via
-  /// [_notifyGpsUnavailable].
+  /// Ask for location + notification permissions; [_confirmStartWithoutGps]
+  /// judges the location result. Denying notifications only disables the
+  /// live lock-screen stats via [RunNotificationBridge].
   Future<void> _maybeRequestPermission() async {
     await Permission.location.request();
     // POST_NOTIFICATIONS on Android 13+ — without this,
@@ -1322,6 +1324,109 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         );
       }
     }
+  }
+
+  /// A failed check does not block: the recorder's own error path still
+  /// reports it.
+  Future<_GpsStartBlock?> _gpsStartBlock() async {
+    if (_treadmillMode) return null;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return _GpsStartBlock.servicesOff;
+      }
+      final p = await Geolocator.checkPermission();
+      if (p == LocationPermission.denied ||
+          p == LocationPermission.deniedForever) {
+        return _GpsStartBlock.permissionDenied;
+      }
+    } catch (e) {
+      debugPrint('GPS start check failed: $e');
+    }
+    return null;
+  }
+
+  /// Only an explicit "Record time only" starts a run that can get no fix.
+  Future<bool> _confirmStartWithoutGps() async {
+    _timeOnlyChosen = false;
+    final block = await _gpsStartBlock();
+    if (block == null) return true;
+    if (!mounted) return false;
+    final choice = await showDialog<_NoGpsStartChoice>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.runNoGpsStartTitle),
+          content: Text(block == _GpsStartBlock.servicesOff
+              ? l10n.runNoGpsStartServicesOffBody
+              : l10n.runNoGpsStartPermissionBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, _NoGpsStartChoice.timeOnly),
+              child: Text(l10n.runNoGpsStartTimeOnly),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(ctx, _NoGpsStartChoice.openSettings),
+              child: Text(l10n.runOpenSettings),
+            ),
+          ],
+        );
+      },
+    );
+    switch (choice) {
+      case _NoGpsStartChoice.timeOnly:
+        _timeOnlyChosen = true;
+        return true;
+      case _NoGpsStartChoice.openSettings:
+        try {
+          if (block == _GpsStartBlock.servicesOff) {
+            await Geolocator.openLocationSettings();
+          } else {
+            await Geolocator.openAppSettings();
+          }
+        } catch (e) {
+          debugPrint('Opening location settings failed: $e');
+        }
+        return false;
+      case null:
+        return false;
+    }
+  }
+
+  /// The dialog is the discard's one guard (conventions.md § Destructive
+  /// actions). Dismissing it keeps the run, as does an unmounted screen,
+  /// where nobody can be asked.
+  Future<bool> _keepRunWithoutDistance() async {
+    if (!mounted) return true;
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.runNoDistanceTitle),
+          content: Text(l10n.runNoDistanceBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: TextButton.styleFrom(
+                foregroundColor: AppSemanticColors.of(ctx).danger,
+              ),
+              child: Text(l10n.runDiscard),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.runNoDistanceSaveTimeOnly),
+            ),
+          ],
+        );
+      },
+    );
+    return discard != true;
   }
 
   /// Android 11+ only grants "while in use" from the initial dialog;
@@ -1489,6 +1594,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _startRequested = true;
     await _maybeRequestPermission();
     if (!mounted) {
+      _startRequested = false;
+      return;
+    }
+    final proceedWithoutGps = await _confirmStartWithoutGps();
+    if (!mounted || !proceedWithoutGps) {
       _startRequested = false;
       return;
     }
@@ -2087,13 +2197,15 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // countdown, so this await is a no-op. On a slow device it waits for
     // the GPS stream to come up before starting the clock. If prepare
     // failed (location services off, permission denied), the recorder is
-    // still marked prepared and we proceed into an indoor/time-only run —
-    // the stopwatch ticks, distance stays 0, and the live map shows its
-    // "Waiting for GPS..." placeholder until a fix arrives (if ever).
+    // still marked prepared and we proceed into a time-only run — the
+    // stopwatch ticks, distance stays 0, and the live map shows its
+    // "Waiting for GPS..." placeholder until a fix arrives (if ever). The
+    // runner chose that at START (_confirmStartWithoutGps), so it is only
+    // reported here when it was not foreseen there.
     await _prepareFuture;
     final prepareError = _prepareError;
     if (prepareError != null) {
-      _notifyGpsUnavailable(prepareError);
+      if (!_timeOnlyChosen) _notifyGpsUnavailable(prepareError);
     } else if (_recorder?.preciseLocationOff == true) {
       _notifyPreciseLocationOff();
     }
@@ -3778,6 +3890,27 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     await _treadmillStatusSub?.cancel();
     _treadmillStatusSub = null;
 
+    // A belt run was chosen as indoor, and a hosted race keeps its run: its
+    // result is already decided at this Stop.
+    final noDistance = !_everHadGpsFix &&
+        raw.distanceMetres == 0 &&
+        _displayDistanceMetres == 0;
+    var timeOnly = _timeOnlyChosen && !_everHadGpsFix;
+    if (noDistance &&
+        !_timeOnlyChosen &&
+        !_treadmillMode &&
+        widget.raceController?.isHosting != true) {
+      if (!await _keepRunWithoutDistance()) {
+        if (_liveBroadcaster?.isActive ?? false) await _stopLiveShare();
+        _discard();
+        return;
+      }
+      timeOnly = true;
+    }
+    // No GPS ever measured this run, so it stays out of the VDOT ceiling the
+    // same way the pedometer and belt sources do.
+    if (timeOnly) metadata[cm.MetadataKeys.indoor] = true;
+
     // Structured-workout review trail. Three keys are registered in
     // [docs/backend/metadata.md]: plan_workout_id, workout_step_results,
     // workout_adherence. The web run-detail "Workout" section reads
@@ -4181,6 +4314,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _lastCutoffCueStatus = null;
     _permissionLost = false;
     _everHadGpsFix = false;
+    _timeOnlyChosen = false;
     _elevationGain.reset();
     _elevationProcessedCount = 0;
     _statsNotifier.value = _LiveStats.empty;

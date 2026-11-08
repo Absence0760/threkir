@@ -254,9 +254,13 @@ void main() {
   group('only the recorder may ask for more than a browse fix', () {
     // RunRecorder (packages/run_recorder) owns the record intent. In this app,
     // a settings or accuracy request is allowed only where the run screen
-    // offers the runner a Location settings button.
+    // offers the runner a Location settings button, and where START checks,
+    // as RunRecorder.prepare does, that a GPS run can get a fix at all.
     const allowed = {
-      'lib/screens/run_screen.dart': {'openLocationSettings'},
+      'lib/screens/run_screen.dart': {
+        'openLocationSettings',
+        'isLocationServiceEnabled',
+      },
     };
     final forbidden = RegExp(
         r'\b(isLocationServiceEnabled|openLocationSettings|getLocationAccuracy|'

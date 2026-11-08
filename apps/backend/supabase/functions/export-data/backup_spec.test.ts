@@ -396,6 +396,21 @@ Deno.test('the sent-messages export leaves out the recipient\'s read_at', () => 
 	assertEquals(received.select, '*');
 });
 
+Deno.test('an edited message exports its edit time and the text as first sent', () => {
+	// 20271114000210: original_body is the sender's own words, withheld from
+	// clients only so a report can snapshot it. The sender's export carries it,
+	// and a report against their messages carries its snapshot.
+	const specs = buildBackupSpecs(TEST_UID);
+	const sent = specs.find((s) => s.entry === 'direct_messages_sent.json');
+	const reports = specs.find((s) => s.entry === 'reports_against_my_messages.json');
+	assertExists(sent);
+	assertExists(reports);
+	const cols = sent.select.split(',');
+	assertEquals(cols.includes('edited_at'), true);
+	assertEquals(cols.includes('original_body'), true);
+	assertEquals(reports.select.split(',').includes('snapshot_original_body'), true);
+});
+
 Deno.test('coach_athletes exported both ways without the invite_token credential', () => {
 	// audit/data-export-completeness (2026-05-30) Critical. The
 	// subject's coaching links (as coach and as athlete) are their own

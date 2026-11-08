@@ -1168,6 +1168,8 @@ class DirectMessageRow {
   static const String colDeletedPartnerKey = 'deleted_partner_key';
   static const String colConversationId = 'conversation_id';
   static const String colSeenAt = 'seen_at';
+  static const String colEditedAt = 'edited_at';
+  static const String colOriginalBody = 'original_body';
 
   final String id;
   final String senderId;
@@ -1180,6 +1182,8 @@ class DirectMessageRow {
   final String? deletedPartnerKey;
   final String conversationId;
   final DateTime? seenAt;
+  final DateTime? editedAt;
+  final String? originalBody;
 
   const DirectMessageRow({
     required this.id,
@@ -1193,6 +1197,8 @@ class DirectMessageRow {
     this.deletedPartnerKey,
     required this.conversationId,
     this.seenAt,
+    this.editedAt,
+    this.originalBody,
   });
 
   factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
@@ -1207,6 +1213,8 @@ class DirectMessageRow {
     deletedPartnerKey: json['deleted_partner_key'] as String?,
     conversationId: json['conversation_id'] as String,
     seenAt: parseIsoStrictValue(json['seen_at']),
+    editedAt: parseIsoStrictValue(json['edited_at']),
+    originalBody: json['original_body'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1221,6 +1229,8 @@ class DirectMessageRow {
     colDeletedPartnerKey: deletedPartnerKey,
     colConversationId: conversationId,
     colSeenAt: seenAt?.toIso8601String(),
+    colEditedAt: editedAt?.toIso8601String(),
+    colOriginalBody: originalBody,
   };
 
   DirectMessageRow copyWith({
@@ -1235,6 +1245,8 @@ class DirectMessageRow {
     String? deletedPartnerKey,
     String? conversationId,
     DateTime? seenAt,
+    DateTime? editedAt,
+    String? originalBody,
   }) => DirectMessageRow(
     id: id ?? this.id,
     senderId: senderId ?? this.senderId,
@@ -1247,6 +1259,8 @@ class DirectMessageRow {
     deletedPartnerKey: deletedPartnerKey ?? this.deletedPartnerKey,
     conversationId: conversationId ?? this.conversationId,
     seenAt: seenAt ?? this.seenAt,
+    editedAt: editedAt ?? this.editedAt,
+    originalBody: originalBody ?? this.originalBody,
   );
 }
 

@@ -956,6 +956,11 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 	if strings.Contains(dmSentQ, "read_at") || !strings.Contains(dmSentQ, "seen_at") {
 		t.Errorf("direct_messages (sent) select must carry seen_at and omit the recipient's read_at; got %q", dmSentQ)
 	}
+	// An edited message's text as first sent is the sender's own words
+	// (20271114000210), so the sent export carries it beside edited_at.
+	if !strings.Contains(dmSentQ, "edited_at") || !strings.Contains(dmSentQ, "original_body") {
+		t.Errorf("direct_messages (sent) select must carry edited_at and original_body; got %q", dmSentQ)
+	}
 	if !strings.Contains(dmRecvQ, "select=%2A") && !strings.Contains(dmRecvQ, "select=*") {
 		t.Errorf("direct_messages (received) select must keep every column, the subject's own read_at included; got %q", dmRecvQ)
 	}

@@ -688,6 +688,13 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'plan_change_requests.status',
+		clients: [
+			{ file: 'apps/web/src/lib/training/plan_change.ts', decl: 'PLAN_CHANGE_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/plan_change.dart', decl: 'planChangeStatuses', shape: 'strings' },
+		],
+	},
+	{
 		tableColumn: 'payment_refunds.status',
 		clients: [
 			{ file: TS_TYPES, decl: 'PaymentRefundStatus', shape: 'union' },

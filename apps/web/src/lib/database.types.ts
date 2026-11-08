@@ -1170,12 +1170,23 @@ export type Database = {
           created_at: string
           distance_m: number | null
           event_id: string
+          finish_gate_bearing_deg: number | null
+          finish_gate_half_width_m: number | null
+          finish_gate_lat: number | null
+          finish_gate_lng: number | null
+          finish_gate_source: string | null
           finish_lat: number | null
+          finish_line_self_cross: boolean
           finish_lng: number | null
           id: string
           name: string
           route_id: string | null
           sort_order: number
+          start_gate_bearing_deg: number | null
+          start_gate_half_width_m: number | null
+          start_gate_lat: number | null
+          start_gate_lng: number | null
+          start_gate_source: string | null
           start_lat: number | null
           start_lng: number | null
         }
@@ -1183,12 +1194,23 @@ export type Database = {
           created_at?: string
           distance_m?: number | null
           event_id: string
+          finish_gate_bearing_deg?: number | null
+          finish_gate_half_width_m?: number | null
+          finish_gate_lat?: number | null
+          finish_gate_lng?: number | null
+          finish_gate_source?: string | null
           finish_lat?: number | null
+          finish_line_self_cross?: boolean
           finish_lng?: number | null
           id?: string
           name: string
           route_id?: string | null
           sort_order?: number
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+          start_gate_source?: string | null
           start_lat?: number | null
           start_lng?: number | null
         }
@@ -1196,12 +1218,23 @@ export type Database = {
           created_at?: string
           distance_m?: number | null
           event_id?: string
+          finish_gate_bearing_deg?: number | null
+          finish_gate_half_width_m?: number | null
+          finish_gate_lat?: number | null
+          finish_gate_lng?: number | null
+          finish_gate_source?: string | null
           finish_lat?: number | null
+          finish_line_self_cross?: boolean
           finish_lng?: number | null
           id?: string
           name?: string
           route_id?: string | null
           sort_order?: number
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+          start_gate_source?: string | null
           start_lat?: number | null
           start_lng?: number | null
         }
@@ -4000,8 +4033,88 @@ export type Database = {
           },
         ]
       }
+      race_session_courses: {
+        Row: {
+          course_id: string
+          distance_m: number | null
+          event_id: string
+          finish_gate_bearing_deg: number | null
+          finish_gate_half_width_m: number | null
+          finish_gate_lat: number | null
+          finish_gate_lng: number | null
+          finish_lat: number | null
+          finish_line_self_cross: boolean
+          finish_lng: number | null
+          frozen_at: string
+          instance_start: string
+          start_gate_bearing_deg: number | null
+          start_gate_half_width_m: number | null
+          start_gate_lat: number | null
+          start_gate_lng: number | null
+        }
+        Insert: {
+          course_id: string
+          distance_m?: number | null
+          event_id: string
+          finish_gate_bearing_deg?: number | null
+          finish_gate_half_width_m?: number | null
+          finish_gate_lat?: number | null
+          finish_gate_lng?: number | null
+          finish_lat?: number | null
+          finish_line_self_cross?: boolean
+          finish_lng?: number | null
+          frozen_at?: string
+          instance_start: string
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+        }
+        Update: {
+          course_id?: string
+          distance_m?: number | null
+          event_id?: string
+          finish_gate_bearing_deg?: number | null
+          finish_gate_half_width_m?: number | null
+          finish_gate_lat?: number | null
+          finish_gate_lng?: number | null
+          finish_lat?: number | null
+          finish_line_self_cross?: boolean
+          finish_lng?: number | null
+          frozen_at?: string
+          instance_start?: string
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_session_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "event_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_session_courses_session_fkey"
+            columns: ["event_id", "instance_start"]
+            isOneToOne: false
+            referencedRelation: "race_sessions"
+            referencedColumns: ["event_id", "instance_start"]
+          },
+          {
+            foreignKeyName: "race_session_courses_session_fkey"
+            columns: ["event_id", "instance_start"]
+            isOneToOne: false
+            referencedRelation: "race_sessions_redacted"
+            referencedColumns: ["event_id", "instance_start"]
+          },
+        ]
+      }
       race_sessions: {
         Row: {
+          courses_frozen_at: string | null
           created_at: string
           event_id: string
           finished_at: string | null
@@ -4013,6 +4126,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          courses_frozen_at?: string | null
           created_at?: string
           event_id: string
           finished_at?: string | null
@@ -4024,6 +4138,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          courses_frozen_at?: string | null
           created_at?: string
           event_id?: string
           finished_at?: string | null
@@ -6437,6 +6552,7 @@ export type Database = {
       }
       race_sessions_redacted: {
         Row: {
+          courses_frozen_at: string | null
           created_at: string | null
           event_id: string | null
           finished_at: string | null
@@ -6448,6 +6564,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          courses_frozen_at?: string | null
           created_at?: string | null
           event_id?: string | null
           finished_at?: string | null
@@ -6459,6 +6576,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          courses_frozen_at?: string | null
           created_at?: string | null
           event_id?: string | null
           finished_at?: string | null
@@ -8055,6 +8173,10 @@ export type Database = {
         Args: { p_moves: Json; p_plan_id: string }
         Returns: undefined
       }
+      reset_event_course_gate: {
+        Args: { p_course_id: string; p_which: string }
+        Returns: undefined
+      }
       resolve_target_reports: {
         Args: {
           p_resolution?: string
@@ -8425,6 +8547,17 @@ export type Database = {
       set_discoverable_area: {
         Args: { p_label?: string; p_lat: number; p_lng: number }
         Returns: string
+      }
+      set_event_course_gate: {
+        Args: {
+          p_bearing_deg: number
+          p_course_id: string
+          p_half_width_m: number
+          p_lat: number
+          p_lng: number
+          p_which: string
+        }
+        Returns: undefined
       }
       set_event_photo_hidden: {
         Args: { p_hidden: boolean; p_photo_id: string }

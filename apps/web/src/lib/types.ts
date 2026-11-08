@@ -458,6 +458,12 @@ export type FinishMethod = 'auto' | 'manual' | 'host';
 // race_sessions CHECK (migration 20260425_001) — keep this union in lockstep
 // (check_constraint_unions.mjs PAIRS).
 export type RaceSessionStatus = 'armed' | 'running' | 'finished' | 'cancelled';
+// event_courses.start_gate_source / finish_gate_source — where a course's
+// timing line came from: `derived` from the course route's clipped ends, or
+// placed by an `organiser` through set_event_course_gate. Enforced by the
+// event_courses CHECKs (migration 20271116002390); keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type GateSource = 'derived' | 'organiser';
 // Charity fundraising (fundraising.md, migration 20270213_001). Two
 // narrow-union ↔ CHECK pairs; the Dart side treats both as raw String. Keep
 // each in lockstep with the migration (check_constraint_unions.mjs PAIRS).

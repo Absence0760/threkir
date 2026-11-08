@@ -100,6 +100,8 @@
 				return m('challenges.metricActivityCount');
 			case 'streak_days':
 				return m('challenges.metricStreak');
+			case 'park_courses':
+				return m('challenges.metricParkCourses');
 		}
 	}
 
@@ -108,7 +110,8 @@
 		duration: 'timer',
 		vert: 'terrain',
 		activity_count: 'format_list_numbered',
-		streak_days: 'local_fire_department'
+		streak_days: 'local_fire_department',
+		park_courses: 'park'
 	};
 </script>
 

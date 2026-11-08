@@ -807,7 +807,7 @@ export type ActivePlanOverview = {
 
 // ─────────────────────── Challenges & competitions ───────────────────────
 
-export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
+export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days' | 'park_courses';
 export type ChallengeScope = 'individual' | 'club_vs_club' | 'group_goal';
 
 export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & OfficialFlag & {

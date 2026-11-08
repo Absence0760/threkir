@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -21,6 +22,13 @@
 	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
+
+	// The map is browser-only (RunMap touches animation-frame APIs), and the
+	// SSR pass is what the Lambda and the dev server render for a crawler.
+	let mounted = $state(false);
+	onMount(() => {
+		mounted = true;
+	});
 
 	let title = $derived(buildCourseShareTitle(data.course));
 	let description = $derived(buildCourseShareDescription(data.course));
@@ -115,7 +123,7 @@
 			</div>
 		</main>
 		<section class="content">
-			{#if track.length >= 2}
+			{#if mounted && track.length >= 2}
 				<div class="map-container">
 					<RunMap {track} requireExplicitConsent />
 				</div>

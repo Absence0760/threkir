@@ -149,6 +149,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String get recapLatestStartLabel => 'Départ le plus tard';
 
   @override
+  String get recapParkCoursesLabel => 'Parcours de parc';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'dans # parcs',
+      one: 'dans # parc',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Les parcs où vous avez couru';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# parcours',
+      one: '# parcours',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'Choisir un parcours';
 
   @override
@@ -14925,6 +14953,28 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get challengesMetricParkCourses => 'Parcours de parc';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# parcours',
+      one: '# parcours',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'parcours';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Compte les parcours de parc de la région $region';
+  }
+
+  @override
   String get challengesLeaveConfirmTitle => 'Quitter le défi ?';
 
   @override
@@ -15864,6 +15914,72 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => 'Vous avez terminé 10 plans d\'entraînement';
+
+  @override
+  String get badgesParkCourses1Label => 'Premier parcours de parc';
+
+  @override
+  String get badgesParkCourses1Desc => 'Parcours de parc terminé';
+
+  @override
+  String get badgesParkCourses5Label => 'Habitué des parcs';
+
+  @override
+  String get badgesParkCourses5Desc => '5 parcours de parc différents terminés';
+
+  @override
+  String get badgesParkCourses10Label => 'Collectionneur de sentiers';
+
+  @override
+  String get badgesParkCourses10Desc =>
+      '10 parcours de parc différents terminés';
+
+  @override
+  String get badgesParkCourses25Label => 'Explorateur de parcs';
+
+  @override
+  String get badgesParkCourses25Desc =>
+      '25 parcours de parc différents terminés';
+
+  @override
+  String get badgesParkComplete1Label => 'Parc bouclé';
+
+  @override
+  String get badgesParkComplete1Desc => 'Tous les parcours d\'un parc terminés';
+
+  @override
+  String get badgesParkComplete3Label => 'Trois parcs bouclés';
+
+  @override
+  String get badgesParkComplete3Desc => 'Tous les parcours de 3 parcs terminés';
+
+  @override
+  String get badgesParkComplete10Label => 'Maître des parcs';
+
+  @override
+  String get badgesParkComplete10Desc =>
+      'Tous les parcours de 10 parcs terminés';
+
+  @override
+  String get badgesParkPassport1Label => 'Passeport des parcs';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Un parcours terminé dans chaque parc d\'un État';
+
+  @override
+  String get badgesParkPassport3Label => 'Passeport tamponné';
+
+  @override
+  String get badgesParkPassport3Desc =>
+      'Passeport des parcs complété dans 3 États';
+
+  @override
+  String get badgesParkPassport10Label => 'Collectionneur de passeports';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Passeport des parcs complété dans 10 États';
 
   @override
   String get racePredictorTitle => 'Prédicteur de temps de course';
@@ -20610,6 +20726,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get shareCardBadgeKicker => 'Badge obtenu';
+
+  @override
+  String get shareCardKindCourse => 'Parcours de parc';
+
+  @override
+  String get shareCardCourseKicker => 'Temps sur parcours de parc';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return 'N° $rank en $season';
+  }
 
   @override
   String get runDetailSharePr => 'Partager la carte record';

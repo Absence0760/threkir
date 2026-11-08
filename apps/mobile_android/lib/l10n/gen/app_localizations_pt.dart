@@ -2918,6 +2918,12 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ainda não há rotas guardadas — crie ou importe uma para anexá-la aqui';
 
   @override
+  String get addRunBuildRoute => 'Criar uma rota';
+
+  @override
+  String get addRunImportRoute => 'Importar um ficheiro';
+
+  @override
   String get addRunDistanceInvalid => 'Insira uma distância maior que 0';
 
   @override
@@ -23176,6 +23182,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get addRunNoRoutes =>
       'Ainda não há rotas salvas — crie ou importe uma para anexá-la aqui';
+
+  @override
+  String get addRunBuildRoute => 'Criar uma rota';
+
+  @override
+  String get addRunImportRoute => 'Importar um arquivo';
 
   @override
   String get addRunDistanceInvalid => 'Insira uma distância maior que 0';

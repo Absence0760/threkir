@@ -1411,7 +1411,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,466 declared tests across 646 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,468 declared tests across 647 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1476,6 +1476,7 @@ tests-e2e/
   runs/
     list.spec.ts               — /history (filter, sort, search, multi-select, create, delete; bulk-delete actually-deletes round-trip)
     new.spec.ts                — /runs/new standalone create form (RunEditor → land on /runs/[new])
+    build-route-return.spec.ts — /runs/new empty route picker → "Build one" → /routes/new?return= → saved route comes back preselected; an off-origin return target is ignored (issue #1300 § 3)
     detail.spec.ts             — /runs/[id] (edit, cancel, single-run delete via the trash icon; the trash icon carries the danger colour at rest, not only on hover — issue #902)
     key-stats-fit.spec.ts      — /runs/[id] key-stat tiles: a run states pace and a ride speed, never both, and no value is clipped (`scrollWidth` vs `clientWidth` on every value — `12.0 km/h` used to render as `12.0 k…`, issue #902)
     cascade.spec.ts            — backend boundary: deleting a run sweeps every cascading child (kudos, comments, photos, segment_efforts, live_run_pings, run_matched_tracks, notifications) + the Storage object; run_photos cascade

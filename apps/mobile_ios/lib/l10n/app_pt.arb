@@ -780,6 +780,8 @@
   "addRunClearRoute": "Remover rota",
   "addRunSearchRoutes": "Procurar rotas guardadas",
   "addRunNoRoutes": "Ainda não há rotas guardadas — crie ou importe uma para anexá-la aqui",
+  "addRunBuildRoute": "Criar uma rota",
+  "addRunImportRoute": "Importar um ficheiro",
   "addRunDistanceInvalid": "Insira uma distância maior que 0",
   "addRunDurationInvalid": "Insira uma duração",
   "addRunTitleHint": "ex.: Volta do almoço",

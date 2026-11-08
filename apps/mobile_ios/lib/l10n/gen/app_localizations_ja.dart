@@ -2768,6 +2768,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get addRunNoRoutes => '保存したルートはまだありません — 作成またはインポートしてここに添付してください';
 
   @override
+  String get addRunBuildRoute => 'ルートを作成';
+
+  @override
+  String get addRunImportRoute => 'ファイルをインポート';
+
+  @override
   String get addRunDistanceInvalid => '0 より大きい距離を入力してください';
 
   @override

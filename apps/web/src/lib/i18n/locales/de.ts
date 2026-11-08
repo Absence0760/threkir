@@ -3760,6 +3760,8 @@ export const messages = {
 	"runEditor.routeOptional": "Route (optional)",
 	"runEditor.noRoute": "— Keine Route —",
 	"runEditor.routeHint": "Verknüpfe diesen Lauf mit einer deiner gespeicherten Routen — oder lass das Feld leer, um ihn ohne Route zu erfassen.",
+	"runEditor.noSavedRoutes": "Du hast noch keine gespeicherten Routen.",
+	"runEditor.buildRoute": "Erstelle eine",
 	"runEditor.notesOptional": "Notizen (optional)",
 	"runEditor.notesPlaceholder": "Wie hat es sich angefühlt? Wie war das Wetter?",
 	"runEditor.notesHint": "Wird mit dem Lauf gespeichert und auf seiner Seite angezeigt — wer den Lauf sehen kann, kann also auch die Notiz lesen.",

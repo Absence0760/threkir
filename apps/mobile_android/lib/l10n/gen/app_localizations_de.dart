@@ -2924,6 +2924,12 @@ class AppLocalizationsDe extends AppLocalizations {
       'Noch keine gespeicherten Routen – erstelle oder importiere eine, um sie hier anzuhängen';
 
   @override
+  String get addRunBuildRoute => 'Route erstellen';
+
+  @override
+  String get addRunImportRoute => 'Datei importieren';
+
+  @override
   String get addRunDistanceInvalid => 'Gib eine Distanz größer als 0 ein';
 
   @override

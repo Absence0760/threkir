@@ -780,6 +780,8 @@
   "addRunClearRoute": "ルートをクリア",
   "addRunSearchRoutes": "保存したルートを検索",
   "addRunNoRoutes": "保存したルートはまだありません — 作成またはインポートしてここに添付してください",
+  "addRunBuildRoute": "ルートを作成",
+  "addRunImportRoute": "ファイルをインポート",
   "addRunDistanceInvalid": "0 より大きい距離を入力してください",
   "addRunDurationInvalid": "時間を入力してください",
   "addRunTitleHint": "例: ランチタイムのループ",

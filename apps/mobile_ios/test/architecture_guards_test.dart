@@ -1943,18 +1943,18 @@ void main() {
     test('Single-file route import dispatches to compute()', () {
       // Reason: a 5MB GPX file (long ride exported as a route) parses on
       // a single XmlDocument call that takes hundreds of ms on a phone.
-      // The routes-screen import must wrap the parse in compute() so the
-      // user-tap → save flow doesn't lock up.
-      final src = File('lib/screens/routes_screen.dart').readAsStringSync();
+      // The shared route-file import (Routes and Add run) must wrap the
+      // parse in compute() so the user-tap → save flow doesn't lock up.
+      final src = File('lib/route_file_import.dart').readAsStringSync();
       final body = _extractMethodBody(
         src,
-        r'Future<void> _pickAndImport\(\)\s*async\s*\{',
+        r'Future<List<cm\.Route>> pickAndImportRouteFile\([^)]*\)\s*async\s*\{',
       );
       expect(
         body,
         contains('compute('),
-        reason: '_pickAndImport must run RouteParser.fromGpx / fromKml inside '
-            'compute() so a large file does not freeze the routes screen.',
+        reason: 'pickAndImportRouteFile must run the parse inside compute() '
+            'so a large file does not freeze the screen that opened it.',
       );
     });
   });

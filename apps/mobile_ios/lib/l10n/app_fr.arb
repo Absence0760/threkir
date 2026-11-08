@@ -780,6 +780,8 @@
   "addRunClearRoute": "Effacer l'itinéraire",
   "addRunSearchRoutes": "Rechercher des itinéraires enregistrés",
   "addRunNoRoutes": "Aucun itinéraire enregistré — créez-en ou importez-en un pour l'associer ici",
+  "addRunBuildRoute": "Créer un itinéraire",
+  "addRunImportRoute": "Importer un fichier",
   "addRunDistanceInvalid": "Saisissez une distance supérieure à 0",
   "addRunDurationInvalid": "Saisissez une durée",
   "addRunTitleHint": "ex. Boucle du midi",

@@ -2919,6 +2919,12 @@ class AppLocalizationsEs extends AppLocalizations {
       'Aún no hay rutas guardadas — crea o importa una para adjuntarla aquí';
 
   @override
+  String get addRunBuildRoute => 'Crear una ruta';
+
+  @override
+  String get addRunImportRoute => 'Importar un archivo';
+
+  @override
   String get addRunDistanceInvalid => 'Introduce una distancia mayor que 0';
 
   @override

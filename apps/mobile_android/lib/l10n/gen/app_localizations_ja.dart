@@ -20140,4 +20140,119 @@ class AppLocalizationsJa extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course：フィニッシュラインがルートから100 m以上離れています。';
   }
+
+  @override
+  String get runRaceScheduled => '予約スタート';
+
+  @override
+  String runRaceStartsIn(String label, String time) {
+    return '$labelのスタートまで$time';
+  }
+
+  @override
+  String get runRaceSelfTimed => 'セルフタイム';
+
+  @override
+  String get runRaceSelfTimedSoon => 'セルフタイム期間';
+
+  @override
+  String runRaceSelfTimedHow(String label, String time) {
+    return '$label：「このランを挑戦にする」をタップしてからスタートし、スタートラインを通過してください。$timeまで受付中。';
+  }
+
+  @override
+  String runRaceSelfTimedOpens(String label, String time) {
+    return '$labelは$timeに開始します';
+  }
+
+  @override
+  String runRaceToStartLine(String distance) {
+    return 'スタートラインまで$distance';
+  }
+
+  @override
+  String get runRaceThisIsMyAttempt => 'このランを挑戦にする';
+
+  @override
+  String get runRaceAttemptReady => '挑戦の準備完了：スタートをタップ';
+
+  @override
+  String get eventRaceArmEarly => '早めに準備';
+
+  @override
+  String get eventRaceScheduledNotYet =>
+      '予定時刻に自動でスタートします。今すぐラインを確認するには早めに準備してください。';
+
+  @override
+  String get eventRaceSelfTimedNotYet => '自動で開始します。今すぐラインを確認するには早めに準備してください。';
+
+  @override
+  String eventRaceGoAt(String time) {
+    return 'スタート：$time';
+  }
+
+  @override
+  String eventRaceOpensAt(String time) {
+    return '$timeに開始';
+  }
+
+  @override
+  String eventRaceOpenUntil(String time) {
+    return '$timeまで受付中';
+  }
+
+  @override
+  String eventRaceAutoEnds(String time) {
+    return '$timeに自動終了';
+  }
+
+  @override
+  String get eventRaceDelay => 'スタートを遅らせる';
+
+  @override
+  String eventRaceDelayBy(String minutes) {
+    return '+$minutes分';
+  }
+
+  @override
+  String get eventRaceExtend => '期間を延長';
+
+  @override
+  String eventRaceExtendBy(String hours) {
+    return '+$hours時間';
+  }
+
+  @override
+  String get eventRaceEndEarly => '今すぐ期間を終了';
+
+  @override
+  String get eventRaceJoinAttempt => '参加して挑戦';
+
+  @override
+  String eventRaceSelfTimedParticipant(String time) {
+    return 'セルフタイムのレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
+  }
+
+  @override
+  String get profileNotifRaceStartingSoon => '参加予定のレースが約10分後に始まります';
+
+  @override
+  String profileNotifRaceStartingSoonTitled(String title) {
+    return '「$title」が約10分後に始まります';
+  }
+
+  @override
+  String get profileNotifRaceStartMoved => '参加予定のレースのスタート時刻が変更されました';
+
+  @override
+  String profileNotifRaceStartMovedTitled(String title) {
+    return '「$title」のスタート時刻が変更されました';
+  }
+
+  @override
+  String get prefsNotifyRaceStartingSoon => 'レース開始間近';
+
+  @override
+  String get prefsNotifyRaceStartingSoonHint =>
+      '参加予定の予約スタートのレースが始まる約10分前と、スタート時刻が変わったときのプッシュ通知。メールでは送りません。';
 }

@@ -947,6 +947,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _putUniversal(SettingsKeys.notifyWorkoutReminder, on ? 'off' : 'on');
   }
 
+  Future<void> _toggleNotifyRaceStartingSoon() async {
+    final on = _bagValue<String>(SettingsKeys.notifyRaceStartingSoon) != 'off';
+    await _putUniversal(SettingsKeys.notifyRaceStartingSoon, on ? 'off' : 'on');
+  }
+
   Future<void> _editEmailLifecycleDrip() async {
     // Opt-IN consent stored as 'on'|'off' (default 'off'); a separate key from
     // both email_notifications and email_weekly_digest — one engagement stream
@@ -2386,6 +2391,19 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                           'off',
                       onChanged: _bagReady
                           ? (_) => _toggleNotifyWorkoutReminder()
+                          : null,
+                    ),
+                    SwitchListTile(
+                      key: const ValueKey('prefs-notify-race-starting-soon'),
+                      title: Text(l10n.prefsNotifyRaceStartingSoon),
+                      subtitle: Text(l10n.prefsNotifyRaceStartingSoonHint),
+                      value:
+                          _bagValue<String>(
+                            SettingsKeys.notifyRaceStartingSoon,
+                          ) !=
+                          'off',
+                      onChanged: _bagReady
+                          ? (_) => _toggleNotifyRaceStartingSoon()
                           : null,
                     ),
                     SwitchListTile(

@@ -56,6 +56,8 @@ String _targetKeyFor(NotificationRow n) {
     case 'event_reminder':
     case 'event_waitlist_slot':
     case 'event_updated':
+    case 'race_starting_soon':
+    case 'race_start_moved':
       return n.eventId != null ? 'event:${n.eventId}' : solo;
     case 'club_post':
     case 'club_join_request':

@@ -1480,7 +1480,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             kind == 'event_cancel' ||
             kind == 'event_reminder' ||
             kind == 'event_waitlist_slot' ||
-            kind == 'event_updated') &&
+            kind == 'event_updated' ||
+            kind == 'race_starting_soon' ||
+            kind == 'race_start_moved') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(
@@ -1636,6 +1638,14 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.eventTitle != null
             ? l10n.profileNotifEventUpdatedTitled(item.eventTitle!)
             : l10n.profileNotifEventUpdated;
+      case 'race_starting_soon':
+        return item.eventTitle != null
+            ? l10n.profileNotifRaceStartingSoonTitled(item.eventTitle!)
+            : l10n.profileNotifRaceStartingSoon;
+      case 'race_start_moved':
+        return item.eventTitle != null
+            ? l10n.profileNotifRaceStartMovedTitled(item.eventTitle!)
+            : l10n.profileNotifRaceStartMoved;
       case 'club_join_request':
         return item.clubName != null
             ? l10n.profileNotifClubJoinRequestNamed(name, item.clubName!)

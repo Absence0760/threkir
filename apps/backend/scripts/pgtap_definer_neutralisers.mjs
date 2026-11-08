@@ -1587,6 +1587,78 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'dm_threads',
+    {
+      why: "drops my_msgs' participant check and its delete-for-me `hidden_before` exclusion, the SELECT policy's two rules 20271113000001 wrote into the body when it made the function a definer; keeps the unread count's `recipient_id = auth.uid()` and the caller's own participant row for muted / archived / marked-unread, which say whose inbox the row is in",
+      sql: `create or replace function public.dm_threads()
+ returns table(conversation_id uuid, partner_id uuid, deleted_partner_key uuid, last_body text,
+               last_unsent boolean, last_at timestamptz, last_from_me boolean, unread bigint,
+               muted boolean, archived boolean, marked_unread boolean)
+ language sql stable security definer set search_path to 'public', 'pg_temp'
+as $neutralised$
+  with my_msgs as (
+    select
+      m.conversation_id,
+      case when m.sender_id = (select auth.uid()) then m.recipient_id else m.sender_id end as partner_id,
+      m.deleted_partner_key, m.sender_id, m.recipient_id, m.body, m.unsent_at,
+      m.created_at, m.read_at, m.id
+    from direct_messages m
+    where ${mine('m')}
+  ),
+  latest as (
+    select distinct on (conversation_id)
+      conversation_id, partner_id, deleted_partner_key,
+      body as last_body, (unsent_at is not null) as last_unsent, created_at as last_at,
+      (sender_id = (select auth.uid())) as last_from_me
+    from my_msgs
+    order by conversation_id, created_at desc, id desc
+  ),
+  unread as (
+    select conversation_id, count(*) as cnt
+    from my_msgs
+    where recipient_id = (select auth.uid()) and read_at is null and unsent_at is null
+    group by conversation_id
+  )
+  select
+    l.conversation_id, l.partner_id, l.deleted_partner_key, l.last_body, l.last_unsent,
+    l.last_at, l.last_from_me,
+    greatest(coalesce(u.cnt, 0), case when p.marked_unread_at is not null then 1 else 0 end) as unread,
+    coalesce(p.muted_at is not null, false) as muted,
+    coalesce(p.archived_at is not null and p.archived_at >= l.last_at, false) as archived,
+    coalesce(p.marked_unread_at is not null, false) as marked_unread
+  from latest l
+  left join unread u using (conversation_id)
+  left join conversation_participants p
+    on p.conversation_id = l.conversation_id
+   and p.user_id = (select auth.uid())
+  order by l.last_at desc;
+$neutralised$;`,
+      subject: 'direct_messages m — the messages whose participant and hidden_before rules were dropped',
+      witness: {
+        // A participant's own message, hidden by their delete-for-me: the
+        // claim the suite's dm_threads refusal makes. Its own two users, so no
+        // seed conversation can answer the probe.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0d1', 'authenticated', 'authenticated',
+                   'pgtap-guard-dm-a@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0d2', 'authenticated', 'authenticated',
+                   'pgtap-guard-dm-b@local', '', now(), now());
+                insert into user_follows (follower_id, followee_id)
+                  values ('00000000-0000-0000-0000-00000000c0d2', '00000000-0000-0000-0000-00000000c0d1');
+                insert into direct_messages (id, sender_id, recipient_id, body, created_at)
+                  values ('00000000-0000-0000-0000-00000000c0d3', '00000000-0000-0000-0000-00000000c0d2',
+                          '00000000-0000-0000-0000-00000000c0d1', 'guard witness', now() - interval '1 minute');
+                update conversation_participants set hidden_before = now()
+                 where user_id = '00000000-0000-0000-0000-00000000c0d1'
+                   and conversation_id = (select conversation_id from direct_messages
+                                           where id = '00000000-0000-0000-0000-00000000c0d3');
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c0d1","role":"authenticated"}', true);`,
+        probe: `select count(*) from dm_threads() where partner_id = '00000000-0000-0000-0000-00000000c0d2';`,
+      },
+    },
+  ],
 ]);
 
 // Definer relations a zero-or-empty assertion reads and that deliberately have

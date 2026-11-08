@@ -7,7 +7,7 @@
 -- longer hands read_at back.
 
 begin;
-select plan(28);
+select plan(29);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -122,12 +122,13 @@ select is(
   'the opted-out recipient''s read writes no seen_at');
 
 set local "request.jwt.claims" = '{"sub":"e1000000-0000-0000-0000-00000000000a","role":"authenticated"}';
+-- Both A -> B messages, read back as unseen: a count of seen rows would read
+-- zero for a sender who could not see the messages at all.
 select is(
-  (select count(*)::int from direct_messages
+  (select array_agg(seen_at is null order by created_at)::text from direct_messages
     where sender_id = 'e1000000-0000-0000-0000-00000000000a'
-      and recipient_id = 'e1000000-0000-0000-0000-00000000000b'
-      and seen_at is not null),
-  0,
+      and recipient_id = 'e1000000-0000-0000-0000-00000000000b'),
+  '{t,t}',
   'the sender sees no receipt from an opted-out recipient');
 reset role;
 
@@ -209,6 +210,12 @@ select is(
   'dm_threads leaves out messages at or before hidden_before, unread or not');
 
 reset role;
+select is(
+  (select hidden_before from conversation_participants
+    where conversation_id = (select conversation_id from direct_messages where id = 'e1000000-0000-0000-0000-0000000000c2')
+      and user_id = 'e1000000-0000-0000-0000-00000000000a'),
+  (select created_at from direct_messages where id = 'e1000000-0000-0000-0000-0000000000c2'),
+  'the delete records hidden_before at the message A deleted through');
 
 select * from finish();
 rollback;

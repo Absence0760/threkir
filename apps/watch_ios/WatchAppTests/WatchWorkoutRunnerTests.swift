@@ -92,7 +92,10 @@ final class WatchWorkoutRunnerTests: XCTestCase {
 
         let fast = WatchWorkoutRunner(workout: workout([rep]))
         _ = fast.onTotals(distanceMetres: 0, elapsedSeconds: 0, now: 0)
-        XCTAssertEqual(fast.onTotals(distanceMetres: 120, elapsedSeconds: 19, now: 19), [])
+        // 100 m clears the distance floor; 19 s is short of the time floor.
+        XCTAssertEqual(fast.onTotals(distanceMetres: 100, elapsedSeconds: 19, now: 19), [])
+        // A feed only counts once it moves the distance, as on the phone, so
+        // the 20 s sample has to carry new metres: 120 m in 20 s = 167 s/km.
         XCTAssertEqual(fast.onTotals(distanceMetres: 120, elapsedSeconds: 20, now: 20),
                        [.paceDrift(index: 0, ahead: true, deltaSecondsPerKm: 73)])
     }

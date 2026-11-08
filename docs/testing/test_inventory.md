@@ -363,7 +363,7 @@ The run file carries the L0/L1 half: it holds the store's chain open through a `
 
 Pure-function tests for the top-level `smoothTrack(List<LatLng>)` helper extracted from `widgets/live_run_map.dart` (1-2-3-2-1 weighted polyline smoother used to reduce GPS jitter on the live map). Pins: short-track passthrough (length < 5), first-two-and-last-two preservation, the explicit `(a + 2b + 3c + 2d + e) / 9` weighted-mean formula, co-linear evenly-spaced points are unchanged, the no-mutation contract (returns a new list), length-0/1 inputs handled, length-5 input smooths exactly index 2, and constant-coordinate input (weights sum to 9) returns its input.
 
-### `apps/mobile_android/test/period_summary_test.dart` — 28 tests
+### `apps/mobile_android/test/period_summary_test.dart` — 31 tests
 
 Pure-function tests for the period summary screen's extracted helpers in `lib/screens/period_summary_screen.dart`:
 

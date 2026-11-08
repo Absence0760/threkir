@@ -1,4 +1,4 @@
--- Pins migration 20271114002372 (decisions § 2372, issue #1300 BUG-004):
+-- Pins migration 20271114002372 (decisions § 2379, issue #1300 BUG-004):
 -- only someone who can see an event can RSVP to it, on every write path.
 --
 -- INSERT was already gated (20260629_001): the self-RSVP policy requires the

@@ -166,6 +166,13 @@ const EXCEPTIONS: Exception[] = [
 		why: 'the Web Share API is a platform capability, not a version: desktop Firefox and Chrome on Linux are above the floor and have no share sheet to offer.',
 	},
 	{
+		file: 'src/routes/clubs/[slug]/+page.svelte',
+		probe: 'navigator.share',
+		count: 1,
+		reason: 'optional-capability',
+		why: 'the club and invite links open the OS share sheet where the platform has one and copy to the clipboard where it does not; desktop Firefox and Chrome on Linux are above the floor and have no share sheet to offer.',
+	},
+	{
 		file: 'src/lib/core/edge_function_error.ts',
 		probe: 'ctx.clone',
 		count: 1,

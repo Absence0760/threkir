@@ -1,5 +1,5 @@
 -- An RSVP update is held to the same visibility rule as an RSVP insert, and a
--- client can no longer re-key an RSVP (decisions § 2372, issue #1300 BUG-004).
+-- client can no longer re-key an RSVP (decisions § 2379, issue #1300 BUG-004).
 --
 -- INSERT was already gated: "users RSVP to visible events" (20260629_001)
 -- requires the event to be readable, and the events SELECT policy reads only

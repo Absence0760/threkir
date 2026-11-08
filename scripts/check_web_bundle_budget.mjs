@@ -270,6 +270,14 @@
 // route official distance, mark-as-unread and the localized plan advice. No
 // web dependency changed and the largest code chunk is 289 KB, as on main.
 // Same 6 KB of cover (decisions § 2349).
+// Raised to 2480 for the PR #1314 round, measured in CI at 2474 KB (550
+// files) and locally at 2467 -> 2471 KB (548 -> 550 files) against origin/main
+// 0f1b8e316 with the CI build's placeholder env. Route-level code again: the
+// club share and invite links (/clubs/[slug] node +0.6), the plan-week fold
+// (/plans/[id] node +0.6), DM read receipts and the shared elevation
+// formatter. The root layout node and the entry did not move, no web
+// dependency changed and the largest code chunk is 288 KB on both sides. Same
+// 6 KB of cover (decisions § 2372).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -304,7 +312,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2472;
+export const MAX_CODE_KB = 2480;
 export const MAX_CORE_CATALOGUE_KB = 13;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

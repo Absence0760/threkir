@@ -6,6 +6,7 @@
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
+	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 	import {
 		claimRaceListing,
 		fetchClubRoutes,
@@ -31,36 +32,58 @@
 		signedIn: boolean;
 		/// Called after a write that changes what the race page shows.
 		onchanged: () => void;
+		/// The review queue (decisions § 2396) offers claim and review only.
+		allowSuggest?: boolean;
+		/// The runner's organiser clubs, when the caller already read them, so a
+		/// page listing many races reads them once.
+		organiserClubs?: OrganiserClubCandidate[];
+		/// Hides the course on the page while its removal waits out the undo
+		/// window; returns the function that puts it back.
+		onhidecourse?: () => () => void;
 	}
-	let { race, signedIn, onchanged }: Props = $props();
+	let {
+		race,
+		signedIn,
+		onchanged,
+		allowSuggest = true,
+		organiserClubs,
+		onhidecourse
+	}: Props = $props();
 
 	let myClubs = $state<OrganiserClubCandidate[]>([]);
 	let mySuggestionRouteId = $state<string | null>(null);
 	let suggestions = $state<RaceCourseSuggestion[]>([]);
 	let busy = $state(false);
 
-	const access = $derived(
+	const baseAccess = $derived(
 		raceCourseAccess({
 			signedIn,
 			organiserClubId: race.organiser?.id ?? null,
 			myOrganiserClubs: myClubs
 		})
 	);
+	const access = $derived({ ...baseAccess, canSuggest: allowSuggest && baseAccess.canSuggest });
 
 	// Auxiliary: a failed read hides the tools, never breaks the race page.
 	async function loadContext(listingId: string) {
 		if (!signedIn) return;
-		try {
-			const clubs = await fetchMyClubs();
-			if (race.id === listingId) myClubs = organiserClubsOf(clubs);
-		} catch (e) {
-			console.error('race course tools: club read failed', e);
+		if (organiserClubs) {
+			myClubs = organiserClubs;
+		} else {
+			try {
+				const clubs = await fetchMyClubs();
+				if (race.id === listingId) myClubs = organiserClubsOf(clubs);
+			} catch (e) {
+				console.error('race course tools: club read failed', e);
+			}
 		}
-		try {
-			const mine = await fetchMyRaceCourseSuggestion(listingId);
-			if (race.id === listingId) mySuggestionRouteId = mine?.routeId ?? null;
-		} catch (e) {
-			console.error('race course tools: own suggestion read failed', e);
+		if (allowSuggest) {
+			try {
+				const mine = await fetchMyRaceCourseSuggestion(listingId);
+				if (race.id === listingId) mySuggestionRouteId = mine?.routeId ?? null;
+			} catch (e) {
+				console.error('race course tools: own suggestion read failed', e);
+			}
 		}
 		await loadSuggestions(listingId);
 	}
@@ -173,34 +196,44 @@
 		}
 	}
 
-	// Removing the course is undone by linking it again, so it asks nothing.
-	async function unlink() {
+	// Removing the course is held for the undo window rather than confirmed:
+	// linking it again would not restore it, because a relink stamps a new
+	// checked date (conventions.md § Destructive actions).
+	function unlink() {
 		if (busy) return;
-		busy = true;
-		try {
-			await linkRaceCourse(race.id, null, null);
-			linkOpen = false;
-			showToast(m('raceCourse.unlinked'), 'success');
-			onchanged();
-		} catch (e) {
-			showToast(errorCopy(e, m, 'race course unlink failed', 'raceCourse.linkFailed'), 'error');
-		} finally {
-			busy = false;
-		}
+		const listingId = race.id;
+		linkOpen = false;
+		const restore = onhidecourse?.();
+		deferDestructive({
+			message: m('raceCourse.unlinked'),
+			commit: async () => {
+				await linkRaceCourse(listingId, null, null);
+				onchanged();
+			},
+			restore: () => restore?.(),
+			onCommitError: (e) =>
+				showToast(errorCopy(e, m, 'race course unlink failed', 'raceCourse.linkFailed'), 'error')
+		});
 	}
 
-	async function reject(s: RaceCourseSuggestion) {
+	// A rejected suggestion cannot be put back into the queue, so the reject is
+	// held for the undo window too.
+	function reject(s: RaceCourseSuggestion) {
 		if (busy) return;
-		busy = true;
-		try {
-			await reviewRaceCourseSuggestion(s.id, false);
-			showToast(m('raceCourse.reviewRejected'), 'success');
-			await loadSuggestions(race.id);
-		} catch (e) {
-			showToast(errorCopy(e, m, 'race course reject failed', 'raceCourse.reviewFailed'), 'error');
-		} finally {
-			busy = false;
-		}
+		const before = suggestions;
+		suggestions = suggestions.filter((x) => x.id !== s.id);
+		deferDestructive({
+			message: m('raceCourse.reviewRejected'),
+			commit: async () => {
+				await reviewRaceCourseSuggestion(s.id, false);
+				onchanged();
+			},
+			restore: () => {
+				suggestions = before;
+			},
+			onCommitError: (e) =>
+				showToast(errorCopy(e, m, 'race course reject failed', 'raceCourse.reviewFailed'), 'error')
+		});
 	}
 
 	// ── suggest ─────────────────────────────────────────────────────────────
@@ -301,7 +334,7 @@
 								<button
 									type="button"
 									class="btn btn-outline btn-sm"
-									onclick={() => void reject(s)}
+									onclick={() => reject(s)}
 									disabled={busy}
 									data-testid="race-course-reject"
 								>

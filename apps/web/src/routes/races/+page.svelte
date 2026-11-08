@@ -2,7 +2,9 @@
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
+	import { onMount } from 'svelte';
 	import {
+		fetchRaceCourseReviewQueue,
 		searchRaceListings,
 		type RaceListingResult,
 		type RaceListingFilters,
@@ -102,6 +104,17 @@
 		return () => clearTimeout(timer);
 	});
 
+	// A verified club's admin is pointed at the course suggestions waiting for
+	// them (decisions § 2396). Auxiliary: a failed read shows no link.
+	let suggestionsToReview = $state(0);
+	onMount(() => {
+		fetchRaceCourseReviewQueue()
+			.then((queue) => {
+				suggestionsToReview = queue.reduce((n, item) => n + item.pendingCount, 0);
+			})
+			.catch((e) => console.error('course suggestion queue read failed', e));
+	});
+
 	let placeTimer: ReturnType<typeof setTimeout> | undefined;
 	function onNearPlaceInput() {
 		clearTimeout(placeTimer);
@@ -179,6 +192,11 @@
 			<h1>{m('races.title')}</h1>
 			<HelpLink route="/races" />
 			<p class="subtitle">{m('races.subtitle')}</p>
+			{#if suggestionsToReview > 0}
+				<a class="review-link" href="/races/course-suggestions" data-testid="race-course-queue-link">
+					{m('raceCourse.queueLink', { n: suggestionsToReview })}
+				</a>
+			{/if}
 		</div>
 		<button
 			type="button"
@@ -385,6 +403,11 @@
 	.subtitle {
 		color: var(--color-text-secondary);
 		margin: 0.25rem 0 0;
+	}
+	.review-link {
+		display: inline-block;
+		margin-top: var(--space-xs);
+		font-weight: 600;
 	}
 	.filters {
 		display: flex;

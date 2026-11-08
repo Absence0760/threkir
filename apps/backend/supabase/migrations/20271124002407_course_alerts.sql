@@ -63,10 +63,10 @@ create index course_alerts_listing_idx
 create index course_alerts_route_idx
   on course_alerts (route_id, created_at desc)
   where route_id is not null;
+-- The two partial indexes above also cover the listing and route foreign
+-- keys (an equality on either implies it is not null).
 create index course_alerts_club_id_idx on course_alerts (club_id);
 create index course_alerts_author_id_idx on course_alerts (author_id);
-create index course_alerts_listing_id_idx on course_alerts (listing_id);
-create index course_alerts_route_id_idx on course_alerts (route_id);
 
 alter table course_alerts enable row level security;
 

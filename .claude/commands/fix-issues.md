@@ -60,6 +60,7 @@ Derive `<OWNER>`/`<REPO>` from `gh repo view --json owner,name`. Then apply the 
 
 - **Skip** an issue if any linked PR's `state` is **`OPEN`** (a fix is in flight — e.g. a previous run of this command, or another session) **or `MERGED`** (already fixed; the issue just wasn't auto-closed). Re-fixing either duplicates work.
 - **Do NOT skip** on a PR whose only linked state is **`CLOSED`** (an abandoned fix attempt) — that issue is fair game again. Say in the report that you're re-attempting it and why.
+- **Skip** an issue labelled **`in-flight`**, unless the user named it explicitly (then warn and confirm). The label marks an issue whose work sits in an open PR that does not say `Fixes #N`, because only some of its items are done (a multi-item issue, or a round PR collecting partial work); `closedByPullRequestsReferences` cannot see that. The issue's latest comment names the PR and the items. If the user wants the remaining items, scope the lane to exactly those and say so.
 - **Do NOT skip** on a bare cross-reference / mention alone (a PR saying "related to #N" without a closing keyword). That's why the query uses `closedByPullRequestsReferences`, not `timelineItems(CROSS_REFERENCED_EVENT)`.
 - If the user passed **explicit issue numbers**, still run this check and warn (don't silently proceed) when one already has an open/merged fixing PR — the user may not realise it's already handled; let them confirm before you duplicate it.
 
@@ -99,7 +100,7 @@ Don't trust a "done" — for each returned fix, sanity-check: the cited root cau
 
 Push is a distinct action — the command opening PRs is authorized by the user invoking it, but never `--force` and never touch `main` directly.
 
-**Re-check `closedByPullRequestsReferences` for the issue immediately before opening its PR.** The fan-out takes minutes; another session may have opened a fixing PR in that window. If one appeared, don't open a duplicate — report the collision and drop the fix (or, if yours is clearly better, link both and let the user decide).
+**Re-check `closedByPullRequestsReferences` and the `in-flight` label for the issue immediately before opening its PR.** The fan-out takes minutes; another session may have opened a fixing PR in that window. If one appeared, don't open a duplicate — report the collision and drop the fix (or, if yours is clearly better, link both and let the user decide).
 
 - **Default — one PR per issue** (recommended; matches branch protection + the PR-title lint's one-`type(scope)` rule, and keeps unrelated changes independently reviewable/revertable):
   ```
@@ -114,9 +115,19 @@ Each PR must pass the single required **CI gate** check; report if any open red.
 
 One compact table: issue # → PR URL → test result → CI status. Note any issue that was dropped (not actionable) and why. Clean up finished worktrees (`git worktree remove`) unless a fix is still being iterated.
 
+## Marking work in flight
+
+Whenever a lane's work lands on an open PR that does **not** carry `Fixes #N` for its issue (the issue keeps items open, or the PR is a draft collecting a round), add the `in-flight` label to the issue in the same step as the issue comment that names the PR and the items:
+
+```
+gh issue edit <N> --add-label in-flight
+```
+
+Remove it when that PR merges or is closed (`gh issue edit <N> --remove-label in-flight`), in the same step as ticking the issue's boxes or noting what is still open. An issue that a PR fully fixes needs only `Fixes #N`, not the label.
+
 ## Guardrails
 
-- **Never re-fix an issue that already has an open or merged fixing PR** (step 1's `closedByPullRequestsReferences` filter, re-checked at step 5). This is the anti-duplication invariant — it must survive re-runs and concurrent sessions.
+- **Never re-fix an issue that already has an open or merged fixing PR, or that is labelled `in-flight`** (step 1's `closedByPullRequestsReferences` and label filters, re-checked at step 5). This is the anti-duplication invariant — it must survive re-runs and concurrent sessions.
 - **Fixes only what the issues describe.** No scope creep, no drive-by refactors bundled in.
 - **Never merge the PRs** — opening them is the deliverable; merge is the user's call.
 - **A dropped issue is a fine outcome.** Reporting "3 of 5 were actionable; the other 2 need a product decision" is better than shipping two guesses.

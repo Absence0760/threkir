@@ -15,6 +15,7 @@ import 'rate_limit_message.dart';
 /// a P0001 carrying "rate limit" would otherwise read as a network fault.
 String dmSendErrorMessage(AppLocalizations l10n, Object error) {
   if (error is DmSendNotPermitted) return l10n.messagesSendNotAllowed;
+  if (error is DmRequestCapReached) return l10n.messagesRequestCapReached;
   if (error is PostgrestException) {
     final throttled =
         rateLimitErrorMessage(l10n, code: error.code, message: error.message);

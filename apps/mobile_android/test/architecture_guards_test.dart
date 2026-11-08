@@ -6576,13 +6576,15 @@ void main() {
     /// cannot tell them apart on shape. `equipa`/`equipe` is *team*;
     /// `este`/`esta` and `deste`/`desta` are demonstratives agreeing with a
     /// noun whose gender the variants disagree on (`o ecrã` against `a tela`,
-    /// the § 760 rule). Each is asserted to still be in use.
+    /// the § 760 rule). `aceite`/`aceita` is the participle *accepted*, not
+    /// an imperative. Each is asserted to still be in use.
     const variantWordPairs = <String, String>{
       'equipa': 'equipe',
       'este': 'esta',
       'esta': 'este',
       'nesta': 'neste',
       'deste': 'desta',
+      'aceite': 'aceita',
     };
 
     Map<String, String> arbMessages(String path) {

@@ -205,7 +205,7 @@
 				<strong>{m('raceStart.goAt', { when: when(startIso) })}</strong>
 			</p>
 			{#if countdownS != null}
-				<p class="countdown" aria-live="polite" data-testid="race-countdown">
+				<p class="countdown" data-testid="race-countdown">
 					{m('raceStart.countdown', { time: formatDuration(countdownS) })}
 				</p>
 			{/if}

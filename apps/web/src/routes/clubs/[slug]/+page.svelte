@@ -676,21 +676,73 @@
 		}
 	}
 
-	async function copyInvite() {
+	// A public share link only for a club anon can read: /share/club/[slug]
+	// renders nothing for a private or moderation-hidden club, so handing
+	// that link out would only send people to a dead end.
+	let canShareClub = $derived(!!club && club.is_public && !club.shadow_hidden);
+	let inviteBusy = $state(false);
+
+	function inviteUrl(token: string): string {
+		return `${location.origin}/clubs/join/${encodeURIComponent(token)}`;
+	}
+
+	async function copyLink(url: string, copiedMessage: string) {
+		try {
+			await navigator.clipboard.writeText(url);
+			showToast(copiedMessage, 'success');
+		} catch (e) {
+			console.error('club link copy failed', e);
+			showToast(tr('clubHome.copyFailed'), 'error');
+		}
+	}
+
+	async function shareLink(url: string, title: string, copiedMessage: string) {
+		if (typeof navigator.share === 'function') {
+			try {
+				await navigator.share({ title, url });
+				return;
+			} catch (e) {
+				if (e instanceof DOMException && e.name === 'AbortError') return;
+				console.warn('club share sheet failed, copying instead', e);
+			}
+		}
+		await copyLink(url, copiedMessage);
+	}
+
+	function copyInvite() {
 		if (!club?.invite_token) return;
-		const link = `${location.origin}/clubs/join/${club.invite_token}`;
-		await navigator.clipboard.writeText(link);
-		error = tr('clubHome.inviteCopied');
+		void copyLink(inviteUrl(club.invite_token), tr('clubHome.inviteCopied'));
+	}
+
+	function shareInvite() {
+		if (!club?.invite_token) return;
+		void shareLink(inviteUrl(club.invite_token), club.name, tr('clubHome.inviteCopied'));
+	}
+
+	function shareClub() {
+		if (!club || !canShareClub) return;
+		void shareLink(
+			buildClubShareCanonical(location.origin, club.slug),
+			club.name,
+			tr('clubHome.shareLinkCopied')
+		);
 	}
 
 	function regenerateInvite() {
 		if (!club) return;
-		showRegenConfirm = true;
+		// Only replacing a live link breaks anything; minting the first one does not.
+		if (club.invite_token) showRegenConfirm = true;
+		else void writeInviteToken();
 	}
 
-	async function confirmRegenerate() {
-		if (!club) return;
+	function confirmRegenerate() {
 		showRegenConfirm = false;
+		void writeInviteToken();
+	}
+
+	async function writeInviteToken() {
+		if (!club || inviteBusy) return;
+		inviteBusy = true;
 		try {
 			const token = await regenerateInviteToken(club.id);
 			club = { ...club, invite_token: token };
@@ -699,6 +751,8 @@
 				tr('clubHome.regenerateFailed', { error: errorCopy(e, tr, 'clubHome.regenerateFailed') }),
 				'error'
 			);
+		} finally {
+			inviteBusy = false;
 		}
 	}
 
@@ -1032,6 +1086,12 @@
 						{tr('clubHome.editClub')}
 					</button>
 				{/if}
+				{#if canShareClub}
+					<button class="btn-secondary" type="button" onclick={shareClub} data-testid="club-share">
+						<span class="material-symbols" aria-hidden="true">share</span>
+						{tr('clubHome.shareClub')}
+					</button>
+				{/if}
 				{#if !isAdmin && auth.loggedIn}
 					<button
 						class="btn-secondary btn-icon-only"
@@ -1050,27 +1110,40 @@
 			<p class="error" role="alert">{error}</p>
 		{/if}
 
-		{#if isAdmin && (club.join_policy === 'invite' || club.invite_token)}
-			<section class="admin-card">
+		{#if isAdmin}
+			<section class="admin-card" data-testid="club-invite-card">
 				<div class="admin-card-title">
 					<span class="material-symbols" aria-hidden="true">link</span>
 					<strong>{tr('clubHome.inviteLink')}</strong>
 					<span class="policy-chip">{joinPolicyLabel(club.join_policy)}</span>
 				</div>
+				<p class="invite-body">
+					{club.join_policy === 'invite'
+						? tr('clubHome.inviteBodyInvite')
+						: club.join_policy === 'request'
+							? tr('clubHome.inviteBodyRequest')
+							: tr('clubHome.inviteBodyOpen')}
+				</p>
 				{#if club.invite_token}
 					<div class="invite-row">
-						<code class="invite-link">{location.origin}/clubs/join/{club.invite_token}</code>
+						<code class="invite-link">{inviteUrl(club.invite_token)}</code>
 						<button class="btn-ghost" onclick={copyInvite}>
 							<span class="material-symbols" aria-hidden="true">content_copy</span>
 							{tr('clubHome.copy')}
 						</button>
-						<button class="btn-ghost" onclick={regenerateInvite}>
+						<button class="btn-ghost" onclick={shareInvite}>
+							<span class="material-symbols" aria-hidden="true">share</span>
+							{tr('clubHome.share')}
+						</button>
+						<button class="btn-ghost" onclick={regenerateInvite} disabled={inviteBusy}>
 							<span class="material-symbols" aria-hidden="true">refresh</span>
 							{tr('clubHome.rotate')}
 						</button>
 					</div>
 				{:else}
-					<button class="btn-secondary" onclick={regenerateInvite}>{tr('clubHome.generateInviteLink')}</button>
+					<button class="btn-secondary" onclick={regenerateInvite} disabled={inviteBusy}>
+						{tr('clubHome.generateInviteLink')}
+					</button>
 				{/if}
 			</section>
 		{/if}
@@ -2063,6 +2136,12 @@
 		border-radius: var(--radius-sm);
 		background: var(--color-bg-tertiary);
 		color: var(--color-text-secondary);
+	}
+
+	.invite-body {
+		margin: 0 0 0.6rem;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
 	}
 
 	.invite-row {

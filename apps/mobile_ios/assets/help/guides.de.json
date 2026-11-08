@@ -641,8 +641,8 @@
           {
             "type": "steps",
             "items": [
-              "Öffne deinen Club im Web. Ist der Club auf **Nur mit Einladung** gestellt, sehen Admins auf der Club-Seite einen Bereich **Einladungslink**.",
-              "Wähle beim ersten Mal **Einladungslink erstellen** und dann **Kopieren**, um den Link in die Zwischenablage zu legen.",
+              "Öffne deinen Club. Im Web sehen Admins auf der Club-Seite einen Bereich **Einladungslink**, egal welche Beitrittsregel gilt. In der Handy-App tippst du oben auf dem Club-Bildschirm auf die Schaltfläche zum Einladen.",
+              "Wähle beim ersten Mal **Einladungslink erstellen** und dann **Kopieren**, um den Link in die Zwischenablage zu legen, oder **Teilen**, um ihn über das Teilen-Menü zu verschicken.",
               "Verschicke den Link, wie du möchtest. Wer ihn öffnet und sich anmeldet, tritt dem Club als Mitglied bei."
             ]
           },
@@ -659,6 +659,10 @@
             "type": "note",
             "tone": "tip",
             "text": "In der Handy-App kann ein Mitglied auch unter **Sozial** im Tab **Clubs** auf **Mit Einladungscode beitreten** tippen und den ganzen Link oder nur den Code nach /clubs/join/ einfügen. Den Link in einem Browser auf dem Handy zu öffnen funktioniert ebenfalls."
+          },
+          {
+            "type": "p",
+            "text": "Ein öffentlicher Club hat außerdem eine Schaltfläche **Club teilen**, die alle nutzen können. Sie teilt die öffentliche Seite des Clubs, die zeigt, worum es im Club geht, ohne jemanden hereinzulassen, sodass man weiterhin auf dem üblichen Weg beitritt. Private Clubs haben keine öffentliche Seite, teile dort stattdessen den Einladungslink."
           }
         ]
       },

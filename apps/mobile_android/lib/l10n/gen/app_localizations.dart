@@ -23630,6 +23630,102 @@ abstract class AppLocalizations {
   /// **'Share the challenge page'**
   String get challengeInviteSharePage;
 
+  /// Heading of the invite-link card a club admin sees on the club screen
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link'**
+  String get clubInviteLinkTitle;
+
+  /// Invite card body on an invite-only club
+  ///
+  /// In en, this message translates to:
+  /// **'Only people with this link can join.'**
+  String get clubInviteBodyInvite;
+
+  /// Invite card body on a request-to-join club: the link skips the admin's approval
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this link joins straight away, without waiting for approval.'**
+  String get clubInviteBodyRequest;
+
+  /// Invite card body on an open club
+  ///
+  /// In en, this message translates to:
+  /// **'Anyone with this link can join.'**
+  String get clubInviteBodyOpen;
+
+  /// Button making a club's first invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Create invite link'**
+  String get clubInviteGenerate;
+
+  /// Opens the share sheet with the club invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Share link'**
+  String get clubInviteShare;
+
+  /// Copies the club invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get clubInviteCopy;
+
+  /// Banner after copying a club invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Invite link copied'**
+  String get clubInviteCopied;
+
+  /// Banner when copying a club link fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t copy the link.'**
+  String get clubInviteCopyFailed;
+
+  /// Club invite card error
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the invite link.'**
+  String get clubInviteLoadFailed;
+
+  /// Replaces the club invite link with a new one
+  ///
+  /// In en, this message translates to:
+  /// **'Reset link'**
+  String get clubInviteRotate;
+
+  /// Confirm dialog title for resetting a club invite link
+  ///
+  /// In en, this message translates to:
+  /// **'Reset the invite link?'**
+  String get clubInviteRotateTitle;
+
+  /// Confirm dialog body for resetting a club invite link
+  ///
+  /// In en, this message translates to:
+  /// **'The current link stops working straight away. Anyone who already joined stays in.'**
+  String get clubInviteRotateBody;
+
+  /// Banner when creating or resetting a club invite link fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the invite link. Try again.'**
+  String get clubInviteRotateFailed;
+
+  /// Tooltip of the app-bar action sharing a public club's page
+  ///
+  /// In en, this message translates to:
+  /// **'Share club'**
+  String get clubShareClub;
+
+  /// Banner when the club page link was copied because the share sheet could not open
+  ///
+  /// In en, this message translates to:
+  /// **'Club link copied'**
+  String get clubShareLinkCopied;
+
   /// Empty leaderboard state
   ///
   /// In en, this message translates to:

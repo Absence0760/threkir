@@ -14589,6 +14589,59 @@ class AppLocalizationsPt extends AppLocalizations {
   String get challengeInviteSharePage => 'Partilhar a página do desafio';
 
   @override
+  String get clubInviteLinkTitle => 'Link de convite';
+
+  @override
+  String get clubInviteBodyInvite => 'Só quem tiver esta ligação pode aderir.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Quem tiver esta ligação adere de imediato, sem esperar por aprovação.';
+
+  @override
+  String get clubInviteBodyOpen =>
+      'Qualquer pessoa com esta ligação pode aderir.';
+
+  @override
+  String get clubInviteGenerate => 'Criar ligação de convite';
+
+  @override
+  String get clubInviteShare => 'Partilhar link';
+
+  @override
+  String get clubInviteCopy => 'Copiar link';
+
+  @override
+  String get clubInviteCopied => 'Ligação de convite copiada';
+
+  @override
+  String get clubInviteCopyFailed => 'Não foi possível copiar o link.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'Não foi possível carregar o link de convite.';
+
+  @override
+  String get clubInviteRotate => 'Repor link';
+
+  @override
+  String get clubInviteRotateTitle => 'Repor o link de convite?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'O link atual deixa de funcionar de imediato. Quem já entrou continua no clube.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Não foi possível atualizar a ligação de convite. Tente novamente.';
+
+  @override
+  String get clubShareClub => 'Partilhar clube';
+
+  @override
+  String get clubShareLinkCopied => 'Ligação do clube copiada';
+
+  @override
   String get challengesLeaderboardEmpty => 'Nenhum progresso registado ainda.';
 
   @override
@@ -34819,6 +34872,58 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get challengeInviteSharePage => 'Compartilhar a página do desafio';
+
+  @override
+  String get clubInviteLinkTitle => 'Link de convite';
+
+  @override
+  String get clubInviteBodyInvite => 'Só quem tiver este link pode entrar.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Quem tiver este link entra na hora, sem esperar aprovação.';
+
+  @override
+  String get clubInviteBodyOpen => 'Qualquer pessoa com este link pode entrar.';
+
+  @override
+  String get clubInviteGenerate => 'Criar link de convite';
+
+  @override
+  String get clubInviteShare => 'Compartilhar link';
+
+  @override
+  String get clubInviteCopy => 'Copiar link';
+
+  @override
+  String get clubInviteCopied => 'Link de convite copiado';
+
+  @override
+  String get clubInviteCopyFailed => 'Não foi possível copiar o link.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'Não foi possível carregar o link de convite.';
+
+  @override
+  String get clubInviteRotate => 'Redefinir link';
+
+  @override
+  String get clubInviteRotateTitle => 'Redefinir o link de convite?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'O link atual deixa de funcionar na hora. Quem já entrou continua no clube.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Não foi possível atualizar o link de convite. Tente de novo.';
+
+  @override
+  String get clubShareClub => 'Compartilhar clube';
+
+  @override
+  String get clubShareLinkCopied => 'Link do clube copiado';
 
   @override
   String get challengesLeaderboardEmpty => 'Nenhum progresso registrado ainda.';

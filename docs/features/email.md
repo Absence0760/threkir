@@ -247,6 +247,7 @@ Shared pieces:
 | Notification → email (kudos, comment, reaction, comment like, mention, follow, follow request, event RSVP/cancel/reminder, plan update, message, club post, run completed) | `notification_email` | `notifications` AFTER INSERT, gated on `email_notifications` | ✓ | §117 |
 | **Event-day reminders** (scheduled) | `notification_email` (`event_reminder`) | hourly pg_cron `enqueue_event_reminders()` over `going` RSVPs in the next 24 h | ✓ | §117 |
 | **Today's-workout reminder** (scheduled) | `notification_email` (`workout_reminder`) | hourly pg_cron `enqueue_workout_reminders()`: one per runner per local morning (07:00-11:59 in `prefs.time_zone`, nobody without a known zone) when the active plan's day holds an outstanding workout; emailed only under `email_notifications = all` (pushed under the default); `notify_workout_reminder = 'off'` withholds the row itself | ✓ | §2087 |
+| **Race starting soon / start moved** (scheduled race, push only) | `notification_email` rail skipped: `race_starting_soon` / `race_start_moved` are in `pushOnlyKinds`, so no mode emails them | per-minute pg_cron `race_sessions_tick()` about 10 minutes before a scheduled GO (skipped after an `event_reminder` within the hour; `notify_race_starting_soon = 'off'` withholds the row); a Delay's `race_sessions_notify_start_moved_trg` | ✓ (push copy) | §2400 |
 | **Welcome** ("thanks for signing up") | `lifecycle_email` (`welcome`) | `user_profiles` AFTER INSERT | ✓ | §119 |
 | **Pro-purchase receipt** | `lifecycle_email` (`pro_welcome`) | `user_profiles` AFTER UPDATE, `subscription_tier` → paid | ✓ | §121 |
 | **Payment-failed dunning** | `lifecycle_email` (`payment_failed`) | `user_profiles` AFTER UPDATE, `billing_issue_at` null→non-null | ✓ | §121 |
@@ -738,6 +739,20 @@ neither, and neither carries a `List-Unsubscribe` header.
   exists as well as in `kindMuted`. One per runner per local day, claimed in
   `private.workout_reminder_claims`. The kind widen is the `NOT VALID` half in
   `20270913000001` and the `VALIDATE` in `20270913000002`.
+- [x] **Race start notices** — `race_starting_soon` and `race_start_moved`
+  (issue #1306, `decisions.md § 2400`, migration `20271121002400`, the kind
+  widen's `VALIDATE` in `…2401`). Raised for a Scheduled GO race: about 10
+  minutes before the server fires GO, for everyone going, by the per-minute
+  `race_sessions_tick()` (skipped when an `event_reminder` reached the runner
+  within the hour), and when the organiser delays the start. Both are in
+  `pushImportantKinds` and the new `pushOnlyKinds`, which `shouldEmail`
+  refuses under every mode, `all` included: a ten-minute warning is stale in a
+  mailbox. One opt-OUT mute covers both, `notify_race_starting_soon` (web
+  Settings → Notifications, mobile Settings → Preferences); the tick reads it
+  and raises no starting-soon row for a muted runner. The copy is static like
+  every other kind and names no time: the start can move again before the
+  push is read, so the time is one tap away on the event page, which is the
+  deep link (`/events/{event_id}`). Copy in all seven locales.
 - [x] **Club and event notices** — issue #1300 BUG-009 / 010 / 016,
   `decisions.md § 2358`, migrations `20271112000010`-`13` (the kind widen's
   `VALIDATE` is `20271112000011`). `club_join_request` (to a request-to-join

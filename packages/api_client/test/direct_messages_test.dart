@@ -441,6 +441,68 @@ void main() {
     });
   });
 
+  group('editDm', () {
+    test('calls the sender-only RPC with the trimmed body and returns the row',
+        () async {
+      await _signIn(client);
+      fake.bodyByPath['/rest/v1/rpc/edit_direct_message'] = {
+        ..._message('m-1'),
+        'body': 'see you at 7:30',
+        'edited_at': '2026-10-14T09:05:00Z',
+      };
+
+      final row = await api.editDm('m-1', '  see you at 7:30  ');
+
+      final req =
+          fake.to('/rest/v1/rpc/edit_direct_message').single as http.Request;
+      expect(req.method, 'POST');
+      expect(jsonDecode(req.body),
+          {'p_message_id': 'm-1', 'p_body': 'see you at 7:30'});
+      expect(row.body, 'see you at 7:30');
+      expect(row.editedAt, DateTime.utc(2026, 10, 14, 9, 5));
+    });
+
+    test('a refusal past the window is DmEditClosed', () async {
+      await _signIn(client);
+      fake.statusByPath['/rest/v1/rpc/edit_direct_message'] = 400;
+      fake.bodyByPath['/rest/v1/rpc/edit_direct_message'] = {
+        'code': '55000',
+        'message': 'edit_direct_message: message can no longer be edited',
+      };
+
+      expect(api.editDm('m-1', 'late'), throwsA(isA<DmEditClosed>()));
+    });
+
+    test('someone else\'s message is DmEditClosed too', () async {
+      await _signIn(client);
+      fake.statusByPath['/rest/v1/rpc/edit_direct_message'] = 404;
+      fake.bodyByPath['/rest/v1/rpc/edit_direct_message'] = {
+        'code': 'P0002',
+        'message': 'edit_direct_message: message not found',
+      };
+
+      expect(api.editDm('m-9', 'forged'), throwsA(isA<DmEditClosed>()));
+    });
+
+    test('the edit throttle stays a PostgrestException for the shared parser',
+        () async {
+      await _signIn(client);
+      fake.statusByPath['/rest/v1/rpc/edit_direct_message'] = 400;
+      fake.bodyByPath['/rest/v1/rpc/edit_direct_message'] = {
+        'code': 'P0001',
+        'message': 'rate limit exceeded for edit_direct_message, retry in 60s',
+      };
+
+      expect(api.editDm('m-1', 'again'), throwsA(isA<PostgrestException>()));
+    });
+
+    test('a blank body is refused without a wire call', () async {
+      await _signIn(client);
+      expect(() => api.editDm('m-1', '   '), throwsArgumentError);
+      expect(fake.to('/rest/v1/rpc/edit_direct_message'), isEmpty);
+    });
+  });
+
   group('sendDm', () {
     test('inserts the trimmed body from the viewer and returns the row',
         () async {

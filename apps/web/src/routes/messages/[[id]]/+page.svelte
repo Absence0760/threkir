@@ -20,12 +20,14 @@
 		parseDmThreadRouteId
 	} from '#lib/social/dm_thread.ts';
 	import { dmMarkReadThrough, seenReceipt } from '#lib/social/dm_read_receipt.ts';
+	import { canEditDm } from '#lib/social/dm_edit.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import {
 		fetchDmThread,
 		sendDm,
 		unsendDm,
+		editDm,
 		markDmThreadRead,
 		blockUser,
 		unblockUser,
@@ -72,6 +74,19 @@
 	let unsendTarget = $state<DirectMessage | null>(null);
 	let reportTarget = $state<DirectMessage | null>(null);
 	let actionError = $state<string | null>(null);
+
+	// Inline edit of one of the viewer's own messages (migration
+	// 20271114000210). `now` ticks so Edit disappears once the window closes;
+	// the server's clock is the one that decides, and a late save says so.
+	let editingId = $state<string | null>(null);
+	let editDraft = $state('');
+	let editBusy = $state(false);
+	let editError = $state<string | null>(null);
+	let now = $state(Date.now());
+	$effect(() => {
+		const timer = setInterval(() => (now = Date.now()), 15_000);
+		return () => clearInterval(timer);
+	});
 
 	// Block from inside the conversation, the same toggle the profile header
 	// carries (decisions § 1952): Block is confirmed because block_user drains
@@ -122,6 +137,7 @@
 		// above the composer made it read as an error in the new conversation.
 		sendError = null;
 		actionError = null;
+		cancelEdit();
 		leavingUnread = null;
 		unreadClearTried.clear();
 		markedThrough = null;
@@ -457,6 +473,47 @@
 		await messagesInbox.refreshThreads();
 	}
 
+	function startEdit(m: DirectMessage) {
+		editingId = m.id;
+		editDraft = m.body ?? '';
+		editError = null;
+	}
+
+	function cancelEdit() {
+		editingId = null;
+		editDraft = '';
+		editError = null;
+	}
+
+	async function saveEdit() {
+		const targetId = editingId;
+		const id = activeId;
+		if (!targetId || !id || editBusy || !editDraft.trim()) return;
+		editBusy = true;
+		editError = null;
+		try {
+			const updated = await editDm(targetId, editDraft);
+			localWrites++;
+			if (id === activeId) messages = mergeDmMessages(messages, [updated]);
+			if (editingId === targetId) cancelEdit();
+		} catch (e) {
+			editError = errorCopy(e, tr, 'messages.editFailed', 'messages.editFailed');
+		} finally {
+			editBusy = false;
+		}
+		await messagesInbox.refreshThreads();
+	}
+
+	function onEditKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			void saveEdit();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelEdit();
+		}
+	}
+
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
@@ -597,6 +654,28 @@
 				<div class="bubble" class:mine class:unsent={m.unsent_at !== null} data-testid="dm-bubble">
 					{#if m.unsent_at !== null || m.body === null}
 						<span class="text placeholder">{tr('messages.unsentPlaceholder')}</span>
+					{:else if editingId === m.id}
+						<div class="edit" data-testid="dm-edit-form">
+							<textarea
+								bind:value={editDraft}
+								onkeydown={onEditKeydown}
+								aria-label={tr('messages.editLabel')}
+								rows="2"
+								maxlength="4000"
+								data-testid="dm-edit-input"
+							></textarea>
+							{#if editError}<p class="edit-error" role="alert" data-testid="dm-edit-error">{editError}</p>{/if}
+							<div class="edit-actions">
+								<button type="button" class="msg-action" onclick={cancelEdit}>{tr('messages.editCancel')}</button>
+								<button
+									type="button"
+									class="msg-action"
+									disabled={editBusy || !editDraft.trim()}
+									onclick={() => void saveEdit()}
+									data-testid="dm-edit-save"
+								>{tr('messages.editSave')}</button>
+							</div>
+						</div>
 					{:else if hasDmRouteAttachment(attached)}
 						<DmRouteAttachment routeId={attached} />
 						{#if !bodyRestatesAttachment(m.body, attached)}
@@ -607,8 +686,19 @@
 					{/if}
 					<span class="meta">
 						<span class="when">{fmtTime(m.created_at)}</span>
-						{#if m.unsent_at === null}
+						{#if m.edited_at !== null && m.unsent_at === null}
+							<span class="edited" data-testid="dm-edited">{tr('messages.edited')}</span>
+						{/if}
+						{#if m.unsent_at === null && editingId !== m.id}
 							{#if mine}
+								{#if canEditDm(m, me, now)}
+									<button
+										type="button"
+										class="msg-action"
+										onclick={() => startEdit(m)}
+										data-testid="dm-edit"
+									>{tr('messages.edit')}</button>
+								{/if}
 								<button
 									type="button"
 									class="msg-action"
@@ -842,6 +932,36 @@
 	}
 	.placeholder {
 		font-style: italic;
+	}
+	.bubble .edited {
+		font-size: var(--font-size-section-label);
+		opacity: 0.7;
+	}
+	.edit {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+	.edit textarea {
+		resize: vertical;
+		min-width: 14rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		padding: 0.4rem 0.6rem;
+		font: inherit;
+		background: var(--color-bg);
+		color: var(--color-text);
+	}
+	.edit-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.75rem;
+	}
+	.edit-error {
+		margin: 0;
+		font-size: var(--font-size-section-label);
+		color: inherit;
+		font-weight: 600;
 	}
 	.closed {
 		padding: var(--space-md) var(--space-lg);

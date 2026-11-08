@@ -21761,6 +21761,15 @@
       }
     }
   },
+  "rateLimitEditMessage": "You're editing messages too quickly — please wait {wait} and try again.",
+  "@rateLimitEditMessage": {
+    "description": "Rate-limit refusal when the direct-message edit bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
   "rateLimitGeneric": "You're doing that too quickly — please wait {wait} and try again.",
   "@rateLimitGeneric": {
     "description": "Rate-limit refusal for a bucket this build does not recognise",
@@ -23281,6 +23290,30 @@
   "messagesUnsendFailed": "Couldn't unsend the message.",
   "@messagesUnsendFailed": {
     "description": "Banner when unsending a direct message failed"
+  },
+  "messagesEdit": "Edit",
+  "@messagesEdit": {
+    "description": "Action in the message options sheet that opens the editor for one of your own messages, offered for 15 minutes after sending"
+  },
+  "messagesEdited": "Edited",
+  "@messagesEdited": {
+    "description": "Small mark beside the time on a message its sender edited"
+  },
+  "messagesEditTitle": "Edit message",
+  "@messagesEditTitle": {
+    "description": "Title of the dialog that edits one of your own direct messages; also the text field label"
+  },
+  "messagesEditSave": "Save",
+  "@messagesEditSave": {
+    "description": "Button that saves an edited direct message"
+  },
+  "messagesEditFailed": "Couldn't edit the message.",
+  "@messagesEditFailed": {
+    "description": "Shown in the edit dialog when saving the edit failed for a reason other than the window closing"
+  },
+  "messagesEditClosed": "This message can no longer be edited.",
+  "@messagesEditClosed": {
+    "description": "Shown in the edit dialog when the server refuses the edit: the 15-minute window passed, the message was unsent, or a block stands"
   },
   "messagesReport": "Report",
   "@messagesReport": {

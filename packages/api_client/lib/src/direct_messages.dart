@@ -119,3 +119,14 @@ class DmSendNotPermitted implements Exception {
   @override
   String toString() => 'DmSendNotPermitted';
 }
+
+/// `edit_direct_message` refused the edit (migration 20271114000210): the
+/// message is unsent, past the 15-minute window, between a blocked pair
+/// (SQLSTATE 55000 for all three, so a block is not revealed), or not the
+/// viewer's own (P0002). Clients say one sentence for all of them.
+class DmEditClosed implements Exception {
+  const DmEditClosed();
+
+  @override
+  String toString() => 'DmEditClosed';
+}

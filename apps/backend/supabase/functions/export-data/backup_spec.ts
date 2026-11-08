@@ -46,7 +46,7 @@ export function orderForTable(table: string): string {
 
 /** Every direct_messages column but read_at (see the sent spec below). */
 export const DIRECT_MESSAGES_SENT_SELECT =
-	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id';
+	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body';
 
 /// Build the full table-spec list. Pure — only takes the caller's
 /// user id. Mirrors the Go worker's `FetchExportPersonalDataTables`
@@ -236,14 +236,16 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'reports_against_my_messages.json',
 			table: 'reports',
 			filter: `target_kind=eq.direct_message&snapshot_author_id=eq.${uid}&status=neq.pending`,
-			select: 'id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at',
+			select: 'id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at,snapshot_original_body',
 		},
 		// direct_messages — private 1:1 conversations, both directions.
 		// `body` is the subject's own correspondence and ships verbatim.
 		// audit/data-export-completeness (2026-05-30) Critical.
 		// The sent side leaves out read_at: it is the recipient's own read
 		// time, withheld from the sender by a column grant (20271113000001).
-		// seen_at is what the recipient chose to share.
+		// seen_at is what the recipient chose to share. edited_at and
+		// original_body (the text before an edit, 20271114000210) are the
+		// subject's own words, so they ship on both sides.
 		{
 			entry: 'direct_messages_sent.json',
 			table: 'direct_messages',

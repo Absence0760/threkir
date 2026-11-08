@@ -32,6 +32,7 @@ export type Translate = (key: MessageKey, params?: Record<string, string | numbe
 const BUCKET_KEY: Record<string, MessageKey> = {
 	create_club: 'rateLimit.createClub',
 	create_route: 'rateLimit.createRoute',
+	edit_direct_message: 'rateLimit.editMessage',
 	create_report: 'rateLimit.createReport',
 	create_challenge: 'rateLimit.createChallenge',
 	join_challenge_by_token: 'rateLimit.joinChallenge',

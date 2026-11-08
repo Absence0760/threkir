@@ -90,6 +90,9 @@ insert into lockdown_registry (tbl, col, reason) values
   -- The recipient's unread count reads it through dm_threads(), SECURITY
   -- DEFINER; the sender reads seen_at, written only while both have receipts on.
   ('direct_messages',      'read_at',              'the recipient''s own read time; granting it shows the sender a read the recipient turned receipts off to keep private'),
+  -- 20271114000210: the text as first sent, kept after an edit only so
+  -- submit_report can snapshot it for moderators. Clients show the edited text.
+  ('direct_messages',      'original_body',        'moderation evidence of the text before an edit; read only by submit_report, never by a client'),
 
   -- donations — 20270621_001, making 20270213_001's column revoke real. The
   -- table carries NO permissive client SELECT policy: every client read is

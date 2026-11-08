@@ -41,6 +41,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitCreateClub(wait);
     case 'create_route':
       return l10n.rateLimitCreateRoute(wait);
+    case 'edit_direct_message':
+      return l10n.rateLimitEditMessage(wait);
     case 'create_report':
       return l10n.rateLimitCreateReport(wait);
     case 'create_challenge':

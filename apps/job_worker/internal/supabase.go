@@ -2427,7 +2427,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			name:   "reports_against_my_messages.json",
 			table:  "reports",
 			filter: "target_kind=eq.direct_message&snapshot_author_id=eq." + uid + "&status=neq.pending",
-			sel:    "id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at",
+			sel:    "id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at,snapshot_original_body",
 		},
 		// direct_messages — private 1:1 conversations, both directions
 		// (messages the user sent and messages they received). `body`
@@ -2435,10 +2435,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// audit/data-export-completeness (2026-05-30) Critical.
 		// The sent side leaves out read_at, the recipient's own read time
 		// (20271113000001); seen_at is what the recipient chose to share.
+		// edited_at and original_body (the text before an edit,
+		// 20271114000210) are the subject's own words.
 		{
 			name: "direct_messages_sent.json", table: schema.TableDirectMessages,
 			filter: "sender_id=eq." + uid,
-			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id",
+			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body",
 		},
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,

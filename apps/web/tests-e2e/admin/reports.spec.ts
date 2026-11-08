@@ -102,6 +102,35 @@ test.describe('admin moderation — admin can triage the queue', () => {
 		}
 	});
 
+	test('a reported message edited before the report shows the text as first sent', async ({ page }) => {
+		// migration 20271114000210: submit_report snapshots original_body, so
+		// an edit cannot launder a message before it is reported.
+		const messageId = crypto.randomUUID();
+		const { data, error } = await getAdminClient()
+			.from('reports')
+			.insert({
+				reporter_id: REPORTER_ONE,
+				target_kind: 'direct_message',
+				target_id: messageId,
+				reason: 'harassment',
+				status: 'pending',
+				snapshot_body: 'something kind',
+				snapshot_original_body: 'something nasty',
+				snapshot_author_id: TARGET_ID,
+				snapshot_sent_at: new Date().toISOString(),
+			})
+			.select('id')
+			.single();
+		if (error || !data) throw error ?? new Error('report seed failed');
+		plantedReportIds.push(data.id as string);
+
+		await page.goto('/admin/reports');
+		await page.getByTestId('admin-queue-row').filter({ hasText: messageId.slice(0, 8) }).click();
+		const modal = page.getByTestId('admin-detail-modal');
+		await expect(modal.getByTestId('admin-report-snapshot')).toContainText('something kind');
+		await expect(modal.getByTestId('admin-report-snapshot-original')).toHaveText('something nasty');
+	});
+
 	test('the review panel is reachable by keyboard, not only by clicking the row',
 		async ({ page }) => {
 			// The row's onclick had no keyboard equivalent, and the only

@@ -9,6 +9,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../auth_error.dart';
 import '../dm_attachment.dart';
+import '../dm_edit.dart';
 import '../dm_pending_hides.dart';
 import '../dm_read_receipt.dart';
 import '../dm_send_error.dart';
@@ -42,8 +43,10 @@ const Duration kMessageThreadPollInterval = Duration(seconds: 10);
 /// shown — the follow / block gate, the send throttle, offline and anything
 /// else each read differently (`dm_send_error.dart`).
 ///
-/// Long-pressing a message opens its options: Unsend on your own (confirmed,
-/// since it cannot be undone) and Report on the other person's. A partner
+/// Long-pressing a message opens its options: Edit on your own for 15
+/// minutes after sending (migration 20271114000210), Unsend on your own
+/// (confirmed, since it cannot be undone) and Report on the other person's.
+/// An edited message is marked "Edited" on both sides. A partner
 /// who deleted their account opens through [MessageThreadScreen.deletedPartner]:
 /// the viewer's own messages under that partner's key, with no composer
 /// (migration 20271021000003).
@@ -648,11 +651,13 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     );
   }
 
-  /// The long-press options for one stored message: Unsend on your own,
-  /// Report on the other person's. An unsent message has neither.
+  /// The long-press options for one stored message: Edit (inside the window)
+  /// and Unsend on your own, Report on the other person's. An unsent message
+  /// has none.
   Future<void> _showOptions(DirectMessageRow m) async {
     final l10n = AppLocalizations.of(context);
     final mine = m.senderId == widget.api.userId;
+    final editable = canEditDm(m, widget.api.userId, DateTime.now());
     final action = await showModalBottomSheet<String>(
       context: context,
       useSafeArea: true,
@@ -660,6 +665,13 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (editable)
+              ListTile(
+                key: const ValueKey('message-action-edit'),
+                leading: const Icon(Icons.edit_outlined),
+                title: Text(l10n.messagesEdit),
+                onTap: () => Navigator.pop(ctx, 'edit'),
+              ),
             if (mine)
               ListTile(
                 key: const ValueKey('message-action-unsend'),
@@ -682,6 +694,8 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     if (!mounted || action == null) return;
     if (action == 'unsend') {
       await _unsend(m);
+    } else if (action == 'edit') {
+      await _edit(m);
     } else {
       await showReportSheet(
         context,
@@ -690,6 +704,21 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         targetId: m.id,
       );
     }
+  }
+
+  /// The edit saves from inside its dialog, so a refused save is said there
+  /// with the text still in the field rather than lost behind a banner.
+  Future<void> _edit(DirectMessageRow m) async {
+    final row = await showDialog<DirectMessageRow>(
+      context: context,
+      builder: (ctx) => _EditMessageDialog(
+        initial: m.body ?? '',
+        save: (body) => widget.api.editDm(m.id, body),
+      ),
+    );
+    if (row == null || !mounted) return;
+    _localWrites++;
+    setState(() => _messages = _merge(_messages, [row]));
   }
 
   /// Unsend cannot be undone — the server clears the text for both people —
@@ -925,6 +954,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           seenLabel: seen?.id == m.id
               ? l10n.messagesSeenAt(_stamp(seen!.seenAt!, tag))
               : null,
+          editedLabel: m.editedAt != null && m.unsentAt == null
+              ? l10n.messagesEdited
+              : null,
           onLongPress: m.unsentAt == null ? () => _showOptions(m) : null,
           longPressHint: l10n.messagesOptionsHint,
           attachment: m.unsentAt == null && hasDmRouteAttachment(m.routeId)
@@ -1046,6 +1078,7 @@ class _Bubble extends StatelessWidget {
     this.sendingLabel,
     this.unsentLabel,
     this.seenLabel,
+    this.editedLabel,
     this.onLongPress,
     this.longPressHint,
   });
@@ -1062,6 +1095,9 @@ class _Bubble extends StatelessWidget {
 
   /// "Seen" and the time, under the viewer's newest message the partner read.
   final String? seenLabel;
+
+  /// "Edited", beside the time, once the sender edited the message.
+  final String? editedLabel;
   final VoidCallback? onLongPress;
   final String? longPressHint;
 
@@ -1113,6 +1149,15 @@ class _Bubble extends StatelessWidget {
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: fg.withValues(alpha: 0.7)),
               ),
+              if (editedLabel != null) ...[
+                const SizedBox(width: 6),
+                Text(
+                  editedLabel!,
+                  key: const ValueKey('dm-edited'),
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: fg.withValues(alpha: 0.7)),
+                ),
+              ],
             ],
           ),
         ],
@@ -1150,6 +1195,89 @@ class _Bubble extends StatelessWidget {
             style: theme.textTheme.labelSmall
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Edits one message in place: Save calls [save], closes with the stored row
+/// on success, and on a refusal keeps the dialog and the typed text up with
+/// the reason under the field.
+class _EditMessageDialog extends StatefulWidget {
+  const _EditMessageDialog({required this.initial, required this.save});
+
+  final String initial;
+  final Future<DirectMessageRow> Function(String body) save;
+
+  @override
+  State<_EditMessageDialog> createState() => _EditMessageDialogState();
+}
+
+class _EditMessageDialogState extends State<_EditMessageDialog> {
+  late final TextEditingController _text =
+      TextEditingController(text: widget.initial);
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final body = _text.text.trim();
+    if (body.isEmpty || _saving) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final row = await widget.save(body);
+      if (mounted) Navigator.pop(context, row);
+    } catch (e) {
+      debugPrint('message edit failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = dmEditErrorMessage(l10n, e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.messagesEditTitle),
+      content: TextField(
+        key: const ValueKey('message-edit-field'),
+        controller: _text,
+        autofocus: true,
+        minLines: 1,
+        maxLines: 6,
+        inputFormatters: [
+          LengthLimitingTextInputFormatter(kDirectMessageMaxLength),
+        ],
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          labelText: l10n.messagesEditTitle,
+          errorText: _error,
+          errorMaxLines: 3,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: Text(l10n.commonCancel),
+        ),
+        TextButton(
+          key: const ValueKey('message-edit-save'),
+          onPressed: _saving || _text.text.trim().isEmpty ? null : _save,
+          child: Text(l10n.messagesEditSave),
         ),
       ],
     );

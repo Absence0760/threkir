@@ -839,7 +839,9 @@ export type Database = {
           conversation_id: string
           created_at: string
           deleted_partner_key: string | null
+          edited_at: string | null
           id: string
+          original_body: string | null
           read_at: string | null
           recipient_id: string | null
           route_id: string | null
@@ -852,7 +854,9 @@ export type Database = {
           conversation_id: string
           created_at?: string
           deleted_partner_key?: string | null
+          edited_at?: string | null
           id?: string
+          original_body?: string | null
           read_at?: string | null
           recipient_id?: string | null
           route_id?: string | null
@@ -865,7 +869,9 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           deleted_partner_key?: string | null
+          edited_at?: string | null
           id?: string
+          original_body?: string | null
           read_at?: string | null
           recipient_id?: string | null
           route_id?: string | null
@@ -3722,6 +3728,7 @@ export type Database = {
           reviewed_by: string | null
           snapshot_author_id: string | null
           snapshot_body: string | null
+          snapshot_original_body: string | null
           snapshot_sent_at: string | null
           status: string
           target_id: string
@@ -3739,6 +3746,7 @@ export type Database = {
           reviewed_by?: string | null
           snapshot_author_id?: string | null
           snapshot_body?: string | null
+          snapshot_original_body?: string | null
           snapshot_sent_at?: string | null
           status?: string
           target_id: string
@@ -3756,6 +3764,7 @@ export type Database = {
           reviewed_by?: string | null
           snapshot_author_id?: string | null
           snapshot_body?: string | null
+          snapshot_original_body?: string | null
           snapshot_sent_at?: string | null
           status?: string
           target_id?: string
@@ -6616,6 +6625,30 @@ export type Database = {
         Args: { p_plan_id: string; p_week_index: number }
         Returns: string
       }
+      edit_direct_message: {
+        Args: { p_body: string; p_message_id: string }
+        Returns: {
+          body: string | null
+          conversation_id: string
+          created_at: string
+          deleted_partner_key: string | null
+          edited_at: string | null
+          id: string
+          original_body: string | null
+          read_at: string | null
+          recipient_id: string | null
+          route_id: string | null
+          seen_at: string | null
+          sender_id: string
+          unsent_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "direct_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       end_coach_link: { Args: { p_id: string }; Returns: boolean }
       enforce_create_rate_limit: {
         Args: {
@@ -6738,6 +6771,7 @@ export type Database = {
           reviewed_by: string
           snapshot_author_id: string
           snapshot_body: string
+          snapshot_original_body: string
           snapshot_sent_at: string
           status: string
         }[]
@@ -7960,7 +7994,9 @@ export type Database = {
           conversation_id: string
           created_at: string
           deleted_partner_key: string | null
+          edited_at: string | null
           id: string
+          original_body: string | null
           read_at: string | null
           recipient_id: string | null
           route_id: string | null

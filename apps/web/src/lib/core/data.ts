@@ -11071,6 +11071,10 @@ export interface DmThread {
 	/// The viewer marked it unread (migration 20271109000020). `unread`
 	/// already counts it as at least one; opening the conversation clears it.
 	markedUnread: boolean;
+	/// A message request to the viewer they have not accepted yet (migration
+	/// 20271115002384): listed under Requests, left out of the nav badge, and
+	/// the requester learns nothing until it is accepted.
+	request: boolean;
 }
 
 /// The newest message of the runner's current (not archived) Coach
@@ -11122,6 +11126,7 @@ export async function fetchDmBadgeStates(): Promise<DmBadgeState[]> {
 		unread: Number(r.unread) || 0,
 		muted: r.muted === true,
 		archived: r.archived === true,
+		request: r.request === true,
 	}));
 }
 
@@ -11157,6 +11162,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		muted: boolean;
 		archived: boolean;
 		marked_unread: boolean;
+		request: boolean;
 	}[]).map((r) => ({
 		conversationId: r.conversation_id,
 		partnerId: r.partner_id,
@@ -11171,6 +11177,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		muted: r.muted === true,
 		archived: r.archived === true,
 		markedUnread: r.marked_unread === true,
+		request: r.request === true,
 	}));
 	const byPartner = new Map(
 		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
@@ -11231,8 +11238,11 @@ export async function fetchDmThread(
 	return dmPageFromRows((data ?? []) as DirectMessage[], limit);
 }
 
-/// Send a message. RLS enforces the no-block + follow-graph gate; a
-/// 42501 surfaces as a friendly "can't message this person" error, and
+/// Send a message. RLS enforces the no-block + audience gate (a follow edge,
+/// or a shared club or event for a message request, migration
+/// 20271115002384); a 42501 surfaces as a friendly "can't message this
+/// person" error, a fourth message into an unaccepted request (54000) as
+/// `messages.requestCapReached`, and
 /// the rail's two send buckets (migration 20270608_001) raise the same
 /// P0001 every other create-rate-limit does, so they go through the
 /// shared parser rather than reaching a composer as a raw exception.
@@ -11262,6 +11272,9 @@ export async function sendDm(
 	if (error || !data) {
 		if (error?.code === '42501') {
 			throw new AppError('messages.sendNotAllowed', { message: m('messages.sendNotAllowed') });
+		}
+		if (error?.code === '54000') {
+			throw new AppError('messages.requestCapReached', { message: m('messages.requestCapReached') });
 		}
 		const limited = rateLimitAppError(m, error);
 		if (limited) throw limited;
@@ -11318,6 +11331,31 @@ export async function hideDmConversation(conversationId: string, throughMessageI
 	const { error } = await supabase.rpc('hide_conversation', {
 		p_conversation_id: conversationId,
 		p_through_message_id: throughMessageId,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Accepts a message request to the viewer (migration 20271115002384): the
+/// conversation joins the inbox, and notifications and read receipts start
+/// from now. Accepting twice is not an error.
+export async function acceptDmRequest(conversationId: string): Promise<void> {
+	const { error } = await supabase.rpc('accept_message_request', { p_conversation_id: conversationId });
+	if (error) throw dbError(error);
+}
+
+/// Declines a message request to the viewer: its messages up to and including
+/// `throughMessageId` (the newest one on screen) leave their reads, and the
+/// requester cannot send again until the viewer writes to them. `block` also
+/// blocks the requester in the same transaction. The requester is not told.
+export async function declineDmRequest(
+	conversationId: string,
+	throughMessageId: string,
+	block = false,
+): Promise<void> {
+	const { error } = await supabase.rpc('decline_message_request', {
+		p_conversation_id: conversationId,
+		p_through_message_id: throughMessageId,
+		p_block: block,
 	});
 	if (error) throw dbError(error);
 }

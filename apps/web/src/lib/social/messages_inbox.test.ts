@@ -132,23 +132,38 @@ test('a long preview is cut on a code point with an ellipsis', () => {
 });
 
 test('archived conversations leave the inbox for the Archived list, order kept', () => {
-	const t = (id: string, archived: boolean) => ({ id, unread: 0, muted: false, archived });
-	const { inbox, archived } = partitionArchived([t('a', false), t('b', true), t('c', false), t('d', true)]);
+	const t = (id: string, archived: boolean) => ({ id, unread: 0, muted: false, archived, request: false });
+	const { inbox, archived, requests } = partitionArchived([t('a', false), t('b', true), t('c', false), t('d', true)]);
 	assert.deepEqual(inbox.map((x) => x.id), ['a', 'c']);
 	assert.deepEqual(archived.map((x) => x.id), ['b', 'd']);
-	assert.deepEqual(partitionArchived([]), { inbox: [], archived: [] });
+	assert.deepEqual(requests, []);
+	assert.deepEqual(partitionArchived([]), { inbox: [], archived: [], requests: [] });
 });
 
-test('the badge counts unread only in conversations neither muted nor archived', () => {
+test('a message request goes to Requests, even when it is also archived', () => {
+	const t = (id: string, archived: boolean, request: boolean) => ({ id, unread: 1, muted: false, archived, request });
+	const { inbox, archived, requests } = partitionArchived([
+		t('a', false, true),
+		t('b', false, false),
+		t('c', true, true),
+		t('d', true, false),
+	]);
+	assert.deepEqual(requests.map((x) => x.id), ['a', 'c']);
+	assert.deepEqual(inbox.map((x) => x.id), ['b']);
+	assert.deepEqual(archived.map((x) => x.id), ['d']);
+});
+
+test('the badge counts unread only in conversations neither muted, archived nor a request', () => {
 	assert.equal(
 		unreadDmBadgeCount([
-			{ unread: 2, muted: false, archived: false },
-			{ unread: 5, muted: true, archived: false },
-			{ unread: 3, muted: false, archived: true },
-			{ unread: 1, muted: false, archived: false },
+			{ unread: 2, muted: false, archived: false, request: false },
+			{ unread: 5, muted: true, archived: false, request: false },
+			{ unread: 3, muted: false, archived: true, request: false },
+			{ unread: 4, muted: false, archived: false, request: true },
+			{ unread: 1, muted: false, archived: false, request: false },
 		]),
 		3
 	);
-	assert.equal(unreadDmBadgeCount([{ unread: -4, muted: false, archived: false }]), 0);
+	assert.equal(unreadDmBadgeCount([{ unread: -4, muted: false, archived: false, request: false }]), 0);
 	assert.equal(unreadDmBadgeCount([]), 0);
 });

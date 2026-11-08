@@ -72,33 +72,39 @@ export function inboxEntries<T extends { lastAt: string }>(
 }
 
 /// The conversation state the inbox splits and counts by (dm_threads(),
-/// migration 20271105000010).
+/// migrations 20271105000010 and 20271115002384).
 export interface DmThreadState {
 	unread: number;
 	muted: boolean;
 	archived: boolean;
+	/// A message request the runner has not accepted yet.
+	request: boolean;
 }
 
 /**
- * The inbox's conversations and its Archived list, each in the order given. A
- * conversation is archived only while nothing newer than the archive arrived,
- * which `dm_threads()` has already decided, so a reply is never filed away.
+ * The inbox's conversations, its Archived list and its Requests list, each in
+ * the order given. A conversation is archived only while nothing newer than
+ * the archive arrived, which `dm_threads()` has already decided, so a reply is
+ * never filed away. A request goes to Requests whatever else is set: it leaves
+ * that list only by being accepted, declined or answered.
  */
 export function partitionArchived<T extends DmThreadState>(
 	threads: readonly T[]
-): { inbox: T[]; archived: T[] } {
+): { inbox: T[]; archived: T[]; requests: T[] } {
 	const inbox: T[] = [];
 	const archived: T[] = [];
-	for (const t of threads) (t.archived ? archived : inbox).push(t);
-	return { inbox, archived };
+	const requests: T[] = [];
+	for (const t of threads) (t.request ? requests : t.archived ? archived : inbox).push(t);
+	return { inbox, archived, requests };
 }
 
 /// The nav badge: unread messages in conversations the runner has neither
-/// muted nor archived. A muted one is still listed with its own count.
+/// muted nor archived, and that are not unanswered requests. A muted one is
+/// still listed with its own count; a request is counted in Requests only.
 export function unreadDmBadgeCount(threads: readonly DmThreadState[]): number {
 	let total = 0;
 	for (const t of threads) {
-		if (t.muted || t.archived) continue;
+		if (t.muted || t.archived || t.request) continue;
 		total += Math.max(0, t.unread);
 	}
 	return total;

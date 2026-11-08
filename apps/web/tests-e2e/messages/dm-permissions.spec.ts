@@ -14,7 +14,7 @@ import { setStorageOnLoad } from '../fixtures/helpers';
  *
  *   (a) the follow-graph send gate — USER_B and USER_C_PRO have NO follow
  *       edge in the seed (A→B, A→C, B→A), so B sending to C is rejected with
- *       the friendly "you can only message people you follow" error, never a
+ *       the friendly "you can message people you follow …" error, never a
  *       silent no-op or an uncaught throw. No row lands.
  *   (b) a block overrides an existing follow edge — A follows B and B follows
  *       A, but if A blocks B, B can no longer message A (fail-closed).
@@ -53,7 +53,7 @@ test.describe('/messages — permission boundaries', () => {
 			// silent swallow, never the message bubble appearing as if it sent.
 			const alert = page.locator('.send-error[role="alert"]');
 			await expect(alert).toBeVisible({ timeout: 10_000 });
-			await expect(alert).toContainText(/can only message people you follow/i);
+			await expect(alert).toContainText(/You can message people you follow or who follow you/i);
 
 			// Fail-closed: nothing was written.
 			const data = await readRows(
@@ -84,8 +84,8 @@ test.describe('/messages — permission boundaries', () => {
 
 			const alert = page.locator('.send-error[role="alert"]');
 			await expect(alert).toBeVisible({ timeout: 10_000 });
-			await expect(alert).toContainText('Du kannst nur Personen schreiben, denen du folgst');
-			await expect(alert).not.toContainText(/can only message/i);
+			await expect(alert).toContainText('Du kannst Personen schreiben, denen du folgst');
+			await expect(alert).not.toContainText(/You can message people/i);
 		} finally {
 			await ctx.close();
 		}

@@ -350,6 +350,9 @@ var importantKinds = map[string]bool{
 	// athlete is waiting on the answer (decisions § 2382).
 	"plan_change_request":  true,
 	"plan_change_decision": true,
+	// A verified organiser's reroute or closure on a race the recipient is
+	// training for changes their race day (decisions § 2407).
+	"course_alert": true,
 }
 
 // pushImportantKinds are carried by the default "important" PUSH mode but not
@@ -410,6 +413,9 @@ var kindMutePrefKey = map[string]string{
 	"club_join_request":  "notify_club_join_request",
 	"club_join_approved": "notify_club_join_approved",
 	"event_updated":      "notify_event_updated",
+	// Raised by the race organiser and in the default set, so it gets a
+	// control narrower than the channel (decisions § 2407).
+	"course_alert": "notify_course_alert",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the
@@ -570,6 +576,13 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// coach_plan_access) see the request with its approve and decline
 		// (decisions § 2382).
 		return planPath(base, n)
+	case "course_alert":
+		// The stable-id resolver, which opens the race or route the alert is
+		// on; the projection carries only the alert's id (decisions § 2407).
+		if n.CourseAlertID != nil {
+			return base + "/course-alerts/" + *n.CourseAlertID
+		}
+		return inboxPath(base, n)
 	case "workout_reminder":
 		// The runner's active plan, whose detail page opens on the current
 		// week with today's workout in it. The row carries plan_id and the

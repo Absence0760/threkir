@@ -343,6 +343,15 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `actor_id=eq.${uid}`,
 			select: '*',
 		},
+		// course_alerts — the course alerts the subject posted as a verified
+		// organiser club's admin (migration 20271124002407). The alert speaks
+		// for the club, but the subject wrote it.
+		{
+			entry: 'course_alerts.json',
+			table: 'course_alerts',
+			filter: `author_id=eq.${uid}`,
+			select: '*',
+		},
 		// user_blocks — the subject's own block list. High.
 		{
 			entry: 'user_blocks.json',

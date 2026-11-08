@@ -69,6 +69,7 @@ const (
 	TableEventResultClaims        = "event_result_claims"
 	TableRaceCourseSuggestions    = "race_course_suggestions"
 	TableRaceListingAudit         = "race_listing_audit"
+	TableCourseAlerts             = "course_alerts"
 	TableCheckpointCrossings      = "checkpoint_crossings"
 	TableEventExceptions          = "event_exceptions"
 	TableClubMembers              = "club_members"

@@ -190,6 +190,9 @@ type NotificationRow struct {
 	PlanID        *string `json:"plan_id"`
 	AchievementID *string `json:"achievement_id"`
 	ChallengeID   *string `json:"challenge_id"`
+	// CourseAlertID names an organiser's course alert (migration
+	// 20271124002408); pathForKind links it through /course-alerts/{id}.
+	CourseAlertID *string `json:"course_alert_id"`
 	// Refunded is set on an event_cancel row whose recipient held a paid order
 	// on the cancelled occurrence (migration 20270725000002); copyKeyFor reads
 	// it to pick the copy that says the payment is being refunded.

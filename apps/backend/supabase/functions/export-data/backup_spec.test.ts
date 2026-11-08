@@ -62,8 +62,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// (migration 20271105000010) added conversation_settings. Race courses
 	// (migration 20271114002381) added race_course_suggestions + race_listing_audit.
 	// Plan change requests (migration 20271115002382) added both legs of
-	// plan_change_requests.
-	assertEquals(specs.length, 81, `expected 81 specs, got ${specs.length}`);
+	// plan_change_requests. Course alerts (migration 20271124002407) added
+	// course_alerts.
+	assertEquals(specs.length, 82, `expected 82 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -116,6 +117,7 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'event_result_claims.json',
 		'race_course_suggestions.json',
 		'race_listing_audit.json',
+		'course_alerts.json',
 		'user_blocks.json',
 		'club_posts.json',
 		'event_exceptions.json',

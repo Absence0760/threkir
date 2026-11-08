@@ -1842,7 +1842,7 @@ func (c *SupabaseClient) FetchUserSettingsPrefs(ctx context.Context, userID stri
 func (c *SupabaseClient) FetchNotificationForEmail(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,email_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,email_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1917,7 +1917,7 @@ func (c *SupabaseClient) MarkNotificationEmailed(ctx context.Context, notificati
 func (c *SupabaseClient) FetchNotificationForWebPush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,web_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,web_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -2027,7 +2027,7 @@ func (c *SupabaseClient) ClearPushSubscription(ctx context.Context, userID, devi
 func (c *SupabaseClient) FetchNotificationForNativePush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,native_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,native_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -2516,6 +2516,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "race_listing_audit.json", table: schema.TableRaceListingAudit,
 			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// course_alerts — the course alerts the subject posted as a verified
+		// organiser club's admin (migration 20271124002407).
+		{
+			name: "course_alerts.json", table: schema.TableCourseAlerts,
+			filter: "author_id=eq." + uid, sel: "*",
 		},
 		// user_blocks — the subject's own block list (who they blocked +
 		// why). audit-findings (2026-05-30) High.

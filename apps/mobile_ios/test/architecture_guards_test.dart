@@ -440,8 +440,8 @@ void main() {
       // on the run screen and ~38 m on the run-detail screen minutes later.
       // computeRunElevationGain / RunElevationGainAccumulator in
       // run_altitude.dart are the ONE recorded-run elevation-gain contract
-      // (the barometer-or-GPS series and its band, over route_simplify.dart's
-      // gate + dropout carry); the screen must feed that accumulator, not
+      // (the barometer-or-GPS series and its band, over core_models'
+      // elevation_gain.dart gate + dropout carry); the screen must feed that accumulator, not
       // re-derive the arithmetic or pick a band of its own.
       final body = _extractMethodBody(
         source,
@@ -474,7 +474,7 @@ void main() {
         RegExp(r'minDeltaM|kElevationGain\w*MinDeltaM').hasMatch(source),
         isFalse,
         reason: 'The noise bands belong to run_altitude.dart and '
-            'route_simplify.dart; do not fork a threshold here.',
+            'core_models; do not fork a threshold here.',
       );
     });
 

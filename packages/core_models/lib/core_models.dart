@@ -19,6 +19,7 @@ library core_models;
 export 'src/activity_type.dart';
 export 'src/atomic_io.dart';
 export 'src/distance_unit.dart';
+export 'src/elevation_gain.dart';
 export 'src/store_write_chain.dart';
 export 'src/exercise_catalogue.dart';
 export 'src/exercise_fold_table.dart';

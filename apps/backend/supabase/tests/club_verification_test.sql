@@ -12,7 +12,7 @@
 -- change notifies the club's owner and admins.
 
 begin;
-select plan(76);
+select plan(78);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -329,6 +329,10 @@ select lives_ok(
   $$ select submit_club_verification('c7e11111-0000-0000-0000-000000000001', 'CV Marathon Org') $$,
   'a third request');
 reset role;
+select is(
+  (select organisation from club_verification_requests
+    where club_id = 'c7e11111-0000-0000-0000-000000000001' and status = 'pending'),
+  'CV Marathon Org', 'the third request stores the organisation');
 
 set local role service_role;
 select is(
@@ -401,6 +405,9 @@ select lives_ok(
   $$ select submit_club_verification('c7e11111-0000-0000-0000-000000000003', 'Withdrawn Org') $$,
   'the owner submits for a second club');
 reset role;
+select is(
+  (select organisation from club_verification_requests where club_id = 'c7e11111-0000-0000-0000-000000000003'),
+  'Withdrawn Org', 'the second club''s request stores the organisation');
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"c7e00000-0000-0000-0000-000000000004","role":"authenticated"}';

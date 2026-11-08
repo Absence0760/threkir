@@ -5785,6 +5785,9 @@ class ApiClient {
             timeSeconds: (maps[i]['time_seconds'] as num).toDouble(),
             startedAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
             createdAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
+            // The board RPC does not return how an effort was matched; no
+            // mobile surface reads it.
+            matchedBy: (maps[i]['matched_by'] as String?) ?? 'zone',
           ),
           athlete: PublicProfile(
             id: maps[i]['user_id'] as String,

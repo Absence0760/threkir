@@ -333,7 +333,9 @@ Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_course
 - [x] Help guide `park-courses` and the Learn page "Park courses: how timing works".
 - [x] NPS / OSM credit in every GPX / KML export of a course or its route, and a course GPX on web and mobile (decisions § 2395).
 - [ ] Indexable park pages (`/share/park/…`), if search data says park pages are where people land.
-- [ ] Run-detail chip with season rank, `park_course` badges, the passport challenge, recap / year-in-review entries, share image (Phase 5).
+- [x] Park course badges (`park_courses` / `park_complete` / `park_passport`), the `park_courses` passport challenge metric with an optional region, recap / year-in-review park counts and park list, and the course share sticker with its season place (Phase 5, 2026-11-08, decisions § 2404 / § 2405).
+- [ ] Run-detail chip with the season rank ("3rd this year on …"); `run_park_course_times` already returns it.
+- [ ] Create the official yearly passport challenge (official club, `park_region_code = 'US-VA'`) once the first courses are loaded (operator step).
 - [ ] NPS closures job and status tooling (Phase 6).
 
 ### Elevation and pace analysis (post-run)

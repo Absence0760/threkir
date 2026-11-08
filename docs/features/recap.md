@@ -36,9 +36,15 @@ byte-behaviour-identical; registered in the root `CLAUDE.md` parity list,
   UI).
 - `computeRecapBadges(...)` → the earned-only trophy grid: one badge per
   category, highest tier reached wins.
-- `RecapExtras { photoCount, personalRecordCount }` — the two counts the engine
-  can't derive from `Run` rows; the page fetches them (`fetchRecapExtras` in
-  `core/data.ts`) and passes them in. Negative inputs clamp to 0.
+- `RecapExtras { photoCount, personalRecordCount, parkCourseCount, parkCount }`.
+  The park pair comes from the period's park course efforts through
+  `recapParkSummary` (`park_courses` pair, decisions § 2405); the recap shows a
+  park courses card when there are any, and the owner's page (not a published
+  snapshot, which keeps only the counts) lists each park run. Mobile reads
+  only the park pair today. None of the four can be derived from `Run` rows;
+  web fetches the photo and PR counts with `fetchRecapExtras` and the park
+  efforts with `fetchRecapParkCourses` (both in `core/data.ts`). Negative
+  inputs clamp to 0.
 - `recapHeadline(recap, 'km'|'mi')` — the one-line share-copy summary.
 - `recapSnapshotJson(recap)` (Dart only) — serialises the recap into the
   frozen-snapshot field shape the web `YearInRunningRecap` object carries, so a

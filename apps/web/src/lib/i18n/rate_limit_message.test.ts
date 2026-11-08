@@ -37,6 +37,7 @@ const BUCKETS = [
 	'repeat_plan_week',
 	'send_direct_message',
 	'send_direct_message_burst',
+	'open_message_request',
 ] as const;
 
 async function translatorFor(loc: Locale): Promise<Translate> {

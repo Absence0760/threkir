@@ -22163,6 +22163,15 @@
       }
     }
   },
+  "rateLimitOpenMessageRequest": "You've started a lot of message requests today — please wait {wait} and try again.",
+  "@rateLimitOpenMessageRequest": {
+    "description": "Rate-limit refusal when the open-a-message-request bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
   "rateLimitGeneric": "You're doing that too quickly — please wait {wait} and try again.",
   "@rateLimitGeneric": {
     "description": "Rate-limit refusal for a bucket this build does not recognise",
@@ -23615,7 +23624,7 @@
   "@messagesSendFailed": {
     "description": "A send failed for a reason the app cannot name"
   },
-  "messagesSendNotAllowed": "You can only message people you follow or who follow you, and who haven't blocked you.",
+  "messagesSendNotAllowed": "You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other.",
   "@messagesSendNotAllowed": {
     "description": "The server refused the send: no follow either way, or a block either way (deliberately not told apart)"
   },
@@ -23790,6 +23799,61 @@
   "messagesBackToInbox": "Back to inbox",
   "@messagesBackToInbox": {
     "description": "Control in the Archived list that returns to the main inbox"
+  },
+  "messagesRequestCapReached": "You can send up to 3 messages until they accept your request.",
+  "@messagesRequestCapReached": {
+    "description": "Shown when a send into a pending message request is refused: the requester may send three messages until it is accepted"
+  },
+  "messagesRequestsCount": "Requests ({count})",
+  "@messagesRequestsCount": {
+    "description": "Inbox control that opens the message Requests list; count is how many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesRequestNotice": "{name} wants to message you. They won't know you've read this unless you accept.",
+  "@messagesRequestNotice": {
+    "description": "Shown in place of the composer on a message request; name is the requester",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "messagesRequestAccept": "Accept",
+  "@messagesRequestAccept": {
+    "description": "Accepts a message request"
+  },
+  "messagesRequestDecline": "Decline",
+  "@messagesRequestDecline": {
+    "description": "Declines a message request"
+  },
+  "messagesRequestDeclineConfirmTitle": "Decline this request?",
+  "@messagesRequestDeclineConfirmTitle": {
+    "description": "Title of the confirm dialog before declining a message request"
+  },
+  "messagesRequestDeclineConfirmMessage": "Their messages leave your Requests, and they can't message you again unless you message them first. They won't be told.",
+  "@messagesRequestDeclineConfirmMessage": {
+    "description": "Body of the confirm dialog before declining a message request"
+  },
+  "messagesRequestAcceptedToast": "Request accepted",
+  "@messagesRequestAcceptedToast": {
+    "description": "Confirmation after accepting a message request"
+  },
+  "messagesRequestDeclinedToast": "Request declined",
+  "@messagesRequestDeclinedToast": {
+    "description": "Confirmation after declining a message request"
+  },
+  "messagesRequestActionFailed": "Couldn't update the request: {error}",
+  "@messagesRequestActionFailed": {
+    "description": "A message-request accept, decline or block failed; error is the reason",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "messagesMutedMark": "Muted",
   "@messagesMutedMark": {

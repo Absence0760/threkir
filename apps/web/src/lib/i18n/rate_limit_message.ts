@@ -45,6 +45,7 @@ const BUCKET_KEY: Record<string, MessageKey> = {
 	create_live_overlay_token: 'rateLimit.createOverlayLink',
 	restart_training_plan: 'rateLimit.restartPlan',
 	repeat_plan_week: 'rateLimit.repeatWeek',
+	open_message_request: 'rateLimit.openMessageRequest',
 	send_direct_message: 'rateLimit.sendMessage',
 	send_direct_message_burst: 'rateLimit.sendMessage',
 };

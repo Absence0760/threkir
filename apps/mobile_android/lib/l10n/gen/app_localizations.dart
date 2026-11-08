@@ -27578,6 +27578,12 @@ abstract class AppLocalizations {
   /// **'You\'re editing messages too quickly — please wait {wait} and try again.'**
   String rateLimitEditMessage(String wait);
 
+  /// Rate-limit refusal when the open-a-message-request bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve started a lot of message requests today — please wait {wait} and try again.'**
+  String rateLimitOpenMessageRequest(String wait);
+
   /// Rate-limit refusal for a bucket this build does not recognise
   ///
   /// In en, this message translates to:
@@ -29405,7 +29411,7 @@ abstract class AppLocalizations {
   /// The server refused the send: no follow either way, or a block either way (deliberately not told apart)
   ///
   /// In en, this message translates to:
-  /// **'You can only message people you follow or who follow you, and who haven\'t blocked you.'**
+  /// **'You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other.'**
   String get messagesSendNotAllowed;
 
   /// Button at the top of a conversation that loads older messages
@@ -29635,6 +29641,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to inbox'**
   String get messagesBackToInbox;
+
+  /// Shown when a send into a pending message request is refused: the requester may send three messages until it is accepted
+  ///
+  /// In en, this message translates to:
+  /// **'You can send up to 3 messages until they accept your request.'**
+  String get messagesRequestCapReached;
+
+  /// Inbox control that opens the message Requests list; count is how many
+  ///
+  /// In en, this message translates to:
+  /// **'Requests ({count})'**
+  String messagesRequestsCount(int count);
+
+  /// Shown in place of the composer on a message request; name is the requester
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wants to message you. They won\'t know you\'ve read this unless you accept.'**
+  String messagesRequestNotice(String name);
+
+  /// Accepts a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get messagesRequestAccept;
+
+  /// Declines a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get messagesRequestDecline;
+
+  /// Title of the confirm dialog before declining a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Decline this request?'**
+  String get messagesRequestDeclineConfirmTitle;
+
+  /// Body of the confirm dialog before declining a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Their messages leave your Requests, and they can\'t message you again unless you message them first. They won\'t be told.'**
+  String get messagesRequestDeclineConfirmMessage;
+
+  /// Confirmation after accepting a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Request accepted'**
+  String get messagesRequestAcceptedToast;
+
+  /// Confirmation after declining a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Request declined'**
+  String get messagesRequestDeclinedToast;
+
+  /// A message-request accept, decline or block failed; error is the reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the request: {error}'**
+  String messagesRequestActionFailed(String error);
 
   /// Marker on an inbox row for a muted conversation (read by screen readers)
   ///

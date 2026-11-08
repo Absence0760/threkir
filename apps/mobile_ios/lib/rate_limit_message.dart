@@ -66,6 +66,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitRepeatWeek(wait);
     case 'create_live_overlay_token':
       return l10n.rateLimitCreateOverlayLink(wait);
+    case 'open_message_request':
+      return l10n.rateLimitOpenMessageRequest(wait);
     case 'send_direct_message':
     case 'send_direct_message_burst':
       return l10n.rateLimitSendMessage(wait);

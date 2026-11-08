@@ -16947,6 +16947,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'Iniciou muitos pedidos de mensagem hoje — aguarde $wait e tente novamente.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'Está a fazer isto demasiado depressa — aguarde $wait e tente novamente.';
   }
@@ -18080,7 +18085,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesSendNotAllowed =>
-      'Só pode enviar mensagens a pessoas que segue ou que o seguem, e que não o bloquearam.';
+      'Pode enviar mensagens a quem segue ou a quem o segue, ou a alguém com quem partilha um clube ou um evento, a menos que um dos dois tenha bloqueado o outro.';
 
   @override
   String get messagesLoadEarlier => 'Carregar mensagens anteriores';
@@ -18211,6 +18216,44 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesBackToInbox => 'Voltar à caixa de entrada';
+
+  @override
+  String get messagesRequestCapReached =>
+      'Pode enviar até 3 mensagens até que aceitem o seu pedido.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Pedidos ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name quer enviar-lhe mensagens. Esta pessoa não saberá que leu, a menos que aceite.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Aceitar';
+
+  @override
+  String get messagesRequestDecline => 'Recusar';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'Recusar este pedido?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'As mensagens saem dos seus pedidos, e esta pessoa não poderá voltar a enviar-lhe mensagens, a menos que lhe escreva primeiro. Não será avisada.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Pedido aceite';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Pedido recusado';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'Não foi possível atualizar o pedido: $error';
+  }
 
   @override
   String get messagesMutedMark => 'Silenciada';
@@ -37776,6 +37819,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'Você iniciou muitas solicitações de mensagem hoje — aguarde $wait e tente novamente.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'Você está fazendo isso rápido demais — espere $wait e tente de novo.';
   }
@@ -38909,7 +38957,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesSendNotAllowed =>
-      'Você só pode enviar mensagens para pessoas que você segue ou que seguem você, e que não bloquearam você.';
+      'Você pode enviar mensagens a quem você segue ou quem segue você, ou a alguém com quem compartilha um clube ou um evento, a menos que um de vocês tenha bloqueado o outro.';
 
   @override
   String get messagesLoadEarlier => 'Carregar mensagens anteriores';
@@ -39040,6 +39088,44 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesBackToInbox => 'Voltar para a caixa de entrada';
+
+  @override
+  String get messagesRequestCapReached =>
+      'Você pode enviar até 3 mensagens até que aceitem sua solicitação.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Solicitações ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name quer enviar mensagens a você. Essa pessoa não saberá que você leu, a menos que aceite.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Aceitar';
+
+  @override
+  String get messagesRequestDecline => 'Recusar';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'Recusar esta solicitação?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'As mensagens saem das suas solicitações, e essa pessoa não poderá enviar mensagens a você de novo, a menos que você escreva primeiro. Ela não será avisada.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Solicitação aceita';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Solicitação recusada';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'Não foi possível atualizar a solicitação: $error';
+  }
 
   @override
   String get messagesMutedMark => 'Silenciada';

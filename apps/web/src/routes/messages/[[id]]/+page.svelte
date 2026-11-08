@@ -120,6 +120,20 @@
 			false
 	);
 	let conversationBusy = $state(false);
+	// A message request to the viewer they have not answered (migration
+	// 20271115002384). The composer gives way to Accept / Decline / Block; the
+	// requester learns nothing until it is accepted, so the server withholds
+	// the read receipt while the request stands. Decline cannot be undone from
+	// the app (the conversation leaves every list), so it is confirmed rather
+	// than held behind an undo window (conventions.md § Destructive actions).
+	const isRequest = $derived(activeThread?.request === true);
+	let requestBusy = $state(false);
+	let showDeclineConfirm = $state(false);
+	// The newest message from the requester on screen: a decline stops there,
+	// so one that arrives after the viewer decided is not hidden unseen.
+	const requestThrough = $derived(
+		messages.findLast((m) => m.sender_id === activePartnerId && m.conversation_id === conversationId) ?? null
+	);
 	// Mark as unread leaves the conversation, so the mark is not cleared by the
 	// open pane on the way out; each conversation's mark is cleared at most
 	// once per open, so a refused clear is not retried in a loop.
@@ -278,8 +292,51 @@
 		}
 	}
 
+	async function acceptRequest() {
+		const id = conversationId;
+		if (!id || requestBusy) return;
+		requestBusy = true;
+		try {
+			await messagesInbox.acceptRequest(id);
+			showToast(tr('messages.requestAcceptedToast'), 'success');
+		} catch (e) {
+			showToast(tr('messages.requestActionFailed', { error: errorCopy(e, tr, 'messages.requestActionFailed') }), 'error');
+		} finally {
+			requestBusy = false;
+		}
+	}
+
+	// Decline, or decline and block in one server transaction. Either way the
+	// conversation leaves the viewer's lists, so the pane goes back to them.
+	async function declineRequest(block: boolean) {
+		const id = conversationId;
+		const through = requestThrough;
+		if (!id || !through || requestBusy) return;
+		const name = partnerName;
+		requestBusy = true;
+		try {
+			await messagesInbox.declineRequest(id, through.id, block);
+			if (block) blockVersion++;
+			showToast(block ? tr('profile.blockedToast', { name }) : tr('messages.requestDeclinedToast'), 'success');
+			await goto('/messages');
+		} catch (e) {
+			showToast(tr('messages.requestActionFailed', { error: errorCopy(e, tr, 'messages.requestActionFailed') }), 'error');
+		} finally {
+			requestBusy = false;
+		}
+	}
+
+	async function confirmDecline() {
+		showDeclineConfirm = false;
+		await declineRequest(false);
+	}
+
 	async function confirmBlock() {
 		showBlockConfirm = false;
+		if (isRequest && requestThrough) {
+			await declineRequest(true);
+			return;
+		}
 		const partner = activePartnerId;
 		if (!partner || blockBusy) return;
 		const name = partnerName;
@@ -744,6 +801,39 @@
 				{tr('messages.unblock')}
 			</button>
 		</div>
+	{:else if isRequest}
+		<div class="closed request" data-testid="dm-request-bar">
+			<p class="muted">{tr('messages.requestNotice', { name: partnerName })}</p>
+			<div class="request-actions">
+				<button
+					type="button"
+					class="btn btn-primary btn-sm"
+					data-testid="dm-request-accept"
+					disabled={requestBusy}
+					onclick={() => void acceptRequest()}
+				>
+					{tr('messages.requestAccept')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					data-testid="dm-request-decline"
+					disabled={requestBusy || !requestThrough}
+					onclick={() => (showDeclineConfirm = true)}
+				>
+					{tr('messages.requestDecline')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					data-testid="dm-request-block"
+					disabled={requestBusy || !requestThrough}
+					onclick={() => (showBlockConfirm = true)}
+				>
+					{tr('messages.block')}
+				</button>
+			</div>
+		</div>
 	{:else}
 		<div class="composer">
 			<textarea
@@ -784,6 +874,18 @@
 	onconfirm={confirmBlock}
 	oncancel={() => (showBlockConfirm = false)}
 	data-testid="dm-block-confirm"
+/>
+
+<ConfirmDialog
+	open={showDeclineConfirm}
+	danger
+	title={tr('messages.requestDeclineConfirmTitle')}
+	message={tr('messages.requestDeclineConfirmMessage')}
+	confirmLabel={tr('messages.requestDecline')}
+	cancelLabel={tr('profile.cancel')}
+	onconfirm={confirmDecline}
+	oncancel={() => (showDeclineConfirm = false)}
+	data-testid="dm-request-decline-confirm"
 />
 
 {#if reportTarget}
@@ -971,6 +1073,14 @@
 		padding: var(--space-md) var(--space-lg);
 		border-top: 1px solid var(--color-border);
 		margin: 0;
+	}
+	.closed.request p {
+		margin: 0 0 var(--space-sm);
+	}
+	.request-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
 	}
 	/* The attachment card carries its own surface + border, so it must not
 	   inherit the sent-bubble's inverted foreground. */

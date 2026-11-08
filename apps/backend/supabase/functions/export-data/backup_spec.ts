@@ -260,14 +260,15 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		},
 		// conversation_participants — the subject's own view of each
 		// conversation: when they joined, and whether they deleted it for
-		// themselves, muted it, archived it or marked it unread (migrations
-		// 20271105000010, 20271109000020). Only their own row: the other
+		// themselves, muted it, archived it, marked it unread, and where a
+		// message request to or from them stands (migrations 20271105000010,
+		// 20271109000020, 20271115002384). Only their own row: the other
 		// participant's state is theirs.
 		{
 			entry: 'conversation_settings.json',
 			table: 'conversation_participants',
 			filter: uidEq,
-			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at',
+			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at',
 		},
 		// coach_athletes — coaching relationships as coach + as athlete.
 		// `invite_token` is a redeemable credential; the narrow select

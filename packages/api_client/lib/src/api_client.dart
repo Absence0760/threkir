@@ -9547,6 +9547,7 @@ class ApiClient {
           muted: r['muted'] == true,
           archived: r['archived'] == true,
           markedUnread: r['marked_unread'] == true,
+          request: r['request'] == true,
         ),
     ];
   }
@@ -9557,10 +9558,17 @@ class ApiClient {
   /// `dm_threads()` aggregation as [fetchDmThreads], without its partner-name
   /// read. Throws on a failed read; signed out answers empty without a call.
   /// The conversation id lets the badge leave out a conversation whose
-  /// delete is still inside its undo window.
+  /// delete is still inside its undo window; `request` an unanswered message
+  /// request, which is counted under Requests only.
   Future<
           List<
-              ({String conversationId, int unread, bool muted, bool archived})>>
+              ({
+                String conversationId,
+                int unread,
+                bool muted,
+                bool archived,
+                bool request
+              })>>
       fetchDmBadgeStates() async {
     if (_client.auth.currentUser == null) return const [];
     final res = await _client.rpc('dm_threads', params: const {}, get: true);
@@ -9571,15 +9579,49 @@ class ApiClient {
           unread: (r['unread'] as num?)?.toInt() ?? 0,
           muted: r['muted'] == true,
           archived: r['archived'] == true,
+          request: r['request'] == true,
         ),
     ];
   }
 
-  /// The viewer's own mute, archive and unread-mark state for one
-  /// conversation, for a thread opened from outside the inbox (a profile, a
-  /// route). The row is owner-read only. Null when the viewer has no row, or
-  /// signed out. Throws on a failed read.
-  Future<({bool muted, DateTime? archivedAt, bool markedUnread})?>
+  /// Accepts a message request to the viewer (migration 20271115002384): the
+  /// conversation joins the inbox, and notifications and read receipts start
+  /// from now. Accepting twice is not an error; a conversation with no
+  /// pending request for the viewer raises P0002. Mirrors web
+  /// `acceptDmRequest`.
+  Future<void> acceptDmRequest(String conversationId) async {
+    await _client.rpc(
+      'accept_message_request',
+      params: {'p_conversation_id': conversationId},
+    );
+  }
+
+  /// Declines a message request to the viewer: its messages up to and
+  /// including [throughMessageId] (the newest one on screen) leave the
+  /// viewer's reads, and the requester cannot send again until the viewer
+  /// writes to them. [block] also blocks the requester in the same
+  /// transaction. The requester is not told. Mirrors web `declineDmRequest`.
+  Future<void> declineDmRequest(
+    String conversationId, {
+    required String throughMessageId,
+    bool block = false,
+  }) async {
+    await _client.rpc(
+      'decline_message_request',
+      params: {
+        'p_conversation_id': conversationId,
+        'p_through_message_id': throughMessageId,
+        'p_block': block,
+      },
+    );
+  }
+
+  /// The viewer's own mute, archive, unread-mark and message-request state
+  /// for one conversation, for a thread opened from outside the inbox (a
+  /// profile, a route). The row is owner-read only. Null when the viewer has
+  /// no row, or signed out. Throws on a failed read.
+  Future<
+          ({bool muted, DateTime? archivedAt, bool markedUnread, bool request})?>
       fetchDmConversationState(
     String conversationId,
   ) async {
@@ -9587,7 +9629,7 @@ class ApiClient {
     if (me == null) return null;
     final row = await _client
         .from('conversation_participants')
-        .select('muted_at, archived_at, marked_unread_at')
+        .select('muted_at, archived_at, marked_unread_at, request_state')
         .eq('conversation_id', conversationId)
         .eq('user_id', me)
         .maybeSingle();
@@ -9596,6 +9638,7 @@ class ApiClient {
       muted: row['muted_at'] != null,
       archivedAt: parseIsoStrictValue(row['archived_at']),
       markedUnread: row['marked_unread_at'] != null,
+      request: row['request_state'] == 'pending',
     );
   }
 
@@ -9719,8 +9762,10 @@ class ApiClient {
 
   /// Send [body] to [recipientId]. Mirrors web `sendDm`.
   ///
-  /// The INSERT policy refuses a send with no follow edge either way or with
-  /// a block either way; that 42501 is thrown as [DmSendNotPermitted]. The
+  /// The INSERT policy refuses a send with no follow edge either way and no
+  /// shared club or event, after a declined request, or with a block either
+  /// way; that 42501 is thrown as [DmSendNotPermitted]. A fourth message into
+  /// an unaccepted request (54000) is [DmRequestCapReached]. The
   /// rail's send throttle (migration 20270608_001) raises the shared P0001
   /// every create-rate-limit raises, and is rethrown as the
   /// `PostgrestException` it is so the caller runs the shared
@@ -9754,6 +9799,7 @@ class ApiClient {
       return DirectMessageRow.fromJson(row);
     } on PostgrestException catch (e) {
       if (e.code == '42501') throw const DmSendNotPermitted();
+      if (e.code == '54000') throw const DmRequestCapReached();
       rethrow;
     }
   }

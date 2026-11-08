@@ -703,6 +703,8 @@ export type Database = {
           joined_at: string
           marked_unread_at: string | null
           muted_at: string | null
+          request_state: string | null
+          requested_at: string | null
           user_id: string
         }
         Insert: {
@@ -712,6 +714,8 @@ export type Database = {
           joined_at?: string
           marked_unread_at?: string | null
           muted_at?: string | null
+          request_state?: string | null
+          requested_at?: string | null
           user_id: string
         }
         Update: {
@@ -721,6 +725,8 @@ export type Database = {
           joined_at?: string
           marked_unread_at?: string | null
           muted_at?: string | null
+          request_state?: string | null
+          requested_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -6630,6 +6636,10 @@ export type Database = {
         Args: { parent_id: string }
         Returns: boolean
       }
+      accept_message_request: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
       achievement_tiers_met: {
         Args: { p_user: string }
         Returns: {
@@ -7036,6 +7046,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      decline_message_request: {
+        Args: {
+          p_block?: boolean
+          p_conversation_id: string
+          p_through_message_id: string
+        }
+        Returns: undefined
+      }
       decline_safety_contact: { Args: { p_id: string }; Returns: boolean }
       defer_job: {
         Args: { delay_seconds: number; err?: string; job_id: number }
@@ -7101,6 +7119,7 @@ export type Database = {
           marked_unread: boolean
           muted: boolean
           partner_id: string
+          request: boolean
           unread: number
         }[]
       }

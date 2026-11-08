@@ -16770,6 +16770,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'You\'ve started a lot of message requests today — please wait $wait and try again.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'You\'re doing that too quickly — please wait $wait and try again.';
   }
@@ -17893,7 +17898,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesSendNotAllowed =>
-      'You can only message people you follow or who follow you, and who haven\'t blocked you.';
+      'You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other.';
 
   @override
   String get messagesLoadEarlier => 'Load earlier messages';
@@ -18022,6 +18027,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesBackToInbox => 'Back to inbox';
+
+  @override
+  String get messagesRequestCapReached =>
+      'You can send up to 3 messages until they accept your request.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Requests ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name wants to message you. They won\'t know you\'ve read this unless you accept.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Accept';
+
+  @override
+  String get messagesRequestDecline => 'Decline';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'Decline this request?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'Their messages leave your Requests, and they can\'t message you again unless you message them first. They won\'t be told.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Request accepted';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Request declined';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'Couldn\'t update the request: $error';
+  }
 
   @override
   String get messagesMutedMark => 'Muted';

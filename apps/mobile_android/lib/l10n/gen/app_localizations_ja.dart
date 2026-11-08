@@ -16155,6 +16155,11 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return '今日はメッセージリクエストを多く送信しています。$wait待ってからもう一度お試しください。';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return '操作が速すぎます。$wait待ってから、もう一度お試しください。';
   }
@@ -17223,7 +17228,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get messagesSendNotAllowed =>
-      'メッセージを送れるのは、あなたがフォローしている人か、あなたをフォローしている人のうち、あなたをブロックしていない人だけです。';
+      'フォローしている人、フォロワー、または同じクラブやイベントに参加している人にメッセージを送れます。ただし、どちらかが相手をブロックしている場合は送れません。';
 
   @override
   String get messagesLoadEarlier => '以前のメッセージを読み込む';
@@ -17351,6 +17356,43 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get messagesBackToInbox => '受信箱に戻る';
+
+  @override
+  String get messagesRequestCapReached => 'リクエストが承認されるまで、送信できるメッセージは3件までです。';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'リクエスト ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$nameさんがあなたにメッセージを送りたいと考えています。承認しない限り、既読は相手に伝わりません。';
+  }
+
+  @override
+  String get messagesRequestAccept => '承認';
+
+  @override
+  String get messagesRequestDecline => '拒否';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'このリクエストを拒否しますか？';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'メッセージはリクエストから消え、あなたから先にメッセージを送らない限り、相手は再びメッセージを送れません。相手には通知されません。';
+
+  @override
+  String get messagesRequestAcceptedToast => 'リクエストを承認しました';
+
+  @override
+  String get messagesRequestDeclinedToast => 'リクエストを拒否しました';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'リクエストを更新できませんでした: $error';
+  }
 
   @override
   String get messagesMutedMark => 'ミュート中';

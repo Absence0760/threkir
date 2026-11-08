@@ -1642,11 +1642,11 @@ $neutralised$;`,
   [
     'dm_threads',
     {
-      why: "drops my_msgs' participant check and its delete-for-me `hidden_before` exclusion, the SELECT policy's two rules 20271113000001 wrote into the body when it made the function a definer; keeps the unread count's `recipient_id = auth.uid()` and the caller's own participant row for muted / archived / marked-unread, which say whose inbox the row is in",
+      why: "drops my_msgs' participant check, its delete-for-me `hidden_before` exclusion and the declined-request filter (20271115002384), the SELECT policy's two rules 20271113000001 wrote into the body when it made the function a definer; keeps the unread count's `recipient_id = auth.uid()` and the caller's own participant row for muted / archived / marked-unread, which say whose inbox the row is in",
       sql: `create or replace function public.dm_threads()
  returns table(conversation_id uuid, partner_id uuid, deleted_partner_key uuid, last_body text,
                last_unsent boolean, last_at timestamptz, last_from_me boolean, unread bigint,
-               muted boolean, archived boolean, marked_unread boolean)
+               muted boolean, archived boolean, marked_unread boolean, request boolean)
  language sql stable security definer set search_path to 'public', 'pg_temp'
 as $neutralised$
   with my_msgs as (
@@ -1678,7 +1678,8 @@ as $neutralised$
     greatest(coalesce(u.cnt, 0), case when p.marked_unread_at is not null then 1 else 0 end) as unread,
     coalesce(p.muted_at is not null, false) as muted,
     coalesce(p.archived_at is not null and p.archived_at >= l.last_at, false) as archived,
-    coalesce(p.marked_unread_at is not null, false) as marked_unread
+    coalesce(p.marked_unread_at is not null, false) as marked_unread,
+    coalesce(p.request_state = 'pending', false) as request
   from latest l
   left join unread u using (conversation_id)
   left join conversation_participants p

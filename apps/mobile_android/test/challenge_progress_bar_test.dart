@@ -108,7 +108,7 @@ void main() {
 
     test('each metric prints in its own unit', () {
       expect(challengeValueLabel(l10n, 'distance', 5000), '5.00 km');
-      expect(challengeValueLabel(l10n, 'vert', 5000), '5000 m');
+      expect(challengeValueLabel(l10n, 'vert', 5000), '5,000 m');
       expect(challengeValueLabel(l10n, 'duration', 5000), '1h 23m');
       expect(challengeValueLabel(l10n, 'activity_count', 5000), '5000');
       expect(challengeValueLabel(l10n, 'streak_days', 5000), '5000 days');
@@ -125,7 +125,7 @@ void main() {
 
     test('an elevation is not printed as a distance', () {
       final label = challengeValueLabel(l10n, 'vert', 12000);
-      expect(label, '12000 m');
+      expect(label, '12,000 m');
       expect(label, isNot(contains('km')));
     });
 
@@ -143,7 +143,7 @@ void main() {
 
       test('elevation reads in feet', () {
         final label = challengeValueLabel(l10n, 'vert', 1000);
-        expect(label, '3281 ft');
+        expect(label, '3,281 ft');
         expect(label, isNot(endsWith(' m')));
       });
 

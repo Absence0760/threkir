@@ -1216,20 +1216,25 @@ class UnitFormat {
 
   static const _feetPerMetre = 3.28084;
 
-  /// Format cumulative elevation gain: "120 m" / "394 ft". Integer
+  /// Format cumulative elevation gain: "120 m" / "394 ft", whole units
+  /// grouped by the locale ("10,000 ft" en, "10.000 ft" de). Integer
   /// rounding because sub-metre precision on cumulative gain is the
-  /// GPS-noise floor. Null renders as em-dash. Mirrors web
-  /// `formatElevation` in `apps/web/src/lib/format/units.svelte.ts`.
-  static String elevation(double? metres, DistanceUnit unit) {
+  /// GPS-noise floor. Null renders as em-dash. Twin of web's
+  /// `formatElevationIn` in apps/web/src/lib/format/elevation.ts.
+  static String elevation(double? metres, DistanceUnit unit,
+      [String? localeTag]) {
     if (metres == null) return '—';
-    return '${elevationValue(metres, unit)} ${elevationLabel(unit)}';
+    return '${elevationValue(metres, unit, localeTag)} ${elevationLabel(unit)}';
   }
 
   /// [elevation] without its unit label, for a layout that sets the number
-  /// and the unit in different type.
-  static String elevationValue(double metres, DistanceUnit unit) {
+  /// and the unit in different type. Twin of web's `formatElevationValue`.
+  static String elevationValue(double metres, DistanceUnit unit,
+      [String? localeTag]) {
     final value = unit == DistanceUnit.mi ? metres * _feetPerMetre : metres;
-    return formatFixed(value.round().toDouble(), 0, activeLocaleTag);
+    // floor(x + 0.5) is JS Math.round; Dart's round() takes -0.5 to -1.
+    return formatInteger(
+        (value + 0.5).floorToDouble(), localeTag ?? activeLocaleTag);
   }
 
   /// Elevation unit label, "m" or "ft".

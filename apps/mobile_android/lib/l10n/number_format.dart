@@ -6,11 +6,11 @@ import 'package:intl/intl.dart';
 /// expected `5,21 km`. These helpers route fixed-fraction-digit formatting
 /// through `intl`'s [NumberFormat] keyed by the active locale tag.
 ///
-/// [formatFixed] is the single primitive: fixed fraction digits, **no thousands
-/// grouping** (the old `toStringAsFixed` produced none — an elevation of
-/// `10000` rendered `"10000"`, not `"10,000"`, and existing en unit-test
-/// assertions depend on that). For `en` the output is byte-identical to the old
-/// `toStringAsFixed(n)`; only the separator changes for other locales.
+/// [formatFixed] is the fixed-fraction primitive: **no thousands grouping**,
+/// as the old `toStringAsFixed` had none. For `en` the output is
+/// byte-identical to the old `toStringAsFixed(n)`; only the separator changes
+/// for other locales. A whole-unit label that web groups (metres, yards,
+/// feet, elevation) goes through [formatInteger] instead.
 ///
 /// `NumberFormat` construction is non-trivial, and the run screen formats stats
 /// per GPS snapshot, so formatters are memoised by `(localeTag, digits)`.

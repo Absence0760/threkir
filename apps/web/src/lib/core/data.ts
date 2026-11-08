@@ -9990,6 +9990,47 @@ export async function fetchDiscoverableRoutesInBbox(bbox: {
 	return data as DiscoverableRoutePin[];
 }
 
+/// Verified races in the next ~6 months inside the viewport bbox, for the
+/// discovery map's race pins (`upcoming_races_in_bbox`, migration
+/// 20271125002408). Only `is_verified` listings pin; the point is the start of
+/// a publicly shown course, else the listing's location. Races whose organiser
+/// club is verified rank first; `officialOnly` narrows to them for the
+/// Official lens.
+export interface UpcomingRacePin {
+	id: string;
+	name: string;
+	race_date: string;
+	distance_m: number | null;
+	location_label: string | null;
+	is_official: boolean;
+	has_course: boolean;
+	lng: number;
+	lat: number;
+}
+
+export async function fetchUpcomingRacesInBbox(bbox: {
+	minLng: number;
+	minLat: number;
+	maxLng: number;
+	maxLat: number;
+	limit?: number;
+	officialOnly?: boolean;
+}): Promise<UpcomingRacePin[]> {
+	const { data, error } = await supabase.rpc('upcoming_races_in_bbox', {
+		p_min_lng: bbox.minLng,
+		p_min_lat: bbox.minLat,
+		p_max_lng: bbox.maxLng,
+		p_max_lat: bbox.maxLat,
+		p_limit: bbox.limit ?? 100,
+		p_official_only: bbox.officialOnly ?? false,
+	}, { get: true });
+	if (error || !data) {
+		console.warn('fetchUpcomingRacesInBbox failed', error);
+		return [];
+	}
+	return data as UpcomingRacePin[];
+}
+
 // --- Gear tracking (decisions backlog item #7) ---
 
 export type GearKind = 'shoe' | 'bike';

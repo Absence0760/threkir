@@ -44,6 +44,7 @@
 	let centreMarker: maplibregl.Marker | null = null;
 	let handleMarker: maplibregl.Marker | null = null;
 	let draft: { which: GateWhich; gate: Gate } | null = null;
+	let framedRoute = false;
 
 	function shownGates(): DrawnGate[] {
 		if (!draft) return gates;
@@ -176,6 +177,7 @@
 		stopResize = watchMapResize(container, map);
 		map.on('load', () => {
 			ready = true;
+			framedRoute = (route?.length ?? 0) > 0;
 			draw();
 			fit();
 		});
@@ -192,7 +194,14 @@
 		void editWhich;
 		// A new set of lines from the server replaces any drag in progress.
 		draft = null;
-		untrack(draw);
+		untrack(() => {
+			draw();
+			// The route usually arrives after the map loaded; frame it once.
+			if (ready && !framedRoute && (route?.length ?? 0) > 0) {
+				framedRoute = true;
+				fit();
+			}
+		});
 	});
 
 	onDestroy(() => {

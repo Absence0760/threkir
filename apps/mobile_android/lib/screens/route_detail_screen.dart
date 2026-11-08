@@ -57,6 +57,8 @@ import '../widgets/missing_map_tiles_hint.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_markers_panel.dart';
+import '../race_service.dart';
+import '../widgets/course_alerts_section.dart';
 import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
 import '../widgets/route_share_card.dart';
@@ -144,6 +146,8 @@ class RouteDetailScreen extends StatefulWidget {
 }
 
 class _RouteDetailScreenState extends State<RouteDetailScreen> {
+  late final RaceService _raceService = RaceService();
+
   late bool _isPublic = widget.route.isPublic;
   late bool _isStarred = widget.route.isStarred;
   late bool _isOfflinePinned =
@@ -1684,6 +1688,13 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   routeId: widget.route.id,
                   routeOwnerId: widget.route.userId,
                 ),
+                if (widget.route.clubId != null)
+                  CourseAlertsSection(
+                    key: ValueKey('course-alerts-${widget.route.id}'),
+                    service: _raceService,
+                    routeId: widget.route.id,
+                    clubId: widget.route.clubId,
+                  ),
               ],
 
               // Trailing bottom-of-scroll padding so the FAB doesn't

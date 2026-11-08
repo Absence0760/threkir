@@ -20140,4 +20140,91 @@ class AppLocalizationsJa extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course：フィニッシュラインがルートから100 m以上離れています。';
   }
+
+  @override
+  String get provenanceVerifiedSource => '検証済みの情報源';
+
+  @override
+  String get provenanceVerifiedSourceTooltip => '検証済みの情報源: レースデータのパートナーが掲載';
+
+  @override
+  String get provenanceTraced => 'トレース';
+
+  @override
+  String get provenanceTracedTooltip => 'トレース: 認証済みクラブが大会の公開マップから作成';
+
+  @override
+  String get provenanceCommunity => 'コミュニティ';
+
+  @override
+  String get provenanceCommunityTooltip => 'コミュニティ: ランナーが追加したもので、主催者は確認していません';
+
+  @override
+  String get courseAlertsHeading => 'コースのお知らせ';
+
+  @override
+  String get courseAlertsEmpty =>
+      'お知らせはありません。コースが変わったら投稿すると、このレースに向けて練習しているランナーに通知されます。';
+
+  @override
+  String get courseAlertsLoadFailed => 'コースのお知らせを読み込めませんでした。';
+
+  @override
+  String get courseAlertsRetry => '再試行';
+
+  @override
+  String get courseAlertsKindReroute => 'ルート変更';
+
+  @override
+  String get courseAlertsKindClosure => '通行止め';
+
+  @override
+  String get courseAlertsKindDirection => 'コースの向き';
+
+  @override
+  String get courseAlertsKindNotice => 'お知らせ';
+
+  @override
+  String get courseAlertsKindLabel => '種類';
+
+  @override
+  String get courseAlertsMessageLabel => '変更内容';
+
+  @override
+  String get courseAlertsPostHint =>
+      'このレースに向けて練習しているランナーと、コースを保存したランナーに一度だけ通知されます。';
+
+  @override
+  String get courseAlertsPost => 'お知らせを投稿';
+
+  @override
+  String get courseAlertsPosted => 'コースのお知らせを投稿しました。';
+
+  @override
+  String get courseAlertsPostFailed => 'お知らせを投稿できませんでした。もう一度お試しください。';
+
+  @override
+  String get courseAlertsRemove => '削除';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return '「$kind」のお知らせを削除';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'コースのお知らせを削除しました。';
+
+  @override
+  String get courseAlertsRemoveFailed => 'お知らせを削除できませんでした。';
+
+  @override
+  String get courseAlertsNotFound => 'このお知らせは表示できません';
+
+  @override
+  String get profileNotifCourseAlert => '主催者がコースのお知らせを投稿しました';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$clubがコースのお知らせを投稿しました';
+  }
 }

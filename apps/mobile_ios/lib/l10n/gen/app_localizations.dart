@@ -34138,6 +34138,168 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{course}: the finish line is more than 100 m from the route.'**
   String eventRacePreflightFarFinish(String course);
+
+  /// Short visible label on a race listing that came from a race data partner or provider sync
+  ///
+  /// In en, this message translates to:
+  /// **'Verified source'**
+  String get provenanceVerifiedSource;
+
+  /// Screen-reader label and tooltip on the Verified source badge
+  ///
+  /// In en, this message translates to:
+  /// **'Verified source: listed by a race data partner'**
+  String get provenanceVerifiedSourceTooltip;
+
+  /// Short visible label on a race course a verified club drew from the race's published map
+  ///
+  /// In en, this message translates to:
+  /// **'Traced'**
+  String get provenanceTraced;
+
+  /// Screen-reader label and tooltip on the Traced badge
+  ///
+  /// In en, this message translates to:
+  /// **'Traced: drawn by a verified club from the race\'s published map'**
+  String get provenanceTracedTooltip;
+
+  /// Short visible label on a race listing or course nobody official vouches for
+  ///
+  /// In en, this message translates to:
+  /// **'Community'**
+  String get provenanceCommunity;
+
+  /// Screen-reader label and tooltip on the Community badge
+  ///
+  /// In en, this message translates to:
+  /// **'Community: added by a runner, not checked by the organiser'**
+  String get provenanceCommunityTooltip;
+
+  /// Heading of the organiser course alerts section on a race or route
+  ///
+  /// In en, this message translates to:
+  /// **'Course alerts'**
+  String get courseAlertsHeading;
+
+  /// Shown to the organiser when a race has no course alerts yet
+  ///
+  /// In en, this message translates to:
+  /// **'No alerts. Post one when the course changes, and runners training for it are told.'**
+  String get courseAlertsEmpty;
+
+  /// Shown when the course alerts could not be read
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the course alerts.'**
+  String get courseAlertsLoadFailed;
+
+  /// Button that reloads the course alerts after a failed read
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get courseAlertsRetry;
+
+  /// Course alert type: the course was rerouted
+  ///
+  /// In en, this message translates to:
+  /// **'Reroute'**
+  String get courseAlertsKindReroute;
+
+  /// Course alert type: part of the course is closed
+  ///
+  /// In en, this message translates to:
+  /// **'Closure'**
+  String get courseAlertsKindClosure;
+
+  /// Course alert type: the direction the course runs this year (for example an up or down year)
+  ///
+  /// In en, this message translates to:
+  /// **'Course direction'**
+  String get courseAlertsKindDirection;
+
+  /// Course alert type: a general notice from the organiser
+  ///
+  /// In en, this message translates to:
+  /// **'Notice'**
+  String get courseAlertsKindNotice;
+
+  /// Label of the course alert type picker
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get courseAlertsKindLabel;
+
+  /// Label of the course alert message field
+  ///
+  /// In en, this message translates to:
+  /// **'What changed'**
+  String get courseAlertsMessageLabel;
+
+  /// Says who is notified when the organiser posts a course alert
+  ///
+  /// In en, this message translates to:
+  /// **'Runners training for this race and runners who saved its course are notified once.'**
+  String get courseAlertsPostHint;
+
+  /// Button that posts a course alert
+  ///
+  /// In en, this message translates to:
+  /// **'Post alert'**
+  String get courseAlertsPost;
+
+  /// Confirmation after a course alert was posted
+  ///
+  /// In en, this message translates to:
+  /// **'Course alert posted.'**
+  String get courseAlertsPosted;
+
+  /// Error when a course alert could not be posted
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t post the alert. Try again.'**
+  String get courseAlertsPostFailed;
+
+  /// Button that removes a course alert
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get courseAlertsRemove;
+
+  /// Screen-reader label of the remove button on one course alert, naming its type
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the {kind} alert'**
+  String courseAlertsRemoveLabel(String kind);
+
+  /// Undo bar message after a course alert was removed
+  ///
+  /// In en, this message translates to:
+  /// **'Course alert removed.'**
+  String get courseAlertsRemoved;
+
+  /// Error when a course alert could not be removed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t remove the alert.'**
+  String get courseAlertsRemoveFailed;
+
+  /// Shown when a course alert notification points at an alert that is gone
+  ///
+  /// In en, this message translates to:
+  /// **'This alert is no longer available'**
+  String get courseAlertsNotFound;
+
+  /// Notification inbox line: a race organiser posted a course alert on a race the runner trains for or a course they saved
+  ///
+  /// In en, this message translates to:
+  /// **'The organiser posted a course alert'**
+  String get profileNotifCourseAlert;
+
+  /// Notification inbox line naming the organiser club that posted a course alert
+  ///
+  /// In en, this message translates to:
+  /// **'{club} posted a course alert'**
+  String profileNotifCourseAlertNamed(String club);
 }
 
 class _AppLocalizationsDelegate

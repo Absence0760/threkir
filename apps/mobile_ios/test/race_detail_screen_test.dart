@@ -41,10 +41,48 @@ class _FakeRaceService extends RaceService {
   List<RaceCourseSuggestion> forReview = const [];
   final List<List<Object?>> reviews = [];
 
+  List<CourseAlertView> alerts = const [];
+  final List<List<String?>> postedAlerts = [];
+  final List<String> deletedAlerts = [];
+
   _FakeRaceService({this.listing, this.listingFailures = 0});
 
   @override
   bool get isSignedIn => signedIn;
+
+  @override
+  bool get isReady => true;
+
+  @override
+  Future<List<CourseAlertView>> fetchCourseAlerts(
+          {String? listingId, String? routeId, int limit = 20}) async =>
+      alerts;
+
+  @override
+  Future<void> postCourseAlert(
+      {String? listingId,
+      String? routeId,
+      required String kind,
+      required String message}) async {
+    postedAlerts.add([listingId, routeId, kind, message]);
+    alerts = [
+      CourseAlertView(
+        id: 'alert-${postedAlerts.length}',
+        clubId: 'club-1',
+        listingId: listingId,
+        routeId: routeId,
+        kind: kind,
+        message: message.trim(),
+        createdAt: '2036-10-02T09:00:00Z',
+      ),
+      ...alerts,
+    ];
+  }
+
+  @override
+  Future<void> deleteCourseAlert(String alertId) async {
+    deletedAlerts.add(alertId);
+  }
 
   @override
   Future<List<OrganiserClub>> fetchMyOrganiserClubs() async => clubs;
@@ -163,6 +201,8 @@ RaceListingView _copyWith(RaceListingView r,
       course: r.course,
       organiserClubId: organiserClubId,
       organiserClubName: organiserClubName,
+      // Only a verified club can claim, so a claimed listing starts official.
+      organiserIsOfficial: organiserClubId != null,
     );
 
 String _isoDaysOut(int days) => toIsoDate(DateTime.now().add(Duration(days: days)));
@@ -174,6 +214,7 @@ RaceListingView _listing({
   RaceListingCourse? course,
   String? organiserClubId,
   String? organiserClubName,
+  bool? organiserIsOfficial,
 }) =>
     RaceListingView(
       id: '11111111-1111-4111-8111-111111111111',
@@ -190,6 +231,7 @@ RaceListingView _listing({
       course: course,
       organiserClubId: organiserClubId,
       organiserClubName: organiserClubName,
+      organiserIsOfficial: organiserIsOfficial ?? organiserClubId != null,
     );
 
 Widget _app(RaceService service, {_FakeTraining? training, bool aiPlan = false}) =>
@@ -481,6 +523,148 @@ void main() {
     );
     expect(find.text('Course updated 2036-10-20'), findsOneWidget);
     expect(find.text('Listed on RunSignUp'), findsOneWidget);
+  });
+
+  testWidgets('the race and its course carry their provenance badges',
+      (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(30),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Club',
+        course: const RaceListingCourse(
+          distanceM: 42195,
+          routeId: 'route-1',
+          source: 'traced',
+        ),
+      ),
+    );
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('race-detail-provenance')),
+        matching: find.byKey(const Key('provenance-badge-official')),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('race-detail-course-provenance')),
+        matching: find.byKey(const Key('provenance-badge-traced')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Traced'), findsOneWidget);
+    await tester.scrollUntilVisible(
+        find.byKey(const Key('provenance-badge-traced')), 100,
+        scrollable: find.byType(Scrollable).first);
+    expect(
+      find.bySemanticsLabel(RegExp(
+          r"Traced: drawn by a verified club from the race's published map")),
+      findsOneWidget,
+      reason: 'a screen reader hears what the mark means, not an icon name',
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('a revoked organiser vouches for nothing: community, no source line',
+      (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(30),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Club',
+        organiserIsOfficial: false,
+        course: const RaceListingCourse(
+          distanceM: 42195,
+          routeId: 'route-1',
+          source: 'official',
+        ),
+      ),
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('provenance-badge-official')), findsNothing);
+    expect(find.byKey(const Key('provenance-badge-community')), findsNWidgets(2));
+    expect(find.byKey(const Key('race-detail-course-source')), findsNothing);
+  });
+
+  testWidgets('anyone reads the organiser course alerts; only its admin gets the form',
+      (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(30),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Club',
+      ),
+    )..alerts = const [
+        CourseAlertView(
+          id: 'alert-0',
+          clubId: 'club-1',
+          listingId: '11111111-1111-4111-8111-111111111111',
+          routeId: null,
+          kind: 'closure',
+          message: 'The river path is closed.',
+          createdAt: '2036-10-01T09:00:00Z',
+        ),
+      ];
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Course alerts'), findsOneWidget);
+    expect(find.text('Closure'), findsOneWidget);
+    expect(find.textContaining('The river path is closed.'), findsOneWidget);
+    expect(find.byKey(const Key('course-alert-post')), findsNothing);
+    expect(find.byKey(const Key('course-alert-remove-alert-0')), findsNothing);
+  });
+
+  testWidgets('the organiser posts a course alert and removal is held for undo',
+      (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(30),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Club',
+      ),
+    )
+      ..signedIn = true
+      ..clubs = const [OrganiserClub(id: 'club-1', name: 'Moab Trail Club')];
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.scrollUntilVisible(
+        find.byKey(const Key('course-alert-message')), 200,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.byKey(const Key('course-alerts-empty')), findsOneWidget);
+    await tester.enterText(
+        find.byKey(const Key('course-alert-message')), ' Mile 12 turns left. ');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('course-alert-post')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(service.postedAlerts, [
+      ['11111111-1111-4111-8111-111111111111', null, 'notice', 'Mile 12 turns left.']
+    ]);
+    expect(find.textContaining('Mile 12 turns left.'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('course-alert-remove-alert-1')));
+    await tester.pump();
+    expect(find.textContaining('Mile 12 turns left.'), findsNothing);
+    expect(service.deletedAlerts, isEmpty,
+        reason: 'the delete waits out the undo window');
+    await tester.pump(const Duration(seconds: 9));
+    await tester.pump();
+    expect(service.deletedAlerts, ['alert-1']);
+    debugResetUndo();
   });
 
   testWidgets('a verified club admin claims an unclaimed race', (tester) async {

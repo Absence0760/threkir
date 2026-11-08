@@ -16,6 +16,7 @@ import '../pro_sellable.dart' show fetchAiPlanAvailable;
 import '../race_plan_prefill.dart';
 import '../race_plan_preset.dart';
 import '../race_predictor.dart' show predictRaceLadder;
+import '../provenance.dart';
 import '../race_service.dart';
 import '../route_surface_label.dart';
 import '../share_sheet.dart';
@@ -24,6 +25,8 @@ import '../training_service.dart';
 import '../undo_queue.dart';
 import '../web_base_url.dart';
 import '../widgets/error_state.dart';
+import '../widgets/course_alerts_section.dart';
+import '../widgets/provenance_badge.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
 import '../widgets/undo_bar.dart';
@@ -819,9 +822,21 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
           routeSurfaceLabel(l, course.surface!),
       ],
     ];
-    final courseSource = course == null
+    // The sentence names the club as the course's source, so it is shown
+    // only while that club still vouches for it (decisions § 2406).
+    final courseSource = course == null || !race.organiserIsOfficial
         ? null
         : raceCourseSourceLabel(l, course.source, race.organiserClubName);
+    final listingProvenance = raceListingProvenance(
+      organiserIsOfficial: race.organiserIsOfficial,
+      provider: race.provider,
+      isVerified: race.isVerified,
+    );
+    final courseProvenance = raceCourseProvenance(
+      hasCourse: course != null,
+      organiserIsOfficial: race.organiserIsOfficial,
+      courseSource: course?.source,
+    );
     final meta = <String>[
       race.raceDate,
       if (race.distanceM != null) formatDistanceForPref(race.distanceM!.toDouble()),
@@ -833,6 +848,14 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
         Text(race.name, style: theme.textTheme.headlineSmall),
         const SizedBox(height: 4),
         Text(meta.join(' · '), style: theme.textTheme.bodyMedium),
+        const SizedBox(height: 4),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: KeyedSubtree(
+            key: const Key('race-detail-provenance'),
+            child: ProvenanceBadge(provenance: listingProvenance),
+          ),
+        ),
         const SizedBox(height: 4),
         Text(
           raceSourceLabel(l, race.provider, race.organiserClubName),
@@ -926,6 +949,13 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
               Text(l.racesCourseHeading, style: theme.textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(courseParts.join(' · '), style: theme.textTheme.bodyMedium),
+              if (courseProvenance != null) ...[
+                const SizedBox(height: 4),
+                KeyedSubtree(
+                  key: const Key('race-detail-course-provenance'),
+                  child: ProvenanceBadge(provenance: courseProvenance),
+                ),
+              ],
               if (courseSource != null) ...[
                 const SizedBox(height: 4),
                 Text(
@@ -961,6 +991,12 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
           ),
         ],
         _courseTools(context, l, race),
+        CourseAlertsSection(
+          key: ValueKey('course-alerts-${race.id}'),
+          service: widget.service,
+          listingId: race.id,
+          clubId: race.organiserIsOfficial ? race.organiserClubId : null,
+        ),
         const SizedBox(height: 24),
         Text(l.racesDetailYourRuns, style: theme.textTheme.titleMedium),
         const SizedBox(height: 8),

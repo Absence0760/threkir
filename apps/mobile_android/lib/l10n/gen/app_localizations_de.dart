@@ -21195,4 +21195,98 @@ class AppLocalizationsDe extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course: Die Ziellinie liegt mehr als 100 m von der Route entfernt.';
   }
+
+  @override
+  String get provenanceVerifiedSource => 'Geprüfte Quelle';
+
+  @override
+  String get provenanceVerifiedSourceTooltip =>
+      'Geprüfte Quelle: von einem Partner für Laufdaten gelistet';
+
+  @override
+  String get provenanceTraced => 'Nachgezeichnet';
+
+  @override
+  String get provenanceTracedTooltip =>
+      'Nachgezeichnet: von einem verifizierten Club nach der veröffentlichten Streckenkarte gezeichnet';
+
+  @override
+  String get provenanceCommunity => 'Community';
+
+  @override
+  String get provenanceCommunityTooltip =>
+      'Community: von einer Läuferin oder einem Läufer hinzugefügt, nicht vom Veranstalter geprüft';
+
+  @override
+  String get courseAlertsHeading => 'Streckenhinweise';
+
+  @override
+  String get courseAlertsEmpty =>
+      'Keine Hinweise. Poste einen, wenn sich die Strecke ändert, dann werden alle benachrichtigt, die dafür trainieren.';
+
+  @override
+  String get courseAlertsLoadFailed =>
+      'Die Streckenhinweise konnten nicht geladen werden.';
+
+  @override
+  String get courseAlertsRetry => 'Erneut versuchen';
+
+  @override
+  String get courseAlertsKindReroute => 'Streckenänderung';
+
+  @override
+  String get courseAlertsKindClosure => 'Sperrung';
+
+  @override
+  String get courseAlertsKindDirection => 'Laufrichtung';
+
+  @override
+  String get courseAlertsKindNotice => 'Hinweis';
+
+  @override
+  String get courseAlertsKindLabel => 'Art';
+
+  @override
+  String get courseAlertsMessageLabel => 'Was sich geändert hat';
+
+  @override
+  String get courseAlertsPostHint =>
+      'Wer für diesen Lauf trainiert oder die Strecke gespeichert hat, wird einmal benachrichtigt.';
+
+  @override
+  String get courseAlertsPost => 'Hinweis posten';
+
+  @override
+  String get courseAlertsPosted => 'Streckenhinweis gepostet.';
+
+  @override
+  String get courseAlertsPostFailed =>
+      'Der Hinweis konnte nicht gepostet werden. Versuch es noch einmal.';
+
+  @override
+  String get courseAlertsRemove => 'Entfernen';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return 'Hinweis „$kind“ entfernen';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'Streckenhinweis entfernt.';
+
+  @override
+  String get courseAlertsRemoveFailed =>
+      'Der Hinweis konnte nicht entfernt werden.';
+
+  @override
+  String get courseAlertsNotFound => 'Dieser Hinweis ist nicht mehr verfügbar';
+
+  @override
+  String get profileNotifCourseAlert =>
+      'Der Veranstalter hat einen Streckenhinweis gepostet';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$club hat einen Streckenhinweis gepostet';
+  }
 }

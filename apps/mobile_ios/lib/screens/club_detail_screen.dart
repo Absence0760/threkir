@@ -30,6 +30,7 @@ import '../widgets/activity_waiver_dialog.dart';
 import '../widgets/club_form_sheet.dart';
 import '../widgets/club_invite_card.dart';
 import '../widgets/club_photos.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/collapsing_tab_host.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
@@ -95,6 +96,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   String? _adoptingSessionId;
   String? _adoptingPlanId;
   List<GymRoutineRow> _gymRoutineTemplates = const [];
+  Set<String> _officialGymRoutineIds = const {};
   String? _adoptingRoutineId;
   List<cm.Route> _routes = const [];
   bool _loading = true;
@@ -1530,11 +1532,15 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       final routines =
           await widget.apiClient?.fetchClubGymRoutineTemplates(c.row.id) ??
               const <GymRoutineRow>[];
+      final officialRoutines = await widget.apiClient
+              ?.fetchOfficialGymRoutineIds([for (final r in routines) r.id]) ??
+          const <String>{};
       if (!mounted) return;
       setState(() {
         _templates = list;
         _sessionTemplates = sessions;
         _gymRoutineTemplates = routines;
+        _officialGymRoutineIds = officialRoutines;
         _templatesLoaded = true;
       });
     } catch (_) {
@@ -1919,6 +1925,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(g.title, style: theme.textTheme.titleSmall),
+                            if (_officialGymRoutineIds.contains(g.id)) ...[
+                              const SizedBox(height: 2),
+                              const OfficialBadge(),
+                            ],
                             const SizedBox(height: 4),
                             Text(
                               l10n.clubDetailRoutineExerciseCount(

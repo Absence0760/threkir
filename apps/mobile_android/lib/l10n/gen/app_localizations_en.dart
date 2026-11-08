@@ -20943,4 +20943,94 @@ class AppLocalizationsEn extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course: the finish line is more than 100 m from the route.';
   }
+
+  @override
+  String get provenanceVerifiedSource => 'Verified source';
+
+  @override
+  String get provenanceVerifiedSourceTooltip =>
+      'Verified source: listed by a race data partner';
+
+  @override
+  String get provenanceTraced => 'Traced';
+
+  @override
+  String get provenanceTracedTooltip =>
+      'Traced: drawn by a verified club from the race\'s published map';
+
+  @override
+  String get provenanceCommunity => 'Community';
+
+  @override
+  String get provenanceCommunityTooltip =>
+      'Community: added by a runner, not checked by the organiser';
+
+  @override
+  String get courseAlertsHeading => 'Course alerts';
+
+  @override
+  String get courseAlertsEmpty =>
+      'No alerts. Post one when the course changes, and runners training for it are told.';
+
+  @override
+  String get courseAlertsLoadFailed => 'Couldn\'t load the course alerts.';
+
+  @override
+  String get courseAlertsRetry => 'Try again';
+
+  @override
+  String get courseAlertsKindReroute => 'Reroute';
+
+  @override
+  String get courseAlertsKindClosure => 'Closure';
+
+  @override
+  String get courseAlertsKindDirection => 'Course direction';
+
+  @override
+  String get courseAlertsKindNotice => 'Notice';
+
+  @override
+  String get courseAlertsKindLabel => 'Type';
+
+  @override
+  String get courseAlertsMessageLabel => 'What changed';
+
+  @override
+  String get courseAlertsPostHint =>
+      'Runners training for this race and runners who saved its course are notified once.';
+
+  @override
+  String get courseAlertsPost => 'Post alert';
+
+  @override
+  String get courseAlertsPosted => 'Course alert posted.';
+
+  @override
+  String get courseAlertsPostFailed => 'Couldn\'t post the alert. Try again.';
+
+  @override
+  String get courseAlertsRemove => 'Remove';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return 'Remove the $kind alert';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'Course alert removed.';
+
+  @override
+  String get courseAlertsRemoveFailed => 'Couldn\'t remove the alert.';
+
+  @override
+  String get courseAlertsNotFound => 'This alert is no longer available';
+
+  @override
+  String get profileNotifCourseAlert => 'The organiser posted a course alert';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$club posted a course alert';
+  }
 }

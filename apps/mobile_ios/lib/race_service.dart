@@ -34,6 +34,10 @@ class RaceListingView {
   final String? organiserClubId;
   final String? organiserClubName;
 
+  /// The claiming club is verified, public and unhidden right now
+  /// (`organiser_is_official`, decisions § 2406). Search rows carry it too.
+  final bool organiserIsOfficial;
+
   const RaceListingView({
     required this.id,
     required this.provider,
@@ -49,6 +53,7 @@ class RaceListingView {
     this.course,
     this.organiserClubId,
     this.organiserClubName,
+    this.organiserIsOfficial = false,
   });
 
   factory RaceListingView.fromJson(Map<String, dynamic> j) => RaceListingView(
@@ -70,6 +75,7 @@ class RaceListingView {
         organiserClubName: j['organiser_club_id'] == null
             ? null
             : j['organiser_club_name'] as String?,
+        organiserIsOfficial: j['organiser_is_official'] as bool? ?? false,
       );
 
   /// The same listing with no course, which the race screen shows while a
@@ -88,6 +94,7 @@ class RaceListingView {
         distanceMAway: distanceMAway,
         organiserClubId: organiserClubId,
         organiserClubName: organiserClubName,
+        organiserIsOfficial: organiserIsOfficial,
       );
 }
 
@@ -142,6 +149,48 @@ class RaceListingCourse {
       source: kRaceCourseSources.contains(source) ? source : null,
       checkedAt: j['course_checked_at'] as String?,
       updatedAt: j['course_updated_at'] as String?,
+    );
+  }
+}
+
+/// The CHECK'd vocabulary of `course_alerts.kind` (decisions § 2407); web's
+/// `CourseAlertKind`.
+const kCourseAlertKinds = ['reroute', 'closure', 'direction', 'notice'];
+
+/// An organiser's course alert on a race it claimed or a route its club
+/// owns (decisions § 2407). Readable only while the club is still verified;
+/// who typed it is never readable. Mirrors web's `CourseAlert`.
+class CourseAlertView {
+  final String id;
+  final String clubId;
+  final String? listingId;
+  final String? routeId;
+
+  /// One of [kCourseAlertKinds]; an unknown value reads as `notice`.
+  final String kind;
+  final String message;
+  final String createdAt;
+
+  const CourseAlertView({
+    required this.id,
+    required this.clubId,
+    required this.listingId,
+    required this.routeId,
+    required this.kind,
+    required this.message,
+    required this.createdAt,
+  });
+
+  factory CourseAlertView.fromJson(Map<String, dynamic> j) {
+    final kind = j['kind'] as String?;
+    return CourseAlertView(
+      id: j['id'] as String,
+      clubId: j['club_id'] as String,
+      listingId: j['listing_id'] as String?,
+      routeId: j['route_id'] as String?,
+      kind: kCourseAlertKinds.contains(kind) ? kind! : 'notice',
+      message: j['message'] as String,
+      createdAt: j['created_at'] as String,
     );
   }
 }
@@ -555,7 +604,7 @@ class RaceService extends ChangeNotifier {
     final row = await _c
         .from('public_race_listings')
         .select(
-            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name')
+            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_is_official')
         .eq('id', id)
         .maybeSingle();
     if (row == null ||
@@ -656,6 +705,66 @@ class RaceService extends ChangeNotifier {
         .eq('status', 'pending')
         .maybeSingle();
     return row?['route_id'] as String?;
+  }
+
+  /// A race's or a route's course alerts, newest first. Mirrors web's
+  /// `fetchCourseAlerts`.
+  Future<List<CourseAlertView>> fetchCourseAlerts({
+    String? listingId,
+    String? routeId,
+    int limit = 20,
+  }) async {
+    final id = listingId ?? routeId;
+    if (id == null || !_uuid.hasMatch(id)) return const [];
+    final rows = await _c
+        .from('course_alerts')
+        .select('id, club_id, listing_id, route_id, kind, message, created_at')
+        .eq(listingId != null ? 'listing_id' : 'route_id', id)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return [
+      for (final r in (rows as List).whereType<Map<String, dynamic>>())
+        CourseAlertView.fromJson(r),
+    ];
+  }
+
+  /// Where an alert points, for a tapped course-alert notification; null
+  /// when the alert is gone or its club no longer vouches for it.
+  Future<({String? listingId, String? routeId})?> fetchCourseAlertTarget(
+      String alertId) async {
+    if (!_uuid.hasMatch(alertId)) return null;
+    final row = await _c
+        .from('course_alerts')
+        .select('listing_id, route_id')
+        .eq('id', alertId)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      listingId: row['listing_id'] as String?,
+      routeId: row['route_id'] as String?,
+    );
+  }
+
+  /// Posts an alert as the organiser club; the RPC is the gate and tells the
+  /// runners training for the race or who saved its course. Mirrors web's
+  /// `postCourseAlert`.
+  Future<void> postCourseAlert({
+    String? listingId,
+    String? routeId,
+    required String kind,
+    required String message,
+  }) async {
+    await _c.rpc('post_course_alert', params: {
+      'p_listing_id': listingId,
+      'p_route_id': routeId,
+      'p_kind': kind,
+      'p_message': message.trim(),
+    });
+  }
+
+  /// Mirrors web's `deleteCourseAlert`.
+  Future<void> deleteCourseAlert(String alertId) async {
+    await _c.rpc('delete_course_alert', params: {'p_alert_id': alertId});
   }
 
   /// Mirrors web's `claimRaceListing`.

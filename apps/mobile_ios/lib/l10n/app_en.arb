@@ -27809,5 +27809,123 @@
         "type": "String"
       }
     }
+  },
+  "provenanceVerifiedSource": "Verified source",
+  "@provenanceVerifiedSource": {
+    "description": "Short visible label on a race listing that came from a race data partner or provider sync"
+  },
+  "provenanceVerifiedSourceTooltip": "Verified source: listed by a race data partner",
+  "@provenanceVerifiedSourceTooltip": {
+    "description": "Screen-reader label and tooltip on the Verified source badge"
+  },
+  "provenanceTraced": "Traced",
+  "@provenanceTraced": {
+    "description": "Short visible label on a race course a verified club drew from the race's published map"
+  },
+  "provenanceTracedTooltip": "Traced: drawn by a verified club from the race's published map",
+  "@provenanceTracedTooltip": {
+    "description": "Screen-reader label and tooltip on the Traced badge"
+  },
+  "provenanceCommunity": "Community",
+  "@provenanceCommunity": {
+    "description": "Short visible label on a race listing or course nobody official vouches for"
+  },
+  "provenanceCommunityTooltip": "Community: added by a runner, not checked by the organiser",
+  "@provenanceCommunityTooltip": {
+    "description": "Screen-reader label and tooltip on the Community badge"
+  },
+  "courseAlertsHeading": "Course alerts",
+  "@courseAlertsHeading": {
+    "description": "Heading of the organiser course alerts section on a race or route"
+  },
+  "courseAlertsEmpty": "No alerts. Post one when the course changes, and runners training for it are told.",
+  "@courseAlertsEmpty": {
+    "description": "Shown to the organiser when a race has no course alerts yet"
+  },
+  "courseAlertsLoadFailed": "Couldn't load the course alerts.",
+  "@courseAlertsLoadFailed": {
+    "description": "Shown when the course alerts could not be read"
+  },
+  "courseAlertsRetry": "Try again",
+  "@courseAlertsRetry": {
+    "description": "Button that reloads the course alerts after a failed read"
+  },
+  "courseAlertsKindReroute": "Reroute",
+  "@courseAlertsKindReroute": {
+    "description": "Course alert type: the course was rerouted"
+  },
+  "courseAlertsKindClosure": "Closure",
+  "@courseAlertsKindClosure": {
+    "description": "Course alert type: part of the course is closed"
+  },
+  "courseAlertsKindDirection": "Course direction",
+  "@courseAlertsKindDirection": {
+    "description": "Course alert type: the direction the course runs this year (for example an up or down year)"
+  },
+  "courseAlertsKindNotice": "Notice",
+  "@courseAlertsKindNotice": {
+    "description": "Course alert type: a general notice from the organiser"
+  },
+  "courseAlertsKindLabel": "Type",
+  "@courseAlertsKindLabel": {
+    "description": "Label of the course alert type picker"
+  },
+  "courseAlertsMessageLabel": "What changed",
+  "@courseAlertsMessageLabel": {
+    "description": "Label of the course alert message field"
+  },
+  "courseAlertsPostHint": "Runners training for this race and runners who saved its course are notified once.",
+  "@courseAlertsPostHint": {
+    "description": "Says who is notified when the organiser posts a course alert"
+  },
+  "courseAlertsPost": "Post alert",
+  "@courseAlertsPost": {
+    "description": "Button that posts a course alert"
+  },
+  "courseAlertsPosted": "Course alert posted.",
+  "@courseAlertsPosted": {
+    "description": "Confirmation after a course alert was posted"
+  },
+  "courseAlertsPostFailed": "Couldn't post the alert. Try again.",
+  "@courseAlertsPostFailed": {
+    "description": "Error when a course alert could not be posted"
+  },
+  "courseAlertsRemove": "Remove",
+  "@courseAlertsRemove": {
+    "description": "Button that removes a course alert"
+  },
+  "courseAlertsRemoveLabel": "Remove the {kind} alert",
+  "@courseAlertsRemoveLabel": {
+    "description": "Screen-reader label of the remove button on one course alert, naming its type",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "courseAlertsRemoved": "Course alert removed.",
+  "@courseAlertsRemoved": {
+    "description": "Undo bar message after a course alert was removed"
+  },
+  "courseAlertsRemoveFailed": "Couldn't remove the alert.",
+  "@courseAlertsRemoveFailed": {
+    "description": "Error when a course alert could not be removed"
+  },
+  "courseAlertsNotFound": "This alert is no longer available",
+  "@courseAlertsNotFound": {
+    "description": "Shown when a course alert notification points at an alert that is gone"
+  },
+  "profileNotifCourseAlert": "The organiser posted a course alert",
+  "@profileNotifCourseAlert": {
+    "description": "Notification inbox line: a race organiser posted a course alert on a race the runner trains for or a course they saved"
+  },
+  "profileNotifCourseAlertNamed": "{club} posted a course alert",
+  "@profileNotifCourseAlertNamed": {
+    "description": "Notification inbox line naming the organiser club that posted a course alert",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
   }
 }

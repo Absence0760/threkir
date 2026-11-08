@@ -77,6 +77,7 @@ import 'plans_screen.dart';
 import 'profile_screen.dart';
 import 'public_route_screen.dart';
 import 'public_run_screen.dart';
+import 'race_detail_screen.dart';
 import 'races_screen.dart';
 import 'route_detail_screen.dart';
 import 'route_picker_screen.dart';
@@ -584,6 +585,28 @@ class _HomeScreenState extends State<HomeScreen>
         await _pushScreen(
           _settingsDestinationScreen(SettingsDestination.account),
         );
+      case PushTargetKind.courseAlert:
+        final service = RaceService(api: api);
+        ({String? listingId, String? routeId})? alert;
+        try {
+          alert = await service.fetchCourseAlertTarget(target.id!);
+        } catch (e) {
+          debugPrint('HomeScreen: course alert resolve failed: $e');
+        }
+        if (!mounted) return;
+        final listingId = alert?.listingId;
+        final routeId = alert?.routeId;
+        if (listingId != null) {
+          await _pushScreen(
+              RaceDetailScreen(service: service, listingId: listingId));
+        } else if (routeId != null) {
+          await _openEntityLink(EntityLink(EntityLinkKind.route, routeId));
+        } else {
+          // The alert is gone or its club no longer vouches for it: the
+          // inbox it came from is the honest landing, as for any target the
+          // app cannot place.
+          await _openPushTarget(api, PushTarget.inbox);
+        }
     }
   }
 

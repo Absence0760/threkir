@@ -8375,6 +8375,27 @@ class ApiClient {
     }
   }
 
+  /// Which of [routineIds] read as official: published by an owner/admin of
+  /// a verified club (the `is_official` computed field, migration
+  /// 20271021000030; decisions § 2228). Fail-soft to none, because the badge
+  /// is auxiliary to the list it decorates.
+  Future<Set<String>> fetchOfficialGymRoutineIds(List<String> routineIds) async {
+    if (routineIds.isEmpty) return const {};
+    try {
+      final data = await _client
+          .from(GymRoutineRow.table)
+          .select('id, is_official')
+          .inFilter(GymRoutineRow.colId, routineIds);
+      return {
+        for (final r in (data as List).whereType<Map<String, dynamic>>())
+          if (r['is_official'] == true) r['id'] as String,
+      };
+    } catch (e) {
+      debugPrint('fetchOfficialGymRoutineIds failed: $e');
+      return const {};
+    }
+  }
+
   /// Publish a personal gym routine into a club-owned template. The
   /// publish_gym_routine_as_template RPC is author + club-admin gated and
   /// deep-copies the routine + exercises + sets server-side (the personal

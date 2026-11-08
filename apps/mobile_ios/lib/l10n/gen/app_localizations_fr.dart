@@ -21212,4 +21212,97 @@ class AppLocalizationsFr extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course : la ligne d’arrivée est à plus de 100 m de l’itinéraire.';
   }
+
+  @override
+  String get provenanceVerifiedSource => 'Source vérifiée';
+
+  @override
+  String get provenanceVerifiedSourceTooltip =>
+      'Source vérifiée : publiée par un partenaire de données de courses';
+
+  @override
+  String get provenanceTraced => 'Tracé';
+
+  @override
+  String get provenanceTracedTooltip =>
+      'Tracé : dessiné par un club vérifié d\'après la carte publiée de la course';
+
+  @override
+  String get provenanceCommunity => 'Communauté';
+
+  @override
+  String get provenanceCommunityTooltip =>
+      'Communauté : ajouté par un coureur, non vérifié par l\'organisateur';
+
+  @override
+  String get courseAlertsHeading => 'Alertes de parcours';
+
+  @override
+  String get courseAlertsEmpty =>
+      'Aucune alerte. Publiez-en une quand le parcours change : les coureurs qui s\'y préparent seront prévenus.';
+
+  @override
+  String get courseAlertsLoadFailed =>
+      'Impossible de charger les alertes de parcours.';
+
+  @override
+  String get courseAlertsRetry => 'Réessayer';
+
+  @override
+  String get courseAlertsKindReroute => 'Déviation';
+
+  @override
+  String get courseAlertsKindClosure => 'Fermeture';
+
+  @override
+  String get courseAlertsKindDirection => 'Sens du parcours';
+
+  @override
+  String get courseAlertsKindNotice => 'Information';
+
+  @override
+  String get courseAlertsKindLabel => 'Type';
+
+  @override
+  String get courseAlertsMessageLabel => 'Ce qui change';
+
+  @override
+  String get courseAlertsPostHint =>
+      'Les coureurs qui préparent cette course et ceux qui ont enregistré son parcours sont prévenus une fois.';
+
+  @override
+  String get courseAlertsPost => 'Publier l\'alerte';
+
+  @override
+  String get courseAlertsPosted => 'Alerte de parcours publiée.';
+
+  @override
+  String get courseAlertsPostFailed =>
+      'Impossible de publier l\'alerte. Réessayez.';
+
+  @override
+  String get courseAlertsRemove => 'Retirer';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return 'Retirer l\'alerte « $kind »';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'Alerte de parcours retirée.';
+
+  @override
+  String get courseAlertsRemoveFailed => 'Impossible de retirer l\'alerte.';
+
+  @override
+  String get courseAlertsNotFound => 'Cette alerte n\'est plus disponible';
+
+  @override
+  String get profileNotifCourseAlert =>
+      'L\'organisateur a publié une alerte de parcours';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$club a publié une alerte de parcours';
+  }
 }

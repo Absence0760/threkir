@@ -153,7 +153,7 @@ One new widget: `apps/mobile_android/lib/widgets/workout_execution_band.dart`. M
 
 After the final step, the band switches to a **"Workout complete"** state — a green pip, no controls, and a "Cooldown done — tap stop to save" hint.
 
-The existing collapsible stats panel underneath (distance / time / pace) is unchanged. The map still shows the pace-heatmap polyline. Nothing competes for the same space.
+The collapsible stats panel underneath keeps one row of tiles; while a step is showing, Avg pace moves off its glance page to a later one, because the band already carries the step's pace against the target ([run_recording.md § Live stats panel](run_recording.md#live-stats-panel), decisions § 2374). The map still shows the pace-heatmap polyline.
 
 ## Audio cues
 

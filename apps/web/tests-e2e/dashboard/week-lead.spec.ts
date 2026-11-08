@@ -20,7 +20,8 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  * its Week summary opens the weekly summary that now holds the day strip and
  * the week's climb (§ 2283).
  * Nothing below it moved out of existence, so the stat grid and the plan hero
- * are asserted present as well as ordered.
+ * are asserted present as well as ordered. Since #1187 the adaptive Today hero
+ * sits above the lead (decisions § 2385).
  */
 
 async function precedes(a: Locator, b: Locator): Promise<boolean> {
@@ -195,16 +196,19 @@ test.describe('/dashboard — this week leads', () => {
 	test.describe('with an active plan', () => {
 		test.use({ storageState: USER_A.storageStatePath });
 
-		test('the next session sits in the lead, ahead of the plan hero it does not replace', async ({ page }) => {
+		test('the plan hero leads the page, and the next session sits in the lead under it', async ({ page }) => {
 			await page.goto('/dashboard');
 			const lead = page.getByTestId('dash-week-lead');
 			await expect(lead).toBeVisible({ timeout: 15_000 });
 			await expect(lead.getByTestId('dash-week-lead-next')).toBeVisible();
 			await expect(page.getByTestId('dash-actions-trigger')).toBeInViewport();
 
+			// The adaptive Today hero comes first (decisions § 2385); on a plan it
+			// is the plan hero.
 			const hero = page.locator('.plan-hero');
 			await expect(hero).toBeVisible();
-			expect(await precedes(lead, hero)).toBe(true);
+			await expect(hero).toHaveAttribute('data-testid', 'dash-today-hero');
+			expect(await precedes(hero, lead)).toBe(true);
 		});
 	});
 

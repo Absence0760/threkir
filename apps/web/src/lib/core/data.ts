@@ -137,6 +137,7 @@ import type {
 	FundraiserStatus,
 	FundraiserFeedEntry,
 	FundraiserTotals,
+	RaceCourseSource,
 	RaceListing,
 	RaceProvider,
 	RouteCondition,
@@ -151,6 +152,7 @@ import {
 	parseNutritionAssignmentStatus,
 	parseNutritionGoalPhase,
 	parseNutritionProgression,
+	parseRaceCourseSource,
 	parseRouteSurface,
 	parseRunMetadata,
 	parseRunSource,
@@ -2989,10 +2991,19 @@ export interface RaceListingDetail {
 	entry_url: string | null;
 	results_url: string | null;
 	is_verified: boolean;
+	/// The verified club that claimed the race (decisions § 2381). Null while
+	/// unclaimed, and while the club is private or moderated away.
+	organiser: RaceOrganiser | null;
 	/// The linked course's summary. The view fills it only while the route is
 	/// public, so null covers "no course" and "a course nobody may see" alike
 	/// (decisions § 2157).
 	course: RaceListingCourse | null;
+}
+
+export interface RaceOrganiser {
+	id: string;
+	name: string;
+	slug: string | null;
 }
 
 export interface RaceListingCourse {
@@ -3002,6 +3013,12 @@ export interface RaceListingCourse {
 	/// Null unless the route is public (decisions § 2253); its line is read
 	/// with `fetchPublicRoute`, never from this row.
 	routeId: string | null;
+	/// Where the course came from and when its club last checked it; null on
+	/// a course linked by an operator before claims existed (decisions § 2381).
+	source: RaceCourseSource | null;
+	checkedAt: string | null;
+	/// Set when the route's line changed after the last check.
+	updatedAt: string | null;
 }
 
 export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
@@ -3009,7 +3026,7 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 	const { data, error } = await supabase
 		.from('public_race_listings')
 		.select(
-			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id'
+			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug'
 		)
 		.eq('id', id)
 		.maybeSingle();
@@ -3030,15 +3047,142 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 		entry_url: data.entry_url,
 		results_url: data.results_url,
 		is_verified: data.is_verified ?? false,
+		organiser:
+			data.organiser_club_id && data.organiser_club_name
+				? { id: data.organiser_club_id, name: data.organiser_club_name, slug: data.organiser_club_slug }
+				: null,
 		course: hasCourse
 			? {
 					distanceM: data.course_distance_m,
 					ascentM: data.course_elevation_m,
 					surface: data.course_surface,
-					routeId: data.course_route_id
+					routeId: data.course_route_id,
+					source: parseRaceCourseSource(data.course_source),
+					checkedAt: data.course_checked_at,
+					updatedAt: data.course_updated_at
 				}
 			: null
 	};
+}
+
+/// A verified club claims an unclaimed race (decisions § 2381). The RPC is
+/// the gate: only an active owner/admin of a public, verified club passes.
+export async function claimRaceListing(listingId: string, clubId: string): Promise<void> {
+	const { error } = await supabase.rpc('claim_race_listing', {
+		p_listing_id: listingId,
+		p_club_id: clubId
+	});
+	if (error) throw dbError(error);
+}
+
+/// Links a course (a public route the organiser club owns), or unlinks it
+/// with `routeId: null`. Linking the same route again re-checks it.
+export async function linkRaceCourse(
+	listingId: string,
+	routeId: string | null,
+	source: RaceCourseSource | null
+): Promise<void> {
+	const { error } = await supabase.rpc('link_race_course', {
+		p_listing_id: listingId,
+		p_route_id: routeId,
+		p_source: source
+	});
+	if (error) throw dbError(error);
+}
+
+/// A runner suggests one of their public routes as the race's course. It
+/// links nothing; the organiser club reviews it.
+export async function suggestRaceCourse(
+	listingId: string,
+	routeId: string,
+	note: string | null
+): Promise<void> {
+	const { error } = await supabase.rpc('suggest_race_course', {
+		p_listing_id: listingId,
+		p_route_id: routeId,
+		p_note: note?.trim() || null
+	});
+	if (error) throw dbError(error);
+}
+
+/// The caller's own open suggestion for a race, or null.
+export async function fetchMyRaceCourseSuggestion(
+	listingId: string
+): Promise<{ id: string; routeId: string } | null> {
+	if (!isEntityId(listingId)) return null;
+	const { data, error } = await supabase
+		.from('race_course_suggestions')
+		.select('id, route_id')
+		.eq('listing_id', listingId)
+		.eq('status', 'pending')
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? { id: data.id, routeId: data.route_id } : null;
+}
+
+export interface RaceCourseSuggestion {
+	id: string;
+	routeId: string;
+	routeName: string;
+	/// The club that owns the suggested route, when it is a club route.
+	routeClubId: string | null;
+	note: string | null;
+	createdAt: string;
+}
+
+/// The pending suggestions a reviewer may act on. Empty for anyone who is not
+/// one; the queue never says who suggested a route.
+export async function fetchRaceCourseSuggestionsForReview(
+	listingId: string
+): Promise<RaceCourseSuggestion[]> {
+	const { data, error } = await supabase.rpc(
+		'race_course_suggestions_for_review',
+		{ p_listing_id: listingId },
+		{ get: true }
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		id: r.id,
+		routeId: r.route_id,
+		routeName: r.route_name,
+		routeClubId: r.route_club_id,
+		note: r.note,
+		createdAt: r.created_at
+	}));
+}
+
+/// Approve (linking `routeId`, the club's own public copy, or the suggested
+/// route itself when the club already owns it) or reject a suggestion.
+export async function reviewRaceCourseSuggestion(
+	suggestionId: string,
+	approve: boolean,
+	routeId: string | null = null,
+	source: RaceCourseSource = 'official'
+): Promise<void> {
+	const { error } = await supabase.rpc('review_race_course_suggestion', {
+		p_suggestion_id: suggestionId,
+		p_approve: approve,
+		p_route_id: routeId,
+		p_source: source
+	});
+	if (error) throw dbError(error);
+}
+
+/// The caller's own public routes, for the "Suggest a course" picker.
+export async function fetchMyPublicRoutes(): Promise<{ id: string; name: string }[]> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from('routes')
+		.select('id, name')
+		.eq('user_id', userId)
+		.eq('is_public', true)
+		.eq('shadow_hidden', false)
+		.order('created_at', { ascending: false })
+		.limit(200);
+	if (error) throw dbError(error);
+	return data ?? [];
 }
 
 /// The signed-in runner's own runs linked to a listing (an imported or

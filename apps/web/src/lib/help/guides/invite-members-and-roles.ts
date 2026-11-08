@@ -34,8 +34,8 @@ export const guide: Guide = {
 				{
 					type: 'steps',
 					items: [
-						'Open your club on the web. When the club is **Invite only**, admins see an **Invite link** panel on the club page.',
-						'Select **Generate invite link** the first time, then **Copy** to put the link on your clipboard.',
+						'Open your club. On the web, admins see an **Invite link** panel on the club page whatever the join policy. In the phone app, tap the invite button at the top of the club screen.',
+						'Select **Generate invite link** the first time, then **Copy** to put the link on your clipboard, or **Share** to send it from your share sheet.',
 						'Send the link however you like. Anyone who opens it and signs in joins the club as a member.',
 					],
 				},
@@ -52,6 +52,10 @@ export const guide: Guide = {
 					type: 'note',
 					tone: 'tip',
 					text: 'In the phone app, a member can also tap **Join with invite code** on the **Clubs** tab of **Social** and paste the whole link or just the code after /clubs/join/. Opening the link in a phone browser works too.',
+				},
+				{
+					type: 'p',
+					text: 'A public club also has a **Share club** button that anyone can use. It shares the club\'s public page, which shows what the club is without letting anyone in, so people still join the usual way. Private clubs have no public page, so share the invite link instead.',
 				},
 			],
 		},

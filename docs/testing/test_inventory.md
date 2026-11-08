@@ -12,7 +12,7 @@ The coverage is uneven per tree, and that is the selection showing rather than a
 
 **The per-file counts in the census above the round log were re-measured on 2026-09-05** and are the DECLARATION count each recompute command reports — 49 of the 111 measurable ones were wrong when they were checked, several by a factor of four ([decisions § 1217](../architecture/decisions.md)). They no longer drift silently: `scripts/check_test_inventory_counts.mjs` (`npm run check:test-inventory`, in the `workflow-lint` job) re-derives every one of them from the file it names and fails the PR on a disagreement, on a heading that names a file it cannot find, and on a heading that names no file at all. A count written against a PARAMETERISED declaration — `l10n_generated_parity_test.dart`'s `1 + 3 per catalogue`, `catalogues.test.ts`'s one per locale — is the runtime count, not the declaration count, and says so. **The per-round sections below the `Suite totals` divider are historical records of what one round added; their counts are deliberately NOT refreshed** (the note under the `security_guards.test.ts` headings says the same).
 
-### `apps/mobile_android/test/run_stats_test.dart` — 40 tests
+### `apps/mobile_android/test/run_stats_test.dart` — 49 tests
 
 Pure-function tests for two helpers in `lib/run_stats.dart`:
 
@@ -26,6 +26,8 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 - Waypoints without timestamps skipped
 - Same-timestamp pairs (`dt == 0`) skipped
 - Multi-segment summation
+
+**Live moving time** (issue #1300) — `MovingTimeAccumulator.extend` over a growing stop-and-go line equals `movingTimeOf` on the whole, stamped or measured on positions; a stop adds no moving time; a shorter line starts over; `averagingTime` picks moving time on GPS and the clock indoors; `isStandingStill` at 9 s / 10 s past the last movement, from the first fix on a standing start, from its own first fix after a resume, and never without a fix or an anchor.
 
 **`fastestWindowOf(track, windowMetres)`** — rolling-window scan behind the dashboard "Fastest 5k" PB. Regression-tests the scaled-average-pace bug it replaced (see `decisions.md`). Covers:
 
@@ -287,7 +289,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 55 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 64 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 
@@ -304,6 +306,10 @@ Tests: tapping START transitions the screen into countdown state (text "3" appea
 Live race (decisions § 1843), three more: Stop during a hosted race pauses and opens the Resume race / Finish race sheet without saving, and Resume race closes it with the race still hosted; Finish race stops, saves the run and submits a `manual` finish (no course resolved, so the 90% gate passes); after the host ends the race, Stop stops outright, still saves the run, and submits nothing.
 
 Precise location (decisions § 1985), one more: an approximate-only grant still starts the run past the countdown and shows the `runPreciseLocationOff` banner with its Settings action. Decisions § 2151 adds one: an approximate grant that never delivers a fix shows the approximate strip and the map's precise-location-off state from the first second, its "Turn on precise location" action opens app settings, and a precise fix clears the strip.
+
+No-GPS start and no-distance stop (issue #1300 BUG-012, decisions § 2369), six more: a denied location stops START at the Start without GPS? dialog and Cancel starts nothing; Open settings on a denied start opens the app settings and starts nothing; with Location off it opens the location settings; Record time only starts the run and saves it with `metadata.indoor` and no Stop prompt; and a GPS run that ends with no fix asks at Stop, Discard saving nothing (and clearing the recovery file) while Save as time-only saves it with `metadata.indoor`. The GPS-unavailable start case now passes through Record time only and asserts the banner stays quiet.
+
+Standing still (issue #1300, decisions § 2370), three more: 60 s at 3 m/s then 20 s on one spot shows the **Stopped** chip and leaves the live Avg pace exactly where the running left it (it divides by moving time, so it is ready even though the widget-test wall clock has barely moved), and moving again clears the chip; the spoken split average at a 100 m interval divides by the same moving time (~333 s/km at 3 m/s, null before the fix); and 30 s of 30 m canopy fixes kept off the line still count as moving time (333 s/km, not the 167 the line alone gives).
 
 ### `apps/mobile_android/test/run_screen_idle_setup_test.dart` — 14 tests
 
@@ -584,7 +590,7 @@ The centre button's long-press start-options sheet (decisions § 1892, § 1897):
 
 The minimum-data account on every mobile surface that derives a number from a run (issue #1161 round 3): run detail, a history row, the history list sorted fastest-first, and Home's card stack, each fed a 10 s / 3 m run over a two-point, one-point or empty track, a 0 m run with a one-point or empty track, and a 0 s / 0 m run, in km and in mi, as a run and as a ride, and on Home under a weekly goal on every target, once for every fixture and once for a week of only 0 m runs. Each case asserts no exception, the honest missing-value spelling (`--:--` for a pace, `--` for a speed), and a clean text sweep. The sweep is `test/rendered_text_sweep.dart`: it collects every `RichText`, `EditableText`, `Semantics` label and `Tooltip` message, offstage included, and fails on `NaN`, `Infinity`, `∞` or a negative zero (`-0`, `-0.00`, `-0:00`, U+2212 too) while letting a date, `UTC-0`, `-0.05` and a `-0:30` delta through; the suite's first two tests pin that pattern so a sweep that matches nothing cannot pass silently. The surfaces are pumped on a 400 × 9000 surface so every lazily-built list child is laid out and swept. Nine declarations, 41 cases once the fixture loops expand.
 
-### `apps/mobile_ios/test/` — 817 files, byte-for-byte
+### `apps/mobile_ios/test/` — 820 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -1409,7 +1415,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,466 declared tests across 646 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,475 declared tests across 649 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -1474,6 +1480,7 @@ tests-e2e/
   runs/
     list.spec.ts               — /history (filter, sort, search, multi-select, create, delete; bulk-delete actually-deletes round-trip)
     new.spec.ts                — /runs/new standalone create form (RunEditor → land on /runs/[new])
+    build-route-return.spec.ts — /runs/new empty route picker → "Build one" → /routes/new?return= → saved route comes back preselected; an off-origin return target is ignored (issue #1300 § 3)
     detail.spec.ts             — /runs/[id] (edit, cancel, single-run delete via the trash icon; the trash icon carries the danger colour at rest, not only on hover — issue #902)
     key-stats-fit.spec.ts      — /runs/[id] key-stat tiles: a run states pace and a ride speed, never both, and no value is clipped (`scrollWidth` vs `clientWidth` on every value — `12.0 km/h` used to render as `12.0 k…`, issue #902)
     cascade.spec.ts            — backend boundary: deleting a run sweeps every cascading child (kudos, comments, photos, segment_efforts, live_run_pings, run_matched_tracks, notifications) + the Storage object; run_photos cascade

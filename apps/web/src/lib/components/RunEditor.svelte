@@ -12,6 +12,7 @@
 	import { activityTypeLabel } from '#lib/runs/activity_type.svelte.ts';
 	import type { ActivityType, Route } from '#lib/types.ts';
 	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
+	import { newRouteHref } from '#lib/routes/route_return.ts';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import UnsavedChangesGuard from './UnsavedChangesGuard.svelte';
 	import ConfirmDialog from './ConfirmDialog.svelte';
@@ -27,8 +28,11 @@
 	interface Props {
 		oncreated?: (run: { id: string }) => void;
 		oncancel?: () => void;
+		// A route the user just built from the empty picker's "Build one"
+		// link, handed back by the builder as `?route=<id>`.
+		initialRouteId?: string | null;
 	}
-	let { oncreated, oncancel }: Props = $props();
+	let { oncreated, oncancel, initialRouteId = null }: Props = $props();
 
 	const METRES_PER_MILE = 1609.344;
 
@@ -51,6 +55,7 @@
 	let notes = $state('');
 	let routeId = $state('');
 	let routes = $state<RouteListItem[]>([]);
+	let routesLoaded = $state(false);
 	let submitting = $state(false);
 	// Seeded from the user's privacy_default on mount so the control reflects
 	// their standing preference; a per-run change overrides it for this run.
@@ -115,6 +120,17 @@
 			routes = await fetchRoutes();
 		} catch (_) {
 			routes = [];
+		}
+		routesLoaded = true;
+		const built = initialRouteId ? routes.find((r) => r.id === initialRouteId) : undefined;
+		if (built) {
+			dirty.seed(() => {
+				routeId = built.id;
+				if (built.distance_m > 0) {
+					const perUnitMetres = unit === 'mi' ? METRES_PER_MILE : 1000;
+					distance = Math.round((built.distance_m / perUnitMetres) * 100) / 100;
+				}
+			});
 		}
 	});
 
@@ -296,7 +312,14 @@
 			</select>
 		</label>
 		<span class="field-hint" id="run-route-hint">
-			{m('runEditor.routeHint')}
+			{#if routesLoaded && routes.length === 0}
+				{m('runEditor.noSavedRoutes')}
+				<a href={newRouteHref('/runs/new')} data-testid="run-editor-build-route"
+					>{m('runEditor.buildRoute')}</a
+				>
+			{:else}
+				{m('runEditor.routeHint')}
+			{/if}
 		</span>
 	</div>
 

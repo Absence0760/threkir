@@ -2031,6 +2031,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runStatAvgPace => 'Avg Pace';
 
   @override
+  String get runStoppedChip => 'Stopped';
+
+  @override
   String get runStatAvgSpeed => 'Avg Speed';
 
   @override
@@ -2345,6 +2348,30 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runGpsPermissionPending =>
       'No GPS — tracking will start when permission is granted.';
+
+  @override
+  String get runNoGpsStartTitle => 'Start without GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'Location is off on this phone, so this run would record time only — no route, distance or pace.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'Location access is off for this app, so this run would record time only — no route, distance or pace.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Record time only';
+
+  @override
+  String get runNoDistanceTitle => 'No distance recorded';
+
+  @override
+  String get runNoDistanceBody =>
+      'This run got no GPS fix and no step distance. Save it as a time-only activity, or discard it?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Save as time-only';
 
   @override
   String get runBackgroundLocationPaused =>
@@ -2863,6 +2890,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get addRunNoRoutes =>
       'No saved routes yet — build or import one to attach it here';
+
+  @override
+  String get addRunBuildRoute => 'Build a route';
+
+  @override
+  String get addRunImportRoute => 'Import a file';
 
   @override
   String get addRunDistanceInvalid => 'Enter a distance greater than 0';
@@ -14434,6 +14467,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get challengeInviteSharePage => 'Share the challenge page';
+
+  @override
+  String get clubInviteLinkTitle => 'Invite link';
+
+  @override
+  String get clubInviteBodyInvite => 'Only people with this link can join.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Anyone with this link joins straight away, without waiting for approval.';
+
+  @override
+  String get clubInviteBodyOpen => 'Anyone with this link can join.';
+
+  @override
+  String get clubInviteGenerate => 'Create invite link';
+
+  @override
+  String get clubInviteShare => 'Share link';
+
+  @override
+  String get clubInviteCopy => 'Copy link';
+
+  @override
+  String get clubInviteCopied => 'Invite link copied';
+
+  @override
+  String get clubInviteCopyFailed => 'Couldn\'t copy the link.';
+
+  @override
+  String get clubInviteLoadFailed => 'Couldn\'t load the invite link.';
+
+  @override
+  String get clubInviteRotate => 'Reset link';
+
+  @override
+  String get clubInviteRotateTitle => 'Reset the invite link?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'The current link stops working straight away. Anyone who already joined stays in.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Couldn\'t update the invite link. Try again.';
+
+  @override
+  String get clubShareClub => 'Share club';
+
+  @override
+  String get clubShareLinkCopied => 'Club link copied';
 
   @override
   String get challengesLeaderboardEmpty => 'No progress logged yet.';

@@ -641,8 +641,8 @@
           {
             "type": "steps",
             "items": [
-              "Ouvrez votre club sur le web. Quand le club est **Sur invitation uniquement**, les admins voient un panneau **Lien d'invitation** sur la page du club.",
-              "Sélectionnez **Générer un lien d'invitation** la première fois, puis **Copier** pour placer le lien dans votre presse-papiers.",
+              "Ouvrez votre club. Sur le web, les admins voient un panneau **Lien d'invitation** sur la page du club, quelle que soit la règle d'adhésion. Dans l'app mobile, touchez le bouton d'invitation en haut de l'écran du club.",
+              "Sélectionnez **Générer un lien d'invitation** la première fois, puis **Copier** pour placer le lien dans votre presse-papiers, ou **Partager** pour l'envoyer depuis le menu de partage.",
               "Envoyez le lien comme vous le souhaitez. Toute personne qui l'ouvre et se connecte rejoint le club en tant que membre."
             ]
           },
@@ -659,6 +659,10 @@
             "type": "note",
             "tone": "tip",
             "text": "Dans l'app mobile, un membre peut aussi toucher **Rejoindre avec un code d'invitation** dans l'onglet **Clubs** de **Social** et coller le lien entier ou seulement le code après /clubs/join/. Ouvrir le lien dans le navigateur du téléphone fonctionne aussi."
+          },
+          {
+            "type": "p",
+            "text": "Un club public a aussi un bouton **Partager le club** que tout le monde peut utiliser. Il partage la page publique du club, qui présente le club sans laisser entrer personne : on le rejoint donc toujours de la manière habituelle. Les clubs privés n'ont pas de page publique ; partagez plutôt le lien d'invitation."
           }
         ]
       },

@@ -2057,6 +2057,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runStatAvgPace => 'Allure moy.';
 
   @override
+  String get runStoppedChip => 'À l\'arrêt';
+
+  @override
   String get runStatAvgSpeed => 'Vitesse moy.';
 
   @override
@@ -2378,6 +2381,30 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get runGpsPermissionPending =>
       'Pas de GPS — le suivi démarrera quand l\'autorisation sera accordée.';
+
+  @override
+  String get runNoGpsStartTitle => 'Démarrer sans GPS ?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'La localisation est désactivée sur ce téléphone : cette course n\'enregistrerait que le temps — ni parcours, ni distance, ni allure.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'L\'accès à la localisation est désactivé pour cette app : cette course n\'enregistrerait que le temps — ni parcours, ni distance, ni allure.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Enregistrer le temps seul';
+
+  @override
+  String get runNoDistanceTitle => 'Aucune distance enregistrée';
+
+  @override
+  String get runNoDistanceBody =>
+      'Cette course n\'a reçu ni position GPS ni distance par les pas. L\'enregistrer avec le temps seul, ou l\'abandonner ?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Garder le temps seul';
 
   @override
   String get runBackgroundLocationPaused =>
@@ -2902,6 +2929,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get addRunNoRoutes =>
       'Aucun itinéraire enregistré — créez-en ou importez-en un pour l\'associer ici';
+
+  @override
+  String get addRunBuildRoute => 'Créer un itinéraire';
+
+  @override
+  String get addRunImportRoute => 'Importer un fichier';
 
   @override
   String get addRunDistanceInvalid => 'Saisissez une distance supérieure à 0';
@@ -14609,6 +14642,60 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get challengeInviteSharePage => 'Partager la page du défi';
+
+  @override
+  String get clubInviteLinkTitle => 'Lien d\'invitation';
+
+  @override
+  String get clubInviteBodyInvite =>
+      'Seules les personnes disposant de ce lien peuvent rejoindre le club.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Toute personne disposant de ce lien rejoint le club immédiatement, sans attendre d\'approbation.';
+
+  @override
+  String get clubInviteBodyOpen =>
+      'Toute personne disposant de ce lien peut rejoindre le club.';
+
+  @override
+  String get clubInviteGenerate => 'Créer un lien d\'invitation';
+
+  @override
+  String get clubInviteShare => 'Partager le lien';
+
+  @override
+  String get clubInviteCopy => 'Copier le lien';
+
+  @override
+  String get clubInviteCopied => 'Lien d\'invitation copié';
+
+  @override
+  String get clubInviteCopyFailed => 'Impossible de copier le lien.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'Impossible de charger le lien d\'invitation.';
+
+  @override
+  String get clubInviteRotate => 'Réinitialiser le lien';
+
+  @override
+  String get clubInviteRotateTitle => 'Réinitialiser le lien d\'invitation ?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'Le lien actuel cesse de fonctionner immédiatement. Les personnes déjà membres restent dans le club.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Impossible de mettre à jour le lien d\'invitation. Réessayez.';
+
+  @override
+  String get clubShareClub => 'Partager le club';
+
+  @override
+  String get clubShareLinkCopied => 'Lien du club copié';
 
   @override
   String get challengesLeaderboardEmpty => 'Aucune progression enregistrée.';

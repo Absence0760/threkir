@@ -78,53 +78,111 @@ List<double> trackCumulativeMetres(
   return out;
 }
 
-/// Compute **moving time** from a GPS track — the subset of elapsed time
-/// during which the runner was actually moving, excluding stops at traffic
-/// lights, water fountains, and so on.
-///
-/// This is a derived metric, computed once at the finished-run screen from
-/// the recorded waypoints. It replaces the old live auto-pause feature,
-/// which had a long tail of false-positive bugs at walking pace and during
-/// GPS warmup. Strava and Nike Run Club both compute moving time the same
-/// way — as a post-processing step rather than a live pause.
-///
-/// Algorithm: walk consecutive waypoint pairs. For each segment, compute
-/// `speed = distance / time`, with distance read off [trackCumulativeMetres]
-/// (the estimator's credit when the track carries it, so a stop the filter
-/// held still is not moving time however far the raw fixes wandered). If the segment's speed is above
-/// [minSpeedMps], count its time toward moving time; otherwise exclude it.
-///
-/// [minSpeedMps] defaults to 0.5 m/s (~1.8 km/h) — slower than a slow walk
-/// but faster than GPS jitter while standing still. Tune by activity if
-/// needed.
-///
-/// Waypoints without timestamps are skipped (the recorder stamps every
-/// point, but imported runs may not).
-Duration movingTimeOf(
-  List<Waypoint> track, {
-  double minSpeedMps = 0.5,
-}) {
-  if (track.length < 2) return Duration.zero;
+/// ~1.8 km/h: slower than a slow walk, faster than GPS jitter standing still.
+/// The finished moving time, the live Avg pace and the "Stopped" chip share
+/// it.
+const double kMovingMinSpeedMps = 0.5;
 
-  final cum = trackCumulativeMetres(track);
-  var movingMs = 0;
-  for (var i = 1; i < track.length; i++) {
-    final a = track[i - 1];
-    final b = track[i];
-    final at = a.timestamp;
-    final bt = b.timestamp;
-    if (at == null || bt == null) continue;
+/// Display only: the clock keeps running (decisions § 4).
+const Duration kStoppedAfter = Duration(seconds: 10);
 
-    final dtMs = bt.difference(at).inMilliseconds;
-    if (dtMs <= 0) continue;
+/// The moving-time rule one segment at a time, shared by [movingTimeOf] and
+/// the live screen. [extend] decides recorded-vs-position distance per
+/// segment where [trackCumulativeMetres] decides for the whole track; they
+/// agree on a recorder line, where every point is stamped.
+class MovingTimeAccumulator {
+  MovingTimeAccumulator({this.minSpeedMps = kMovingMinSpeedMps});
 
-    final distance = cum[i] - cum[i - 1];
-    final speed = distance / (dtMs / 1000.0);
-    if (speed >= minSpeedMps) {
-      movingMs += dtMs;
+  final double minSpeedMps;
+  int _movingMs = 0;
+  DateTime? _lastMovingAt;
+  int _extended = 0;
+
+  Duration get movingTime => Duration(milliseconds: _movingMs);
+
+  DateTime? get lastMovingAt => _lastMovingAt;
+
+  void addSegment(DateTime? from, DateTime? to, double metres) {
+    if (from == null || to == null) return;
+    final dtMs = to.difference(from).inMilliseconds;
+    if (dtMs <= 0) return;
+    if (metres / (dtMs / 1000.0) >= minSpeedMps) {
+      _movingMs += dtMs;
+      _lastMovingAt = to;
     }
   }
-  return Duration(milliseconds: movingMs);
+
+  /// Folds only the points not yet seen; a shorter track is a new recording.
+  void extend(List<Waypoint> track) {
+    if (track.length < _extended) reset();
+    for (var i = _extended == 0 ? 1 : _extended; i < track.length; i++) {
+      final a = track[i - 1];
+      final b = track[i];
+      final ca = a.cumulativeDistanceMetres;
+      final cb = b.cumulativeDistanceMetres;
+      addSegment(
+        a.timestamp,
+        b.timestamp,
+        ca != null && cb != null
+            ? cb - ca
+            : haversineMetres(a.lineLat, a.lineLng, b.lineLat, b.lineLng),
+      );
+    }
+    _extended = track.length;
+  }
+
+  void reset() {
+    _movingMs = 0;
+    _lastMovingAt = null;
+    _extended = 0;
+  }
+}
+
+/// Every argument is a fix timestamp, so one clock. [since] is the first fix
+/// after start or resume, so a resume cannot open on a stale "Stopped". The
+/// caller also hides the chip when GPS goes quiet: then the stillness is the
+/// receiver's, not the runner's.
+bool isStandingStill({
+  required DateTime? latestFixAt,
+  required DateTime? lastMovingAt,
+  required DateTime? since,
+}) {
+  if (latestFixAt == null || since == null) return false;
+  final from =
+      lastMovingAt != null && lastMovingAt.isAfter(since) ? lastMovingAt : since;
+  return latestFixAt.difference(from) >= kStoppedAfter;
+}
+
+/// Moving time only when GPS fixes measured the distance: a pedometer or
+/// belt credits distance no fix spans, which would divide by too little
+/// time, so those average over the clock.
+Duration averagingTime({
+  required bool gpsMeasured,
+  required Duration movingTime,
+  required Duration elapsed,
+}) =>
+    gpsMeasured ? movingTime : elapsed;
+
+/// Compute **moving time** from a GPS track — the subset of elapsed time
+/// during which the runner was actually moving, excluding stops at traffic
+/// lights, water fountains, and so on. It replaced live auto-pause (decisions
+/// § 4), as Strava and Nike Run Club do.
+///
+/// Distance per segment is read off [trackCumulativeMetres] (the estimator's
+/// credit when the track carries it, so a stop the filter held still is not
+/// moving time however far the raw fixes wandered).
+Duration movingTimeOf(
+  List<Waypoint> track, {
+  double minSpeedMps = kMovingMinSpeedMps,
+}) {
+  if (track.length < 2) return Duration.zero;
+  final cum = trackCumulativeMetres(track);
+  final acc = MovingTimeAccumulator(minSpeedMps: minSpeedMps);
+  for (var i = 1; i < track.length; i++) {
+    acc.addSegment(
+        track[i - 1].timestamp, track[i].timestamp, cum[i] - cum[i - 1]);
+  }
+  return acc.movingTime;
 }
 
 /// Relative slack on the window comparison. `cum` is an accumulated sum of
@@ -398,14 +456,14 @@ double haversineMetres(
   return r * 2 * asin(sqrt(clamped));
 }
 
-/// Cumulative average pace so far, in seconds per kilometre — the run's
-/// overall [elapsedSeconds] divided by the distance covered. Mirrors the
-/// on-screen average-pace stat (total elapsed as the time basis). Returns
-/// null when either input is non-positive so a caller can fall back rather
-/// than divide by zero or announce a meaningless pace.
-double? averagePaceSecPerKm(double distanceMetres, int elapsedSeconds) {
-  if (distanceMetres <= 0 || elapsedSeconds <= 0) return null;
-  return elapsedSeconds / (distanceMetres / 1000);
+/// Cumulative average pace so far, in seconds per kilometre: [seconds]
+/// divided by the distance covered. The spoken split average passes the
+/// [averagingTime] the on-screen Avg pace divides by, so the voice and the
+/// tile agree. Returns null when either input is non-positive so a caller
+/// can fall back rather than divide by zero or announce a meaningless pace.
+double? averagePaceSecPerKm(double distanceMetres, int seconds) {
+  if (distanceMetres <= 0 || seconds <= 0) return null;
+  return seconds / (distanceMetres / 1000);
 }
 
 /// Distance a live recording should report, in metres: GPS track distance once

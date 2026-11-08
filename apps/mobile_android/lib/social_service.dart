@@ -31,7 +31,8 @@ import 'share_ref.dart';
 const String _clubSelectCols =
     'id, owner_id, name, slug, description, avatar_url, location_label, '
     'is_public, is_verified, join_policy, member_count, '
-    'website_url, instagram_url, strava_url, facebook_url, created_at, updated_at';
+    'website_url, instagram_url, strava_url, facebook_url, shadow_hidden, '
+    'created_at, updated_at';
 
 // Column-level grant lockdown: `events.meet_lat` / `meet_lng` are
 // revoked from anon + authenticated (migrations 20260723_001 +
@@ -1096,6 +1097,26 @@ class SocialService extends ChangeNotifier {
     if (patch.isEmpty) return;
     await _c.from('clubs').update(patch).eq('id', id);
     notifyListeners();
+  }
+
+  /// The club's invite token, for an owner or admin only: the column is
+  /// revoked from every client role, and `get_club_invite_token` answers null
+  /// to anyone else. Null too when no link has been made yet.
+  Future<String?> getClubInviteToken(String clubId) async {
+    final raw = await _c.rpc('get_club_invite_token',
+        params: {'target_club': clubId}, get: true);
+    return raw is String && raw.isNotEmpty ? raw : null;
+  }
+
+  /// Writes a fresh invite token and returns it; the previous link stops
+  /// working. The clubs UPDATE policy limits this to the club's admins.
+  /// Mirrors web's `regenerateInviteToken`.
+  Future<String> regenerateClubInviteToken(String clubId) async {
+    final token = genInviteToken();
+    await _c
+        .from(ClubRow.table)
+        .update({ClubRow.colInviteToken: token}).eq(ClubRow.colId, clubId);
+    return token;
   }
 
   /// Pure helper: generate a 32-hex-char invite token. Mirrors web's

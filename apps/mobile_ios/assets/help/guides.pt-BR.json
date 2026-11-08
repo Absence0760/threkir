@@ -641,8 +641,8 @@
           {
             "type": "steps",
             "items": [
-              "Abra o seu clube na web. Quando o clube é **Somente por convite**, os administradores veem um painel **Link de convite** na página do clube.",
-              "Selecione **Gerar link de convite** na primeira vez e depois **Copiar** para colocar o link na área de transferência.",
+              "Abra o seu clube. Na web, os administradores veem um painel **Link de convite** na página do clube, seja qual for a regra de entrada. No app para celular, toque no botão de convite no topo da tela do clube.",
+              "Selecione **Gerar link de convite** na primeira vez e depois **Copiar** para colocar o link na área de transferência, ou **Compartilhar** para enviá-lo pelo menu de compartilhamento.",
               "Envie o link como preferir. Quem abrir o link e entrar na conta passa a ser membro do clube."
             ]
           },
@@ -659,6 +659,10 @@
             "type": "note",
             "tone": "tip",
             "text": "No app para celular, um membro também pode tocar em **Entrar com código de convite** na aba **Clubes** de **Social** e colar o link inteiro ou só o código depois de /clubs/join/. Abrir o link no navegador do celular também funciona."
+          },
+          {
+            "type": "p",
+            "text": "Um clube público também tem um botão **Compartilhar clube** que qualquer pessoa pode usar. Ele compartilha a página pública do clube, que mostra do que se trata sem deixar ninguém entrar, então as pessoas continuam entrando do jeito de sempre. Clubes privados não têm página pública, então compartilhe o link de convite."
           }
         ]
       },

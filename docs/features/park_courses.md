@@ -21,7 +21,10 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Loop courses | Blocked on #1308 (start = end defeats the end search) |
 | Badges (`park_course` family), passport challenge, recap entries, share image | Not built (Phase 5) |
 | NPS closures job | Not built (Phase 6) |
-| Indexable SSR pages + sitemap | Not built; see *SEO* |
+| Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
+| Indexable park pages | Not built; see *SEO* |
+| Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
+| Help guide `park-courses`, Learn page `/learn/park-courses-how-timing-works` | Shipped |
 
 ## Model
 
@@ -111,11 +114,57 @@ and exists only so local and CI stacks have something to render.
 
 ## SEO
 
-`/parks` and everything under it is anon-allowed (`+layout.svelte`), because
-both tables grant `select` to anon. None of it is in the sitemap yet, and the
-pages are CSR: an empty catalogue in prod would index empty pages, and a course
-page names runners once signed in. The indexable version is the `share-entity`
-path in [seo.md](seo.md) once courses are loaded.
+A course's indexable page is `/share/course/<region>/<park>/<course>`, served
+by the `share-entity` Lambda (seo.md's dynamic-but-public path, decisions
+§ 2394). The key is the in-app URL's own three slugs; the in-app course page
+canonicals onto it, and `/sitemap.xml` lists every course
+(`courseEntries`). Its head is canonical English (`share_course_meta.ts`):
+"<course> at <park> — Threkir", a description with distance, shape, park and
+region that says *time trial* and never *race* (a closed course says so), and
+a `SportsActivityLocation` JSON-LD placed at the course start and contained
+in its `Park`.
+
+The page names the course and its park and never a runner.
+`share_course_lookup.ts` reads `park_courses` inner-joined to its park and
+catalogue segment and nothing else; the boards stay signed-in only, behind a
+link to the in-app course. The course map waits for an explicit consent tap.
+
+`/parks` and the park pages are anon-allowed (`+layout.svelte`) but stay CSR
+and out of the sitemap; a `/share/park/<region>/<park>` page is the same
+pattern if search data says park pages are where people land.
+
+## Attribution
+
+Every course page shows the geometry credit under its map (web and mobile),
+and every exported file carries it too, because OpenStreetMap's licence asks
+for the credit on the exported work (decisions § 2395).
+`courseAttribution` (the `park_courses` parity pair) maps `geometry_source` to
+a credit the `route_gpx` pair writes into GPX `<metadata>`:
+
+| Source | `<copyright author>` | Licence | `<link>` |
+|---|---|---|---|
+| `osm` | OpenStreetMap contributors | ODbL 1.0 | openstreetmap.org/copyright |
+| `nps` | National Park Service | none claimed | nps.gov |
+| `agency` | the park | none claimed | the park's `website_url` (https only) |
+| `traced` | none (drawn by us) | none | the park's `website_url` |
+
+The `<desc>` carries one English sentence ("Course line © OpenStreetMap
+contributors, available under the Open Database License (ODbL)."); KML gets
+it as the Document description. Exports of a course's official route (web
+route detail GPX / GPX + markers / KML and the roadbook GPX; mobile share as
+GPX / GPX + markers / KML) look the course up by `route_id` first and refuse
+the export with a message when that read fails. The course page's own GPX
+(web download, mobile share; hidden on a closed course) carries the line, one
+`<wpt>` per checkpoint in order, and the credit.
+
+## Help and Learn
+
+The in-app help guide `park-courses` (linked from the course page on web and
+mobile) covers checkpoints, seasons in the park's timezone and both boards,
+and says that today a time is recorded when the run is opened on the web; the
+Phase 1 lane updates that sentence. The public Learn page
+`/learn/park-courses-how-timing-works` explains the same timing without
+naming the scoring path, and ends on a "Find a park course" CTA to `/parks`.
 
 ## Pre-deploy checklist
 
@@ -136,6 +185,15 @@ These gate going live, not the code:
   the park's timezone, completions counting days, block and private-run rules.
 - Matcher: the `checkpoints:` cases in `segments.test.ts` ↔ `segments_test.dart`.
 - Parity pair: `parks/park_courses.test.ts` ↔ `test/park_courses_test.dart`.
+- Attribution: the `courseAttribution` / `parkCourseGpx` cases in the
+  `park_courses` pair and the attribution cases in `route_gpx.test.ts` ↔
+  `route_gpx_test.dart`; `gpx.test.ts` (web `toGpx` / `toKml`) and
+  `route_gpx_share_test.dart` (mobile plain GPX, GPX + markers, KML).
+- SEO: `share/share_course_meta.test.ts`, the course cases in
+  `share_lookups_public.test.ts`, `sitemap.test.ts` and
+  `share_entity_handler.test.ts`, and Playwright
+  `tests-e2e/share/course.spec.ts` (share page head and JSON-LD, the
+  not-found head, the in-app canonical, the course GPX download).
 - Web: `data.test.ts` pins the scorer's fail-closed checkpoint read;
   Playwright `tests-e2e/parks/park-courses.spec.ts` covers the three pages, both
   boards and seasons, the signed-out view, and a run that skips a checkpoint.

@@ -8530,6 +8530,216 @@ abstract class AppLocalizations {
   /// **'{name} applied AI-suggested changes to a plan you assigned'**
   String profileNotifPlanAiEdit(String name);
 
+  /// Notification text for a coach whose athlete suggested a change to a plan the coach assigned
+  ///
+  /// In en, this message translates to:
+  /// **'{name} suggested a change to a plan you assigned'**
+  String profileNotifPlanChangeRequest(String name);
+
+  /// Notification text for an athlete whose coach approved or declined a plan change they suggested
+  ///
+  /// In en, this message translates to:
+  /// **'{name} answered your suggested plan change'**
+  String profileNotifPlanChangeDecision(String name);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): title
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested plan change'**
+  String get planChangeTitle;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): waitingForCoach
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for your coach to answer'**
+  String get planChangeWaitingForCoach;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): waitingForYou
+  ///
+  /// In en, this message translates to:
+  /// **'Your athlete is waiting for your answer'**
+  String get planChangeWaitingForYou;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approvedByCoach
+  ///
+  /// In en, this message translates to:
+  /// **'Approved by the coach and applied'**
+  String get planChangeApprovedByCoach;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approvedInPartByCoach
+  ///
+  /// In en, this message translates to:
+  /// **'Approved in part by the coach; the lines shown were applied'**
+  String get planChangeApprovedInPartByCoach;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): declinedByCoach
+  ///
+  /// In en, this message translates to:
+  /// **'Declined by the coach'**
+  String get planChangeDeclinedByCoach;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdrawnByAthlete
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawn by the athlete'**
+  String get planChangeWithdrawnByAthlete;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): appliedByAthlete
+  ///
+  /// In en, this message translates to:
+  /// **'Applied by the athlete without the coach'**
+  String get planChangeAppliedByAthlete;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String planChangeMinutes(int n);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): includeLine
+  ///
+  /// In en, this message translates to:
+  /// **'Include this change: {line}'**
+  String planChangeIncludeLine(String line);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): weekLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} target'**
+  String planChangeWeekLabel(int n);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): skipped
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get planChangeSkipped;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): weekTarget
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} target: {from} → {to}'**
+  String planChangeWeekTarget(int n, String from, String to);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): unreadable
+  ///
+  /// In en, this message translates to:
+  /// **'Some of these changes can no longer be shown.'**
+  String get planChangeUnreadable;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): coachNote
+  ///
+  /// In en, this message translates to:
+  /// **'Coach\'s note: {note}'**
+  String planChangeCoachNote(String note);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): noteLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Note to your athlete (optional)'**
+  String get planChangeNoteLabel;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): notePlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Why you approved or declined'**
+  String get planChangeNotePlaceholder;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): decline
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get planChangeDecline;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approve
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get planChangeApprove;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approveSelected
+  ///
+  /// In en, this message translates to:
+  /// **'Approve selected'**
+  String get planChangeApproveSelected;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): applyMyselfHint
+  ///
+  /// In en, this message translates to:
+  /// **'You own this plan, so you can apply the change yourself. Your coach will be told.'**
+  String get planChangeApplyMyselfHint;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdraw
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get planChangeWithdraw;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): applyMyself
+  ///
+  /// In en, this message translates to:
+  /// **'Apply it myself'**
+  String get planChangeApplyMyself;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdrawConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw this suggested change?'**
+  String get planChangeWithdrawConfirmTitle;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdrawConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'Your coach will no longer be asked to approve it. To suggest it again, ask the Coach to adjust your plan again.'**
+  String get planChangeWithdrawConfirmMessage;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): keep
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get planChangeKeep;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the suggested change: {error}'**
+  String planChangeFailed(String error);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approvedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Change approved and applied to the plan'**
+  String get planChangeApprovedToast;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): declinedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Change declined'**
+  String get planChangeDeclinedToast;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdrawnToast
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion withdrawn'**
+  String get planChangeWithdrawnToast;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): appliedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Change applied to your plan; your coach has been told'**
+  String get planChangeAppliedToast;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): loadFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load suggested plan changes.'**
+  String get planChangeLoadFailed;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): retry
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get planChangeRetry;
+
   /// Notification inbox line for the morning reminder that today has a workout on the runner's active training plan
   ///
   /// In en, this message translates to:

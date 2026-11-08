@@ -64,6 +64,7 @@ export const TABLES = {
 	notifications: 'notifications',
 	direct_messages: 'direct_messages',
 	coach_athletes: 'coach_athletes',
+	plan_change_requests: 'plan_change_requests',
 	integrations: 'integrations',
 	segments: 'segments',
 	segment_efforts: 'segment_efforts',

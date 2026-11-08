@@ -79,6 +79,7 @@
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
+	import PlanChangeRequests from '#lib/components/PlanChangeRequests.svelte';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEditEnabled } from '#lib/training/ai_plan_edit_flag.ts';
 	import Modal from '#lib/components/Modal.svelte';
@@ -2050,6 +2051,10 @@
 				</div>
 			</div>
 		</header>
+
+		{#if plan.assigned_by_coach_id}
+			<PlanChangeRequests scope={{ planId: plan.id }} onchanged={load} />
+		{/if}
 
 		{#if walkRunGraduation}
 			<WalkRunGraduationCard graduation={walkRunGraduation} />

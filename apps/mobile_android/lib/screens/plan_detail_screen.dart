@@ -11,6 +11,7 @@ import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../widgets/confirm_destructive.dart';
+import '../widgets/plan_change_requests.dart';
 import '../widgets/plan_details_sheet.dart';
 import '../plan_repace.dart';
 import '../plan_bulk_ops.dart' show shiftIsoDate;
@@ -152,6 +153,10 @@ class PlanDetailScreen extends StatefulWidget {
   /// Threaded from the Fitness hub via PlansScreen; other call sites pass null.
   final LocalRunStore? runStore;
 
+  /// The client the suggested-plan-change card reads and decides through
+  /// (decisions § 2382). Null uses the app's, when one is initialised.
+  final ApiClient? planChangeApi;
+
   /// Clock for every "today" this screen derives. The adherence surfaces are
   /// windowed on the days of the current week that have already ended, so on
   /// a Monday nothing has and the banner correctly does not render -- which
@@ -197,6 +202,7 @@ class PlanDetailScreen extends StatefulWidget {
     this.social,
     this.viewerIdOverride,
     this.runStore,
+    this.planChangeApi,
     this.now = DateTime.now,
     this.cyclePlanConfig = readCyclePlanConfig,
     this.openResume = false,
@@ -214,6 +220,9 @@ class PlanDetailScreen extends StatefulWidget {
 class _PlanDetailScreenState extends State<PlanDetailScreen>
     with WidgetsBindingObserver {
   TrainingPlanRow? _plan;
+
+  late final ApiClient? _planChangeApi = widget.planChangeApi ??
+      (ApiClient.isInitialized ? ApiClient() : null);
   List<PlanWeekRow> _weeks = const [];
   Map<String, List<PlanWorkoutRow>> _byWeek = const {};
   bool _loading = true;
@@ -2279,6 +2288,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       children: [
         _heroCard(theme, l10n, p, pct, done, total,
             heroRace: _heroRace(p, races)),
+        if (p.assignedByCoachId != null && _planChangeApi != null) ...[
+          const SizedBox(height: 8),
+          PlanChangeRequestsSection(
+            key: ValueKey('plan-changes-${p.id}'),
+            api: _planChangeApi,
+            planId: p.id,
+            onChanged: _load,
+          ),
+        ],
         if (_linkedRace != null) ...[
           const SizedBox(height: 8),
           _linkedRaceRow(theme, l10n, _linkedRace!),

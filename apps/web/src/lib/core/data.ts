@@ -60,6 +60,7 @@ import type { RaceDateChange } from '../training/plan_race_date';
 import type { BreakChange } from '../training/plan_break';
 import type { RepeatWeekChange } from '../training/plan_repeat_week';
 import type { AiPlanEditPayload } from '../training/plan_edit/season';
+import type { PlanChangeWeekRow, PlanChangeWorkoutRow } from '../training/plan_change';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import type { PlanRecapRecord, PlanRecapRun } from '../training/plan_recap';
 import {
@@ -7147,6 +7148,141 @@ export async function applyAiPlanEdits(
 		p_include_following: includeFollowing,
 		p_workouts: payload.workouts,
 		p_weeks: payload.weeks
+	});
+	if (error) throw dbError(error);
+}
+
+export type PlanChangeRequest = Database['public']['Tables']['plan_change_requests']['Row'];
+
+/// The coach a change to this plan goes to for approval (decisions § 2382):
+/// the coach who assigned it, while the signed-in athlete's link with them is
+/// active. Null when there is none, or when the read fails — the athlete can
+/// still apply the change themselves.
+export async function fetchPlanReviewCoach(
+	planId: string,
+): Promise<{ coachId: string; name: string | null } | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data: plan, error } = await supabase
+		.from('training_plans')
+		.select('assigned_by_coach_id')
+		.eq('id', planId)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error || !plan?.assigned_by_coach_id) return null;
+	const coachId = plan.assigned_by_coach_id;
+	const { data: link, error: linkError } = await supabase
+		.from(TABLES.coach_athletes)
+		.select('id')
+		.eq('coach_id', coachId)
+		.eq('athlete_id', userId)
+		.eq('status', 'active')
+		.limit(1)
+		.maybeSingle();
+	if (linkError || !link) return null;
+	const byId = await fetchProfilesByIds([coachId]);
+	return { coachId, name: byId.get(coachId)?.display_name ?? null };
+}
+
+/// Send a reviewed plan edit to the plan's coach instead of applying it.
+/// The RPC runs the same checks as an apply and refuses what they refuse.
+export async function proposePlanChange(
+	planId: string,
+	todayIso: string,
+	includeFollowing: boolean,
+	payload: AiPlanEditPayload,
+): Promise<string> {
+	const { data, error } = await supabase.rpc('propose_plan_change', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_include_following: includeFollowing,
+		p_workouts: payload.workouts,
+		p_weeks: payload.weeks,
+	});
+	if (error) throw dbError(error);
+	return data as string;
+}
+
+/// The plan change requests on one plan, or between the signed-in user and
+/// one other person (either side of the coaching link), newest first.
+export async function fetchPlanChangeRequests(
+	scope: { planId: string } | { partnerId: string },
+): Promise<PlanChangeRequest[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	let query = supabase.from(TABLES.plan_change_requests).select('*');
+	if ('planId' in scope) {
+		query = query.eq('plan_id', scope.planId);
+	} else {
+		if (!isEntityId(scope.partnerId)) return [];
+		query = query.or(
+			`and(athlete_id.eq.${userId},coach_id.eq.${scope.partnerId}),and(coach_id.eq.${userId},athlete_id.eq.${scope.partnerId})`,
+		);
+	}
+	const { data, error } = await query.order('created_at', { ascending: false }).limit(20);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// The plan rows a request's lines describe, read by id under the viewer's
+/// RLS (the athlete's own rows, or an active coach's read of them).
+export async function fetchPlanChangeTargets(
+	workoutIds: string[],
+	weekIds: string[],
+): Promise<{ workouts: PlanChangeWorkoutRow[]; weeks: PlanChangeWeekRow[] }> {
+	const [workouts, weeks] = await Promise.all([
+		readChunked(workoutIds, async (part) => {
+			const { data, error } = await supabase
+				.from('plan_workouts')
+				.select('id, scheduled_date, kind, target_distance_m, target_duration_seconds, skipped_at')
+				.in('id', part);
+			if (error) throw dbError(error);
+			return (data ?? []) as PlanChangeWorkoutRow[];
+		}),
+		readChunked(weekIds, async (part) => {
+			const { data, error } = await supabase
+				.from('plan_weeks')
+				.select('id, week_index, target_volume_m')
+				.in('id', part);
+			if (error) throw dbError(error);
+			return (data ?? []) as PlanChangeWeekRow[];
+		}),
+	]);
+	return { workouts, weeks };
+}
+
+/// The coach approves (the chosen lines, or all with null) or declines.
+export async function decidePlanChange(
+	requestId: string,
+	approve: boolean,
+	todayIso: string,
+	workoutIds: string[] | null,
+	weekIds: string[] | null,
+	note: string | null,
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('decide_plan_change', {
+		p_request_id: requestId,
+		p_approve: approve,
+		p_today: todayIso,
+		p_workout_ids: workoutIds,
+		p_week_ids: weekIds,
+		p_note: note,
+	});
+	if (error) throw dbError(error);
+}
+
+export async function withdrawPlanChange(requestId: string): Promise<void> {
+	const { error } = await supabase.rpc('withdraw_plan_change', { p_request_id: requestId });
+	if (error) throw dbError(error);
+}
+
+/// The athlete applies their own request without the coach; the coach is told.
+export async function applyPlanChangeMyself(requestId: string, todayIso: string): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('apply_plan_change_myself', {
+		p_request_id: requestId,
+		p_today: todayIso,
 	});
 	if (error) throw dbError(error);
 }

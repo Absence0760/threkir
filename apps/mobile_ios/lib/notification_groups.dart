@@ -64,6 +64,8 @@ String _targetKeyFor(NotificationRow n) {
     case 'plan_update':
     case 'plan_assigned':
     case 'plan_ai_edit':
+    case 'plan_change_request':
+    case 'plan_change_decision':
       return n.planId != null ? 'plan:${n.planId}' : solo;
     case 'achievement':
       return n.achievementId != null ? 'achievement:${n.achievementId}' : solo;

@@ -4716,6 +4716,110 @@ class PersonalRecordRow {
   );
 }
 
+/// Row shape for the `plan_change_requests` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class PlanChangeRequestRow {
+  static const String table = 'plan_change_requests';
+  static const String colId = 'id';
+  static const String colPlanId = 'plan_id';
+  static const String colAthleteId = 'athlete_id';
+  static const String colCoachId = 'coach_id';
+  static const String colStatus = 'status';
+  static const String colIncludeFollowing = 'include_following';
+  static const String colWorkouts = 'workouts';
+  static const String colWeeks = 'weeks';
+  static const String colEditedByCoach = 'edited_by_coach';
+  static const String colCoachNote = 'coach_note';
+  static const String colCreatedAt = 'created_at';
+  static const String colDecidedAt = 'decided_at';
+
+  final String id;
+  final String planId;
+  final String athleteId;
+  final String coachId;
+  final String status;
+  final bool includeFollowing;
+  final List<dynamic> workouts;
+  final List<dynamic> weeks;
+  final bool editedByCoach;
+  final String? coachNote;
+  final DateTime createdAt;
+  final DateTime? decidedAt;
+
+  const PlanChangeRequestRow({
+    required this.id,
+    required this.planId,
+    required this.athleteId,
+    required this.coachId,
+    required this.status,
+    required this.includeFollowing,
+    required this.workouts,
+    required this.weeks,
+    required this.editedByCoach,
+    this.coachNote,
+    required this.createdAt,
+    this.decidedAt,
+  });
+
+  factory PlanChangeRequestRow.fromJson(Map<String, dynamic> json) => PlanChangeRequestRow(
+    id: json['id'] as String,
+    planId: json['plan_id'] as String,
+    athleteId: json['athlete_id'] as String,
+    coachId: json['coach_id'] as String,
+    status: json['status'] as String,
+    includeFollowing: (json['include_following'] as bool?) ?? false,
+    workouts: (json['workouts'] as List<dynamic>).cast<dynamic>(),
+    weeks: (json['weeks'] as List<dynamic>).cast<dynamic>(),
+    editedByCoach: (json['edited_by_coach'] as bool?) ?? false,
+    coachNote: json['coach_note'] as String?,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    decidedAt: parseIsoStrictValue(json['decided_at']),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colPlanId: planId,
+    colAthleteId: athleteId,
+    colCoachId: coachId,
+    colStatus: status,
+    colIncludeFollowing: includeFollowing,
+    colWorkouts: workouts,
+    colWeeks: weeks,
+    colEditedByCoach: editedByCoach,
+    colCoachNote: coachNote,
+    colCreatedAt: createdAt.toIso8601String(),
+    colDecidedAt: decidedAt?.toIso8601String(),
+  };
+
+  PlanChangeRequestRow copyWith({
+    String? id,
+    String? planId,
+    String? athleteId,
+    String? coachId,
+    String? status,
+    bool? includeFollowing,
+    List<dynamic>? workouts,
+    List<dynamic>? weeks,
+    bool? editedByCoach,
+    String? coachNote,
+    DateTime? createdAt,
+    DateTime? decidedAt,
+  }) => PlanChangeRequestRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    athleteId: athleteId ?? this.athleteId,
+    coachId: coachId ?? this.coachId,
+    status: status ?? this.status,
+    includeFollowing: includeFollowing ?? this.includeFollowing,
+    workouts: workouts ?? this.workouts,
+    weeks: weeks ?? this.weeks,
+    editedByCoach: editedByCoach ?? this.editedByCoach,
+    coachNote: coachNote ?? this.coachNote,
+    createdAt: createdAt ?? this.createdAt,
+    decidedAt: decidedAt ?? this.decidedAt,
+  );
+}
+
 /// Row shape for the `plan_weeks` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class PlanWeekRow {

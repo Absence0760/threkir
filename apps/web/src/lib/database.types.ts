@@ -3281,6 +3281,59 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_change_requests: {
+        Row: {
+          athlete_id: string
+          coach_id: string
+          coach_note: string | null
+          created_at: string
+          decided_at: string | null
+          edited_by_coach: boolean
+          id: string
+          include_following: boolean
+          plan_id: string
+          status: string
+          weeks: Json
+          workouts: Json
+        }
+        Insert: {
+          athlete_id: string
+          coach_id: string
+          coach_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          edited_by_coach?: boolean
+          id?: string
+          include_following?: boolean
+          plan_id: string
+          status?: string
+          weeks?: Json
+          workouts?: Json
+        }
+        Update: {
+          athlete_id?: string
+          coach_id?: string
+          coach_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          edited_by_coach?: boolean
+          id?: string
+          include_following?: boolean
+          plan_id?: string
+          status?: string
+          weeks?: Json
+          workouts?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_change_requests_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "training_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       plan_weeks: {
         Row: {
           id: string
@@ -6481,6 +6534,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      apply_plan_change_myself: {
+        Args: { p_request_id: string; p_today: string }
+        Returns: undefined
+      }
       apply_workout_adjustments: {
         Args: { p_changes: Json; p_plan_id: string }
         Returns: undefined
@@ -6810,6 +6867,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      decide_plan_change: {
+        Args: {
+          p_approve: boolean
+          p_note?: string
+          p_request_id: string
+          p_today: string
+          p_week_ids?: string[]
+          p_workout_ids?: string[]
+        }
+        Returns: undefined
       }
       decline_safety_contact: { Args: { p_id: string }; Returns: boolean }
       defer_job: {
@@ -7631,6 +7699,16 @@ export type Database = {
           viewer_requested: boolean
         }[]
       }
+      propose_plan_change: {
+        Args: {
+          p_include_following: boolean
+          p_plan_id: string
+          p_today: string
+          p_weeks: Json
+          p_workouts: Json
+        }
+        Returns: string
+      }
       prune_sign_in_devices: { Args: never; Returns: number }
       public_plan_share: { Args: { p_id: string }; Returns: Json }
       public_plan_share_enabled: { Args: never; Returns: boolean }
@@ -8356,6 +8434,10 @@ export type Database = {
       withdraw_ai_disclosure_consent: { Args: never; Returns: undefined }
       withdraw_coach_consent: { Args: never; Returns: undefined }
       withdraw_health_data_consent: { Args: never; Returns: undefined }
+      withdraw_plan_change: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       goal_event:

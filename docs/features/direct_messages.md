@@ -19,6 +19,10 @@ Ordering and the preview text are the `messages_inbox` parity pair ([parity_pair
 
 `/coach` redirects to `/messages/coach` with its query kept, and the sidebar has no Coach row any more. The mobile Home coach card stays and opens the same `CoachScreen`.
 
+## Suggested plan changes in the conversation
+
+Since [decisions § 2382](../architecture/decisions.md) (issue #1215, Phase 2) a conversation between an athlete and the coach who assigned their plan shows that plan's suggested changes as **system cards** above the messages: `PlanChangeRequests.svelte` on web (scoped to the partner), `PlanChangeRequestsSection` in `message_thread_screen.dart` on mobile. Like the Coach row, they are merged in the UI only. A request is a `plan_change_requests` row, not a `direct_messages` row, so the follow gate, the two-year purge, unsend and report do not apply to it, and the two people need not follow each other for the card to show. It carries a structured change set and no AI text (§ 110). The coach approves (all lines or the ticked ones) or declines with an optional note; the athlete withdraws or applies it themselves. Pending requests come first, then the three most recent decided ones. The same cards sit on the plan's detail page, where the `plan_change_request` / `plan_change_decision` notifications link.
+
 ## Who can message whom
 
 The `direct_messages` INSERT policy is the only gate, and it is the same for every client:

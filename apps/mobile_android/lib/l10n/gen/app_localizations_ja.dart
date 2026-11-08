@@ -5016,6 +5016,130 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String profileNotifPlanChangeRequest(String name) {
+    return '$nameさんが、あなたが割り当てたプランの変更を提案しました';
+  }
+
+  @override
+  String profileNotifPlanChangeDecision(String name) {
+    return '$nameさんがプラン変更の提案に回答しました';
+  }
+
+  @override
+  String get planChangeTitle => 'プラン変更の提案';
+
+  @override
+  String get planChangeWaitingForCoach => 'コーチの回答を待っています';
+
+  @override
+  String get planChangeWaitingForYou => '選手があなたの回答を待っています';
+
+  @override
+  String get planChangeApprovedByCoach => 'コーチが承認し、反映されました';
+
+  @override
+  String get planChangeApprovedInPartByCoach =>
+      'コーチが一部を承認しました。表示されている項目が反映されています';
+
+  @override
+  String get planChangeDeclinedByCoach => 'コーチが却下しました';
+
+  @override
+  String get planChangeWithdrawnByAthlete => '選手が取り下げました';
+
+  @override
+  String get planChangeAppliedByAthlete => '選手がコーチの承認なしで反映しました';
+
+  @override
+  String planChangeMinutes(int n) {
+    return '$n分';
+  }
+
+  @override
+  String planChangeIncludeLine(String line) {
+    return 'この変更を含める：$line';
+  }
+
+  @override
+  String planChangeWeekLabel(int n) {
+    return '第$n週の目標';
+  }
+
+  @override
+  String get planChangeSkipped => 'スキップ';
+
+  @override
+  String planChangeWeekTarget(int n, String from, String to) {
+    return '第$n週の目標：$from → $to';
+  }
+
+  @override
+  String get planChangeUnreadable => '一部の変更は表示できなくなりました。';
+
+  @override
+  String planChangeCoachNote(String note) {
+    return 'コーチのメモ：$note';
+  }
+
+  @override
+  String get planChangeNoteLabel => '選手へのメモ（任意）';
+
+  @override
+  String get planChangeNotePlaceholder => '承認または却下の理由';
+
+  @override
+  String get planChangeDecline => '却下';
+
+  @override
+  String get planChangeApprove => '承認';
+
+  @override
+  String get planChangeApproveSelected => '選択した項目を承認';
+
+  @override
+  String get planChangeApplyMyselfHint =>
+      'このプランはあなたのものなので、自分で変更を反映できます。コーチに通知されます。';
+
+  @override
+  String get planChangeWithdraw => '取り下げる';
+
+  @override
+  String get planChangeApplyMyself => '自分で反映する';
+
+  @override
+  String get planChangeWithdrawConfirmTitle => 'この提案を取り下げますか？';
+
+  @override
+  String get planChangeWithdrawConfirmMessage =>
+      'コーチに承認を求めなくなります。もう一度提案するには、コーチにもう一度プランの調整を依頼してください。';
+
+  @override
+  String get planChangeKeep => 'そのままにする';
+
+  @override
+  String planChangeFailed(String error) {
+    return '提案を更新できませんでした：$error';
+  }
+
+  @override
+  String get planChangeApprovedToast => '変更を承認し、プランに反映しました';
+
+  @override
+  String get planChangeDeclinedToast => '変更を却下しました';
+
+  @override
+  String get planChangeWithdrawnToast => '提案を取り下げました';
+
+  @override
+  String get planChangeAppliedToast => 'プランに変更を反映し、コーチに通知しました';
+
+  @override
+  String get planChangeLoadFailed => 'プラン変更の提案を読み込めませんでした。';
+
+  @override
+  String get planChangeRetry => '再試行';
+
+  @override
   String get profileNotifWorkoutReminder => '今日のワークアウトがプランで待っています';
 
   @override

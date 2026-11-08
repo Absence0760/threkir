@@ -2469,6 +2469,16 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			filter: "athlete_id=eq." + uid,
 			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at",
 		},
+		// plan_change_requests — changes to a coach-assigned plan the subject
+		// sent as athlete or decided as coach (issue #1215 Phase 2).
+		{
+			name: "plan_change_requests_as_athlete.json", table: schema.TablePlanChangeRequests,
+			filter: "athlete_id=eq." + uid, sel: "*",
+		},
+		{
+			name: "plan_change_requests_as_coach.json", table: schema.TablePlanChangeRequests,
+			filter: "coach_id=eq." + uid, sel: "*",
+		},
 		// event_results — the subject's own race finish records (time,
 		// rank, DNF/DNS, age-grade). Health-adjacent performance data.
 		// audit/data-export-completeness (2026-05-30) Critical.

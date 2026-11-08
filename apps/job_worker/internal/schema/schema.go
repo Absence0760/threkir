@@ -50,6 +50,7 @@ const (
 	TableAccountDeletionReceipts  = "account_deletion_receipts"
 	TableCoachMessages            = "coach_messages"
 	TableCoachAthletes            = "coach_athletes"
+	TablePlanChangeRequests       = "plan_change_requests"
 	TableTrainingPlans            = "training_plans"
 	TableRunKudos                 = "run_kudos"
 	TableRunComments              = "run_comments"

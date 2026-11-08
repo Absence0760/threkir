@@ -111,6 +111,7 @@ here.
 
 **Top-level (`lib/`):**
 - `help_guides.dart` — pure model for the in-app help guides: `Guide` / blocks, the tolerant markup tokenizer (`tokenizeHelpMarkup`), `HelpLibrary` (route lookup, category order, search ranking) and `helpRouteToScreen` (web route id → `HelpDestination`).
+- `plan_change.dart` — reads a suggested change to a coach-assigned plan as before → after lines (TS↔Dart parity pair with web `training/plan_change.ts`; decisions § 2382). `widgets/plan_change_requests.dart` renders it: the system card in `message_thread_screen.dart` and on `plan_detail_screen.dart`, with the coach's approve / decline and the athlete's withdraw / apply it myself.
 - `help_illustration.dart` — `HelpIllustration`, one guide illustration drawn with flutter_svg from `assets/help/illustrations/<id>.svg`: `currentColor` from `onSurface` and a `ColorMapper` swapping each placeholder colour for its ColorScheme / semantic colour (`helpIllustrationPalette`, pinned to the web contract), announced by its alt text.
 - `help_loader.dart` — reads `assets/help/guides.en.json` once per process; null on any failure (the screens show an unavailable state). `helpLibraryLoader` is the test seam.
 - `help_destination.dart` — `pendingHelpDestination`, the parked intent a guide's route link sets and `home_screen.dart` drains (decisions § 1847).

@@ -19,6 +19,7 @@ import '../l10n/locale_support.dart';
 import '../undo_queue.dart';
 import '../widgets/dm_route_attachment.dart';
 import '../widgets/error_state.dart';
+import '../widgets/plan_change_requests.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
@@ -875,6 +876,21 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           ? SignInRequiredState(api: widget.api)
           : Column(
               children: [
+                // A suggested change to a coach-assigned plan is a system
+                // card above the conversation, merged in the UI only
+                // (decisions § 2382): it is not a direct message.
+                if (widget.partnerId != null && !_deleted)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * 0.45,
+                    ),
+                    child: SingleChildScrollView(
+                      child: PlanChangeRequestsSection(
+                        api: widget.api,
+                        partnerId: widget.partnerId,
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: _deleted
                       ? EmptyState(

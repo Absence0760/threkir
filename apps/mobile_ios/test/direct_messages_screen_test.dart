@@ -128,6 +128,14 @@ class _FakeApi extends ApiClient {
   @override
   Stream<String?> get authUserChanges => _authChanges.stream;
 
+  /// The thread's suggested-plan-change strip reads this; none here.
+  @override
+  Future<List<PlanChangeRequestRow>> fetchPlanChangeRequests({
+    String? planId,
+    String? partnerId,
+  }) async =>
+      const [];
+
   void switchTo(String id) {
     me = id;
     _authChanges.add(id);

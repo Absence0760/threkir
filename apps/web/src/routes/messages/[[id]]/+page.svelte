@@ -11,6 +11,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { messagesInbox } from '#lib/stores/messages_inbox.svelte.ts';
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
+	import PlanChangeRequests from '#lib/components/PlanChangeRequests.svelte';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
 	import {
 		DM_THREAD_POLL_MS,
@@ -611,6 +612,9 @@
 		{/if}
 	</header>
 	<div class="messages" bind:this={scroller}>
+		{#if activePartnerId && !deleted}
+			<PlanChangeRequests scope={{ partnerId: activePartnerId }} />
+		{/if}
 		{#if deleted}
 			<p class="muted center" data-testid="dm-conversation-deleted">
 				{activeTarget?.kind === 'deleted'

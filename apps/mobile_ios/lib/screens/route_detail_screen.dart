@@ -2127,8 +2127,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     }
 
     // A park course's route carries third-party geometry, so its exported
-    // file carries the credit. A failed check refuses the export rather than
-    // writing it uncredited.
+    // file carries the credit. Park course routes are official routes, so a
+    // failed check refuses an official route's export rather than writing it
+    // uncredited, and lets any other route export as before (offline too).
     GpxAttribution? attribution;
     try {
       final provenance =
@@ -2142,11 +2143,13 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       }
     } catch (e) {
       debugPrint('shareAs $format: fetchRouteCourseProvenance failed: $e');
-      if (context.mounted) {
-        showTopBanner(
-            context, AppLocalizations.of(context).routeDetailExportCreditFailed);
+      if (widget.route.official) {
+        if (context.mounted) {
+          showTopBanner(context,
+              AppLocalizations.of(context).routeDetailExportCreditFailed);
+        }
+        return;
       }
-      return;
     }
 
     try {

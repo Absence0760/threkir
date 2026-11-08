@@ -153,7 +153,9 @@ contributors, available under the Open Database License (ODbL)."); KML gets
 it as the Document description. Exports of a course's official route (web
 route detail GPX / GPX + markers / KML and the roadbook GPX; mobile share as
 GPX / GPX + markers / KML) look the course up by `route_id` first and refuse
-the export with a message when that read fails. The course page's own GPX
+the export with a message when that read fails on an official route (course
+routes are official); any other route exports as before, so an offline export
+is never blocked. The course page's own GPX
 (web download, mobile share; hidden on a closed course) carries the line, one
 `<wpt>` per checkpoint in order, and the credit.
 

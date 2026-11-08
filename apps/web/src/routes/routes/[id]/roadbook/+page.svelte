@@ -369,14 +369,17 @@
 		const wps = route.waypoints ?? [];
 		if (!wps.length) return;
 		// A park course's route exports with its geometry credit; a failed
-		// check refuses the export rather than writing it uncredited.
-		let attribution;
+		// check refuses the export rather than writing it uncredited, unless
+		// the route is known not to be official (park course routes are).
+		let attribution = null;
 		try {
 			attribution = await fetchRouteCourseAttribution(route.id);
 		} catch (e) {
 			console.error('roadbook export attribution failed', e);
-			showToast(m('routeDetail.exportCreditFailed'), 'error');
-			return;
+			if (route.is_official !== false) {
+				showToast(m('routeDetail.exportCreditFailed'), 'error');
+				return;
+			}
 		}
 		const coords: [number, number][] = wps.map((w) => [w.lng, w.lat]);
 		const eles = wps.map((w, i) => w.ele ?? fetchedEle?.[i] ?? 0);

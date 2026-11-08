@@ -529,13 +529,16 @@
 	}
 
 	// A park course's route carries third-party geometry, so its exports carry
-	// the credit. Undefined means the check failed: the export is refused
-	// rather than written uncredited.
-	async function exportAttribution(id: string): Promise<GpxAttribution | null | undefined> {
+	// the credit. Undefined means the check failed on a route that may be a
+	// park course's (they are official routes): the export is refused rather
+	// than written uncredited. A route known not to be official exports
+	// without the check, so a failed read cannot block an ordinary export.
+	async function exportAttribution(r: Route): Promise<GpxAttribution | null | undefined> {
 		try {
-			return await fetchRouteCourseAttribution(id);
+			return await fetchRouteCourseAttribution(r.id);
 		} catch (e) {
 			console.error('route export attribution failed', e);
+			if (r.is_official === false) return null;
 			showToast(m('routeDetail.exportCreditFailed'), 'error');
 			return undefined;
 		}
@@ -543,7 +546,7 @@
 
 	async function handleExportGpx() {
 		if (!route || !displayWaypoints.length) return;
-		const attribution = await exportAttribution(route.id);
+		const attribution = await exportAttribution(route);
 		if (attribution === undefined) return;
 		// Use displayWaypoints (clipped for non-owners) so a non-owner
 		// download doesn't leak what the renderer hides.
@@ -556,7 +559,7 @@
 
 	async function handleExportKml() {
 		if (!route || !displayWaypoints.length) return;
-		const attribution = await exportAttribution(route.id);
+		const attribution = await exportAttribution(route);
 		if (attribution === undefined) return;
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
 		const eles = displayWaypoints.map((w) => w.ele ?? 0);
@@ -567,7 +570,7 @@
 
 	async function handleExportGpxWithMarkers() {
 		if (!route || !displayWaypoints.length) return;
-		const attribution = await exportAttribution(route.id);
+		const attribution = await exportAttribution(route);
 		if (attribution === undefined) return;
 		// displayWaypoints is privacy-clipped for non-owners, so a download
 		// can't leak hidden geometry.

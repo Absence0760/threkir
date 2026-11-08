@@ -21,12 +21,47 @@ Ordering and the preview text are the `messages_inbox` parity pair ([parity_pair
 
 ## Who can message whom
 
-The `direct_messages` INSERT policy is the only gate, and it is the same for every client:
+The `direct_messages` INSERT policy is the only gate, and it is the same for every client. Since migration `20271115002384` ([decisions § 2384](../architecture/decisions.md)) its audience rule is `private.dm_send_admitted(recipient)`:
 
-- a follow edge exists in **either** direction between sender and recipient, and
-- `is_blocked_either_way(sender, recipient)` is false, so a block stops sends **both ways** — the blocked person cannot reach the blocker, and the blocker cannot reach the person they blocked (`direct_messages_test.sql` pins both directions).
+- `is_blocked_either_way(sender, recipient)` is false, so a block stops sends **both ways** — the blocked person cannot reach the blocker, and the blocker cannot reach the person they blocked (`direct_messages_test.sql` pins both directions); and
+- the recipient has not **declined** a request from the sender; and
+- one of: the recipient **accepted** a request in this conversation (or replied to one, or sent one); a follow edge exists in **either** direction; or the pair shares a context, which makes the send a **message request** (next section).
 
-A refusal is one 42501 for both reasons, and clients show it as one sentence ("You can only message people you follow or who follow you, and who haven't blocked you."). `user_blocks` is owner-read, so a client never learns that the *other* person blocked it ([decisions § 1916](../architecture/decisions.md)).
+A refusal is one 42501 for every reason, and clients show it as one sentence ("You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other."). `user_blocks` and `conversation_participants` are owner-read, so a client never learns that the *other* person blocked it or declined its request ([decisions § 1916](../architecture/decisions.md)).
+
+## Message requests
+
+Someone who does not follow you, and whom you do not follow, can message you first only when you share one of:
+
+- an **active membership of the same club** (`club_members.status = 'active'` on both sides; a pending or rejected member is not one), or
+- an **event they host** (`events.host_user_id`) that you have a live RSVP for (`going`, `maybe` or `waitlisted`). Host to attendee only: an attendee messaging a host is covered by the club rule, since every event belongs to a club.
+
+A stranger with neither is refused as before. The message lands in your **Requests** list instead of the inbox, and `conversation_participants.request_state` records where it stands, per participant and readable only by its owner:
+
+| State | Meaning |
+|---|---|
+| null | not a request: the conversation came through the follow graph |
+| `pending` | someone without a follow edge wrote to you and you have not answered |
+| `accepted` | you accepted, replied, or you sent the request yourself |
+| `declined` | you declined; the requester cannot send again until you write to them |
+
+The AFTER INSERT trigger `direct_messages_request_state` moves the state; `accept_message_request(conversation)` and `decline_message_request(conversation, through message, block)` are the only other writers.
+
+**Nothing leaks before you accept.** A pending (or declined) request raises no `message` notification, and `mark_direct_messages_read` writes no `seen_at` while your row is pending, so opening a request does not show the requester "Seen". The requester's own row says `accepted` whatever you do, so they cannot tell pending from declined. Reads made while it was pending are not turned into receipts afterwards.
+
+**Limits.** A pending request holds at most **three** messages from the requester; the fourth is refused with 54000, shown as "You can send up to 3 messages until they accept your request." (this says nothing about the recipient). Opening a new request spends the `open_message_request` rate-limit bucket, 20 a day, on top of the send buckets every message spends. Both numbers are conservative defaults recorded in decisions § 2384.
+
+| | Web | Mobile |
+|---|---|---|
+| Requests list | `Requests (n)` under the inbox (`inbox-show-requests`), back with `inbox-back-to-inbox`; `partitionArchived` in the `messages_inbox` parity pair files a request there even when archived, and `unreadDmBadgeCount` leaves it out of the nav badge | the same row (`inbox-show-requests`) and the same pair |
+| Request bar | replaces the composer: notice, Accept (`dm-request-accept`), Decline (`dm-request-decline`), Block (`dm-request-block`) | `message-request-bar` with `message-request-accept` / `-decline` / `-block`; a thread opened outside the inbox reads the state with `fetchDmConversationState` |
+| Accept | at once; the conversation joins the inbox and the composer comes back | the same |
+| Decline | **confirmed** (`dm-request-decline-confirm`): it cannot be undone from the app, because the conversation leaves every list ([conventions.md § Destructive actions](../architecture/conventions.md)); the decline stops at the newest request message on screen, and the pane returns to the inbox | **confirmed** (`message-request-decline-confirm`); the thread closes |
+| Block | the profile's confirm; declines and blocks in one transaction (`p_block`) | the same |
+
+**Blocking resets consent.** A block between the pair resets an `accepted` state on both sides to null (the `user_blocks_reset_dm_acceptance` trigger), so unblocking does not quietly reopen a request-based conversation; like the follow edges `block_user` drains, consent has to be given again.
+
+**Retention, export and deletion.** No new table: the two columns live on `conversation_participants`, which cascades with the participant's account and with its conversation and is swept with it by the conversation purge. Both exports' `conversation_settings.json` carry `request_state` and `requested_at`. A requester who deletes their account takes their messages with them (`sender_id` cascade), so the request disappears from your list.
 
 ## Blocking from the conversation
 
@@ -94,11 +129,11 @@ A conversation poll re-reads the **newest page** rather than asking for messages
 
 ## Tests
 
-- pgtap: `dm_edit_test.sql` (sender in the window, past the window, unsent, recipient, third party and a block all refused and read back unchanged; `original_body` withheld, snapshotted by a report, erased by unsend), `dm_read_receipts_test.sql` (no client reads `read_at`, receipts opted in and opted out both ways, withdrawal and no restore, the mark-read bound, `dm_threads()` still honouring `hidden_before`), `direct_messages_test.sql`, `dm_unsend_report_keep_on_delete_test.sql`, `direct_message_route_attachment_test.sql`, `dm_conversations_test.sql`, `dm_mark_unread_test.sql`, `dm_purge_hidden_test.sql` (the seen-message bound, the erase of what nobody can see, and a conversation whose only messages were the leaver's)
+- pgtap: `dm_message_requests_test.sql` (a stranger, a pending member, a blocked member and an attendee with no club tie refused; a club request and an event-host request each pending for the recipient and accepted for the requester; no notification and no `seen_at` before acceptance, a notification after; the 3-message cap; accept and decline refusals; decline hiding the conversation and refusing the requester, a reply taking it back; decline-and-block; a block resetting accepted consent), `dm_edit_test.sql` (sender in the window, past the window, unsent, recipient, third party and a block all refused and read back unchanged; `original_body` withheld, snapshotted by a report, erased by unsend), `dm_read_receipts_test.sql` (no client reads `read_at`, receipts opted in and opted out both ways, withdrawal and no restore, the mark-read bound, `dm_threads()` still honouring `hidden_before`), `direct_messages_test.sql`, `dm_unsend_report_keep_on_delete_test.sql`, `direct_message_route_attachment_test.sql`, `dm_conversations_test.sql`, `dm_mark_unread_test.sql`, `dm_purge_hidden_test.sql` (the seen-message bound, the erase of what nobody can see, and a conversation whose only messages were the leaver's)
 - web unit: `social/dm_edit.test.ts` (the window, read from the migration), `social/dm_read_receipt.test.ts`, `core/data.test.ts` (the `DM_COLUMNS` read matches the grant, no `read_at`), `social/dm_thread.test.ts`, `core/visible_poll.test.ts`, `social/messages_inbox.test.ts`
-- Playwright: `tests-e2e/messages/` — `dm-edit.spec.ts` (inline edit, the Edited mark on both sides, Edit offered only on the viewer's fresh messages, Escape cancelling, a refused save shown in place), `dm-thread-block.spec.ts` (block from the conversation), `dm-conversation-actions.spec.ts` (mute, archive, delete with undo, a message arriving during the undo window, the deleted-account notice), `dm-mark-unread.spec.ts` (mark as unread, the row and nav badge counting it, reopening clearing it), `dm-read-receipts.spec.ts` (Seen under the newest read message, an opt-out by either side hiding it), `dm-live-poll.spec.ts` (thread and inbox polls, driven by Playwright's clock), `coach-inbox-row.spec.ts` (the Coach row: no-consent, preview, AI label, unpin and hide persisting, the `/coach` redirect), plus the send, paging, permission, unsend/report and route-attachment specs
-- mobile: `direct_messages_screen_test.dart` (edit group), `dm_edit_test.dart`, `dm_read_receipt_test.dart`, `settings_read_receipts_test.dart`, `messages_coach_row_test.dart`, `messages_inbox_test.dart`, api_client `direct_messages_test.dart`
+- Playwright: `tests-e2e/messages/` — `dm-requests.spec.ts` (a club member's first message, the cap, the Requests list and Accept; a confirmed Decline and the requester's refusal; Block from a request; a stranger refused), `dm-edit.spec.ts` (inline edit, the Edited mark on both sides, Edit offered only on the viewer's fresh messages, Escape cancelling, a refused save shown in place), `dm-thread-block.spec.ts` (block from the conversation), `dm-conversation-actions.spec.ts` (mute, archive, delete with undo, a message arriving during the undo window, the deleted-account notice), `dm-mark-unread.spec.ts` (mark as unread, the row and nav badge counting it, reopening clearing it), `dm-read-receipts.spec.ts` (Seen under the newest read message, an opt-out by either side hiding it), `dm-live-poll.spec.ts` (thread and inbox polls, driven by Playwright's clock), `coach-inbox-row.spec.ts` (the Coach row: no-consent, preview, AI label, unpin and hide persisting, the `/coach` redirect), plus the send, paging, permission, unsend/report and route-attachment specs
+- mobile: `direct_messages_screen_test.dart` (edit and message-requests groups), `dm_edit_test.dart`, `dm_read_receipt_test.dart`, `settings_read_receipts_test.dart`, `messages_coach_row_test.dart`, `messages_inbox_test.dart`, api_client `direct_messages_test.dart`
 
 ## Not built yet (issue #1216)
 
-Realtime delivery, a message-requests inbox for non-followers, and group conversations. Delete-for-me, mute, archive, mark as unread, unsend, report, read receipts and edit are built (the sections above). The `conversations` model takes a group or club chat without another migration of the participant state; only `kind = 'direct'` exists, and the send path still addresses a single recipient.
+Realtime delivery and group conversations. Delete-for-me, mute, archive, mark as unread, unsend, report, read receipts, edit and message requests are built (the sections above). A per-runner switch to turn message requests off is not built; requests are on for everyone who shares a club or an event (decisions § 2384). The `conversations` model takes a group or club chat without another migration of the participant state; only `kind = 'direct'` exists, and the send path still addresses a single recipient.

@@ -45,6 +45,7 @@ Deno.test('parsePayload accepts the two queue shapes and refuses everything else
     {},
     { run_id: 'not-a-uuid' },
     { run_id: RUN, segment_id: SEG },
+    { run_id: RUN, after_run_id: RUN },
     { segment_id: SEG, after_run_id: 'nope' },
     { run_id: RUN.toUpperCase() },
   ]) {

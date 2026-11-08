@@ -103,7 +103,7 @@ export function parsePayload(body: unknown): SegmentMatchPayload | null {
   const b = body as Record<string, unknown>;
   const isId = (v: unknown): v is string => typeof v === 'string' && UUID.test(v);
   if ('run_id' in b) {
-    if (!isId(b.run_id) || 'segment_id' in b) return null;
+    if (!isId(b.run_id) || 'segment_id' in b || 'after_run_id' in b) return null;
     return { kind: 'run', runId: b.run_id };
   }
   if ('segment_id' in b) {
@@ -124,8 +124,9 @@ function finite(v: unknown): v is number {
 }
 
 /// The stored track as the matcher reads it, or null when any element is not
-/// a point with finite lat and lng. The web scorer would throw on such an
-/// element and score nothing; null keeps that outcome without the throw.
+/// a point with finite lat and lng. The web scorer times nothing over such a
+/// track (a null element throws, a non-numeric coordinate measures NaN), and
+/// null keeps that outcome as a final `unreadable`.
 export function readPoints(raw: unknown): StoredPoint[] | null {
   if (!Array.isArray(raw)) return null;
   for (const p of raw) {

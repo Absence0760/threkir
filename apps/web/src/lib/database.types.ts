@@ -2151,6 +2151,7 @@ export type Database = {
           created_at: string
           global_segment_id: string
           id: string
+          matched_by: string
           run_id: string
           started_at: string
           time_seconds: number
@@ -2160,6 +2161,7 @@ export type Database = {
           created_at?: string
           global_segment_id: string
           id?: string
+          matched_by?: string
           run_id: string
           started_at: string
           time_seconds: number
@@ -2169,6 +2171,7 @@ export type Database = {
           created_at?: string
           global_segment_id?: string
           id?: string
+          matched_by?: string
           run_id?: string
           started_at?: string
           time_seconds?: number
@@ -2220,10 +2223,20 @@ export type Database = {
           description: string | null
           distance_m: number
           elevation_m: number | null
+          end_gate_bearing_deg: number | null
+          end_gate_half_width_m: number | null
+          end_gate_lat: number | null
+          end_gate_lng: number | null
+          end_gate_source: string | null
           id: string
           is_active: boolean
           name: string
           region: string | null
+          start_gate_bearing_deg: number | null
+          start_gate_half_width_m: number | null
+          start_gate_lat: number | null
+          start_gate_lng: number | null
+          start_gate_source: string | null
           surface: string
           waypoints: Json
         }
@@ -2234,10 +2247,20 @@ export type Database = {
           description?: string | null
           distance_m: number
           elevation_m?: number | null
+          end_gate_bearing_deg?: number | null
+          end_gate_half_width_m?: number | null
+          end_gate_lat?: number | null
+          end_gate_lng?: number | null
+          end_gate_source?: string | null
           id?: string
           is_active?: boolean
           name: string
           region?: string | null
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+          start_gate_source?: string | null
           surface?: string
           waypoints: Json
         }
@@ -2248,10 +2271,20 @@ export type Database = {
           description?: string | null
           distance_m?: number
           elevation_m?: number | null
+          end_gate_bearing_deg?: number | null
+          end_gate_half_width_m?: number | null
+          end_gate_lat?: number | null
+          end_gate_lng?: number | null
+          end_gate_source?: string | null
           id?: string
           is_active?: boolean
           name?: string
           region?: string | null
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+          start_gate_source?: string | null
           surface?: string
           waypoints?: Json
         }
@@ -7658,10 +7691,20 @@ export type Database = {
           description: string | null
           distance_m: number
           elevation_m: number | null
+          end_gate_bearing_deg: number | null
+          end_gate_half_width_m: number | null
+          end_gate_lat: number | null
+          end_gate_lng: number | null
+          end_gate_source: string | null
           id: string
           is_active: boolean
           name: string
           region: string | null
+          start_gate_bearing_deg: number | null
+          start_gate_half_width_m: number | null
+          start_gate_lat: number | null
+          start_gate_lng: number | null
+          start_gate_source: string | null
           surface: string
           waypoints: Json
         }[]

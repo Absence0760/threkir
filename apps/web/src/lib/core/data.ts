@@ -196,6 +196,8 @@ import {
 	courseAttribution,
 	parseCourseCheckpoints,
 	type CourseCheckpoint,
+	type RecapParkRow,
+	type RunParkCourseTime,
 } from '../parks/park_courses';
 import type { GpxAttribution } from '../routes/route_gpx';
 import type { RecapPeriodKind } from '../types';
@@ -731,6 +733,60 @@ export async function fetchRecapExtras(
 		photoCount: photos.error ? 0 : photos.count ?? 0,
 		personalRecordCount: prs.error ? 0 : prs.count ?? 0,
 	};
+}
+
+/// The signed-in runner's park course efforts started in `[startIso, endIso)`,
+/// each joined to its course and park, for the recap's park card and list
+/// (`recapParkSummary`). A course whose park was pulled is left out (RLS
+/// hides it). Throws on a failed read so the page can leave the card off
+/// rather than claim zero.
+export async function fetchRecapParkCourses(startIso: string, endIso: string): Promise<RecapParkRow[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	const { data: efforts, error } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('global_segment_id')
+		.eq('user_id', userId)
+		.gte('started_at', startIso)
+		.lt('started_at', endIso);
+	if (error) throw dbError(error);
+	const segmentIds = Array.from(new Set((efforts ?? []).map((e) => e.global_segment_id)));
+	if (segmentIds.length === 0) return [];
+	const { data: courses, error: courseError } = await queryChunked(segmentIds, (part) =>
+		supabase
+			.from(TABLES.park_courses)
+			.select('id, global_segment_id, park_id, parks!inner(name, region_code)')
+			.in('global_segment_id', part),
+	);
+	if (courseError) throw dbError(courseError);
+	const bySegment = new Map<string, RecapParkRow>();
+	for (const c of courses ?? []) {
+		bySegment.set(c.global_segment_id, {
+			parkId: c.park_id,
+			parkName: c.parks.name,
+			regionCode: c.parks.region_code,
+			courseId: c.id,
+		});
+	}
+	return (efforts ?? []).flatMap((e) => {
+		const row = bySegment.get(e.global_segment_id);
+		return row ? [row] : [];
+	});
+}
+
+/// The park course times one of the caller's own runs set, with the season
+/// rank each holds (`run_park_course_times`), for the share image's course
+/// sticker. Throws on a failed read.
+export async function fetchRunParkCourseTimes(runId: string): Promise<RunParkCourseTime[]> {
+	const { data, error } = await supabase.rpc('run_park_course_times', { p_run_id: runId }, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		course_name: r.course_name,
+		park_name: r.park_name,
+		time_seconds: r.time_seconds,
+		season: r.season,
+		season_rank: r.season_rank ?? null,
+	}));
 }
 
 /// Publish (or re-publish) a recap as a public, OG-unfurlable snapshot and

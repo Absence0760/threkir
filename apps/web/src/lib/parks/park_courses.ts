@@ -248,3 +248,63 @@ export function parkCourseGpx(input: {
 		input.attribution,
 	);
 }
+
+/** One park course effort in a recap period, joined to its course and park. */
+export interface RecapParkRow {
+	parkId: string;
+	parkName: string;
+	regionCode: string;
+	courseId: string;
+}
+
+export interface RecapParkSummary {
+	courseCount: number;
+	parkCount: number;
+	/** Most courses first, then by name. */
+	parks: { parkId: string; name: string; regionCode: string; courseCount: number }[];
+}
+
+/**
+ * What a recap says about park courses: distinct courses, distinct parks and
+ * each park with its distinct course count. A course run twice counts once.
+ */
+export function recapParkSummary(rows: readonly RecapParkRow[]): RecapParkSummary {
+	const courses = new Set<string>();
+	const byPark = new Map<string, { parkId: string; name: string; regionCode: string; courses: Set<string> }>();
+	for (const r of rows) {
+		courses.add(r.courseId);
+		let park = byPark.get(r.parkId);
+		if (!park) {
+			park = { parkId: r.parkId, name: r.parkName, regionCode: r.regionCode, courses: new Set() };
+			byPark.set(r.parkId, park);
+		}
+		park.courses.add(r.courseId);
+	}
+	const parks = [...byPark.values()]
+		.map((p) => ({ parkId: p.parkId, name: p.name, regionCode: p.regionCode, courseCount: p.courses.size }))
+		.sort((a, b) => b.courseCount - a.courseCount || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+	return { courseCount: courses.size, parkCount: byPark.size, parks };
+}
+
+/** A park course time on one run, as `run_park_course_times` returns it. */
+export interface RunParkCourseTime {
+	course_name: string;
+	park_name: string;
+	time_seconds: number;
+	season: number;
+	season_rank: number | null;
+}
+
+/**
+ * The course a run's share sticker prints: the best-ranked of its park course
+ * times this season, or the first when none is ranked; null when the run
+ * completed no park course.
+ */
+export function pickShareCourse<T extends RunParkCourseTime>(rows: readonly T[]): T | null {
+	let best: T | null = null;
+	for (const r of rows) {
+		if (r.season_rank == null) continue;
+		if (best === null || r.season_rank < (best.season_rank as number)) best = r;
+	}
+	return best ?? rows[0] ?? null;
+}

@@ -25,6 +25,9 @@
 		/// Offers the 9:16 slideshow video (decisions § 2269). `autoStart` is
 		/// the phone's Video option arriving with `?video=1`.
 		video?: { title: string; fileStem: string; autoStart?: boolean } | null;
+		/// The parks the owner ran courses in this period (`recapParkSummary`),
+		/// owner pages only: a published snapshot carries the counts, never a park.
+		parks?: { parkId: string; name: string; regionCode: string; courseCount: number }[];
 	}
 
 	let {
@@ -36,6 +39,7 @@
 		onpublish = null,
 		publishing = false,
 		video = null,
+		parks = [],
 	}: Props = $props();
 
 	type VideoState =
@@ -281,7 +285,31 @@
 		<span class="card-value">{recap.photoCount}</span>
 		<span class="card-sub">{t('recap.momentsCaptured')}</span>
 	</div>
+	{#if recap.parkCourseCount > 0}
+		<div class="card" data-testid="recap-park-courses">
+			<span class="card-label">{t('recap.parkCourses')}</span>
+			<span class="card-value">{recap.parkCourseCount}</span>
+			<span class="card-sub">{t('recap.parkCoursesSub', { n: recap.parkCount })}</span>
+		</div>
+	{/if}
 </section>
+
+{#if parks.length > 0}
+	<section class="badges" data-testid="recap-parks">
+		<header class="badges-head">
+			<h2>{t('recap.parksHeading')}</h2>
+		</header>
+		<ul class="park-list">
+			{#each parks as p (p.parkId)}
+				<li>
+					<span class="material-symbols" aria-hidden="true">park</span>
+					<span class="park-name">{p.name}</span>
+					<span class="badge-detail">{t('recap.parkCourseCount', { n: p.courseCount })}</span>
+				</li>
+			{/each}
+		</ul>
+	</section>
+{/if}
 
 {#if recap.badges.length > 0}
 	<section class="badges">
@@ -654,6 +682,32 @@
 		font-size: 0.8rem;
 		color: var(--color-text-tertiary);
 		line-height: 1.35;
+	}
+
+	.park-list {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: var(--space-sm);
+	}
+	.park-list li {
+		display: flex;
+		align-items: center;
+		gap: var(--space-sm);
+		background: var(--color-surface);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		padding: var(--space-sm) var(--space-md);
+	}
+	.park-list .material-symbols {
+		color: var(--color-accent-orange-text);
+	}
+	.park-name {
+		font-weight: 700;
+		flex: 1;
+		min-width: 0;
+		overflow-wrap: anywhere;
 	}
 
 	.closing {

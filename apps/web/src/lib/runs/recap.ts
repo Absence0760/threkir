@@ -74,6 +74,10 @@ export interface RecapExtras {
 	 * achievement primitive — segment KOM "crowns" need a global
 	 * leaderboard aggregation and are intentionally not counted here). */
 	personalRecordCount?: number;
+	/** Distinct park courses completed in the period (`recapParkSummary`). */
+	parkCourseCount?: number;
+	/** Distinct parks those courses are in. */
+	parkCount?: number;
 }
 
 export interface YearInRunningRecap {
@@ -96,6 +100,8 @@ export interface YearInRunningRecap {
 	mostUsedActivity: string | null; // "run" / "walk" / "hike" / "cycle"
 	photoCount: number;
 	personalRecordCount: number;
+	parkCourseCount: number;
+	parkCount: number;
 	badges: RecapBadge[];
 }
 
@@ -376,6 +382,8 @@ export function buildYearInRunningRecap(
 
 	const photoCount = extraCount(extras.photoCount);
 	const personalRecordCount = extraCount(extras.personalRecordCount);
+	const parkCourseCount = extraCount(extras.parkCourseCount);
+	const parkCount = extraCount(extras.parkCount);
 	const earliestStartLocal = earliestRun ? hhmm(earliestRun) : null;
 	const latestStartLocal = latestRun ? hhmm(latestRun) : null;
 
@@ -411,6 +419,8 @@ export function buildYearInRunningRecap(
 		mostUsedActivity,
 		photoCount,
 		personalRecordCount,
+		parkCourseCount,
+		parkCount,
 		badges,
 	};
 }
@@ -512,6 +522,8 @@ export function buildMonthInRunningRecap(
 
 	const photoCount = extraCount(extras.photoCount);
 	const personalRecordCount = extraCount(extras.personalRecordCount);
+	const parkCourseCount = extraCount(extras.parkCourseCount);
+	const parkCount = extraCount(extras.parkCount);
 	const earliestStartLocal = earliestRun ? hhmm(earliestRun) : null;
 	const latestStartLocal = latestRun ? hhmm(latestRun) : null;
 
@@ -548,6 +560,8 @@ export function buildMonthInRunningRecap(
 		mostUsedActivity,
 		photoCount,
 		personalRecordCount,
+		parkCourseCount,
+		parkCount,
 		badges,
 	};
 }

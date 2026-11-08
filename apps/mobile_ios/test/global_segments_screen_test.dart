@@ -75,6 +75,7 @@ class _CatalogueApi extends ApiClient {
     String? gender,
     String? ageBand,
     String? clubId,
+    int? season,
     int limit = 50,
   }) async =>
       const [];
@@ -102,6 +103,7 @@ class _BoardApi extends _CatalogueApi {
     String? gender,
     String? ageBand,
     String? clubId,
+    int? season,
     int limit = 50,
   }) async =>
       board;
@@ -116,6 +118,7 @@ class _ThrowingBoardApi extends _CatalogueApi {
     String? gender,
     String? ageBand,
     String? clubId,
+    int? season,
     int limit = 50,
   }) async =>
       throw StateError('leaderboard network down');
@@ -269,6 +272,26 @@ void main() {
       expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Elevation gain'), findsOneWidget);
       expect(find.text('Road'), findsOneWidget);
+    });
+
+    testWidgets('a segment with geometry lays its preview out in a bounded box',
+        (tester) async {
+      final api = _CatalogueApi([
+        _segment(
+          id: 'a',
+          name: 'Harlem Hill',
+          waypoints: const [
+            {'lat': 40.7963, 'lng': -73.9582},
+            {'lat': 40.7988, 'lng': -73.9575},
+          ],
+        ),
+      ]);
+      await tester.pumpWidget(
+        _host(GlobalSegmentDetailScreen(api: api, segmentId: 'a')),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(AspectRatio), findsOneWidget);
     });
 
     testWidgets('an unknown or retired segment renders the not-found state',

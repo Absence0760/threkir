@@ -32860,6 +32860,306 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This run lasts longer than {hours} hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.'**
   String runDetailBlockedDurationTooLong(int hours);
+
+  /// Park courses (#1313): web key parks.title.
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get parksTitle;
+
+  /// Park courses (#1313): web key parks.intro.
+  ///
+  /// In en, this message translates to:
+  /// **'Standing time-trial courses in state and national parks. Run one on any day and your time lands on this year\'s board.'**
+  String get parksIntro;
+
+  /// Park courses (#1313): web key parks.loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading park courses…'**
+  String get parksLoading;
+
+  /// Park courses (#1313): web key parks.loadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load park courses.'**
+  String get parksLoadFailed;
+
+  /// Park courses (#1313): web key parks.retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get parksRetry;
+
+  /// Park courses (#1313): web key parks.empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No park courses yet. The first ones are on their way.'**
+  String get parksEmpty;
+
+  /// Park courses (#1313): web key parks.courseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} course} other {{n} courses}}'**
+  String parksCourseCount(int n);
+
+  /// Park courses (#1313): web key parks.backToParks.
+  ///
+  /// In en, this message translates to:
+  /// **'All park courses'**
+  String get parksBackToParks;
+
+  /// Park courses (#1313): web key parks.parkNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Park not found'**
+  String get parksParkNotFoundTitle;
+
+  /// Park courses (#1313): web key parks.parkNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This park isn\'t listed, or isn\'t listed any more.'**
+  String get parksParkNotFoundBody;
+
+  /// Park courses (#1313): web key parks.courseNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Course not found'**
+  String get parksCourseNotFoundTitle;
+
+  /// Park courses (#1313): web key parks.courseNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This course isn\'t listed, or isn\'t listed any more.'**
+  String get parksCourseNotFoundBody;
+
+  /// Park courses (#1313): web key parks.website.
+  ///
+  /// In en, this message translates to:
+  /// **'Park website'**
+  String get parksWebsite;
+
+  /// Park courses (#1313): web key parks.noCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'No courses listed in this park yet.'**
+  String get parksNoCourses;
+
+  /// Park courses (#1313): web key parks.agencyNps.
+  ///
+  /// In en, this message translates to:
+  /// **'National Park Service'**
+  String get parksAgencyNps;
+
+  /// Park courses (#1313): web key parks.agencyState.
+  ///
+  /// In en, this message translates to:
+  /// **'State park'**
+  String get parksAgencyState;
+
+  /// Park courses (#1313): web key parks.agencyCounty.
+  ///
+  /// In en, this message translates to:
+  /// **'County park'**
+  String get parksAgencyCounty;
+
+  /// Park courses (#1313): web key parks.agencyOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Park'**
+  String get parksAgencyOther;
+
+  /// Park courses (#1313): web key parks.shapeLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Loop'**
+  String get parksShapeLoop;
+
+  /// Park courses (#1313): web key parks.shapeOutAndBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Out and back'**
+  String get parksShapeOutAndBack;
+
+  /// Park courses (#1313): web key parks.shapePointToPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Point to point'**
+  String get parksShapePointToPoint;
+
+  /// Park courses (#1313): web key parks.statusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get parksStatusOpen;
+
+  /// Park courses (#1313): web key parks.statusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get parksStatusClosed;
+
+  /// Park courses (#1313): web key parks.statusSeasonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Seasonal'**
+  String get parksStatusSeasonal;
+
+  /// Park courses (#1313): web key parks.closedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This course is closed. Its times and boards stay, but please don\'t run it until it reopens.'**
+  String get parksClosedBanner;
+
+  /// Park courses (#1313): web key parks.statusChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Status checked {date}'**
+  String parksStatusChecked(String date);
+
+  /// Park courses (#1313): web key parks.difficultyEasy.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy'**
+  String get parksDifficultyEasy;
+
+  /// Park courses (#1313): web key parks.difficultyModerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get parksDifficultyModerate;
+
+  /// Park courses (#1313): web key parks.difficultyHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard'**
+  String get parksDifficultyHard;
+
+  /// Park courses (#1313): web key parks.statDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get parksStatDistance;
+
+  /// Park courses (#1313): web key parks.statElevation.
+  ///
+  /// In en, this message translates to:
+  /// **'Elevation gain'**
+  String get parksStatElevation;
+
+  /// Park courses (#1313): web key parks.statShape.
+  ///
+  /// In en, this message translates to:
+  /// **'Shape'**
+  String get parksStatShape;
+
+  /// Park courses (#1313): web key parks.statSurface.
+  ///
+  /// In en, this message translates to:
+  /// **'Surface'**
+  String get parksStatSurface;
+
+  /// Park courses (#1313): web key parks.statDifficulty.
+  ///
+  /// In en, this message translates to:
+  /// **'Difficulty'**
+  String get parksStatDifficulty;
+
+  /// Park courses (#1313): web key parks.boardFastest.
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest'**
+  String get parksBoardFastest;
+
+  /// Park courses (#1313): web key parks.boardCompletions.
+  ///
+  /// In en, this message translates to:
+  /// **'Most completions'**
+  String get parksBoardCompletions;
+
+  /// Park courses (#1313): web key parks.seasonThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'This year ({year})'**
+  String parksSeasonThisYear(int year);
+
+  /// Park courses (#1313): web key parks.seasonAllTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get parksSeasonAllTime;
+
+  /// Park courses (#1313): web key parks.completionDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} day} other {{n} days}}'**
+  String parksCompletionDays(int n);
+
+  /// Park courses (#1313): web key parks.noEfforts.
+  ///
+  /// In en, this message translates to:
+  /// **'No times on this board yet. Run the course and yours is the first.'**
+  String get parksNoEfforts;
+
+  /// Park courses (#1313): web key parks.signInForBoards.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to see this course\'s boards.'**
+  String get parksSignInForBoards;
+
+  /// Park courses (#1313): web key parks.signIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get parksSignIn;
+
+  /// Park courses (#1313): web key parks.boardFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this board.'**
+  String get parksBoardFailed;
+
+  /// Park courses (#1313): web key parks.safetyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.'**
+  String get parksSafetyNotice;
+
+  /// Park courses (#1313): web key parks.attributionOsm.
+  ///
+  /// In en, this message translates to:
+  /// **'Course line © OpenStreetMap contributors'**
+  String get parksAttributionOsm;
+
+  /// Park courses (#1313): web key parks.attributionNps.
+  ///
+  /// In en, this message translates to:
+  /// **'Course line from National Park Service trail data'**
+  String get parksAttributionNps;
+
+  /// Park courses (#1313): web key parks.attributionAgency.
+  ///
+  /// In en, this message translates to:
+  /// **'Course line from the park\'s own trail data'**
+  String get parksAttributionAgency;
+
+  /// Park courses (#1313): web key parks.attributionTraced.
+  ///
+  /// In en, this message translates to:
+  /// **'Course line traced against the park\'s published map'**
+  String get parksAttributionTraced;
+
+  /// Park courses (#1313): web key parks.navigate.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigate this course'**
+  String get parksNavigate;
+
+  /// Park courses (#1313): web key parks.browseLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get parksBrowseLink;
 }
 
 class _AppLocalizationsDelegate

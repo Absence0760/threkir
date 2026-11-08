@@ -19390,4 +19390,171 @@ class AppLocalizationsJa extends AppLocalizations {
   String runDetailBlockedDurationTooLong(int hours) {
     return 'このランは$hours時間を超えており、ランとしてありえない長さのためクラウドに保存できません。再試行しても成功しません。時間を修正するとアップロードできます。';
   }
+
+  @override
+  String get parksTitle => '公園コース';
+
+  @override
+  String get parksIntro =>
+      '州立公園や国立公園にある常設のタイムトライアルコースです。いつ走ってもタイムが今年のランキングに載ります。';
+
+  @override
+  String get parksLoading => '公園コースを読み込み中…';
+
+  @override
+  String get parksLoadFailed => '公園コースを読み込めませんでした。';
+
+  @override
+  String get parksRetry => '再試行';
+
+  @override
+  String get parksEmpty => '公園コースはまだありません。最初のコースを準備中です。';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$nコース',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'すべての公園コース';
+
+  @override
+  String get parksParkNotFoundTitle => '公園が見つかりません';
+
+  @override
+  String get parksParkNotFoundBody => 'この公園は掲載されていないか、掲載が終了しました。';
+
+  @override
+  String get parksCourseNotFoundTitle => 'コースが見つかりません';
+
+  @override
+  String get parksCourseNotFoundBody => 'このコースは掲載されていないか、掲載が終了しました。';
+
+  @override
+  String get parksWebsite => '公園のウェブサイト';
+
+  @override
+  String get parksNoCourses => 'この公園にはまだコースがありません。';
+
+  @override
+  String get parksAgencyNps => '国立公園局';
+
+  @override
+  String get parksAgencyState => '州立公園';
+
+  @override
+  String get parksAgencyCounty => '郡立公園';
+
+  @override
+  String get parksAgencyOther => '公園';
+
+  @override
+  String get parksShapeLoop => '周回';
+
+  @override
+  String get parksShapeOutAndBack => '往復';
+
+  @override
+  String get parksShapePointToPoint => '片道';
+
+  @override
+  String get parksStatusOpen => '開放中';
+
+  @override
+  String get parksStatusClosed => '閉鎖中';
+
+  @override
+  String get parksStatusSeasonal => '季節限定';
+
+  @override
+  String get parksClosedBanner =>
+      'このコースは閉鎖中です。タイムとランキングは残りますが、再開するまで走らないでください。';
+
+  @override
+  String parksStatusChecked(String date) {
+    return '状況確認日: $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => '初級';
+
+  @override
+  String get parksDifficultyModerate => '中級';
+
+  @override
+  String get parksDifficultyHard => '上級';
+
+  @override
+  String get parksStatDistance => '距離';
+
+  @override
+  String get parksStatElevation => '獲得標高';
+
+  @override
+  String get parksStatShape => '形状';
+
+  @override
+  String get parksStatSurface => '路面';
+
+  @override
+  String get parksStatDifficulty => '難易度';
+
+  @override
+  String get parksBoardFastest => '最速';
+
+  @override
+  String get parksBoardCompletions => '完走回数';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return '今年（$year年）';
+  }
+
+  @override
+  String get parksSeasonAllTime => '全期間';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n日');
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts => 'このランキングにはまだタイムがありません。コースを走れば最初の記録になります。';
+
+  @override
+  String get parksSignInForBoards => 'このコースのランキングを見るにはサインインしてください。';
+
+  @override
+  String get parksSignIn => 'サインイン';
+
+  @override
+  String get parksBoardFailed => 'このランキングを読み込めませんでした。';
+
+  @override
+  String get parksSafetyNotice =>
+      '標識のあるトレイルから外れないでください。計測にはすべてのチェックポイントが必要なので、近道は記録になりません。これはレースではなくタイムトライアルです。トレイルは誰にでも開かれており、係員はいません。';
+
+  @override
+  String get parksAttributionOsm => 'コースライン © OpenStreetMap contributors';
+
+  @override
+  String get parksAttributionNps => 'コースラインは国立公園局のトレイルデータに基づきます';
+
+  @override
+  String get parksAttributionAgency => 'コースラインは公園のトレイルデータに基づきます';
+
+  @override
+  String get parksAttributionTraced => 'コースラインは公園の公開地図をもとに作成しました';
+
+  @override
+  String get parksNavigate => 'このコースをナビ';
+
+  @override
+  String get parksBrowseLink => '公園コース';
 }

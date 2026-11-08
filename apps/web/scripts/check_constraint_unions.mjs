@@ -692,6 +692,7 @@ export const PAIRS = [
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_SHAPES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseShapes', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'courseShapeLabel', shape: 'switch' },
 		],
 	},
 	{
@@ -699,6 +700,7 @@ export const PAIRS = [
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_DIFFICULTIES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseDifficulties', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'courseDifficultyLabel', shape: 'switch' },
 		],
 	},
 	{
@@ -706,6 +708,13 @@ export const PAIRS = [
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'GEOMETRY_SOURCES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kGeometrySources', shape: 'strings' },
+			{
+				file: 'apps/mobile_android/lib/screens/park_courses_screen.dart',
+				decl: 'geometryAttribution',
+				shape: 'switch',
+				// The `_` branch is the traced-against-the-park-map credit.
+				allowMissing: ['traced'],
+			},
 		],
 	},
 	{
@@ -713,6 +722,7 @@ export const PAIRS = [
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_STATUSES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseStatuses', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'courseStatusLabel', shape: 'switch' },
 		],
 	},
 	{
@@ -720,6 +730,13 @@ export const PAIRS = [
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'PARK_AGENCIES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kParkAgencies', shape: 'strings' },
+			{
+				file: 'apps/mobile_android/lib/screens/park_courses_screen.dart',
+				decl: 'agencyLabel',
+				shape: 'switch',
+				// The `_` branch is the plain "Park" label `other` names.
+				allowMissing: ['other'],
+			},
 		],
 	},
 	{

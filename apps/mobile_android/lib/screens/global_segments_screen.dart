@@ -16,6 +16,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../route_surface_label.dart';
 import '../widgets/error_state.dart';
+import 'park_courses_screen.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
@@ -115,7 +116,21 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.segmentCatalogueTitle)),
+      appBar: AppBar(
+        title: Text(l10n.segmentCatalogueTitle),
+        actions: [
+          IconButton(
+            key: const Key('segments-parks-link'),
+            tooltip: l10n.parksBrowseLink,
+            icon: const Icon(Icons.park_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => ParksScreen(api: widget.api),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: _loading
           ? ListView(
               physics: const NeverScrollableScrollPhysics(),
@@ -537,7 +552,12 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
           const SizedBox(height: 16),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: TrackPreview(points: geometry),
+            child: AspectRatio(
+              // TrackPreview fills whatever it is given, and a ListView
+              // gives an unbounded height.
+              aspectRatio: 2.4,
+              child: TrackPreview(points: geometry),
+            ),
           ),
         ],
         const SizedBox(height: 24),

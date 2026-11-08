@@ -90,6 +90,69 @@ void main() {
       });
     });
 
+    group('$name primary container is the coral family', () {
+      // Hue angle in degrees. A container seeded from the brand violet put
+      // the run screen's coral lap flag on a purple disc (issue #1300) while
+      // every contrast figure passed, so the hue is what this pins.
+      double hue(Color c) => HSLColor.fromColor(c).hue;
+      double gap(double a, double b) {
+        final d = (a - b).abs() % 360;
+        return d > 180 ? 360 - d : d;
+      }
+
+      test('container and its ink share the accent hue', () {
+        expect(gap(hue(s.primaryContainer), hue(s.primary)), lessThan(10),
+            reason: '$name primaryContainer is not a coral');
+        expect(gap(hue(s.onPrimaryContainer), hue(s.primary)), lessThan(10),
+            reason: '$name onPrimaryContainer is not a coral');
+      });
+
+      test('the lap flag, drawn in onPrimaryContainer, clears AA', () {
+        expect(_contrast(s.onPrimaryContainer, s.primaryContainer),
+            greaterThanOrEqualTo(_aaText),
+            reason: 'onPrimaryContainer is also the text token on it');
+      });
+
+      test('primary stays a 3:1 mark on the container, never its text', () {
+        // The route, activity, goal and onboarding glyphs draw primary on the
+        // container; the superset chip, the challenge rank and both next-event
+        // eyebrows drew it as type and took onPrimaryContainer instead.
+        expect(_contrast(s.primary, s.primaryContainer),
+            greaterThanOrEqualTo(_aaMark));
+        expect(_contrast(s.primary, s.primaryContainer), lessThan(_aaText));
+      });
+
+      test('the next-event cards fade from the container to '
+          'surfaceContainerHighest, and both ends carry their marks', () {
+        for (final bg in [s.primaryContainer, s.surfaceContainerHighest]) {
+          expect(_contrast(s.onPrimaryContainer, bg),
+              greaterThanOrEqualTo(_aaText),
+              reason: 'the eyebrow');
+          expect(_contrast(s.onSurfaceVariant, bg),
+              greaterThanOrEqualTo(_aaMark),
+              reason: 'the date and place glyphs');
+        }
+        if (name == 'dark') {
+          // 2.960:1 — the outline glyphs these replaced, at the container end.
+          expect(_contrast(s.outline, s.primaryContainer), lessThan(_aaMark));
+        }
+      });
+
+      test('the challenge standing card carries muted type on the container',
+          () {
+        expect(_contrast(s.onSurfaceVariant, s.primaryContainer),
+            greaterThanOrEqualTo(_aaText));
+        if (name == 'dark') {
+          // 4.484:1 — hintColor is a 60% white, not a measured token, and it
+          // fell under AA when the container moved from violet to coral.
+          expect(
+              _contrast(_over(theme.hintColor, s.primaryContainer),
+                  s.primaryContainer),
+              lessThan(_aaText));
+        }
+      });
+    });
+
     group('$name secondary is a foreground token', () {
       test('it clears 3:1 as a mark on every surface it can land on', () {
         for (final (label, bg) in [
@@ -152,6 +215,10 @@ void main() {
     test('coralDeep is the light primary and FAB; violet the secondary', () {
       final light = AppTheme.light;
       expect(light.colorScheme.primary, AppTheme.coralDeep);
+      expect(light.colorScheme.primaryContainer, AppTheme.coralTint);
+      expect(light.colorScheme.onPrimaryContainer, AppTheme.coralInk);
+      expect(AppTheme.dark.colorScheme.primaryContainer, AppTheme.coralInk);
+      expect(AppTheme.dark.colorScheme.onPrimaryContainer, AppTheme.coralTint);
       expect(light.colorScheme.secondary, AppTheme.violet);
       expect(light.floatingActionButtonTheme.backgroundColor,
           AppTheme.coralDeep);

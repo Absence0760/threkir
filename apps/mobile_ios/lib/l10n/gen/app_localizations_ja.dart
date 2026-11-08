@@ -1962,6 +1962,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runStatAvgPace => '平均ペース';
 
   @override
+  String get runStoppedChip => '停止中';
+
+  @override
   String get runStatAvgSpeed => '平均速度';
 
   @override
@@ -2260,6 +2263,30 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runGpsPermissionPending => 'GPSなし — 権限が許可されると記録が始まります。';
+
+  @override
+  String get runNoGpsStartTitle => 'GPSなしで開始しますか？';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'この端末の位置情報がオフのため、このランは時間のみを記録します（ルート・距離・ペースは記録されません）。';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'このアプリの位置情報へのアクセスがオフのため、このランは時間のみを記録します（ルート・距離・ペースは記録されません）。';
+
+  @override
+  String get runNoGpsStartTimeOnly => '時間のみ記録';
+
+  @override
+  String get runNoDistanceTitle => '距離が記録されていません';
+
+  @override
+  String get runNoDistanceBody =>
+      'このランではGPSの測位も歩数による距離も得られませんでした。時間のみのアクティビティとして保存しますか、それとも破棄しますか？';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => '時間のみで保存';
 
   @override
   String get runBackgroundLocationPaused =>
@@ -2742,6 +2769,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get addRunNoRoutes => '保存したルートはまだありません — 作成またはインポートしてここに添付してください';
+
+  @override
+  String get addRunBuildRoute => 'ルートを作成';
+
+  @override
+  String get addRunImportRoute => 'ファイルをインポート';
 
   @override
   String get addRunDistanceInvalid => '0 より大きい距離を入力してください';
@@ -5251,7 +5284,12 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'メンバー';
+  String clubDetailNameHint(String handle) {
+    return 'クラブのメンバーには$handleと表示されます。';
+  }
+
+  @override
+  String get clubDetailNameHintAction => 'アカウント設定で名前を追加できます。';
 
   @override
   String get clubRoleOwner => 'オーナー';
@@ -5604,9 +5642,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventNoRsvps => 'まだ参加表明はありません。最初になりましょう。';
-
-  @override
-  String get eventAttendeeMember => 'メンバー';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -13883,6 +13918,54 @@ class AppLocalizationsJa extends AppLocalizations {
   String get challengeInviteSharePage => 'チャレンジのページを共有';
 
   @override
+  String get clubInviteLinkTitle => '招待リンク';
+
+  @override
+  String get clubInviteBodyInvite => 'このリンクを持っている人だけが参加できます。';
+
+  @override
+  String get clubInviteBodyRequest => 'このリンクを持っている人は、承認を待たずにすぐに参加できます。';
+
+  @override
+  String get clubInviteBodyOpen => 'このリンクを持っている人は誰でも参加できます。';
+
+  @override
+  String get clubInviteGenerate => '招待リンクを作成';
+
+  @override
+  String get clubInviteShare => 'リンクを共有';
+
+  @override
+  String get clubInviteCopy => 'リンクをコピー';
+
+  @override
+  String get clubInviteCopied => '招待リンクをコピーしました';
+
+  @override
+  String get clubInviteCopyFailed => 'リンクをコピーできませんでした。';
+
+  @override
+  String get clubInviteLoadFailed => '招待リンクを読み込めませんでした。';
+
+  @override
+  String get clubInviteRotate => 'リンクをリセット';
+
+  @override
+  String get clubInviteRotateTitle => '招待リンクをリセットしますか？';
+
+  @override
+  String get clubInviteRotateBody => '現在のリンクはすぐに使えなくなります。すでに参加している人はそのまま残ります。';
+
+  @override
+  String get clubInviteRotateFailed => '招待リンクを更新できませんでした。もう一度お試しください。';
+
+  @override
+  String get clubShareClub => 'クラブを共有';
+
+  @override
+  String get clubShareLinkCopied => 'クラブのリンクをコピーしました';
+
+  @override
   String get challengesLeaderboardEmpty => 'まだ記録がありません。';
 
   @override
@@ -16891,6 +16974,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'メッセージの送信が取り消されました';
 
   @override
+  String messagesSeenAt(String time) {
+    return '既読 $time';
+  }
+
+  @override
   String get messagesUnsend => '送信取消';
 
   @override
@@ -17742,6 +17830,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get planDetailHideEarlierWeeks => 'これまでの週を隠す';
+
+  @override
+  String get planDetailGoToThisWeek => '今週へ移動';
 
   @override
   String get planNewStartingPoint => '今のあなたの状態は？';
@@ -18780,6 +18871,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'メッセージでの AI コーチ';
+
+  @override
+  String get prefsReadReceipts => '既読表示';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'メッセージを読んだことを相手に知らせます。オフにすると、相手があなたのメッセージを読んだかどうかも表示されません。';
+
+  @override
+  String get prefsReadReceiptsFailed => '既読表示を変更できませんでした。';
 
   @override
   String get prefsCoachInMessagesPinned => '上部に固定';

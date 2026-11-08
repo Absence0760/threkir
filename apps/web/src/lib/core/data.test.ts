@@ -1857,6 +1857,24 @@ test('no enumerated read, and no row type, names a column the client is not gran
 });
 
 
+test('direct messages are read as exactly the columns the grant allows, read_at never among them', () => {
+	// Reason: read_at is the recipient's own read time, and migration
+	// 20271113000001 withholds it from every client so a sender cannot read it
+	// past a read-receipts opt-out. `select('*')` is refused under a column
+	// grant, so DM_COLUMNS is the read, and DirectMessage must describe it.
+	const granted = grantedColumns('direct_messages');
+	assert.notEqual(granted, 'all', 'direct_messages SELECT is not column-scoped any more — re-anchor');
+	const allowed = [...(granted as Set<string>)].sort();
+	assert.ok(!allowed.includes('read_at'), 'direct_messages grants read_at to clients');
+	assert.deepEqual([...selectLiteral('DM_COLUMNS')].sort(), allowed);
+	const source = read('src/lib/core/data.ts');
+	const body = source.match(/export interface DirectMessage \{([\s\S]*?)\n\}/);
+	assert.ok(body, 'could not locate DirectMessage in data.ts — re-anchor');
+	const declared = [...body[1].matchAll(/^\t(\w+):/gm)].map((m) => m[1]).sort();
+	assert.deepEqual(declared, allowed);
+	assert.ok(!/from\(TABLES\.direct_messages\)[^;]*\.select\('\*'\)/.test(source), 'a direct_messages read selects *');
+});
+
 // ── Compile-time: a narrowed run read cannot be read for what it did not fetch ──
 //
 // `svelte-check` is the gate for these, not `tsx --test`: a read of an absent

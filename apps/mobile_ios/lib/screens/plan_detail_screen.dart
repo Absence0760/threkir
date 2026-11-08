@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
@@ -107,6 +108,17 @@ const DisclosureState _kDisclosureDefaults = {
 
 /// Web `isWorkoutSkipped` twin — deliberately dropped, off the books.
 bool _isWorkoutSkipped(PlanWorkoutRow wo) => isWorkoutSkipped(wo.skippedAt);
+
+PlanWorkoutProgress _progressOf(Iterable<PlanWorkoutRow> workouts) =>
+    planWorkoutProgress([
+      for (final w in workouts)
+        CountableWorkout(
+          kind: w.kind,
+          completedRunId: w.completedRunId,
+          manuallyCompleted: w.manuallyCompleted,
+          skippedAt: w.skippedAt?.toIso8601String(),
+        ),
+    ]);
 
 /// Filter the viewer's club memberships to ones they can publish a
 /// plan-template into — owner or admin. Pure so it's directly
@@ -239,6 +251,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   bool _disclosureTouched = false;
   // Finished weeks fold into one summary row until the runner opens them.
   bool _showEarlierWeeks = false;
+  final ScrollController _scroll = ScrollController();
+  final GlobalKey _currentWeekKey = GlobalKey();
   String? _assigningCoachName;
 
   /// The calendar race this plan was built for (decisions § 2156).
@@ -282,6 +296,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _midnight?.cancel();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -2183,15 +2198,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         .where((w) => toIsoDate(w.scheduledDate) == today && w.kind != 'rest')
         .cast<PlanWorkoutRow?>()
         .firstOrNull;
-    final allActive = _byWeek.values
-        .expand((x) => x)
-        .where((w) => w.kind != 'rest' && !_isWorkoutSkipped(w))
-        .toList();
-    final done = allActive.where(isWorkoutCompleted).length;
-    final pct =
-        allActive.isEmpty ? 0 : (100 * done / allActive.length).round();
-    final body = _bodyList(
-        theme, l10n, p, pct, done, allActive.length, currentWeek, todayWorkout);
+    final progress = _progressOf(_byWeek.values.expand((x) => x));
+    final body = _bodyList(theme, l10n, p, progress.pct, progress.completed,
+        progress.total, currentWeek, todayWorkout);
 
     return Scaffold(
       appBar: AppBar(
@@ -2264,6 +2273,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         ? WalkRunGraduationCard.fromRows(allWorkouts)
         : null;
     return ListView(
+      controller: _scroll,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         _heroCard(theme, l10n, p, pct, done, total,
@@ -2560,13 +2570,12 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   /// section instead of sitting eighteen cards down.
   Widget _weeksList(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,
       int currentWeek) {
-    final started = !_notStarted(p);
-    final earlier =
-        started ? _weeks.where((w) => w.weekIndex < currentWeek).toList() : const <PlanWeekRow>[];
-    final rest = _weeks.where((w) => !earlier.contains(w)).toList();
-    final earlierWorkouts = [
-      for (final w in earlier) ...(_byWeek[w.id] ?? const <PlanWorkoutRow>[]),
-    ];
+    final folded = foldedPlanWeekCount(toIsoDate(p.startDate),
+        toIsoDate(p.endDate), toIsoDate(widget.now()), _weeks.length);
+    final earlier = _weeks.where((w) => w.weekIndex < folded).toList();
+    final rest = _weeks.where((w) => w.weekIndex >= folded).toList();
+    final earlierProgress = _progressOf(
+        [for (final w in earlier) ...?_byWeek[w.id]]);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -2595,10 +2604,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
                                     ?.copyWith(fontWeight: FontWeight.w700)),
                             Text(
                                 l10n.planDetailWeekDoneCount(
-                                    earlierWorkouts
-                                        .where(isWorkoutCompleted)
-                                        .length,
-                                    _activeCount(earlierWorkouts)),
+                                    earlierProgress.completed,
+                                    earlierProgress.total),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurfaceVariant,
                                 )),
@@ -2627,9 +2634,27 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     );
   }
 
-  int _activeCount(List<PlanWorkoutRow> workouts) => workouts
-      .where((w) => w.kind != 'rest' && !_isWorkoutSkipped(w))
-      .length;
+  /// Opens the week list and brings the current week to the top. The list is
+  /// lazy, so a card far below the fold has no context until the scroll
+  /// reaches it: step down a viewport at a time until it is built.
+  Future<void> _goToCurrentWeek() async {
+    _setDisclosure('weeks', true);
+    await WidgetsBinding.instance.endOfFrame;
+    while (mounted && _currentWeekKey.currentContext == null) {
+      if (!_scroll.hasClients) return;
+      final pos = _scroll.position;
+      if (pos.pixels >= pos.maxScrollExtent) break;
+      _scroll.jumpTo(math.min(
+          pos.pixels + pos.viewportDimension, pos.maxScrollExtent));
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    final target = _currentWeekKey.currentContext;
+    if (!mounted || target == null || !target.mounted) return;
+    await Scrollable.ensureVisible(target,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 250));
+  }
 
   /// `training_plans.rules` is an untyped jsonb column; web renders it as a
   /// list of strings, so anything else is treated as no rules.
@@ -3051,9 +3076,29 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final assigned = coachId != null && coachId != _viewerId();
     final pills = <Widget>[
       if (!notStarted && _weeks.isNotEmpty)
-        _pill(theme,
-            l10n.planDetailWeekOfN(_currentWeekIndex(p) + 1, _weeks.length),
-            key: const Key('planDetailWeekOfN')),
+        Semantics(
+          button: true,
+          hint: l10n.planDetailGoToThisWeek,
+          child: Tooltip(
+            message: l10n.planDetailGoToThisWeek,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              onTap: _goToCurrentWeek,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Center(
+                  widthFactor: 1,
+                  child: _pill(
+                      theme,
+                      l10n.planDetailWeekOfN(
+                          _currentWeekIndex(p) + 1, _weeks.length),
+                      key: const Key('planDetailWeekOfN'),
+                      icon: Icons.south),
+                ),
+              ),
+            ),
+          ),
+        ),
       if (relation.isNotEmpty)
         _pill(theme, relation,
             key: const Key('planDetailCountdown'),
@@ -3318,8 +3363,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     final phase = planPhaseFromDb(w.phase);
     final today = toIsoDate(widget.now());
     final workouts = _byWeek[w.id] ?? const <PlanWorkoutRow>[];
+    final progress = _progressOf(workouts);
     final isCurrent = w.weekIndex == currentWeek && !_notStarted(p);
-    return Container(
+    final card = Container(
       key: ValueKey('planDetailWeek-${w.weekIndex}'),
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -3380,8 +3426,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           ),
           Text(
               l10n.planDetailWeekDoneCount(
-                  workouts.where(isWorkoutCompleted).length,
-                  _activeCount(workouts)),
+                  progress.completed, progress.total),
               key: ValueKey('planDetailWeekCount-${w.weekIndex}'),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -3403,6 +3448,9 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
         ],
       ),
     );
+    return w.weekIndex == currentWeek
+        ? KeyedSubtree(key: _currentWeekKey, child: card)
+        : card;
   }
 
   Widget _workoutRow(ThemeData theme, AppLocalizations l10n, TrainingPlanRow p,

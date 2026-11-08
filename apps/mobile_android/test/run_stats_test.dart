@@ -6,6 +6,103 @@ import '../lib/run_altitude.dart';
 import '../lib/run_stats.dart';
 
 void main() {
+  group('live moving time (issue #1300)', () {
+    final t0 = DateTime(2026, 11, 7, 7, 0, 0);
+    Waypoint at(int s, double cumM) => Waypoint(
+          lat: 47.37,
+          lng: 8.54 + cumM / (111320 * 0.6773),
+          timestamp: t0.add(Duration(seconds: s)),
+        ).withCumulativeDistance(cumM);
+
+    // 60 s at 3 m/s, a 90 s stop the filter credits 0.3 m/s of drift over,
+    // then 30 s at 3 m/s.
+    final stopAndGo = <Waypoint>[
+      for (var s = 0; s <= 60; s++) at(s, 3.0 * s),
+      for (var s = 70; s <= 150; s += 10) at(s, 180 + 0.3 * (s - 60)),
+      for (var s = 151; s <= 180; s++) at(s, 207 + 3.0 * (s - 150)),
+    ];
+
+    test('extending as the line grows matches the finished movingTimeOf', () {
+      final acc = MovingTimeAccumulator();
+      for (var n = 1; n <= stopAndGo.length; n += 7) {
+        acc.extend(stopAndGo.sublist(0, n));
+      }
+      acc.extend(stopAndGo);
+      expect(acc.movingTime, movingTimeOf(stopAndGo));
+      expect(acc.movingTime, const Duration(seconds: 90));
+    });
+
+    test('an unstamped track measures on positions, as movingTimeOf does', () {
+      final unstamped = [
+        for (final w in stopAndGo) w.withCumulativeDistance(null),
+      ];
+      final acc = MovingTimeAccumulator()..extend(unstamped);
+      expect(acc.movingTime, movingTimeOf(unstamped));
+    });
+
+    test('a stop adds no moving time, so the average it divides holds', () {
+      final acc = MovingTimeAccumulator()..extend(stopAndGo.sublist(0, 61));
+      final before = acc.movingTime;
+      acc.extend(stopAndGo.sublist(0, 70));
+      expect(acc.movingTime, before);
+      expect(acc.lastMovingAt, t0.add(const Duration(seconds: 60)));
+    });
+
+    test('a shorter line is a new recording and starts over', () {
+      final acc = MovingTimeAccumulator()..extend(stopAndGo);
+      acc.extend(stopAndGo.sublist(0, 11));
+      expect(acc.movingTime, const Duration(seconds: 10));
+    });
+
+    test('averagingTime takes moving time on GPS and the clock otherwise', () {
+      const moving = Duration(minutes: 5);
+      const elapsed = Duration(minutes: 7);
+      expect(
+          averagingTime(
+              gpsMeasured: true, movingTime: moving, elapsed: elapsed),
+          moving);
+      expect(
+          averagingTime(
+              gpsMeasured: false, movingTime: Duration.zero, elapsed: elapsed),
+          elapsed);
+    });
+
+    group('isStandingStill', () {
+      DateTime s(int sec) => t0.add(Duration(seconds: sec));
+
+      test('says Stopped once the latest fix is 10 s past the last movement',
+          () {
+        expect(
+            isStandingStill(latestFixAt: s(69), lastMovingAt: s(60), since: s(0)),
+            isFalse);
+        expect(
+            isStandingStill(latestFixAt: s(70), lastMovingAt: s(60), since: s(0)),
+            isTrue);
+      });
+
+      test('a standing start counts from the first fix', () {
+        expect(isStandingStill(latestFixAt: s(9), lastMovingAt: null, since: s(0)),
+            isFalse);
+        expect(isStandingStill(latestFixAt: s(10), lastMovingAt: null, since: s(0)),
+            isTrue);
+      });
+
+      test('a resume counts from its own first fix, not the old movement', () {
+        expect(
+            isStandingStill(
+                latestFixAt: s(305), lastMovingAt: s(60), since: s(300)),
+            isFalse);
+      });
+
+      test('no fix yet, or no anchor yet, is never Stopped', () {
+        expect(isStandingStill(latestFixAt: null, lastMovingAt: null, since: s(0)),
+            isFalse);
+        expect(isStandingStill(latestFixAt: s(99), lastMovingAt: null, since: null),
+            isFalse);
+      });
+    });
+  });
+
   group('movingTimeOf', () {
     // Zürich coordinates, moving eastward. ~0.00001 degree of longitude at
     // 47.37°N is ~0.75 m — usable for constructing realistic short segments.

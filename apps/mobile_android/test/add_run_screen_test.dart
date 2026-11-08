@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/local_run_store.dart';
@@ -12,6 +14,8 @@ import '../lib/screens/add_run_screen.dart';
 import 'pump_until.dart';
 
 late Directory _runsDir;
+
+class _FakeApi extends ApiClient {}
 
 Future<({LocalRunStore runs, LocalRouteStore routes, Preferences prefs})>
     _makeStores() async {
@@ -477,6 +481,152 @@ void main() {
       expect(find.text('Discard changes?'), findsNothing);
       expect(find.byType(AddRunScreen), findsNothing);
       expect(find.text('open'), findsOneWidget);
+    });
+  });
+
+  // Issue #1300 § 3: with no saved routes the field was a bare InputDecorator
+  // with no tap handler, so "build or import one" pointed at nothing.
+  group('empty route field builds or imports a route', () {
+    const pickerChannel =
+        MethodChannel('miguelruivo.flutter.plugins.filepicker');
+    tearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(pickerChannel, null));
+
+    final built = cm.Route(
+      id: 'built-1',
+      userId: 'test-user',
+      name: 'Harbour loop',
+      waypoints: const [
+        cm.Waypoint(lat: 47.37, lng: 8.54),
+        cm.Waypoint(lat: 47.371, lng: 8.541),
+      ],
+      distanceMetres: 7250,
+    );
+
+    Future<void> pumpEmpty(
+      WidgetTester tester,
+      ({LocalRunStore runs, LocalRouteStore routes, Preferences prefs}) s, {
+      ApiClient? api,
+      Future<cm.Route?> Function(BuildContext)? openRouteBuilder,
+    }) async {
+      // Tall enough that the lazily built ListView reaches the title field.
+      tester.view.physicalSize = const Size(800, 3000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AddRunScreen(
+          runStore: s.runs,
+          routeStore: s.routes,
+          preferences: s.prefs,
+          apiClient: api,
+          openRouteBuilder: openRouteBuilder,
+        ),
+      ));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('tapping it offers Build a route and Import a file',
+        (tester) async {
+      final s = await _makeStores();
+      await pumpEmpty(tester, s, api: _FakeApi());
+
+      await tester.tap(find.byKey(const Key('add_run_add_route')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Build a route'), findsOneWidget);
+      expect(find.text('Import a file'), findsOneWidget);
+    });
+
+    testWidgets('signed out, the sheet offers only Import', (tester) async {
+      final s = await _makeStores();
+      await pumpEmpty(tester, s);
+
+      await tester.tap(find.byKey(const Key('add_run_add_route')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Build a route'), findsNothing,
+          reason: 'the route builder needs a signed-in ApiClient');
+      expect(find.text('Import a file'), findsOneWidget);
+    });
+
+    testWidgets('a route saved in the builder comes back selected',
+        (tester) async {
+      final s = await _makeStores();
+      var opened = 0;
+      // The real builder saves the route to the store before popping it.
+      await pumpEmpty(tester, s, api: _FakeApi(), openRouteBuilder: (_) async {
+        opened++;
+        s.routes.debugSeed([built]);
+        return built;
+      });
+
+      await tester.tap(find.byKey(const Key('add_run_add_route')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Build a route'));
+      await tester.pumpAndSettle();
+
+      expect(opened, 1);
+      expect(find.text('Harbour loop • 7.25 km'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, '7.25'), findsOneWidget,
+          reason: 'selecting the route fills the distance');
+      expect(find.widgetWithText(TextFormField, 'Harbour loop'), findsOneWidget,
+          reason: 'and the empty title');
+    });
+
+    testWidgets('leaving the builder without saving leaves the field empty',
+        (tester) async {
+      final s = await _makeStores();
+      await pumpEmpty(tester, s,
+          api: _FakeApi(), openRouteBuilder: (_) async => null);
+
+      await tester.tap(find.byKey(const Key('add_run_add_route')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Build a route'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('add_run_add_route')), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, '7.25'), findsNothing);
+    });
+
+    testWidgets('a file holding one route is imported and selected',
+        (tester) async {
+      final s = await _makeStores();
+      final dir = Directory.systemTemp.createTempSync('add_run_import_');
+      addTearDown(() => dir.deleteSync(recursive: true));
+      await tester.runAsync(
+          () => s.routes.init(overrideDirectory: Directory('${dir.path}/store')
+            ..createSync()));
+      final file = File('${dir.path}/canal.gpx')
+        ..writeAsStringSync('<?xml version="1.0"?>'
+            '<gpx version="1.1" creator="t"><trk><name>Canal path</name>'
+            '<trkseg>'
+            '<trkpt lat="51.5" lon="-0.12"></trkpt>'
+            '<trkpt lat="51.51" lon="-0.12"></trkpt>'
+            '</trkseg></trk></gpx>');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(pickerChannel, (_) async => [
+                {
+                  'name': 'canal.gpx',
+                  'path': file.path,
+                  'size': file.lengthSync(),
+                },
+              ]);
+      await pumpEmpty(tester, s);
+
+      await tester.tap(find.byKey(const Key('add_run_add_route')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Import a file'));
+      await pumpUntil(
+          tester,
+          () => find.textContaining('Canal path •').evaluate().isNotEmpty,
+          describe: 'the imported route to be selected');
+
+      expect(s.routes.routes.map((r) => r.name), ['Canal path']);
+      expect(find.widgetWithText(TextFormField, 'Canal path'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 10));
     });
   });
 }

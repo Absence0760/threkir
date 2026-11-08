@@ -47,6 +47,17 @@ class AppTheme {
   /// (4.77:1) and a mark on the light surfaces (4.54:1 on [snow]).
   static const Color coralDeep = Color(0xFFC24E24);
 
+  /// The coral container pair, one tonal step each side of the accent: light
+  /// paints [coralTint] under [coralInk], dark the same two swapped. Seeding
+  /// from [dusk] left `primaryContainer` violet under a coral `primary`, so the
+  /// lap button drew an orange flag on a purple disc. These sit at the tones
+  /// the violet container had (7.243:1 between them, `primary` 3.689:1 light /
+  /// 3.784:1 dark on the container), so every pairing measured against the old
+  /// container moved by under 0.1. Figures in
+  /// `test/app_theme_nav_fab_contrast_test.dart`.
+  static const Color coralTint = Color(0xFFFFDBCD);
+  static const Color coralInk = Color(0xFF71361B);
+
   /// The secondary accent: [lilac] on dark, [violet] on light.
   static const Color lilac = Color(0xFFB9A7E8);
   static const Color violet = Color(0xFF5B4B8A);
@@ -84,6 +95,8 @@ class AppTheme {
     ).copyWith(
       primary: coralDeep,
       onPrimary: Colors.white,
+      primaryContainer: coralTint,
+      onPrimaryContainer: coralInk,
       secondary: violet,
       onSecondary: Colors.white,
       surface: Colors.white,
@@ -271,6 +284,8 @@ class AppTheme {
     ).copyWith(
       primary: coral,
       onPrimary: onCoral,
+      primaryContainer: coralInk,
+      onPrimaryContainer: coralTint,
       secondary: lilac,
       onSecondary: night,
       surface: nightRaised,

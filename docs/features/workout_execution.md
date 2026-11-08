@@ -93,7 +93,7 @@ class WorkoutRunner {
   // Current-step derived metrics (cheap getters, recomputed from the last snapshot).
   double get stepDistanceMetres;
   Duration get stepElapsed;
-  int? get stepAveragePaceSecPerKm;
+  int? get stepLivePaceSecPerKm;         // trailing 200 m within the step, null until paceIsReady
   PaceAdherence get paceAdherence;        // onPace | ahead | behind | wayAhead | wayBehind
   double get stepRemainingMetres;
 
@@ -147,7 +147,7 @@ One new widget: `apps/mobile_android/lib/widgets/workout_execution_band.dart`. M
 └────────────────────────────────────────────────┘
 ```
 
-- **Line 1**: step label · target distance · target pace. Pace pip colour tracks `paceAdherence` (green onPace, amber ahead/behind, red wayAhead/wayBehind) with a signed seconds delta in the runner's unit, suffixed ("+16s/mi", `UnitFormat.paceDelta`). The step average behind the pip, `paceAdherence` and the drift cue stay off until the step has covered 50 m in 20 s (decisions § 2361); until then the pip shows "—".
+- **Line 1**: step label · target distance · target pace. Pace pip colour tracks `paceAdherence` (green onPace, amber ahead/behind, red wayAhead/wayBehind) with a signed seconds delta in the runner's unit, suffixed ("+16s/mi", `UnitFormat.paceDelta`). The pace behind the pip is `stepLivePaceSecPerKm`, the step's trailing 200 m (the recorder's rolling window, re-seeded at each step's start so it never reaches into the previous step, and sampled only when the distance moves so the timer's ticks between fixes cannot read as a slowdown), not the cumulative step average: a slow first minute no longer holds the pip and the drift cue on "way behind" after the runner has reached the target. It, `paceAdherence` and the drift cue stay off until that stretch passes the shared `paceIsReady` rule, 50 m and 20 s (decisions § 2361, § 2364); until then the pip shows "—". Per-step results still record the step's cumulative pace.
 - **Line 2**: progress bar + remaining-metres readout. Bar fills as `stepDistance / targetDistance` capped at 1.0.
 - **Line 3**: expander. Collapsed by default; tap the card to expand. Keeps screen real estate for the map.
 

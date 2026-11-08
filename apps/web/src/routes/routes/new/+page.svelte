@@ -15,6 +15,7 @@
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
 	import { saveRoute } from '#lib/core/data.ts';
 	import { pickSavePolyline } from '#lib/routes/route_save_polyline.ts';
+	import { RETURN_PARAM, savedRouteDestination } from '#lib/routes/route_return.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { distanceInPreferred, getUnit } from '#lib/format/units.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -696,7 +697,10 @@
 			showSaveModal = false;
 			saved = true;
 			showToast(m('routeNew.savedToast'), 'success');
-			goto(`/routes/${route.id}`);
+			goto(
+				savedRouteDestination(page.url.searchParams.get(RETURN_PARAM), route.id) ??
+					`/routes/${route.id}`,
+			);
 		} catch (err) {
 			// Surface the failure IN the save modal (persistent, in-context)
 			// and keep it open with the user's work intact — a transient toast

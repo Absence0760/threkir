@@ -120,10 +120,69 @@ class WorkoutRunnerTest {
 
         val fast = WorkoutRunner(workoutOf(listOf(rep)))
         fast.onTotals(0.0, 0.0, nowMs = 0)
-        assertTrue(fast.onTotals(120.0, 19.0, nowMs = 19_000).none { it is WorkoutEvent.PaceDrift })
+        // 100 m clears the distance floor; 19 s is short of the time floor.
+        assertTrue(fast.onTotals(100.0, 19.0, nowMs = 19_000).none { it is WorkoutEvent.PaceDrift })
+        // A feed only counts once it moves the distance, as on the phone, so
+        // the 20 s sample has to carry new metres: 120 m in 20 s = 167 s/km.
         val due = fast.onTotals(120.0, 20.0, nowMs = 20_000).filterIsInstance<WorkoutEvent.PaceDrift>()
         assertEquals(73, due.single().deltaSPerKm)
         assertTrue(due.single().ahead)
+    }
+
+    @Test
+    fun `drift reads the step's trailing 200 m, not its whole average`() {
+        // Issue #1300: a slow first 50 m kept the cumulative average way behind
+        // long after the runner reached the target.
+        val steady = PushedStep(StepKind.Steady, null, null, distanceM = 8047, durationS = null, paceSPerKm = 348, toleranceSPerKm = 10)
+        val runner = WorkoutRunner(workoutOf(listOf(steady)))
+        runner.onTotals(0.0, 0.0, nowMs = 0)
+        assertTrue(runner.onTotals(50.0, 40.0, nowMs = 40_000).any { it is WorkoutEvent.PaceDrift })
+        // Until the step passes 250 m its window still holds the slow start.
+        for (i in 1..6) runner.onTotals(50.0 + i * 28.736, 40.0 + i * 10, nowMs = 40_000L + i * 10_000)
+        val later = (7..21).flatMap { i ->
+            runner.onTotals(50.0 + i * 28.736, 40.0 + i * 10, nowMs = 40_000L + i * 10_000)
+        }
+        // The average stays way behind (383 s/km at the end); the last 200 m read 348.
+        assertTrue(later.none { it is WorkoutEvent.PaceDrift })
+    }
+
+    @Test
+    fun `the drift window restarts with each step`() {
+        val recovery = PushedStep(StepKind.Recovery, null, null, distanceM = 400, durationS = null, paceSPerKm = 400, toleranceSPerKm = 10)
+        val shortRep = rep.copy(distanceM = 400)
+        val runner = WorkoutRunner(workoutOf(listOf(shortRep, recovery)))
+        runner.onTotals(0.0, 0.0, nowMs = 0)
+        for (i in 1..24) runner.onTotals(i * 400.0 / 24, i * 4.0, nowMs = i * 4_000L)
+        assertEquals(1, runner.currentIndex)
+        // The recovery at its own 400 s/km; a window reaching into the rep would read fast.
+        val events = (1..6).flatMap { i -> runner.onTotals(400.0 + i * 10, 96.0 + i * 4, nowMs = 96_000L + i * 4_000) }
+        assertTrue(events.none { it is WorkoutEvent.PaceDrift })
+    }
+
+    @Test
+    fun `a carried overshoot is timed from the new step's own start`() {
+        val shortRep = rep.copy(distanceM = 100)
+        val steady = PushedStep(StepKind.Steady, null, null, distanceM = 400, durationS = null, paceSPerKm = 240, toleranceSPerKm = 10)
+        val runner = WorkoutRunner(workoutOf(listOf(shortRep, steady)))
+        runner.onTotals(0.0, 0.0, nowMs = 0)
+        // 150 m in 45 s crosses the rep and carries 50 m and 15 s into the steady.
+        runner.onTotals(150.0, 45.0, nowMs = 45_000)
+        assertEquals(1, runner.currentIndex)
+        assertTrue(runner.onTotals(160.0, 48.0, nowMs = 48_000).none { it is WorkoutEvent.PaceDrift })
+        // 70 m in 21 s of the step = 300 s/km, 60 behind a 10 s tolerance.
+        val due = runner.onTotals(170.0, 51.0, nowMs = 51_000).filterIsInstance<WorkoutEvent.PaceDrift>()
+        assertEquals(60, due.single().deltaSPerKm)
+    }
+
+    @Test
+    fun `ticks between fixes do not read as a slowdown`() {
+        val steady = PushedStep(StepKind.Steady, null, null, distanceM = 1000, durationS = null, paceSPerKm = 300, toleranceSPerKm = 10)
+        val runner = WorkoutRunner(workoutOf(listOf(steady)))
+        runner.onTotals(0.0, 0.0, nowMs = 0)
+        for (i in 1..10) runner.onTotals(i * 20.0, i * 6.0, nowMs = i * 6_000L)
+        // A 6 s GPS hiccup: 200 m over 66 s would read 330 s/km, way behind.
+        val ticks = (61..66).flatMap { s -> runner.onTotals(200.0, s.toDouble(), nowMs = s * 1_000L) }
+        assertTrue(ticks.none { it is WorkoutEvent.PaceDrift })
     }
 
     @Test

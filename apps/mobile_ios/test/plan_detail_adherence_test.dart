@@ -126,7 +126,15 @@ Future<void> _pump(
   String? viewerId = _uid,
   double textScale = 1.0,
   DateTime? today,
+  bool tallView = true,
 }) async {
+  if (tallView) {
+    // Tall enough that the whole lazy body is built: what the screen shows
+    // should not depend on where the list's cache extent happens to end.
+    tester.view.physicalSize = const Size(2400, 12000);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+  }
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -479,7 +487,10 @@ void main() {
       tester.view.physicalSize = const Size(2560, 1440);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(tester.view.reset);
-      await _pump(tester, training: training(), social: _FakeSocial(const []));
+      await _pump(tester,
+          training: training(),
+          social: _FakeSocial(const []),
+          tallView: false);
       // 1280dp surface → the body ListView is centered + capped at 900dp.
       expect(tester.getSize(find.byType(ListView).first).width, 900);
     });
@@ -488,7 +499,10 @@ void main() {
       tester.view.physicalSize = const Size(1200, 2400);
       tester.view.devicePixelRatio = 3.0;
       addTearDown(tester.view.reset);
-      await _pump(tester, training: training(), social: _FakeSocial(const []));
+      await _pump(tester,
+          training: training(),
+          social: _FakeSocial(const []),
+          tallView: false);
       expect(tester.getSize(find.byType(ListView).first).width, 400);
     });
   });

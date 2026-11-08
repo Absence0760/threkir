@@ -10,6 +10,7 @@ import 'package:ui_kit/ui_kit.dart';
 import '../auth_error.dart';
 import '../dm_attachment.dart';
 import '../dm_pending_hides.dart';
+import '../dm_read_receipt.dart';
 import '../dm_send_error.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -122,6 +123,11 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   bool _loading = true;
   Object? _loadError;
   List<DirectMessageRow> _messages = const [];
+
+  /// The partner message this conversation was last marked read through. A
+  /// client cannot read `read_at` (a column grant withholds it, migration
+  /// 20271113000001), so it remembers how far it marked instead.
+  String? _markedThroughId;
   bool _hasMore = false;
   bool _loadingEarlier = false;
   bool _refreshing = false;
@@ -581,23 +587,12 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   Future<void> _markReadIfUnread() async {
     final partnerId = widget.partnerId;
     if (partnerId == null) return;
-    bool unread(DirectMessageRow m) =>
-        m.senderId == partnerId && m.readAt == null;
-    final shown = _messages.where(unread);
-    if (shown.isEmpty) return;
-    final through = shown.last;
+    final through = dmMarkReadThrough(_messages, partnerId, _markedThroughId);
+    if (through == null) return;
     try {
       await widget.api.markDmThreadRead(partnerId, through: through);
       if (!mounted) return;
-      final now = DateTime.now().toUtc();
-      setState(() {
-        _messages = [
-          for (final m in _messages)
-            unread(m) && _compareOrder(m, through) <= 0
-                ? m.copyWith(readAt: now)
-                : m,
-        ];
-      });
+      _markedThroughId = through.id;
     } catch (e) {
       debugPrint('message thread mark-read failed: ${safeErrorLabel(e)}');
     }
@@ -901,6 +896,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     }
     final tag = localeToTag(Localizations.localeOf(context));
     final me = widget.api.userId;
+    final seen = seenReceipt(_messages, me);
     // Reversed so the newest message sits at the bottom and the list opens
     // there, the way every conversation does.
     final items = <Widget>[
@@ -926,6 +922,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
               ? null
               : m.body,
           time: _stamp(m.createdAt, tag),
+          seenLabel: seen?.id == m.id
+              ? l10n.messagesSeenAt(_stamp(seen!.seenAt!, tag))
+              : null,
           onLongPress: m.unsentAt == null ? () => _showOptions(m) : null,
           longPressHint: l10n.messagesOptionsHint,
           attachment: m.unsentAt == null && hasDmRouteAttachment(m.routeId)
@@ -1046,6 +1045,7 @@ class _Bubble extends StatelessWidget {
     this.sending = false,
     this.sendingLabel,
     this.unsentLabel,
+    this.seenLabel,
     this.onLongPress,
     this.longPressHint,
   });
@@ -1059,6 +1059,9 @@ class _Bubble extends StatelessWidget {
 
   /// Set when the sender unsent the message; rendered in place of the body.
   final String? unsentLabel;
+
+  /// "Seen" and the time, under the viewer's newest message the partner read.
+  final String? seenLabel;
   final VoidCallback? onLongPress;
   final String? longPressHint;
 
@@ -1129,9 +1132,26 @@ class _Bubble extends StatelessWidget {
     } else {
       content = bubble;
     }
-    return Align(
+    final aligned = Align(
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: content,
+    );
+    if (seenLabel == null) return aligned;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        aligned,
+        Padding(
+          padding: const EdgeInsets.only(right: 4, bottom: 2),
+          child: Text(
+            seenLabel!,
+            key: const ValueKey('dm-seen'),
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -29,6 +29,7 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
+import '../runner_handle.dart';
 import '../recurrence.dart';
 import '../session_step_label.dart';
 import '../session_steps.dart';
@@ -1608,12 +1609,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         children: [
                           IdentityAvatar(
                               seed: a.userId,
-                              name: a.displayName,
+                              name: _shownName(l10n, a.displayName, a.userId),
                               imageUrl: a.avatarUrl,
                               size: 18,
                               fontSize: 10),
                           const SizedBox(width: 6),
-                          Text(a.displayName ?? l10n.eventAttendeeMember,
+                          Text(_shownName(l10n, a.displayName, a.userId),
                               style: theme.textTheme.bodySmall),
                           if (a.status != 'going') ...[
                             const SizedBox(width: 4),
@@ -3353,3 +3354,13 @@ class _SessionPlanAttachSheetState extends State<_SessionPlanAttachSheet> {
     );
   }
 }
+
+/// An attendee with no display name is shown as their runner handle rather
+/// than an indistinguishable "Member" (decisions § 2365).
+String _shownName(AppLocalizations l10n, String? name, String userId) =>
+    name ??
+    runnerHandle(
+      userId,
+      handle: (slug) => l10n.liveRunnerHandle(slug),
+      anonymous: l10n.liveRunnerAnonymous,
+    );

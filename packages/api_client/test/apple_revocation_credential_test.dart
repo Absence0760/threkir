@@ -16,6 +16,7 @@ class _FakeHttp extends http.BaseClient {
   int exchangeStatus = 204;
   bool exchangeThrows = false;
   Future<void>? exchangeGate;
+  int userWriteStatus = 200;
 
   /// Completes when the exchange request arrives. The handoff is not awaited
   /// by sign-in, so a test waits on the request itself rather than guessing
@@ -32,6 +33,18 @@ class _FakeHttp extends http.BaseClient {
       if (exchangeThrows) throw http.ClientException('offline', r.url);
       return _json(r, exchangeStatus,
           exchangeStatus == 204 ? null : {'error': 'apple_not_configured'});
+    }
+    if (r.url.path.endsWith('/auth/v1/user') && r.method == 'PUT') {
+      if (userWriteStatus != 200) {
+        return _json(r, userWriteStatus, {'msg': 'refused'});
+      }
+      return _json(r, 200, {
+        'id': 'u-apple',
+        'aud': 'authenticated',
+        'created_at': '2026-01-01T00:00:00Z',
+        'app_metadata': {'provider': 'apple'},
+        'user_metadata': (jsonDecode(r.body) as Map)['data'],
+      });
     }
     if (r.url.path.endsWith('/auth/v1/token')) {
       return _json(r, 200, {
@@ -61,6 +74,9 @@ class _FakeHttp extends http.BaseClient {
         headers: {'content-type': 'application/json'},
         request: r,
       );
+
+  Iterable<http.Request> get userWrites => requests.where(
+      (r) => r.url.path.endsWith('/auth/v1/user') && r.method == 'PUT');
 
   Iterable<http.Request> get exchanges => requests
       .where((r) => r.url.path.endsWith('/functions/v1/apple-token-exchange'));
@@ -148,5 +164,42 @@ void main() {
     fake.exchangeThrows = true;
     expect(
         await api.keepAppleRevocationCredential('c0de', nativeFlow: true), isFalse);
+  });
+
+  group('the Apple name', () {
+    test('the first authorization writes the name parts as full_name',
+        () async {
+      final id = await api.signInWithAppleIdToken(
+        idToken: 'id.tok',
+        givenName: ' Jane ',
+        familyName: 'Doe',
+      );
+      expect(id, 'u-apple');
+      expect(fake.userWrites, hasLength(1));
+      expect(jsonDecode(fake.userWrites.single.body)['data'],
+          {'full_name': 'Jane Doe'});
+    });
+
+    test('a later authorization, which carries no name, writes nothing',
+        () async {
+      await api.signInWithAppleIdToken(idToken: 'id.tok');
+      await api.signInWithAppleIdToken(
+          idToken: 'id.tok', givenName: '  ', familyName: null);
+      expect(fake.userWrites, isEmpty);
+    });
+
+    test('a refused name write does not undo the sign-in', () async {
+      fake.userWriteStatus = 500;
+      final id = await api.signInWithAppleIdToken(
+          idToken: 'id.tok', givenName: 'Jane');
+      expect(id, 'u-apple');
+      expect(fake.userWrites, hasLength(1));
+    });
+
+    test('appleFullName joins the non-empty parts', () {
+      expect(ApiClient.appleFullName('Jane', 'Doe'), 'Jane Doe');
+      expect(ApiClient.appleFullName(null, ' Doe '), 'Doe');
+      expect(ApiClient.appleFullName('', null), isNull);
+    });
   });
 }

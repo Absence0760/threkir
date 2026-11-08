@@ -2031,6 +2031,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runStatAvgPace => 'Avg Pace';
 
   @override
+  String get runStoppedChip => 'Stopped';
+
+  @override
   String get runStatAvgSpeed => 'Avg Speed';
 
   @override
@@ -2345,6 +2348,30 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get runGpsPermissionPending =>
       'No GPS — tracking will start when permission is granted.';
+
+  @override
+  String get runNoGpsStartTitle => 'Start without GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'Location is off on this phone, so this run would record time only — no route, distance or pace.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'Location access is off for this app, so this run would record time only — no route, distance or pace.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Record time only';
+
+  @override
+  String get runNoDistanceTitle => 'No distance recorded';
+
+  @override
+  String get runNoDistanceBody =>
+      'This run got no GPS fix and no step distance. Save it as a time-only activity, or discard it?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Save as time-only';
 
   @override
   String get runBackgroundLocationPaused =>
@@ -2863,6 +2890,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get addRunNoRoutes =>
       'No saved routes yet — build or import one to attach it here';
+
+  @override
+  String get addRunBuildRoute => 'Build a route';
+
+  @override
+  String get addRunImportRoute => 'Import a file';
 
   @override
   String get addRunDistanceInvalid => 'Enter a distance greater than 0';
@@ -5519,7 +5552,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get clubDetailMemberFallback => 'Member';
+  String clubDetailNameHint(String handle) {
+    return 'Club members see you as $handle.';
+  }
+
+  @override
+  String get clubDetailNameHintAction =>
+      'You can add your name in your account settings.';
 
   @override
   String get clubRoleOwner => 'Owner';
@@ -5899,9 +5938,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventNoRsvps => 'No RSVPs yet — be the first.';
-
-  @override
-  String get eventAttendeeMember => 'Member';
 
   @override
   String eventAttendeeStatus(String status) {
@@ -14433,6 +14469,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get challengeInviteSharePage => 'Share the challenge page';
 
   @override
+  String get clubInviteLinkTitle => 'Invite link';
+
+  @override
+  String get clubInviteBodyInvite => 'Only people with this link can join.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Anyone with this link joins straight away, without waiting for approval.';
+
+  @override
+  String get clubInviteBodyOpen => 'Anyone with this link can join.';
+
+  @override
+  String get clubInviteGenerate => 'Create invite link';
+
+  @override
+  String get clubInviteShare => 'Share link';
+
+  @override
+  String get clubInviteCopy => 'Copy link';
+
+  @override
+  String get clubInviteCopied => 'Invite link copied';
+
+  @override
+  String get clubInviteCopyFailed => 'Couldn\'t copy the link.';
+
+  @override
+  String get clubInviteLoadFailed => 'Couldn\'t load the invite link.';
+
+  @override
+  String get clubInviteRotate => 'Reset link';
+
+  @override
+  String get clubInviteRotateTitle => 'Reset the invite link?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'The current link stops working straight away. Anyone who already joined stays in.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Couldn\'t update the invite link. Try again.';
+
+  @override
+  String get clubShareClub => 'Share club';
+
+  @override
+  String get clubShareLinkCopied => 'Club link copied';
+
+  @override
   String get challengesLeaderboardEmpty => 'No progress logged yet.';
 
   @override
@@ -17548,6 +17635,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'Message unsent';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Seen $time';
+  }
+
+  @override
   String get messagesUnsend => 'Unsend';
 
   @override
@@ -18431,6 +18523,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planDetailHideEarlierWeeks => 'Hide earlier weeks';
+
+  @override
+  String get planDetailGoToThisWeek => 'Go to this week';
 
   @override
   String get planNewStartingPoint => 'Where are you starting from?';
@@ -19518,6 +19613,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'AI Coach in Messages';
+
+  @override
+  String get prefsReadReceipts => 'Read receipts';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Show people when you\'ve read their messages. Turn this off and you won\'t see when they\'ve read yours either.';
+
+  @override
+  String get prefsReadReceiptsFailed => 'Couldn\'t update read receipts.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Pinned at the top';

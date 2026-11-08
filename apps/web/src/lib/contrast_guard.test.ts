@@ -2104,3 +2104,32 @@ test('a given reaction is marked by its count weight, not by colour alone', () =
 	assert.ok(rule, 'RunSocial.svelte must style .reaction-btn.given .reaction-count');
 	assert.match(rule!.body, /font-weight:\s*700/);
 });
+
+// Mobile's primaryContainer pair is the counterpart of web's --color-primary
+// tint (the help illustrations' `accent-soft` is one on each platform). It was
+// seeded from the brand violet while the accent was coral, so the run screen
+// drew a coral flag on a purple disc (issue #1300). Web paints its tint FROM
+// --color-primary, so the hue is what has to agree across the two.
+test('mobile primaryContainer stays in the web accent hue, both themes', () => {
+	const dart = readFileSync(
+		resolve(__dirname, '../../../../packages/ui_kit/lib/src/theme/app_theme.dart'),
+		'utf-8',
+	);
+	const dartHex = (symbol: string): string => {
+		const hex = dart.match(
+			new RegExp(`static const Color ${symbol} = Color\\(0xFF([0-9A-Fa-f]{6})\\)`),
+		)?.[1];
+		assert.ok(hex, `app_theme.dart has no ${symbol}`);
+		return `#${hex!}`;
+	};
+	assert.match(dart, /primaryContainer: coralTint,\s*onPrimaryContainer: coralInk,/);
+	assert.match(dart, /primaryContainer: coralInk,\s*onPrimaryContainer: coralTint,/);
+	for (const marker of [':root {', ':root[data-theme="dark"]']) {
+		const accent = hueAngle(resolveToken(marker, 'color-primary'));
+		for (const symbol of ['coralTint', 'coralInk']) {
+			const raw = Math.abs(hueAngle(dartHex(symbol)) - accent) % 360;
+			const gap = raw > 180 ? 360 - raw : raw;
+			assert.ok(gap < 10, `AppTheme.${symbol} is ${gap.toFixed(1)} deg off --color-primary in ${marker}`);
+		}
+	}
+});

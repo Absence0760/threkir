@@ -2433,9 +2433,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// (messages the user sent and messages they received). `body`
 		// ships verbatim: it is the subject's own correspondence.
 		// audit/data-export-completeness (2026-05-30) Critical.
+		// The sent side leaves out read_at, the recipient's own read time
+		// (20271113000001); seen_at is what the recipient chose to share.
 		{
 			name: "direct_messages_sent.json", table: schema.TableDirectMessages,
-			filter: "sender_id=eq." + uid, sel: "*",
+			filter: "sender_id=eq." + uid,
+			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id",
 		},
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,

@@ -126,6 +126,11 @@ class _FakeSocial extends SocialService {
 }
 
 Future<void> _pump(WidgetTester tester, {String status = 'active'}) async {
+  // Tall enough that the whole lazy body is built: what the screen shows
+  // should not depend on where the list's cache extent happens to end.
+  tester.view.physicalSize = const Size(2400, 12000);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.reset);
   final p = _shortWeekPlan(status: status);
   await tester.pumpWidget(
     MaterialApp(

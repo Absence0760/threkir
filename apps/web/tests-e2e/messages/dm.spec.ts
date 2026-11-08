@@ -111,7 +111,8 @@ test.describe('/messages — direct messages', () => {
 
 	// Mark-read stops at the newest message the reader was shown, so a reply
 	// that lands between the thread read and the mark-read stays unread
-	// (decisions § 1916, the mobile rule).
+	// (decisions § 1916, the mobile rule). Since migration 20271113000001 it is
+	// the mark_direct_messages_read RPC, bounded by the message id.
 	test('opening a thread marks read only up to the newest message shown', async ({ page }) => {
 		const admin = getAdminClient();
 		const { data: seeded, error } = await admin
@@ -121,13 +122,14 @@ test.describe('/messages — direct messages', () => {
 			.single();
 		expect(error).toBeNull();
 		try {
-			const patch = page.waitForRequest(
-				(r) => r.method() === 'PATCH' && r.url().includes('/rest/v1/direct_messages')
+			const mark = page.waitForRequest(
+				(r) => r.method() === 'POST' && r.url().includes('/rest/v1/rpc/mark_direct_messages_read')
 			);
 			await page.goto(`/messages/${USER_B.id}`);
-			const url = decodeURIComponent((await patch).url());
-			expect(url).toContain(`created_at.lt."${seeded!.created_at}"`);
-			expect(url).toContain(`id.lte.${seeded!.id}`);
+			expect((await mark).postDataJSON()).toEqual({
+				p_partner_id: USER_B.id,
+				p_through_message_id: seeded!.id,
+			});
 		} finally {
 			await admin.from('direct_messages').delete().eq('sender_id', USER_B.id).eq('recipient_id', USER_A.id);
 		}

@@ -644,7 +644,7 @@ class _RoutineDetailScreenState extends State<RoutineDetailScreen> {
                   _chip(
                     Icons.repeat,
                     l10n.gymRoutineSupersetBadge(ex.supersetGroup!),
-                    theme.colorScheme.primary,
+                    theme.colorScheme.onPrimaryContainer,
                     theme.colorScheme.primaryContainer,
                     theme,
                   ),

@@ -19,6 +19,7 @@
 		mergeDmPollPage,
 		parseDmThreadRouteId
 	} from '#lib/social/dm_thread.ts';
+	import { dmMarkReadThrough, seenReceipt } from '#lib/social/dm_read_receipt.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import {
@@ -49,6 +50,11 @@
 	let loadingEarlier = $state(false);
 	let earlierError = $state(false);
 	let scroller = $state<HTMLDivElement | null>(null);
+	// The partner message this conversation was last marked read through. A
+	// client cannot read read_at (a column grant withholds it, migration
+	// 20271113000001), so it remembers how far it marked instead.
+	let markedThrough: { id: string; message: string } | null = null;
+	const seen = $derived(seenReceipt(messages, auth.user?.id));
 
 	let activeId = $derived(page.params.id ?? null);
 	// A deleted partner's thread has no partner to reply to, link to or mark
@@ -118,6 +124,7 @@
 		actionError = null;
 		leavingUnread = null;
 		unreadClearTried.clear();
+		markedThrough = null;
 		if (deletedHere !== id) deletedHere = null;
 		if (!id || !auth.user) {
 			messages = [];
@@ -161,16 +168,15 @@
 	async function markThreadRead(id: string) {
 		const target = parseDmThreadRouteId(id);
 		if (target.kind !== 'partner') return;
-		const newestShown = messages.findLast((m) => m.sender_id === target.partnerId);
-		if (!newestShown) return;
+		const through = dmMarkReadThrough(
+			messages,
+			target.partnerId,
+			markedThrough?.id === id ? markedThrough.message : null
+		);
+		if (!through) return;
 		try {
-			await markDmThreadRead(id, newestShown);
-			const readAt = new Date().toISOString();
-			if (id === activeId) {
-				messages = messages.map((m) =>
-					m.sender_id === target.partnerId && m.read_at === null ? { ...m, read_at: readAt } : m
-				);
-			}
+			await markDmThreadRead(target.partnerId, through);
+			if (id === activeId) markedThrough = { id, message: through };
 			// Zero the unread badge locally without a full refetch.
 			messagesInbox.markRead(id);
 			void dmUnreadStore.refresh();
@@ -216,13 +222,7 @@
 			// A reader scrolled up stays where they are: new messages append
 			// below, so leaving scrollTop alone keeps what they are reading.
 			if (follow || next.gap) void scrollToNewest();
-			const target = parseDmThreadRouteId(id);
-			if (
-				target.kind === 'partner' &&
-				messages.some((m) => m.sender_id === target.partnerId && m.read_at === null)
-			) {
-				await markThreadRead(id);
-			}
+			await markThreadRead(id);
 		} catch (e) {
 			console.warn('message thread poll failed', e);
 		} finally {
@@ -624,6 +624,11 @@
 						{/if}
 					</span>
 				</div>
+				{#if seen?.id === m.id && seen.seen_at}
+					<p class="seen" data-testid="dm-seen">
+						{tr('messages.seenAt', { time: fmtTime(seen.seen_at) })}
+					</p>
+				{/if}
 			{/each}
 		{/if}
 	</div>
@@ -806,6 +811,12 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
+	}
+	.seen {
+		align-self: flex-end;
+		margin: -0.25rem 0 0;
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-secondary);
 	}
 	.bubble .when {
 		font-size: var(--font-size-section-label);

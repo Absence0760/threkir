@@ -104,11 +104,13 @@ final class WatchWorkoutRunner {
     static let completed = "completed"
     static let skipped = "skipped"
     static let driftCueIntervalSeconds: TimeInterval = 45
-    /// The phone runner's `kStepPaceMinMetres` / `kStepPaceMinSeconds`: a
-    /// step's pace is not graded until it has covered 50 m in 20 s, so a
-    /// standing start is not announced as way behind (issue #1300).
-    static let stepPaceMinMetres: Double = 50
-    static let stepPaceMinSeconds = 20
+    /// The phone's `kPaceReadyMinMetres` / `kPaceReadyMinSeconds`: no pace is
+    /// graded over less than 50 m or 20 s, so a standing start is not
+    /// announced as way behind (issue #1300).
+    static let paceReadyMinMetres: Double = 50
+    static let paceReadyMinSeconds: Double = 20
+    /// The phone's `kStepLivePaceWindowMetres`.
+    static let livePaceWindowMetres: Double = 200
 
     let workout: PushedWorkout
     var steps: [PushedStep] { workout.steps }
@@ -122,6 +124,9 @@ final class WatchWorkoutRunner {
     private var emittedFirst = false
     private var firedWarning = false
     private var lastDriftAt: TimeInterval?
+    /// Trailing (step seconds, step metres) samples for the drift cue's pace,
+    /// re-seeded at each step's start: the phone's `stepLivePaceSecPerKm`.
+    private var livePace: [(t: Double, m: Double)] = [(t: 0, m: 0)]
     private var results: [WorkoutStepResultRecord] = []
 
     init(workout: PushedWorkout) {
@@ -171,6 +176,8 @@ final class WatchWorkoutRunner {
             stepStartElapsed = elapsedSeconds
             out.append(.transition(previous: -1, current: 0))
         }
+
+        addLivePaceSample()
 
         let step = steps[idx]
         let warningHit: Bool
@@ -249,15 +256,38 @@ final class WatchWorkoutRunner {
     }
 
     /// Signed drift in s/km (positive = slower) when the step is paced and
-    /// the runner is past twice its tolerance, else nil.
+    /// the runner is past twice its tolerance, else nil. Graded on the step's
+    /// trailing `livePaceWindowMetres` once that stretch spans 50 m and 20 s,
+    /// as the phone does, so a slow start is not still announced once the
+    /// runner is on pace.
     private func paceDrift(_ step: PushedStep) -> Int? {
         if workout.unpaced { return nil }
-        let d = stepDistance
-        let secs = stepSecs
-        if d < Self.stepPaceMinMetres || secs < Self.stepPaceMinSeconds { return nil }
-        let actual = Int((Double(secs) / (d / 1000)).rounded())
+        guard let actual = livePaceSecondsPerKm() else { return nil }
         let diff = actual - step.paceSecondsPerKm
         return abs(diff) > step.toleranceSecondsPerKm * 2 ? diff : nil
+    }
+
+    private func livePaceSecondsPerKm() -> Int? {
+        guard let first = livePace.first, let last = livePace.last else { return nil }
+        let gained = last.m - first.m
+        let seconds = last.t - first.t
+        if gained < Self.paceReadyMinMetres || seconds < Self.paceReadyMinSeconds { return nil }
+        return Int((seconds / (gained / 1000)).rounded())
+    }
+
+    private func addLivePaceSample() {
+        let t = stepElapsed
+        let m = stepDistance
+        guard let last = livePace.last else { return }
+        // Only a feed that moved the distance is a sample; the 1 s ticks
+        // between fixes would add time with no metres.
+        if m <= last.m || t < last.t { return }
+        if t == last.t, livePace.count > 1 { livePace.removeLast() }
+        livePace.append((t: t, m: m))
+        while livePace.count > 2, m - livePace[1].m >= Self.livePaceWindowMetres,
+              t - livePace[1].t >= Self.paceReadyMinSeconds {
+            livePace.removeFirst()
+        }
     }
 
     private func advance(status: String, carryOvershoot: Bool) -> WatchWorkoutEvent {
@@ -290,6 +320,7 @@ final class WatchWorkoutRunner {
         }
         firedWarning = false
         lastDriftAt = nil
+        livePace = [(t: 0, m: 0)]
         return isComplete ? .complete : .transition(previous: prev, current: idx)
     }
 

@@ -16,8 +16,8 @@ void main() {
       expect(formatFixed(0, 2, 'en'), '0.00');
     });
 
-    test('en does NOT group thousands (preserves old elevation output)', () {
-      // 10000 m elevation must render "10000", not "10,000".
+    test('en does NOT group thousands (toStringAsFixed parity)', () {
+      // Grouped whole-unit labels, elevation among them, use formatInteger.
       expect(formatFixed(10000, 0, 'en'), '10000');
       expect(formatFixed(10000, 0, 'en'), 10000.0.round().toString());
       expect(formatFixed(1234.5, 2, 'en'), '1234.50');
@@ -81,12 +81,13 @@ void main() {
       expect(UnitFormat.speed(360, DistanceUnit.km), '10,0');
     });
 
-    test('elevation is locale-aware and ungrouped', () {
+    test('elevation follows the active locale and groups thousands', () {
       registerActiveLocaleTag('en');
       expect(UnitFormat.elevation(120, DistanceUnit.km), '120 m');
-      expect(UnitFormat.elevation(10000, DistanceUnit.km), '10000 m');
+      expect(UnitFormat.elevation(10000, DistanceUnit.km), '10,000 m');
       registerActiveLocaleTag('de');
       expect(UnitFormat.elevation(120, DistanceUnit.km), '120 m');
+      expect(UnitFormat.elevation(10000, DistanceUnit.km), '10.000 m');
     });
   });
 

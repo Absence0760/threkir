@@ -283,6 +283,8 @@ class _SignInScreenState extends State<SignInScreen> {
           code: credential.authorizationCode,
           nativeFlow: appleUsesNativeFlow(),
         ),
+        givenName: credential.givenName,
+        familyName: credential.familyName,
       );
       widget.onSignedIn?.call();
       if (mounted) Navigator.pop(context, true);

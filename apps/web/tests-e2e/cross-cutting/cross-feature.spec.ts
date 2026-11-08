@@ -5,7 +5,7 @@ import { expect, test } from '../fixtures/test';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
-import { acceptCookieConsent, setStorageOnLoad } from '../fixtures/helpers';
+import { acceptCookieConsent, setStorageOnLoad, showAllPlanWeeks } from '../fixtures/helpers';
 import {
 	createThrowawayPlan,
 	deleteThrowawayPlan,
@@ -131,6 +131,7 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 		await expect(
 			page.getByRole('heading', { level: 1, name: plan!.name })
 		).toBeVisible({ timeout: 10_000 });
+		await showAllPlanWeeks(page);
 
 		// The plan's first two long runs are done through a linked run.
 		await expect(page.locator('.day-grid .day[data-status="done"]')).toHaveCount(

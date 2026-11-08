@@ -7,4 +7,5 @@ export 'src/gps_distance_estimator.dart';
 export 'src/run_recorder.dart';
 export 'src/run_snapshot.dart';
 export 'src/gym_workout_runner.dart';
+export 'src/pace_readiness.dart';
 export 'src/workout_runner.dart';

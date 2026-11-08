@@ -58,6 +58,14 @@ DateTime periodEnd(PeriodType period, DateTime anchor,
   }
 }
 
+/// Whether the period holding [anchor] is over at [now], which is when Next
+/// may step past it. [periodEnd] is the next period's local midnight, so the
+/// period's last day is still inside it: a day of slack here once enabled Next
+/// on a period's last day and stepped into a week that had not begun.
+bool periodHasEnded(PeriodType period, DateTime anchor, DateTime now,
+        {String weekStartDay = 'monday'}) =>
+    !periodEnd(period, anchor, weekStartDay: weekStartDay).isAfter(now);
+
 String periodTitle(PeriodType period, DateTime anchor, String localeTag,
     {String weekStartDay = 'monday'}) {
   switch (period) {
@@ -277,12 +285,8 @@ class _PeriodSummaryScreenState extends State<PeriodSummaryScreen> {
       periodStart(_period, _anchor, weekStartDay: _weekStartDay) ==
           periodStart(_period, DateTime.now(), weekStartDay: _weekStartDay);
 
-  bool get _isFuture {
-    final now = DateTime.now();
-    final end = periodEnd(_period, _anchor, weekStartDay: _weekStartDay);
-    // elapsed-time: a day of slack on an is-this-period-in-the-future test.
-    return end.isAfter(now.add(const Duration(days: 1)));
-  }
+  bool get _isFuture => !periodHasEnded(_period, _anchor, DateTime.now(),
+      weekStartDay: _weekStartDay);
 
   void _showWeek(DateTime anchor) {
     setState(() {

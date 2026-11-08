@@ -2662,6 +2662,10 @@
   "@runStatAvgPace": {
     "description": "Stat label for average pace on the recording overlay"
   },
+  "runStoppedChip": "Stopped",
+  "@runStoppedChip": {
+    "description": "Chip beside the clock on the recording overlay after about 10 s without moving. Display only: the clock keeps running, so this must not read as Paused."
+  },
   "runStatAvgSpeed": "Avg Speed",
   "@runStatAvgSpeed": {
     "description": "Stat label for average speed (cycling activities)"
@@ -3104,6 +3108,34 @@
   "runGpsPermissionPending": "No GPS — tracking will start when permission is granted.",
   "@runGpsPermissionPending": {
     "description": "Banner shown when location permission is denied (not permanently) at run start"
+  },
+  "runNoGpsStartTitle": "Start without GPS?",
+  "@runNoGpsStartTitle": {
+    "description": "Title of the dialog shown at START when a GPS run can get no fix (location off or denied)"
+  },
+  "runNoGpsStartServicesOffBody": "Location is off on this phone, so this run would record time only — no route, distance or pace.",
+  "@runNoGpsStartServicesOffBody": {
+    "description": "Body of the no-GPS start dialog when device location services are off"
+  },
+  "runNoGpsStartPermissionBody": "Location access is off for this app, so this run would record time only — no route, distance or pace.",
+  "@runNoGpsStartPermissionBody": {
+    "description": "Body of the no-GPS start dialog when the app has no location permission"
+  },
+  "runNoGpsStartTimeOnly": "Record time only",
+  "@runNoGpsStartTimeOnly": {
+    "description": "Button on the no-GPS start dialog that starts the run as a time-only activity"
+  },
+  "runNoDistanceTitle": "No distance recorded",
+  "@runNoDistanceTitle": {
+    "description": "Title of the dialog shown at Stop when the run has no GPS fix and no step distance"
+  },
+  "runNoDistanceBody": "This run got no GPS fix and no step distance. Save it as a time-only activity, or discard it?",
+  "@runNoDistanceBody": {
+    "description": "Body of the no-distance stop dialog offering to save as time-only or discard"
+  },
+  "runNoDistanceSaveTimeOnly": "Save as time-only",
+  "@runNoDistanceSaveTimeOnly": {
+    "description": "Button on the no-distance stop dialog that saves the run as a time-only activity"
   },
   "runBackgroundLocationPaused": "Tracking paused while you were away — your run kept timing and nothing was lost, but distance covered off screen wasn’t counted. Set Location to \"Allow all the time\" to track in the background.",
   "@runBackgroundLocationPaused": {
@@ -3779,6 +3811,14 @@
   "addRunNoRoutes": "No saved routes yet — build or import one to attach it here",
   "@addRunNoRoutes": {
     "description": "Empty-state hint shown in the route section when the user has no saved routes"
+  },
+  "addRunBuildRoute": "Build a route",
+  "@addRunBuildRoute": {
+    "description": "Option in the sheet the empty Add-run route field opens: opens the route builder, then attaches the saved route to this run"
+  },
+  "addRunImportRoute": "Import a file",
+  "@addRunImportRoute": {
+    "description": "Option in the sheet the empty Add-run route field opens: imports a GPX/KML/KMZ/GeoJSON file as a route; a single imported route is attached to this run"
   },
   "addRunDistanceInvalid": "Enter a distance greater than 0",
   "@addRunDistanceInvalid": {
@@ -7425,9 +7465,18 @@
       }
     }
   },
-  "clubDetailMemberFallback": "Member",
-  "@clubDetailMemberFallback": {
-    "description": "Fallback name for a club member with no display name"
+  "clubDetailNameHint": "Club members see you as {handle}.",
+  "@clubDetailNameHint": {
+    "description": "Club Members tab, shown to a member with no display name: how other members see them. {handle} is their anonymous runner handle (liveRunnerHandle); web clubHome.nameHint",
+    "placeholders": {
+      "handle": {
+        "type": "String"
+      }
+    }
+  },
+  "clubDetailNameHintAction": "You can add your name in your account settings.",
+  "@clubDetailNameHintAction": {
+    "description": "Second line of the club name hint, pointing at Settings > Account; web clubHome.nameHintAction"
   },
   "clubRoleOwner": "Owner",
   "@clubRoleOwner": {
@@ -7956,10 +8005,6 @@
   "eventNoRsvps": "No RSVPs yet — be the first.",
   "@eventNoRsvps": {
     "description": "Empty attendees state"
-  },
-  "eventAttendeeMember": "Member",
-  "@eventAttendeeMember": {
-    "description": "Fallback attendee name with no display name"
   },
   "eventAttendeeStatus": "({status})",
   "@eventAttendeeStatus": {
@@ -19221,6 +19266,70 @@
   "@challengeInviteSharePage": {
     "description": "Opens the share sheet with the public share page link"
   },
+  "clubInviteLinkTitle": "Invite link",
+  "@clubInviteLinkTitle": {
+    "description": "Heading of the invite-link card a club admin sees on the club screen"
+  },
+  "clubInviteBodyInvite": "Only people with this link can join.",
+  "@clubInviteBodyInvite": {
+    "description": "Invite card body on an invite-only club"
+  },
+  "clubInviteBodyRequest": "Anyone with this link joins straight away, without waiting for approval.",
+  "@clubInviteBodyRequest": {
+    "description": "Invite card body on a request-to-join club: the link skips the admin's approval"
+  },
+  "clubInviteBodyOpen": "Anyone with this link can join.",
+  "@clubInviteBodyOpen": {
+    "description": "Invite card body on an open club"
+  },
+  "clubInviteGenerate": "Create invite link",
+  "@clubInviteGenerate": {
+    "description": "Button making a club's first invite link"
+  },
+  "clubInviteShare": "Share link",
+  "@clubInviteShare": {
+    "description": "Opens the share sheet with the club invite link"
+  },
+  "clubInviteCopy": "Copy link",
+  "@clubInviteCopy": {
+    "description": "Copies the club invite link"
+  },
+  "clubInviteCopied": "Invite link copied",
+  "@clubInviteCopied": {
+    "description": "Banner after copying a club invite link"
+  },
+  "clubInviteCopyFailed": "Couldn't copy the link.",
+  "@clubInviteCopyFailed": {
+    "description": "Banner when copying a club link fails"
+  },
+  "clubInviteLoadFailed": "Couldn't load the invite link.",
+  "@clubInviteLoadFailed": {
+    "description": "Club invite card error"
+  },
+  "clubInviteRotate": "Reset link",
+  "@clubInviteRotate": {
+    "description": "Replaces the club invite link with a new one"
+  },
+  "clubInviteRotateTitle": "Reset the invite link?",
+  "@clubInviteRotateTitle": {
+    "description": "Confirm dialog title for resetting a club invite link"
+  },
+  "clubInviteRotateBody": "The current link stops working straight away. Anyone who already joined stays in.",
+  "@clubInviteRotateBody": {
+    "description": "Confirm dialog body for resetting a club invite link"
+  },
+  "clubInviteRotateFailed": "Couldn't update the invite link. Try again.",
+  "@clubInviteRotateFailed": {
+    "description": "Banner when creating or resetting a club invite link fails"
+  },
+  "clubShareClub": "Share club",
+  "@clubShareClub": {
+    "description": "Tooltip of the app-bar action sharing a public club's page"
+  },
+  "clubShareLinkCopied": "Club link copied",
+  "@clubShareLinkCopied": {
+    "description": "Banner when the club page link was copied because the share sheet could not open"
+  },
   "challengesLeaderboardEmpty": "No progress logged yet.",
   "@challengesLeaderboardEmpty": {
     "description": "Empty leaderboard state"
@@ -23132,6 +23241,15 @@
   "@messagesUnsentPlaceholder": {
     "description": "Placeholder shown in place of a message its sender unsent, to both people, and as the inbox preview"
   },
+  "messagesSeenAt": "Seen {time}",
+  "@messagesSeenAt": {
+    "description": "Under the newest message the viewer sent that the other person has read, when both have read receipts on. {time} is when they read it",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "messagesUnsend": "Unsend",
   "@messagesUnsend": {
     "description": "Action in the message options sheet, and the confirm button, to unsend (remove for both people) your own direct message"
@@ -24422,6 +24540,10 @@
   "planDetailHideEarlierWeeks": "Hide earlier weeks",
   "@planDetailHideEarlierWeeks": {
     "description": "Collapses the finished weeks"
+  },
+  "planDetailGoToThisWeek": "Go to this week",
+  "@planDetailGoToThisWeek": {
+    "description": "Hint on the plan header's week pill: tapping it scrolls the week list to the current week"
   },
   "planNewStartingPoint": "Where are you starting from?",
   "@planNewStartingPoint": {
@@ -25850,6 +25972,18 @@
   "prefsCoachInMessages": "AI Coach in Messages",
   "@prefsCoachInMessages": {
     "description": "Settings row: where the AI Coach appears in the Messages inbox"
+  },
+  "prefsReadReceipts": "Read receipts",
+  "@prefsReadReceipts": {
+    "description": "Settings switch: share and see direct-message read receipts"
+  },
+  "prefsReadReceiptsHint": "Show people when you've read their messages. Turn this off and you won't see when they've read yours either.",
+  "@prefsReadReceiptsHint": {
+    "description": "Subtitle of the read receipts switch; turning it off works both ways"
+  },
+  "prefsReadReceiptsFailed": "Couldn't update read receipts.",
+  "@prefsReadReceiptsFailed": {
+    "description": "Banner when the read receipts switch could not be saved"
   },
   "prefsCoachInMessagesPinned": "Pinned at the top",
   "@prefsCoachInMessagesPinned": {

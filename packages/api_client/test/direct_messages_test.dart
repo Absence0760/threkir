@@ -48,6 +48,7 @@ Map<String, dynamic> _message(
   String recipient = 'other-1',
   String createdAt = '2026-10-14T08:00:00Z',
   String? routeId,
+  String? seenAt,
 }) =>
     {
       'id': id,
@@ -56,7 +57,7 @@ Map<String, dynamic> _message(
       'recipient_id': recipient,
       'body': 'Body $id',
       'created_at': createdAt,
-      'read_at': null,
+      'seen_at': seenAt,
       'route_id': routeId,
     };
 
@@ -349,6 +350,8 @@ void main() {
       expect(q['order'], 'created_at.desc.nullslast,id.desc.nullslast');
       expect(q['limit'], '4');
       expect(q.containsKey('or'), isFalse);
+      expect(q['select']!.split(','), isNot(contains('read_at')));
+      expect(q['select']!.split(','), contains('seen_at'));
       expect(page.messages.map((m) => m.id), ['m-1', 'm-2', 'm-3']);
       expect(page.messages[1].routeId, 'route-9');
       expect(page.hasMore, isFalse);
@@ -454,6 +457,8 @@ void main() {
         'body': 'on my way',
         'route_id': null,
       });
+      expect(req.url.queryParameters['select']!.split(','),
+          isNot(contains('read_at')));
       expect(row.id, 'm-new');
     });
 
@@ -536,26 +541,62 @@ void main() {
         recipient: 'user-1',
         createdAt: '2026-10-14T08:09:00.654321Z'));
 
-    test('stamps only the partner\'s unread messages up to the newest shown',
-        () async {
+    test('asks the server to mark the partner\'s messages read through the '
+        'newest shown', () async {
       await _signIn(client);
 
       await api.markDmThreadRead('other-1', through: shown);
 
-      final req = fake.to(_messagesPath).single as http.Request;
-      expect(req.method, 'PATCH');
-      expect(req.url.queryParameters, {
-        'sender_id': 'eq.other-1',
-        'recipient_id': 'eq.user-1',
-        'read_at': 'is.null',
-        'or': '(created_at.lt."2026-10-14T08:09:00.654321Z",'
-            'and(created_at.eq."2026-10-14T08:09:00.654321Z",id.lte.m-9))',
+      expect(fake.to(_messagesPath), isEmpty,
+          reason: 'a client cannot write read_at directly any more');
+      final req =
+          fake.to('/rest/v1/rpc/mark_direct_messages_read').single as http.Request;
+      expect(req.method, 'POST');
+      expect(jsonDecode(req.body), {
+        'p_partner_id': 'other-1',
+        'p_through_message_id': 'm-9',
       });
-      expect((jsonDecode(req.body) as Map).keys, ['read_at']);
     });
 
     test('signed out throws without a wire call', () async {
       expect(api.markDmThreadRead('other-1', through: shown), throwsStateError);
+      expect(fake.requests, isEmpty);
+    });
+  });
+
+  group('read receipts setting', () {
+    const settingsPath = '/rest/v1/user_settings';
+
+    test('reads the viewer\'s own column', () async {
+      await _signIn(client);
+      fake.bodyByPath[settingsPath] = {'dm_read_receipts': false};
+
+      expect(await api.fetchMyDmReadReceipts(), isFalse);
+
+      final req = fake.to(settingsPath).single;
+      expect(req.url.queryParameters['select'], 'dm_read_receipts');
+      expect(req.url.queryParameters['user_id'], 'eq.user-1');
+    });
+
+    test('no row yet reads as on', () async {
+      await _signIn(client);
+      fake.bodyByPath[settingsPath] = <dynamic>[];
+      expect(await api.fetchMyDmReadReceipts(), isTrue);
+    });
+
+    test('writes the column on the viewer\'s row', () async {
+      await _signIn(client);
+
+      await api.setDmReadReceipts(false);
+
+      final req = fake.to(settingsPath).single as http.Request;
+      expect(req.method, 'POST');
+      expect(req.url.queryParameters['on_conflict'], 'user_id');
+      expect(jsonDecode(req.body), {'user_id': 'user-1', 'dm_read_receipts': false});
+    });
+
+    test('signed out cannot write', () async {
+      expect(api.setDmReadReceipts(false), throwsStateError);
       expect(fake.requests, isEmpty);
     });
   });

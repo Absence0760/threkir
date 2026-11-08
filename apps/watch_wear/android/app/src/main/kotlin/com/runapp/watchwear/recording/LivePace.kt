@@ -30,13 +30,14 @@ class LivePaceWindow(private val gapS: Double = ESTIMATOR_GAP_S) {
         if (last != null && t - last.first > gapS) seal()
         samples.addLast(t to distanceM)
         sinceSeal++
-        while (samples.size > 2 && distanceM - samples[1].second >= WINDOW_M) {
+        while (samples.size > 2 && distanceM - samples[1].second >= WINDOW_M && t - samples[1].first >= MIN_WINDOW_S) {
             samples.removeFirst()
         }
     }
 
     /// Seconds per km; null until the window since the last seal holds
-    /// [MIN_SAMPLES] fixes and [MIN_WINDOW_M].
+    /// [MIN_SAMPLES] fixes and spans [MIN_WINDOW_M] and [MIN_WINDOW_S], the
+    /// phone's shared `paceIsReady` rule (issue #1300).
     val secondsPerKm: Double?
         get() {
             if (sinceSeal < MIN_SAMPLES || samples.size < 2) return null
@@ -44,13 +45,14 @@ class LivePaceWindow(private val gapS: Double = ESTIMATOR_GAP_S) {
             val (t1, m1) = samples.last()
             val gained = m1 - m0
             val seconds = t1 - t0
-            if (gained < MIN_WINDOW_M || seconds <= 0) return null
+            if (gained < MIN_WINDOW_M || seconds < MIN_WINDOW_S) return null
             return seconds / gained * 1000.0
         }
 
     companion object {
         const val WINDOW_M = 200.0
         const val MIN_WINDOW_M = 50.0
+        const val MIN_WINDOW_S = 20.0
         const val MIN_SAMPLES = 5
 
         /// The spec's `GAP_S` at the 1 s interval this recorder requests

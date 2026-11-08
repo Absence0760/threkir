@@ -6,10 +6,10 @@ import '../backend_timeout.dart';
 import '../screens/event_detail_screen.dart';
 import '../social_service.dart';
 
-/// How far ahead Home's Today block looks for the runner's next club event
-/// (decisions § 2285). The Run tab keeps `fetchNextRsvpedEvent`'s own 48 h
-/// default, where the card stands in for the last run just before the event.
-const kHomeEventWindow = Duration(days: 7);
+/// How far ahead Home's Today block looks for the runner's next club event:
+/// 48 hours, the Run tab's own window (decisions § 2388, reversing § 2285's
+/// week). Web twin: `HOME_EVENT_WINDOW_HOURS` on `/dashboard`.
+const kHomeEventWindow = Duration(hours: 48);
 
 /// Opens [event]'s detail screen. An event row carries its club's id, not the
 /// slug the detail route needs, so the slug comes from the runner's clubs; a

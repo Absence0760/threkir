@@ -1,7 +1,8 @@
 // Home's Today block shows the runner's next `going` club event when it starts
-// within seven days (decisions § 2285, issue #1187). The window itself is the
-// server read's; this suite pins that Home asks for seven days, where the card
-// sits, and that a failed read leaves the rest of Home standing.
+// within 48 hours (decisions § 2388, which reverses § 2285's week; issue
+// #1187). The window itself is the server read's; this suite pins that Home
+// asks for 48 hours, where the card sits, and that a failed read leaves the
+// rest of Home standing.
 
 import 'dart:io';
 
@@ -99,15 +100,15 @@ Future<void> _mount(WidgetTester tester, SocialService social,
 }
 
 void main() {
-  testWidgets('an event within the week sits in the Today block, asked for '
-      'with a seven-day window', (tester) async {
+  testWidgets('an event within 48 hours sits in the Today block, asked for '
+      'with a 48-hour window', (tester) async {
     final social =
-        _FakeSocial(event: _event(DateTime.now().add(const Duration(days: 4))));
+        _FakeSocial(event: _event(DateTime.now().add(const Duration(hours: 20))));
     await _mount(tester, social, until: _card);
 
     expect(social.windows, isNotEmpty);
     expect(social.windows.every((w) => w == kHomeEventWindow), isTrue);
-    expect(kHomeEventWindow, const Duration(days: 7));
+    expect(kHomeEventWindow, const Duration(hours: 48));
     expect(find.descendant(of: _card, matching: find.text('Saturday Long Run')),
         findsOneWidget);
     double top(Finder f) => tester.getTopLeft(f).dy;

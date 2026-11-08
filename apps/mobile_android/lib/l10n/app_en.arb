@@ -1076,6 +1076,44 @@
   "@dashboardTrendGroupRecentHint": {
     "description": "One-line description under the Recent trend group heading"
   },
+  "dashboardHeroNothingPlanned": "Nothing planned today",
+  "@dashboardHeroNothingPlanned": {
+    "description": "Title of the Today hero on Home when nothing is planned and nothing was run today"
+  },
+  "dashboardHeroRestDay": "Rest day",
+  "@dashboardHeroRestDay": {
+    "description": "Title of the Today hero on a training-plan rest day"
+  },
+  "dashboardHeroRestDayBody": "Nothing on the plan today.",
+  "@dashboardHeroRestDayBody": {
+    "description": "Line under the rest-day title in the Today hero"
+  },
+  "dashboardHeroReadiness": "Readiness {score}",
+  "@dashboardHeroReadiness": {
+    "description": "One-line readiness score in the Today hero; {score} is 0-100",
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardHideFromHome": "Hide from Home",
+  "@dashboardHideFromHome": {
+    "description": "Long-press action on a Home trend group that hides it from Home"
+  },
+  "dashboardCardHidden": "{name} is hidden. You can bring it back in Settings.",
+  "@dashboardCardHidden": {
+    "description": "Banner after hiding a Home trend group; {name} is the group title",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardHideCardFailed": "Couldn't hide that card. Try again.",
+  "@dashboardHideCardFailed": {
+    "description": "Banner when hiding a Home trend group could not be saved"
+  },
   "readinessFromLoadOnly": "Scored from your training load only. Sleep and resting heart rate are not part of it yet.",
   "@readinessFromLoadOnly": {
     "description": "Footnote on the readiness card: the score is computed from training balance (TSB) alone, because no sleep or resting heart rate is read yet. Shown only while neither of those contributes."
@@ -26218,6 +26256,14 @@
   "prefsDisclosureLevel": "How much detail",
   "@prefsDisclosureLevel": {
     "description": "Settings > Preferences tile title for the progressive-disclosure level (universal disclosure_level key)"
+  },
+  "prefsHomeCards": "Home cards",
+  "@prefsHomeCards": {
+    "description": "Settings row and sheet title listing the Home trend groups to show or hide"
+  },
+  "prefsHomeCardsHint": "Untick a group to take it off Home. The choice follows you to every device.",
+  "@prefsHomeCardsHint": {
+    "description": "Explanation under the Home cards setting"
   },
   "prefsDisclosureAuto": "Automatic",
   "@prefsDisclosureAuto": {

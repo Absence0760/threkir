@@ -22,12 +22,17 @@ class ReadinessCard extends StatelessWidget {
   /// and the O(runs) aggregation isn't re-run. Standalone callers omit it.
   final List<TrainingLoadPoint>? loadSeries;
 
+  /// One line (score, band, advice) instead of the card, for the Today hero
+  /// beside a plan session or today's run (decisions § 2385).
+  final bool compact;
+
   const ReadinessCard({
     super.key,
     required this.runs,
     required this.now,
     this.hrPrefs = const HrPrefs(),
     this.loadSeries,
+    this.compact = false,
   });
 
   @override
@@ -47,6 +52,35 @@ class ReadinessCard extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final accent = _bandAccent(AppSemanticColors.of(context), readiness.band);
+
+    if (compact) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              l10n.dashboardHeroReadiness(readiness.score),
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            StatusPill(
+              label: _bandLabel(l10n, readiness.band),
+              foreground: accent,
+              fill: accent.withValues(alpha: 0.15),
+              size: StatusPillSize.compact,
+            ),
+            Text(
+              readiness.advice,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Card(
       child: Container(

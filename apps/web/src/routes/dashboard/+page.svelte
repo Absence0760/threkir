@@ -95,6 +95,13 @@
 	import { formatPlannedSize, formatWalkRunPattern } from '#lib/training/workout_summary_format.ts';
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import { weeklyGoalTarget } from '#lib/training/week_lead.ts';
+	import {
+		DASHBOARD_HIDDEN_CARDS_KEY,
+		parseHiddenCards,
+		todayHeroState,
+		withCardHidden,
+		type HideableDashboardCard,
+	} from '#lib/training/dashboard_layout.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { workoutKindLabel } from '#lib/training/workout_labels.ts';
 	import WorkoutEditor from '#lib/components/WorkoutEditor.svelte';
@@ -241,9 +248,9 @@
 	let weekStartDay = $state<'monday' | 'sunday'>('monday');
 	let upcomingEvent = $state<Awaited<ReturnType<typeof fetchNextRsvpedEvent>>>(null);
 	/// How far ahead the Today block looks for the next `going` club event:
-	/// a week, so a Saturday group run is on Home from the Sunday before
-	/// (decisions § 2285). Mobile Home's `kHomeEventWindow` is the twin.
-	const HOME_EVENT_WINDOW_HOURS = 7 * 24;
+	/// 48 hours, the window the Run tab uses too (decisions § 2388, which
+	/// reverses § 2285's week). Mobile Home's `kHomeEventWindow` is the twin.
+	const HOME_EVENT_WINDOW_HOURS = 48;
 	let fitnessHistory = $state<FitnessSnapshotRow[]>([]);
 	let liveSnap = $derived(computeSnapshot(runs));
 
@@ -370,6 +377,35 @@
 		trendOwner = uid;
 		trendOpen = readDisclosureState(TREND_SCOPE, uid, TREND_DEFAULTS);
 	});
+
+	/// Trend groups the runner hid from this page (`dashboard_hidden_cards`).
+	/// Universal, unlike the folds above: a fold is how much of a card this
+	/// screen shows, a hide is "I never want this on Home", which is a choice
+	/// about the runner rather than the screen (decisions § 2386).
+	let hiddenCards = $state<HideableDashboardCard[]>([]);
+	const TREND_GROUP_TITLES: Record<HideableDashboardCard, MessageKey> = {
+		volume: 'dash.trendGroupVolume',
+		fitness: 'dash.trendGroupFitness',
+		performance: 'dash.trendGroupPerformance',
+		effort: 'dash.trendGroupEffort',
+		recent: 'dash.trendGroupRecent',
+	};
+
+	/// Hiding is honestly reversible (Settings → Units & display brings a group
+	/// back), so it takes no confirm; the toast says where the way back is.
+	async function hideTrendGroup(id: HideableDashboardCard) {
+		const previous = hiddenCards;
+		hiddenCards = withCardHidden(previous, id, true);
+		const uid = auth.user?.id;
+		if (!uid) return;
+		try {
+			await updateUniversal(uid, { [DASHBOARD_HIDDEN_CARDS_KEY]: hiddenCards });
+			showToast(m('dash.cardHidden', { name: m(TREND_GROUP_TITLES[id]) }), 'success');
+		} catch (e) {
+			hiddenCards = previous;
+			showToast(m('dash.hideCardFailed', { error: errorCopy(e, m, 'dash.hideCardFailed') }), 'error');
+		}
+	}
 
 	function setTrendOpen(key: string, open: boolean): void {
 		if (trendOpen[key] === open) return;
@@ -841,6 +877,7 @@
 		storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
 		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
 		trainingLoadExpanded = effective<boolean>(settings, TRAINING_LOAD_EXPANDED_KEY) === true;
+		hiddenCards = parseHiddenCards(effective<unknown>(settings, DASHBOARD_HIDDEN_CARDS_KEY));
 		try {
 			// Layered resilience: a bad shape in the jsonb bag must
 			// not crash the dashboard. If the read or the validation
@@ -1129,6 +1166,26 @@
 		computeReadiness({ tsb: loadNow?.tsb ?? null }),
 	);
 
+	/// The newest run started on the local calendar day (`runs` is newest
+	/// first), for the Today hero's ran-today state.
+	let ranTodayRun = $derived.by(() => {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
+		return runs.find((r) => new Date(r.started_at) >= start) ?? null;
+	});
+	/// What leads the page (#1187, decisions § 2385): the plan hero on a plan,
+	/// the first-run block on a new account, else today's run, else readiness
+	/// with a prompt to add one. Mobile Home reads the same `todayHeroState`.
+	let heroState = $derived(
+		todayHeroState({
+			hasPlan: planOverview != null && planPosition != null,
+			raceToday: planPosition?.raceState === 'today',
+			todayWorkoutKind: planOverview?.todayWorkout?.kind ?? null,
+			isNewAccount,
+			ranToday: ranTodayRun != null,
+		}),
+	);
+
 	// Mileage chart data based on view mode.
 	//
 	// Persona-hunt Round 2 finding Intermediate #4. Pre-fix the
@@ -1263,6 +1320,47 @@
 			>
 		</div>
 	{:else}
+		<!-- Readiness lives in the Today hero (#1187): the whole card where
+		     nothing is planned, one line beside a plan session or today's run.
+		     Inputs are TSB-only until sleep + resting-HR reads land. -->
+		{#snippet readinessCard()}
+			{#if loadNow != null}
+				<section class="readiness-card readiness-{readiness.band}" data-testid="hero-readiness-card">
+					<div class="readiness-head">
+						<span class="readiness-label">{m('dash.readinessLabel')}</span>
+						<span class="readiness-band">{readiness.band}</span>
+					</div>
+					<div class="readiness-score">{readiness.score}</div>
+					<p class="readiness-advice">{readiness.advice}</p>
+					{#if readiness.contributors.length > 0}
+						<ul class="readiness-contribs">
+							{#each readiness.contributors as c (c.kind)}
+								<li>
+									<span class="contrib-name">{m(CONTRIBUTOR_NAMES[c.kind])}</span>
+									<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
+										{c.delta > 0 ? '+' : ''}{c.delta}
+									</span>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+					{#if readiness.contributors.every((c) => c.kind === 'form')}
+						<p class="readiness-source" data-testid="readiness-load-only">
+							{m('dash.readinessFromLoadOnly')}
+						</p>
+					{/if}
+				</section>
+			{/if}
+		{/snippet}
+		{#snippet readinessLine()}
+			{#if loadNow != null}
+				<p class="hero-readiness readiness-{readiness.band}" data-testid="hero-readiness">
+					<span class="hero-readiness-score">{m('dash.heroReadiness', { score: readiness.score })}</span>
+					<span class="readiness-band">{readiness.band}</span>
+					<span class="hero-readiness-advice">{readiness.advice}</span>
+				</p>
+			{/if}
+		{/snippet}
 		<div class="dash-toolbar">
 			<DashboardActionsMenu />
 		</div>
@@ -1275,22 +1373,18 @@
 				</div>
 			</section>
 		{/if}
-		{#if hasRuns}
-			<DashboardWeekLead
-				activities={runs}
-				planWorkouts={planFinished ? null : (planOverview?.workouts ?? null)}
-				weeklyGoal={weeklyGoalTarget(displayGoals)}
-				weekStart={weekStartDay}
-				{now}
-				onopensession={(w) => (editingWorkout = w)}
-				onopenweek={() => (periodModal = { type: 'week', date: new Date() })}
-			/>
-		{/if}
+		<!-- The adaptive Today hero leads the page in every state (#1187,
+		     decisions § 2385); `heroState` picks which. -->
 		{#if planOverview && planPosition}
 			{@const t = planOverview.todayWorkout}
 			{@const todayDone = t != null && (t.manually_completed === true || t.completed_run_id != null)}
 			{@const raceGoal = heroRace ? heroRace.goalTimeSec : planOverview.plan.goal_time_seconds}
-			<section class="plan-hero" class:race-today={planPosition.raceState === 'today'}>
+			<section
+				class="plan-hero"
+				class:race-today={planPosition.raceState === 'today'}
+				data-testid="dash-today-hero"
+				data-state={heroState}
+			>
 				<header class="plan-hero-head">
 					<div class="plan-hero-ident">
 						<span class="plan-hero-label">{m('dash.trainingPlanLabel')}</span>
@@ -1435,6 +1529,8 @@
 				</div>
 				{/if}
 
+				{@render readinessLine()}
+
 				{#if planOverview.upcoming}
 					<a class="plan-hero-next" href="/plans/{planOverview.upcoming.id}" data-testid="plan-hero-next">
 						<span class="material-symbols">event_upcoming</span>
@@ -1467,6 +1563,56 @@
 					breakWindow={planBreak?.window ?? null}
 				/>
 			{/if}
+		{:else if heroState === 'new_account'}
+			<div data-testid="dash-today-hero" data-state={heroState}>
+				<DashboardFirstRun hasPlan={false} />
+			</div>
+		{:else if heroState === 'ran_today' && ranTodayRun}
+			<a
+				class="today-hero today-hero-run"
+				href="/runs/{ranTodayRun.id}"
+				data-testid="dash-today-hero"
+				data-state={heroState}
+			>
+				<span class="today-hero-icon" aria-hidden="true">
+					<span class="material-symbols">directions_run</span>
+				</span>
+				<div class="today-hero-main">
+					<span class="today-label">{m('dash.heroRanToday')}</span>
+					<strong class="today-hero-title">
+						{formatDistance(ranTodayRun.distance_m)} &middot; {formatDuration(ranTodayRun.duration_s)}
+					</strong>
+					{@render readinessLine()}
+				</div>
+				<span class="material-symbols today-hero-arrow" aria-hidden="true">chevron_right</span>
+			</a>
+		{:else}
+			<section class="today-hero" data-testid="dash-today-hero" data-state={heroState}>
+				<div class="today-hero-main">
+					<span class="today-label">{m('dash.today')}</span>
+					<h2 class="today-hero-title">{m('dash.heroNothingPlanned')}</h2>
+					<p class="today-hero-body">{m('dash.heroNothingPlannedBody')}</p>
+				</div>
+				{@render readinessCard()}
+				<a class="btn btn-primary btn-sm today-hero-cta" href="/runs/new" data-testid="dash-hero-add-run">
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{m('dash.heroAddRun')}
+				</a>
+			</section>
+		{/if}
+		{#if hasRuns}
+			<DashboardWeekLead
+				activities={runs}
+				planWorkouts={planFinished ? null : (planOverview?.workouts ?? null)}
+				weeklyGoal={weeklyGoalTarget(displayGoals)}
+				weekStart={weekStartDay}
+				{now}
+				onopensession={(w) => (editingWorkout = w)}
+				onopenweek={() => (periodModal = { type: 'week', date: new Date() })}
+			/>
+		{/if}
+		{#if planOverview && planPosition}
+			<!-- The plan hero leads the page, above the week lead. -->
 		{:else if planLoadError}
 			<div class="dash-load-error" role="alert" data-testid="dash-plan-load-error">
 				<span class="material-symbols" aria-hidden="true">error</span>
@@ -1500,7 +1646,7 @@
 			</a>
 		{/if}
 
-		<!-- Next RSVP'd event within the week, in the Today block so runners
+		<!-- Next RSVP'd event within 48 hours, in the Today block so runners
 		     remember to show up. Mirrors mobile Home's UpcomingEventCard.
 		     Hides when nothing matches. -->
 		{#if upcomingEvent}
@@ -1567,7 +1713,9 @@
 		     ones. The plan hero and the upcoming-event card above still render:
 		     onboarding creates a plan before the first run exists. #905. -->
 		{#if isNewAccount}
-			<DashboardFirstRun hasPlan={planOverview != null} />
+			{#if heroState !== 'new_account'}
+				<DashboardFirstRun hasPlan={planOverview != null} />
+			{/if}
 		{:else}
 			<!-- Source filter — applies to every metric below the today
 			     card / upcoming event. Sits up here so the user understands
@@ -1745,10 +1893,6 @@
 			     `fitness_snapshots` on every dashboard open so the trend
 			     chart has history. Hides when the user has no qualifying
 			     runs yet (short / non-recording sources only). -->
-			<!-- Today's-form band: the readiness score beside the fitness
-			     snapshot it is derived from. Both cards self-hide and the band
-			     is auto-fit, so one alone takes the full width rather than
-			     leaving a hole where the other would have been. -->
 			{#snippet fitnessSnapshot()}
 				<section class="fitness-card">
 					<div class="fitness-row">
@@ -1830,453 +1974,449 @@
 			     at least one card in it is sure to render, so a fold never opens on
 			     nothing; the cards that self-hide still do so inside it. Order is
 			     volume, fitness, performance, effort, recent — the same on mobile. -->
-			<DisclosureSection
-				id="dash-trend-volume"
-				title={m('dash.trendGroupVolume')}
-				hint={m('dash.trendGroupVolumeHint')}
-				open={trendOpen.volume}
-				ontoggle={(o) => setTrendOpen('volume', o)}
-				sectionClass="trend-group"
-			>
-				<div class="metric-band">
-					<!-- Mileage chart -->
-					<section class="card-elevated">
-						<div class="chart-header">
-							<h2>{m('dash.mileageTitle')}</h2>
-							<div class="view-toggle">
-								<button class:active={mileageView === 'weekly'} onclick={() => (mileageView = 'weekly')}>{m('dash.viewWeek')}</button>
-								<button class:active={mileageView === 'monthly'} onclick={() => (mileageView = 'monthly')}>{m('dash.viewMonth')}</button>
-								<button class:active={mileageView === 'yearly'} onclick={() => (mileageView = 'yearly')}>{m('dash.viewYear')}</button>
-							</div>
-						</div>
-						{#if mileageData.length === 0}
-							<p class="empty-text">{m('dash.mileageEmpty')}</p>
-						{:else}
-							<!-- A readout rail above the chart, the shape ElevationProfile
-							     uses, rather than a tooltip per bar. A tooltip centred on
-							     its column overhung the card once the window became twelve
-							     narrow weeks: the last bar's label ran past a 300px
-							     viewport and scrolled the page sideways even at opacity 0,
-							     because a transparent box still has layout. The rail is in
-							     flow, reserves its line so the bars never jump, and wraps
-							     inside the card in any locale. -->
-							<p class="chart-readout" data-testid="mileage-readout">
-								{#if inspectedBar}{inspectedBar.week} · {formatDistance(inspectedBar.distance_m)}{/if}
-							</p>
-							<!-- A list of named weeks, so the figures the readout shows on
-							     hover are also what a screen reader reads per bar. -->
-							<div
-								class="chart"
-								role="list"
-								bind:clientWidth={chartWidth}
-								onpointerleave={(e) => {
-									// A touch lifts before it leaves, so clearing on a touch
-									// pointerleave would wipe the reading the tap just made.
-									if (e.pointerType !== 'touch') mileageInspect = null;
-								}}
-							>
-								{#each mileageData as week, i (week.week)}
-									<!-- `class:empty` rather than a hidden column: a week with
-									     no run is the chart's most load-bearing datum, and the
-									     slot has to be visibly there for the gap to read as a
-									     gap. The bar keeps its zero height and the column
-									     shows a baseline tick instead. -->
-									<div
-										class="bar-col"
-										role="listitem"
-										aria-label="{week.week} · {formatDistance(week.distance_m)}"
-										class:empty={week.distance_m === 0}
-										class:inspected={mileageInspect === i}
-										onpointerenter={() => (mileageInspect = i)}
-										onpointerdown={() => (mileageInspect = i)}
-									>
-										<div
-											class="bar"
-											style="height: {(week.distance_m / maxBar) * 100}%"
-										></div>
-										<span
-											class="bar-label"
-											class:thinned={(mileageData.length - 1 - i) % axisLabelStep !== 0}
-											bind:offsetWidth={axisLabelWidths[i]}>{week.axis}</span
-										>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</section>
-
-					<!-- Training consistency — the fraction of the last 12 calendar weeks
-					     with any activity, the trailing active-week streak, and whether
-					     weekly volume is steady or spiky. A distinct signal from VDOT
-					     (fitness ceiling), the load trio (acute fatigue/form), and the
-					     day-streak (consecutive days). Scoped to filteredRuns so the
-					     source filter + activity-type view carry through, like the week
-					     strip + streak card. Self-hides with < 2 active weeks. Backlog #11
-					     (advanced analytics polish). -->
-					<ConsistencyCard activities={filteredRuns} weekStart={weekStartDay} {now} />
-				</div>
-			</DisclosureSection>
-			{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
+			{#if !hiddenCards.includes('volume')}
 				<DisclosureSection
-					id="dash-trend-fitness"
-					title={m('dash.trendGroupFitness')}
-					hint={m('dash.trendGroupFitnessHint')}
-					open={trendOpen.fitness}
-					ontoggle={(o) => setTrendOpen('fitness', o)}
+					id="dash-trend-volume"
+					title={m('dash.trendGroupVolume')}
+					hint={m('dash.trendGroupVolumeHint')}
+					open={trendOpen.volume}
+					ontoggle={(o) => setTrendOpen('volume', o)}
 					sectionClass="trend-group"
+					onhide={() => hideTrendGroup('volume')}
+					hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.volume) })}
 				>
 					<div class="metric-band">
-						<!-- Readiness-to-run — single 0-100 number with band-aware
-						     accent. Inputs today are TSB-only; sleep + resting-HR pipe
-						     through the `readiness.ts` helper unchanged once Health
-						     Connect / HealthKit reads land. Hide entirely when there's
-						     nothing to score (no TSB, no qualifying runs). -->
-						{#if loadNow != null}
-							<section class="readiness-card readiness-{readiness.band}">
-								<div class="readiness-head">
-									<span class="readiness-label">{m('dash.readinessLabel')}</span>
-									<span class="readiness-band">{readiness.band}</span>
+						<!-- Mileage chart -->
+						<section class="card-elevated">
+							<div class="chart-header">
+								<h2>{m('dash.mileageTitle')}</h2>
+								<div class="view-toggle">
+									<button class:active={mileageView === 'weekly'} onclick={() => (mileageView = 'weekly')}>{m('dash.viewWeek')}</button>
+									<button class:active={mileageView === 'monthly'} onclick={() => (mileageView = 'monthly')}>{m('dash.viewMonth')}</button>
+									<button class:active={mileageView === 'yearly'} onclick={() => (mileageView = 'yearly')}>{m('dash.viewYear')}</button>
 								</div>
-								<div class="readiness-score">{readiness.score}</div>
-								<p class="readiness-advice">{readiness.advice}</p>
-								{#if readiness.contributors.length > 0}
-									<ul class="readiness-contribs">
-										{#each readiness.contributors as c (c.kind)}
-											<li>
-												<span class="contrib-name">{m(CONTRIBUTOR_NAMES[c.kind])}</span>
-												<span class="contrib-delta" class:positive={c.delta > 0} class:negative={c.delta < 0}>
-													{c.delta > 0 ? '+' : ''}{c.delta}
+							</div>
+							{#if mileageData.length === 0}
+								<p class="empty-text">{m('dash.mileageEmpty')}</p>
+							{:else}
+								<!-- A readout rail above the chart, the shape ElevationProfile
+								     uses, rather than a tooltip per bar. A tooltip centred on
+								     its column overhung the card once the window became twelve
+								     narrow weeks: the last bar's label ran past a 300px
+								     viewport and scrolled the page sideways even at opacity 0,
+								     because a transparent box still has layout. The rail is in
+								     flow, reserves its line so the bars never jump, and wraps
+								     inside the card in any locale. -->
+								<p class="chart-readout" data-testid="mileage-readout">
+									{#if inspectedBar}{inspectedBar.week} · {formatDistance(inspectedBar.distance_m)}{/if}
+								</p>
+								<!-- A list of named weeks, so the figures the readout shows on
+								     hover are also what a screen reader reads per bar. -->
+								<div
+									class="chart"
+									role="list"
+									bind:clientWidth={chartWidth}
+									onpointerleave={(e) => {
+										// A touch lifts before it leaves, so clearing on a touch
+										// pointerleave would wipe the reading the tap just made.
+										if (e.pointerType !== 'touch') mileageInspect = null;
+									}}
+								>
+									{#each mileageData as week, i (week.week)}
+										<!-- `class:empty` rather than a hidden column: a week with
+										     no run is the chart's most load-bearing datum, and the
+										     slot has to be visibly there for the gap to read as a
+										     gap. The bar keeps its zero height and the column
+										     shows a baseline tick instead. -->
+										<div
+											class="bar-col"
+											role="listitem"
+											aria-label="{week.week} · {formatDistance(week.distance_m)}"
+											class:empty={week.distance_m === 0}
+											class:inspected={mileageInspect === i}
+											onpointerenter={() => (mileageInspect = i)}
+											onpointerdown={() => (mileageInspect = i)}
+										>
+											<div
+												class="bar"
+												style="height: {(week.distance_m / maxBar) * 100}%"
+											></div>
+											<span
+												class="bar-label"
+												class:thinned={(mileageData.length - 1 - i) % axisLabelStep !== 0}
+												bind:offsetWidth={axisLabelWidths[i]}>{week.axis}</span
+											>
+										</div>
+									{/each}
+								</div>
+							{/if}
+						</section>
+
+						<!-- Training consistency — the fraction of the last 12 calendar weeks
+						     with any activity, the trailing active-week streak, and whether
+						     weekly volume is steady or spiky. A distinct signal from VDOT
+						     (fitness ceiling), the load trio (acute fatigue/form), and the
+						     day-streak (consecutive days). Scoped to filteredRuns so the
+						     source filter + activity-type view carry through, like the week
+						     strip + streak card. Self-hides with < 2 active weeks. Backlog #11
+						     (advanced analytics polish). -->
+						<ConsistencyCard activities={filteredRuns} weekStart={weekStartDay} {now} />
+					</div>
+				</DisclosureSection>
+			{/if}
+			{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
+				{#if !hiddenCards.includes('fitness')}
+					<DisclosureSection
+						id="dash-trend-fitness"
+						title={m('dash.trendGroupFitness')}
+						hint={m('dash.trendGroupFitnessHint')}
+						open={trendOpen.fitness}
+						ontoggle={(o) => setTrendOpen('fitness', o)}
+						sectionClass="trend-group"
+						onhide={() => hideTrendGroup('fitness')}
+						hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.fitness) })}
+					>
+						<div class="metric-band">
+							<!-- One card for the load views (#1187): the fitness snapshot, the
+							     load curve and the ramp or comeback read one series (§ 109), so
+							     they are one card's rows rather than four cards. -->
+							<section class="card-elevated load-merged" data-testid="dash-training-load-card">
+								{#if disclosure !== 'simple'}
+								<h2 class="load-merged-title">{m('dash.trainingLoadSection')}</h2>
+							{/if}
+
+								{#if disclosure !== 'simple' && (liveSnap.vo2Max != null || loadNow != null)}
+									{@render fitnessSnapshot()}
+								{/if}
+
+								<!-- Training-load curves over the last 90 days (decisions §34).
+								     Uses TRIMP when avg_bpm + HR prefs are available, distance
+								     fallback otherwise. Hides when there's nothing to plot. -->
+								{#if disclosure === 'simple'}
+									<!-- Progressive disclosure (#905): at `simple` the fitness snapshot
+									     and the load curve are FOLDED, never dropped — one expander, named
+									     for what is inside it, remembering per account whether it was
+									     opened. At `standard` / `full` the page is exactly as it was.
+									     The override on /settings/display is what makes folding safe. -->
+									{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
+										<details
+											class="load-disclosure"
+											open={trainingLoadExpanded}
+											ontoggle={(e) => setTrainingLoadExpanded(e.currentTarget.open)}
+											data-testid="training-load-disclosure"
+										>
+											<summary>
+												<span class="material-symbols" aria-hidden="true">expand_more</span>
+												<span class="load-disclosure-text">
+													<span class="load-disclosure-title">{m('dash.trainingLoadSection')}</span>
+													<span class="load-disclosure-sub">{m('dash.trainingLoadSectionHint')}</span>
 												</span>
+											</summary>
+											{#if liveSnap.vo2Max != null || loadNow != null}
+												{@render fitnessSnapshot()}
+											{/if}
+											{#if runs.length > 0}
+												{@render trainingLoadChart()}
+											{/if}
+										</details>
+									{/if}
+								{:else if runs.length > 0}
+									{@render trainingLoadChart()}
+								{/if}
+
+								<!-- Training-load ramp — the runner's own acute:chronic workload ratio
+								     and its injury-risk band. The same ACWR policy the coach roster
+								     classifies athletes through (lib/training/coach_load.ts), finally
+								     shown to the runner it describes; most runners have no coach, so
+								     this signal had no reader. Distinct from the readiness ring, which
+								     scores TODAY (form + sleep + resting HR) rather than the last
+								     month's ramp. Scoped to filteredRuns like its neighbours;
+								     self-hides below MIN_ACTIVE_WEEKS of history rather than dividing
+								     by a base that isn't there. Pure derivation in
+								     lib/training/self_load.ts. -->
+								<LoadRampCard runs={filteredRuns} />
+
+								<!-- The same question for the runner the ratio above refuses to grade:
+								     back from a break, no chronic month to divide by, and so no card at
+								     all in exactly the case that most warrants one. Anchored on their
+								     own pre-break weekly average instead of a near-empty one. Mutually
+								     exclusive with LoadRampCard by construction (same activeWeeks gate,
+								     read the other way), pinned by a unit test. Pure derivation in
+								     lib/training/comeback.ts. -->
+								<ComebackCard runs={filteredRuns} />
+							</section>
+						</div>
+					</DisclosureSection>
+				{/if}
+			{/if}
+			{#if !hiddenCards.includes('performance')}
+				<DisclosureSection
+					id="dash-trend-performance"
+					title={m('dash.trendGroupPerformance')}
+					hint={m('dash.trendGroupPerformanceHint')}
+					open={trendOpen.performance}
+					ontoggle={(o) => setTrendOpen('performance', o)}
+					sectionClass="trend-group"
+					onhide={() => hideTrendGroup('performance')}
+					hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.performance) })}
+				>
+					<div class="metric-band">
+						<!-- Multi-distance race-time predictor — projects the 5K / 10K / Half /
+						     Marathon ladder from recency-weighted qualifying efforts, each rung
+						     graded for confidence. Self-hides when no run qualifies (its own
+						     null return). Backlog #11 (advanced analytics polish). -->
+						<RacePredictorCard {runs} />
+
+						<!-- Personal records -->
+						<section class="card-elevated">
+							<h2>{m('dash.personalRecordsTitle')}</h2>
+							{#if visiblePrs.length > 0}
+								{#if isReturningRunner && allPrsStale}
+									<p class="pr-stale-note">
+										{m('dash.prStaleNote')}
+									</p>
+								{/if}
+								<div class="table-scroll" tabindex="0">
+									<table class="pr-table">
+										<thead>
+											<tr>
+												<th>{m('dash.prColDistance')}</th>
+												<th>{m('dash.prColTime')}</th>
+												<th>{m('dash.prColDate')}</th>
+												{#if showAgeGradeCol}
+													<th class="pr-age-grade-th"><MetricLabel metric="ageGrade" /></th>
+												{/if}
+												<th></th>
+											</tr>
+										</thead>
+										<tbody>
+											{#each visiblePrs as pr}
+												<tr>
+													<td class="pr-distance">{pr.distance}</td>
+													<td class="pr-time">{formatDuration(pr.time_s)}</td>
+													<td class="pr-date">
+														{formatDate(pr.date)}
+														<span class="pr-age">{relativeAge(pr.date)}</span>
+													</td>
+													{#if showAgeGradeCol}
+														<td class="pr-age-grade">
+															{prAgeGrades[pr.key] ?? '—'}
+														</td>
+													{/if}
+													<td>
+														<button
+															type="button"
+															class="pr-hide"
+															title={m('dash.hideRecordTitle')}
+															aria-label={m('dash.hideRecordAria', { distance: pr.distance })}
+															onclick={() => hidePr(pr.key)}>×</button
+														>
+													</td>
+												</tr>
+											{/each}
+										</tbody>
+									</table>
+								</div>
+							{:else if personalRecords.length === 0}
+								<p class="empty-text">{m('dash.prEmptyNoRuns')}</p>
+							{:else}
+								<p class="empty-text">{m('dash.prAllHidden')}</p>
+							{/if}
+							{#if hiddenPrRows.length > 0}
+								<button
+									type="button"
+									class="pr-show-hidden"
+									onclick={() => (showHiddenPrs = !showHiddenPrs)}
+									aria-expanded={showHiddenPrs}
+								>
+									{showHiddenPrs ? m('dash.hideHidden') : m('dash.showHidden', { n: hiddenPrRows.length })}
+								</button>
+								{#if showHiddenPrs}
+									<ul class="pr-hidden-list">
+										{#each hiddenPrRows as pr}
+											<li>
+												<span>{pr.distance} · {formatDuration(pr.time_s)}</span>
+												<button type="button" class="pr-unhide" onclick={() => unhidePr(pr.key)}>
+													{m('dash.unhide')}
+												</button>
 											</li>
 										{/each}
 									</ul>
 								{/if}
-								{#if readiness.contributors.every((c) => c.kind === 'form')}
-									<p class="readiness-source" data-testid="readiness-load-only">
-										{m('dash.readinessFromLoadOnly')}
+							{/if}
+						</section>
+					</div>
+				</DisclosureSection>
+			{/if}
+			{#if runs.length > 0}
+				{#if !hiddenCards.includes('effort')}
+					<DisclosureSection
+						id="dash-trend-effort"
+						title={m('dash.trendGroupEffort')}
+						hint={m('dash.trendGroupEffortHint')}
+						open={trendOpen.effort}
+						ontoggle={(o) => setTrendOpen('effort', o)}
+						sectionClass="trend-group"
+						onhide={() => hideTrendGroup('effort')}
+						hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.effort) })}
+					>
+						<div class="metric-band">
+							<!-- Easy / hard intensity balance — the time-weighted easy vs hard
+							     split against the ~80/20 polarised-training guideline, with a
+							     verdict (on guideline / too hard / all easy). Classifies each run
+							     by pace against the runner's own VDOT-derived threshold (same
+							     anchor as the load trio). Self-hides when no threshold derives or
+							     the sample is too small. Pure derivation in
+							     lib/training/intensity.ts. Backlog #11. -->
+							<IntensityBalanceCard runs={filteredRuns} />
+
+							<!-- Training intensity — time in HR zones over the last 30/365 days
+							     (window mirrors the Mileage view). Empty state links to
+							     /settings/training#heart-rate-zones when the user hasn't set zones,
+							     or to the same anchor with a "no HR data" hint when zones
+							     are set but no run in window carries avg_bpm.
+							     Layered resilience: hrZones load is wrapped in onMount; a
+							     failure leaves the card in its empty state and never blocks
+							     the rest of the dashboard. Per-point analysis from the
+							     gzipped track is the eventual accuracy upgrade. -->
+							<section class="card-elevated intensity-card">
+								<div class="card-head">
+									<h2>{m('dash.trainingIntensityTitle')}</h2>
+									{#if hrZones && intensityBreakdown && intensityBreakdown.total > 0}
+										<span class="intensity-window">
+											{intensityWindow === '30d'
+												? m('dash.windowLast30Days')
+												: intensityWindow === '90d'
+													? m('dash.windowLast90Days')
+													: m('dash.windowLast12Months')}
+											· {intensityBreakdown.hrTrackedRuns === 1
+												? m('dash.runsWithHrOne', { n: intensityBreakdown.hrTrackedRuns })
+												: m('dash.runsWithHrOther', { n: intensityBreakdown.hrTrackedRuns })}
+										</span>
+									{/if}
+								</div>
+								{#if !hrZones}
+									<div class="intensity-empty">
+										<span class="material-symbols intensity-empty-icon">favorite</span>
+										<div class="intensity-empty-body">
+											<strong>{m('dash.setHrZonesTitle')}</strong>
+											<p>{m('dash.setHrZonesBody')}</p>
+										</div>
+										<a class="btn btn-primary btn-sm" href="/settings/training#heart-rate-zones">
+											{m('dash.setZones')}
+										</a>
+									</div>
+								{:else if !intensityBreakdown || intensityBreakdown.total === 0}
+									<div class="intensity-empty">
+										<span class="material-symbols intensity-empty-icon">monitoring</span>
+										<div class="intensity-empty-body">
+											<strong>{m('dash.noHrDataTitle')}</strong>
+											<p>{m('dash.noHrDataBody')}</p>
+										</div>
+										<a class="btn btn-secondary btn-sm" href="/settings/training#heart-rate-zones">
+											{m('dash.reviewZones')}
+										</a>
+									</div>
+								{:else}
+									{@const zb = intensityBreakdown}
+									<ul class="zone-list">
+										{#each zb.zoneSeconds as secs, i}
+											{@const pct = secs / zb.total}
+											<li class="zone-row zone-row-{i + 1}">
+												<span class="zone-name">{m(ZONE_NAMES[i])}</span>
+												<div class="zone-bar-wrap">
+													<div class="zone-bar" style="width: {Math.max(pct * 100, secs > 0 ? 1.5 : 0)}%"></div>
+												</div>
+												<span class="zone-duration">{fmtCompactDuration(secs)}</span>
+												<span class="zone-pct">{Math.round(pct * 100)}%</span>
+											</li>
+										{/each}
+									</ul>
+									<p class="intensity-foot">
+										{m('dash.intensityFoot', { total: fmtCompactDuration(zb.total) })}
 									</p>
 								{/if}
 							</section>
-						{/if}
-
-						{#if disclosure !== 'simple' && (liveSnap.vo2Max != null || loadNow != null)}
-							{@render fitnessSnapshot()}
-						{/if}
-
-						<!-- Training-load curves over the last 90 days (decisions §34).
-						     Uses TRIMP when avg_bpm + HR prefs are available, distance
-						     fallback otherwise. Hides when there's nothing to plot. -->
-						{#if disclosure === 'simple'}
-							<!-- Progressive disclosure (#905): at `simple` the fitness snapshot
-							     and the load curve are FOLDED, never dropped — one expander, named
-							     for what is inside it, remembering per account whether it was
-							     opened. At `standard` / `full` the page is exactly as it was.
-							     The override on /settings/display is what makes folding safe. -->
-							{#if liveSnap.vo2Max != null || loadNow != null || runs.length > 0}
-								<details
-									class="load-disclosure"
-									open={trainingLoadExpanded}
-									ontoggle={(e) => setTrainingLoadExpanded(e.currentTarget.open)}
-									data-testid="training-load-disclosure"
-								>
-									<summary>
-										<span class="material-symbols" aria-hidden="true">expand_more</span>
-										<span class="load-disclosure-text">
-											<span class="load-disclosure-title">{m('dash.trainingLoadSection')}</span>
-											<span class="load-disclosure-sub">{m('dash.trainingLoadSectionHint')}</span>
-										</span>
-									</summary>
-									{#if liveSnap.vo2Max != null || loadNow != null}
-										{@render fitnessSnapshot()}
-									{/if}
-									{#if runs.length > 0}
-										{@render trainingLoadChart()}
-									{/if}
-								</details>
-							{/if}
-						{:else if runs.length > 0}
-							{@render trainingLoadChart()}
-						{/if}
-
-						<!-- Training-load ramp — the runner's own acute:chronic workload ratio
-						     and its injury-risk band. The same ACWR policy the coach roster
-						     classifies athletes through (lib/training/coach_load.ts), finally
-						     shown to the runner it describes; most runners have no coach, so
-						     this signal had no reader. Distinct from the readiness ring, which
-						     scores TODAY (form + sleep + resting HR) rather than the last
-						     month's ramp. Scoped to filteredRuns like its neighbours;
-						     self-hides below MIN_ACTIVE_WEEKS of history rather than dividing
-						     by a base that isn't there. Pure derivation in
-						     lib/training/self_load.ts. -->
-						<LoadRampCard runs={filteredRuns} />
-
-						<!-- The same question for the runner the ratio above refuses to grade:
-						     back from a break, no chronic month to divide by, and so no card at
-						     all in exactly the case that most warrants one. Anchored on their
-						     own pre-break weekly average instead of a near-empty one. Mutually
-						     exclusive with LoadRampCard by construction (same activeWeeks gate,
-						     read the other way), pinned by a unit test. Pure derivation in
-						     lib/training/comeback.ts. -->
-						<ComebackCard runs={filteredRuns} />
-					</div>
-				</DisclosureSection>
+						</div>
+					</DisclosureSection>
+				{/if}
 			{/if}
-			<DisclosureSection
-				id="dash-trend-performance"
-				title={m('dash.trendGroupPerformance')}
-				hint={m('dash.trendGroupPerformanceHint')}
-				open={trendOpen.performance}
-				ontoggle={(o) => setTrendOpen('performance', o)}
-				sectionClass="trend-group"
-			>
-				<div class="metric-band">
-					<!-- Multi-distance race-time predictor — projects the 5K / 10K / Half /
-					     Marathon ladder from recency-weighted qualifying efforts, each rung
-					     graded for confidence. Self-hides when no run qualifies (its own
-					     null return). Backlog #11 (advanced analytics polish). -->
-					<RacePredictorCard {runs} />
-
-					<!-- Personal records -->
-					<section class="card-elevated">
-						<h2>{m('dash.personalRecordsTitle')}</h2>
-						{#if visiblePrs.length > 0}
-							{#if isReturningRunner && allPrsStale}
-								<p class="pr-stale-note">
-									{m('dash.prStaleNote')}
-								</p>
-							{/if}
-							<div class="table-scroll" tabindex="0">
-								<table class="pr-table">
-									<thead>
-										<tr>
-											<th>{m('dash.prColDistance')}</th>
-											<th>{m('dash.prColTime')}</th>
-											<th>{m('dash.prColDate')}</th>
-											{#if showAgeGradeCol}
-												<th class="pr-age-grade-th"><MetricLabel metric="ageGrade" /></th>
-											{/if}
-											<th></th>
-										</tr>
-									</thead>
-									<tbody>
-										{#each visiblePrs as pr}
-											<tr>
-												<td class="pr-distance">{pr.distance}</td>
-												<td class="pr-time">{formatDuration(pr.time_s)}</td>
-												<td class="pr-date">
-													{formatDate(pr.date)}
-													<span class="pr-age">{relativeAge(pr.date)}</span>
-												</td>
-												{#if showAgeGradeCol}
-													<td class="pr-age-grade">
-														{prAgeGrades[pr.key] ?? '—'}
-													</td>
-												{/if}
-												<td>
-													<button
-														type="button"
-														class="pr-hide"
-														title={m('dash.hideRecordTitle')}
-														aria-label={m('dash.hideRecordAria', { distance: pr.distance })}
-														onclick={() => hidePr(pr.key)}>×</button
-													>
-												</td>
-											</tr>
-										{/each}
-									</tbody>
-								</table>
-							</div>
-						{:else if personalRecords.length === 0}
-							<p class="empty-text">{m('dash.prEmptyNoRuns')}</p>
-						{:else}
-							<p class="empty-text">{m('dash.prAllHidden')}</p>
-						{/if}
-						{#if hiddenPrRows.length > 0}
-							<button
-								type="button"
-								class="pr-show-hidden"
-								onclick={() => (showHiddenPrs = !showHiddenPrs)}
-								aria-expanded={showHiddenPrs}
-							>
-								{showHiddenPrs ? m('dash.hideHidden') : m('dash.showHidden', { n: hiddenPrRows.length })}
-							</button>
-							{#if showHiddenPrs}
-								<ul class="pr-hidden-list">
-									{#each hiddenPrRows as pr}
-										<li>
-											<span>{pr.distance} · {formatDuration(pr.time_s)}</span>
-											<button type="button" class="pr-unhide" onclick={() => unhidePr(pr.key)}>
-												{m('dash.unhide')}
-											</button>
-										</li>
-									{/each}
-								</ul>
-							{/if}
-						{/if}
-					</section>
-				</div>
-			</DisclosureSection>
-			{#if runs.length > 0}
+			{#if !hiddenCards.includes('recent')}
 				<DisclosureSection
-					id="dash-trend-effort"
-					title={m('dash.trendGroupEffort')}
-					hint={m('dash.trendGroupEffortHint')}
-					open={trendOpen.effort}
-					ontoggle={(o) => setTrendOpen('effort', o)}
+					id="dash-trend-recent"
+					title={m('dash.trendGroupRecent')}
+					hint={m('dash.trendGroupRecentHint')}
+					open={trendOpen.recent}
+					ontoggle={(o) => setTrendOpen('recent', o)}
 					sectionClass="trend-group"
+					onhide={() => hideTrendGroup('recent')}
+					hideLabel={m('dash.hideCardAria', { name: m(TREND_GROUP_TITLES.recent) })}
 				>
 					<div class="metric-band">
-						<!-- Easy / hard intensity balance — the time-weighted easy vs hard
-						     split against the ~80/20 polarised-training guideline, with a
-						     verdict (on guideline / too hard / all easy). Classifies each run
-						     by pace against the runner's own VDOT-derived threshold (same
-						     anchor as the load trio). Self-hides when no threshold derives or
-						     the sample is too small. Pure derivation in
-						     lib/training/intensity.ts. Backlog #11. -->
-						<IntensityBalanceCard runs={filteredRuns} />
-
-						<!-- Training intensity — time in HR zones over the last 30/365 days
-						     (window mirrors the Mileage view). Empty state links to
-						     /settings/training#heart-rate-zones when the user hasn't set zones,
-						     or to the same anchor with a "no HR data" hint when zones
-						     are set but no run in window carries avg_bpm.
-						     Layered resilience: hrZones load is wrapped in onMount; a
-						     failure leaves the card in its empty state and never blocks
-						     the rest of the dashboard. Per-point analysis from the
-						     gzipped track is the eventual accuracy upgrade. -->
-						<section class="card-elevated intensity-card">
-							<div class="card-head">
-								<h2>{m('dash.trainingIntensityTitle')}</h2>
-								{#if hrZones && intensityBreakdown && intensityBreakdown.total > 0}
-									<span class="intensity-window">
-										{intensityWindow === '30d'
-											? m('dash.windowLast30Days')
-											: intensityWindow === '90d'
-												? m('dash.windowLast90Days')
-												: m('dash.windowLast12Months')}
-										· {intensityBreakdown.hrTrackedRuns === 1
-											? m('dash.runsWithHrOne', { n: intensityBreakdown.hrTrackedRuns })
-											: m('dash.runsWithHrOther', { n: intensityBreakdown.hrTrackedRuns })}
-									</span>
-								{/if}
-							</div>
-							{#if !hrZones}
-								<div class="intensity-empty">
-									<span class="material-symbols intensity-empty-icon">favorite</span>
-									<div class="intensity-empty-body">
-										<strong>{m('dash.setHrZonesTitle')}</strong>
-										<p>{m('dash.setHrZonesBody')}</p>
-									</div>
-									<a class="btn btn-primary btn-sm" href="/settings/training#heart-rate-zones">
-										{m('dash.setZones')}
-									</a>
+						<!-- Recent runs -->
+						<section class="card-elevated">
+							<h2>{m('dash.recentRunsTitle')}</h2>
+							{#if filteredRuns.length > 0}
+								<div class="run-list">
+									{#each filteredRuns.slice(0, 7) as run}
+										<a href="/runs/{run.id}" class="run-row">
+											<div class="run-info">
+												<span class="run-date">{formatDateShort(run.started_at)}</span>
+												<span class="run-distance">{formatDistance(run.distance_m)}</span>
+											</div>
+											<div class="run-meta">
+												<span class="run-pace">{formatPace(run.duration_s, run.distance_m)}</span>
+												<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
+											</div>
+										</a>
+									{/each}
 								</div>
-							{:else if !intensityBreakdown || intensityBreakdown.total === 0}
-								<div class="intensity-empty">
-									<span class="material-symbols intensity-empty-icon">monitoring</span>
-									<div class="intensity-empty-body">
-										<strong>{m('dash.noHrDataTitle')}</strong>
-										<p>{m('dash.noHrDataBody')}</p>
-									</div>
-									<a class="btn btn-secondary btn-sm" href="/settings/training#heart-rate-zones">
-										{m('dash.reviewZones')}
-									</a>
+							{:else if sourceFilter === 'all'}
+								<p class="empty-text">
+									{m('dash.recentEmptyAll')}
+								</p>
+								<div class="recent-empty-actions">
+									<a class="btn btn-primary btn-sm" href="/runs/new">{m('dash.addARun')}</a>
+									<a class="btn btn-outline btn-sm" href="/settings/integrations">{m('dash.importFromStravaGarmin')}</a>
 								</div>
 							{:else}
-								{@const zb = intensityBreakdown}
-								<ul class="zone-list">
-									{#each zb.zoneSeconds as secs, i}
-										{@const pct = secs / zb.total}
-										<li class="zone-row zone-row-{i + 1}">
-											<span class="zone-name">{m(ZONE_NAMES[i])}</span>
-											<div class="zone-bar-wrap">
-												<div class="zone-bar" style="width: {Math.max(pct * 100, secs > 0 ? 1.5 : 0)}%"></div>
-											</div>
-											<span class="zone-duration">{fmtCompactDuration(secs)}</span>
-											<span class="zone-pct">{Math.round(pct * 100)}%</span>
-										</li>
-									{/each}
-								</ul>
-								<p class="intensity-foot">
-									{m('dash.intensityFoot', { total: fmtCompactDuration(zb.total) })}
+								<p class="empty-text">
+									{m('dash.recentEmptyFiltered', {
+										source: sourceChipLabel(sources.find((s) => s.value === sourceFilter)?.label ?? sourceFilter),
+									})}
 								</p>
 							{/if}
 						</section>
+						<!-- Recent lifts — gym trend card (multi_modal.md § Home). Self-
+						     hides unless the user has logged a session. Mirrors the
+						     "Recent runs" list above it. -->
+						{#if gymWorkouts.length > 0 && gymShown}
+							<section class="card-elevated">
+								<div class="card-head">
+									<h2>{m('dash.recentLiftsTitle')}</h2>
+									<a class="link-btn" href="/gym">{m('dash.viewAllGym')}</a>
+								</div>
+								<div class="run-list">
+									{#each gymWorkouts.slice(0, 5) as w (w.id)}
+										<a href="/gym/{w.id}" class="run-row">
+											<div class="run-info">
+												<span class="run-date">{formatDateShort(w.started_at)}</span>
+												<span class="run-distance">{w.title || m('gym.untitled')}</span>
+											</div>
+											<div class="run-meta lift-row-meta">
+												<span class="run-pace">{m('gym.exercisesShort', { count: liftExerciseCount(w.id) })}</span>
+												{#if liftVolume(w.id) > 0}
+													<span class="lift-volume">{formatWeight(liftVolume(w.id))}</span>
+												{/if}
+											</div>
+										</a>
+									{/each}
+								</div>
+							</section>
+						{/if}
 					</div>
 				</DisclosureSection>
 			{/if}
-			<DisclosureSection
-				id="dash-trend-recent"
-				title={m('dash.trendGroupRecent')}
-				hint={m('dash.trendGroupRecentHint')}
-				open={trendOpen.recent}
-				ontoggle={(o) => setTrendOpen('recent', o)}
-				sectionClass="trend-group"
-			>
-				<div class="metric-band">
-					<!-- Recent runs -->
-					<section class="card-elevated">
-						<h2>{m('dash.recentRunsTitle')}</h2>
-						{#if filteredRuns.length > 0}
-							<div class="run-list">
-								{#each filteredRuns.slice(0, 7) as run}
-									<a href="/runs/{run.id}" class="run-row">
-										<div class="run-info">
-											<span class="run-date">{formatDateShort(run.started_at)}</span>
-											<span class="run-distance">{formatDistance(run.distance_m)}</span>
-										</div>
-										<div class="run-meta">
-											<span class="run-pace">{formatPace(run.duration_s, run.distance_m)}</span>
-											<span class="source-badge" style="background: {sourceColor(run.source)}; color: {sourceInk(run.source)}">{sourceLabel(run.source)}</span>
-										</div>
-									</a>
-								{/each}
-							</div>
-						{:else if sourceFilter === 'all'}
-							<p class="empty-text">
-								{m('dash.recentEmptyAll')}
-							</p>
-							<div class="recent-empty-actions">
-								<a class="btn btn-primary btn-sm" href="/runs/new">{m('dash.addARun')}</a>
-								<a class="btn btn-outline btn-sm" href="/settings/integrations">{m('dash.importFromStravaGarmin')}</a>
-							</div>
-						{:else}
-							<p class="empty-text">
-								{m('dash.recentEmptyFiltered', {
-									source: sourceChipLabel(sources.find((s) => s.value === sourceFilter)?.label ?? sourceFilter),
-								})}
-							</p>
-						{/if}
-					</section>
-					<!-- Recent lifts — gym trend card (multi_modal.md § Home). Self-
-					     hides unless the user has logged a session. Mirrors the
-					     "Recent runs" list above it. -->
-					{#if gymWorkouts.length > 0 && gymShown}
-						<section class="card-elevated">
-							<div class="card-head">
-								<h2>{m('dash.recentLiftsTitle')}</h2>
-								<a class="link-btn" href="/gym">{m('dash.viewAllGym')}</a>
-							</div>
-							<div class="run-list">
-								{#each gymWorkouts.slice(0, 5) as w (w.id)}
-									<a href="/gym/{w.id}" class="run-row">
-										<div class="run-info">
-											<span class="run-date">{formatDateShort(w.started_at)}</span>
-											<span class="run-distance">{w.title || m('gym.untitled')}</span>
-										</div>
-										<div class="run-meta lift-row-meta">
-											<span class="run-pace">{m('gym.exercisesShort', { count: liftExerciseCount(w.id) })}</span>
-											{#if liftVolume(w.id) > 0}
-												<span class="lift-volume">{formatWeight(liftVolume(w.id))}</span>
-											{/if}
-										</div>
-									</a>
-								{/each}
-							</div>
-						</section>
-					{/if}
-				</div>
-			</DisclosureSection>
 
 			<!-- First-run gym affordance — one slim line, below the fold, for a
 			     runner who hasn't logged a lift yet (the web equivalent of
@@ -2292,23 +2432,20 @@
 				</a>
 			{/if}
 
+			<!-- A compact row, not a promo card (#1187, decisions § 2387): Coach
+			     also has a sidebar item, so on Home it is a reminder, not a pitch. -->
 			{#if coachOn}
-				<a class="coach-promo" href="/messages/coach">
-					<div class="coach-icon">
-						<span class="material-symbols">sports</span>
-					</div>
-					<div class="coach-body">
-						<span class="today-label">{m('dash.askTheCoachKicker')}</span>
-						<strong>{m('dash.coachPromoQuestion')}</strong>
-						<span class="coach-sub">
-							{#if planOverview}
-								{m('dash.coachGroundedPlan')}
-							{:else}
-								{m('dash.coachGroundedRuns')}
-							{/if}
-						</span>
-					</div>
-					<span class="material-symbols coach-arrow">chevron_right</span>
+				<a class="coach-row" href="/messages/coach" data-testid="dash-coach-row">
+					<span class="material-symbols coach-row-icon" aria-hidden="true">sports</span>
+					<strong>{m('dash.coachRowTitle')}</strong>
+					<span class="coach-row-sub">
+						{#if planOverview}
+							{m('dash.coachGroundedPlan')}
+						{:else}
+							{m('dash.coachGroundedRuns')}
+						{/if}
+					</span>
+					<span class="material-symbols coach-row-arrow" aria-hidden="true">chevron_right</span>
 				</a>
 			{/if}
 		{/if}
@@ -3136,54 +3273,133 @@
 		white-space: nowrap;
 	}
 
-	.coach-promo {
+	.coach-row {
 		display: flex;
 		align-items: center;
+		gap: var(--space-sm);
+		min-height: 2.75rem;
+		padding: var(--space-xs) var(--space-md);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		color: inherit;
+		text-decoration: none;
+		font-size: 0.9rem;
+	}
+	.coach-row:hover {
+		border-color: var(--color-primary);
+		background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
+	}
+	.coach-row-icon { color: var(--color-primary); font-size: 1.2rem; }
+	.coach-row strong { font-weight: 600; white-space: nowrap; }
+	.coach-row-sub {
+		flex: 1;
+		min-width: 0;
+		color: var(--color-text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+	.coach-row-arrow { color: var(--color-text-tertiary); }
+
+	/* The adaptive Today hero (#1187) — the no-plan and ran-today states; the
+	   plan states reuse .plan-hero. */
+	.today-hero {
+		display: flex;
+		flex-direction: column;
 		gap: var(--space-md);
-		padding: var(--space-md) var(--space-lg);
+		padding: var(--space-lg);
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
-		text-decoration: none;
-		color: inherit;
-		transition: background var(--transition-fast),
-			border-color var(--transition-fast),
-			box-shadow var(--transition-fast);
-	}
-	.coach-promo:hover {
-		border-color: var(--color-primary);
-		background: color-mix(in srgb, var(--color-primary) 4%, var(--color-surface));
 		box-shadow: var(--shadow-sm);
+		color: inherit;
+		text-decoration: none;
 	}
-	.coach-icon {
+	.today-hero-run {
+		flex-direction: row;
+		align-items: center;
+	}
+	.today-hero-run:hover {
+		border-color: var(--color-primary);
+	}
+	.today-hero-icon {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		width: 2.5rem;
 		height: 2.5rem;
 		border-radius: 50%;
-		background: color-mix(in srgb, var(--color-accent-cyan) 22%, transparent);
+		background: color-mix(in srgb, var(--color-primary) 12%, transparent);
 		color: var(--color-primary);
 		flex-shrink: 0;
 	}
-	.coach-icon :global(.material-symbols) { font-size: 1.4rem; }
-	.coach-body {
+	.today-hero-main {
 		flex: 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2xs);
-		min-width: 0;
 	}
-	.coach-body strong {
-		font-size: 1rem;
-		font-weight: 600;
+	.today-hero-title {
+		margin: 0;
+		font-size: 1.15rem;
+		font-weight: 700;
 		color: var(--color-text);
 	}
-	.coach-sub {
+	.today-hero-body {
+		margin: 0;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.today-hero-cta { align-self: flex-start; }
+	.today-hero-arrow { color: var(--color-text-tertiary); }
+	.today-hero .readiness-card { box-shadow: none; }
+	.hero-readiness {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		gap: var(--space-xs);
+		margin: var(--space-sm) 0 0;
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
 	}
-	.coach-arrow { color: var(--color-text-tertiary); }
+	.hero-readiness-score { font-weight: 700; color: var(--color-text); }
+	.hero-readiness .readiness-band {
+		font-size: 0.72rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.hero-readiness.readiness-high .readiness-band { color: var(--color-success-text); }
+	.hero-readiness.readiness-moderate .readiness-band { color: var(--color-warning-text); }
+	.hero-readiness.readiness-low .readiness-band { color: var(--color-danger-text); }
+	.hero-readiness-advice { min-width: 0; overflow-wrap: anywhere; }
+
+	/* One training-load card (#1187): its rows were free-standing cards, so
+	   they drop their chrome and become rows split by a hairline. */
+	.load-merged {
+		grid-column: 1 / -1;
+		display: flex;
+		flex-direction: column;
+	}
+	.load-merged-title {
+		margin: 0 0 var(--space-sm);
+		font-size: 1rem;
+	}
+	.load-merged > .fitness-card,
+	.load-merged > .load-disclosure,
+	.load-merged > :global(.card-elevated) {
+		background: transparent;
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+		padding-inline: 0;
+		transform: none;
+	}
+	.load-merged > .fitness-card + .fitness-card,
+	.load-merged > :global(.card-elevated) {
+		border-top: 1px solid var(--color-border);
+	}
 
 	/* Progressive disclosure (#905). Spans the whole band rather than taking one
 	   auto-fit column, so the two cards folded inside it open at the width they

@@ -34,6 +34,10 @@ Future<Preferences> _pump(
     250,
     scrollable: find.byType(Scrollable).first,
   );
+  // scrollUntilVisible stops once any pixel of the row is on screen, which
+  // can leave its centre (where a tap lands) under the edge.
+  await tester.ensureVisible(find.text(_title));
+  await tester.pumpAndSettle();
   return prefs;
 }
 

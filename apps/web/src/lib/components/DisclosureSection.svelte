@@ -14,13 +14,41 @@
 		/// Class carried on the region so the host page keeps its own layout
 		/// hooks (and the selectors its specs are written against).
 		sectionClass?: string;
+		/// When set, a Hide button sits beside the heading. Its accessible name
+		/// is [hideLabel], which should name the section.
+		onhide?: () => void;
+		hideLabel?: string;
 		children: Snippet;
 	}
 
-	const { id, title, hint, open, ontoggle, sectionClass = '', children }: Props = $props();
+	const {
+		id,
+		title,
+		hint,
+		open,
+		ontoggle,
+		sectionClass = '',
+		onhide,
+		hideLabel,
+		children,
+	}: Props = $props();
 </script>
 
-<section class="disclosure {sectionClass}" aria-labelledby="{id}-title">
+<section class="disclosure {sectionClass}" class:has-hide={onhide != null} aria-labelledby="{id}-title">
+	<!-- Outside the <summary>: a button inside it would be a control nested in
+	     the summary's own button role, and a click would also fold. -->
+	{#if onhide}
+		<button
+			type="button"
+			class="disclosure-hide"
+			aria-label={hideLabel}
+			title={hideLabel}
+			data-testid="{id}-hide"
+			onclick={onhide}
+		>
+			<span class="material-symbols" aria-hidden="true">visibility_off</span>
+		</button>
+	{/if}
 	<!-- The reader's choice is read off the summary click, not the toggle
 	     event. A toggle is queued for every change of `open`, the host's own
 	     included, and a click can land on a <details> the page re-renders
@@ -57,6 +85,36 @@
 <style>
 	.disclosure {
 		margin-bottom: var(--space-md);
+		position: relative;
+	}
+	.has-hide .disclosure-summary {
+		padding-inline-end: 2.75rem;
+	}
+	.disclosure-hide {
+		position: absolute;
+		inset-block-start: 0;
+		inset-inline-end: 0;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		border: 0;
+		border-radius: var(--radius-sm);
+		background: transparent;
+		color: var(--color-text-tertiary);
+		cursor: pointer;
+	}
+	.disclosure-hide:hover {
+		color: var(--color-text);
+		background: var(--color-bg-secondary);
+	}
+	.disclosure-hide:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.disclosure-hide .material-symbols {
+		font-size: 1.15rem;
 	}
 	.disclosure-summary {
 		display: flex;

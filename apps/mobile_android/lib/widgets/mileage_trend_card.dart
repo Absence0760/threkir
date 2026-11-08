@@ -90,9 +90,11 @@ class _MileageTrendCardState extends State<MileageTrendCard> {
             // wraps on the narrow weekly view + look cramped on the
             // wider yearly view).
             const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.baseline,
-              textBaseline: TextBaseline.alphabetic,
+            // A Wrap, so at a large text size the label takes its own line
+            // rather than overflowing beside the figure.
+            Wrap(
+              spacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.end,
               children: [
                 Text(
                   UnitFormat.distance(latest.distanceM.toDouble(), widget.unit),
@@ -100,16 +102,10 @@ class _MileageTrendCardState extends State<MileageTrendCard> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    latestLabel,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.fade,
-                    softWrap: false,
+                Text(
+                  latestLabel,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],

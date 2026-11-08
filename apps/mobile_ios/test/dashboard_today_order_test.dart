@@ -18,7 +18,8 @@ import 'pump_until.dart';
 
 /// multi_modal.md § Home rule 2: what was logged today leads the Today block,
 /// most recently started first, and the last run from an earlier day follows
-/// it (issue #1187).
+/// it (issue #1187). A run started today is the Today hero itself when there
+/// is no plan (decisions § 2385), so it leads whatever else was logged.
 
 final _latestRun = find.byKey(const Key('dashboardLatestRun'));
 final _gym = find.byType(GymSummaryCard);
@@ -102,7 +103,14 @@ Future<_Stores> _seed(
 }
 
 Future<void> _pumpHome(WidgetTester tester, _Stores s,
-    {required Finder until}) async {
+    {required Finder until, bool tall = true}) async {
+  // The hero leads Home now, so the Today block starts lower than a default
+  // 600 dp test surface reaches, and a ListView builds nothing offscreen.
+  if (tall) {
+    tester.view.physicalSize = const Size(400, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+  }
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -160,18 +168,24 @@ void main() {
       expect(_top(tester, _latestRun), lessThan(_top(tester, _gym)));
     });
 
-    testWidgets('a lift started after today\'s run leads it', (tester) async {
+    testWidgets('today\'s run is the hero, so it leads a lift started after '
+        'it', (tester) async {
       final s = await _seed(
         tester,
         runAt: _dayStart.add(const Duration(minutes: 1)),
         liftAt: _dayStart.add(const Duration(minutes: 2)),
       );
       await _pumpHome(tester, s, until: _gym);
-      expect(_top(tester, _gym), lessThan(_top(tester, _latestRun)));
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('dashboardTodayHero')),
+              matching: _latestRun),
+          findsOneWidget);
+      expect(_top(tester, _latestRun), lessThan(_top(tester, _gym)));
     });
 
-    testWidgets('the newest of the lift and the meals decides the pair\'s '
-        'place against today\'s run', (tester) async {
+    testWidgets('today\'s run as the hero leads newer meals and an older lift',
+        (tester) async {
       final s = await _seed(
         tester,
         liftAt: _dayStart.add(const Duration(minutes: 1)),
@@ -179,8 +193,8 @@ void main() {
         foodAt: _dayStart.add(const Duration(minutes: 3)),
       );
       await _pumpHome(tester, s, until: _nutrition);
-      expect(_top(tester, _nutrition), lessThan(_top(tester, _latestRun)));
-      expect(_top(tester, _gym), lessThan(_top(tester, _latestRun)));
+      expect(_top(tester, _latestRun), lessThan(_top(tester, _nutrition)));
+      expect(_top(tester, _latestRun), lessThan(_top(tester, _gym)));
     });
 
     testWidgets('the whole Today block stays above the Trends divider',
@@ -209,7 +223,7 @@ void main() {
       runAt: _dayStart.subtract(const Duration(days: 2, hours: -8)),
       liftAt: _dayStart.add(const Duration(minutes: 1)),
     );
-    await _pumpHome(tester, s, until: _gym);
+    await _pumpHome(tester, s, until: _gym, tall: false);
     expect(_top(tester, _gym), lessThan(_top(tester, _latestRun)));
   });
 }

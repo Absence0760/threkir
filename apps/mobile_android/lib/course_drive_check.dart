@@ -8,8 +8,9 @@ import 'routing.dart';
 /// (docs/features/course_drive.md, gotcha 4): each nine-stop leg is routed
 /// through OSRM's `car` profile and the joined line is compared with the
 /// course. Null when any leg failed to route, so the screen says it could not
-/// check rather than implying the course is drivable. Mirrors web's
-/// `routes/course_drive_check.ts`.
+/// check rather than implying the course is drivable. Web makes the same
+/// comparison through its OSRM proxy; the two differ in transport, so they
+/// are not a parity pair — the comparison itself is `undrivableStretches`.
 Future<List<CourseStretch>?> checkDrivable(
   List<DrivePoint> line, {
   OsrmFetcher? fetcher,

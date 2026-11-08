@@ -2,6 +2,92 @@
 // (segments/segments.ts, segments/track_extent.ts, parks/park_courses.ts and what
 // they import). Do not edit: change the web module, then run
 // `pnpm gen:edge-segment-matcher`.
+// apps/web/src/lib/geo/gate_crossing.ts
+var GATE_EARTH_RADIUS_M = 63710088e-1;
+var GATE_MAX_GAP_S = 10;
+var GATE_MAX_HOP_M = 50;
+var GATE_REJECT_GAP_S = 60;
+var GATE_DEFAULT_OPTIONS = {
+  maxGapS: GATE_MAX_GAP_S,
+  maxHopM: GATE_MAX_HOP_M,
+  rejectGapS: GATE_REJECT_GAP_S
+};
+function rad(deg) {
+  return deg * Math.PI / 180;
+}
+function wrapLng(d) {
+  if (d >= 180) return d - 360;
+  if (d < -180) return d + 360;
+  return d;
+}
+function gateUsable(gate) {
+  return Number.isFinite(gate.lat) && Number.isFinite(gate.lng) && Number.isFinite(gate.bearingDeg) && Number.isFinite(gate.halfWidthM) && gate.halfWidthM >= 0 && Math.abs(gate.lat) < 90 && Math.abs(gate.lng) <= 180;
+}
+function gateProjection(gate, lat, lng) {
+  const x = rad(wrapLng(lng - gate.lng)) * GATE_EARTH_RADIUS_M * Math.cos(rad(gate.lat));
+  const y = rad(lat - gate.lat) * GATE_EARTH_RADIUS_M;
+  const sinB = Math.sin(rad(gate.bearingDeg));
+  const cosB = Math.cos(rad(gate.bearingDeg));
+  return { s: x * sinB + y * cosB, u: x * cosB - y * sinB };
+}
+var GateCrossingDetector = class {
+  gate;
+  options;
+  usable;
+  prev = null;
+  found = [];
+  settled = false;
+  constructor(gate, options = GATE_DEFAULT_OPTIONS) {
+    this.gate = gate;
+    this.options = options;
+    this.usable = gateUsable(gate);
+  }
+  get crossings() {
+    return [...this.found];
+  }
+  offer(fix) {
+    if (this.settled || !this.usable) return null;
+    if (!Number.isFinite(fix.lat) || !Number.isFinite(fix.lng) || !Number.isFinite(fix.tMs) || !Number.isFinite(fix.coveredM)) {
+      return null;
+    }
+    const prev = this.prev;
+    if (prev !== null && fix.tMs <= prev.fix.tMs) return null;
+    const p = gateProjection(this.gate, fix.lat, fix.lng);
+    const cur = { fix, s: p.s, u: p.u };
+    this.prev = cur;
+    if (prev === null) return null;
+    const crossing = this.cross(prev, cur);
+    if (crossing !== null) this.found.push(crossing);
+    return crossing;
+  }
+  settle() {
+    this.settled = true;
+    return [...this.found];
+  }
+  cross(a, b) {
+    let direction;
+    if (a.s < 0 && b.s >= 0) direction = "forward";
+    else if (a.s >= 0 && b.s < 0) direction = "backward";
+    else return null;
+    const dtS = (b.fix.tMs - a.fix.tMs) / 1e3;
+    if (dtS > this.options.rejectGapS) return null;
+    const f = -a.s / (b.s - a.s);
+    const offsetM = a.u + f * (b.u - a.u);
+    if (Math.abs(offsetM) > this.gate.halfWidthM) return null;
+    const ds = b.s - a.s;
+    const du = b.u - a.u;
+    const hopM = Math.sqrt(ds * ds + du * du);
+    return {
+      direction,
+      fraction: f,
+      tMs: a.fix.tMs + f * (b.fix.tMs - a.fix.tMs),
+      coveredM: a.fix.coveredM + f * (b.fix.coveredM - a.fix.coveredM),
+      offsetM,
+      gapped: dtS > this.options.maxGapS || hopM > this.options.maxHopM
+    };
+  }
+};
+
 // apps/web/src/lib/routes/geo.ts
 function unwrapLonDeg(referenceDeg, lonDeg) {
   return lonDeg - 360 * Math.floor((lonDeg - referenceDeg + 180) / 360);
@@ -20,6 +106,12 @@ function lineLat(p) {
 }
 function lineLng(p) {
   return hasSmoothedPosition(p) ? p.smoothedLng : p.lng;
+}
+function isOffTrack(p) {
+  return p !== null && typeof p === "object" && !Array.isArray(p) && p.offTrack === true;
+}
+function trackLine(track) {
+  return track.some(isOffTrack) ? track.filter((p) => !isOffTrack(p)) : track;
 }
 
 // apps/web/src/lib/runs/run_stats.ts
@@ -66,23 +158,93 @@ function effortFromIndex(track, index, segment) {
     started_at: new Date(startTs).toISOString()
   };
 }
+var GLOBAL_SEGMENT_LENGTH_TOLERANCE = 0.25;
+function segmentGates(segment) {
+  const start = segment.startGate;
+  const end = segment.endGate;
+  if (!start || !end || !gateUsable(start) || !gateUsable(end)) return null;
+  return { start, end };
+}
 function computeGlobalSegmentEfforts(track, segments, toleranceM = 35) {
   const out = new Array(segments.length).fill(null);
-  if (track.length < 2 || segments.length === 0) return out;
-  const bounds = trackBounds(track);
+  const line = trackLine(track);
+  if (line.length < 2 || segments.length === 0) return out;
+  const bounds = trackBounds(line);
   let index = null;
   for (let i = 0; i < segments.length; i++) {
     const segment = segments[i];
     const pts = segment.points;
-    if (pts.length < 2 || segment.distance_m <= 0) continue;
+    if (pts.length < 2 || !(segment.distance_m > 0)) continue;
+    const gates = segmentGates(segment);
+    if (gates !== null) {
+      if (!boundsAdmit(bounds, gates.start, gates.start.halfWidthM)) continue;
+      if (!boundsAdmit(bounds, gates.end, gates.end.halfWidthM)) continue;
+      if (index === null) index = distanceIndex(line);
+      out[i] = scoreByGates(line, index, segment, gates.start, gates.end, toleranceM);
+      continue;
+    }
     const start = pts[0];
     const end = pts[pts.length - 1];
     if (!boundsAdmit(bounds, start, toleranceM)) continue;
     if (!boundsAdmit(bounds, end, toleranceM)) continue;
-    if (index === null) index = distanceIndex(track);
-    out[i] = scoreAgainstTrack(track, index, segment, toleranceM);
+    if (index === null) index = distanceIndex(line);
+    const eff = scoreAgainstTrack(line, index, segment, toleranceM);
+    out[i] = eff === null ? null : { ...eff, matched_by: "zone" };
   }
   return out;
+}
+function scoreByGates(line, index, segment, startGate, endGate, toleranceM) {
+  const len = segment.distance_m;
+  const minCovered = len * (1 - GLOBAL_SEGMENT_LENGTH_TOLERANCE);
+  const maxCovered = len * (1 + GLOBAL_SEGMENT_LENGTH_TOLERANCE);
+  const startDetector = new GateCrossingDetector(startGate);
+  const endDetector = new GateCrossingDetector(endGate);
+  let pending = [];
+  let best = null;
+  let prevIdx = -1;
+  let prevMs = -Infinity;
+  for (let i = 0; i < line.length; i++) {
+    const p = line[i];
+    const tMs = p.ts ? Date.parse(p.ts) : NaN;
+    const lat = lineLat(p);
+    const lng = lineLng(p);
+    if (!Number.isFinite(tMs) || !Number.isFinite(lat) || !Number.isFinite(lng) || tMs <= prevMs) {
+      continue;
+    }
+    const fix = { lat, lng, tMs, coveredM: index.cum[i] };
+    const endCrossing = endDetector.offer(fix);
+    const startCrossing = startDetector.offer(fix);
+    let closed = false;
+    if (endCrossing !== null && endCrossing.direction === "forward") {
+      pending = pending.filter((s) => endCrossing.coveredM - s.crossing.coveredM <= maxCovered);
+      let pick = null;
+      for (const s of pending) {
+        if (endCrossing.coveredM - s.crossing.coveredM < minCovered) continue;
+        if (!passesCheckpoints(line, segment.checkpoints, s.fromIdx, i, toleranceM)) continue;
+        pick = s;
+      }
+      if (pick !== null) {
+        const startMs = pick.crossing.tMs;
+        const endMs = endCrossing.tMs;
+        if (endMs > startMs && (best === null || endMs - startMs < best.endMs - best.startMs)) {
+          best = { startMs, endMs };
+        }
+        pending = [];
+        closed = true;
+      }
+    }
+    if (startCrossing !== null && startCrossing.direction === "forward" && !closed) {
+      pending.push({ crossing: startCrossing, fromIdx: prevIdx });
+    }
+    prevIdx = i;
+    prevMs = tMs;
+  }
+  if (best === null) return null;
+  return {
+    time_seconds: (best.endMs - best.startMs) / 1e3,
+    started_at: new Date(Math.round(best.startMs)).toISOString(),
+    matched_by: "gate"
+  };
 }
 function scoreAgainstTrack(track, index, segment, toleranceM) {
   const cum = index.cum;
@@ -112,7 +274,9 @@ function scoreAgainstTrack(track, index, segment, toleranceM) {
   const dStart = cum[startIdx];
   const dEnd = cum[endIdx];
   if (dEnd <= dStart) return null;
-  if (Math.abs(dEnd - dStart - segment.distance_m) / segment.distance_m > 0.25) return null;
+  if (Math.abs(dEnd - dStart - segment.distance_m) / segment.distance_m > GLOBAL_SEGMENT_LENGTH_TOLERANCE) {
+    return null;
+  }
   if (!passesCheckpoints(track, segment.checkpoints, startIdx, endIdx, toleranceM)) return null;
   return effortFromIndex(track, index, {
     start_distance_m: dStart,

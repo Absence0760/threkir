@@ -853,7 +853,10 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'global_segment_efforts.matched_by',
-		clients: [{ file: TS_TYPES, decl: 'GlobalSegmentMatchedBy', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'GlobalSegmentMatchedBy', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/segments.dart', decl: 'GlobalSegmentMatchedBy', shape: 'enum' },
+		],
 	},
 	{
 		tableColumn: 'race_sessions.status',

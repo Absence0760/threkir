@@ -16,7 +16,9 @@
 		setEventGymRoutine,
 		type GymRoutineSummary,
 		fetchEventCourses,
+		fetchEventCourseLines,
 		saveEventCourses,
+		type CourseLinesRow,
 		type SessionPlan
 	} from '#lib/core/data.ts';
 	import {
@@ -27,6 +29,7 @@
 		type EventCourse
 	} from '#lib/social/event_courses.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import CourseGateEditor from '#lib/components/CourseGateEditor.svelte';
 	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import { toMinorUnits } from '#lib/format/minor_units.ts';
@@ -138,6 +141,10 @@
 		storedDistanceM: number | null;
 	}
 	let storedCourses = $state<EventCourse[]>([]);
+	// Each stored course's timing lines (#1305), keyed by course id. They save
+	// on their own through the gate RPCs, outside the event form.
+	let courseLines = $state<Map<string, CourseLinesRow>>(new Map());
+	let courseLinesFailed = $state(false);
 	let coursesLoadFailed = $state(false);
 	let mainCourseName = $state('');
 	let extraCourses = $state<ExtraCourse[]>([]);
@@ -320,9 +327,21 @@
 				console.error('fetchEventCourses failed', e);
 				coursesLoadFailed = true;
 			}
+			await loadCourseLines(existing.id);
 			athleticDataAtRisk = await eventHasAthleticData(existing.id);
 		}
 	});
+
+	async function loadCourseLines(eventId: string) {
+		try {
+			const rows = await fetchEventCourseLines(eventId);
+			courseLines = new Map(rows.map((r) => [r.course_id, r]));
+			courseLinesFailed = false;
+		} catch (e) {
+			console.warn('fetchEventCourseLines failed', e);
+			courseLinesFailed = true;
+		}
+	}
 
 	function routeById(id: string): { name: string; distance_m: number } | undefined {
 		if (!id) return undefined;
@@ -425,6 +444,7 @@
 			const fresh = await fetchEventCourses(eventId);
 			const main = fresh.find((c) => c.id === mainId);
 			storedCourses = main ? [main, ...fresh.filter((c) => c !== main)] : fresh;
+			await loadCourseLines(eventId);
 		} catch (fe: unknown) {
 			// Without the stored list the next save could not tell an existing
 			// course from a new one, so the section locks as it does on load.
@@ -896,6 +916,26 @@
 				{m('eventEditor.addCourse')}
 			</button>
 		</fieldset>
+
+		{#if existing && !coursesLoadFailed && storedCourses.length > 0}
+			<section class="timing-lines" data-testid="event-timing-lines" aria-labelledby="timing-lines-title">
+				<h3 id="timing-lines-title">{m('courseLines.title')}</h3>
+				<p class="hint">{m('courseLines.hint')}</p>
+				{#if courseLinesFailed}
+					<p class="hint" role="alert">{m('courseLines.loadFailed')}</p>
+				{:else}
+					{#each storedCourses as c (c.id + ':' + (c.route_id ?? ''))}
+						<CourseGateEditor
+							courseId={c.id}
+							courseName={c.name}
+							routeId={c.route_id}
+							lines={courseLines.get(c.id) ?? null}
+							onchanged={() => loadCourseLines(existing.id)}
+						/>
+					{/each}
+				{/if}
+			</section>
+		{/if}
 	{/if}
 
 	{#if !existing}
@@ -1304,6 +1344,15 @@
 	.course-icon:disabled {
 		opacity: 0.4;
 		cursor: default;
+	}
+	.timing-lines {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+	}
+	.timing-lines h3 {
+		margin: 0;
+		font-size: 1rem;
 	}
 	.add-course {
 		display: inline-flex;

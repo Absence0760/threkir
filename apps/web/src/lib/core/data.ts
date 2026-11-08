@@ -75,6 +75,8 @@ import {
 	type CourseDraft,
 	type EventCourse,
 } from '../social/event_courses';
+import type { CourseGateColumns, GateWhich } from '../races/course_gates';
+import type { Gate } from '../geo/gate_crossing';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
 import {
@@ -5542,6 +5544,9 @@ export interface RaceSessionRow {
 	is_auto_approve: boolean;
 	created_at: string;
 	updated_at: string;
+	/// When the race froze its courses' lines (`race_session_courses`); null
+	/// for a race armed before the frozen copy existed.
+	courses_frozen_at?: string | null;
 }
 
 export async function fetchRaceSession(
@@ -5744,6 +5749,81 @@ export async function fetchEventCourses(eventId: string): Promise<EventCourse[]>
 		.order('name', { ascending: true });
 	if (error) throw dbError(error);
 	return sortCourses(data ?? []);
+}
+
+/// One course's timing lines and finish point (#1305), from the live course
+/// row or a race's frozen copy. `course_id` is the course either way.
+export interface CourseLinesRow extends CourseGateColumns {
+	course_id: string;
+	finish_lat: number | null;
+	finish_lng: number | null;
+	finish_line_self_cross: boolean;
+}
+
+/// Every course's lines as they stand now. The source columns say whether an
+/// organiser placed a line, which the editor and the preflight need.
+export async function fetchEventCourseLines(eventId: string): Promise<CourseLinesRow[]> {
+	const { data, error } = await supabase
+		.from(TABLES.event_courses)
+		.select(
+			'id, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, start_gate_source, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_gate_source, finish_lat, finish_lng, finish_line_self_cross'
+		)
+		.eq('event_id', eventId);
+	if (error) throw dbError(error);
+	return (data ?? []).map(({ id, ...rest }) => ({ course_id: id, ...rest }));
+}
+
+/// The lines a race froze when it was armed (`race_session_courses`), which
+/// is what its runners cross. Empty for a race armed before the copy existed;
+/// `race_sessions_redacted.courses_frozen_at` says whether there is one.
+export async function fetchRaceSessionCourseLines(
+	eventId: string,
+	instanceStart: string
+): Promise<CourseLinesRow[]> {
+	const { data, error } = await supabase
+		.from(TABLES.race_session_courses)
+		.select(
+			'course_id, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_lat, finish_lng, finish_line_self_cross'
+		)
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// The lines a viewer of one occurrence should see: the race's frozen copy
+/// once it has one, otherwise the courses as they stand.
+export async function fetchCourseLinesForOccurrence(
+	eventId: string,
+	instanceStart: string | null,
+	frozen: boolean
+): Promise<CourseLinesRow[]> {
+	if (frozen && instanceStart) return fetchRaceSessionCourseLines(eventId, instanceStart);
+	return fetchEventCourseLines(eventId);
+}
+
+/// Place one of a course's lines (organiser only, `set_event_course_gate`).
+/// The server normalises the bearing into [0, 360) and refuses a half-width
+/// outside 5-100 m.
+export async function setEventCourseGate(courseId: string, which: GateWhich, gate: Gate): Promise<void> {
+	const { error } = await supabase.rpc('set_event_course_gate', {
+		p_course_id: courseId,
+		p_which: which,
+		p_lat: gate.lat,
+		p_lng: gate.lng,
+		p_bearing_deg: gate.bearingDeg,
+		p_half_width_m: gate.halfWidthM,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Put a line back to the route's (or to none on a routeless course).
+export async function resetEventCourseGate(courseId: string, which: GateWhich): Promise<void> {
+	const { error } = await supabase.rpc('reset_event_course_gate', {
+		p_course_id: courseId,
+		p_which: which,
+	});
+	if (error) throw dbError(error);
 }
 
 /// Persist the event editor's course list (a dropped course's RSVPs and

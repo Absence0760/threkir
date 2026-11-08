@@ -111,6 +111,7 @@ void main() {
           'last_from_me': false,
           'unread': 3,
           'marked_unread': true,
+          'request': true,
         },
       ];
       fake.bodyByPath[_profilesPath] = [
@@ -133,6 +134,7 @@ void main() {
       expect(threads.map((t) => t.muted), [false, false]);
       expect(threads.map((t) => t.archived), [false, false]);
       expect(threads.map((t) => t.markedUnread), [false, true]);
+      expect(threads.map((t) => t.request), [false, true]);
 
       final profileReq = fake.to(_profilesPath).single;
       expect(profileReq.url.queryParameters['select'],
@@ -253,12 +255,22 @@ void main() {
           'muted': false,
           'archived': true,
         },
+        {
+          'conversation_id': 'c-4',
+          'partner_id': 'p-4',
+          'last_at': '2026-10-11T09:30:00Z',
+          'unread': 3,
+          'muted': false,
+          'archived': false,
+          'request': true,
+        },
       ];
 
       expect(await api.fetchDmBadgeStates(), [
-        (conversationId: 'c-1', unread: 2, muted: false, archived: false),
-        (conversationId: 'c-2', unread: 5, muted: true, archived: false),
-        (conversationId: 'c-3', unread: 1, muted: false, archived: true),
+        (conversationId: 'c-1', unread: 2, muted: false, archived: false, request: false),
+        (conversationId: 'c-2', unread: 5, muted: true, archived: false, request: false),
+        (conversationId: 'c-3', unread: 1, muted: false, archived: true, request: false),
+        (conversationId: 'c-4', unread: 3, muted: false, archived: false, request: true),
       ]);
       expect(fake.to(_threadsPath).single.method, 'GET');
       expect(fake.to(_profilesPath), isEmpty);
@@ -312,6 +324,50 @@ void main() {
       final req = fake.to('/rest/v1/rpc/set_conversation_unread').single
           as http.Request;
       expect(jsonDecode(req.body), {'p_conversation_id': 'c-9', 'p_unread': true});
+    });
+
+    test('fetchDmConversationState reads the viewer\'s request state',
+        () async {
+      await _signIn(client);
+      fake.bodyByPath['/rest/v1/conversation_participants'] = {
+        'muted_at': null,
+        'archived_at': null,
+        'marked_unread_at': null,
+        'request_state': 'pending',
+      };
+      final state = await api.fetchDmConversationState('c-9');
+      expect(state?.request, isTrue);
+      final req = fake.to('/rest/v1/conversation_participants').single;
+      expect(req.url.queryParameters['select'],
+          'muted_at,archived_at,marked_unread_at,request_state');
+      expect(req.url.queryParameters['user_id'], 'eq.user-1');
+    });
+
+    test('acceptDmRequest sends the conversation id', () async {
+      await _signIn(client);
+      await api.acceptDmRequest('c-9');
+      final req = fake.to('/rest/v1/rpc/accept_message_request').single
+          as http.Request;
+      expect(req.method, 'POST');
+      expect(jsonDecode(req.body), {'p_conversation_id': 'c-9'});
+    });
+
+    test('declineDmRequest sends the newest message seen and the block flag',
+        () async {
+      await _signIn(client);
+      await api.declineDmRequest('c-9', throughMessageId: 'm-4');
+      await api.declineDmRequest('c-8', throughMessageId: 'm-5', block: true);
+      final reqs = fake.to('/rest/v1/rpc/decline_message_request').toList();
+      expect(jsonDecode((reqs[0] as http.Request).body), {
+        'p_conversation_id': 'c-9',
+        'p_through_message_id': 'm-4',
+        'p_block': false,
+      });
+      expect(jsonDecode((reqs[1] as http.Request).body), {
+        'p_conversation_id': 'c-8',
+        'p_through_message_id': 'm-5',
+        'p_block': true,
+      });
     });
 
     test('a conversation the viewer is not in surfaces its P0002', () async {
@@ -565,6 +621,19 @@ void main() {
       };
 
       expect(api.sendDm('other-1', 'hi'), throwsA(isA<DmSendNotPermitted>()));
+    });
+
+    test('a fourth message into an unaccepted request is DmRequestCapReached',
+        () async {
+      await _signIn(client);
+      fake.statusByPath[_messagesPath] = 400;
+      fake.bodyByPath[_messagesPath] = {
+        'code': '54000',
+        'message': 'direct_messages: a message request holds at most 3 '
+            'messages until it is accepted',
+      };
+
+      expect(api.sendDm('other-1', 'hi'), throwsA(isA<DmRequestCapReached>()));
     });
 
     test('the send throttle reaches the caller as its P0001', () async {

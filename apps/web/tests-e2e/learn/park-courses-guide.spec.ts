@@ -2,8 +2,8 @@ import { expect, test } from '../fixtures/test';
 
 /**
  * `/learn/park-courses-how-timing-works` — the public explainer for park
- * courses (issue #1313). Pins its SEO head and that its prose sends the
- * reader to the park course catalogue.
+ * courses (issue #1313). Pins its SEO head and that its prose and its CTA
+ * send the reader to the park course catalogue.
  */
 
 const SLUG = 'park-courses-how-timing-works';
@@ -41,5 +41,10 @@ test.describe(`/learn/${SLUG}`, () => {
 		await expect(page.getByRole('heading', { name: /Seasons follow the park.s clock/ })).toBeVisible();
 		const link = page.locator('article').getByRole('link', { name: 'park courses' });
 		await expect(link).toHaveAttribute('href', '/parks');
+		// The end-of-article CTA (cta.feature: parks) points at the same catalogue.
+		await expect(page.getByRole('link', { name: 'Find a park course' })).toHaveAttribute(
+			'href',
+			'/parks',
+		);
 	});
 });

@@ -54,6 +54,7 @@ export const CTA_TARGETS: CtaTarget[] = [
 	{ feature: 'clubs', route: '/social?tab=clubs', labelKey: 'learn.ctaClubs' },
 	{ feature: 'racing', route: '/races', labelKey: 'learn.ctaRacing' },
 	{ feature: 'explore', route: '/routes?tab=explore', labelKey: 'learn.ctaExplore' },
+	{ feature: 'parks', route: '/parks', labelKey: 'learn.ctaParks' },
 ];
 
 const CTA_BY_FEATURE = new Map(CTA_TARGETS.map((t) => [t.feature, t]));

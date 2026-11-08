@@ -21,6 +21,7 @@ import '../preferences.dart';
 import '../route_surface_label.dart';
 import '../share_sheet.dart';
 import '../widgets/error_state.dart';
+import 'help_screen.dart' show openGuide;
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
@@ -425,7 +426,17 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final elevation = segment.elevationM;
     final difficulty = courseDifficultyLabel(l10n, course.difficulty);
     return Scaffold(
-      appBar: AppBar(title: Text(segment.name)),
+      appBar: AppBar(
+        title: Text(segment.name),
+        actions: [
+          IconButton(
+            key: const Key('park-course-help'),
+            icon: const Icon(Icons.help_outline),
+            tooltip: l10n.infoTipReadGuide,
+            onPressed: () => openGuide(context, 'park-courses'),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [

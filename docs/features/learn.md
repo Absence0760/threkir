@@ -76,7 +76,7 @@ No DB migration; no deploy step beyond the normal web build/release.
 
 ## Park courses guide
 
-`park-courses-how-timing-works` (category `trail`, issue #1313) is the public explainer for [park courses](park_courses.md): what a standing time trial is, how a run is timed (start, checkpoints in order, finish, the whole course), seasons in the park's own time zone, and the Fastest and Most completions boards. It is written to stay true across the matching phases, so it says which runs can count, not which device or job scores them; the in-app help guide `park-courses` carries the current "open the run on the web" caution. It has **no `cta.feature`**: the CTA vocabulary has no `/parks` target yet, and adding one needs a `learn.ctaParks` label in all seven catalogues. Until then the body's closing section links to `/parks` and the page ends on the generic sign-up CTA. `tests-e2e/learn/park-courses-guide.spec.ts` pins its head (title, canonical, `og:*`, `Article` JSON-LD) and the `/parks` link.
+`park-courses-how-timing-works` (category `trail`, issue #1313) is the public explainer for [park courses](park_courses.md): what a standing time trial is, how a run is timed (start, checkpoints in order, finish, the whole course), seasons in the park's own time zone, and the Fastest and Most completions boards. It is written to stay true across the matching phases, so it says which runs can count, not which device or job scores them; the in-app help guide `park-courses` carries the current "open the run on the web" caution. Its `cta.feature` is `parks` ("Find a park course", `/parks`), and the body's closing section also links to `/parks`. `tests-e2e/learn/park-courses-guide.spec.ts` pins its head (title, canonical, `og:*`, `Article` JSON-LD) and the `/parks` link.
 
 ## Cross-linking (CTA targets)
 
@@ -92,8 +92,9 @@ Driven by frontmatter `cta.feature`, mapped to a route + i18n label in `categori
 | `clubs` | `/social?tab=clubs` | shipped |
 | `racing` | `/races` | shipped |
 | `explore` | `/routes?tab=explore` | shipped |
+| `parks` | `/parks` | shipped |
 
-All targets are auth-gated app routes; an anon reader who clicks is sent through the layout auth guard to `/login?return_to=...`, the intended acquisition funnel. Every guide also shows a "Create a free account" → `/login?signup=1` button.
+All targets but `/parks` (which a signed-out reader can browse) are auth-gated app routes; an anon reader who clicks one is sent through the layout auth guard to `/login?return_to=...`, the intended acquisition funnel. Every guide also shows a "Create a free account" → `/login?signup=1` button.
 
 Every route in that table is resolved against the SvelteKit route tree on disk by `categories.test.ts`, so a CTA pointing at a page that does not exist fails CI. A prose promise to repoint a CTA "when X ships" cannot fail, which is how `racing` outlived its own caveat.
 

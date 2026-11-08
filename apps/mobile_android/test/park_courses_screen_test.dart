@@ -233,6 +233,7 @@ void main() {
       expect(find.byKey(const Key('park-course-safety')), findsOneWidget);
       expect(find.byKey(const Key('park-course-attribution')), findsOneWidget);
       expect(find.byKey(const Key('park-course-share-gpx')), findsOneWidget);
+      expect(find.byKey(const Key('park-course-help')), findsOneWidget);
       expect(find.text('This year (2026)'), findsOneWidget);
       expect(find.text('Bea'), findsOneWidget);
 

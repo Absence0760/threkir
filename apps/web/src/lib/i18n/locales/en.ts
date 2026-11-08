@@ -6690,6 +6690,7 @@ export const en = {
 	"learn.ctaClubs": "Find a club to run with",
 	"learn.ctaRacing": "Browse the race calendar",
 	"learn.ctaExplore": "Explore routes near you",
+	"learn.ctaParks": "Find a park course",
 	// Achievements / badges (BadgeGrid + profile + feed + share)
 	"badges.section.title": "Achievements",
 	"badges.section.subtitle": "Milestones you've earned",

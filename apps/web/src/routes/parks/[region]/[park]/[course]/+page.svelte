@@ -36,6 +36,7 @@
 		labelKey,
 	} from '#lib/parks/park_labels.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import RunMap from '#lib/components/RunMap.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
@@ -189,6 +190,7 @@
 	{:else}
 		<header class="detail-header">
 			<h1>{course.segment.name}</h1>
+			<HelpLink route="/parks/[region]/[park]/[course]" />
 			<p class="meta">
 				<span class="material-symbols" aria-hidden="true">park</span>
 				{park.name}&nbsp;·&nbsp;{regionName(park.region_code)}

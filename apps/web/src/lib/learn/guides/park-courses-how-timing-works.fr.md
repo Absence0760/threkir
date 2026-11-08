@@ -5,6 +5,8 @@ category: trail
 slug: park-courses-how-timing-works
 order: 2
 updated: 2026-11-08
+cta:
+  feature: parks
 ---
 
 ## Un contre-la-montre toujours ouvert

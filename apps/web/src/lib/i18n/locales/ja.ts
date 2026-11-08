@@ -6658,6 +6658,7 @@ export const messages = {
 	"learn.ctaClubs": "一緒に走るクラブを探す",
 	"learn.ctaRacing": "レースカレンダーを見る",
 	"learn.ctaExplore": "近くのルートを探す",
+	"learn.ctaParks": "公園コースを探す",
 	// Achievements / badges (BadgeGrid + profile + feed + share)
 	"badges.section.title": "実績",
 	"badges.section.subtitle": "達成したマイルストーン",

@@ -6663,6 +6663,7 @@ export const messages = {
 	"learn.ctaClubs": "Einen Club zum Laufen finden",
 	"learn.ctaRacing": "Rennkalender durchsuchen",
 	"learn.ctaExplore": "Routen in deiner Nähe entdecken",
+	"learn.ctaParks": "Parkstrecke finden",
 	// Achievements / badges (BadgeGrid + profile + feed + share)
 	"badges.section.title": "Erfolge",
 	"badges.section.subtitle": "Meilensteine, die du erreicht hast",

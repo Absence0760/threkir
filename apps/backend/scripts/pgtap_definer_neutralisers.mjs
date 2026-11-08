@@ -1767,12 +1767,12 @@ begin
       from race_listings l
       join race_course_suggestions s on s.listing_id = l.id and s.status = 'pending'
       join routes r on r.id = s.route_id and r.is_public = true and r.shadow_hidden = false
-     where ${mine('s')}
+     where ${mine('l')}
      group by l.id, l.name, l.race_date, l.organiser_club_id
      order by l.race_date, l.name;
 end;
 $neutralised$;`,
-      subject: 'race_listings l joined to race_course_suggestions s — the queued races whose reviewer gate was dropped',
+      subject: 'race_listings l — the queued races (each row is a listing, counted over its suggestions) whose reviewer gate was dropped',
       witness: {
         // Its own listing, route and suggester, and no claims set: the real
         // function returns nothing to a caller who is not signed in.

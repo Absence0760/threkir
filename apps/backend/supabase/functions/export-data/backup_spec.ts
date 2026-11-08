@@ -285,6 +285,21 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `athlete_id=eq.${uid}`,
 			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at',
 		},
+		// plan_change_requests — changes to a coach-assigned plan the subject
+		// sent as athlete or decided as coach (issue #1215 Phase 2). The
+		// change set is structured plan data, the note the coach's reply.
+		{
+			entry: 'plan_change_requests_as_athlete.json',
+			table: 'plan_change_requests',
+			filter: `athlete_id=eq.${uid}`,
+			select: '*',
+		},
+		{
+			entry: 'plan_change_requests_as_coach.json',
+			table: 'plan_change_requests',
+			filter: `coach_id=eq.${uid}`,
+			select: '*',
+		},
 		// event_results — own race finish records (time, rank, DNF/DNS,
 		// age-grade). audit/data-export-completeness (2026-05-30) Critical.
 		{ entry: 'event_results.json', table: 'event_results', filter: uidEq, select: '*' },

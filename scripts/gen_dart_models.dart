@@ -115,6 +115,7 @@ const _tables = <String>{
   'gear_rotation_members',
   'run_gear',
   'coach_athletes',
+  'plan_change_requests',
   'gym_workouts',
   'gym_sets',
   'exercises',

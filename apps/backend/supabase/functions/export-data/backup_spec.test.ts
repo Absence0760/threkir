@@ -59,8 +59,10 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// run_reactions + run_comment_likes, each on both legs (left by the subject
 	// + received on their runs / comments). Direct-message reports (migration
 	// 20271021000003) added reports_against_my_messages. Conversations
-	// (migration 20271105000010) added conversation_settings.
-	assertEquals(specs.length, 77, `expected 77 specs, got ${specs.length}`);
+	// (migration 20271105000010) added conversation_settings. Plan change
+	// requests (migration 20271115002382) added both legs of
+	// plan_change_requests.
+	assertEquals(specs.length, 79, `expected 79 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -434,6 +436,20 @@ Deno.test('coach_athletes exported both ways without the invite_token credential
 		assertEquals(spec.select.includes('status'), true);
 		assertEquals(spec.select.includes('accepted_at'), true);
 	}
+});
+
+Deno.test('plan_change_requests exported as athlete and as coach', () => {
+	// Issue #1215 Phase 2: a suggested plan change is the athlete's request
+	// and the coach's decision, so it ships to both.
+	const specs = buildBackupSpecs(TEST_UID);
+	const asAthlete = specs.find((s) => s.entry === 'plan_change_requests_as_athlete.json');
+	const asCoach = specs.find((s) => s.entry === 'plan_change_requests_as_coach.json');
+	assertExists(asAthlete);
+	assertExists(asCoach);
+	assertEquals(asAthlete.table, 'plan_change_requests');
+	assertEquals(asCoach.table, 'plan_change_requests');
+	assertEquals(asAthlete.filter, `athlete_id=eq.${TEST_UID}`);
+	assertEquals(asCoach.filter, `coach_id=eq.${TEST_UID}`);
 });
 
 Deno.test('event_results exported for the subject (GDPR Art 20)', () => {

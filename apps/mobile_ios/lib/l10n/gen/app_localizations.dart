@@ -8488,6 +8488,18 @@ abstract class AppLocalizations {
   /// **'{name} applied AI-suggested changes to a plan you assigned'**
   String profileNotifPlanAiEdit(String name);
 
+  /// Notification text for a coach whose athlete suggested a change to a plan the coach assigned
+  ///
+  /// In en, this message translates to:
+  /// **'{name} suggested a change to a plan you assigned'**
+  String profileNotifPlanChangeRequest(String name);
+
+  /// Notification text for an athlete whose coach approved or declined a plan change they suggested
+  ///
+  /// In en, this message translates to:
+  /// **'{name} answered your suggested plan change'**
+  String profileNotifPlanChangeDecision(String name);
+
   /// Notification inbox line for the morning reminder that today has a workout on the runner's active training plan
   ///
   /// In en, this message translates to:

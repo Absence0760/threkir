@@ -5288,6 +5288,16 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String profileNotifPlanChangeRequest(String name) {
+    return '$name sugirió un cambio en un plan que asignaste';
+  }
+
+  @override
+  String profileNotifPlanChangeDecision(String name) {
+    return '$name respondió a tu cambio de plan sugerido';
+  }
+
+  @override
   String get profileNotifWorkoutReminder =>
       'Tu entrenamiento de hoy te espera en tu plan';
 

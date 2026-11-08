@@ -1437,6 +1437,8 @@
   "profileNotifRunCompleted": "{name} hat einen Lauf abgeschlossen",
   "profileNotifPlanAssigned": "{name} hat dir einen Trainingsplan zugewiesen",
   "profileNotifPlanAiEdit": "{name} hat von der KI vorgeschlagene Änderungen an einem von dir zugewiesenen Plan übernommen",
+  "profileNotifPlanChangeRequest": "{name} hat eine Änderung an einem von dir zugewiesenen Plan vorgeschlagen",
+  "profileNotifPlanChangeDecision": "{name} hat auf deine vorgeschlagene Planänderung geantwortet",
   "profileNotifWorkoutReminder": "Dein Training für heute wartet in deinem Plan",
   "profileNotifEventCancelTitled": "Ein Termin von „{title}“ wurde abgesagt",
   "profileNotifEventCancel": "Ein Event-Termin, für den du zugesagt hattest, wurde abgesagt",

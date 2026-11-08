@@ -220,6 +220,10 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		// same /plans/{id} page (decisions § 2230).
 		{"plan_ai_edit", NotificationRow{Kind: "plan_ai_edit", PlanID: &plan}, base + "/plans/plan-1"},
 		{"workout_reminder", NotificationRow{Kind: "workout_reminder"}, base + "/plans"},
+		// The athlete's plan page, where both sides see the request
+		// (decisions § 2382).
+		{"plan_change_request", NotificationRow{Kind: "plan_change_request", PlanID: &plan}, base + "/plans/plan-1"},
+		{"plan_change_decision", NotificationRow{Kind: "plan_change_decision", PlanID: &plan}, base + "/plans/plan-1"},
 		{"message", NotificationRow{Kind: "message"}, base + "/messages"},
 		{"club_post", NotificationRow{Kind: "club_post", ClubID: &club}, base + "/clubs/club-1"},
 		{"run_completed", NotificationRow{Kind: "run_completed", UserID: "usr-1", RunID: &run}, base + "/share/run/run-1"},

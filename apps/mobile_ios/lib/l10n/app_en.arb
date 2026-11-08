@@ -7053,6 +7053,24 @@
       }
     }
   },
+  "profileNotifPlanChangeRequest": "{name} suggested a change to a plan you assigned",
+  "@profileNotifPlanChangeRequest": {
+    "description": "Notification text for a coach whose athlete suggested a change to a plan the coach assigned",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifPlanChangeDecision": "{name} answered your suggested plan change",
+  "@profileNotifPlanChangeDecision": {
+    "description": "Notification text for an athlete whose coach approved or declined a plan change they suggested",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "profileNotifWorkoutReminder": "Today's workout is waiting in your plan",
   "@profileNotifWorkoutReminder": {
     "description": "Notification inbox line for the morning reminder that today has a workout on the runner's active training plan"

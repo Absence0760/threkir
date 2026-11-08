@@ -346,6 +346,10 @@ var importantKinds = map[string]bool{
 	"club_join_request":  true,
 	"club_join_approved": true,
 	"event_updated":      true,
+	// A suggested change to a coach-assigned plan waits on the coach, and the
+	// athlete is waiting on the answer (decisions § 2382).
+	"plan_change_request":  true,
+	"plan_change_decision": true,
 }
 
 // pushImportantKinds are carried by the default "important" PUSH mode but not
@@ -560,6 +564,11 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// The recipient is the coach who assigned the plan, not its owner;
 		// /plans/{id} renders the coach's view of an active athlete's plan
 		// (coach_plan_access), which is where the change is to be read.
+		return planPath(base, n)
+	case "plan_change_request", "plan_change_decision":
+		// The athlete's plan, where both the athlete and the coach (through
+		// coach_plan_access) see the request with its approve and decline
+		// (decisions § 2382).
 		return planPath(base, n)
 	case "workout_reminder":
 		// The runner's active plan, whose detail page opens on the current

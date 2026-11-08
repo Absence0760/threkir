@@ -234,6 +234,10 @@
 				return m('notificationsList.verbPlanAssigned', { name });
 			case 'plan_ai_edit':
 				return m('notificationsList.verbPlanAiEdit', { name });
+			case 'plan_change_request':
+				return m('notificationsList.verbPlanChangeRequest', { name });
+			case 'plan_change_decision':
+				return m('notificationsList.verbPlanChangeDecision', { name });
 			case 'workout_reminder':
 				return m('notificationsList.verbWorkoutReminder');
 			case 'message':

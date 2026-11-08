@@ -618,7 +618,9 @@ export type NotificationKind =
 	| 'personal_record'
 	| 'club_join_request'
 	| 'club_join_approved'
-	| 'event_updated';
+	| 'event_updated'
+	| 'plan_change_request'
+	| 'plan_change_decision';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

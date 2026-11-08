@@ -177,6 +177,10 @@
 				return m('notificationBell.planAssigned', { name });
 			case 'plan_ai_edit':
 				return m('notificationBell.planAiEdit', { name });
+			case 'plan_change_request':
+				return m('notificationBell.planChangeRequest', { name });
+			case 'plan_change_decision':
+				return m('notificationBell.planChangeDecision', { name });
 			case 'workout_reminder':
 				return m('notificationBell.workoutReminder');
 			case 'message':

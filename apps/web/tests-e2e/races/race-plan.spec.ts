@@ -224,6 +224,7 @@ test.describe('/races/[id] — build a plan from a race', () => {
 		await expect(page.getByTestId('race-detail-course')).toHaveCount(0);
 		await expect(page.getByTestId('race-detail-course-map')).toHaveCount(0);
 		await expect(page.getByTestId('course-preview-open')).toHaveCount(0);
+		await expect(page.getByTestId('course-drive-open')).toHaveCount(0);
 		const href = new URL((await ai.getAttribute('href'))!, 'https://example.test');
 		expect(href.searchParams.get('describe') ?? '').not.toContain('Course:');
 	});
@@ -253,6 +254,7 @@ test.describe('/races/[id] — build a plan from a race', () => {
 		await page.keyboard.press('Escape');
 		await expect(dialog).toBeHidden();
 		await expect(open).toBeFocused();
+		await expect(page.getByTestId('course-drive-open')).toHaveText(/Drive this course/);
 	});
 
 	test('a listing with no course offers no map and no 3D preview', async ({ page }) => {

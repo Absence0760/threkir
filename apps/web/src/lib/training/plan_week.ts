@@ -50,3 +50,21 @@ export function planRaceCountdown(
 	if (today === end) return { kind: 'race_day', days: 0 };
 	return { kind: 'race_in', days: end - today };
 }
+
+/**
+ * How many leading weeks of a plan the week list folds into one summary row:
+ * every week before the current one while the plan is running. Before the
+ * start nothing is behind the runner yet, and after the race no week is
+ * current, so a finished plan reads as the whole record with nothing folded.
+ */
+export function foldedPlanWeekCount(
+	startDateIso: string,
+	endDateIso: string,
+	todayIso: string,
+	weekCount: number
+): number {
+	if (weekCount <= 0) return 0;
+	const today = isoToEpochDay(todayIso);
+	if (today < isoToEpochDay(startDateIso) || today > isoToEpochDay(endDateIso)) return 0;
+	return currentPlanWeekIndex(startDateIso, todayIso, weekCount);
+}

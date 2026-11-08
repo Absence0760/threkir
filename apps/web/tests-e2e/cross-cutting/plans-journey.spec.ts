@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import type { BrowserContext } from '@playwright/test';
 
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, showAllPlanWeeks } from '../fixtures/helpers';
 import {
 	createThrowawayPlan,
 	deleteThrowawayPlan,
@@ -50,6 +50,7 @@ test.describe('plans journey', () => {
 		await page.goto(`/plans/${plan!.planId}`);
 		await expect(page.getByRole('heading', { level: 1, name: plan!.name }))
 			.toBeVisible({ timeout: 10_000 });
+		await showAllPlanWeeks(page);
 
 		const pct = page.locator('.pct');
 		const completedCount = page.locator('.day-grid .day[data-status="done"]');

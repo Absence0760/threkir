@@ -5216,6 +5216,7 @@
   "planDetailEarlierWeeks": "{count, plural, other{これまでの{count}週}}",
   "planDetailShowEarlierWeeks": "これまでの週を表示",
   "planDetailHideEarlierWeeks": "これまでの週を隠す",
+  "planDetailGoToThisWeek": "今週へ移動",
   "planNewStartingPoint": "今のあなたの状態は？",
   "planNewStartingPointNew": "走ったことがない",
   "planNewStartingPointNewHint": "週2〜3日のウォーク＆ランプランで、歩きを挟まずに走れるようになるまで積み上げます。",

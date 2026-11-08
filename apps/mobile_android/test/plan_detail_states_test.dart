@@ -91,9 +91,11 @@ class _FakeSocial extends SocialService {
 }
 
 Future<void> _pump(WidgetTester tester, DateTime today,
-    {String status = 'active', String? coachId}) async {
+    {String status = 'active',
+    String? coachId,
+    Size size = const Size(420, 5000)}) async {
   SharedPreferences.setMockInitialValues({});
-  tester.view.physicalSize = const Size(420, 5000);
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   await tester.pumpWidget(
@@ -195,6 +197,26 @@ void main() {
     await tester.tap(row);
     await tester.pump();
     expect(find.byKey(const ValueKey('planDetailWeek-0')), findsOneWidget);
+  });
+
+  testWidgets('after the race nothing folds: the plan reads as the whole '
+      'record', (tester) async {
+    await _pump(tester, DateTime(2026, 3, 23));
+    expect(find.byKey(const Key('planDetailEarlierWeeks')), findsNothing);
+    expect(find.byKey(const ValueKey('planDetailWeek-0')), findsOneWidget);
+    expect(_text(tester, const ValueKey('planDetailWeekCount-0')), '1 / 2 done');
+  });
+
+  testWidgets('the week pill jumps to the current week', (tester) async {
+    await _pump(tester, DateTime(2026, 3, 18), size: const Size(420, 800));
+    final week = find.byKey(const ValueKey('planDetailWeek-2'));
+    expect(week.hitTestable(), findsNothing,
+        reason: 'the current week starts below the fold');
+
+    await tester.tap(find.byKey(const Key('planDetailWeekOfN')));
+    await tester.pumpAndSettle();
+    expect(week.hitTestable(), findsOneWidget);
+    expect(tester.getTopLeft(week).dy, lessThan(800 / 2));
   });
 
   // The row opened and closed without saying so: only the chevron's label

@@ -18436,6 +18436,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planDetailHideEarlierWeeks => 'Hide earlier weeks';
 
   @override
+  String get planDetailGoToThisWeek => 'Go to this week';
+
+  @override
   String get planNewStartingPoint => 'Where are you starting from?';
 
   @override

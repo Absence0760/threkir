@@ -5216,6 +5216,7 @@
   "planDetailEarlierWeeks": "{count, plural, one{1 semana anterior} other{{count} semanas anteriores}}",
   "planDetailShowEarlierWeeks": "Mostrar semanas anteriores",
   "planDetailHideEarlierWeeks": "Ocultar semanas anteriores",
+  "planDetailGoToThisWeek": "Ir para esta semana",
   "planNewStartingPoint": "De onde você está começando?",
   "planNewStartingPointNew": "Nunca corri",
   "planNewStartingPointNewHint": "Um plano de caminhada-corrida em 2 ou 3 dias por semana que leva você a correr sem pausas para caminhar.",

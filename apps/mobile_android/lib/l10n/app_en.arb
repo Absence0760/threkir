@@ -24428,6 +24428,10 @@
   "@planDetailHideEarlierWeeks": {
     "description": "Collapses the finished weeks"
   },
+  "planDetailGoToThisWeek": "Go to this week",
+  "@planDetailGoToThisWeek": {
+    "description": "Hint on the plan header's week pill: tapping it scrolls the week list to the current week"
+  },
   "planNewStartingPoint": "Where are you starting from?",
   "@planNewStartingPoint": {
     "description": "Plan wizard: the first question, which decides the fields that apply"

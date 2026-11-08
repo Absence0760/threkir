@@ -4,7 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { repurposeTodayWorkout, seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
 import { readMaybeRow } from '../fixtures/db-read';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, showAllPlanWeeks } from '../fixtures/helpers';
 
 /**
  * Workout-runner-adjacent surfaces (web).
@@ -271,6 +271,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 			// week-grid `.day-link` (stable click target). Apr 5 is the
 			// completed Long day.
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+			await showAllPlanWeeks(page);
 			const linkedDay = page.locator(
 				'.weeks .week .day[data-status="done"] .day-link',
 				{ hasText: /Long/ }
@@ -326,6 +327,7 @@ test.describe('Workout-runner surfaces (web)', () => {
 				// string (no other Easy day in the plan has these exact
 				// notes).
 				await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+				await showAllPlanWeeks(page);
 				// .day-link contains the kind label as text. There are
 				// multiple Easy days; pick the one inside week-1
 				// (week_index = 1 → second .week in DOM order).

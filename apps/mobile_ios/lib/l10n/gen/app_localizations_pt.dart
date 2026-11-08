@@ -18625,6 +18625,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
 
   @override
+  String get planDetailGoToThisWeek => 'Ir para esta semana';
+
+  @override
   String get planNewStartingPoint => 'De onde está a partir?';
 
   @override
@@ -38842,6 +38845,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get planDetailHideEarlierWeeks => 'Ocultar semanas anteriores';
+
+  @override
+  String get planDetailGoToThisWeek => 'Ir para esta semana';
 
   @override
   String get planNewStartingPoint => 'De onde você está começando?';

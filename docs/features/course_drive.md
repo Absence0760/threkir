@@ -19,7 +19,7 @@ The spoken notes are the part only we can offer. The same note-trigger logic
 are built, behind a default-off flag on both platforms:
 `PUBLIC_COURSE_DRIVE_ENABLED` (web) / `COURSE_DRIVE_ENABLED` (mobile). The flag
 stays off in production until counsel signs off on the safety notice (see
-[Safety notice](#safety-notice-and-the-flag)).
+[Safety notice](#8-driver-safety-and-liability)).
 
 ## Out of scope (decided)
 

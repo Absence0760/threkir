@@ -205,6 +205,13 @@ language sql as $fn$
       select 1 from pg_constraint k
       where k.conrelid = c.oid and k.contype = 'c' and a.attnum = any (k.conkey)
     )
+    -- A `generated always as identity` column is filled only by its own
+    -- sequence: an INSERT naming it is refused unless it says OVERRIDING
+    -- SYSTEM VALUE, which no client path does, so it can hold nothing but the
+    -- sequence's integers. Exempted by that property rather than by name, so
+    -- a new audit log keyed this way (race_listing_audit, club_verification_
+    -- audit) needs no entry here.
+    and a.attidentity <> 'a'
     -- UNBOUNDED_EXEMPT. Four sequence- or identity-backed surrogate keys, whose
     -- values come from a sequence that starts at 1 and never decreases and
     -- which no client supplies; and one generated column. `segments.length_m`

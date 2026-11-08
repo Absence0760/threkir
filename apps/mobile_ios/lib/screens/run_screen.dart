@@ -570,6 +570,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       RunElevationGainAccumulator();
   int _elevationProcessedCount = 0;
 
+  // The race-finish detector interpolates between consecutive fixes, so it
+  // must see each fix once at its own instant, not the last one again on
+  // every recorder tick (#1304 section 4).
+  DateTime? _raceFixOfferedAt;
+
   // Same rule the finished summary applies ([movingTimeOf]), so the live
   // Avg pace cannot disagree with it.
   final MovingTimeAccumulator _moving = MovingTimeAccumulator();
@@ -3062,25 +3067,29 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
       }
 
       // L4 — Live-race finish detection. A paused runner is not racing, so
-      // a paused pass through the zone is not a finish. The device clock at
-      // receipt is the fix's instant: it is the clock the server offset is
-      // measured against. A fix the movement filter rejected (a teleport)
-      // is not offered: it could land inside the finish zone.
+      // a paused pass through the zone is not a finish. Each fix is offered
+      // once, timed at the device-clock instant it was received (the clock
+      // the server offset is measured against). A fix the movement filter
+      // rejected (a teleport) is not offered: it could land inside the
+      // finish zone.
       try {
         final rc = widget.raceController;
         final pos = snapshot.currentPosition;
         if (rc != null &&
             rc.isHosting &&
             pos != null &&
+            fixedAt != null &&
+            fixedAt != _raceFixOfferedAt &&
             positionFresh &&
             snapshot.positionTrusted &&
             !_manualPaused &&
             !_stopRequested) {
+          _raceFixOfferedAt = fixedAt;
           final finish = rc.offerFix(
             lat: pos.lat,
             lng: pos.lng,
             coveredM: snapshot.distanceMetres,
-            at: DateTime.now(),
+            at: fixedAt,
           );
           if (finish != null) unawaited(_onRaceAutoFinish(finish));
         }
@@ -4354,6 +4363,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _timeOnlyChosen = false;
     _elevationGain.reset();
     _elevationProcessedCount = 0;
+    _raceFixOfferedAt = null;
     _moving.reset();
     _treadmillUsed = false;
     _activeSince = null;

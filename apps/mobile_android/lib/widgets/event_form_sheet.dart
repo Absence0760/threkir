@@ -101,11 +101,7 @@ class _EventFormState extends State<_EventForm> {
   // Minute precision, like the pickers: the web editor reads and writes the
   // start to the minute, so seconds here would make its first save move the
   // instant every RSVP is keyed to.
-  DateTime _starts = _defaultStart(DateTime.now());
-
-  static DateTime _defaultStart(DateTime now) {
-    return DateTime(now.year, now.month, now.day + 1, now.hour + 1, now.minute);
-  }
+  DateTime _starts = defaultEventStart(DateTime.now());
 
   String _recurrence = 'none'; // none | weekly | biweekly | monthly
   bool _isPublic = true;
@@ -735,3 +731,10 @@ class _EventFormState extends State<_EventForm> {
   }
 
 }
+
+/// A new event's default start: tomorrow, an hour later than [now], to the
+/// minute. Stepped through the calendar so a DST change overnight still lands
+/// on tomorrow's wall-clock hour.
+@visibleForTesting
+DateTime defaultEventStart(DateTime now) =>
+    DateTime(now.year, now.month, now.day + 1, now.hour + 1, now.minute);

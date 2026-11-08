@@ -256,6 +256,7 @@ class _RaceStopSpy extends RaceController {
   _RaceStopSpy(super.social);
 
   int fixesOffered = 0;
+  final List<DateTime> offeredAt = [];
   DateTime? decidedAt;
   double? lastCoverageAsked;
 
@@ -273,6 +274,7 @@ class _RaceStopSpy extends RaceController {
     required DateTime at,
   }) {
     fixesOffered++;
+    offeredAt.add(at);
     return super.offerFix(lat: lat, lng: lng, coveredM: coveredM, at: at);
   }
 
@@ -2809,6 +2811,34 @@ void main() {
       expect(raceSocial.submitted.single.finisherStatus, 'finished');
       expect(raceSocial.submitted.single.finishMethod,
           RaceFinishMethod.manual.wire);
+      await unmount(tester);
+    });
+
+    testWidgets('each fix reaches the detector once, at its own instant',
+        (tester) async {
+      // The detector interpolates a crossing between consecutive fixes, so a
+      // fix re-offered on every recorder tick at a later clock reading would
+      // put the same position at several instants (#1304 section 4).
+      final raceSocial = _RaceResultSocial();
+      final spy = _RaceStopSpy(raceSocial);
+      await pumpRacing(tester, raceSocial, base: spy);
+      expect(spy.fixesOffered, greaterThan(0));
+      final before = spy.fixesOffered;
+
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      tester.takeException();
+      expect(spy.fixesOffered, before,
+          reason: 'a tick with no new fix must not re-offer the last one');
+      expect(spy.offeredAt.toSet(), hasLength(spy.offeredAt.length),
+          reason: 'every offer is a distinct fix instant');
+
+      geolocator.emit(_pos(metresEast: 4 * 12.0, secondsFromStart: 8));
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      expect(spy.fixesOffered, before + 1,
+          reason: 'a new fix is offered exactly once');
       await unmount(tester);
     });
 

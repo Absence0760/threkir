@@ -206,6 +206,39 @@ Future<void> _openSheet(
 }
 
 void main() {
+  group('defaultEventStart', () {
+    test('is tomorrow, an hour later, to the minute', () {
+      expect(defaultEventStart(DateTime(2026, 6, 10, 9, 15, 42, 500)),
+          DateTime(2026, 6, 11, 10, 15));
+    });
+
+    test('rolls over the month and the year', () {
+      expect(defaultEventStart(DateTime(2026, 4, 30, 8, 0)),
+          DateTime(2026, 5, 1, 9, 0));
+      expect(defaultEventStart(DateTime(2026, 12, 31, 12, 5)),
+          DateTime(2027, 1, 1, 13, 5));
+    });
+
+    test('a late-evening start carries past midnight into the next day', () {
+      // 23:30 + 1 day + 1 hour = the day after tomorrow at 00:30.
+      expect(defaultEventStart(DateTime(2026, 1, 31, 23, 30)),
+          DateTime(2026, 2, 2, 0, 30));
+    });
+
+    test('handles a leap day', () {
+      expect(defaultEventStart(DateTime(2028, 2, 28, 7, 45)),
+          DateTime(2028, 2, 29, 8, 45));
+      expect(defaultEventStart(DateTime(2028, 2, 29, 7, 45)),
+          DateTime(2028, 3, 1, 8, 45));
+    });
+
+    test('drops seconds so the web editor does not move the start', () {
+      final start = defaultEventStart(DateTime(2026, 6, 10, 9, 15, 59, 999));
+      expect(start.second, 0);
+      expect(start.millisecond, 0);
+    });
+  });
+
   group('showEventFormSheet', () {
     testWidgets('opens as a full-screen dialog with the New event heading',
         (tester) async {

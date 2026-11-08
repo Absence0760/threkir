@@ -1893,10 +1893,6 @@
 			     `fitness_snapshots` on every dashboard open so the trend
 			     chart has history. Hides when the user has no qualifying
 			     runs yet (short / non-recording sources only). -->
-			<!-- Today's-form band: the readiness score beside the fitness
-			     snapshot it is derived from. Both cards self-hide and the band
-			     is auto-fit, so one alone takes the full width rather than
-			     leaving a hole where the other would have been. -->
 			{#snippet fitnessSnapshot()}
 				<section class="fitness-card">
 					<div class="fitness-row">

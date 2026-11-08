@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto, afterNavigate } from '$app/navigation';
+	import { page } from '$app/state';
 	import RunEditor from '#lib/components/RunEditor.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import { SAVED_ROUTE_PARAM } from '#lib/routes/route_return.ts';
 
 	let cameFromRuns = $state(false);
 	afterNavigate(({ from }) => {
@@ -46,6 +48,7 @@
 	<RunEditor
 		oncreated={(run) => goto(`/runs/${run.id}`)}
 		oncancel={handleCancel}
+		initialRouteId={page.url.searchParams.get(SAVED_ROUTE_PARAM)}
 	/>
 </div>
 

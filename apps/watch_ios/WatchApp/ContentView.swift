@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var syncError: String?
     @State private var thisRunSynced = false
     @State private var countingDown = false
+    @State private var confirmingNoGps = false
 
     var body: some View {
         NavigationStack {
@@ -23,7 +24,13 @@ struct ContentView: View {
                         liveRace: connectivity.liveRace,
                         todaysWorkout: workoutManager.offeredWorkout(connectivity.todaysWorkout),
                         onClearRoute: connectivity.clearArmedRoute,
-                        onStart: { countingDown = true }
+                        onStart: {
+                            if workoutManager.locationBlockedForStart {
+                                confirmingNoGps = true
+                            } else {
+                                countingDown = true
+                            }
+                        }
                     )
                 case .recovering:
                     RecoveryView(
@@ -62,6 +69,16 @@ struct ContentView: View {
                         onCancel: { countingDown = false }
                     )
                 }
+            }
+            .confirmationDialog(
+                "Start without GPS?",
+                isPresented: $confirmingNoGps,
+                titleVisibility: .visible
+            ) {
+                Button("Record time only") { countingDown = true }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Location is off for this app, so this run would record time only. Turn it on in Settings to record route, distance and pace.")
             }
         }
         .onChange(of: connectivity.defaultActivityType) { _, preferred in

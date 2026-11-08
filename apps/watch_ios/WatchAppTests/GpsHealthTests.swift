@@ -165,6 +165,19 @@ final class GpsHealthTests: XCTestCase {
         )
     }
 
+    // MARK: - Start without GPS
+
+    func testADeniedOrRestrictedGrantBlocksAStart() {
+        XCTAssertTrue(GpsHealth.startBlocked(status: .denied))
+        XCTAssertTrue(GpsHealth.startBlocked(status: .restricted))
+    }
+
+    func testAGrantOrAnUnaskedPromptDoesNotBlockAStart() {
+        XCTAssertFalse(GpsHealth.startBlocked(status: .authorizedWhenInUse))
+        XCTAssertFalse(GpsHealth.startBlocked(status: .authorizedAlways))
+        XCTAssertFalse(GpsHealth.startBlocked(status: .notDetermined))
+    }
+
     func testReducedAccuracyAfterAskingWarnsRatherThanAskingAgain() {
         // A decline is the runner's answer for this run; a second sheet on the
         // next authorization callback would land mid-stride.

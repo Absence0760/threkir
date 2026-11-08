@@ -641,8 +641,8 @@
           {
             "type": "steps",
             "items": [
-              "Abre tu club en la web. Cuando el club es **Solo por invitación**, los administradores ven un panel **Enlace de invitación** en la página del club.",
-              "Selecciona **Generar enlace de invitación** la primera vez y luego **Copiar** para copiar el enlace en el portapapeles.",
+              "Abre tu club. En la web, los administradores ven un panel **Enlace de invitación** en la página del club, sea cual sea la política de acceso. En la app del móvil, toca el botón de invitar en la parte superior de la pantalla del club.",
+              "Selecciona **Generar enlace de invitación** la primera vez y luego **Copiar** para copiar el enlace en el portapapeles, o **Compartir** para enviarlo desde el menú de compartir.",
               "Envía el enlace como prefieras. Cualquiera que lo abra e inicie sesión se une al club como miembro."
             ]
           },
@@ -659,6 +659,10 @@
             "type": "note",
             "tone": "tip",
             "text": "En la app del móvil, un miembro también puede tocar **Unirse con código de invitación** en la pestaña **Clubes** de **Social** y pegar el enlace entero o solo el código que va después de /clubs/join/. Abrir el enlace en el navegador del móvil también funciona."
+          },
+          {
+            "type": "p",
+            "text": "Un club público también tiene un botón **Compartir club** que cualquiera puede usar. Comparte la página pública del club, que muestra de qué va el club sin dejar entrar a nadie, así que la gente sigue uniéndose de la forma habitual. Los clubs privados no tienen página pública, así que comparte el enlace de invitación."
           }
         ]
       },

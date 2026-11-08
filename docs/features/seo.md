@@ -88,6 +88,12 @@ Two rows above are easy to misread, and both were wrong in this table before:
   a crawler would only ever be handed the empty shell. Making one genuinely
   indexable is the step-2 `share-entity` path below, not a sitemap append
   (`decisions.md § 677`).
+- **`/parks` and everything under it is anon-allowed but NOT in the sitemap
+  yet** (decisions § 2383). Both catalogue tables grant select to anon, so a
+  signed-out visitor reads a park and a course; the boards ask for a sign-in.
+  The pages are CSR and no real course is loaded, so a sitemap entry would
+  advertise empty shells. The issue's indexable park and course pages are the
+  `share-entity` path below, once the Virginia courses are loaded.
 - **`/share/session/[id]` + `/share/workout/[id]` are NOT in the sitemap**,
   unlike their four `share-entity` siblings. A public gym workout is the
   athlete's own training record, and enumerating every one of them would build

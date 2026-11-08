@@ -3780,6 +3780,14 @@
   "@addRunNoRoutes": {
     "description": "Empty-state hint shown in the route section when the user has no saved routes"
   },
+  "addRunBuildRoute": "Build a route",
+  "@addRunBuildRoute": {
+    "description": "Option in the sheet the empty Add-run route field opens: opens the route builder, then attaches the saved route to this run"
+  },
+  "addRunImportRoute": "Import a file",
+  "@addRunImportRoute": {
+    "description": "Option in the sheet the empty Add-run route field opens: imports a GPX/KML/KMZ/GeoJSON file as a route; a single imported route is attached to this run"
+  },
   "addRunDistanceInvalid": "Enter a distance greater than 0",
   "@addRunDistanceInvalid": {
     "description": "Validation error for the distance field on the add-run form"

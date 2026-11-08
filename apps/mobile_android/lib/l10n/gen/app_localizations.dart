@@ -4787,6 +4787,18 @@ abstract class AppLocalizations {
   /// **'No saved routes yet — build or import one to attach it here'**
   String get addRunNoRoutes;
 
+  /// Option in the sheet the empty Add-run route field opens: opens the route builder, then attaches the saved route to this run
+  ///
+  /// In en, this message translates to:
+  /// **'Build a route'**
+  String get addRunBuildRoute;
+
+  /// Option in the sheet the empty Add-run route field opens: imports a GPX/KML/KMZ/GeoJSON file as a route; a single imported route is attached to this run
+  ///
+  /// In en, this message translates to:
+  /// **'Import a file'**
+  String get addRunImportRoute;
+
   /// Validation error for the distance field on the add-run form
   ///
   /// In en, this message translates to:

@@ -773,6 +773,8 @@
   "addRunClearRoute": "Route entfernen",
   "addRunSearchRoutes": "Gespeicherte Routen suchen",
   "addRunNoRoutes": "Noch keine gespeicherten Routen – erstelle oder importiere eine, um sie hier anzuhängen",
+  "addRunBuildRoute": "Route erstellen",
+  "addRunImportRoute": "Datei importieren",
   "addRunDistanceInvalid": "Gib eine Distanz größer als 0 ein",
   "addRunDurationInvalid": "Gib eine Dauer ein",
   "addRunTitleHint": "z. B. Mittagsrunde",

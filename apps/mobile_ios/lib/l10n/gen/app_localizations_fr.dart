@@ -2904,6 +2904,12 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucun itinéraire enregistré — créez-en ou importez-en un pour l\'associer ici';
 
   @override
+  String get addRunBuildRoute => 'Créer un itinéraire';
+
+  @override
+  String get addRunImportRoute => 'Importer un fichier';
+
+  @override
   String get addRunDistanceInvalid => 'Saisissez une distance supérieure à 0';
 
   @override

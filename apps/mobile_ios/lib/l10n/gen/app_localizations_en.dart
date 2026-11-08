@@ -2865,6 +2865,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'No saved routes yet — build or import one to attach it here';
 
   @override
+  String get addRunBuildRoute => 'Build a route';
+
+  @override
+  String get addRunImportRoute => 'Import a file';
+
+  @override
   String get addRunDistanceInvalid => 'Enter a distance greater than 0';
 
   @override

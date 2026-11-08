@@ -25,6 +25,9 @@
 		regionName,
 	} from '#lib/parks/park_courses.ts';
 	import { downloadFile } from '#lib/routes/gpx.ts';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import { buildCourseShareCanonical } from '#lib/share/share_course_meta.ts';
 	import {
 		ATTRIBUTION_LABEL,
 		DIFFICULTY_LABEL,
@@ -38,6 +41,15 @@
 	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
+
+	// The indexable home of a course is its share page, keyed by the same
+	// three slugs as this URL, so the canonical needs no data load.
+	let canonicalUrl = $derived(
+		buildCourseShareCanonical(
+			siteOrigin(PUBLIC_SITE_URL),
+			`${data.region}/${data.park}/${data.course}`,
+		),
+	);
 
 	let park = $state<Park | null>(null);
 	let course = $state<ParkCourse | null>(null);
@@ -144,7 +156,10 @@
 	);
 </script>
 
-<svelte:head><title>{course?.segment.name ?? m('parks.title')}</title></svelte:head>
+<svelte:head>
+	<title>{course?.segment.name ?? m('parks.title')}</title>
+	<link rel="canonical" href={canonicalUrl} />
+</svelte:head>
 
 <div class="page">
 	{#if park}

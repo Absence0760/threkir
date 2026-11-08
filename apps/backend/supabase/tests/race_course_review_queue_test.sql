@@ -161,11 +161,6 @@ select lives_ok(
   $$ select review_race_course_suggestion('a1d44444-0000-0000-0000-000000000001', false, null, null) $$,
   'the organiser rejects the only suggestion on its race'
 );
-select is(
-  (select status from race_course_suggestions where id = 'a1d44444-0000-0000-0000-000000000001'),
-  'rejected',
-  'the rejection marks the suggestion rejected'
-);
 select results_eq(
   $$ select listing_id, organiser_club_id, pending_count from race_course_review_queue()
       where listing_id::text like 'a1d33333-%' $$,
@@ -173,6 +168,11 @@ select results_eq(
   'a race with no pending suggestion left drops out of the queue'
 );
 reset role;
+select is(
+  (select status from race_course_suggestions where id = 'a1d44444-0000-0000-0000-000000000001'),
+  'rejected',
+  'the rejection marks the suggestion rejected'
+);
 
 -- ── losing verification loses the queue ─────────────────────────────────────
 

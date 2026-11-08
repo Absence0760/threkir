@@ -440,8 +440,8 @@ void main() {
       // on the run screen and ~38 m on the run-detail screen minutes later.
       // computeRunElevationGain / RunElevationGainAccumulator in
       // run_altitude.dart are the ONE recorded-run elevation-gain contract
-      // (the barometer-or-GPS series and its band, over route_simplify.dart's
-      // gate + dropout carry); the screen must feed that accumulator, not
+      // (the barometer-or-GPS series and its band, over core_models'
+      // elevation_gain.dart gate + dropout carry); the screen must feed that accumulator, not
       // re-derive the arithmetic or pick a band of its own.
       final body = _extractMethodBody(
         source,
@@ -474,7 +474,7 @@ void main() {
         RegExp(r'minDeltaM|kElevationGain\w*MinDeltaM').hasMatch(source),
         isFalse,
         reason: 'The noise bands belong to run_altitude.dart and '
-            'route_simplify.dart; do not fork a threshold here.',
+            'core_models; do not fork a threshold here.',
       );
     });
 
@@ -5720,9 +5720,12 @@ void main() {
       // The race-course tools (decisions § 2381). Claiming takes an
       // unclaimed race and destroys nothing; linking replaces the course with
       // another public club route, undone by linking the old one again;
-      // suggesting queues a suggestion and links nothing.
+      // suggesting queues a suggestion and links nothing. `dialogTitle` is the
+      // link dialog, which also approves a suggestion (linking through the
+      // same checks); its Remove course is held for the undo window, never
+      // committed from the dialog (decisions § 2396).
       'screens/race_detail_screen.dart::l.raceCourseClaimTitle': 1,
-      'screens/race_detail_screen.dart::l.raceCourseLinkTitle': 1,
+      'screens/race_detail_screen.dart::dialogTitle': 1,
       'screens/race_detail_screen.dart::l.raceCourseSuggestTitle': 1,
       // The one-time driver safety notice for Drive this course. Cancel leaves
       // the screen before anything has started; "I understand" only records

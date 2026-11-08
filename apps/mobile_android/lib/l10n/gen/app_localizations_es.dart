@@ -15197,6 +15197,43 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sugeriste un recorrido. Está pendiente de revisión.';
 
   @override
+  String get raceCourseUnlink => 'Quitar recorrido';
+
+  @override
+  String get raceCourseUnlinked => 'Recorrido quitado.';
+
+  @override
+  String get raceCourseReviewHeading => 'Sugerencias de recorrido';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Reclama esta carrera para aprobar o rechazar una sugerencia.';
+
+  @override
+  String get raceCourseReviewApprove => 'Aprobar';
+
+  @override
+  String get raceCourseReviewReject => 'Rechazar';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Aprobar este recorrido';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'El recorrido debe ser una ruta pública de tu club. Elige la copia del club de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Sugerencia aprobada y recorrido vinculado.';
+
+  @override
+  String get raceCourseReviewRejected => 'Sugerencia rechazada.';
+
+  @override
+  String get raceCourseReviewFailed => 'No se pudo revisar la sugerencia.';
+
+  @override
   String get racesDetailShare => 'Compartir';
 
   @override

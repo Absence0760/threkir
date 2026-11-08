@@ -21,10 +21,12 @@ import '../route_surface_label.dart';
 import '../share_sheet.dart';
 import '../training.dart' show toIsoDate;
 import '../training_service.dart';
+import '../undo_queue.dart';
 import '../web_base_url.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
+import '../widgets/undo_bar.dart';
 import 'course_drive_screen.dart';
 import 'plan_new_screen.dart';
 import 'races_screen.dart' show showRaceImportSheet;
@@ -71,8 +73,8 @@ String raceShareUrl(String listingId, {String? webBase}) {
 /// `/races/[id]`. Opened from a calendar card's name: the race's facts, who
 /// lists it, train / race page / results / share, the import from race day
 /// on, and the runner's own runs linked to it. A verified club's admin can
-/// claim the race and link its course, and any runner can suggest a course
-/// (decisions § 2381); reviewing suggestions stays on web. Runners' photos
+/// claim the race, link or remove its course and review suggested courses,
+/// and any runner can suggest one (decisions § 2381). Runners' photos
 /// stay on web — the phone has no reader for `race_listing_photos` yet.
 class RaceDetailScreen extends StatefulWidget {
   final RaceService service;
@@ -109,6 +111,7 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
   bool _aiPlan = false;
   List<OrganiserClub> _myClubs = const [];
   String? _mySuggestionRouteId;
+  List<RaceCourseSuggestion> _suggestions = const [];
   bool _busy = false;
 
   late final TrainingService _training = widget.training ?? TrainingService();
@@ -188,6 +191,18 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
       if (mounted) setState(() => _mySuggestionRouteId = routeId);
     } catch (e) {
       debugPrint('RaceDetailScreen: own suggestion read failed: $e');
+    }
+    await _loadSuggestions();
+  }
+
+  // Auxiliary: empty for anyone who is not a reviewer, and on a failed read.
+  Future<void> _loadSuggestions() async {
+    try {
+      final rows = await widget.service
+          .fetchRaceCourseSuggestionsForReview(widget.listingId);
+      if (mounted) setState(() => _suggestions = rows);
+    } catch (e) {
+      debugPrint('RaceDetailScreen: suggestion queue read failed: $e');
     }
   }
 
@@ -269,7 +284,10 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
     );
   }
 
-  Future<void> _link(RaceListingView race) async {
+  /// Links, changes or removes the course; with [approving], approves that
+  /// suggestion by linking the club's own copy of it (web's link dialog).
+  Future<void> _link(RaceListingView race,
+      {RaceCourseSuggestion? approving}) async {
     final l = AppLocalizations.of(context);
     final clubId = race.organiserClubId;
     if (clubId == null) return;
@@ -283,15 +301,22 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
     }
     if (!mounted) return;
     final current = race.course?.routeId;
-    String? routeId = routes.any((r) => r.id == current)
-        ? current
+    final preferred = approving != null && approving.routeClubId == clubId
+        ? approving.routeId
+        : current;
+    String? routeId = routes.any((r) => r.id == preferred)
+        ? preferred
         : (routes.isEmpty ? null : routes.first.id);
     var source = race.course?.source ?? 'official';
-    final ok = await showDialog<bool>(
+    final canRemove = approving == null && current != null;
+    final dialogTitle = approving != null
+        ? l.raceCourseReviewApproveTitle
+        : l.raceCourseLinkTitle;
+    final choice = await showDialog<_LinkChoice>(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setLocal) => AlertDialog(
-          title: Text(l.raceCourseLinkTitle),
+          title: Text(dialogTitle),
           content: routes.isEmpty
               ? Text(l.raceCourseLinkNoRoutes,
                   key: const Key('race-course-link-empty'))
@@ -299,6 +324,10 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (approving != null) ...[
+                      Text(l.raceCourseReviewApproveBody(approving.routeName)),
+                      const SizedBox(height: 12),
+                    ],
                     DropdownButtonFormField<String>(
                       key: const Key('race-course-link-route'),
                       initialValue: routeId,
@@ -339,25 +368,99 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
                   ],
                 ),
           actions: [
+            if (canRemove)
+              TextButton(
+                key: const Key('race-course-unlink'),
+                onPressed: () => Navigator.pop(ctx, _LinkChoice.remove),
+                child: Text(l.raceCourseUnlink),
+              ),
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
+                onPressed: () => Navigator.pop(ctx),
                 child: Text(l.commonCancel)),
             if (routes.isNotEmpty)
               FilledButton(
                 key: const Key('race-course-link-confirm'),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(l.raceCourseLinkConfirm),
+                onPressed: () => Navigator.pop(ctx, _LinkChoice.link),
+                child: Text(approving != null
+                    ? l.raceCourseReviewApprove
+                    : l.raceCourseLinkConfirm),
               ),
           ],
         ),
       ),
     );
+    if (!mounted) return;
+    if (choice == _LinkChoice.remove) {
+      _unlink(race);
+      return;
+    }
     final chosen = routeId;
-    if (ok != true || chosen == null || !mounted) return;
+    if (choice != _LinkChoice.link || chosen == null) return;
+    if (approving != null) {
+      await _runCourseAction(
+        () => widget.service.reviewRaceCourseSuggestion(approving.id, true,
+            routeId: chosen, source: source),
+        l.raceCourseReviewApproved,
+        l.raceCourseReviewFailed,
+      );
+      await _loadSuggestions();
+      return;
+    }
     await _runCourseAction(
       () => widget.service.linkRaceCourse(race.id, chosen, source),
       l.raceCourseLinked,
       l.raceCourseLinkFailed,
+    );
+  }
+
+  // Removing the course is held for the undo window rather than confirmed:
+  // linking it again would not restore it, because a relink stamps a new
+  // checked date (conventions.md § Destructive actions). Web's `unlink`.
+  void _unlink(RaceListingView race) {
+    final l = AppLocalizations.of(context);
+    final service = widget.service;
+    final before = _race;
+    setState(() => _race = race.withoutCourse());
+    deferDestructive(
+      context,
+      DeferredDestruction(
+        message: l.raceCourseUnlinked,
+        commit: () async {
+          await service.linkRaceCourse(race.id, null, null);
+          if (mounted) await _refreshRace();
+        },
+        restore: () {
+          if (mounted) setState(() => _race = before);
+        },
+        onCommitError: (e) {
+          debugPrint('RaceDetailScreen: course removal failed: $e');
+          if (mounted) showTopBanner(context, l.raceCourseLinkFailed);
+        },
+      ),
+    );
+  }
+
+  // A rejected suggestion cannot be put back into the queue, so the reject is
+  // held for the undo window too. Web's `reject`.
+  void _reject(RaceCourseSuggestion suggestion) {
+    final l = AppLocalizations.of(context);
+    final service = widget.service;
+    final before = _suggestions;
+    setState(() => _suggestions =
+        _suggestions.where((s) => s.id != suggestion.id).toList());
+    deferDestructive(
+      context,
+      DeferredDestruction(
+        message: l.raceCourseReviewRejected,
+        commit: () => service.reviewRaceCourseSuggestion(suggestion.id, false),
+        restore: () {
+          if (mounted) setState(() => _suggestions = before);
+        },
+        onCommitError: (e) {
+          debugPrint('RaceDetailScreen: suggestion reject failed: $e');
+          if (mounted) showTopBanner(context, l.raceCourseReviewFailed);
+        },
+      ),
     );
   }
 
@@ -418,7 +521,10 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
       organiserClubId: race.organiserClubId,
       myOrganiserClubs: _myClubs,
     );
-    if (!access.canClaim && !access.canManage && !access.canSuggest) {
+    if (!access.canClaim &&
+        !access.canManage &&
+        !access.canSuggest &&
+        _suggestions.isEmpty) {
       return const SizedBox.shrink();
     }
     final theme = Theme.of(context);
@@ -469,6 +575,52 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
             child:
                 Text(l.raceCourseSuggestPending, style: theme.textTheme.bodySmall),
           ),
+        if (_suggestions.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(l.raceCourseReviewHeading, style: theme.textTheme.titleSmall),
+          if (!access.canManage)
+            Padding(
+              key: const Key('race-course-review-claim-first'),
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(l.raceCourseReviewClaimFirst,
+                  style: theme.textTheme.bodySmall),
+            ),
+          for (final s in _suggestions)
+            Padding(
+              key: ValueKey('race-course-suggestion-${s.id}'),
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(s.routeName, style: theme.textTheme.bodyLarge),
+                  if (s.note != null && s.note!.isNotEmpty)
+                    Text(s.note!, style: theme.textTheme.bodySmall),
+                  if (access.canManage)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          FilledButton(
+                            key: const Key('race-course-approve'),
+                            onPressed: _busy
+                                ? null
+                                : () => _link(race, approving: s),
+                            child: Text(l.raceCourseReviewApprove),
+                          ),
+                          OutlinedButton(
+                            key: const Key('race-course-reject'),
+                            onPressed: _busy ? null : () => _reject(s),
+                            child: Text(l.raceCourseReviewReject),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+        ],
       ],
     );
   }
@@ -840,6 +992,8 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
 
 /// The "Suggest a course" dialog. Its own State owns the note controller, so
 /// the controller outlives the dialog's exit animation.
+enum _LinkChoice { link, remove }
+
 class _SuggestCourseDialog extends StatefulWidget {
   final List<CourseRouteOption> routes;
   final String? initialRouteId;

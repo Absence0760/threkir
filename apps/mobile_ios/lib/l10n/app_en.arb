@@ -20107,6 +20107,55 @@
   "@raceCourseSuggestPending": {
     "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
   },
+  "raceCourseUnlink": "Remove course",
+  "@raceCourseUnlink": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseUnlinked": "Course removed.",
+  "@raceCourseUnlinked": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseReviewHeading": "Course suggestions",
+  "@raceCourseReviewHeading": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseReviewClaimFirst": "Claim this race to approve or reject a suggestion.",
+  "@raceCourseReviewClaimFirst": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseReviewApprove": "Approve",
+  "@raceCourseReviewApprove": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseReviewReject": "Reject",
+  "@raceCourseReviewReject": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseReviewApproveTitle": "Approve this course",
+  "@raceCourseReviewApproveTitle": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseReviewApproveBody": "The course must be a public route your club owns. Pick the club's copy of {route}.",
+  "@raceCourseReviewApproveBody": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396).",
+    "placeholders": {
+      "route": {
+        "type": "String"
+      }
+    }
+  },
+  "raceCourseReviewApproved": "Suggestion approved and course linked.",
+  "@raceCourseReviewApproved": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseReviewRejected": "Suggestion rejected.",
+  "@raceCourseReviewRejected": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
+  "raceCourseReviewFailed": "Couldn't review the suggestion.",
+  "@raceCourseReviewFailed": {
+    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+  },
   "racesDetailShare": "Share",
   "@racesDetailShare": {
     "description": "Race detail screen: share the race link"

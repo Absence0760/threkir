@@ -24644,6 +24644,72 @@ abstract class AppLocalizations {
   /// **'You suggested a course. It\'s waiting for review.'**
   String get raceCourseSuggestPending;
 
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Remove course'**
+  String get raceCourseUnlink;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Course removed.'**
+  String get raceCourseUnlinked;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Course suggestions'**
+  String get raceCourseReviewHeading;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim this race to approve or reject a suggestion.'**
+  String get raceCourseReviewClaimFirst;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get raceCourseReviewApprove;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get raceCourseReviewReject;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Approve this course'**
+  String get raceCourseReviewApproveTitle;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'The course must be a public route your club owns. Pick the club\'s copy of {route}.'**
+  String raceCourseReviewApproveBody(String route);
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion approved and course linked.'**
+  String get raceCourseReviewApproved;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion rejected.'**
+  String get raceCourseReviewRejected;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t review the suggestion.'**
+  String get raceCourseReviewFailed;
+
   /// Race detail screen: share the race link
   ///
   /// In en, this message translates to:

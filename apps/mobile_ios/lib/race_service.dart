@@ -71,6 +71,24 @@ class RaceListingView {
             ? null
             : j['organiser_club_name'] as String?,
       );
+
+  /// The same listing with no course, which the race screen shows while a
+  /// course removal waits out its undo window.
+  RaceListingView withoutCourse() => RaceListingView(
+        id: id,
+        provider: provider,
+        providerRaceId: providerRaceId,
+        name: name,
+        raceDate: raceDate,
+        distanceM: distanceM,
+        locationLabel: locationLabel,
+        entryUrl: entryUrl,
+        resultsUrl: resultsUrl,
+        isVerified: isVerified,
+        distanceMAway: distanceMAway,
+        organiserClubId: organiserClubId,
+        organiserClubName: organiserClubName,
+      );
 }
 
 /// The CHECK'd vocabulary of `race_listings.course_source` (decisions § 2381);
@@ -140,6 +158,25 @@ class CourseRouteOption {
   final String id;
   final String name;
   const CourseRouteOption({required this.id, required this.name});
+}
+
+/// A pending course suggestion a reviewer may act on. It never names who
+/// suggested it. Mirrors web's `RaceCourseSuggestion`.
+class RaceCourseSuggestion {
+  final String id;
+  final String routeId;
+  final String routeName;
+
+  /// The club that owns the suggested route, when it is a club route.
+  final String? routeClubId;
+  final String? note;
+  const RaceCourseSuggestion({
+    required this.id,
+    required this.routeId,
+    required this.routeName,
+    this.routeClubId,
+    this.note,
+  });
 }
 
 /// Which race-course actions the runner is offered (decisions § 2381). The
@@ -645,6 +682,37 @@ class RaceService extends ChangeNotifier {
       'p_listing_id': listingId,
       'p_route_id': routeId,
       'p_note': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
+  }
+
+  /// The pending suggestions a reviewer may act on; empty for anyone who is
+  /// not one. Mirrors web's `fetchRaceCourseSuggestionsForReview`.
+  Future<List<RaceCourseSuggestion>> fetchRaceCourseSuggestionsForReview(
+      String listingId) async {
+    if (_uid == null || !_uuid.hasMatch(listingId)) return const [];
+    final rows = await _c.rpc('race_course_suggestions_for_review',
+        params: {'p_listing_id': listingId}, get: true);
+    return [
+      for (final r in (rows as List).whereType<Map<String, dynamic>>())
+        RaceCourseSuggestion(
+          id: r['id'] as String,
+          routeId: r['route_id'] as String,
+          routeName: r['route_name'] as String,
+          routeClubId: r['route_club_id'] as String?,
+          note: r['note'] as String?,
+        ),
+    ];
+  }
+
+  /// Approve (linking [routeId], the club's own public copy) or reject a
+  /// suggestion. Mirrors web's `reviewRaceCourseSuggestion`.
+  Future<void> reviewRaceCourseSuggestion(String suggestionId, bool approve,
+      {String? routeId, String source = 'official'}) async {
+    await _c.rpc('review_race_course_suggestion', params: {
+      'p_suggestion_id': suggestionId,
+      'p_approve': approve,
+      'p_route_id': routeId,
+      'p_source': source,
     });
   }
 

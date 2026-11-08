@@ -3026,17 +3026,34 @@ export interface RaceListingCourse {
 	updatedAt: string | null;
 }
 
-export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
-	if (!isEntityId(id)) return null;
-	const { data, error } = await supabase
-		.from('public_race_listings')
-		.select(
-			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug'
-		)
-		.eq('id', id)
-		.maybeSingle();
-	if (error) throw dbError(error);
-	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
+const RACE_LISTING_DETAIL_COLUMNS =
+	'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug';
+
+type RaceListingDetailRow = Pick<
+	Database['public']['Views']['public_race_listings']['Row'],
+	| 'id'
+	| 'provider'
+	| 'name'
+	| 'race_date'
+	| 'distance_m'
+	| 'location_label'
+	| 'entry_url'
+	| 'results_url'
+	| 'is_verified'
+	| 'course_distance_m'
+	| 'course_elevation_m'
+	| 'course_surface'
+	| 'course_route_id'
+	| 'course_source'
+	| 'course_checked_at'
+	| 'course_updated_at'
+	| 'organiser_club_id'
+	| 'organiser_club_name'
+	| 'organiser_club_slug'
+>;
+
+function raceListingDetailFromRow(data: RaceListingDetailRow): RaceListingDetail | null {
+	if (!data.id || !data.name || !data.race_date || !data.provider) return null;
 	const hasCourse =
 		data.course_distance_m != null ||
 		data.course_elevation_m != null ||
@@ -3068,6 +3085,38 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 				}
 			: null
 	};
+}
+
+export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
+	if (!isEntityId(id)) return null;
+	const { data, error } = await supabase
+		.from('public_race_listings')
+		.select(RACE_LISTING_DETAIL_COLUMNS)
+		.eq('id', id)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? raceListingDetailFromRow(data) : null;
+}
+
+/// Several listings in one read, for the course-suggestion review queue.
+/// Order follows `ids`; an id the view no longer returns is dropped.
+export async function fetchRaceListings(ids: readonly string[]): Promise<RaceListingDetail[]> {
+	const wanted = [...new Set(ids.filter(isEntityId))];
+	if (wanted.length === 0) return [];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase
+			.from('public_race_listings')
+			.select(RACE_LISTING_DETAIL_COLUMNS)
+			.in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const byId = new Map<string, RaceListingDetail>();
+	for (const row of rows) {
+		const detail = raceListingDetailFromRow(row);
+		if (detail) byId.set(detail.id, detail);
+	}
+	return wanted.flatMap((id) => byId.get(id) ?? []);
 }
 
 /// A verified club claims an unclaimed race (decisions § 2381). The RPC is
@@ -3153,6 +3202,30 @@ export async function fetchRaceCourseSuggestionsForReview(
 		routeClubId: r.route_club_id,
 		note: r.note,
 		createdAt: r.created_at
+	}));
+}
+
+/// A race with pending course suggestions the signed-in runner may review
+/// (decisions § 2396): a race their verified club claimed, or an unclaimed
+/// race while they administer any verified club.
+export interface RaceCourseReviewQueueItem {
+	listingId: string;
+	name: string;
+	raceDate: string;
+	/// Null while the race is unclaimed; claiming it is the first step.
+	organiserClubId: string | null;
+	pendingCount: number;
+}
+
+export async function fetchRaceCourseReviewQueue(): Promise<RaceCourseReviewQueueItem[]> {
+	const { data, error } = await supabase.rpc('race_course_review_queue', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		listingId: r.listing_id,
+		name: r.name,
+		raceDate: r.race_date,
+		organiserClubId: r.organiser_club_id,
+		pendingCount: r.pending_count
 	}));
 }
 

@@ -4,7 +4,6 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/grade_adjusted_pace.dart';
-import '../lib/route_simplify.dart' show kElevationGainMinDeltaM;
 
 /// Mirror of `apps/web/src/lib/runs/grade_adjusted_pace.test.ts`. Keep in
 /// lockstep — the GAP figure shown on mobile run detail and on web run detail

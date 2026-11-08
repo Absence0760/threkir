@@ -20369,6 +20369,189 @@ class AppLocalizationsPt extends AppLocalizations {
   String runDetailBlockedDurationTooLong(int hours) {
     return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, por isso a nuvem recusa-a e tentar novamente nunca vai funcionar. Corrija a duração para a enviar.';
   }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'Daqui a $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'Daqui a $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Agora: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Agora: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Acabou de passar: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Acabou de passar: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Serviços: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance a cerca de $grade por cento.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Tempo limite às $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Tempo limite $time após a partida.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Notas do percurso ativadas.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Troço $done concluído. O troço $next está pronto.';
+  }
+
+  @override
+  String get ttsDriveFinished => 'Chegou à meta. Notas do percurso paradas.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'Está fora do percurso há algum tempo, por isso as notas do percurso pararam.';
+
+  @override
+  String get courseDriveTitle => 'Percorrer o percurso de carro';
+
+  @override
+  String get courseDriveNoticeTitle => 'Antes de conduzir';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Use isto com um passageiro ou com o telemóvel num suporte e não lhe toque enquanto conduz. Cumpra as regras e a sinalização de trânsito. As estradas do percurso podem estar fechadas no dia da prova e a rota da app de mapas pode não coincidir com o percurso.';
+
+  @override
+  String get courseDriveNoticeAccept => 'Compreendo';
+
+  @override
+  String get courseDriveMapsApp => 'Abrir em';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Mapas da Apple';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Ir para a partida';
+
+  @override
+  String get courseDriveLegsHeading => 'Troços';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Troço $n: de $from a $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'A rota da app de mapas serve apenas de orientação. As notas seguem o percurso real.';
+
+  @override
+  String get courseDriveChecking =>
+      'A verificar que troços a app de mapas consegue seguir…';
+
+  @override
+  String get courseDriveAllDrivable =>
+      'A app de mapas consegue seguir todo o percurso.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'Não foi possível verificar que troços a app de mapas consegue seguir.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'A app de mapas não consegue seguir estes troços';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return 'De $from a $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Notas do percurso';
+
+  @override
+  String get courseDriveNoNotes => 'Este percurso não tem marcadores para ler.';
+
+  @override
+  String get courseDriveStart => 'Iniciar notas faladas';
+
+  @override
+  String get courseDriveStop => 'Parar';
+
+  @override
+  String get courseDriveWaiting =>
+      'Dirija-se ao percurso. As notas começam quando lá chegar.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Próxima nota daqui a $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'Não há mais notas pela frente.';
+
+  @override
+  String get courseDriveFinished => 'Chegou à meta.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Parado: esteve fora do percurso durante 10 minutos.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'A localização está desativada, por isso as notas não o conseguem seguir.';
+
+  @override
+  String get courseDriveLoadFailed =>
+      'Não foi possível carregar este percurso.';
+
+  @override
+  String get courseDriveOpenFailed => 'Não foi possível abrir a app de mapas.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Tempo limite às $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Tempo limite $time após a partida';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance a cerca de $grade%';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -40721,5 +40904,189 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String runDetailBlockedDurationTooLong(int hours) {
     return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, então a nuvem a recusa e tentar de novo nunca vai funcionar. Corrija a duração para enviá-la.';
+  }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'Em $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'Em $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Agora: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Agora: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Você acabou de passar: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Você acabou de passar: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Serviços: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance a cerca de $grade por cento.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Tempo limite às $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Tempo limite $time após a largada.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Notas do percurso ativadas.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Trecho $done concluído. O trecho $next está pronto.';
+  }
+
+  @override
+  String get ttsDriveFinished =>
+      'Você chegou ao fim do percurso. Notas do percurso encerradas.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'Você está fora do percurso há um tempo, por isso as notas do percurso pararam.';
+
+  @override
+  String get courseDriveTitle => 'Percorrer o percurso de carro';
+
+  @override
+  String get courseDriveNoticeTitle => 'Antes de dirigir';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Use isto com um passageiro ou com o celular em um suporte e não toque nele enquanto dirige. Siga as regras e a sinalização de trânsito. As ruas do percurso podem estar fechadas no dia da prova e a rota do app de mapas pode não coincidir com o percurso.';
+
+  @override
+  String get courseDriveNoticeAccept => 'Entendi';
+
+  @override
+  String get courseDriveMapsApp => 'Abrir no';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Mapas da Apple';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Ir até a largada';
+
+  @override
+  String get courseDriveLegsHeading => 'Trechos';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Trecho $n: de $from a $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'A rota do app de mapas serve só de orientação. As notas seguem o percurso real.';
+
+  @override
+  String get courseDriveChecking =>
+      'Verificando quais trechos o app de mapas consegue seguir…';
+
+  @override
+  String get courseDriveAllDrivable =>
+      'O app de mapas consegue seguir todo o percurso.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'Não foi possível verificar quais trechos o app de mapas consegue seguir.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'O app de mapas não consegue seguir estes trechos';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return 'De $from a $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Notas do percurso';
+
+  @override
+  String get courseDriveNoNotes => 'Este percurso não tem marcadores para ler.';
+
+  @override
+  String get courseDriveStart => 'Iniciar notas faladas';
+
+  @override
+  String get courseDriveStop => 'Parar';
+
+  @override
+  String get courseDriveWaiting =>
+      'Vá até o percurso. As notas começam quando você chegar.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Próxima nota em $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'Não há mais notas pela frente.';
+
+  @override
+  String get courseDriveFinished => 'Você chegou ao fim do percurso.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Parado: você ficou fora do percurso por 10 minutos.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'A localização está desativada, por isso as notas não conseguem acompanhar você.';
+
+  @override
+  String get courseDriveLoadFailed =>
+      'Não foi possível carregar este percurso.';
+
+  @override
+  String get courseDriveOpenFailed => 'Não foi possível abrir o app de mapas.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Tempo limite às $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Tempo limite $time após a largada';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance a cerca de $grade%';
   }
 }

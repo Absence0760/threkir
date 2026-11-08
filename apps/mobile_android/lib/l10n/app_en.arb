@@ -26682,5 +26682,307 @@
     "placeholders": {
       "hours": {"type": "int"}
     }
+  },
+  "ttsDriveAhead": "In {distance}: {kind}, {label}.",
+  "@ttsDriveAhead": {
+    "description": "Spoken drive note ahead: distance, marker type, marker name",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "kind": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveAheadKind": "In {distance}: {kind}.",
+  "@ttsDriveAheadKind": {
+    "description": "Spoken drive note ahead for a marker with no name",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveAt": "Now: {kind}, {label}.",
+  "@ttsDriveAt": {
+    "description": "Spoken drive note on arriving at a marker",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveAtKind": "Now: {kind}.",
+  "@ttsDriveAtKind": {
+    "description": "Spoken drive note on arriving at a marker with no name",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDrivePassed": "Just passed: {kind}, {label}.",
+  "@ttsDrivePassed": {
+    "description": "Spoken drive note for a marker passed between two GPS fixes",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDrivePassedKind": "Just passed: {kind}.",
+  "@ttsDrivePassedKind": {
+    "description": "Spoken drive note for a passed marker with no name",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveServices": "Services: {services}.",
+  "@ttsDriveServices": {
+    "description": "Spoken list of an aid station services",
+    "placeholders": {
+      "services": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveClimb": "{distance} at about {grade} percent.",
+  "@ttsDriveClimb": {
+    "description": "Spoken climb length and grade",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "grade": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveCutoffClock": "Cut-off at {clock}.",
+  "@ttsDriveCutoffClock": {
+    "description": "Spoken cut-off wall-clock time",
+    "placeholders": {
+      "clock": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveCutoffElapsed": "Cut-off {time} after the start.",
+  "@ttsDriveCutoffElapsed": {
+    "description": "Spoken cut-off as time after the start",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveStarted": "Drive notes on.",
+  "@ttsDriveStarted": {
+    "description": "Spoken when drive notes start"
+  },
+  "ttsDriveLegDone": "Leg {done} done. Leg {next} is ready.",
+  "@ttsDriveLegDone": {
+    "description": "Spoken when a Maps leg ends and the next is ready",
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveFinished": "You've reached the finish. Drive notes stopped.",
+  "@ttsDriveFinished": {
+    "description": "Spoken when the drive reaches the end of the course"
+  },
+  "ttsDriveAbandoned": "You've been off the course for a while, so drive notes have stopped.",
+  "@ttsDriveAbandoned": {
+    "description": "Spoken when the drive stops after a long time off the course"
+  },
+  "courseDriveTitle": "Drive this course",
+  "@courseDriveTitle": {
+    "description": "Drive this course: screen title and entry button"
+  },
+  "courseDriveNoticeTitle": "Before you drive",
+  "@courseDriveNoticeTitle": {
+    "description": "One-time driver safety notice title"
+  },
+  "courseDriveNoticeBody": "Use this with a passenger or a mounted phone, and don't touch it while driving. Follow road rules and signs. Course roads may be closed on race day, and the Maps route may not match the course.",
+  "@courseDriveNoticeBody": {
+    "description": "One-time driver safety notice text (pending counsel review)"
+  },
+  "courseDriveNoticeAccept": "I understand",
+  "@courseDriveNoticeAccept": {
+    "description": "Acknowledge the driver safety notice"
+  },
+  "courseDriveMapsApp": "Open in",
+  "@courseDriveMapsApp": {
+    "description": "Label above the Maps app choice"
+  },
+  "courseDriveAppGoogle": "Google Maps",
+  "@courseDriveAppGoogle": {
+    "description": "Google Maps app name"
+  },
+  "courseDriveAppApple": "Apple Maps",
+  "@courseDriveAppApple": {
+    "description": "Apple Maps app name"
+  },
+  "courseDriveAppWaze": "Waze",
+  "@courseDriveAppWaze": {
+    "description": "Waze app name"
+  },
+  "courseDriveToStart": "Drive to the start",
+  "@courseDriveToStart": {
+    "description": "Open the Maps app to drive to the start of the course"
+  },
+  "courseDriveLegsHeading": "Legs",
+  "@courseDriveLegsHeading": {
+    "description": "Heading over the list of Maps legs"
+  },
+  "courseDriveLeg": "Leg {n}: {from} to {to}",
+  "@courseDriveLeg": {
+    "description": "One Maps leg: its number and distance range",
+    "placeholders": {
+      "n": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveGuidanceOnly": "The Maps route is guidance only. The notes follow the real course.",
+  "@courseDriveGuidanceOnly": {
+    "description": "The Maps route is not the exact course"
+  },
+  "courseDriveChecking": "Checking which stretches Maps can follow…",
+  "@courseDriveChecking": {
+    "description": "Checking which stretches a Maps app can follow"
+  },
+  "courseDriveAllDrivable": "Maps can follow the whole course.",
+  "@courseDriveAllDrivable": {
+    "description": "Every stretch of the course can be followed by Maps"
+  },
+  "courseDriveCheckFailed": "We couldn't check which stretches Maps can follow.",
+  "@courseDriveCheckFailed": {
+    "description": "The drivable-stretch check could not run"
+  },
+  "courseDriveUndrivableHeading": "Maps can't follow these stretches",
+  "@courseDriveUndrivableHeading": {
+    "description": "Heading over stretches Maps cannot follow"
+  },
+  "courseDriveStretch": "{from} to {to}",
+  "@courseDriveStretch": {
+    "description": "A distance range on the course",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveNotesHeading": "Course notes",
+  "@courseDriveNotesHeading": {
+    "description": "Heading over the course notes"
+  },
+  "courseDriveNoNotes": "This course has no markers to read out.",
+  "@courseDriveNoNotes": {
+    "description": "The course has no markers to speak"
+  },
+  "courseDriveStart": "Start spoken notes",
+  "@courseDriveStart": {
+    "description": "Start the spoken notes"
+  },
+  "courseDriveStop": "Stop",
+  "@courseDriveStop": {
+    "description": "Stop the spoken notes"
+  },
+  "courseDriveWaiting": "Head to the course. Notes start when you reach it.",
+  "@courseDriveWaiting": {
+    "description": "Shown until the driver reaches the course"
+  },
+  "courseDriveNextIn": "Next note in {distance}",
+  "@courseDriveNextIn": {
+    "description": "Distance to the next course note",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveNoMoreNotes": "No more notes ahead.",
+  "@courseDriveNoMoreNotes": {
+    "description": "Every note has been spoken"
+  },
+  "courseDriveFinished": "You reached the finish.",
+  "@courseDriveFinished": {
+    "description": "The drive reached the end of the course"
+  },
+  "courseDriveAbandoned": "Stopped: you were off the course for 10 minutes.",
+  "@courseDriveAbandoned": {
+    "description": "The drive stopped after 10 minutes off the course"
+  },
+  "courseDriveLocationDenied": "Location is off, so the notes can't follow you.",
+  "@courseDriveLocationDenied": {
+    "description": "Location access is off"
+  },
+  "courseDriveLoadFailed": "Couldn't load this course.",
+  "@courseDriveLoadFailed": {
+    "description": "The course could not be loaded"
+  },
+  "courseDriveOpenFailed": "Couldn't open the Maps app.",
+  "@courseDriveOpenFailed": {
+    "description": "The Maps app could not be opened"
+  },
+  "courseDriveCutoffClock": "Cut-off at {clock}",
+  "@courseDriveCutoffClock": {
+    "description": "Cut-off time shown on a note",
+    "placeholders": {
+      "clock": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveCutoffElapsed": "Cut-off {time} after the start",
+  "@courseDriveCutoffElapsed": {
+    "description": "Cut-off shown as time after the start",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveClimb": "{distance} at about {grade}%",
+  "@courseDriveClimb": {
+    "description": "Climb length and grade shown on a note",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "grade": {
+        "type": "String"
+      }
+    }
   }
 }

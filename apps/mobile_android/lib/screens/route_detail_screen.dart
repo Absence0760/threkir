@@ -14,6 +14,8 @@ import '../ai_disclosure.dart';
 import '../apple_watch_route_bridge.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
+import '../course_drive.dart' show DriveMarkerInput, DrivePoint;
+import '../course_drive_flag.dart';
 import '../detail_map_height.dart';
 import '../dev_auto_login.dart' show isLocalSupabaseUrl;
 import '../l10n/date_format.dart';
@@ -44,6 +46,7 @@ import '../tile_pack.dart' show TileBbox;
 import '../undo_queue.dart';
 import '../watch_course.dart';
 import '../watch_roadbook.dart';
+import 'course_drive_screen.dart';
 import 'message_thread_screen.dart';
 import 'roadbook_screen.dart';
 import '../widgets/ai_disclosure_notice.dart';
@@ -1127,6 +1130,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     : l10n.routeDetailSaveForOffline,
                 onPressed: _offlinePinBusy ? null : _toggleOfflinePin,
               ),
+              // A private course offers no drive mode, its owner included
+              // (course_drive.md gotcha 6).
+              if (courseDriveGate && _isPublic && _displayWaypoints.length >= 2)
+                AppBarAction(
+                  icon: const Icon(Icons.directions_car_outlined),
+                  label: l10n.courseDriveTitle,
+                  onPressed: _openCourseDrive,
+                ),
               if (_isOwner)
                 AppBarAction(
                   icon: Icon(_isStarred ? Icons.star : Icons.star_border),
@@ -1832,6 +1843,37 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   /// half is held to the same bar: an over-cap one is reduced deliberately (see
   /// [watchRoadbookFromRoadbook]) and the runner is told what was dropped, or
   /// refused outright when it can't be reduced honestly.
+  /// Reads the same clipped polyline the map does, and the viewer-redacted
+  /// markers, so a drive can show no more than the screen (decisions §33).
+  void _openCourseDrive() {
+    final line = [
+      for (final w in _displayWaypoints)
+        DrivePoint(w.lat, w.lng, ele: w.elevationMetres),
+    ];
+    final api = widget.apiClient;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => CourseDriveScreen(
+        title: widget.route.name,
+        load: () async {
+          final rows = api == null
+              ? const <cm.RouteMarkerRow>[]
+              : await api.fetchRouteMarkers(widget.route.id);
+          return CourseDriveCourse(line: line, markers: [
+            for (final m in rows)
+              DriveMarkerInput(
+                kind: m.kind,
+                label: m.label,
+                lat: m.lat,
+                lng: m.lng,
+                positionM: m.positionM,
+                meta: m.meta,
+              ),
+          ]);
+        },
+      ),
+    ));
+  }
+
   Future<void> _sendCourseToWatch() async {
     if (_watchPushBusy) return;
     final l10n = AppLocalizations.of(context);

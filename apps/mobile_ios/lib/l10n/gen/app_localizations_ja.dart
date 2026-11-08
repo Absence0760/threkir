@@ -19390,4 +19390,177 @@ class AppLocalizationsJa extends AppLocalizations {
   String runDetailBlockedDurationTooLong(int hours) {
     return 'このランは$hours時間を超えており、ランとしてありえない長さのためクラウドに保存できません。再試行しても成功しません。時間を修正するとアップロードできます。';
   }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return '$distance先：$kind、$label。';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return '$distance先：$kind。';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'ここで：$kind、$label。';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'ここで：$kind。';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return '通過しました：$kind、$label。';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return '通過しました：$kind。';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'サービス：$services。';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance、平均約$gradeパーセントです。';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return '関門は$clockです。';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return '関門はスタートから$timeです。';
+  }
+
+  @override
+  String get ttsDriveStarted => 'コースノートを開始します。';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return '区間$doneが終わりました。区間$nextの準備ができています。';
+  }
+
+  @override
+  String get ttsDriveFinished => 'フィニッシュに到着しました。コースノートを終了します。';
+
+  @override
+  String get ttsDriveAbandoned => 'しばらくコースから外れていたため、コースノートを終了しました。';
+
+  @override
+  String get courseDriveTitle => 'コースを車で下見';
+
+  @override
+  String get courseDriveNoticeTitle => '運転する前に';
+
+  @override
+  String get courseDriveNoticeBody =>
+      '同乗者がいるとき、またはスマートフォンを固定したときに使い、運転中は操作しないでください。交通ルールと標識に従ってください。大会当日はコースの道路が通行止めになることがあり、地図アプリのルートがコースと一致しない場合があります。';
+
+  @override
+  String get courseDriveNoticeAccept => '了解しました';
+
+  @override
+  String get courseDriveMapsApp => '開くアプリ';
+
+  @override
+  String get courseDriveAppGoogle => 'Google マップ';
+
+  @override
+  String get courseDriveAppApple => 'Apple マップ';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'スタート地点へ向かう';
+
+  @override
+  String get courseDriveLegsHeading => '区間';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return '区間 $n：$from〜$to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly => '地図アプリのルートは目安です。ノートは実際のコースに沿って読み上げます。';
+
+  @override
+  String get courseDriveChecking => '地図アプリがたどれる区間を確認中…';
+
+  @override
+  String get courseDriveAllDrivable => '地図アプリはコース全体をたどれます。';
+
+  @override
+  String get courseDriveCheckFailed => '地図アプリがたどれる区間を確認できませんでした。';
+
+  @override
+  String get courseDriveUndrivableHeading => '地図アプリがたどれない区間';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return '$from〜$to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'コースノート';
+
+  @override
+  String get courseDriveNoNotes => 'このコースには読み上げるマーカーがありません。';
+
+  @override
+  String get courseDriveStart => '音声ノートを開始';
+
+  @override
+  String get courseDriveStop => '停止';
+
+  @override
+  String get courseDriveWaiting => 'コースへ向かってください。到着するとノートが始まります。';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return '次のノートまで$distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'この先のノートはありません。';
+
+  @override
+  String get courseDriveFinished => 'フィニッシュに到着しました。';
+
+  @override
+  String get courseDriveAbandoned => '停止しました：10分間コースから外れていました。';
+
+  @override
+  String get courseDriveLocationDenied => '位置情報がオフのため、ノートが現在地をたどれません。';
+
+  @override
+  String get courseDriveLoadFailed => 'このコースを読み込めませんでした。';
+
+  @override
+  String get courseDriveOpenFailed => '地図アプリを開けませんでした。';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return '関門 $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return '関門：スタートから $time';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance、平均約 $grade%';
+  }
 }

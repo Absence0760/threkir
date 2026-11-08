@@ -87,7 +87,11 @@ List<double> cumulativeM(List<DrivePoint> line) {
   for (var i = 0; i < line.length; i++) {
     if (i > 0) {
       acc += haversineMetres(
-          line[i - 1].lat, line[i - 1].lng, line[i].lat, line[i].lng);
+        line[i - 1].lat,
+        line[i - 1].lng,
+        line[i].lat,
+        line[i].lng,
+      );
     }
     out.add(acc);
   }
@@ -348,8 +352,9 @@ List<DriveNote> buildDriveNotes(
         alongM: snap.alongM,
         kind: kind,
         label: m.label.trim(),
-        services:
-            kind == 'aid_station' ? parseAidServices(meta['services']) : const [],
+        services: kind == 'aid_station'
+            ? parseAidServices(meta['services'])
+            : const [],
         cutoff: kind == 'cutoff' ? parseCutoff(meta) : null,
         climb: kind == 'climb' ? climbFrom(line, cum, snap.alongM) : null,
       ),
@@ -403,10 +408,10 @@ class DriveCue {
 /// retired without a word, so joining at mile 8 does not read out miles 0-8.
 class DriveCueAnnouncer {
   DriveCueAnnouncer(List<DriveNote> notes, [double startAlongM = 0])
-      : _notes = List.unmodifiable(notes),
-        _ahead = List.filled(notes.length, false),
-        _at = List.filled(notes.length, false),
-        _done = [for (final n in notes) n.alongM < startAlongM];
+    : _notes = List.unmodifiable(notes),
+      _ahead = List.filled(notes.length, false),
+      _at = List.filled(notes.length, false),
+      _done = [for (final n in notes) n.alongM < startAlongM];
 
   final List<DriveNote> _notes;
   final List<bool> _ahead;
@@ -426,7 +431,11 @@ class DriveCueAnnouncer {
         _done[i] = true;
         if (!_ahead[i] && !_at[i] && -aheadM <= kDriveMissedReportM) {
           return DriveCue(
-              index: i, note: note, band: DriveCueBand.passed, aheadM: aheadM);
+            index: i,
+            note: note,
+            band: DriveCueBand.passed,
+            aheadM: aheadM,
+          );
         }
         continue;
       }
@@ -435,12 +444,20 @@ class DriveCueAnnouncer {
         _at[i] = true;
         _ahead[i] = true;
         return DriveCue(
-            index: i, note: note, band: DriveCueBand.at, aheadM: aheadM);
+          index: i,
+          note: note,
+          band: DriveCueBand.at,
+          aheadM: aheadM,
+        );
       }
       if (aheadM <= lead && !_ahead[i]) {
         _ahead[i] = true;
         return DriveCue(
-            index: i, note: note, band: DriveCueBand.ahead, aheadM: aheadM);
+          index: i,
+          note: note,
+          band: DriveCueBand.ahead,
+          aheadM: aheadM,
+        );
       }
       return null;
     }
@@ -482,7 +499,8 @@ List<DriveLeg> planDriveLegs(
   int maxWaypoints, [
   double? spacingM,
 ]) {
-  final spacing = spacingM ??
+  final spacing =
+      spacingM ??
       (maxWaypoints > 0 ? kDriveStopSpacingM : kDriveSingleStopSpacingM);
   final cum = cumulativeM(line);
   final pieces = <(int, int)>[];
@@ -516,8 +534,14 @@ List<DriveLeg> planDriveLegs(
       final vias = [
         for (var j = 1; j <= via; j++) stopAt(s + (e - s) * j / (via + 1)),
       ];
-      legs.add(DriveLeg(
-          index: legs.length, start: stopAt(s), via: vias, end: stopAt(e)));
+      legs.add(
+        DriveLeg(
+          index: legs.length,
+          start: stopAt(s),
+          via: vias,
+          end: stopAt(e),
+        ),
+      );
     }
   }
   return legs;
@@ -528,8 +552,10 @@ String _coord(double lat, double lng) =>
 
 /// Google Maps driving directions through a leg, from the device's location.
 String googleMapsLegUrl(DriveLeg leg) {
-  final waypoints =
-      [leg.start, ...leg.via].map((s) => _coord(s.lat, s.lng)).join('|');
+  final waypoints = [
+    leg.start,
+    ...leg.via,
+  ].map((s) => _coord(s.lat, s.lng)).join('|');
   return 'https://www.google.com/maps/dir/?api=1'
       '&destination=${Uri.encodeComponent(_coord(leg.end.lat, leg.end.lng))}'
       '&waypoints=${Uri.encodeComponent(waypoints)}'
@@ -546,18 +572,19 @@ String wazeUrl(double lat, double lng) =>
 
 /// The link that opens [leg] in [app]. Single-destination apps go to its end.
 String mapsLegUrl(MapsApp app, DriveLeg leg) => switch (app) {
-      MapsApp.google => googleMapsLegUrl(leg),
-      MapsApp.apple => appleMapsUrl(leg.end.lat, leg.end.lng),
-      MapsApp.waze => wazeUrl(leg.end.lat, leg.end.lng),
-    };
+  MapsApp.google => googleMapsLegUrl(leg),
+  MapsApp.apple => appleMapsUrl(leg.end.lat, leg.end.lng),
+  MapsApp.waze => wazeUrl(leg.end.lat, leg.end.lng),
+};
 
 /// The link that drives to the start of the course in [app].
 String mapsStartUrl(MapsApp app, double lat, double lng) => switch (app) {
-      MapsApp.google => 'https://www.google.com/maps/dir/?api=1'
-          '&destination=${Uri.encodeComponent(_coord(lat, lng))}&travelmode=driving',
-      MapsApp.apple => appleMapsUrl(lat, lng),
-      MapsApp.waze => wazeUrl(lat, lng),
-    };
+  MapsApp.google =>
+    'https://www.google.com/maps/dir/?api=1'
+        '&destination=${Uri.encodeComponent(_coord(lat, lng))}&travelmode=driving',
+  MapsApp.apple => appleMapsUrl(lat, lng),
+  MapsApp.waze => wazeUrl(lat, lng),
+};
 
 class CourseStretch {
   const CourseStretch({required this.startM, required this.endM});
@@ -591,7 +618,15 @@ List<CourseStretch> undrivableStretches(
   final rcum = cumulativeM(routed);
   const padLat = kDriveUndrivableToleranceM / 111320;
   final boxes =
-      <({double minLat, double maxLat, double minLng, double maxLng, double refLng})>[];
+      <
+        ({
+          double minLat,
+          double maxLat,
+          double minLng,
+          double maxLng,
+          double refLng,
+        })
+      >[];
   for (var i = 0; i < routed.length - 1; i++) {
     final a = routed[i];
     final b = routed[i + 1];

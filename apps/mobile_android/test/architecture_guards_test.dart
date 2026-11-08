@@ -5714,6 +5714,10 @@ void main() {
       // Save replaces only the visible text, and the server keeps the text as
       // first sent for reports (migration 20271114000210).
       'screens/message_thread_screen.dart::l10n.messagesEditTitle': 1,
+      // The one-time driver safety notice for Drive this course. Cancel leaves
+      // the screen before anything has started; "I understand" only records
+      // that it was read on this device.
+      'screens/course_drive_screen.dart::l.courseDriveNoticeTitle': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

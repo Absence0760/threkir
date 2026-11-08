@@ -2372,6 +2372,30 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sin GPS — el seguimiento empezará cuando se conceda el permiso.';
 
   @override
+  String get runNoGpsStartTitle => '¿Empezar sin GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'La ubicación está desactivada en este teléfono, así que esta carrera solo registraría el tiempo: sin ruta, distancia ni ritmo.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'El acceso a la ubicación está desactivado para esta app, así que esta carrera solo registraría el tiempo: sin ruta, distancia ni ritmo.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Registrar solo el tiempo';
+
+  @override
+  String get runNoDistanceTitle => 'No se registró distancia';
+
+  @override
+  String get runNoDistanceBody =>
+      'Esta carrera no obtuvo señal GPS ni distancia por pasos. ¿Guardarla solo con el tiempo o descartarla?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Guardar solo el tiempo';
+
+  @override
   String get runBackgroundLocationPaused =>
       'El seguimiento se pausó mientras no estabas — el tiempo siguió corriendo y no se perdió nada, pero la distancia fuera de pantalla no se contó. Configura la Ubicación en «Permitir todo el tiempo» para seguir registrando en segundo plano.';
 

@@ -5679,6 +5679,8 @@ void main() {
       'screens/run_screen.dart::_l10n.runBatteryOptHintTitle': 1,
       'screens/run_screen.dart::_l10n.runLiveShareEndedTitle': 1,
       'screens/run_screen.dart::_l10n.runResumeDialogTitle': 1,
+      // Asked before a no-GPS run starts; every choice leaves nothing to lose.
+      'screens/run_screen.dart::l10n.runNoGpsStartTitle': 1,
       // Credential changes the user is performing on purpose.
       'screens/settings_account_screen.dart::l10n.settingsAccountChangeEmail': 1,
       'screens/settings_account_screen.dart::l10n.settingsAccountChangePassword': 1,

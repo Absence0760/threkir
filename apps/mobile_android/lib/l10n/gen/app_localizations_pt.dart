@@ -2373,6 +2373,30 @@ class AppLocalizationsPt extends AppLocalizations {
       'Sem GPS — o rastreio começará quando a permissão for concedida.';
 
   @override
+  String get runNoGpsStartTitle => 'Começar sem GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'A localização está desligada neste telemóvel, por isso esta corrida só registaria o tempo — sem percurso, distância nem ritmo.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'O acesso à localização está desligado para esta app, por isso esta corrida só registaria o tempo — sem percurso, distância nem ritmo.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Registar só o tempo';
+
+  @override
+  String get runNoDistanceTitle => 'Nenhuma distância registada';
+
+  @override
+  String get runNoDistanceBody =>
+      'Esta corrida não obteve sinal GPS nem distância por passos. Guardá-la só com o tempo ou descartá-la?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Guardar só o tempo';
+
+  @override
   String get runBackgroundLocationPaused =>
       'O registo foi pausado enquanto esteve fora — o tempo continuou a contar e nada se perdeu, mas a distância percorrida fora do ecrã não foi contabilizada. Defina a Localização como “Permitir sempre” para continuar a registar em segundo plano.';
 
@@ -22606,6 +22630,30 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get runGpsPermissionPending =>
       'Sem GPS — o rastreamento começará quando a permissão for concedida.';
+
+  @override
+  String get runNoGpsStartTitle => 'Começar sem GPS?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'A localização está desativada neste celular, então esta corrida só registraria o tempo — sem trajeto, distância nem ritmo.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'O acesso à localização está desativado para este app, então esta corrida só registraria o tempo — sem trajeto, distância nem ritmo.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Registrar só o tempo';
+
+  @override
+  String get runNoDistanceTitle => 'Nenhuma distância registrada';
+
+  @override
+  String get runNoDistanceBody =>
+      'Esta corrida não obteve sinal de GPS nem distância por passos. Salvá-la só com o tempo ou descartá-la?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Salvar só o tempo';
 
   @override
   String get runBackgroundLocationPaused =>

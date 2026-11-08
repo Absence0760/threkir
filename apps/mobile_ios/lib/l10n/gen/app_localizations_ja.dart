@@ -2262,6 +2262,30 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runGpsPermissionPending => 'GPSなし — 権限が許可されると記録が始まります。';
 
   @override
+  String get runNoGpsStartTitle => 'GPSなしで開始しますか？';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'この端末の位置情報がオフのため、このランは時間のみを記録します（ルート・距離・ペースは記録されません）。';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'このアプリの位置情報へのアクセスがオフのため、このランは時間のみを記録します（ルート・距離・ペースは記録されません）。';
+
+  @override
+  String get runNoGpsStartTimeOnly => '時間のみ記録';
+
+  @override
+  String get runNoDistanceTitle => '距離が記録されていません';
+
+  @override
+  String get runNoDistanceBody =>
+      'このランではGPSの測位も歩数による距離も得られませんでした。時間のみのアクティビティとして保存しますか、それとも破棄しますか？';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => '時間のみで保存';
+
+  @override
   String get runBackgroundLocationPaused =>
       'アプリを離れている間、位置情報の記録が一時停止しました — タイムは計測を続け、記録済みのデータは失われていませんが、画面外で進んだ距離は加算されていません。バックグラウンドでも記録するには、位置情報を「常に許可」に設定してください。';
 

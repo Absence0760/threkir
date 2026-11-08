@@ -2380,6 +2380,30 @@ class AppLocalizationsFr extends AppLocalizations {
       'Pas de GPS — le suivi démarrera quand l\'autorisation sera accordée.';
 
   @override
+  String get runNoGpsStartTitle => 'Démarrer sans GPS ?';
+
+  @override
+  String get runNoGpsStartServicesOffBody =>
+      'La localisation est désactivée sur ce téléphone : cette course n\'enregistrerait que le temps — ni parcours, ni distance, ni allure.';
+
+  @override
+  String get runNoGpsStartPermissionBody =>
+      'L\'accès à la localisation est désactivé pour cette app : cette course n\'enregistrerait que le temps — ni parcours, ni distance, ni allure.';
+
+  @override
+  String get runNoGpsStartTimeOnly => 'Enregistrer le temps seul';
+
+  @override
+  String get runNoDistanceTitle => 'Aucune distance enregistrée';
+
+  @override
+  String get runNoDistanceBody =>
+      'Cette course n\'a reçu ni position GPS ni distance par les pas. L\'enregistrer avec le temps seul, ou l\'abandonner ?';
+
+  @override
+  String get runNoDistanceSaveTimeOnly => 'Garder le temps seul';
+
+  @override
   String get runBackgroundLocationPaused =>
       'Le suivi a été mis en pause pendant votre absence — le chrono a continué et rien n’a été perdu, mais la distance parcourue hors écran n’a pas été comptée. Réglez la localisation sur « Toujours autoriser » pour suivre en arrière-plan.';
 

@@ -4025,6 +4025,48 @@ abstract class AppLocalizations {
   /// **'No GPS — tracking will start when permission is granted.'**
   String get runGpsPermissionPending;
 
+  /// Title of the dialog shown at START when a GPS run can get no fix (location off or denied)
+  ///
+  /// In en, this message translates to:
+  /// **'Start without GPS?'**
+  String get runNoGpsStartTitle;
+
+  /// Body of the no-GPS start dialog when device location services are off
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off on this phone, so this run would record time only — no route, distance or pace.'**
+  String get runNoGpsStartServicesOffBody;
+
+  /// Body of the no-GPS start dialog when the app has no location permission
+  ///
+  /// In en, this message translates to:
+  /// **'Location access is off for this app, so this run would record time only — no route, distance or pace.'**
+  String get runNoGpsStartPermissionBody;
+
+  /// Button on the no-GPS start dialog that starts the run as a time-only activity
+  ///
+  /// In en, this message translates to:
+  /// **'Record time only'**
+  String get runNoGpsStartTimeOnly;
+
+  /// Title of the dialog shown at Stop when the run has no GPS fix and no step distance
+  ///
+  /// In en, this message translates to:
+  /// **'No distance recorded'**
+  String get runNoDistanceTitle;
+
+  /// Body of the no-distance stop dialog offering to save as time-only or discard
+  ///
+  /// In en, this message translates to:
+  /// **'This run got no GPS fix and no step distance. Save it as a time-only activity, or discard it?'**
+  String get runNoDistanceBody;
+
+  /// Button on the no-distance stop dialog that saves the run as a time-only activity
+  ///
+  /// In en, this message translates to:
+  /// **'Save as time-only'**
+  String get runNoDistanceSaveTimeOnly;
+
   /// Banner shown on returning to a recording run after the app was backgrounded under a foreground-only location grant and no fix arrived while away
   ///
   /// In en, this message translates to:

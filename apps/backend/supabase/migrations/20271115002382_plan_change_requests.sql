@@ -518,12 +518,12 @@ begin
   end if;
 
   -- Run the change set and undo it, so whatever the apply would refuse is
-  -- refused here with its own error. TK382 is this function's own signal.
+  -- refused here with its own error. PC001 is this function's own signal.
   begin
     perform private.apply_plan_edit_changes(
       caller, p_plan_id, p_today, p_include_following, p_workouts, p_weeks);
-    raise exception using errcode = 'TK382', message = 'propose_plan_change: dry run';
-  exception when sqlstate 'TK382' then
+    raise exception using errcode = 'PC001', message = 'propose_plan_change: dry run';
+  exception when sqlstate 'PC001' then
     null;
   end;
 

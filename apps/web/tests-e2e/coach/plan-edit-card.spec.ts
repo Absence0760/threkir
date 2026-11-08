@@ -6,7 +6,7 @@ import { acceptCookieConsent } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import type { MockRoute } from '../fixtures/mock-route';
 import { expect, test } from '../fixtures/test';
-import { USER_B } from '../fixtures/users';
+import { USER_B, USER_C_PRO } from '../fixtures/users';
 
 /**
  * /coach — a plan edit proposed and applied inside the chat (issue #1213,
@@ -222,6 +222,45 @@ test.describe('/coach — plan edit card', () => {
 		expect(after.get(seeded.easyA)).toBe(8_000);
 		expect(after.get(seeded.longA)).toBe(16_000);
 		expect(await weekTarget(seeded.weekA0)).toBe(24_000);
+	});
+
+	test('on a plan a linked coach assigned, Send files the change for the coach and writes nothing', async ({
+		page,
+		mockRoute,
+	}) => {
+		// Issue #1215 Phase 2, decisions § 2382.
+		seeded = await seed(false);
+		const linkId = crypto.randomUUID();
+		const { error: linkErr } = await admin.from('coach_athletes').insert({
+			id: linkId,
+			coach_id: USER_C_PRO.id,
+			athlete_id: USER_B.id,
+			status: 'active',
+			invite_token: `e2e-chat-review-${linkId}`,
+			accepted_at: new Date().toISOString(),
+		});
+		expect(linkErr).toBeNull();
+		await admin.from('training_plans').update({ assigned_by_coach_id: USER_C_PRO.id }).eq('id', seeded.planId);
+		try {
+			const card = await askForEdit(page, mockRoute, seeded.planId);
+			await expect(card.getByTestId('coach-plan-edit-coach-hint')).toBeVisible();
+			await card.getByTestId('coach-plan-edit-send').click();
+			await expect(card.getByTestId('coach-plan-edit-sent')).toBeVisible({ timeout: 10_000 });
+
+			const requests = await readRows(
+				'plan change requests',
+				admin.from('plan_change_requests').select('status, coach_id, weeks').eq('plan_id', seeded.planId),
+			);
+			expect(requests).toHaveLength(1);
+			expect(requests[0]).toMatchObject({
+				status: 'pending',
+				coach_id: USER_C_PRO.id,
+				weeks: [{ id: seeded.weekA0, target_volume_m: 21_600 }],
+			});
+			expect(await weekTarget(seeded.weekA0)).toBe(24_000);
+		} finally {
+			await admin.from('coach_athletes').delete().eq('id', linkId);
+		}
 	});
 
 	test('Apply writes every change of the block together', async ({ page, mockRoute }) => {

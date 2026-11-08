@@ -758,6 +758,7 @@ export const PAIRS = [
 		tableColumn: 'race_listings.course_source',
 		clients: [
 			{ file: TS_TYPES, decl: 'RaceCourseSource', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/race_service.dart', decl: 'kRaceCourseSources', shape: 'strings' },
 		],
 	},
 	{

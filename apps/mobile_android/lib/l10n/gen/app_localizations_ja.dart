@@ -20049,4 +20049,62 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksBrowseLink => '公園コース';
+
+  @override
+  String get clubVerificationStatusTitle => '公式認証';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return '$org（$domain）の公式アカウントとして認証済みです。';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy => '公式の組織として認証されています。';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return '$org の依頼は審査待ちです。ドメインの証明はまだ確認できていません。';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return '$org の依頼は審査待ちです。ドメインの証明を確認しました。';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return '前回の依頼は承認されませんでした：$reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'バッジが外されました：$reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'クラブまたはドメインの変更によりバッジが外されました。再審査が必要です。';
+
+  @override
+  String get clubVerificationStatusWithdrawn => '前回の依頼は取り下げられました。';
+
+  @override
+  String get clubVerificationStatusNone => '未認証です。';
+
+  @override
+  String get clubVerificationStatusWebHint => '依頼とドメインの証明はウェブで管理します。';
+
+  @override
+  String get clubVerificationStatusLoadFailed => '認証状況を読み込めませんでした。';
+
+  @override
+  String get clubVerificationStatusRetry => '再試行';
+
+  @override
+  String get profileNotifClubVerification => 'あなたのクラブの認証についてお知らせがあります';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return '$club の認証についてお知らせがあります';
+  }
 }

@@ -5846,5 +5846,20 @@
   "parksAttributionAgency": "Tracé du parcours issu des données de sentiers du parc",
   "parksAttributionTraced": "Tracé du parcours relevé sur la carte publiée du parc",
   "parksNavigate": "Suivre ce parcours",
-  "parksBrowseLink": "Parcours des parcs"
+  "parksBrowseLink": "Parcours des parcs",
+  "clubVerificationStatusTitle": "Vérification officielle",
+  "clubVerificationStatusVerified": "Vérifié comme présence officielle de {org} ({domain}).",
+  "clubVerificationStatusVerifiedLegacy": "Vérifié comme organisation officielle.",
+  "clubVerificationStatusPending": "La demande pour {org} attend d'être examinée. Aucune preuve de domaine trouvée pour l'instant.",
+  "clubVerificationStatusPendingProof": "La demande pour {org} attend d'être examinée. Preuve de domaine trouvée.",
+  "clubVerificationStatusRejected": "La dernière demande n'a pas été approuvée : {reason}",
+  "clubVerificationStatusRevoked": "Le badge a été retiré : {reason}",
+  "clubVerificationStatusLapsed": "Le badge a été retiré après une modification du club ou de son domaine, et doit être examiné à nouveau.",
+  "clubVerificationStatusWithdrawn": "La dernière demande a été retirée.",
+  "clubVerificationStatusNone": "Non vérifié.",
+  "clubVerificationStatusWebHint": "Les demandes et les preuves de domaine se gèrent sur le Web.",
+  "clubVerificationStatusLoadFailed": "Impossible de charger l'état de la vérification.",
+  "clubVerificationStatusRetry": "Réessayer",
+  "profileNotifClubVerification": "Il y a du nouveau sur la vérification de votre club",
+  "profileNotifClubVerificationNamed": "Il y a du nouveau sur la vérification de {club}"
 }

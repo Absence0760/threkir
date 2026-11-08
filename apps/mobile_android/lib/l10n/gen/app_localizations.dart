@@ -33982,6 +33982,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Park courses'**
   String get parksBrowseLink;
+
+  /// Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins
+  ///
+  /// In en, this message translates to:
+  /// **'Official verification'**
+  String get clubVerificationStatusTitle;
+
+  /// The club is verified; org is the organisation it officially represents and domain the website domain that was verified
+  ///
+  /// In en, this message translates to:
+  /// **'Verified as the official presence of {org} ({domain}).'**
+  String clubVerificationStatusVerified(String org, String domain);
+
+  /// The club is verified but no request with a domain is on record
+  ///
+  /// In en, this message translates to:
+  /// **'Verified as an official organisation.'**
+  String get clubVerificationStatusVerifiedLegacy;
+
+  /// A verification request for the named organisation is waiting for review and the domain proof has not been found yet
+  ///
+  /// In en, this message translates to:
+  /// **'The request for {org} is waiting for review. No domain proof found yet.'**
+  String clubVerificationStatusPending(String org);
+
+  /// A verification request for the named organisation is waiting for review and the domain proof was found
+  ///
+  /// In en, this message translates to:
+  /// **'The request for {org} is waiting for review. Domain proof found.'**
+  String clubVerificationStatusPendingProof(String org);
+
+  /// The last verification request was rejected; reason is the reviewer's own text
+  ///
+  /// In en, this message translates to:
+  /// **'The last request was not approved: {reason}'**
+  String clubVerificationStatusRejected(String reason);
+
+  /// A reviewer removed the club's verified badge; reason is their own text
+  ///
+  /// In en, this message translates to:
+  /// **'The badge was removed: {reason}'**
+  String clubVerificationStatusRevoked(String reason);
+
+  /// The badge dropped on its own: the club was renamed or moved domain, or the domain proof disappeared
+  ///
+  /// In en, this message translates to:
+  /// **'The badge was removed after a change to the club or its domain, and needs a new review.'**
+  String get clubVerificationStatusLapsed;
+
+  /// The club owner withdrew the last verification request
+  ///
+  /// In en, this message translates to:
+  /// **'The last request was withdrawn.'**
+  String get clubVerificationStatusWithdrawn;
+
+  /// The club has never asked for verification
+  ///
+  /// In en, this message translates to:
+  /// **'Not verified.'**
+  String get clubVerificationStatusNone;
+
+  /// Tells the club admin that requesting verification happens on the web app
+  ///
+  /// In en, this message translates to:
+  /// **'Requests and domain proof are managed on the web.'**
+  String get clubVerificationStatusWebHint;
+
+  /// The verification status could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the verification status.'**
+  String get clubVerificationStatusLoadFailed;
+
+  /// Retry button tooltip for loading the verification status
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get clubVerificationStatusRetry;
+
+  /// Notification text: a club the recipient owns or administers had its verification approved, rejected, removed or dropped; club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s a verification update for your club'**
+  String get profileNotifClubVerification;
+
+  /// Notification text: the named club the recipient owns or administers had its verification approved, rejected, removed or dropped
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s a verification update for {club}'**
+  String profileNotifClubVerificationNamed(String club);
 }
 
 class _AppLocalizationsDelegate

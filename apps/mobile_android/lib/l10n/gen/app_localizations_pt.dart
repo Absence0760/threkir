@@ -21071,6 +21071,68 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String get clubVerificationStatusTitle => 'Verificação oficial';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verificado como a presença oficial de $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verificado como organização oficial.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'O pedido para $org aguarda análise. Ainda não foi encontrada prova do domínio.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'O pedido para $org aguarda análise. Prova do domínio encontrada.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'O último pedido não foi aprovado: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'O selo foi removido: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'O selo foi removido após uma alteração no clube ou no seu domínio e precisa de uma nova análise.';
+
+  @override
+  String get clubVerificationStatusWithdrawn => 'O último pedido foi retirado.';
+
+  @override
+  String get clubVerificationStatusNone => 'Não verificado.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Os pedidos e as provas de domínio são geridos na web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Não foi possível carregar o estado da verificação.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Tentar novamente';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Há uma novidade sobre a verificação do seu clube';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Há uma novidade sobre a verificação de $club';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -42124,4 +42186,66 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String get clubVerificationStatusTitle => 'Verificação oficial';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verificado como a presença oficial de $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verificado como organização oficial.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'O pedido para $org aguarda análise. Nenhuma prova do domínio encontrada ainda.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'O pedido para $org aguarda análise. Prova do domínio encontrada.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'O último pedido não foi aprovado: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'O selo foi removido: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'O selo foi removido após uma mudança no clube ou no domínio e precisa de uma nova análise.';
+
+  @override
+  String get clubVerificationStatusWithdrawn => 'O último pedido foi retirado.';
+
+  @override
+  String get clubVerificationStatusNone => 'Não verificado.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Os pedidos e as provas de domínio são gerenciados na web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Não foi possível carregar o status da verificação.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Tentar de novo';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Há uma novidade sobre a verificação do seu clube';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Há uma novidade sobre a verificação de $club';
+  }
 }

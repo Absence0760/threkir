@@ -1495,6 +1495,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else if ((kind == 'club_post' ||
             kind == 'club_join_request' ||
             kind == 'club_join_approved' ||
+            kind == 'club_verification' ||
             // A deleted event's cancel links no event, only the club it
             // belonged to (decisions § 2358).
             (kind == 'event_cancel' && item.row.eventId == null)) &&
@@ -1644,6 +1645,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.clubName != null
             ? l10n.profileNotifClubJoinApprovedNamed(item.clubName!)
             : l10n.profileNotifClubJoinApproved;
+      case 'club_verification':
+        return item.clubName != null
+            ? l10n.profileNotifClubVerificationNamed(item.clubName!)
+            : l10n.profileNotifClubVerification;
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)

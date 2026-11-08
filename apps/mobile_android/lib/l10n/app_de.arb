@@ -5846,5 +5846,20 @@
   "parksAttributionAgency": "Streckenverlauf aus den Wegdaten des Parks",
   "parksAttributionTraced": "Streckenverlauf nach der veröffentlichten Karte des Parks gezeichnet",
   "parksNavigate": "Diese Strecke navigieren",
-  "parksBrowseLink": "Parkstrecken"
+  "parksBrowseLink": "Parkstrecken",
+  "clubVerificationStatusTitle": "Offizielle Verifizierung",
+  "clubVerificationStatusVerified": "Verifiziert als offizieller Auftritt von {org} ({domain}).",
+  "clubVerificationStatusVerifiedLegacy": "Als offizielle Organisation verifiziert.",
+  "clubVerificationStatusPending": "Der Antrag für {org} wartet auf Prüfung. Noch kein Domain-Nachweis gefunden.",
+  "clubVerificationStatusPendingProof": "Der Antrag für {org} wartet auf Prüfung. Domain-Nachweis gefunden.",
+  "clubVerificationStatusRejected": "Der letzte Antrag wurde nicht angenommen: {reason}",
+  "clubVerificationStatusRevoked": "Das Abzeichen wurde entfernt: {reason}",
+  "clubVerificationStatusLapsed": "Das Abzeichen wurde nach einer Änderung am Club oder seiner Domain entfernt und muss neu geprüft werden.",
+  "clubVerificationStatusWithdrawn": "Der letzte Antrag wurde zurückgezogen.",
+  "clubVerificationStatusNone": "Nicht verifiziert.",
+  "clubVerificationStatusWebHint": "Anträge und Domain-Nachweise werden im Web verwaltet.",
+  "clubVerificationStatusLoadFailed": "Der Verifizierungsstatus konnte nicht geladen werden.",
+  "clubVerificationStatusRetry": "Erneut versuchen",
+  "profileNotifClubVerification": "Es gibt ein Update zur Verifizierung deines Clubs",
+  "profileNotifClubVerificationNamed": "Es gibt ein Update zur Verifizierung von {club}"
 }

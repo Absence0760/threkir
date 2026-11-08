@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { browserDate } from '../fixtures/dates';
 import { readMaybeRow } from '../fixtures/db-read';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, planSectionsOpen } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers } from '../fixtures/saga-users';
 
@@ -68,7 +68,7 @@ test.describe('WorkoutEditor in miles', () => {
 		const [runner] = await createSagaUsers(1, { displayNames: ['Mile Pace Runner'] });
 		const ids = { plan: crypto.randomUUID(), week: crypto.randomUUID(), workout: crypto.randomUUID() };
 		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
-		await acceptCookieConsent(ctx);
+		await acceptCookieConsent(ctx, planSectionsOpen(runner.id));
 		try {
 			await seed(runner.id, ids);
 			const page = await ctx.newPage();
@@ -90,7 +90,7 @@ test.describe('WorkoutEditor in miles', () => {
 		const [runner] = await createSagaUsers(1, { displayNames: ['Mile Tolerance Runner'] });
 		const ids = { plan: crypto.randomUUID(), week: crypto.randomUUID(), workout: crypto.randomUUID() };
 		const ctx = await browser.newContext({ storageState: runner.storageStatePath });
-		await acceptCookieConsent(ctx);
+		await acceptCookieConsent(ctx, planSectionsOpen(runner.id));
 		try {
 			await seed(runner.id, ids);
 			const page = await ctx.newPage();

@@ -4,7 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
 import { readMaybeRow } from '../fixtures/db-read';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, planSectionsOpen } from '../fixtures/helpers';
 
 /**
  * WorkoutEditor's Mark done / Skip (#1186 round 2).
@@ -73,7 +73,7 @@ test.describe('WorkoutEditor Mark done / Skip', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await acceptCookieConsent(context);
+		await acceptCookieConsent(context, planSectionsOpen(USER_A.id));
 	});
 
 	test('Mark as done saves an unsaved note first', async ({ page }) => {

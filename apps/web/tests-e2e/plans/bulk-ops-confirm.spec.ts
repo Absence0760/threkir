@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] destructive bulk ops (duplicate week / make-recovery-week /
@@ -14,6 +15,10 @@ import { USER_A } from '../fixtures/users';
 
 test.describe('/plans/[id] bulk-op confirmations', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('duplicate week asks first — Cancel is a no-op, Confirm duplicates', async ({ page }) => {
 		const admin = getAdminClient();

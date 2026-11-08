@@ -11,6 +11,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
+import 'plan_sections_open.dart';
 
 /// Home's plan card lands on the plan with `openReview` (decisions § 2125):
 /// the plan's own preview opens as if picked from Adjust plan. And a done
@@ -138,6 +139,7 @@ Future<void> _pump(
   PlanReview? openReview,
   LocalRunStore? runStore,
 }) async {
+  await rememberPlanSectionsOpen(tester, _uid);
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -158,6 +160,7 @@ Future<void> _pump(
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('openReview: replan opens the ease-off preview and applies it',
       (tester) async {
     final training = _training(longsDone: true);

@@ -93,17 +93,18 @@ enum PlanReview { adaptive, replan }
 enum _PlanAdjustment { replan, adaptiveReplan, raceTaper, cycle, pause, resume }
 
 /// Today's session and this week lead the screen; everything else sits behind
-/// a named expander whose open/closed state is remembered per account. Every
-/// default is open: a runner who uses one of these sections today must not
-/// find it gone on the first visit after this shipped. Web twin: the
-/// `DISCLOSURE_*` constants on `/plans/[id]` (decisions § 1660).
-const String _kDisclosureScope = 'plan_detail';
-const DisclosureState _kDisclosureDefaults = {
-  'progress': true,
-  'rules': true,
-  'calendar': true,
-  'weeks': true,
-  'share': true,
+/// a named expander, shut until the runner opens it and remembered per
+/// account, so the current week is drawn once (the strip) rather than three
+/// times. Web twin: `apps/web/src/lib/training/plan_detail_sections.ts`, which
+/// holds this map to the same keys, order and values from source
+/// (decisions § 2375).
+const String kPlanDetailDisclosureScope = 'plan_detail';
+const DisclosureState kPlanDetailDisclosureDefaults = {
+  'progress': false,
+  'rules': false,
+  'calendar': false,
+  'weeks': false,
+  'share': false,
 };
 
 /// Web `isWorkoutSkipped` twin — deliberately dropped, off the books.
@@ -246,7 +247,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   // Set only when the current preview came from the adaptive (trend-based)
   // path, so its header can explain the multi-week reason + confidence.
   ({AdaptiveReason reason, AdaptiveConfidence confidence})? _adaptiveInfo;
-  DisclosureState _disclosure = Map.of(_kDisclosureDefaults);
+  DisclosureState _disclosure = Map.of(kPlanDetailDisclosureDefaults);
   // A toggle made before the stored state arrives wins over it.
   bool _disclosureTouched = false;
   // Finished weeks fold into one summary row until the runner opens them.
@@ -410,8 +411,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   }
 
   Future<void> _loadDisclosure() async {
-    final stored = await readDisclosureState(
-        _kDisclosureScope, _viewerId(), _kDisclosureDefaults);
+    final stored = await readDisclosureState(kPlanDetailDisclosureScope,
+        _viewerId(), kPlanDetailDisclosureDefaults);
     if (!mounted || _disclosureTouched) return;
     setState(() => _disclosure = stored);
   }
@@ -420,8 +421,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (_disclosure[key] == open) return;
     _disclosureTouched = true;
     setState(() => _disclosure = {..._disclosure, key: open});
-    unawaited(
-        writeDisclosureState(_kDisclosureScope, _viewerId(), _disclosure));
+    unawaited(writeDisclosureState(
+        kPlanDetailDisclosureScope, _viewerId(), _disclosure));
   }
 
   Future<void> _load() async {
@@ -2522,7 +2523,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           key: ValueKey('plan-disclosure-$key'),
           title: title,
           hint: hint,
-          open: _disclosure[key] ?? true,
+          open: _disclosure[key] ?? false,
           onToggle: (open) => _setDisclosure(key, open),
           child: child,
         );

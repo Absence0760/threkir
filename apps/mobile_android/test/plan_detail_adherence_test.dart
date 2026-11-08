@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show TextLane;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
@@ -10,6 +11,7 @@ import '../lib/training.dart' show fmtKm;
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
+import 'plan_sections_open.dart';
 
 const _uid = 'owner-uuid';
 
@@ -135,6 +137,7 @@ Future<void> _pump(
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
   }
+  await rememberPlanSectionsOpen(tester, viewerId);
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -161,6 +164,7 @@ Future<void> _pump(
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   group('PlanDetailScreen — adherence banner', () {
     testWidgets('flags under-running when actual mileage is well below plan',
         (tester) async {

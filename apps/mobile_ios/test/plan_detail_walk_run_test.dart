@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
@@ -8,6 +9,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
+import 'plan_sections_open.dart';
 
 /// A couch-to-5K plan on plan detail (decisions § 2203, § 2204): every
 /// session states its minutes and the 5K its distance, no week is sized in
@@ -98,6 +100,7 @@ class _Social extends SocialService {
 }
 
 Future<void> _pump(WidgetTester tester, _Training training) async {
+  await rememberPlanSectionsOpen(tester, _uid);
   await tester.pumpWidget(MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -115,6 +118,7 @@ Future<void> _pump(WidgetTester tester, _Training training) async {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   setUpAll(() => initializeDateFormatting());
 
   testWidgets('sessions read in minutes, the 5K as its distance, no week in km',

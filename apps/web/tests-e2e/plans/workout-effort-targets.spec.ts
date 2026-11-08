@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_B, USER_C_PRO } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Effort and heart-rate targets on a planned workout, and "updated by your
@@ -13,6 +14,10 @@ import { USER_B, USER_C_PRO } from '../fixtures/users';
  */
 test.describe('workout effort + heart-rate targets', () => {
 	test.use({ storageState: USER_B.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_B.id) });
+	});
 
 	const admin = getAdminClient();
 	let planId: string;

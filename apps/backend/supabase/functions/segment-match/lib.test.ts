@@ -74,8 +74,39 @@ Deno.test('scorableGeometries builds the web scorer\'s geometry and drops an unr
   assertEquals(scorableGeometries(candidates, checkpoints), {
     ids: ['plain', 'course'],
     geometries: [
-      { points: [{ lat: 37.5, lng: -77.5 }, { lat: 37.6, lng: -77.5 }], distance_m: 445, checkpoints: undefined },
-      { points: [{ lat: 1, lng: 2 }, { lat: 1.1, lng: 2 }], distance_m: 1000, checkpoints: [{ lat: 1.05, lng: 2 }] },
+      {
+        points: [{ lat: 37.5, lng: -77.5 }, { lat: 37.6, lng: -77.5 }],
+        distance_m: 445,
+        checkpoints: undefined,
+        startGate: null,
+        endGate: null,
+      },
+      {
+        points: [{ lat: 1, lng: 2 }, { lat: 1.1, lng: 2 }],
+        distance_m: 1000,
+        checkpoints: [{ lat: 1.05, lng: 2 }],
+        startGate: null,
+        endGate: null,
+      },
     ],
   });
+});
+
+Deno.test('scorableGeometries hands the matcher a segment\'s start and end lines (decisions § 2402)', () => {
+  const candidates = [{
+    id: 'gated',
+    waypoints: [{ lat: 37.5, lng: -77.5 }, { lat: 37.504, lng: -77.5 }],
+    distance_m: 445,
+    start_gate_lat: 37.5,
+    start_gate_lng: -77.5,
+    start_gate_bearing_deg: 0,
+    start_gate_half_width_m: 15,
+    end_gate_lat: 37.504,
+    end_gate_lng: -77.5,
+    end_gate_bearing_deg: 0,
+    end_gate_half_width_m: 20,
+  }];
+  const [geometry] = scorableGeometries(candidates, []).geometries;
+  assertEquals(geometry.startGate, { lat: 37.5, lng: -77.5, bearingDeg: 0, halfWidthM: 15 });
+  assertEquals(geometry.endGate, { lat: 37.504, lng: -77.5, bearingDeg: 0, halfWidthM: 20 });
 });

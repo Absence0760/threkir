@@ -159,6 +159,33 @@ function effortFromIndex(track, index, segment) {
   };
 }
 var GLOBAL_SEGMENT_LENGTH_TOLERANCE = 0.25;
+function finiteNumber(v) {
+  return typeof v === "number" && Number.isFinite(v);
+}
+function gateOf(lat, lng, bearingDeg, halfWidthM) {
+  if (!finiteNumber(lat) || !finiteNumber(lng) || !finiteNumber(bearingDeg) || !finiteNumber(halfWidthM)) {
+    return null;
+  }
+  return { lat, lng, bearingDeg, halfWidthM };
+}
+function globalSegmentGeometry(row, checkpoints) {
+  const waypoints = Array.isArray(row.waypoints) ? row.waypoints : [];
+  return {
+    points: waypoints.map((w) => ({
+      lat: Number(w?.lat),
+      lng: Number(w?.lng)
+    })),
+    distance_m: Number(row.distance_m),
+    checkpoints: checkpoints ?? void 0,
+    startGate: gateOf(
+      row.start_gate_lat,
+      row.start_gate_lng,
+      row.start_gate_bearing_deg,
+      row.start_gate_half_width_m
+    ),
+    endGate: gateOf(row.end_gate_lat, row.end_gate_lng, row.end_gate_bearing_deg, row.end_gate_half_width_m)
+  };
+}
 function segmentGates(segment) {
   const start = segment.startGate;
   const end = segment.endGate;
@@ -415,6 +442,7 @@ function trackExtent(points) {
 }
 export {
   computeGlobalSegmentEfforts,
+  globalSegmentGeometry,
   parseCourseCheckpoints,
   trackExtent
 };

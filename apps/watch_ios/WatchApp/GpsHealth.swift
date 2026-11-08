@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 
 /// Why the recorder decided to restart `CLLocationManager` updates.
@@ -126,5 +127,12 @@ enum GpsHealth {
     ) -> GpsPrecisionStep {
         guard authorized, reducedAccuracy else { return .precise }
         return alreadyAsked ? .warnReduced : .requestFullAccuracy
+    }
+
+    /// CoreLocation reports Location Services switched off system-wide as
+    /// `.denied`, so that case lands here too. `.notDetermined` is not
+    /// blocked: `start()` raises the system prompt.
+    static func startBlocked(status: CLAuthorizationStatus) -> Bool {
+        status == .denied || status == .restricted
     }
 }

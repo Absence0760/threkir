@@ -880,6 +880,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     // MARK: - GPS self-heal
 
+    /// A run started now could get no fix; Start asks first.
+    var locationBlockedForStart: Bool {
+        GpsHealth.startBlocked(status: locationManager.authorizationStatus)
+    }
+
     private var locationAuthorized: Bool {
         switch locationManager.authorizationStatus {
         case .authorizedWhenInUse, .authorizedAlways: return true

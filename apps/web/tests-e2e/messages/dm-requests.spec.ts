@@ -1,4 +1,6 @@
-import { expect, test, type Browser } from '../fixtures/test';
+import type { Browser } from '@playwright/test';
+
+import { expect, test } from '../fixtures/test';
 
 import { readMaybeRow, readRows } from '../fixtures/db-read';
 import { acceptCookieConsent } from '../fixtures/helpers';

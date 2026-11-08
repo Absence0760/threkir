@@ -19,7 +19,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | **Virginia geometry** | **Not loaded.** See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
-| Loop courses | Blocked on #1308 (start = end defeats the end search) |
+| Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
 | Badges (`park_course` family), passport challenge, recap entries, share image | Not built (Phase 5) |
 | NPS closures job | Not built (Phase 6) |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
@@ -84,9 +84,21 @@ Every run is scored on the server (decisions § 2392):
   from `global_segments_in_bbox` (the track's extent padded 50 m). The result is
   written by `record_segment_match` as the service role, refused for bytes that
   are no longer stored, and read through the unchanged visibility rule.
+- **The rule.** A course inherits its catalogue segment's start and end lines
+  (derived from the polyline by a trigger, or placed by a curator). A run is
+  timed from its forward crossing of the start line to its forward crossing of
+  the end line, interpolated between fixes, with the covered distance within
+  25 % of the course length and every checkpoint passed in order between the
+  two; the fastest pass counts. A loop course is two lines on one point; the
+  crossing that ends one lap never starts the next. A run that never crosses
+  the lines gets no time, whatever circle it passed through. Only a segment
+  without both lines is still matched by the 35 m circles (decisions § 2402).
 - **Fallback.** Run detail still scores the owner's run on view
   (`computeGlobalSegmentEffortsForRun`), now with the same bbox candidates. It
-  goes once the job has run in production.
+  also re-matches an effort an older matcher wrote (its run's
+  `global_segments_matcher_version` stamp is behind), by delete then insert,
+  and the board says while any visible effort is still a circle match
+  (decisions § 2403). It goes once the job has run in production.
 - **Launch backfill.** After loading a course, run
   `select enqueue_segment_backfill('<global_segment_id>');` as an admin or the
   service role. It scores existing runs 20 a job in id order, each batch queueing
@@ -210,13 +222,20 @@ These gate going live, not the code:
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
 - [ ] NPS API key provisioned before the closures job is built; it must do
       nothing without one.
+- [ ] After `20271122002402` reaches production and the `segment-match`
+      function carrying the line matcher is deployed, run
+      `select enqueue_segment_backfill(id) from global_segments where is_active;`
+      once as the service role, so runs nobody reopens are re-matched by their
+      lines on the server rather than waiting for an owner view (decisions
+      § 2403). Until then their boards show the "measured the old way" note.
 
 ## Tests
 
 - pgTAP `apps/backend/supabase/tests/park_courses_test.sql`: catalogue RLS,
   admin-only writes, timezone and vocabulary refusals, the season boundary in
   the park's timezone, completions counting days, block and private-run rules.
-- Matcher: the `checkpoints:` cases in `segments.test.ts` ↔ `segments_test.dart`.
+- Matcher: the `checkpoints:` cases in `segments.test.ts` ↔ `segments_test.dart`, and the shared line cases `fixtures/segments_gate_cases.json` (parallel path, hairpin, wrong direction, two passes, loops, interpolation, off-track fixes, the circle fallback).
+- Lines: pgTAP `global_segment_gates_test.sql` (derivation, curator override and reset, `matched_by`, the owner's delete-then-insert re-match); Playwright `tests-e2e/routes/global-segment-gates.spec.ts`.
 - Server matching: pgTAP `segment_match_jobs_test.sql` (enqueue triggers, the
   bbox lookup, the write and its refusal for replaced bytes, the backfill, grants);
   `supabase/functions/segment-match/*.test.ts`; the Go worker's

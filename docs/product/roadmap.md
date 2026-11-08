@@ -327,7 +327,7 @@ Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_course
 
 - [x] Server-side matching via a `segment_match` job + bounding-box candidates + backfill (Phase 1), so phone-only and imported runs reach a board (2026-11-08, decisions § 2392 / § 2393).
 - [ ] Remove the run-detail owner-on-view scorer and the owner-insert policy on `global_segment_efforts` once the server job has run in production (closes the checkpoint bypass § 2383 names).
-- [ ] Loop courses (blocked on #1308).
+- [x] Loop courses: catalogue segments, and so park courses, are timed by start and end lines, and a loop is two lines on one point (2026-11-08, #1308, decisions § 2402).
 - [ ] Geometry pipeline under `scripts/parks/` and the first ten Virginia courses (operator load; see [park_courses.md § Loading courses](../features/park_courses.md#loading-courses)).
 - [x] Indexable course pages (`/share/course/…` through `share-entity`) and a sitemap entry (decisions § 2394); they go live with the next `terraform apply` + `web@*` deploy.
 - [x] Help guide `park-courses` and the Learn page "Park courses: how timing works".

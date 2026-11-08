@@ -15050,6 +15050,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'You suggested a course. It\'s waiting for review.';
 
   @override
+  String get raceCourseUnlink => 'Remove course';
+
+  @override
+  String get raceCourseUnlinked => 'Course removed.';
+
+  @override
+  String get raceCourseReviewHeading => 'Course suggestions';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Claim this race to approve or reject a suggestion.';
+
+  @override
+  String get raceCourseReviewApprove => 'Approve';
+
+  @override
+  String get raceCourseReviewReject => 'Reject';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Approve this course';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'The course must be a public route your club owns. Pick the club\'s copy of $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Suggestion approved and course linked.';
+
+  @override
+  String get raceCourseReviewRejected => 'Suggestion rejected.';
+
+  @override
+  String get raceCourseReviewFailed => 'Couldn\'t review the suggestion.';
+
+  @override
   String get racesDetailShare => 'Share';
 
   @override

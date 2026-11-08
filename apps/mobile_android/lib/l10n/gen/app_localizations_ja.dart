@@ -14480,6 +14480,41 @@ class AppLocalizationsJa extends AppLocalizations {
   String get raceCourseSuggestPending => 'コースを提案しました。確認待ちです。';
 
   @override
+  String get raceCourseUnlink => 'コースを外す';
+
+  @override
+  String get raceCourseUnlinked => 'コースを外しました。';
+
+  @override
+  String get raceCourseReviewHeading => 'コースの提案';
+
+  @override
+  String get raceCourseReviewClaimFirst => '提案を承認または却下するには、この大会を申請してください。';
+
+  @override
+  String get raceCourseReviewApprove => '承認';
+
+  @override
+  String get raceCourseReviewReject => '却下';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'このコースを承認';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'コースはクラブが所有する公開ルートである必要があります。$routeのクラブ用コピーを選んでください。';
+  }
+
+  @override
+  String get raceCourseReviewApproved => '提案を承認し、コースをリンクしました。';
+
+  @override
+  String get raceCourseReviewRejected => '提案を却下しました。';
+
+  @override
+  String get raceCourseReviewFailed => '提案を確認できませんでした。';
+
+  @override
   String get racesDetailShare => '共有';
 
   @override

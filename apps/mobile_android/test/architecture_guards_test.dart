@@ -5720,9 +5720,12 @@ void main() {
       // The race-course tools (decisions § 2381). Claiming takes an
       // unclaimed race and destroys nothing; linking replaces the course with
       // another public club route, undone by linking the old one again;
-      // suggesting queues a suggestion and links nothing.
+      // suggesting queues a suggestion and links nothing. `dialogTitle` is the
+      // link dialog, which also approves a suggestion (linking through the
+      // same checks); its Remove course is held for the undo window, never
+      // committed from the dialog (decisions § 2396).
       'screens/race_detail_screen.dart::l.raceCourseClaimTitle': 1,
-      'screens/race_detail_screen.dart::l.raceCourseLinkTitle': 1,
+      'screens/race_detail_screen.dart::dialogTitle': 1,
       'screens/race_detail_screen.dart::l.raceCourseSuggestTitle': 1,
       // The one-time driver safety notice for Drive this course. Cancel leaves
       // the screen before anything has started; "I understand" only records

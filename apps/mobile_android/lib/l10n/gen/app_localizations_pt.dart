@@ -15204,6 +15204,43 @@ class AppLocalizationsPt extends AppLocalizations {
       'Sugeriu um percurso. Está a aguardar análise.';
 
   @override
+  String get raceCourseUnlink => 'Remover percurso';
+
+  @override
+  String get raceCourseUnlinked => 'Percurso removido.';
+
+  @override
+  String get raceCourseReviewHeading => 'Sugestões de percurso';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Reivindique esta corrida para aprovar ou recusar uma sugestão.';
+
+  @override
+  String get raceCourseReviewApprove => 'Aprovar';
+
+  @override
+  String get raceCourseReviewReject => 'Recusar';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Aprovar este percurso';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'O percurso tem de ser uma rota pública do seu clube. Escolha a cópia do clube de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Sugestão aprovada e percurso associado.';
+
+  @override
+  String get raceCourseReviewRejected => 'Sugestão recusada.';
+
+  @override
+  String get raceCourseReviewFailed => 'Não foi possível analisar a sugestão.';
+
+  @override
   String get racesDetailShare => 'Partilhar';
 
   @override
@@ -36259,6 +36296,43 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get raceCourseSuggestPending =>
       'Você sugeriu um percurso. Ele está aguardando análise.';
+
+  @override
+  String get raceCourseUnlink => 'Remover percurso';
+
+  @override
+  String get raceCourseUnlinked => 'Percurso removido.';
+
+  @override
+  String get raceCourseReviewHeading => 'Sugestões de percurso';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Reivindique esta corrida para aprovar ou recusar uma sugestão.';
+
+  @override
+  String get raceCourseReviewApprove => 'Aprovar';
+
+  @override
+  String get raceCourseReviewReject => 'Recusar';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Aprovar este percurso';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'O percurso precisa ser uma rota pública do seu clube. Escolha a cópia do clube de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Sugestão aprovada e percurso vinculado.';
+
+  @override
+  String get raceCourseReviewRejected => 'Sugestão recusada.';
+
+  @override
+  String get raceCourseReviewFailed => 'Não foi possível analisar a sugestão.';
 
   @override
   String get racesDetailShare => 'Compartilhar';

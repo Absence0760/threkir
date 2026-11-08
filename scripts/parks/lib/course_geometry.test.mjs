@@ -5,14 +5,19 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+	RACE_DISTANCES_M,
 	distanceDeviation,
 	elevationGainM,
 	haversineM,
+	lapCourse,
 	pathLengthM,
 	placeCheckpoints,
 	simplify,
+	slice,
 	toPoints,
 	traceLoop,
+	traceVia,
+	trimToDistance,
 } from './course_geometry.mjs';
 
 // A square loop 1-2-3-4 (counterclockwise in node order: SW, SE, NE, NW),
@@ -115,6 +120,77 @@ test('placeCheckpoints splits the course into equal distances', () => {
 		{ lat: 0.001, lng: 0.001 },
 		{ lat: 0.001, lng: 0 },
 	]);
+});
+
+// A loop 1-2-3-4 that a long OSM way 20 crosses (8-2-3-9), so the named ways
+// branch and only the via list says which way round the course goes.
+const branching = [
+	{ id: 20, nodes: [8, 2, 3, 9] },
+	{ id: 21, nodes: [1, 2] },
+	{ id: 22, nodes: [3, 4, 1] },
+	{ id: 23, nodes: [5, 1] },
+];
+const branchNodes = {
+	...nodes,
+	8: { lat: -0.0005, lon: 0.001 },
+	9: { lat: 0.0015, lon: 0.001 },
+};
+
+test('traceVia follows the via order along the named ways', () => {
+	assert.deepEqual(traceVia({ ways: branching, nodes: branchNodes, via: [5, 1, 2, 3, 1] }), [5, 1, 2, 3, 4, 1]);
+});
+
+test('traceVia ignores a repeated via node', () => {
+	assert.deepEqual(traceVia({ ways: branching, nodes: branchNodes, via: [1, 2, 2, 3] }), [1, 2, 3]);
+});
+
+test('traceVia refuses a via node no named way reaches', () => {
+	const island = { id: 24, nodes: [6, 7] };
+	const withIsland = { ...branchNodes, 7: { lat: 0.002, lon: 0.002 } };
+	assert.throws(() => traceVia({ ways: [...branching, island], nodes: withIsland, via: [1, 6] }), /not reachable/);
+	assert.throws(() => traceVia({ ways: branching, nodes: branchNodes, via: [1, 99] }), /not on any named way/);
+});
+
+test('lapCourse runs the lead-in, every lap, and the lead-in back', () => {
+	assert.deepEqual(lapCourse({ leadIn: [5, 1], loop: [1, 2, 3, 4, 1], laps: 2 }), [5, 1, 2, 3, 4, 1, 2, 3, 4, 1, 5]);
+});
+
+test('lapCourse refuses a loop that does not start where the lead-in ends', () => {
+	assert.throws(() => lapCourse({ leadIn: [5, 1], loop: [2, 3, 4, 1, 2], laps: 1 }), /must start and end/);
+	assert.throws(() => lapCourse({ leadIn: [5, 1], loop: [1, 2, 3, 4, 1], laps: 0 }), /positive integer/);
+});
+
+test('trimToDistance cuts both ends equally to land on the target', () => {
+	const pts = toPoints([5, 1, 2, 3, 4, 1, 5], nodes);
+	const leadInM = haversineM({ lat: -0.0005, lng: 0 }, { lat: 0, lng: 0 });
+	const target = pathLengthM(pts) - 20;
+	const { points, trimEachEndM } = trimToDistance(pts, target, leadInM);
+	assert.ok(Math.abs(trimEachEndM - 10) < 1e-9);
+	assert.ok(Math.abs(pathLengthM(points) - target) < 0.01, `${pathLengthM(points)} vs ${target}`);
+	// The start and finish land on the same spot on the lead-in.
+	assert.ok(haversineM(points[0], points[points.length - 1]) < 0.01);
+});
+
+test('trimToDistance refuses a short course and a start line off the lead-in', () => {
+	const pts = toPoints([5, 1, 2, 3, 4, 1, 5], nodes);
+	const total = pathLengthM(pts);
+	assert.throws(() => trimToDistance(pts, total + 1, 50), /short of/);
+	assert.throws(() => trimToDistance(pts, total - 200, 50), /past the/);
+});
+
+test('slice interpolates elevation at the cut', () => {
+	const pts = [
+		{ lat: 0, lng: 0, ele: 0 },
+		{ lat: 0, lng: 0.001, ele: 10 },
+	];
+	const half = haversineM(pts[0], pts[1]) / 2;
+	const out = slice(pts, half, 2 * half);
+	assert.equal(out.length, 2);
+	assert.ok(Math.abs(/** @type {number} */ (out[0].ele) - 5) < 1e-9);
+});
+
+test('race distances are the standard ones', () => {
+	assert.deepEqual(RACE_DISTANCES_M, { '5k': 5000, '10k': 10000, half: 21097.5, marathon: 42195, '50k': 50000 });
 });
 
 test('distanceDeviation is signed and relative', () => {

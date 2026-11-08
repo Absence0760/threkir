@@ -79,7 +79,9 @@ async function main() {
 
 	/** @type {Set<number>} */
 	const wayIds = new Set();
-	for (const course of spec.courses) for (const id of course.osm_ways) wayIds.add(id);
+	for (const course of [...spec.courses, ...(spec.race_courses ?? [])]) {
+		for (const id of course.osm_ways) wayIds.add(id);
+	}
 
 	/** @type {Record<string, { id: number, version: number, tags: Record<string, string>, nodes: number[] }>} */
 	const ways = {};

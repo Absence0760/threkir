@@ -19,14 +19,18 @@ import path from 'node:path';
 
 import {
 	PUBLISHED_DISTANCE_TOLERANCE,
+	RACE_DISTANCES_M,
 	distanceDeviation,
 	elevationGainM,
+	lapCourse,
 	pathLengthM,
 	placeCheckpoints,
 	round6,
 	simplify,
 	toPoints,
 	traceLoop,
+	traceVia,
+	trimToDistance,
 } from './lib/course_geometry.mjs';
 
 const METERS_PER_MILE = 1609.344;
@@ -123,11 +127,89 @@ export function buildPark(dir) {
 		});
 	}
 
+	const raceCourses = [];
+	for (const race of spec.race_courses ?? []) {
+		const targetM = RACE_DISTANCES_M[/** @type {keyof typeof RACE_DISTANCES_M} */ (race.race_distance)];
+		if (targetM === undefined) throw new Error(`${race.slug}: unknown race distance ${race.race_distance}`);
+		const ways = race.osm_ways.map((/** @type {number} */ id) => {
+			const way = snapshot.ways[String(id)];
+			if (!way) throw new Error(`${race.slug}: way ${id} is not in the snapshot; re-run fetch_snapshot.mjs`);
+			return way;
+		});
+		const leadIn = traceVia({ ways, nodes: snapshot.nodes, via: race.lead_in_via });
+		const loop = traceVia({ ways, nodes: snapshot.nodes, via: race.loop_via });
+		const full = toPoints(lapCourse({ leadIn, loop, laps: race.laps }), snapshot.nodes);
+		const leadInM = pathLengthM(toPoints(leadIn, snapshot.nodes));
+		const lapM = pathLengthM(toPoints(loop, snapshot.nodes));
+		const { points: raw, trimEachEndM } = trimToDistance(full, targetM, leadInM);
+		const gainM = Math.round(elevationGainM(raw));
+		const checkpoints = placeCheckpoints(raw, race.checkpoints_per_lap * race.laps);
+		const waypoints = simplify(raw, SIMPLIFY_EPSILON_M).map((p) => ({
+			lat: round6(p.lat),
+			lng: round6(p.lng),
+			ele: p.ele == null ? null : Math.round(p.ele * 10) / 10,
+		}));
+		const startFinish = { lat: waypoints[0].lat, lng: waypoints[0].lng };
+
+		const geojson = {
+			type: 'FeatureCollection',
+			features: [
+				{
+					type: 'Feature',
+					properties: {
+						kind: 'race_course',
+						park: spec.park.slug,
+						course: race.slug,
+						name: race.name,
+						race_distance: race.race_distance,
+						laps: race.laps,
+					},
+					geometry: {
+						type: 'LineString',
+						coordinates: waypoints.map((p) => (p.ele == null ? [p.lng, p.lat] : [p.lng, p.lat, p.ele])),
+					},
+				},
+				{
+					type: 'Feature',
+					properties: { kind: 'start_finish' },
+					geometry: { type: 'Point', coordinates: [startFinish.lng, startFinish.lat] },
+				},
+				...checkpoints.map((c, i) => ({
+					type: 'Feature',
+					properties: { kind: 'checkpoint', order: i + 1 },
+					geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
+				})),
+			],
+		};
+		outputs.set(path.join(dir, `${race.slug}.geojson`), `${JSON.stringify(geojson, null, 1)}\n`);
+
+		raceCourses.push({
+			slug: race.slug,
+			name: race.name,
+			race_distance: race.race_distance,
+			distance_m: Math.round(pathLengthM(raw) * 10) / 10,
+			laps: race.laps,
+			lap_m: Math.round(lapM * 10) / 10,
+			lead_in_m: Math.round(leadInM * 10) / 10,
+			start_line_from_lead_in_start_m: Math.round(trimEachEndM * 10) / 10,
+			start_finish: startFinish,
+			surface: race.surface,
+			geometry_source: 'osm',
+			source_ref: race.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
+			source_checked_at: snapshot.fetched_at,
+			geojson: `${race.slug}.geojson`,
+			elevation_m: gainM,
+			checkpoints,
+			waypoint_count: waypoints.length,
+		});
+	}
+
 	const manifest = {
 		park: spec.park,
 		attribution: '© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP',
 		snapshot_fetched_at: snapshot.fetched_at,
 		courses,
+		...(raceCourses.length > 0 ? { race_courses: raceCourses } : {}),
 	};
 	outputs.set(path.join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 	return outputs;

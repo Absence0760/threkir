@@ -165,6 +165,159 @@ export function traceLoop({ ways, nodes, start, direction }) {
 	return [...spur.slice(0, -1), ...ring, junction, ...spur.slice(0, -1).reverse()];
 }
 
+/** Race distances in metres, by the slug a race course spec names. */
+export const RACE_DISTANCES_M = Object.freeze({
+	'5k': 5000,
+	'10k': 10000,
+	half: 21097.5,
+	marathon: 42195,
+	'50k': 50000,
+});
+
+/**
+ * The node path through `via`, in order, along the named ways only: the
+ * shortest path between each consecutive pair. A race course reuses parts of
+ * long OSM ways that branch everywhere, so unlike `traceLoop` it cannot be
+ * "the one cycle these ways form"; the spec pins the route with via nodes
+ * instead, close enough together that each hop has one obvious path.
+ *
+ * @param {{ ways: SnapshotWay[], nodes: Record<string, SnapshotNode>, via: number[] }} input
+ * @returns {number[]}
+ */
+export function traceVia({ ways, nodes, via }) {
+	if (via.length < 2) throw new Error('a via route needs at least two nodes');
+	const adj = adjacency(ways);
+	const pos = (/** @type {number} */ id) => {
+		const n = nodes[String(id)];
+		if (!n) throw new Error(`node ${id} is missing from the snapshot`);
+		return { lat: n.lat, lng: n.lon };
+	};
+	/** @type {number[]} */
+	const out = [via[0]];
+	for (let i = 1; i < via.length; i++) {
+		const from = via[i - 1];
+		const to = via[i];
+		if (from === to) continue;
+		if (!adj.has(from)) throw new Error(`via node ${from} is not on any named way`);
+		if (!adj.has(to)) throw new Error(`via node ${to} is not on any named way`);
+		/** @type {Map<number, number>} */
+		const dist = new Map([[from, 0]]);
+		/** @type {Map<number, number>} */
+		const prev = new Map();
+		const done = new Set();
+		// The graphs here are a few hundred nodes, so a linear-scan frontier is fine.
+		const frontier = new Set([from]);
+		while (frontier.size > 0) {
+			let u = -1;
+			let best = Infinity;
+			for (const n of frontier) {
+				const d = /** @type {number} */ (dist.get(n));
+				if (d < best) {
+					best = d;
+					u = n;
+				}
+			}
+			frontier.delete(u);
+			if (u === to) break;
+			done.add(u);
+			for (const v of /** @type {Set<number>} */ (adj.get(u))) {
+				if (done.has(v)) continue;
+				const nd = best + haversineM(pos(u), pos(v));
+				if (nd < (dist.get(v) ?? Infinity)) {
+					dist.set(v, nd);
+					prev.set(v, u);
+					frontier.add(v);
+				}
+			}
+		}
+		if (!dist.has(to)) throw new Error(`via node ${to} is not reachable from ${from} along the named ways`);
+		/** @type {number[]} */
+		const hop = [];
+		for (let n = to; n !== from; n = /** @type {number} */ (prev.get(n))) hop.unshift(n);
+		out.push(...hop);
+	}
+	return out;
+}
+
+/**
+ * A lap race: out along the lead-in, `laps` times round the loop, and back
+ * along the lead-in. `loop` starts and ends on the node where the lead-in
+ * meets it.
+ *
+ * @param {{ leadIn: number[], loop: number[], laps: number }} input
+ * @returns {number[]}
+ */
+export function lapCourse({ leadIn, loop, laps }) {
+	if (!Number.isInteger(laps) || laps < 1) throw new Error(`laps must be a positive integer, got ${laps}`);
+	const junction = leadIn[leadIn.length - 1];
+	if (loop[0] !== junction || loop[loop.length - 1] !== junction) {
+		throw new Error(`the loop must start and end where the lead-in ends (node ${junction})`);
+	}
+	/** @type {number[]} */
+	const out = [...leadIn];
+	for (let i = 0; i < laps; i++) out.push(...loop.slice(1));
+	out.push(...leadIn.slice(0, -1).reverse());
+	return out;
+}
+
+/**
+ * The polyline between `fromM` and `toM` metres along `points`, with the cut
+ * ends interpolated.
+ *
+ * @param {LatLng[]} points
+ * @param {number} fromM
+ * @param {number} toM
+ * @returns {LatLng[]}
+ */
+export function slice(points, fromM, toM) {
+	/** @type {LatLng[]} */
+	const out = [];
+	let walked = 0;
+	for (let i = 1; i < points.length; i++) {
+		const a = points[i - 1];
+		const b = points[i];
+		const step = haversineM(a, b);
+		const at = (/** @type {number} */ m) => {
+			const t = step === 0 ? 0 : (m - walked) / step;
+			const ele = a.ele != null && b.ele != null ? a.ele + t * (b.ele - a.ele) : (a.ele ?? null);
+			return { lat: a.lat + t * (b.lat - a.lat), lng: a.lng + t * (b.lng - a.lng), ele };
+		};
+		if (out.length === 0 && walked + step >= fromM) out.push(at(fromM));
+		if (walked + step >= toM) {
+			out.push(at(toM));
+			return out;
+		}
+		if (out.length > 0) out.push(b);
+		walked += step;
+	}
+	return out;
+}
+
+/**
+ * Cut the same length off both ends of an out-and-back lead-in course so it
+ * measures exactly `targetM`, which puts the shared start/finish line on the
+ * lead-in. Refused when the course is already short, or when the cut would
+ * reach past the lead-in onto the loop (the start would then sit mid-lap).
+ *
+ * @param {LatLng[]} points
+ * @param {number} targetM
+ * @param {number} leadInM
+ * @returns {{ points: LatLng[], trimEachEndM: number }}
+ */
+export function trimToDistance(points, targetM, leadInM) {
+	const total = pathLengthM(points);
+	if (total < targetM) {
+		throw new Error(`course is ${total.toFixed(1)} m, short of ${targetM} m; lengthen the lead-in`);
+	}
+	const trim = (total - targetM) / 2;
+	if (trim > leadInM) {
+		throw new Error(
+			`course is ${(total - targetM).toFixed(1)} m too long; the start line would sit ${trim.toFixed(1)} m in, past the ${leadInM.toFixed(1)} m lead-in`,
+		);
+	}
+	return { points: slice(points, trim, total - trim), trimEachEndM: trim };
+}
+
 /**
  * @param {number[]} sequence
  * @param {Record<string, SnapshotNode>} nodes

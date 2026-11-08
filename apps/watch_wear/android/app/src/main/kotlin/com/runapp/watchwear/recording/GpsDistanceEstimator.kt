@@ -9,7 +9,7 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/// GPS distance estimator, spec v1.4 (forward filter) — the Wear OS port of
+/// GPS distance estimator, spec v1.5 (forward filter) — the Wear OS port of
 /// `scripts/gps_distance/reference.py`, which is the spec. Read
 /// `docs/features/gps_distance.md` before changing anything here: every port
 /// replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so a change to one
@@ -54,6 +54,9 @@ class GpsDistanceEstimator(
         private set
     var zuptFixes = 0
         private set
+    /// The longest walking span between two step increases (spec v1.5).
+    var stepBatchS = 0.0
+        private set
     var dopplerTrusted = true
         private set
     var dopplerScale = 1.0
@@ -94,10 +97,16 @@ class GpsDistanceEstimator(
     private var zuptAnchorX: Double? = null
     private var zuptAnchorY = 0.0
 
+    /// How long without a step increase reads as stationary (spec v1.5): the
+    /// step counter arrives in batches while the screen is off, so the window
+    /// stretches to the batches the pedometer has shown.
+    val zuptWindowS: Double
+        get() = min(max(ZUPT_NO_STEP_S, ZUPT_BATCH_MARGIN * stepBatchS), ZUPT_MAX_NO_STEP_S)
+
     /// The pedometer says stationary: steps seen this run, none for
-    /// ZUPT_NO_STEP_S, and trusted Doppler not contradicting it.
+    /// zuptWindowS, and trusted Doppler not contradicting it.
     private fun zuptDue(t: Double, dop: Double?): Boolean {
-        if (!stepsSeen || zuptReleased || t - lastStepIncT <= ZUPT_NO_STEP_S) return false
+        if (!stepsSeen || zuptReleased || t - lastStepIncT <= zuptWindowS) return false
         return !(dop != null && dopplerTrusted && dop >= ZUPT_DOPPLER_OVERRIDE_MPS)
     }
 
@@ -356,6 +365,10 @@ class GpsDistanceEstimator(
         if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) return
         val d = cumulativeSteps - prev
         if (d > 0) {
+            if (stepsSeen) {
+                val span = t - lastStepIncT
+                if (d >= ZUPT_BATCH_MIN_CADENCE_SPS * span) stepBatchS = max(stepBatchS, span)
+            }
             stepsSeen = true
             lastStepIncT = t
             zuptReleased = false
@@ -454,7 +467,7 @@ class GpsDistanceEstimator(
 
     companion object {
         const val SPEC_ID = "kalman_v1"
-        const val SPEC_VERSION = "1.4"
+        const val SPEC_VERSION = "1.5"
 
         private const val EARTH_RADIUS_M = 6371008.8
         private const val Q_ACCEL = 0.6
@@ -500,6 +513,9 @@ class GpsDistanceEstimator(
         private const val ZUPT_VEL_SIGMA_MPS = 0.1
         private const val ZUPT_DOPPLER_OVERRIDE_MPS = 1.0
         private const val ZUPT_RELEASE_M = 40.0
+        private const val ZUPT_BATCH_MIN_CADENCE_SPS = 1.0
+        private const val ZUPT_BATCH_MARGIN = 1.5
+        private const val ZUPT_MAX_NO_STEP_S = 30.0
 
         private fun valid(x: Double): Boolean = x.isFinite()
 
@@ -571,6 +587,9 @@ class GpsDistanceEstimator(
             "ZUPT_VEL_SIGMA_MPS" to ZUPT_VEL_SIGMA_MPS,
             "ZUPT_DOPPLER_OVERRIDE_MPS" to ZUPT_DOPPLER_OVERRIDE_MPS,
             "ZUPT_RELEASE_M" to ZUPT_RELEASE_M,
+            "ZUPT_BATCH_MIN_CADENCE_SPS" to ZUPT_BATCH_MIN_CADENCE_SPS,
+            "ZUPT_BATCH_MARGIN" to ZUPT_BATCH_MARGIN,
+            "ZUPT_MAX_NO_STEP_S" to ZUPT_MAX_NO_STEP_S,
         )
 
         /// The phone's `ActivityType.maxSpeedMps`

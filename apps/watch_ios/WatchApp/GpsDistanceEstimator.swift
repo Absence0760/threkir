@@ -1,6 +1,6 @@
 import Foundation
 
-/// GPS distance estimator, spec v1.4 forward filter — the watchOS port of
+/// GPS distance estimator, spec v1.5 forward filter — the watchOS port of
 /// `scripts/gps_distance/reference.py`. See `docs/features/gps_distance.md`.
 /// The watch runs only the causal filter; the spec's smoother is ported where
 /// a whole run's saved figure is computed (phone, web, server).
@@ -53,7 +53,10 @@ final class GpsDistanceEstimator {
     static let zuptVelSigmaMps = 0.1
     static let zuptDopplerOverrideMps = 1.0
     static let zuptReleaseM = 40.0
-    static let specVersion = "1.4"
+    static let zuptBatchMinCadenceSps = 1.0
+    static let zuptBatchMargin = 1.5
+    static let zuptMaxNoStepS = 30.0
+    static let specVersion = "1.5"
 
     /// Every constant by its reference name, so the vector test can hold each
     /// one to the fixture's `constants` block.
@@ -77,6 +80,8 @@ final class GpsDistanceEstimator {
         "DSCALE_MIN_SPEED_MPS": dscaleMinSpeedMps, "DSCALE_MAX_TURN_DEG": dscaleMaxTurnDeg,
         "ZUPT_NO_STEP_S": zuptNoStepS, "ZUPT_VEL_SIGMA_MPS": zuptVelSigmaMps,
         "ZUPT_DOPPLER_OVERRIDE_MPS": zuptDopplerOverrideMps, "ZUPT_RELEASE_M": zuptReleaseM,
+        "ZUPT_BATCH_MIN_CADENCE_SPS": zuptBatchMinCadenceSps, "ZUPT_BATCH_MARGIN": zuptBatchMargin,
+        "ZUPT_MAX_NO_STEP_S": zuptMaxNoStepS,
     ]
 
     private static let degToRad = Double.pi / 180.0
@@ -154,6 +159,8 @@ final class GpsDistanceEstimator {
     private(set) var rScale: Double = 1
     private(set) var rejectedFixes = 0
     private(set) var zuptFixes = 0
+    /// The longest walking span between two step increases (spec v1.5).
+    private(set) var stepBatchS = 0.0
     private(set) var dopplerTrusted = true
     private(set) var dopplerScale: Double = 1
 
@@ -242,10 +249,16 @@ final class GpsDistanceEstimator {
         return (s, sa)
     }
 
+    /// How long without a step increase reads as stationary (spec v1.5): a
+    /// pedometer that delivers in batches stretches it to the batches it has shown.
+    var zuptWindowS: Double {
+        min(max(Self.zuptNoStepS, Self.zuptBatchMargin * stepBatchS), Self.zuptMaxNoStepS)
+    }
+
     /// The pedometer says stationary: steps seen this run, none for
-    /// `zuptNoStepS`, and trusted Doppler not contradicting it.
+    /// `zuptWindowS`, and trusted Doppler not contradicting it.
     private func zuptDue(_ t: Double, _ dop: Double?) -> Bool {
-        if !stepsSeen || zuptReleased || t - lastStepIncT <= Self.zuptNoStepS { return false }
+        if !stepsSeen || zuptReleased || t - lastStepIncT <= zuptWindowS { return false }
         if let dop, dopplerTrusted, dop >= Self.zuptDopplerOverrideMps { return false }
         return true
     }
@@ -492,6 +505,10 @@ final class GpsDistanceEstimator {
         guard let prev, let prevT, cumulativeSteps >= prev, t > prevT else { return }
         let d = cumulativeSteps - prev
         if d > 0 {
+            if stepsSeen {
+                let span = t - lastStepIncT
+                if Double(d) >= Self.zuptBatchMinCadenceSps * span { stepBatchS = max(stepBatchS, span) }
+            }
             stepsSeen = true
             lastStepIncT = t
             zuptReleased = false

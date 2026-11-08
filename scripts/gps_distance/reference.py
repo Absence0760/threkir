@@ -1,4 +1,4 @@
-"""GPS distance estimator — reference implementation, spec v1.4.
+"""GPS distance estimator — reference implementation, spec v1.5.
 
 Every port (Dart, TypeScript, Deno, Kotlin, Swift, Rust, Go) must reproduce
 gps_distance_vectors.json to 1e-3 m. Operation order matters only at the
@@ -12,7 +12,7 @@ Two entry points:
 """
 import math
 
-SPEC_VERSION = "1.4"
+SPEC_VERSION = "1.5"
 
 EARTH_RADIUS_M = 6371008.8
 Q_ACCEL = 0.6                     # m^2/s^3, white-acceleration spectral density (unvalidated, see doc)
@@ -68,6 +68,12 @@ ZUPT_NO_STEP_S = 6.0
 ZUPT_VEL_SIGMA_MPS = 0.1
 ZUPT_DOPPLER_OVERRIDE_MPS = 1.0
 ZUPT_RELEASE_M = 40.0
+# v1.5 — the ZUPT window stretches to the pedometer's own delivery cadence. Android's
+# step counter is a non-wake-up sensor whose events reach the app in batches while the
+# screen is off, so a fixed 6 s window read every batch interval as a stop.
+ZUPT_BATCH_MIN_CADENCE_SPS = 1.0  # steps per second across an increase-to-increase span for it to be one batch of walking
+ZUPT_BATCH_MARGIN = 1.5           # window = this x the longest such span, never below ZUPT_NO_STEP_S
+ZUPT_MAX_NO_STEP_S = 30.0         # and never above this
 # v1.2 — post-hoc stop detection for tracks with no Doppler (smoother only).
 STOP_HALF_WINDOW_S = 20.0
 STOP_MIN_HALF_FIXES = 3
@@ -185,6 +191,7 @@ class GpsDistanceEstimator:
         self._zupt_released = False
         self._zupt_anchor = None
         self.zupt_fixes = 0
+        self.step_batch_s = 0.0           # v1.5: longest walking span between two step increases
         self.records = [] if record else None
 
     @property
@@ -203,9 +210,14 @@ class GpsDistanceEstimator:
 
     def _zupt_due(self, t, dop):
         """Pedometer says stationary: steps seen this run, none for ZUPT_NO_STEP_S, Doppler not contradicting."""
-        if not self._steps_seen or self._zupt_released or t - self._last_step_inc_t <= ZUPT_NO_STEP_S:
+        if not self._steps_seen or self._zupt_released or t - self._last_step_inc_t <= self.zupt_window_s:
             return False
         return not (dop is not None and self.doppler_trusted and dop >= ZUPT_DOPPLER_OVERRIDE_MPS)
+
+    @property
+    def zupt_window_s(self):
+        """v1.5: how long without a step increase reads as stationary."""
+        return min(max(ZUPT_NO_STEP_S, ZUPT_BATCH_MARGIN * self.step_batch_s), ZUPT_MAX_NO_STEP_S)
 
     def _record(self, **kw):
         if self.records is not None:
@@ -417,6 +429,10 @@ class GpsDistanceEstimator:
             return
         d = cumulative_steps - prev
         if d > 0:
+            if self._last_step_inc_t is not None:
+                span = t - self._last_step_inc_t
+                if d >= ZUPT_BATCH_MIN_CADENCE_SPS * span:
+                    self.step_batch_s = max(self.step_batch_s, span)
             self._steps_seen = True
             self._last_step_inc_t = t
             self._zupt_released = False

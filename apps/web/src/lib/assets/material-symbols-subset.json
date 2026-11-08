@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 72804,
-		"sha256": "a485ac849644b755b637a6f107b0aa00221e774639f146a36005899d6b035ad1",
-		"glyphs": 327,
-		"ligatures": 440
+		"bytes": 73272,
+		"sha256": "f92eca6ccd3c2025149ab37193d4b675c671028687b02fe78441eb0d3fdcc9ec",
+		"glyphs": 329,
+		"ligatures": 444
 	},
 	"icons": [
 		"10k",
@@ -155,7 +155,9 @@
 		"fluid",
 		"forest",
 		"format_list_numbered",
+		"forward",
 		"function",
+		"gate",
 		"gradient",
 		"group",
 		"group_add",

@@ -219,6 +219,8 @@ You enforce the "TS↔Dart parity helper" invariant. Several pure-logic modules 
 | `apps/web/src/lib/share/pr_card.ts` (`prCardEntries`, `prImprovementSeconds`, `formatPrImprovement`, `PR_BRACKETS`, `PR_BRACKET_METRES`) | `apps/mobile_android/lib/pr_card.dart` (`prCardEntries`, `prImprovementSeconds`, `formatPrImprovement`, `prBrackets`, `prBracketMetres`) | `share/pr_card.test.ts` ↔ `test/pr_card_test.dart` |
 | `apps/web/src/lib/training/load_chart_ticks.ts` | `apps/mobile_android/lib/widgets/training_load_chart.dart` (`trainingLoadTickStep` + `trainingLoadTickValues` only; the painter is not part of the pair) | `training/load_chart_ticks.test.ts` ↔ `test/training_load_chart_test.dart` (the `trainingLoadTickStep` + `trainingLoadTickValues` groups) |
 | `apps/web/src/lib/share/share_ref.ts` (partial: `parseShareRef`, `withShareRef`, and `TRACKED_SHARE_KINDS` ↔ `ShareStat.kinds` only; the sign-up, search and bot helpers are web-only and `ShareStat.fromRow` is phone-only) | `apps/mobile_android/lib/share_ref.dart` | `share/share_ref.test.ts` ↔ `test/share_ref_test.dart` |
+| `apps/web/src/lib/geo/gate_crossing.ts` (`gateProjection`, `GateCrossingDetector` `offer` / `settle`, `crossingsOf`, the `GATE_*` constants — spec `gate_crossing v1`, decisions § 2377; also paired Dart↔Kotlin below) | `apps/mobile_android/lib/gate_crossing.dart` | `geo/gate_crossing.test.ts` ↔ `test/gate_crossing_test.dart`, both reading `fixtures/gate_crossing_cases.json` |
+| `apps/web/src/lib/races/race_finish.ts` (`RaceFinishDetector` `offer` / `setGo` / `settle` / `start` / `candidate`, `raceLineUsable`, `raceCoverageMet`, `raceInFinishZone`, `raceStartFlagged`, `ServerClockOffset`, `raceGunTimeS`, `raceChipTimeS`, `raceStopOutcome`, `raceResultTiming` with its `startAtMs`, the `RACE_*` constants — spec `race_finish v2`, decisions § 2378; also paired Dart↔Kotlin below) | `apps/mobile_android/lib/race_finish.dart` | `races/race_finish.test.ts` ↔ `test/race_finish_test.dart`, both reading `fixtures/race_finish_cases.json` |
 
 
 > The embedded factor tables `apps/web/src/lib/runs/age_grade_tables.ts` ↔ `apps/mobile_android/lib/age_grade_tables.dart` are part of the `age_grade` pair but are **generated** from `scripts/age_grade/` and stay identical by construction — never hand-edit them.
@@ -238,6 +240,7 @@ Not web↔mobile, so not in the table above, which `scripts/check_parity_pair_re
 | Mobile (Dart) | Wear OS (Kotlin) | Mirror test pair |
 |---|---|---|
 | `apps/mobile_android/lib/race_finish.dart` | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/RaceFinish.kt` | `test/race_finish_test.dart` ↔ `apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/RaceFinishTest.kt`, both reading `fixtures/race_finish_cases.json` |
+| `apps/mobile_android/lib/gate_crossing.dart` | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/GateCrossing.kt` | `test/gate_crossing_test.dart` ↔ `apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/GateCrossingTest.kt`, both reading `fixtures/gate_crossing_cases.json` |
 
 ## When you fire
 

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 
+import '../lib/gate_crossing.dart';
 import '../lib/race_finish.dart';
 
 /// The Dart reader of `fixtures/race_finish_cases.json`, the case table the
@@ -54,6 +55,76 @@ RaceFix _fix(Map<String, dynamic> f) {
   );
 }
 
+/// A nullable field must be present; a missing key is not a null.
+Object? _req(Map<String, dynamic> o, String key) {
+  if (!o.containsKey(key)) {
+    throw StateError("case ${o['name']} has no '$key'");
+  }
+  return o[key];
+}
+
+final double _gateK = _num((_fixture['constants']
+            as Map<String, dynamic>)['GATE_EARTH_RADIUS_M']) *
+    math.pi /
+    180;
+
+({double lat, double lng}) _plane(Map<String, dynamic> o) => (
+      lat: _finishLat + _num(o['northM']) / _gateK,
+      lng: _finishLng +
+          _num(o['eastM']) / (_gateK * math.cos(_finishLat * math.pi / 180)),
+    );
+
+Gate? _gate(Object? o) {
+  if (o == null) return null;
+  final g = o as Map<String, dynamic>;
+  final p = _plane(g);
+  return Gate(
+    lat: p.lat,
+    lng: p.lng,
+    bearingDeg: _num(g['bearingDeg']),
+    halfWidthM: _num(g['halfWidthM']),
+  );
+}
+
+RaceFix _planeFix(Map<String, dynamic> f) {
+  final p = _plane(f);
+  return RaceFix(
+      lat: p.lat, lng: p.lng, at: _s(f['atS']), coveredM: _num(f['coveredM']));
+}
+
+int _rel(DateTime at) => at.millisecondsSinceEpoch - _t0.millisecondsSinceEpoch;
+
+void _expectStart(RaceStart? got, Object? want, String what) {
+  if (want == null) {
+    expect(got, isNull, reason: what);
+    return;
+  }
+  final w = want as Map<String, dynamic>;
+  expect(got, isNotNull, reason: what);
+  expect(_rel(got!.at), w['atMs'], reason: '$what atMs');
+  expect(got.coveredM, closeTo(_num(w['coveredM']), _distanceTol),
+      reason: '$what coveredM');
+  expect(got.kind.name, w['kind'], reason: '$what kind');
+}
+
+void _expectFinish(RaceFinish? got, Object? want, String what) {
+  if (want == null) {
+    expect(got, isNull, reason: what);
+    return;
+  }
+  final w = want as Map<String, dynamic>;
+  expect(got, isNotNull, reason: what);
+  expect(_rel(got!.at), w['atMs'], reason: '$what atMs');
+  expect(got.coveredM, closeTo(_num(w['coveredM']), _distanceTol),
+      reason: '$what coveredM');
+  expect(got.distanceToFinishM,
+      closeTo(_num(w['distanceToFinishM']), _distanceTol),
+      reason: '$what distanceToFinishM');
+  expect(got.detection.wire, w['detection'], reason: '$what detection');
+  expect(got.gapped, w['gapped'], reason: '$what gapped');
+  _expectStart(got.start, _req(w, 'start'), '$what start');
+}
+
 RaceFinishMethod? _method(Object? wire) => wire == null
     ? null
     : RaceFinishMethod.values.firstWhere((m) => m.wire == wire);
@@ -63,6 +134,10 @@ void main() {
     final c = _fixture['constants'] as Map<String, dynamic>;
     expect(kRaceFinishZoneM, _num(c['FINISH_ZONE_M']));
     expect(kRaceFinishMinCoverage, _num(c['MIN_COVERAGE']));
+    expect(kRaceFinishMinCoverageWithStart,
+        _num(c['MIN_COVERAGE_WITH_START']));
+    expect(kRaceStartCommitM, _num(c['START_COMMIT_M']));
+    expect(kGateEarthRadiusM, _num(c['GATE_EARTH_RADIUS_M']));
     expect(kRaceLateStartAfter.inMilliseconds, c['LATE_START_AFTER_MS']);
     expect(kRaceLateStartFarM, _num(c['LATE_START_FAR_M']));
   });
@@ -260,6 +335,7 @@ void main() {
           gunAt: _msOrNull(c['gunMs']),
           clockOffset: Duration(milliseconds: c['offsetMs'] as int),
           recordingStartedAt: _msOrNull(c['recordingStartedMs']),
+          startAt: _msOrNull(_req(c, 'startMs')),
           elapsedS: c['elapsedS'] as int,
         );
         expect(t.durationS, expected['durationS']);
@@ -269,18 +345,106 @@ void main() {
     }
   });
 
+  group('RaceFinishDetector with lines (race_finish v2)', () {
+    for (final c in _section('lines')) {
+      test(c['name'], () {
+        final expected = c['expect'] as Map<String, dynamic>;
+        final goS = _req(c, 'goS') as int?;
+        final goAfter = _req(c, 'goSetAfterFix') as int?;
+        final d = RaceFinishDetector(
+          finishLat: _finishLat,
+          finishLng: _finishLng,
+          courseDistanceM: _num(c['courseDistanceM']),
+          startGate: _gate(_req(c, 'startGate')),
+          finishGate: _gate(_req(c, 'finishGate')),
+          mode: c['mode'] == 'selfTimed'
+              ? RaceStartMode.selfTimed
+              : RaceStartMode.gun,
+          goAt: goS != null && goAfter == null ? _s(goS) : null,
+        );
+        int? finalisedAt;
+        RaceFinish? finish;
+        final fixes = (c['fixes'] as List).cast<Map<String, dynamic>>();
+        for (var i = 0; i < fixes.length; i++) {
+          var r = d.offer(_planeFix(fixes[i]));
+          if (goAfter == i) r ??= d.setGo(_s(goS!));
+          if (r == null || finalisedAt != null) continue;
+          finalisedAt = i;
+          finish = r;
+        }
+        expect(finalisedAt, expected['finalisesAtFix']);
+        _expectFinish(finish, _req(expected, 'finish'), 'finish');
+        _expectStart(d.start, _req(expected, 'start'), 'start');
+        final candidateAtS = _req(expected, 'candidateAtS');
+        expect(d.candidate?.at, candidateAtS == null ? null : _s(candidateAtS));
+
+        final settled = d.settle();
+        _expectFinish(settled, _req(expected, 'settle'), 'settle');
+
+        final timing = _req(expected, 'timing') as Map<String, dynamic>?;
+        if (settled == null) {
+          expect(timing, isNull);
+          return;
+        }
+        final pressS = _req(c, 'pressS') as int?;
+        final t = raceResultTiming(
+          outcome: RaceOutcome(
+            finisherStatus: 'finished',
+            method: RaceFinishMethod.auto,
+            finishAt: settled.at,
+          ),
+          gunAt: goS == null ? null : _s(goS),
+          recordingStartedAt: pressS == null ? null : _s(pressS),
+          startAt: settled.start?.at,
+          elapsedS: 0,
+        );
+        expect(t.gunTimeS, timing!['gunTimeS']);
+        expect(t.chipTimeS, timing['chipTimeS']);
+        expect(t.durationS, timing['durationS']);
+      });
+    }
+
+    test('an unusable line is no line', () {
+      const ok = Gate(lat: 51.5, lng: -0.1, bearingDeg: 0, halfWidthM: 15);
+      expect(raceLineUsable(ok), isTrue);
+      expect(raceLineUsable(null), isFalse);
+      expect(
+          raceLineUsable(const Gate(
+              lat: 51.5, lng: -0.1, bearingDeg: 0, halfWidthM: 0)),
+          isFalse);
+      expect(
+          raceLineUsable(const Gate(
+              lat: 51.5, lng: -0.1, bearingDeg: double.nan, halfWidthM: 15)),
+          isFalse);
+    });
+
+    test('GO is fixed once set', () {
+      final d = RaceFinishDetector(
+        finishLat: _finishLat,
+        finishLng: _finishLng,
+        courseDistanceM: 1000,
+        startGate:
+            const Gate(lat: 51.5, lng: -0.1, bearingDeg: 0, halfWidthM: 15),
+        goAt: _s(0),
+      );
+      expect(d.setGo(_s(100)), isNull);
+      d.offer(RaceFix(lat: 51.5 + 10 / _gateK, lng: -0.1, at: _s(1), coveredM: 0));
+      expect(d.start?.at, _s(0), reason: 'past the line at the first GO');
+    });
+  });
+
   test('every section of the case table is read', () {
     const read = {
       'spec', 'reference', 'readers', 'schema', 'constants', 't0EpochMs',
       'distanceToleranceM', 'offsetToleranceMs', 'origin', 'distance', 'zone',
       'coverage', 'detector', 'startFlag', 'clockOffset', 'gunTime',
-      'chipTime', 'stopOutcome', 'resultTiming',
+      'chipTime', 'stopOutcome', 'resultTiming', 'lines',
     };
     expect(_fixture.keys.toSet(), read,
         reason: 'a section this reader skips is a rule Dart stops keeping');
     for (final s in [
       'distance', 'zone', 'coverage', 'detector', 'startFlag', 'clockOffset',
-      'gunTime', 'chipTime', 'stopOutcome', 'resultTiming',
+      'gunTime', 'chipTime', 'stopOutcome', 'resultTiming', 'lines',
     ]) {
       expect(_section(s), isNotEmpty, reason: '$s has no cases');
     }

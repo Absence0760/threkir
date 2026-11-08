@@ -1,7 +1,8 @@
 {
- "spec": "race_finish v1",
- "reference": "docs/architecture/parity_pairs.md (Dart<->Kotlin pairs, race_finish); decisions § 1843, § 1845, § 1856",
+ "spec": "race_finish v2",
+ "reference": "docs/architecture/parity_pairs.md (race_finish, TS<->Dart and Dart<->Kotlin); issue #1304 section 2; decisions § 1843, § 1845, § 1856 (this file's schema convention), § 2377 (gate_crossing v1), § 2378 (race_finish v2 and its provisional constants)",
  "readers": [
+  "apps/web/src/lib/races/race_finish.test.ts",
   "apps/mobile_android/test/race_finish_test.dart",
   "apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/RaceFinishTest.kt"
  ],
@@ -13,7 +14,7 @@
    "A field documented as nullable is present with the JSON value null when absent; readers must not treat a missing key as null.",
    "distanceToleranceM applies to every compared distance in metres; offsetToleranceMs to every compared clock offset. Every other comparison is exact."
   ],
-  "constants": "FINISH_ZONE_M, MIN_COVERAGE, LATE_START_AFTER_MS, LATE_START_FAR_M, EARTH_RADIUS_M. Each reader asserts its own constants equal these.",
+  "constants": "FINISH_ZONE_M, MIN_COVERAGE, MIN_COVERAGE_WITH_START, START_COMMIT_M, LATE_START_AFTER_MS, LATE_START_FAR_M, EARTH_RADIUS_M, GATE_EARTH_RADIUS_M. Each reader asserts its own constants equal these (GATE_EARTH_RADIUS_M against its gate_crossing port). MIN_COVERAGE_WITH_START and START_COMMIT_M are provisional until the #1304 calibration session.",
   "origin": "finishLat / finishLng: the course finish point every detector case uses. A fix's northM (number-or-special) places it northM metres due north of the finish: lat = finishLat + northM / (EARTH_RADIUS_M * PI / 180), lng = finishLng.",
   "distance": "{name, a: [lat, lng], b: [lat, lng], expectM}: great-circle distance between a and b, within distanceToleranceM.",
   "zone": "{name, distanceM (number-or-special), inZone: bool}: whether a fix that far from the finish is inside the finish zone. Inclusive at FINISH_ZONE_M; a non-finite distance is outside.",
@@ -24,14 +25,18 @@
   "gunTime": "{name, finishMs, gunMs, offsetMs, gunTimeS: int|null}: seconds from GO to the finish, the finish moved onto the server clock by offsetMs. Integer division of the non-negative millisecond difference by 1000 (floor). Null, never clamped, when the difference is negative.",
   "chipTime": "{name, finishMs, startMs, chipTimeS: int|null}: seconds from the runner's own Start to the finish, both device clock, pauses included. Floor of the non-negative millisecond difference / 1000; null, never clamped, when negative.",
   "stopOutcome": "{name, candidate: {atMs, distanceToFinishM, coveredM}|null, coveredM, courseDistanceM (number-or-special, nullable), nowMs, expect: {finisherStatus, method: 'auto'|'manual'|null, finishAtMs: int|null}}: what a stop records. An open candidate is 'finished' / 'auto' at the candidate's instant; else coverage met (the coverage rule above) is 'finished' / 'manual' at nowMs, the instant the runner stopped; else 'dnf' with no method and no finish instant.",
-  "resultTiming": "{name, outcome: {finisherStatus, method, finishAtMs|null}, gunMs: int|null, offsetMs, recordingStartedMs: int|null, elapsedS, expect: {durationS, gunTimeS: int|null, chipTimeS: int|null}}: the timing columns of the event_results row for an outcome. A 'finished' outcome carries gunTimeS (gunTime rule; null with no GO) and chipTimeS (chipTime rule; null with no recording start; capped at gunTimeS when both exist, since a recording started before GO joins the race at GO), and durationS is the first non-null of gunTimeS, chipTimeS, elapsedS. A 'dnf' carries no gunTimeS and no chipTimeS, and durationS is elapsedS, the recording's elapsed seconds. finish_method on the row is outcome.method, so a DNF row has none."
+  "resultTiming": "{name, outcome: {finisherStatus, method, finishAtMs|null}, gunMs: int|null, offsetMs, startMs: int|null, recordingStartedMs: int|null, elapsedS, expect: {durationS, gunTimeS: int|null, chipTimeS: int|null}}: the timing columns of the event_results row for an outcome. startMs is the committed start (a start-line crossing, or GO for a runner already past the line), device clock, or null for the Start press. A 'finished' outcome carries gunTimeS (gunTime rule; null with no GO) and chipTimeS (chipTime rule, from startMs when it is non-null and from recordingStartedMs otherwise; null with neither; capped at gunTimeS when both exist, since a recording started before GO joins the race at GO), and durationS is the first non-null of gunTimeS, chipTimeS, elapsedS. A 'dnf' carries no gunTimeS and no chipTimeS, and durationS is elapsedS, the recording's elapsed seconds. finish_method on the row is outcome.method, so a DNF row has none.",
+  "lines": "race_finish v2: the detector with start and finish lines. {name, note, courseDistanceM (number-or-special), mode: 'gun'|'selfTimed', goS: int|null, goSetAfterFix: int|null, pressS: int|null, startGate: G|null, finishGate: G|null, fixes: [{northM, eastM, atS, coveredM}], expect}. Positions are metres on the local plane at the origin on GATE_EARTH_RADIUS_M: lat = finishLat + northM / K, lng = finishLng + eastM / (K * cos(finishLat)), K = GATE_EARTH_RADIUS_M * PI / 180; a gate G {northM, eastM, bearingDeg, halfWidthM} is centred the same way. The finish zone is centred on the origin. goS is GO on the device clock the fixes are timed on, or null for none. When goS is non-null and goSetAfterFix is null, GO is given at construction; when goSetAfterFix is k, the detector is built with no GO and setGo(goS) is called right after fix k is offered. Build the detector, offer the fixes in order, then call settle (Kotlin: finaliseNow). expect: finalisesAtFix is the index of the fix whose offer (or the setGo right after it) first returned a finish, else null, and finish is that finish; start is the detector's start after the last fix and before settle (gun: the committed start, null while one is pending; self-timed: the last forward start crossing with no backward one after it); candidateAtS is the open zone candidate's atS after the last fix; settle is what settle returns. A finish or settle is {atMs, coveredM, distanceToFinishM, detection: 'gate'|'zone', gapped, start: {atMs, coveredM, kind: 'line'|'go'}|null}: atMs is the interpolated crossing instant rounded to the millisecond (exact), coveredM within distanceToleranceM, distanceToFinishM within distanceToleranceM (a line finish's lateral offset from the line centre; a zone finish's haversine distance on EARTH_RADIUS_M). timing, when settle is non-null, is raceResultTiming for a 'finished' / 'auto' outcome at settle.atMs with gunMs = goS * 1000 (null when goS is), offsetMs 0, startMs = settle.start.atMs (null when there is none), recordingStartedMs = pressS * 1000, elapsedS 0; null when settle is. The rules themselves are in decisions § 2378; each case's note carries its hand computation."
  },
  "constants": {
   "FINISH_ZONE_M": 30.0,
   "MIN_COVERAGE": 0.9,
+  "MIN_COVERAGE_WITH_START": 0.6,
+  "START_COMMIT_M": 50.0,
   "LATE_START_AFTER_MS": 300000,
   "LATE_START_FAR_M": 200.0,
-  "EARTH_RADIUS_M": 6371000.0
+  "EARTH_RADIUS_M": 6371000.0,
+  "GATE_EARTH_RADIUS_M": 6371008.8
  },
  "t0EpochMs": 1791882000000,
  "distanceToleranceM": 0.01,
@@ -375,13 +380,584 @@
   {"name": "a NaN course distance finishes manually", "candidate": null, "coveredM": 10.0, "courseDistanceM": "NaN", "nowMs": 60000, "expect": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 60000}}
  ],
  "resultTiming": [
-  {"name": "an auto finish carries gun and chip, and duration is the gun time", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 1504000}, "gunMs": 0, "offsetMs": 0, "recordingStartedMs": 0, "elapsedS": 1490, "expect": {"durationS": 1504, "gunTimeS": 1504, "chipTimeS": 1504}},
-  {"name": "a late Start splits gun from chip, and the offset moves only the gun", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1800000}, "gunMs": 0, "offsetMs": 2000, "recordingStartedMs": 120000, "elapsedS": 1600, "expect": {"durationS": 1802, "gunTimeS": 1802, "chipTimeS": 1680}},
-  {"name": "no GO on record: duration is the chip time", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1200000}, "gunMs": null, "offsetMs": 0, "recordingStartedMs": 0, "elapsedS": 1190, "expect": {"durationS": 1200, "gunTimeS": null, "chipTimeS": 1200}},
-  {"name": "no GO and no Start: duration is the elapsed recording", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1200000}, "gunMs": null, "offsetMs": 0, "recordingStartedMs": null, "elapsedS": 1190, "expect": {"durationS": 1190, "gunTimeS": null, "chipTimeS": null}},
-  {"name": "a gun time negative by a clock fault is omitted and the chip time ranks", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 5000}, "gunMs": 0, "offsetMs": -10000, "recordingStartedMs": 0, "elapsedS": 5, "expect": {"durationS": 5, "gunTimeS": null, "chipTimeS": 5}},
-  {"name": "a Start before GO caps the chip time at the gun time", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 1500000}, "gunMs": 0, "offsetMs": 2000, "recordingStartedMs": -180000, "elapsedS": 1680, "expect": {"durationS": 1502, "gunTimeS": 1502, "chipTimeS": 1502}},
-  {"name": "a DNF carries neither time, and duration is the elapsed recording", "outcome": {"finisherStatus": "dnf", "method": null, "finishAtMs": null}, "gunMs": 0, "offsetMs": 0, "recordingStartedMs": 0, "elapsedS": 1700, "expect": {"durationS": 1700, "gunTimeS": null, "chipTimeS": null}},
-  {"name": "a DNF with no GO is the same row", "outcome": {"finisherStatus": "dnf", "method": null, "finishAtMs": null}, "gunMs": null, "offsetMs": 0, "recordingStartedMs": null, "elapsedS": 42, "expect": {"durationS": 42, "gunTimeS": null, "chipTimeS": null}}
+  {"name": "an auto finish carries gun and chip, and duration is the gun time", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 1504000}, "gunMs": 0, "offsetMs": 0, "startMs": null, "recordingStartedMs": 0, "elapsedS": 1490, "expect": {"durationS": 1504, "gunTimeS": 1504, "chipTimeS": 1504}},
+  {"name": "a late Start splits gun from chip, and the offset moves only the gun", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1800000}, "gunMs": 0, "offsetMs": 2000, "startMs": null, "recordingStartedMs": 120000, "elapsedS": 1600, "expect": {"durationS": 1802, "gunTimeS": 1802, "chipTimeS": 1680}},
+  {"name": "no GO on record: duration is the chip time", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1200000}, "gunMs": null, "offsetMs": 0, "startMs": null, "recordingStartedMs": 0, "elapsedS": 1190, "expect": {"durationS": 1200, "gunTimeS": null, "chipTimeS": 1200}},
+  {"name": "no GO and no Start: duration is the elapsed recording", "outcome": {"finisherStatus": "finished", "method": "manual", "finishAtMs": 1200000}, "gunMs": null, "offsetMs": 0, "startMs": null, "recordingStartedMs": null, "elapsedS": 1190, "expect": {"durationS": 1190, "gunTimeS": null, "chipTimeS": null}},
+  {"name": "a gun time negative by a clock fault is omitted and the chip time ranks", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 5000}, "gunMs": 0, "offsetMs": -10000, "startMs": null, "recordingStartedMs": 0, "elapsedS": 5, "expect": {"durationS": 5, "gunTimeS": null, "chipTimeS": 5}},
+  {"name": "a Start before GO caps the chip time at the gun time", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 1500000}, "gunMs": 0, "offsetMs": 2000, "startMs": null, "recordingStartedMs": -180000, "elapsedS": 1680, "expect": {"durationS": 1502, "gunTimeS": 1502, "chipTimeS": 1502}},
+  {"name": "a DNF carries neither time, and duration is the elapsed recording", "outcome": {"finisherStatus": "dnf", "method": null, "finishAtMs": null}, "gunMs": 0, "offsetMs": 0, "startMs": null, "recordingStartedMs": 0, "elapsedS": 1700, "expect": {"durationS": 1700, "gunTimeS": null, "chipTimeS": null}},
+  {"name": "a DNF with no GO is the same row", "outcome": {"finisherStatus": "dnf", "method": null, "finishAtMs": null}, "gunMs": null, "offsetMs": 0, "startMs": null, "recordingStartedMs": null, "elapsedS": 42, "expect": {"durationS": 42, "gunTimeS": null, "chipTimeS": null}},
+  {"name": "a start crossing times the chip from the line, not the Start press", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 1504000}, "gunMs": 0, "offsetMs": 0, "startMs": 30000, "recordingStartedMs": -60000, "elapsedS": 1600, "expect": {"durationS": 1504, "gunTimeS": 1504, "chipTimeS": 1474}},
+  {"name": "a start before GO is still capped at the gun time", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 1500000}, "gunMs": 0, "offsetMs": 2000, "startMs": -10000, "recordingStartedMs": -180000, "elapsedS": 1680, "expect": {"durationS": 1502, "gunTimeS": 1502, "chipTimeS": 1502}},
+  {"name": "self-timed: no GO, and the chip from the line is the duration", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 502000}, "gunMs": null, "offsetMs": 0, "startMs": 202000, "recordingStartedMs": 0, "elapsedS": 510, "expect": {"durationS": 300, "gunTimeS": null, "chipTimeS": 300}},
+  {"name": "a start after the finish is a clock fault and the chip is omitted", "outcome": {"finisherStatus": "finished", "method": "auto", "finishAtMs": 100000}, "gunMs": null, "offsetMs": 0, "startMs": 100001, "recordingStartedMs": 0, "elapsedS": 99, "expect": {"durationS": 99, "gunTimeS": null, "chipTimeS": null}},
+  {"name": "a DNF ignores the start crossing", "outcome": {"finisherStatus": "dnf", "method": null, "finishAtMs": null}, "gunMs": 0, "offsetMs": 0, "startMs": 30000, "recordingStartedMs": 0, "elapsedS": 1700, "expect": {"durationS": 1700, "gunTimeS": null, "chipTimeS": null}}
+ ],
+ "lines": [
+  {
+   "name": "a warm-up past the line before GO does not commit the start",
+   "note": "Loop: start and finish lines both at the origin, bearing 0, so s = northM. Fix 1 crosses forward at f = 20/40 = 0.5, t = 5 s, before GO (100 s): ignored for the start, and no finish counts before GO. GO falls between fix 3 (90 s, s -30, 950 m) and fix 4 (110 s, s -10, 970 m) at f = 0.5: s(GO) = -20 < 0, so the runner is behind the line, covered at GO = 960. Fix 5 crosses both lines at f = 0.5: t = 112 s, covered 980. Finish first on the tie: no committed start, so coverage from GO, 980 - 960 = 20 < 900. Then the start crossing is pending; fix 6 (1040 >= 980 + 50) commits it. Fix 8 crosses at t = 402 s, covered 1980: 1980 - 980 = 1000 >= 0.6 * 1000. Gun 402 - 100 = 302, chip 402 - 112 = 290.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 100,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -20, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 20, "eastM": 0, "atS": 10, "coveredM": 40},
+    {"northM": 100, "eastM": 0, "atS": 30, "coveredM": 120},
+    {"northM": -30, "eastM": 0, "atS": 90, "coveredM": 950},
+    {"northM": -10, "eastM": 0, "atS": 110, "coveredM": 970},
+    {"northM": 10, "eastM": 0, "atS": 114, "coveredM": 990},
+    {"northM": 60, "eastM": 0, "atS": 124, "coveredM": 1040},
+    {"northM": -20, "eastM": 0, "atS": 400, "coveredM": 1960},
+    {"northM": 20, "eastM": 0, "atS": 404, "coveredM": 2000}
+   ],
+   "expect": {"finalisesAtFix": 8, "finish": {"atMs": 402000, "coveredM": 1980, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 112000, "coveredM": 980, "kind": "line"}}, "start": {"atMs": 112000, "coveredM": 980, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 402000, "coveredM": 1980, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 112000, "coveredM": 980, "kind": "line"}}, "timing": {"gunTimeS": 302, "chipTimeS": 290, "durationS": 302}}
+  },
+  {
+   "name": "a recording started after GO already past the line starts at GO",
+   "note": "GO (-60 s) is before the first fix, so the side at GO is the first fix's: s = +40 >= 0, start = GO with the first fix's covered 0. Fixes 1 -> 2 are 280 s apart (more than rejectGapS 60): no crossing. Fix 3 crosses forward at f = 0.5: t = 292 s, covered 970 >= 0.6 * 1000 from 0. Gun 292 + 60 = 352; chip from GO, 352, not from the Start press (294 s).",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": -60,
+   "goSetAfterFix": null,
+   "pressS": -2,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": 40, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 80, "eastM": 0, "atS": 10, "coveredM": 40},
+    {"northM": -20, "eastM": 0, "atS": 290, "coveredM": 950},
+    {"northM": 20, "eastM": 0, "atS": 294, "coveredM": 990}
+   ],
+   "expect": {"finalisesAtFix": 3, "finish": {"atMs": 292000, "coveredM": 970, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": -60000, "coveredM": 0, "kind": "go"}}, "start": {"atMs": -60000, "coveredM": 0, "kind": "go"}, "candidateAtS": null, "settle": {"atMs": 292000, "coveredM": 970, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": -60000, "coveredM": 0, "kind": "go"}}, "timing": {"gunTimeS": 352, "chipTimeS": 352, "durationS": 352}}
+  },
+  {
+   "name": "a wave runner crossing 90 s after GO is timed from the crossing",
+   "note": "Start line 1000 m south of the finish line, both bearing 0. GO at 0 s lands on fix 1 (f = 60/60 = 1): s(GO) = -200, behind the line, covered at GO 0. Fix 3 crosses the start line at f = 0.5: t = 90 s, covered 200; fix 4 (260 >= 250) commits it. Fix 6 crosses the finish line at f = 0.5: t = 382 s, covered 1200, 1000 from the start. Gun 382; chip 382 - 90 = 292, where the Start press would have given 442 capped to 382.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": -60,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1200, "eastM": 0, "atS": -60, "coveredM": 0},
+    {"northM": -1200, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -1010, "eastM": 0, "atS": 86, "coveredM": 190},
+    {"northM": -990, "eastM": 0, "atS": 94, "coveredM": 210},
+    {"northM": -940, "eastM": 0, "atS": 104, "coveredM": 260},
+    {"northM": -20, "eastM": 0, "atS": 380, "coveredM": 1180},
+    {"northM": 20, "eastM": 0, "atS": 384, "coveredM": 1220}
+   ],
+   "expect": {"finalisesAtFix": 6, "finish": {"atMs": 382000, "coveredM": 1200, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 90000, "coveredM": 200, "kind": "line"}}, "start": {"atMs": 90000, "coveredM": 200, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 382000, "coveredM": 1200, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 90000, "coveredM": 200, "kind": "line"}}, "timing": {"gunTimeS": 382, "chipTimeS": 292, "durationS": 382}}
+  },
+  {
+   "name": "a GO learned late replays the held fixes to the same answer",
+   "note": "Start line 1000 m south of the finish line, both bearing 0. GO at 0 s lands on fix 1 (f = 60/60 = 1): s(GO) = -200, behind the line, covered at GO 0. Fix 3 crosses the start line at f = 0.5: t = 90 s, covered 200; fix 4 (260 >= 250) commits it. Fix 6 crosses the finish line at f = 0.5: t = 382 s, covered 1200, 1000 from the start. Gun 382; chip 382 - 90 = 292, where the Start press would have given 442 capped to 382. Here GO reaches the detector only after fix 4 is offered: fixes 0-4 are held and replayed, and setGo returns nothing because the replay finalises nothing.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": 4,
+   "pressS": -60,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1200, "eastM": 0, "atS": -60, "coveredM": 0},
+    {"northM": -1200, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -1010, "eastM": 0, "atS": 86, "coveredM": 190},
+    {"northM": -990, "eastM": 0, "atS": 94, "coveredM": 210},
+    {"northM": -940, "eastM": 0, "atS": 104, "coveredM": 260},
+    {"northM": -20, "eastM": 0, "atS": 380, "coveredM": 1180},
+    {"northM": 20, "eastM": 0, "atS": 384, "coveredM": 1220}
+   ],
+   "expect": {"finalisesAtFix": 6, "finish": {"atMs": 382000, "coveredM": 1200, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 90000, "coveredM": 200, "kind": "line"}}, "start": {"atMs": 90000, "coveredM": 200, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 382000, "coveredM": 1200, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 90000, "coveredM": 200, "kind": "line"}}, "timing": {"gunTimeS": 382, "chipTimeS": 292, "durationS": 382}}
+  },
+  {
+   "name": "a course turning within 50 m of the start still commits, by covered distance",
+   "note": "Start line at the origin, no finish line (zone only). GO (-5 s) is before the first fix: s = -10, behind, covered at GO 0. Fix 1 crosses at f = 0.5: t = 2 s, covered 10. The runner turns east 10 m past the line and s stays +10, but fix 3's covered 80 >= 10 + 50 commits the start. No fix is in the zone with coverage: no finish.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": -5,
+   "goSetAfterFix": null,
+   "pressS": -5,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": null,
+   "fixes": [
+    {"northM": -10, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 10, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": 10, "eastM": 30, "atS": 10, "coveredM": 50},
+    {"northM": 10, "eastM": 60, "atS": 16, "coveredM": 80}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "a hairpin on the start line voids the first crossing and the next one commits",
+   "note": "Start line at the origin. Fix 1 crosses forward at t = 2 s, covered 10; fix 2 crosses back at f = 0.5, t = 6 s, covered 30 < 10 + 50, so the pending start is void. Fix 3 crosses forward at t = 10 s, covered 50; fix 4 (130 >= 100) commits it.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": -5,
+   "goSetAfterFix": null,
+   "pressS": -5,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": null,
+   "fixes": [
+    {"northM": -10, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 10, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": -10, "eastM": 0, "atS": 8, "coveredM": 40},
+    {"northM": 10, "eastM": 0, "atS": 12, "coveredM": 60},
+    {"northM": 80, "eastM": 0, "atS": 26, "coveredM": 130}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": {"atMs": 10000, "coveredM": 50, "kind": "line"}, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "a runner who steps back behind the start line and waits is timed from the crossing they finally make",
+   "note": "Start line at the origin, no finish line, GO at -5 s (before the first fix, s -10: behind). Fix 1 crosses forward at t = 2 s, covered 10; fix 2 crosses back at t = 6 s, covered 30 < 60, voiding it. The runner walks about behind the line and fix 3's covered 60 would have committed the first crossing had the backward one not voided it. Fix 5 crosses forward at f = 0.5: t = 42 s, covered 90; fix 6 (170 >= 140) commits it.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": -5,
+   "goSetAfterFix": null,
+   "pressS": -5,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": null,
+   "fixes": [
+    {"northM": -10, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 10, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": -10, "eastM": 0, "atS": 8, "coveredM": 40},
+    {"northM": -30, "eastM": 0, "atS": 20, "coveredM": 60},
+    {"northM": -10, "eastM": 0, "atS": 40, "coveredM": 80},
+    {"northM": 10, "eastM": 0, "atS": 44, "coveredM": 100},
+    {"northM": 80, "eastM": 0, "atS": 58, "coveredM": 170}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": {"atMs": 42000, "coveredM": 90, "kind": "line"}, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "standing on the line at GO starts at GO, and the 60 % gate applies from it",
+   "note": "Both lines at the origin, GO at 0 s on the first fix, which is on the line: s(GO) = 0, and a fix on the line counts as past it (as gate_crossing counts it), so the start is GO with covered 0. Moving off the line forward is no crossing (s was not < 0), so read as 'behind' this runner would never start. Fix 3 crosses at f = 0.5: t = 302 s, covered 660. A track that under-measures the 1000 m loop by a third still clears 0.6 * 1000 from a committed start, where the 90 % gate (900) would refuse it. Gun 302, chip 302.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": -10,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": 0, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 40, "eastM": 0, "atS": 10, "coveredM": 40},
+    {"northM": -20, "eastM": 0, "atS": 300, "coveredM": 640},
+    {"northM": 20, "eastM": 0, "atS": 304, "coveredM": 680}
+   ],
+   "expect": {"finalisesAtFix": 3, "finish": {"atMs": 302000, "coveredM": 660, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 0, "coveredM": 0, "kind": "go"}}, "start": {"atMs": 0, "coveredM": 0, "kind": "go"}, "candidateAtS": null, "settle": {"atMs": 302000, "coveredM": 660, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 0, "coveredM": 0, "kind": "go"}}, "timing": {"gunTimeS": 302, "chipTimeS": 302, "durationS": 302}}
+  },
+  {
+   "name": "a 60 m sprint finishes on the crossing after its start commits, even between the same two fixes",
+   "note": "Start line 60 m south of the finish line, course 60 m, GO at -5 s (before the first fix, s -10: behind, covered 0). Fix 1 crosses the start at t = 2 s, covered 10 (pending). Fixes 1 -> 2 (12 s and 60 m apart: gapped) cross the finish line at f = 50/60: t = 4 + 12 * 50/60 = 14 s, covered 20 + 50 = 70. By then the start has covered 60 >= 50, so it is committed and the crossing counts: 70 - 10 = 60 >= 0.6 * 60. Gun 14 + 5 = 19, chip 14 - 2 = 12.",
+   "courseDistanceM": 60.0,
+   "mode": "gun",
+   "goS": -5,
+   "goSetAfterFix": null,
+   "pressS": -5,
+   "startGate": {"northM": -60, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -70, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -50, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": 10, "eastM": 0, "atS": 16, "coveredM": 80}
+   ],
+   "expect": {"finalisesAtFix": 2, "finish": {"atMs": 14000, "coveredM": 70, "distanceToFinishM": 0, "detection": "gate", "gapped": true, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}}, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 14000, "coveredM": 70, "distanceToFinishM": 0, "detection": "gate", "gapped": true, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}}, "timing": {"gunTimeS": 19, "chipTimeS": 12, "durationS": 19}}
+  },
+  {
+   "name": "self-timed: a start reversed by a backward crossing does not count",
+   "note": "Start line 1000 m south. Fix 1 crosses it forward (t = 2 s); fix 2 crosses back, which clears it. The runner then goes round the end of the line: fix 2 -> 3 passes s = 0 at u = 40 * 10/15 = 26.7 > 15, no crossing. Fix 6 crosses the finish line forward with 1180 m covered, but there is no start to measure from, so it does not count.",
+   "courseDistanceM": 1000.0,
+   "mode": "selfTimed",
+   "goS": null,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1010, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -990, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": -1010, "eastM": 0, "atS": 8, "coveredM": 40},
+    {"northM": -995, "eastM": 40, "atS": 20, "coveredM": 80},
+    {"northM": -900, "eastM": 40, "atS": 40, "coveredM": 180},
+    {"northM": -20, "eastM": 0, "atS": 400, "coveredM": 1160},
+    {"northM": 20, "eastM": 0, "atS": 404, "coveredM": 1200}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": null, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "a finish crossing just before GO does not count, even with no course distance to gate on",
+   "note": "Course distance unknown (NaN), so coverage cannot gate. GO at 3 s falls between fix 0 (0 s) and fix 1 (4 s) at f = 0.75: s on the start line (1000 m south) is +1010 >= 0, so the start is GO, covered 0.75 * 40 = 30. The same pair crosses the finish line at t = 2 s, before GO: no finish. Fix 1 is in the zone, but fix 2 leaves it, so settle has nothing.",
+   "courseDistanceM": "NaN",
+   "mode": "gun",
+   "goS": 3,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -20, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 20, "eastM": 0, "atS": 4, "coveredM": 40},
+    {"northM": 60, "eastM": 0, "atS": 10, "coveredM": 80}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": {"atMs": 3000, "coveredM": 30, "kind": "go"}, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "a gun-mode loop with no course distance does not finish on its own start",
+   "note": "Both lines at the origin, course distance unknown (NaN), so coverage cannot gate. GO at 0 s on the first fix (s -10: behind). Fix 1 crosses both lines at t = 2 s. On a tie a gun race takes the start first: it is pending, so the finish has no base and does not count, which the unknown distance alone could not have stopped (it would have been a 2 s race). Fix 2 (90 >= 10 + 50) commits the start.",
+   "courseDistanceM": "NaN",
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -10, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 10, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": 80, "eastM": 0, "atS": 20, "coveredM": 90}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "a finish-line crossing before GO does not count, even without a start line",
+   "note": "Finish line at the origin, no start line, GO at 100 s. Fix 1 crosses the finish line at f = 0.5, t = 2 s, covered 960 >= 900 from the Start press, but before GO: no finish. Fix 4 crosses at t = 302 s, covered 1920: a finish, coverage from the Start press as v1 (no start line). Gun 302 - 100 = 202; chip from the press 302, capped at 202.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 100,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": null,
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -20, "eastM": 0, "atS": 0, "coveredM": 940},
+    {"northM": 20, "eastM": 0, "atS": 4, "coveredM": 980},
+    {"northM": 60, "eastM": 0, "atS": 10, "coveredM": 1020},
+    {"northM": -20, "eastM": 0, "atS": 300, "coveredM": 1900},
+    {"northM": 20, "eastM": 0, "atS": 304, "coveredM": 1940}
+   ],
+   "expect": {"finalisesAtFix": 4, "finish": {"atMs": 302000, "coveredM": 1920, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": null}, "start": null, "candidateAtS": null, "settle": {"atMs": 302000, "coveredM": 1920, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": null}, "timing": {"gunTimeS": 202, "chipTimeS": 202, "durationS": 202}}
+  },
+  {
+   "name": "a loop course with a 90 % warm-up before the start does not finish at the start (B3)",
+   "note": "Loop, both lines at the origin. 950 m of warm-up before GO (610 s). GO between fix 1 (600 s, s -30, 950) and fix 2 (620 s, s -10, 970) at f = 0.5: s(GO) = -20, covered at GO 960. Fix 3 crosses both lines at t = 622 s, covered 980: the finish is taken first, with no start, so coverage runs from GO: 20 < 900 (from the Start press it would be 980 >= 900, the v1 false finish). The start is then pending, and fix 4 (in the zone, 1005 < 1030) cannot finish while it is. Settle finds no candidate.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 610,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -500, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -30, "eastM": 0, "atS": 600, "coveredM": 950},
+    {"northM": -10, "eastM": 0, "atS": 620, "coveredM": 970},
+    {"northM": 10, "eastM": 0, "atS": 624, "coveredM": 990},
+    {"northM": 25, "eastM": 0, "atS": 627, "coveredM": 1005}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": null, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "a parallel pass beside the finish late in the course does not finish (B2)",
+   "note": "Start line 1000 m south, finish line at the origin, both bearing 0, half-width 15. Start crossed at t = 2 s (covered 10), committed at fix 2. Fixes 3-6 pass 20 m east of the finish line: fix 4 -> 5 crosses s = 0 at u = 20 > 15, so no crossing. Fixes 4 and 5 are inside the 30 m zone (20.62 and 25 m) with 950 and 970 m since the start >= 900, but with a finish line the zone decides only on settle, and fix 6 (40.3 m) leaves it, which clears the candidate (v1 would have finished at fix 4 on fix 5). Fix 8 crosses the line centre at t = 402 s, covered 1200: 1190 >= 600.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1010, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -990, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": -900, "eastM": 0, "atS": 30, "coveredM": 110},
+    {"northM": -25, "eastM": 20, "atS": 300, "coveredM": 940},
+    {"northM": -5, "eastM": 20, "atS": 304, "coveredM": 960},
+    {"northM": 15, "eastM": 20, "atS": 308, "coveredM": 980},
+    {"northM": 35, "eastM": 20, "atS": 312, "coveredM": 1000},
+    {"northM": -20, "eastM": 0, "atS": 400, "coveredM": 1180},
+    {"northM": 20, "eastM": 0, "atS": 404, "coveredM": 1220}
+   ],
+   "expect": {"finalisesAtFix": 8, "finish": {"atMs": 402000, "coveredM": 1200, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}}, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 402000, "coveredM": 1200, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}}, "timing": {"gunTimeS": 402, "chipTimeS": 400, "durationS": 402}}
+  },
+  {
+   "name": "a course crossing the finish line mid-race below the with-start share finishes only at the end",
+   "note": "Both lines at the origin. Start at t = 2 s (covered 10), committed at fix 2. Fix 4 crosses the line forward at t = 202 s, covered 410: 400 < 600, no finish. Fix 7 crosses at t = 502 s, covered 1010: 1000 >= 600. A course of three or more equal laps through the line is not this: its crossing at (k-1)/k >= 0.6 of the distance would finish a lap early, which is why multi-lap courses are out of scope and #1307 gives a self-crossing course no gate auto-finish (decisions § 2378).",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -10, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 10, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": 80, "eastM": 0, "atS": 20, "coveredM": 90},
+    {"northM": -20, "eastM": 0, "atS": 200, "coveredM": 390},
+    {"northM": 20, "eastM": 0, "atS": 204, "coveredM": 430},
+    {"northM": 80, "eastM": 0, "atS": 220, "coveredM": 490},
+    {"northM": -20, "eastM": 0, "atS": 500, "coveredM": 990},
+    {"northM": 20, "eastM": 0, "atS": 504, "coveredM": 1030}
+   ],
+   "expect": {"finalisesAtFix": 7, "finish": {"atMs": 502000, "coveredM": 1010, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}}, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 502000, "coveredM": 1010, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}}, "timing": {"gunTimeS": 502, "chipTimeS": 500, "durationS": 502}}
+  },
+  {
+   "name": "Stop inside the zone without crossing the line finishes at the closest fix on settle",
+   "note": "Start 1000 m south (crossed at 2 s, covered 10, committed at fix 2), finish line at the origin. Fixes 3-5 approach and stop short of it, all inside the zone with >= 900 m since the start: closest is fix 4, 12 m out (haversine on R 6371000 of a point placed on R 6371008.8: 11.99998). Fix 5 is farther, which in v1 would finalise; with a finish line nothing finalises until settle, which takes fix 4: 384 s, covered 1178, from the line start. Gun 384, chip 382.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1010, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -990, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": -900, "eastM": 0, "atS": 30, "coveredM": 110},
+    {"northM": -25, "eastM": 0, "atS": 380, "coveredM": 1165},
+    {"northM": -12, "eastM": 0, "atS": 384, "coveredM": 1178},
+    {"northM": -15, "eastM": 0, "atS": 386, "coveredM": 1180}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}, "candidateAtS": 384, "settle": {"atMs": 384000, "coveredM": 1178, "distanceToFinishM": 12.0, "detection": "zone", "gapped": false, "start": {"atMs": 2000, "coveredM": 10, "kind": "line"}}, "timing": {"gunTimeS": 384, "chipTimeS": 382, "durationS": 384}}
+  },
+  {
+   "name": "self-timed: an aborted attempt then a full one is timed from the second start",
+   "note": "No GO. Start line 1000 m south, finish at the origin. Fix 1 crosses the start forward at t = 4 s (covered 20); the runner turns back and fix 4 crosses it backward at f = 10/20 = 0.5, t = 102 s, which clears it. Fix 6 crosses forward at t = 202 s, covered 640, the last forward crossing with no backward one after it. Fix 8 crosses the finish at t = 502 s, covered 1640: 1000 from the start >= 600. No gun time; chip 502 - 202 = 300, which is also the duration.",
+   "courseDistanceM": 1000.0,
+   "mode": "selfTimed",
+   "goS": null,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1020, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -980, "eastM": 0, "atS": 8, "coveredM": 40},
+    {"northM": -700, "eastM": 0, "atS": 50, "coveredM": 320},
+    {"northM": -990, "eastM": 0, "atS": 100, "coveredM": 610},
+    {"northM": -1010, "eastM": 0, "atS": 104, "coveredM": 630},
+    {"northM": -1010, "eastM": 0, "atS": 200, "coveredM": 630},
+    {"northM": -990, "eastM": 0, "atS": 204, "coveredM": 650},
+    {"northM": -20, "eastM": 0, "atS": 500, "coveredM": 1620},
+    {"northM": 20, "eastM": 0, "atS": 504, "coveredM": 1660}
+   ],
+   "expect": {"finalisesAtFix": 8, "finish": {"atMs": 502000, "coveredM": 1640, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 202000, "coveredM": 640, "kind": "line"}}, "start": {"atMs": 202000, "coveredM": 640, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 502000, "coveredM": 1640, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 202000, "coveredM": 640, "kind": "line"}}, "timing": {"gunTimeS": null, "chipTimeS": 300, "durationS": 300}}
+  },
+  {
+   "name": "self-timed: no finish counts without a start crossing",
+   "note": "The recording starts past the start line and never crosses it. Fix 2 crosses the finish line forward, and fixes 1-3 are in the zone, but with no start there is nothing to measure coverage from, so neither counts.",
+   "courseDistanceM": 1000.0,
+   "mode": "selfTimed",
+   "goS": null,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -900, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -20, "eastM": 0, "atS": 200, "coveredM": 880},
+    {"northM": 20, "eastM": 0, "atS": 204, "coveredM": 920},
+    {"northM": 5, "eastM": 0, "atS": 210, "coveredM": 935}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": null, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "self-timed with no start line finishes nothing automatically",
+   "note": "A self-timed race needs a start line. Without one the v1 closest approach does not apply: the zone pass with 980-1005 m covered finishes nothing, and settle neither.",
+   "courseDistanceM": 1000.0,
+   "mode": "selfTimed",
+   "goS": null,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": null,
+   "finishGate": null,
+   "fixes": [
+    {"northM": -20, "eastM": 0, "atS": 0, "coveredM": 980},
+    {"northM": -4, "eastM": 0, "atS": 3, "coveredM": 996},
+    {"northM": 5, "eastM": 0, "atS": 5, "coveredM": 1005}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": null, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "a finish line without a start line times from the Start press with the 90 % gate",
+   "note": "No start line: the start is the Start press and coverage counts from 0. Fix 1 crosses the finish line at t = 2 s, covered 870 < 0.9 * 1000. Fix 4 crosses at f = 0.5, t = 302 s, covered 1120 >= 900. Gun 302, chip from the press 302.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": null,
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -20, "eastM": 0, "atS": 0, "coveredM": 850},
+    {"northM": 20, "eastM": 0, "atS": 4, "coveredM": 890},
+    {"northM": 60, "eastM": 0, "atS": 10, "coveredM": 930},
+    {"northM": -20, "eastM": 0, "atS": 300, "coveredM": 1100},
+    {"northM": 20, "eastM": 0, "atS": 304, "coveredM": 1140}
+   ],
+   "expect": {"finalisesAtFix": 4, "finish": {"atMs": 302000, "coveredM": 1120, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": null}, "start": null, "candidateAtS": null, "settle": {"atMs": 302000, "coveredM": 1120, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": null}, "timing": {"gunTimeS": 302, "chipTimeS": 302, "durationS": 302}}
+  },
+  {
+   "name": "a line with no width is no line: the zone finishes as in v1",
+   "note": "A half-width of 0 is not a usable line, and with no start line either the detector is v1: fix 1 (4 m, 996 >= 900) is the closest; fix 2 is farther and finalises at fix 1. Distance 4 * 6371000 / 6371008.8 = 3.999994.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": null,
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 0},
+   "fixes": [
+    {"northM": -20, "eastM": 0, "atS": 0, "coveredM": 980},
+    {"northM": -4, "eastM": 0, "atS": 3, "coveredM": 996},
+    {"northM": 5, "eastM": 0, "atS": 5, "coveredM": 1005}
+   ],
+   "expect": {"finalisesAtFix": 2, "finish": {"atMs": 3000, "coveredM": 996, "distanceToFinishM": 4.0, "detection": "zone", "gapped": false, "start": null}, "start": null, "candidateAtS": null, "settle": {"atMs": 3000, "coveredM": 996, "distanceToFinishM": 4.0, "detection": "zone", "gapped": false, "start": null}, "timing": {"gunTimeS": 3, "chipTimeS": 3, "durationS": 3}}
+  },
+  {
+   "name": "the wrong direction through the finish line does not finish",
+   "note": "Heading south through a line whose travel is north: the crossing between fixes 0 and 1 is backward and never a finish. Both fixes are in the zone, but fix 2 leaves it, so settle has no candidate.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 0,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": null,
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": 20, "eastM": 0, "atS": 0, "coveredM": 950},
+    {"northM": -20, "eastM": 0, "atS": 4, "coveredM": 990},
+    {"northM": -60, "eastM": 0, "atS": 10, "coveredM": 1030}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": null, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "nothing finishes before GO",
+   "note": "GO is at 1000 s. The start crossing at 2 s and the finish crossing at 402 s (covered 1200) are both before it, and so is every zone fix: no finish, no start, and settle has no candidate.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 1000,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1010, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -990, "eastM": 0, "atS": 4, "coveredM": 20},
+    {"northM": -20, "eastM": 0, "atS": 400, "coveredM": 1180},
+    {"northM": 20, "eastM": 0, "atS": 404, "coveredM": 1220},
+    {"northM": 5, "eastM": 0, "atS": 410, "coveredM": 1235}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": null, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "a gun race whose GO never arrives finishes nothing automatically",
+   "note": "The wave runner's track with no GO ever set: the fixes are held for a GO that never comes, and settle releases them with no finish.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": null,
+   "goSetAfterFix": null,
+   "pressS": -60,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1200, "eastM": 0, "atS": -60, "coveredM": 0},
+    {"northM": -1200, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -1010, "eastM": 0, "atS": 86, "coveredM": 190},
+    {"northM": -990, "eastM": 0, "atS": 94, "coveredM": 210},
+    {"northM": -940, "eastM": 0, "atS": 104, "coveredM": 260},
+    {"northM": -20, "eastM": 0, "atS": 380, "coveredM": 1180},
+    {"northM": 20, "eastM": 0, "atS": 384, "coveredM": 1220}
+   ],
+   "expect": {"finalisesAtFix": null, "finish": null, "start": null, "candidateAtS": null, "settle": null, "timing": null}
+  },
+  {
+   "name": "self-timed on a loop whose two lines coincide finishes at the end of the lap, not on its own start",
+   "note": "Both lines at the origin, no GO. Fix 1 crosses both at f = 0.5: t = 2 s, covered 20. The finish is taken first on the tie and has no start yet, so it does not count; the start crossing then becomes the start. Fix 4 crosses both again at t = 302 s, covered 1020: the finish, taken first, is measured from the start at 2 s, 1000 >= 600. Were the start taken first it would be its own start, coverage 0, and the lap would never finish. Chip 302 - 2 = 300.",
+   "courseDistanceM": 1000.0,
+   "mode": "selfTimed",
+   "goS": null,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -20, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": 20, "eastM": 0, "atS": 4, "coveredM": 40},
+    {"northM": 80, "eastM": 0, "atS": 20, "coveredM": 100},
+    {"northM": -20, "eastM": 0, "atS": 300, "coveredM": 1000},
+    {"northM": 20, "eastM": 0, "atS": 304, "coveredM": 1040}
+   ],
+   "expect": {"finalisesAtFix": 4, "finish": {"atMs": 302000, "coveredM": 1020, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 2000, "coveredM": 20, "kind": "line"}}, "start": {"atMs": 2000, "coveredM": 20, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 302000, "coveredM": 1020, "distanceToFinishM": 0, "detection": "gate", "gapped": false, "start": {"atMs": 2000, "coveredM": 20, "kind": "line"}}, "timing": {"gunTimeS": null, "chipTimeS": 300, "durationS": 300}}
+  },
+  {
+   "name": "re-time: the same track gives the same result in all three ports",
+   "note": "Start line 1000 m south, finish line at the origin, GO at 300 s. Warm-up crossings of the start line at 58.06 s (forward) and 170 s (backward) are before GO and ignored. GO between fix 4 (290 s, s -20, 520) and fix 5 (310 s, s -15, 525) at f = 0.5: s(GO) = -17.5, covered at GO 522.5. Fix 7 crosses forward at f = 0.5: 342 s, covered 540. Fix 8 crosses back at f = 5/8: 344 + 0.625 * 2 = 345.25 s, covered 545 + 0.625 * 8 = 550 < 590: void. Fix 9 crosses forward at f = 0.5: 347 s, covered 556; fix 10 (616 >= 606) commits it. Fixes 11-13 pass 20 m east of the finish line (no crossing, u = 20 > 15) and leave the zone. Fix 13 -> 14 crosses backward (ignored). Fix 14 -> 15 crosses forward at f = 35/60: 760 + 15 * 35/60 = 768.75 s, covered 1600 + 35 = 1635, 15 s apart and a 60 m hop, so gapped. 1635 - 556 = 1079 >= 600. Gun floor(468.75) = 468, chip floor(421.75) = 421.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 300,
+   "goSetAfterFix": null,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1300, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -990, "eastM": 0, "atS": 60, "coveredM": 310},
+    {"northM": -900, "eastM": 0, "atS": 120, "coveredM": 400},
+    {"northM": -1020, "eastM": 0, "atS": 180, "coveredM": 520},
+    {"northM": -1020, "eastM": 0, "atS": 290, "coveredM": 520},
+    {"northM": -1015, "eastM": 0, "atS": 310, "coveredM": 525},
+    {"northM": -1005, "eastM": 0, "atS": 340, "coveredM": 535},
+    {"northM": -995, "eastM": 0, "atS": 344, "coveredM": 545},
+    {"northM": -1003, "eastM": 0, "atS": 346, "coveredM": 553},
+    {"northM": -997, "eastM": 0, "atS": 348, "coveredM": 559},
+    {"northM": -940, "eastM": 0, "atS": 360, "coveredM": 616},
+    {"northM": -5, "eastM": 20, "atS": 700, "coveredM": 1500},
+    {"northM": 15, "eastM": 20, "atS": 704, "coveredM": 1520},
+    {"northM": 40, "eastM": 20, "atS": 708, "coveredM": 1545},
+    {"northM": -35, "eastM": 0, "atS": 760, "coveredM": 1600},
+    {"northM": 25, "eastM": 0, "atS": 775, "coveredM": 1660}
+   ],
+   "expect": {"finalisesAtFix": 15, "finish": {"atMs": 768750, "coveredM": 1635, "distanceToFinishM": 0, "detection": "gate", "gapped": true, "start": {"atMs": 347000, "coveredM": 556, "kind": "line"}}, "start": {"atMs": 347000, "coveredM": 556, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 768750, "coveredM": 1635, "distanceToFinishM": 0, "detection": "gate", "gapped": true, "start": {"atMs": 347000, "coveredM": 556, "kind": "line"}}, "timing": {"gunTimeS": 468, "chipTimeS": 421, "durationS": 468}}
+  },
+  {
+   "name": "re-time: the same track with GO learned late gives the same result",
+   "note": "Start line 1000 m south, finish line at the origin, GO at 300 s. Warm-up crossings of the start line at 58.06 s (forward) and 170 s (backward) are before GO and ignored. GO between fix 4 (290 s, s -20, 520) and fix 5 (310 s, s -15, 525) at f = 0.5: s(GO) = -17.5, covered at GO 522.5. Fix 7 crosses forward at f = 0.5: 342 s, covered 540. Fix 8 crosses back at f = 5/8: 344 + 0.625 * 2 = 345.25 s, covered 545 + 0.625 * 8 = 550 < 590: void. Fix 9 crosses forward at f = 0.5: 347 s, covered 556; fix 10 (616 >= 606) commits it. Fixes 11-13 pass 20 m east of the finish line (no crossing, u = 20 > 15) and leave the zone. Fix 13 -> 14 crosses backward (ignored). Fix 14 -> 15 crosses forward at f = 35/60: 760 + 15 * 35/60 = 768.75 s, covered 1600 + 35 = 1635, 15 s apart and a 60 m hop, so gapped. 1635 - 556 = 1079 >= 600. Gun floor(468.75) = 468, chip floor(421.75) = 421. GO reaches the detector after fix 12; the held fixes replay to the same answer.",
+   "courseDistanceM": 1000.0,
+   "mode": "gun",
+   "goS": 300,
+   "goSetAfterFix": 12,
+   "pressS": 0,
+   "startGate": {"northM": -1000, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "finishGate": {"northM": 0, "eastM": 0, "bearingDeg": 0, "halfWidthM": 15},
+   "fixes": [
+    {"northM": -1300, "eastM": 0, "atS": 0, "coveredM": 0},
+    {"northM": -990, "eastM": 0, "atS": 60, "coveredM": 310},
+    {"northM": -900, "eastM": 0, "atS": 120, "coveredM": 400},
+    {"northM": -1020, "eastM": 0, "atS": 180, "coveredM": 520},
+    {"northM": -1020, "eastM": 0, "atS": 290, "coveredM": 520},
+    {"northM": -1015, "eastM": 0, "atS": 310, "coveredM": 525},
+    {"northM": -1005, "eastM": 0, "atS": 340, "coveredM": 535},
+    {"northM": -995, "eastM": 0, "atS": 344, "coveredM": 545},
+    {"northM": -1003, "eastM": 0, "atS": 346, "coveredM": 553},
+    {"northM": -997, "eastM": 0, "atS": 348, "coveredM": 559},
+    {"northM": -940, "eastM": 0, "atS": 360, "coveredM": 616},
+    {"northM": -5, "eastM": 20, "atS": 700, "coveredM": 1500},
+    {"northM": 15, "eastM": 20, "atS": 704, "coveredM": 1520},
+    {"northM": 40, "eastM": 20, "atS": 708, "coveredM": 1545},
+    {"northM": -35, "eastM": 0, "atS": 760, "coveredM": 1600},
+    {"northM": 25, "eastM": 0, "atS": 775, "coveredM": 1660}
+   ],
+   "expect": {"finalisesAtFix": 15, "finish": {"atMs": 768750, "coveredM": 1635, "distanceToFinishM": 0, "detection": "gate", "gapped": true, "start": {"atMs": 347000, "coveredM": 556, "kind": "line"}}, "start": {"atMs": 347000, "coveredM": 556, "kind": "line"}, "candidateAtS": null, "settle": {"atMs": 768750, "coveredM": 1635, "distanceToFinishM": 0, "detection": "gate", "gapped": true, "start": {"atMs": 347000, "coveredM": 556, "kind": "line"}}, "timing": {"gunTimeS": 468, "chipTimeS": 421, "durationS": 468}}
+  }
  ]
 }

@@ -253,6 +253,9 @@ tasks.withType<Test>().configureEach {
             root.resolve("fixtures/gps_distance_vectors.json"),
             // RaceFinishTest: the race_finish case table the phone reads too.
             root.resolve("fixtures/race_finish_cases.json"),
+            // GateCrossingTest: the gate_crossing case table web and the
+            // phone read too.
+            root.resolve("fixtures/gate_crossing_cases.json"),
         )
             .withPathSensitivity(PathSensitivity.NAME_ONLY)
             .withPropertyName("guardedCrossTreeFiles")

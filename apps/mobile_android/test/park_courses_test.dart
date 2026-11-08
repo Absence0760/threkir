@@ -231,5 +231,46 @@ void main() {
     expect(xml, isNot(contains('<wpt')));
     expect(xml, isNot(contains('<desc>')));
   });
-}
 
+  RecapParkRow row(String park, String name, String course) =>
+      RecapParkRow(parkId: park, parkName: name, regionCode: 'US-VA', courseId: course);
+
+  test('recapParkSummary: no efforts is an empty summary', () {
+    final s = recapParkSummary(const []);
+    expect(s.courseCount, 0);
+    expect(s.parkCount, 0);
+    expect(s.parks, isEmpty);
+  });
+
+  test('recapParkSummary: a course run twice counts once', () {
+    final s = recapParkSummary([row('p1', 'Lake', 'c1'), row('p1', 'Lake', 'c1'), row('p1', 'Lake', 'c2')]);
+    expect(s.courseCount, 2);
+    expect(s.parkCount, 1);
+    expect(s.parks.single.courseCount, 2);
+  });
+
+  test('recapParkSummary: parks are ordered by courses run, then name', () {
+    final s = recapParkSummary([
+      row('p2', 'Bluff', 'c3'),
+      row('p1', 'Alder', 'c4'),
+      row('p3', 'Cove', 'c5'),
+      row('p3', 'Cove', 'c6'),
+    ]);
+    expect(s.parks.map((p) => p.name).toList(), ['Cove', 'Alder', 'Bluff']);
+  });
+
+  RunParkCourseTime time(String name, int? rank) =>
+      RunParkCourseTime(courseName: name, parkName: 'Park', timeSeconds: 600, season: 2027, seasonRank: rank);
+
+  test('pickShareCourse: no course is null', () {
+    expect(pickShareCourse(const []), isNull);
+  });
+
+  test('pickShareCourse: the best season rank wins over an unranked course', () {
+    expect(pickShareCourse([time('A', null), time('B', 7), time('C', 3)])?.courseName, 'C');
+  });
+
+  test('pickShareCourse: with no ranked course the first one is printed', () {
+    expect(pickShareCourse([time('A', null), time('B', null)])?.courseName, 'A');
+  });
+}

@@ -252,3 +252,109 @@ String parkCourseGpx({
     attribution,
   );
 }
+
+/// One park course effort in a recap period: the course and the park it is in.
+class RecapParkRow {
+  final String parkId;
+  final String parkName;
+  final String regionCode;
+  final String courseId;
+  const RecapParkRow({
+    required this.parkId,
+    required this.parkName,
+    required this.regionCode,
+    required this.courseId,
+  });
+}
+
+/// One park on the recap's "Parks you ran" list.
+class RecapPark {
+  final String parkId;
+  final String name;
+  final String regionCode;
+  final int courseCount;
+  const RecapPark({
+    required this.parkId,
+    required this.name,
+    required this.regionCode,
+    required this.courseCount,
+  });
+}
+
+class RecapParkSummary {
+  final int courseCount;
+  final int parkCount;
+  final List<RecapPark> parks;
+  const RecapParkSummary({
+    required this.courseCount,
+    required this.parkCount,
+    required this.parks,
+  });
+}
+
+/// The recap's park lines from the period's efforts: distinct courses, distinct
+/// parks, and each park with the distinct courses run there, most first, then
+/// by name. A course run twice counts once.
+RecapParkSummary recapParkSummary(List<RecapParkRow> rows) {
+  final coursesByPark = <String, Set<String>>{};
+  final parkOf = <String, RecapParkRow>{};
+  final courses = <String>{};
+  for (final r in rows) {
+    courses.add(r.courseId);
+    coursesByPark.putIfAbsent(r.parkId, () => <String>{}).add(r.courseId);
+    parkOf.putIfAbsent(r.parkId, () => r);
+  }
+  final parks = [
+    for (final e in coursesByPark.entries)
+      RecapPark(
+        parkId: e.key,
+        name: parkOf[e.key]!.parkName,
+        regionCode: parkOf[e.key]!.regionCode,
+        courseCount: e.value.length,
+      ),
+  ]..sort((a, b) {
+      final byCount = b.courseCount - a.courseCount;
+      return byCount != 0 ? byCount : a.name.compareTo(b.name);
+    });
+  return RecapParkSummary(
+    courseCount: courses.length,
+    parkCount: coursesByPark.length,
+    parks: parks,
+  );
+}
+
+/// One row of `run_park_course_times`: a park course the run completed.
+class RunParkCourseTime {
+  final String courseName;
+  final String parkName;
+  final int timeSeconds;
+  final int season;
+  final int? seasonRank;
+  const RunParkCourseTime({
+    required this.courseName,
+    required this.parkName,
+    required this.timeSeconds,
+    required this.season,
+    required this.seasonRank,
+  });
+
+  factory RunParkCourseTime.fromRow(Map<String, dynamic> row) => RunParkCourseTime(
+        courseName: row['course_name'] as String,
+        parkName: row['park_name'] as String,
+        timeSeconds: (row['time_seconds'] as num).round(),
+        season: (row['season'] as num).toInt(),
+        seasonRank: (row['season_rank'] as num?)?.toInt(),
+      );
+}
+
+/// The course the share sticker prints: the best season rank among the run's
+/// ranked courses, else the first course; null when the run completed none.
+RunParkCourseTime? pickShareCourse(List<RunParkCourseTime> rows) {
+  RunParkCourseTime? best;
+  for (final r in rows) {
+    final rank = r.seasonRank;
+    if (rank == null) continue;
+    if (best == null || rank < best.seasonRank!) best = r;
+  }
+  return best ?? (rows.isEmpty ? null : rows.first);
+}

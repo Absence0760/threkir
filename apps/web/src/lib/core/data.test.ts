@@ -1001,6 +1001,37 @@ test('computeGlobalSegmentEffortsForRun re-reads runs.metadata immediately befor
 	);
 });
 
+test('computeGlobalSegmentEffortsForRun scores park courses with their checkpoints, failing closed', () => {
+	// Reason: a park course's checkpoints are its anti-shortcut rule
+	// (decisions § 2383). Scoring without them times a run that cut the
+	// course, so a failed checkpoint read must score nothing, a course whose
+	// list cannot be read must be left out, and the list must reach the matcher.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
+	assert.ok(start >= 0, 'Could not locate computeGlobalSegmentEffortsForRun — rename?');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+
+	const readAt = body.indexOf('await fetchParkCourseCheckpoints()');
+	const scoreAt = body.indexOf('computeGlobalSegmentEfforts(');
+	assert.ok(readAt >= 0 && scoreAt > readAt, 'the checkpoint read must precede the matcher');
+	assert.match(
+		body.slice(readAt, scoreAt),
+		/if \(checkpointsBySegment === null\) return 0;/,
+		'a failed checkpoint read must return before scoring (and before the stamp)',
+	);
+	assert.match(
+		body,
+		/checkpointsBySegment\.get\(seg\.id\) !== null/,
+		'a course whose checkpoint list cannot be read must be filtered out of the sweep',
+	);
+	assert.match(
+		body.slice(scoreAt),
+		/checkpoints: checkpointsBySegment\.get\(seg\.id\)/,
+		'each geometry handed to the matcher must carry its checkpoints',
+	);
+});
+
 test('saveRun writes elevation_gain_m alongside the metadata key', () => {
 	// Reason: migration 20270302_001 promoted total ascent to the first-class
 	// `runs.elevation_gain_m` column because the vert challenge aggregate sums

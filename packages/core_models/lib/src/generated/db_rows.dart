@@ -397,6 +397,7 @@ class CheckpointCrossingRow {
   static const String table = 'checkpoint_crossings';
   static const String colId = 'id';
   static const String colEventId = 'event_id';
+  static const String colCheckpointId = 'checkpoint_id';
   static const String colInstanceStart = 'instance_start';
   static const String colUserId = 'user_id';
   static const String colBib = 'bib';
@@ -413,6 +414,7 @@ class CheckpointCrossingRow {
 
   final String id;
   final String eventId;
+  final String checkpointId;
   final DateTime instanceStart;
   final String? userId;
   final String? bib;
@@ -430,6 +432,7 @@ class CheckpointCrossingRow {
   const CheckpointCrossingRow({
     required this.id,
     required this.eventId,
+    required this.checkpointId,
     required this.instanceStart,
     this.userId,
     this.bib,
@@ -448,6 +451,7 @@ class CheckpointCrossingRow {
   factory CheckpointCrossingRow.fromJson(Map<String, dynamic> json) => CheckpointCrossingRow(
     id: json['id'] as String,
     eventId: json['event_id'] as String,
+    checkpointId: json['checkpoint_id'] as String,
     instanceStart: parseIsoStrictRequired(json['instance_start'], 'instance_start'),
     userId: json['user_id'] as String?,
     bib: json['bib'] as String?,
@@ -466,6 +470,7 @@ class CheckpointCrossingRow {
   Map<String, dynamic> toJson() => <String, dynamic>{
     colId: id,
     colEventId: eventId,
+    colCheckpointId: checkpointId,
     colInstanceStart: instanceStart.toIso8601String(),
     colUserId: userId,
     colBib: bib,
@@ -484,6 +489,7 @@ class CheckpointCrossingRow {
   CheckpointCrossingRow copyWith({
     String? id,
     String? eventId,
+    String? checkpointId,
     DateTime? instanceStart,
     String? userId,
     String? bib,
@@ -500,6 +506,7 @@ class CheckpointCrossingRow {
   }) => CheckpointCrossingRow(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
+    checkpointId: checkpointId ?? this.checkpointId,
     instanceStart: instanceStart ?? this.instanceStart,
     userId: userId ?? this.userId,
     bib: bib ?? this.bib,
@@ -4574,6 +4581,270 @@ class NutritionPlanRow {
     progressionParams: progressionParams ?? this.progressionParams,
     externalId: externalId ?? this.externalId,
     lastModifiedAt: lastModifiedAt ?? this.lastModifiedAt,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
+/// Row shape for the `park_courses` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class ParkCourseRow {
+  static const String table = 'park_courses';
+  static const String colId = 'id';
+  static const String colParkId = 'park_id';
+  static const String colGlobalSegmentId = 'global_segment_id';
+  static const String colRouteId = 'route_id';
+  static const String colSlug = 'slug';
+  static const String colCourseShape = 'course_shape';
+  static const String colStatus = 'status';
+  static const String colStatusNote = 'status_note';
+  static const String colStatusCheckedAt = 'status_checked_at';
+  static const String colGeometrySource = 'geometry_source';
+  static const String colSourceRef = 'source_ref';
+  static const String colSourceCheckedAt = 'source_checked_at';
+  static const String colDifficulty = 'difficulty';
+  static const String colCheckpoints = 'checkpoints';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String parkId;
+  final String globalSegmentId;
+  final String? routeId;
+  final String slug;
+  final String courseShape;
+  final String status;
+  final String? statusNote;
+  final DateTime? statusCheckedAt;
+  final String geometrySource;
+  final String? sourceRef;
+  final DateTime? sourceCheckedAt;
+  final String? difficulty;
+  final dynamic checkpoints;
+  final DateTime createdAt;
+
+  const ParkCourseRow({
+    required this.id,
+    required this.parkId,
+    required this.globalSegmentId,
+    this.routeId,
+    required this.slug,
+    required this.courseShape,
+    required this.status,
+    this.statusNote,
+    this.statusCheckedAt,
+    required this.geometrySource,
+    this.sourceRef,
+    this.sourceCheckedAt,
+    this.difficulty,
+    required this.checkpoints,
+    required this.createdAt,
+  });
+
+  factory ParkCourseRow.fromJson(Map<String, dynamic> json) => ParkCourseRow(
+    id: json['id'] as String,
+    parkId: json['park_id'] as String,
+    globalSegmentId: json['global_segment_id'] as String,
+    routeId: json['route_id'] as String?,
+    slug: json['slug'] as String,
+    courseShape: json['course_shape'] as String,
+    status: json['status'] as String,
+    statusNote: json['status_note'] as String?,
+    statusCheckedAt: parseIsoStrictValue(json['status_checked_at']),
+    geometrySource: json['geometry_source'] as String,
+    sourceRef: json['source_ref'] as String?,
+    sourceCheckedAt: parseIsoStrictValue(json['source_checked_at']),
+    difficulty: json['difficulty'] as String?,
+    checkpoints: json['checkpoints'],
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colParkId: parkId,
+    colGlobalSegmentId: globalSegmentId,
+    colRouteId: routeId,
+    colSlug: slug,
+    colCourseShape: courseShape,
+    colStatus: status,
+    colStatusNote: statusNote,
+    colStatusCheckedAt: statusCheckedAt?.toIso8601String(),
+    colGeometrySource: geometrySource,
+    colSourceRef: sourceRef,
+    colSourceCheckedAt: sourceCheckedAt?.toIso8601String(),
+    colDifficulty: difficulty,
+    colCheckpoints: checkpoints,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  ParkCourseRow copyWith({
+    String? id,
+    String? parkId,
+    String? globalSegmentId,
+    String? routeId,
+    String? slug,
+    String? courseShape,
+    String? status,
+    String? statusNote,
+    DateTime? statusCheckedAt,
+    String? geometrySource,
+    String? sourceRef,
+    DateTime? sourceCheckedAt,
+    String? difficulty,
+    dynamic checkpoints,
+    DateTime? createdAt,
+  }) => ParkCourseRow(
+    id: id ?? this.id,
+    parkId: parkId ?? this.parkId,
+    globalSegmentId: globalSegmentId ?? this.globalSegmentId,
+    routeId: routeId ?? this.routeId,
+    slug: slug ?? this.slug,
+    courseShape: courseShape ?? this.courseShape,
+    status: status ?? this.status,
+    statusNote: statusNote ?? this.statusNote,
+    statusCheckedAt: statusCheckedAt ?? this.statusCheckedAt,
+    geometrySource: geometrySource ?? this.geometrySource,
+    sourceRef: sourceRef ?? this.sourceRef,
+    sourceCheckedAt: sourceCheckedAt ?? this.sourceCheckedAt,
+    difficulty: difficulty ?? this.difficulty,
+    checkpoints: checkpoints ?? this.checkpoints,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
+/// Row shape for the `parks` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class ParkRow {
+  static const String table = 'parks';
+  static const String colId = 'id';
+  static const String colSlug = 'slug';
+  static const String colName = 'name';
+  static const String colDescription = 'description';
+  static const String colAgency = 'agency';
+  static const String colRegionCode = 'region_code';
+  static const String colCountryCode = 'country_code';
+  static const String colTimezone = 'timezone';
+  static const String colWebsiteUrl = 'website_url';
+  static const String colCentroidLat = 'centroid_lat';
+  static const String colCentroidLng = 'centroid_lng';
+  static const String colBboxMinLat = 'bbox_min_lat';
+  static const String colBboxMinLng = 'bbox_min_lng';
+  static const String colBboxMaxLat = 'bbox_max_lat';
+  static const String colBboxMaxLng = 'bbox_max_lng';
+  static const String colIsActive = 'is_active';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String slug;
+  final String name;
+  final String? description;
+  final String agency;
+  final String regionCode;
+  final String countryCode;
+  final String timezone;
+  final String? websiteUrl;
+  final double? centroidLat;
+  final double? centroidLng;
+  final double? bboxMinLat;
+  final double? bboxMinLng;
+  final double? bboxMaxLat;
+  final double? bboxMaxLng;
+  final bool isActive;
+  final DateTime createdAt;
+
+  const ParkRow({
+    required this.id,
+    required this.slug,
+    required this.name,
+    this.description,
+    required this.agency,
+    required this.regionCode,
+    required this.countryCode,
+    required this.timezone,
+    this.websiteUrl,
+    this.centroidLat,
+    this.centroidLng,
+    this.bboxMinLat,
+    this.bboxMinLng,
+    this.bboxMaxLat,
+    this.bboxMaxLng,
+    required this.isActive,
+    required this.createdAt,
+  });
+
+  factory ParkRow.fromJson(Map<String, dynamic> json) => ParkRow(
+    id: json['id'] as String,
+    slug: json['slug'] as String,
+    name: json['name'] as String,
+    description: json['description'] as String?,
+    agency: json['agency'] as String,
+    regionCode: json['region_code'] as String,
+    countryCode: json['country_code'] as String,
+    timezone: json['timezone'] as String,
+    websiteUrl: json['website_url'] as String?,
+    centroidLat: _toDoubleOrNull(json['centroid_lat']),
+    centroidLng: _toDoubleOrNull(json['centroid_lng']),
+    bboxMinLat: _toDoubleOrNull(json['bbox_min_lat']),
+    bboxMinLng: _toDoubleOrNull(json['bbox_min_lng']),
+    bboxMaxLat: _toDoubleOrNull(json['bbox_max_lat']),
+    bboxMaxLng: _toDoubleOrNull(json['bbox_max_lng']),
+    isActive: (json['is_active'] as bool?) ?? false,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colSlug: slug,
+    colName: name,
+    colDescription: description,
+    colAgency: agency,
+    colRegionCode: regionCode,
+    colCountryCode: countryCode,
+    colTimezone: timezone,
+    colWebsiteUrl: websiteUrl,
+    colCentroidLat: centroidLat,
+    colCentroidLng: centroidLng,
+    colBboxMinLat: bboxMinLat,
+    colBboxMinLng: bboxMinLng,
+    colBboxMaxLat: bboxMaxLat,
+    colBboxMaxLng: bboxMaxLng,
+    colIsActive: isActive,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  ParkRow copyWith({
+    String? id,
+    String? slug,
+    String? name,
+    String? description,
+    String? agency,
+    String? regionCode,
+    String? countryCode,
+    String? timezone,
+    String? websiteUrl,
+    double? centroidLat,
+    double? centroidLng,
+    double? bboxMinLat,
+    double? bboxMinLng,
+    double? bboxMaxLat,
+    double? bboxMaxLng,
+    bool? isActive,
+    DateTime? createdAt,
+  }) => ParkRow(
+    id: id ?? this.id,
+    slug: slug ?? this.slug,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    agency: agency ?? this.agency,
+    regionCode: regionCode ?? this.regionCode,
+    countryCode: countryCode ?? this.countryCode,
+    timezone: timezone ?? this.timezone,
+    websiteUrl: websiteUrl ?? this.websiteUrl,
+    centroidLat: centroidLat ?? this.centroidLat,
+    centroidLng: centroidLng ?? this.centroidLng,
+    bboxMinLat: bboxMinLat ?? this.bboxMinLat,
+    bboxMinLng: bboxMinLng ?? this.bboxMinLng,
+    bboxMaxLat: bboxMaxLat ?? this.bboxMaxLat,
+    bboxMaxLng: bboxMaxLng ?? this.bboxMaxLng,
+    isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
   );
 }

@@ -695,6 +695,41 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'park_courses.course_shape',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_SHAPES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseShapes', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'park_courses.difficulty',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_DIFFICULTIES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseDifficulties', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'park_courses.geometry_source',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'GEOMETRY_SOURCES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kGeometrySources', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'park_courses.status',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseStatuses', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'parks.agency',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'PARK_AGENCIES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kParkAgencies', shape: 'strings' },
+		],
+	},
+	{
 		tableColumn: 'payment_refunds.status',
 		clients: [
 			{ file: TS_TYPES, decl: 'PaymentRefundStatus', shape: 'union' },

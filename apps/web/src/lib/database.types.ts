@@ -3088,6 +3088,163 @@ export type Database = {
         }
         Relationships: []
       }
+      park_courses: {
+        Row: {
+          checkpoints: Json
+          course_shape: string
+          created_at: string
+          difficulty: string | null
+          geometry_source: string
+          global_segment_id: string
+          id: string
+          park_id: string
+          route_id: string | null
+          slug: string
+          source_checked_at: string | null
+          source_ref: string | null
+          status: string
+          status_checked_at: string | null
+          status_note: string | null
+        }
+        Insert: {
+          checkpoints?: Json
+          course_shape: string
+          created_at?: string
+          difficulty?: string | null
+          geometry_source: string
+          global_segment_id: string
+          id?: string
+          park_id: string
+          route_id?: string | null
+          slug: string
+          source_checked_at?: string | null
+          source_ref?: string | null
+          status?: string
+          status_checked_at?: string | null
+          status_note?: string | null
+        }
+        Update: {
+          checkpoints?: Json
+          course_shape?: string
+          created_at?: string
+          difficulty?: string | null
+          geometry_source?: string
+          global_segment_id?: string
+          id?: string
+          park_id?: string
+          route_id?: string | null
+          slug?: string
+          source_checked_at?: string | null
+          source_ref?: string | null
+          status?: string
+          status_checked_at?: string | null
+          status_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "park_courses_global_segment_id_fkey"
+            columns: ["global_segment_id"]
+            isOneToOne: true
+            referencedRelation: "global_segments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_courses_park_id_fkey"
+            columns: ["park_id"]
+            isOneToOne: false
+            referencedRelation: "parks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "park_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "park_courses_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parks: {
+        Row: {
+          agency: string
+          bbox_max_lat: number | null
+          bbox_max_lng: number | null
+          bbox_min_lat: number | null
+          bbox_min_lng: number | null
+          centroid_lat: number | null
+          centroid_lng: number | null
+          country_code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          region_code: string
+          slug: string
+          timezone: string
+          website_url: string | null
+        }
+        Insert: {
+          agency: string
+          bbox_max_lat?: number | null
+          bbox_max_lng?: number | null
+          bbox_min_lat?: number | null
+          bbox_min_lng?: number | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          country_code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          region_code: string
+          slug: string
+          timezone: string
+          website_url?: string | null
+        }
+        Update: {
+          agency?: string
+          bbox_max_lat?: number | null
+          bbox_max_lng?: number | null
+          bbox_min_lat?: number | null
+          bbox_min_lng?: number | null
+          centroid_lat?: number | null
+          centroid_lng?: number | null
+          country_code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          region_code?: string
+          slug?: string
+          timezone?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       payment_refunds: {
         Row: {
           amount_cents: number
@@ -7247,6 +7404,16 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      global_segment_completions: {
+        Args: { p_limit?: number; p_season?: number; p_segment_id: string }
+        Returns: {
+          avatar_url: string
+          completions: number
+          display_name: string
+          last_completed_at: string
+          user_id: string
+        }[]
+      }
       global_segment_effort_ranks: {
         Args: { p_run_id: string }
         Returns: {
@@ -7260,6 +7427,7 @@ export type Database = {
           p_club_id?: string
           p_gender?: string
           p_limit?: number
+          p_season?: number
           p_segment_id: string
         }
         Returns: {
@@ -7634,6 +7802,10 @@ export type Database = {
       notify_data_export_ready: {
         Args: { p_export_job_id: string }
         Returns: boolean
+      }
+      park_season: {
+        Args: { p: Database["public"]["Tables"]["parks"]["Row"] }
+        Returns: number
       }
       personal_records: {
         Args: never

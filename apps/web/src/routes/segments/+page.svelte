@@ -80,6 +80,10 @@
 	<header class="page-header">
 		<h1>{m('segments.browseTitle')}</h1>
 		<p class="subtitle">{m('segments.browseIntro')}</p>
+		<a class="parks-link" href="/parks" data-testid="segments-parks-link">
+			<span class="material-symbols" aria-hidden="true">park</span>
+			{m('parks.browseLink')}
+		</a>
 	</header>
 
 	{#if loading}
@@ -226,6 +230,16 @@
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
 		line-height: 1.5;
+	}
+	.parks-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		margin-top: var(--space-sm);
+		font-size: 0.9rem;
+	}
+	.parks-link .material-symbols {
+		font-size: 1.1rem;
 	}
 	.state-msg {
 		margin: 0;

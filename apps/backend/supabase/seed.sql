@@ -3044,6 +3044,46 @@ INSERT INTO global_segments (name, description, waypoints, distance_m, elevation
    '[{"lat":52.5163,"lng":13.3777,"ele":38},{"lat":52.5145,"lng":13.369,"ele":37},{"lat":52.514,"lng":13.36,"ele":37},{"lat":52.5138,"lng":13.351,"ele":36},{"lat":52.5137,"lng":13.345,"ele":36}]',
    2249, 0, 'road', 'Berlin, DE', 'DE');
 
+-- ─────────────────── Park courses (20271115002383) ───────────────────
+-- A FICTIONAL park and course so /parks, the course page and its boards
+-- render on a fresh stack. Not real geometry and never loaded anywhere but a
+-- local or CI database: real courses come from the reviewed scripts/parks/
+-- manifest through the operator loader (docs/features/park_courses.md). The
+-- efforts are planted directly (the matcher is the client's job), one of
+-- runner's a year back so the this-year and all-time boards differ.
+INSERT INTO global_segments (id, name, description, waypoints, distance_m, elevation_m, surface, region, country_code) VALUES
+  ('5eed0000-0000-4000-8000-00000000c001', 'Fixture Lake Loop',
+   'Local-dev fixture course. Not a real trail.',
+   '[{"lat":37.5400,"lng":-77.4400},{"lat":37.5445,"lng":-77.4400},{"lat":37.5445,"lng":-77.4343},{"lat":37.5400,"lng":-77.4343},{"lat":37.5400,"lng":-77.4401}]',
+   2000, 12, 'trail', 'Fixture State Park, Virginia', 'US')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO parks (id, slug, name, description, agency, region_code, country_code, timezone,
+                   centroid_lat, centroid_lng, bbox_min_lat, bbox_min_lng, bbox_max_lat, bbox_max_lng)
+VALUES ('5eed0000-0000-4000-8000-0000000000a1', 'fixture-state-park', 'Fixture State Park',
+        'A fictional park for local development and tests.', 'state', 'US-VA', 'US',
+        'America/New_York', 37.54225, -77.43715, 37.5400, -77.4401, 37.5445, -77.4343)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO park_courses (id, park_id, global_segment_id, slug, course_shape, status,
+                          geometry_source, source_ref, difficulty, checkpoints)
+VALUES ('5eed0000-0000-4000-8000-0000000000b1', '5eed0000-0000-4000-8000-0000000000a1',
+        '5eed0000-0000-4000-8000-00000000c001', 'lake-loop', 'loop', 'open',
+        'traced', 'local fixture', 'easy',
+        '[{"lat":37.5445,"lng":-77.4343}]')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at) VALUES
+  ('5eed0000-0000-4000-8000-00000000c001', 'a1000001-0000-0000-0000-000000000007',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 640, now() - interval '1 day'),
+  ('5eed0000-0000-4000-8000-00000000c001', 'a1000001-0000-0000-0000-000000000008',
+   'a1b2c3d4-e5f6-7890-abcd-ef1234567890', 600, now() - interval '400 days'),
+  ('5eed0000-0000-4000-8000-00000000c001',
+   (SELECT id FROM runs WHERE user_id = 'b2c3d4e5-f6a7-8901-bcde-f23456789012' AND is_public
+     ORDER BY started_at DESC LIMIT 1),
+   'b2c3d4e5-f6a7-8901-bcde-f23456789012', 620, now() - interval '2 days')
+ON CONFLICT (global_segment_id, run_id) DO NOTHING;
+
 -- ─────────────────── Audience sharing gate (20270802000001) ───────────────────
 --
 -- The followers level and named-person run / route shares are fail-closed

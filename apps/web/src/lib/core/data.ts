@@ -189,6 +189,7 @@ import {
 } from '../runs/smoothed_sidecar';
 import { compareLeaderboard } from '../runs/race_leaderboard';
 import { readRankRows } from '../segments/effort_rank';
+import { parseCourseCheckpoints, type CourseCheckpoint } from '../parks/park_courses';
 import type { RecapPeriodKind } from '../types';
 import { GYM_SESSION_DRAFT_KEY, hasSessionDraft } from '../gym/gym_session_draft';
 import { dedupeShadowedExercises } from '../gym/exercise_catalogue';
@@ -10868,6 +10869,8 @@ export async function fetchGlobalSegmentLeaderboard(
 		gender?: SegmentGenderFilter | null;
 		ageBand?: SegmentAgeBand | null;
 		clubId?: string | null;
+		/** A calendar year in the course's park timezone; omitted is all time. */
+		season?: number | null;
 	} = {},
 	limit = 50,
 ): Promise<GlobalSegmentLeaderboardEntry[]> {
@@ -10877,6 +10880,7 @@ export async function fetchGlobalSegmentLeaderboard(
 		p_age_band: filter.ageBand ?? undefined,
 		p_limit: limit,
 		p_club_id: filter.clubId ?? undefined,
+		p_season: filter.season ?? undefined,
 	}, { get: true });
 	if (error || !data) {
 		console.warn('fetchGlobalSegmentLeaderboard failed', error);
@@ -10944,6 +10948,14 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	const { segments } = await fetchGlobalSegmentsWithError(GLOBAL_SEGMENT_SCORING_LIMIT);
 	if (segments.length === 0) return 0;
 
+	// A park course's checkpoints are part of its match rule. Without them the
+	// matcher would time a run that cut the course, so a failed read scores
+	// nothing (and stamps nothing, so the next view retries), and a course
+	// whose list cannot be read is left out of the sweep.
+	const checkpointsBySegment = await fetchParkCourseCheckpoints();
+	if (checkpointsBySegment === null) return 0;
+	const scorable = segments.filter((seg) => checkpointsBySegment.get(seg.id) !== null);
+
 	const { computeGlobalSegmentEfforts } = await import('../segments/segments');
 	const rows: {
 		global_segment_id: string;
@@ -10957,16 +10969,17 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	// which are nowhere near this run, are rejected without walking it.
 	const efforts = computeGlobalSegmentEfforts(
 		input.track,
-		segments.map((seg) => ({
+		scorable.map((seg) => ({
 			points: (seg.waypoints ?? []).map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })),
 			distance_m: Number(seg.distance_m),
+			checkpoints: checkpointsBySegment.get(seg.id) ?? undefined,
 		})),
 	);
-	for (let i = 0; i < segments.length; i++) {
+	for (let i = 0; i < scorable.length; i++) {
 		const eff = efforts[i];
 		if (!eff) continue;
 		rows.push({
-			global_segment_id: segments[i].id,
+			global_segment_id: scorable[i].id,
 			run_id: input.run_id,
 			user_id: userId,
 			time_seconds: eff.time_seconds,
@@ -11011,6 +11024,155 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		.eq('id', input.run_id);
 	if (stampErr) console.warn('global segment scored stamp failed', input.run_id, stampErr);
 	return newCount;
+}
+
+export type Park = Database['public']['Tables']['parks']['Row'] & {
+	/** The calendar year it is now where the park is (`park_season`). */
+	park_season: number;
+};
+
+export type ParkCourseRow = Database['public']['Tables']['park_courses']['Row'];
+
+export interface ParkCourse extends Omit<ParkCourseRow, 'checkpoints'> {
+	/** Null when the stored list cannot be read; such a course is never scored. */
+	checkpoints: CourseCheckpoint[] | null;
+	segment: GlobalSegment;
+}
+
+const PARK_COLUMNS = '*, park_season';
+
+function asParkCourse(
+	row: ParkCourseRow & {
+		global_segments: Database['public']['Tables']['global_segments']['Row'] | null;
+	},
+): ParkCourse | null {
+	if (!row.global_segments) return null;
+	const { global_segments: segment, ...course } = row;
+	return {
+		...course,
+		checkpoints: parseCourseCheckpoints(course.checkpoints),
+		segment: asGlobalSegment(segment),
+	};
+}
+
+/// Every active park, for the `/parks` index. Throws on a failed read so the
+/// page can tell "no parks yet" from "could not load".
+export async function fetchParks(): Promise<Park[]> {
+	const { data, error } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.order('region_code', { ascending: true })
+		.order('name', { ascending: true });
+	if (error) throw dbError(error);
+	return (data ?? []) as unknown as Park[];
+}
+
+/// One park by its region code and slug; null when there is none (or it was
+/// pulled, which RLS hides). Throws on a failed read.
+export async function fetchPark(regionCode: string, slug: string): Promise<Park | null> {
+	const { data, error } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.eq('region_code', regionCode)
+		.eq('slug', slug)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return (data as unknown as Park | null) ?? null;
+}
+
+/// A park's courses with their catalogue segment, by slug. A course whose
+/// segment was pulled is dropped (RLS hides the segment). Throws on a failed read.
+export async function fetchParkCourses(parkId: string): Promise<ParkCourse[]> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('*, global_segments(*)')
+		.eq('park_id', parkId)
+		.order('slug', { ascending: true });
+	if (error) throw dbError(error);
+	return (data ?? []).flatMap((row) => {
+		const course = asParkCourse(row);
+		return course ? [course] : [];
+	});
+}
+
+/// The park course built on a catalogue segment, with its park, if any. The
+/// segment page uses it to link back to the course. Throws on a failed read.
+export async function fetchParkCourseForSegment(
+	segmentId: string,
+): Promise<{ course: ParkCourseRow; park: Park } | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('*')
+		.eq('global_segment_id', segmentId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	const { data: park, error: parkError } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.eq('id', data.park_id)
+		.maybeSingle();
+	if (parkError) throw dbError(parkError);
+	return park ? { course: data, park: park as unknown as Park } : null;
+}
+
+/// Checkpoints per catalogue segment that is a park course, for the scorer.
+/// A segment absent from the map has no checkpoints; one mapped to null has a
+/// list that cannot be read and must not be scored. Null overall when the
+/// read failed, which the scorer treats as "score nothing this time".
+async function fetchParkCourseCheckpoints(): Promise<Map<
+	string,
+	CourseCheckpoint[] | null
+> | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('global_segment_id, checkpoints');
+	if (error) {
+		console.warn('park course checkpoints read failed', error);
+		return null;
+	}
+	const out = new Map<string, CourseCheckpoint[] | null>();
+	for (const row of data ?? []) {
+		out.set(row.global_segment_id, parseCourseCheckpoints(row.checkpoints));
+	}
+	return out;
+}
+
+export interface CompletionsEntry {
+	athlete: PublicProfile;
+	completions: number;
+	lastCompletedAt: string;
+	rank: number;
+}
+
+/// The most-completions board on a catalogue segment: one row per athlete,
+/// counting distinct local days (park timezone) with a visible effort. Tied
+/// counts share a rank. Throws on a failed read.
+export async function fetchGlobalSegmentCompletions(
+	segmentId: string,
+	season: number | null,
+	limit = 50,
+): Promise<CompletionsEntry[]> {
+	const { data, error } = await supabase.rpc(
+		'global_segment_completions',
+		{ p_segment_id: segmentId, p_season: season ?? undefined, p_limit: limit },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	let rank = 0;
+	let prev: number | null = null;
+	return (data ?? []).map((row, i) => {
+		if (row.completions !== prev) {
+			rank = i + 1;
+			prev = row.completions;
+		}
+		return {
+			athlete: { id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url },
+			completions: row.completions,
+			lastCompletedAt: row.last_completed_at,
+			rank,
+		};
+	});
 }
 
 /// Catalogue-segment efforts a run earned, joined to the segment + ranked

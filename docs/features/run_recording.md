@@ -471,7 +471,7 @@ The first fix snaps (no animation). Same-target fixes are ignored.
 
 The app does **not** have live auto-pause, on any platform: the shared Dart recorder (Android and iOS) has none, and neither do the Wear OS and Apple Watch recorders (the research-tier `custom_watch` firmware has its own). No setting turns one on: `auto_pause_enabled` and `auto_pause_speed_mps` are not in the [settings registry](../backend/settings.md) and no client reads or edits them. An earlier version did, and it was the single most bug-prone feature in the recorder — false pauses during GPS warmup, slow walking, urban-canyon signal gaps, and edge cases around the track movement threshold. Each round of hardening fixed one class of false-positive and revealed another.
 
-Modern Strava and Nike Run Club handle this differently, and so do we: the clock runs **continuously** during a recording (except when the user explicitly taps the manual pause button), and **moving time** is computed as a *derived metric* on the finished-run screen from the GPS track.
+Modern Strava and Nike Run Club handle this differently, and so do we: the clock runs **continuously** during a recording (except when the user explicitly taps the manual pause button), and **moving time** is a *derived metric* of the GPS track, kept live while recording and recomputed on the finished-run screen.
 
 ### Manual pause
 
@@ -489,9 +489,15 @@ See `apps/mobile_android/lib/run_stats.dart`. The `movingTimeOf(List<Waypoint>)`
 - If `speed >= 0.5 m/s` (~1.8 km/h, slower than a slow walk), count the segment's time toward moving time.
 - Otherwise, exclude it (standing still or drifting at GPS-jitter speeds).
 
-This is called once when a run finishes — in `_buildFinished` (freshly-completed run) and in `run_detail_screen` (historical runs). It's O(n) in track length, so cheap enough to run on every render without caching.
+`movingTimeOf` runs over the whole track in `_buildFinished` (freshly-completed run) and in `run_detail_screen` (historical runs). It folds the track through `MovingTimeAccumulator.addSegment`, the one place the 0.5 m/s rule (`kMovingMinSpeedMps`) lives.
 
-The finished-run UI shows **Time** (elapsed clock) alongside **Moving** (derived), and the **Pace** column is computed against moving time so the headline pace excludes stops. Historical runs in `run_detail_screen` get the same treatment, with a fallback to the full duration when the track is missing or too sparse (e.g. imported runs without GPS).
+**Live, the same rule runs while recording.** `run_screen.dart` keeps a `MovingTimeAccumulator` and `extend`s it over the recorder's stored track as it grows (the tail only, the way the elevation accumulator does; the stored track rather than the line, because a 20-50 m canopy fix the estimator keeps off the line still credits distance), so the live **Avg pace** / **Avg speed** tiles divide by moving time, not by the clock. Before issue #1300 the live tile used elapsed time and the summary used moving time: two formulas under one label, and a runner standing at a light watched Avg pace worsen every second while the summary would later disagree with what they had seen. `averagingTime` picks moving time only when GPS fixes measured the distance: an indoor run, or one where a treadmill belt fed distance at any point, credits distance no fix spans, so it averages over the clock. Both tiles still wait for `paceIsReady` (50 m and 20 s, decisions § 2364), now read as 50 m and 20 s of moving time.
+
+**"Stopped" chip.** A chip beside the live clock reads **Stopped** once the latest fix is `kStoppedAfter` (10 s) past the last segment that counted as moving, or past the first fix after start or resume when nothing has moved yet (`isStandingStill`; every time it compares is a fix timestamp). It hides while paused and while GPS has gone quiet past the GPS-lost threshold, because then the stillness is the receiver's, not the runner's. It is display only: the clock keeps running and nothing is paused, so this is not auto-pause by another name (decisions § 4).
+
+The finished-run UI shows **Time** (elapsed clock) alongside **Moving** (derived), and the **Pace** column is computed against moving time through the same formula as the live tile, over the whole stored track as run detail and web fold it. It is one rule, not one number: `stop()` moves the saved track onto the smoothed distance, so the summary re-measures segments near 0.5 m/s and its distance on the better figure, a few seconds from the last live reading at most.
+
+Known limit: a hiker below 0.8 m/s with no usable Doppler gets no credited distance from the estimator (its position-only floor, [gps_distance.md](gps_distance.md) item 8), so the live screen reads them as stopped and Avg pace holds; the chip is display only, so nothing is lost. Historical runs in `run_detail_screen` get the same treatment, with a fallback to the full duration when the track is missing or too sparse (e.g. imported runs without GPS).
 
 ### What's gone
 
@@ -554,7 +560,7 @@ The same rule applies to *waiting*, not only to throwing. An L1 write must not b
 | 24 | A route that passes the same place twice is followed, not snapped | `_routeProgress` ports web `route_geometry.ts#progressAlongRoute`: it searches only from 50 m behind the previous match to 200 m past it plus the GPS distance recorded since, breaks a tie between overlapping legs towards forward progress (a bias capped at 20 m, so it never outweighs real distance off the line), and searches the rest of the route ahead when nothing in the window is within 40 m or the runner projects past its far end. Off-route is the distance to the nearest point on the WHOLE line. A whole-line nearest search, behind a floor that was never lowered, read a loop (start == finish) as "0.00 km to go" on a first fix a metre nearer the closing leg, then measured off-route against the closing leg alone for the rest of the run. Same matcher on watchOS (`RouteGeometry.project`) and Wear OS (`RouteMath.routeProgress`). | `_routeMatchLookaheadM`, `_routeMatchBacktrackM`, `_routeMatchReacquireM` |
 | 25 | A dispose is not a Stop | The shell keeps one tree across the phone and rail layouts, so a width-class change (rotation, fold, split) never unmounts the recorder; if anything else disposes `RunScreen` mid-run, `dispose` checkpoints the run to `orphanedRecording` + `in_progress.json` and the next idle run screen offers Resume. See [§ A torn-down run screen hands its run on](#a-torn-down-run-screen-hands-its-run-on-decisions--2352). | — |
 | + | Reentrancy guard on Start | `_startRequested` flag prevents double-taps from spawning multiple recorders | — |
-| + | No live auto-pause | Clock runs continuously; "moving time" computed as a derived metric at summary time instead | — |
+| + | No live auto-pause | Clock runs continuously; moving time follows the track live (Avg pace / Avg speed and a display-only "Stopped" chip) and on the summary, by one rule | — |
 
 ---
 

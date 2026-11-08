@@ -8,9 +8,7 @@ use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
 use embedded_hal::i2c::{ErrorType, I2c, Operation};
-use max86177::{
-    decode_die_temp_milli_c, Error, Max86177, I2C_ADDR, MEAS1_TAG, MEAS2_TAG,
-};
+use max86177::{decode_die_temp_milli_c, Error, Max86177, I2C_ADDR, MEAS1_TAG, MEAS2_TAG};
 use watch_core::ppg::FifoWord;
 
 const FIFO_COUNTER: u8 = 0x0B;
@@ -120,11 +118,17 @@ fn tagged_samples_pop_in_order_with_their_tags() {
 
     assert_eq!(
         s.read_tagged_sample().unwrap(),
-        Some(FifoWord { tag: MEAS1_TAG, value: 0x1_2345 })
+        Some(FifoWord {
+            tag: MEAS1_TAG,
+            value: 0x1_2345
+        })
     );
     assert_eq!(
         s.read_tagged_sample().unwrap(),
-        Some(FifoWord { tag: MEAS2_TAG, value: 0x0_0ABC })
+        Some(FifoWord {
+            tag: MEAS2_TAG,
+            value: 0x0_0ABC
+        })
     );
     assert_eq!(s.read_tagged_sample().unwrap(), None);
     assert_eq!(bus.st().fifo_data_reads, 2);

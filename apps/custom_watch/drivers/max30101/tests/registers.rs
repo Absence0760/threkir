@@ -120,7 +120,11 @@ fn die_temp_starts_a_conversion_waits_for_it_and_decodes() {
     // -25 °C + 0.5 °C = -24.5 °C.
     assert_eq!(milli, -24_500);
     assert_eq!(milli, decode_die_temp_milli_c(0xE7, 0x08));
-    assert_eq!(bus.st().writes, vec![(TEMP_CONFIG, 0x01)], "TEMP_EN starts the one-shot");
+    assert_eq!(
+        bus.st().writes,
+        vec![(TEMP_CONFIG, 0x01)],
+        "TEMP_EN starts the one-shot"
+    );
     assert_eq!(bus.st().temp_config_reads, 4, "three busy polls, then done");
 }
 
@@ -129,6 +133,9 @@ fn a_conversion_that_never_completes_times_out_after_256_polls() {
     let bus = Bus::default();
     bus.st().temp_busy_reads = None;
     let mut sensor = Max30101::new(bus.clone());
-    assert!(matches!(sensor.read_die_temp_milli_c(), Err(Error::TempTimeout)));
+    assert!(matches!(
+        sensor.read_die_temp_milli_c(),
+        Err(Error::TempTimeout)
+    ));
     assert_eq!(bus.st().temp_config_reads, 256);
 }

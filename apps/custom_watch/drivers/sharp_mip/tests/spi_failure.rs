@@ -26,7 +26,10 @@ struct FlakySpi {
 
 impl FlakySpi {
     fn failing_after(ok_writes: usize) -> Self {
-        Self { ok_writes, writes: 0 }
+        Self {
+            ok_writes,
+            writes: 0,
+        }
     }
 }
 
@@ -123,7 +126,11 @@ fn the_next_flush_after_a_failure_repaints_and_then_clears() {
 
     let mut lcd = SharpMip::new(FlakySpi::failing_after(usize::MAX), cs);
     assert!(lcd.flush(&mut fb).is_ok());
-    assert_eq!(dirty_lines(&fb), 0, "a successful flush clears the dirty set");
+    assert_eq!(
+        dirty_lines(&fb),
+        0,
+        "a successful flush clears the dirty set"
+    );
 }
 
 #[test]

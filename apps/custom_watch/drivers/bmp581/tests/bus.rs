@@ -115,9 +115,18 @@ fn init_soft_resets_then_configures_from_standby_to_the_requested_mode() {
         vec![
             (CMD, 0xB6),
             (ODR_CONFIG, encode_odr_config(ODR_50HZ, PowerMode::Standby)),
-            (OSR_CONFIG, encode_osr_config(cfg.osr_pressure, cfg.osr_temperature)),
-            (DSP_CONFIG, encode_dsp_config(cfg.iir_pressure, cfg.iir_temperature)),
-            (DSP_IIR, encode_dsp_iir(cfg.iir_pressure, cfg.iir_temperature)),
+            (
+                OSR_CONFIG,
+                encode_osr_config(cfg.osr_pressure, cfg.osr_temperature)
+            ),
+            (
+                DSP_CONFIG,
+                encode_dsp_config(cfg.iir_pressure, cfg.iir_temperature)
+            ),
+            (
+                DSP_IIR,
+                encode_dsp_iir(cfg.iir_pressure, cfg.iir_temperature)
+            ),
             (ODR_CONFIG, encode_odr_config(ODR_50HZ, cfg.power_mode)),
         ],
         "OSR / DSP latch only in standby, so standby goes first and the power mode last"
@@ -130,7 +139,11 @@ fn init_refuses_a_wrong_chip_and_configures_nothing() {
     bus.state().regs[CHIP_ID as usize] = 0x51;
     let mut baro = Bmp581::new(bus.clone());
     assert!(matches!(baro.init(), Err(Error::BadChipId)));
-    assert_eq!(bus.state().writes, vec![(CMD, 0xB6)], "only the reset went out");
+    assert_eq!(
+        bus.state().writes,
+        vec![(CMD, 0xB6)],
+        "only the reset went out"
+    );
 }
 
 #[test]
@@ -178,13 +191,17 @@ fn read_pressure_assembles_the_three_bytes_little_endian() {
     let bus = RegBus::new();
     bus.state().put24(PRESS_DATA_XLSB, 0x00AB_CDEF);
     let mut baro = Bmp581::new(bus);
-    assert_eq!(baro.read_pressure_pa().unwrap(), Some(raw_to_pa(0x00AB_CDEF)));
+    assert_eq!(
+        baro.read_pressure_pa().unwrap(),
+        Some(raw_to_pa(0x00AB_CDEF))
+    );
 }
 
 #[test]
 fn read_altitude_uses_the_calibrated_reference() {
     let bus = RegBus::new();
-    bus.state().put24(PRESS_DATA_XLSB, (95_000.0_f32 * 64.0) as u32);
+    bus.state()
+        .put24(PRESS_DATA_XLSB, (95_000.0_f32 * 64.0) as u32);
     let mut baro = Bmp581::new(bus);
     let at_standard = baro.read_altitude_m().unwrap().unwrap();
     assert!((at_standard - altitude_from_pressure_m(95_000.0, STANDARD_SEA_LEVEL_PA)).abs() < 1e-3);
@@ -197,12 +214,16 @@ fn read_altitude_uses_the_calibrated_reference() {
 #[test]
 fn the_qnh_range_is_inclusive_at_both_ends() {
     let bus = RegBus::new();
-    bus.state().put24(PRESS_DATA_XLSB, (95_000.0_f32 * 64.0) as u32);
+    bus.state()
+        .put24(PRESS_DATA_XLSB, (95_000.0_f32 * 64.0) as u32);
     let mut baro = Bmp581::new(bus);
     for edge in [87_000.0_f32, 108_500.0] {
         baro.set_sea_level_pa(edge);
         let got = baro.read_altitude_m().unwrap().unwrap();
-        assert!((got - altitude_from_pressure_m(95_000.0, edge)).abs() < 1e-3, "{edge}");
+        assert!(
+            (got - altitude_from_pressure_m(95_000.0, edge)).abs() < 1e-3,
+            "{edge}"
+        );
     }
 }
 

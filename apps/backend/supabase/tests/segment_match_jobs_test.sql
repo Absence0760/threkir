@@ -6,7 +6,7 @@
 -- service-role RPCs.
 
 begin;
-select plan(40);
+select plan(41);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -284,12 +284,19 @@ select throws_ok(
   $$ select enqueue_segment_backfill('5a5a0000-0000-0000-0000-0000000000d1') $$,
   '42501', null, 'a signed-in non-admin cannot start a backfill');
 set local "request.jwt.claims" = '{"sub":"5a000000-0000-0000-0000-0000000000c3","role":"authenticated"}';
-select lives_ok(
-  $$ select enqueue_segment_backfill('5a5a0000-0000-0000-0000-0000000000d3') $$,
-  'an admin can start a backfill');
 select throws_ok(
   $$ select enqueue_segment_backfill('5a5a0000-0000-0000-0000-0000000000d2') $$,
   '22023', null, 'a pulled segment cannot be backfilled');
+select lives_ok(
+  $$ select enqueue_segment_backfill('5a5a0000-0000-0000-0000-0000000000d3') $$,
+  'an admin can start a backfill');
+reset role;
+select is(
+  (select array_agg(payload order by id) from jobs
+    where kind = 'segment_match' and payload ->> 'segment_id' = '5a5a0000-0000-0000-0000-0000000000d3'),
+  array['{"segment_id":"5a5a0000-0000-0000-0000-0000000000d3"}'::jsonb],
+  'the admin''s start is queued as one backfill job for that segment, from the first run');
+set local role authenticated;
 
 -- ── no client role reaches the service-role surface ──────────────────────
 

@@ -335,6 +335,10 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Move and resize the photo stats** (decisions § 2342): on the Photo share style the title-and-stats block can be dragged and resized on web and mobile (pointer, pinch, wheel and keyboard on web; drag, pinch and double-tap reset on the phone), kept inside the canvas and clear of a story's reply bar, remembered per aspect on the device, and exported exactly where the editor shows it.
 
+### Drive this course (#1310)
+
+✓ **Built on web and mobile, behind the default-off `PUBLIC_COURSE_DRIVE_ENABLED` / `COURSE_DRIVE_ENABLED` gate** (decisions § 2380, [course_drive.md](../features/course_drive.md)). A public course opens in Google Maps, Apple Maps or Waze as legs sized to each app's stop cap, with the stretches a car router can't follow listed; web adds a printable notes list, and the phone reads each aid station, cut-off, climb, hazard and note aloud about 15 s ahead while Maps drives, screen locked. No native car app, by decision. Pre-deploy: counsel signs off on the driver safety notice ([deployment.md](../ops/deployment.md)), then a real drive per the manual recipe.
+
 ### Share-link attribution and a creator view (#1273 item 10)
 
 ✓ **Built on web and mobile, behind the default-off `share_attribution` gate** (decisions § 2268). A creator's own share links carry an opaque ref; the share page counts visits in aggregate daily buckets with no visitor identifier; a sign-up, plan copy or challenge join made through the link is attributed to it; **Your shares** (web `/settings/shares`, mobile Settings) shows visits, sign-ups, plan starts and challenge joins per link over 90 days. No analytics vendor. Pre-deploy: the CISO / Security Analyst review, DPIA and privacy-policy purpose row in [deployment.md](../ops/deployment.md).

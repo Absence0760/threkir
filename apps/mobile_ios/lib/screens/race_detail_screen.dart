@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../course_drive.dart' show DriveMarkerInput, DrivePoint;
+import '../course_drive_flag.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart'
     show
@@ -23,6 +25,7 @@ import '../web_base_url.dart';
 import '../widgets/error_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
+import 'course_drive_screen.dart';
 import 'plan_new_screen.dart';
 import 'races_screen.dart' show showRaceImportSheet;
 
@@ -114,6 +117,34 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  void _openCourseDrive(String title, String routeId) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => CourseDriveScreen(
+        title: title,
+        load: () async {
+          final c = await widget.service.fetchCourseForDrive(routeId);
+          return CourseDriveCourse(
+            line: [
+              for (final w in c.line)
+                DrivePoint(w.lat, w.lng, ele: w.elevationMetres),
+            ],
+            markers: [
+              for (final m in c.markers)
+                DriveMarkerInput(
+                  kind: m.kind,
+                  label: m.label,
+                  lat: m.lat,
+                  lng: m.lng,
+                  positionM: m.positionM,
+                  meta: m.meta,
+                ),
+            ],
+          );
+        },
+      ),
+    ));
   }
 
   Future<void> _load() async {
@@ -763,6 +794,15 @@ class _RaceDetailScreenState extends State<RaceDetailScreen> {
                   key: const Key('race-detail-course-updated'),
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+              if (courseDriveGate && course?.routeId != null) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  key: const Key('race-detail-drive-course'),
+                  icon: const Icon(Icons.directions_car_outlined),
+                  label: Text(l.courseDriveTitle),
+                  onPressed: () => _openCourseDrive(race.name, course!.routeId!),
                 ),
               ],
             ],

@@ -1,10 +1,13 @@
 import 'package:api_client/api_client.dart' show UltraSignUpPersonLink;
-import 'package:core_models/core_models.dart' show TrainingPlanRow;
+import 'package:core_models/core_models.dart'
+    show RouteMarkerRow, TrainingPlanRow, Waypoint;
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/race_service.dart';
+import '../lib/screens/course_drive_screen.dart';
 import '../lib/screens/race_detail_screen.dart';
 import '../lib/training.dart' show toIsoDate;
 import '../lib/training_service.dart';
@@ -88,6 +91,21 @@ class _FakeRaceService extends RaceService {
 
   @override
   Future<bool> isProviderConfigured(String provider) async => false;
+
+  String? driveRouteId;
+
+  @override
+  Future<({List<Waypoint> line, List<RouteMarkerRow> markers})>
+      fetchCourseForDrive(String routeId) async {
+    driveRouteId = routeId;
+    return (
+      line: const [
+        Waypoint(lat: 37.5, lng: -77.45),
+        Waypoint(lat: 37.52, lng: -77.45),
+      ],
+      markers: const <RouteMarkerRow>[],
+    );
+  }
 
   @override
   Future<ImportRaceResultOutcome> importRaceResult({
@@ -270,6 +288,58 @@ void main() {
     );
     expect(find.descendant(of: course, matching: find.textContaining('Road')),
         findsOneWidget);
+  });
+
+  group('Drive this course', () {
+    tearDown(() => dotenv.loadFromString(envString: '', isOptional: true));
+
+    RaceListingView onCourse() => _listing(
+          raceDate: _isoDaysOut(60),
+          course: const RaceListingCourse(
+              distanceM: 42195,
+              ascentM: 180,
+              surface: 'road',
+              routeId: '22222222-2222-4222-8222-222222222222'),
+        );
+
+    testWidgets('with the flag on, a public course opens the drive screen on its route',
+        (tester) async {
+      dotenv.loadFromString(envString: 'COURSE_DRIVE_ENABLED=true');
+      final service = _FakeRaceService(listing: onCourse());
+      await tester.pumpWidget(_app(service));
+      await tester.pump();
+      await tester.pump();
+
+      final open = find.byKey(const Key('race-detail-drive-course'));
+      await tester.ensureVisible(open);
+      await tester.tap(open);
+      await tester.pumpAndSettle();
+      expect(find.byType(CourseDriveScreen), findsOneWidget);
+      expect(service.driveRouteId, '22222222-2222-4222-8222-222222222222');
+    });
+
+    testWidgets('with the flag off nothing is offered', (tester) async {
+      dotenv.loadFromString(envString: '', isOptional: true);
+      await tester.pumpWidget(_app(_FakeRaceService(listing: onCourse())));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('race-detail-course')), findsOneWidget);
+      expect(find.byKey(const Key('race-detail-drive-course')), findsNothing);
+    });
+
+    testWidgets('a course with no public route offers nothing', (tester) async {
+      dotenv.loadFromString(envString: 'COURSE_DRIVE_ENABLED=true');
+      await tester.pumpWidget(_app(_FakeRaceService(
+        listing: _listing(
+          raceDate: _isoDaysOut(60),
+          course: const RaceListingCourse(distanceM: 42195),
+        ),
+      )));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('race-detail-course')), findsOneWidget);
+      expect(find.byKey(const Key('race-detail-drive-course')), findsNothing);
+    });
   });
 
   testWidgets('a listing with no visible course shows no course section',

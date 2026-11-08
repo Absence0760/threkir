@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
-import 'package:core_models/core_models.dart' show parseImportCompleteness;
+import 'package:core_models/core_models.dart'
+    show RouteMarkerRow, Waypoint, parseImportCompleteness;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -81,7 +82,10 @@ class RaceListingCourse {
   final double? ascentM;
   final String? surface;
 
-  /// Null unless the route is public (decisions § 2253).
+  /// The view's `course_route_id`: set only while the course route is public
+  /// and not shadow-hidden (decisions § 2253), so it names a route anyone can
+  /// already open. Its line is read through `clip_route_for_viewer`, never
+  /// from this view.
   final String? routeId;
 
   /// `official` or `traced` (decisions § 2381); null on a course linked
@@ -492,6 +496,17 @@ class RaceService extends ChangeNotifier {
       debugPrint('RaceService.searchRaceListings RPC failed: $e\n$s');
       return const [];
     }
+  }
+
+  /// A race course's line and markers for Drive this course
+  /// (docs/features/course_drive.md): the privacy-clipped line and the
+  /// viewer-redacted markers, the same reads the route screen makes for a
+  /// non-owner. Throws on a failed read so the screen can offer a retry.
+  Future<({List<Waypoint> line, List<RouteMarkerRow> markers})>
+      fetchCourseForDrive(String routeId) async {
+    final line = await _api.clipRouteForViewer(routeId);
+    final markers = await _api.fetchRouteMarkers(routeId);
+    return (line: line, markers: markers);
   }
 
   /// One calendar listing, for the race detail screen. Read through the

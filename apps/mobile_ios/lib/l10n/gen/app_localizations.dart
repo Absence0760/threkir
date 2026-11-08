@@ -33076,6 +33076,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This run lasts longer than {hours} hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.'**
   String runDetailBlockedDurationTooLong(int hours);
+
+  /// Spoken drive note ahead: distance, marker type, marker name
+  ///
+  /// In en, this message translates to:
+  /// **'In {distance}: {kind}, {label}.'**
+  String ttsDriveAhead(String distance, String kind, String label);
+
+  /// Spoken drive note ahead for a marker with no name
+  ///
+  /// In en, this message translates to:
+  /// **'In {distance}: {kind}.'**
+  String ttsDriveAheadKind(String distance, String kind);
+
+  /// Spoken drive note on arriving at a marker
+  ///
+  /// In en, this message translates to:
+  /// **'Now: {kind}, {label}.'**
+  String ttsDriveAt(String kind, String label);
+
+  /// Spoken drive note on arriving at a marker with no name
+  ///
+  /// In en, this message translates to:
+  /// **'Now: {kind}.'**
+  String ttsDriveAtKind(String kind);
+
+  /// Spoken drive note for a marker passed between two GPS fixes
+  ///
+  /// In en, this message translates to:
+  /// **'Just passed: {kind}, {label}.'**
+  String ttsDrivePassed(String kind, String label);
+
+  /// Spoken drive note for a passed marker with no name
+  ///
+  /// In en, this message translates to:
+  /// **'Just passed: {kind}.'**
+  String ttsDrivePassedKind(String kind);
+
+  /// Spoken list of an aid station services
+  ///
+  /// In en, this message translates to:
+  /// **'Services: {services}.'**
+  String ttsDriveServices(String services);
+
+  /// Spoken climb length and grade
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} at about {grade} percent.'**
+  String ttsDriveClimb(String distance, String grade);
+
+  /// Spoken cut-off wall-clock time
+  ///
+  /// In en, this message translates to:
+  /// **'Cut-off at {clock}.'**
+  String ttsDriveCutoffClock(String clock);
+
+  /// Spoken cut-off as time after the start
+  ///
+  /// In en, this message translates to:
+  /// **'Cut-off {time} after the start.'**
+  String ttsDriveCutoffElapsed(String time);
+
+  /// Spoken when drive notes start
+  ///
+  /// In en, this message translates to:
+  /// **'Drive notes on.'**
+  String get ttsDriveStarted;
+
+  /// Spoken when a Maps leg ends and the next is ready
+  ///
+  /// In en, this message translates to:
+  /// **'Leg {done} done. Leg {next} is ready.'**
+  String ttsDriveLegDone(String done, String next);
+
+  /// Spoken when the drive reaches the end of the course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve reached the finish. Drive notes stopped.'**
+  String get ttsDriveFinished;
+
+  /// Spoken when the drive stops after a long time off the course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been off the course for a while, so drive notes have stopped.'**
+  String get ttsDriveAbandoned;
+
+  /// Drive this course: screen title and entry button
+  ///
+  /// In en, this message translates to:
+  /// **'Drive this course'**
+  String get courseDriveTitle;
+
+  /// One-time driver safety notice title
+  ///
+  /// In en, this message translates to:
+  /// **'Before you drive'**
+  String get courseDriveNoticeTitle;
+
+  /// One-time driver safety notice text (pending counsel review)
+  ///
+  /// In en, this message translates to:
+  /// **'Use this with a passenger or a mounted phone, and don\'t touch it while driving. Follow road rules and signs. Course roads may be closed on race day, and the Maps route may not match the course.'**
+  String get courseDriveNoticeBody;
+
+  /// Acknowledge the driver safety notice
+  ///
+  /// In en, this message translates to:
+  /// **'I understand'**
+  String get courseDriveNoticeAccept;
+
+  /// Label above the Maps app choice
+  ///
+  /// In en, this message translates to:
+  /// **'Open in'**
+  String get courseDriveMapsApp;
+
+  /// Google Maps app name
+  ///
+  /// In en, this message translates to:
+  /// **'Google Maps'**
+  String get courseDriveAppGoogle;
+
+  /// Apple Maps app name
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Maps'**
+  String get courseDriveAppApple;
+
+  /// Waze app name
+  ///
+  /// In en, this message translates to:
+  /// **'Waze'**
+  String get courseDriveAppWaze;
+
+  /// Open the Maps app to drive to the start of the course
+  ///
+  /// In en, this message translates to:
+  /// **'Drive to the start'**
+  String get courseDriveToStart;
+
+  /// Heading over the list of Maps legs
+  ///
+  /// In en, this message translates to:
+  /// **'Legs'**
+  String get courseDriveLegsHeading;
+
+  /// One Maps leg: its number and distance range
+  ///
+  /// In en, this message translates to:
+  /// **'Leg {n}: {from} to {to}'**
+  String courseDriveLeg(String n, String from, String to);
+
+  /// The Maps route is not the exact course
+  ///
+  /// In en, this message translates to:
+  /// **'The Maps route is guidance only. The notes follow the real course.'**
+  String get courseDriveGuidanceOnly;
+
+  /// Checking which stretches a Maps app can follow
+  ///
+  /// In en, this message translates to:
+  /// **'Checking which stretches Maps can follow…'**
+  String get courseDriveChecking;
+
+  /// Every stretch of the course can be followed by Maps
+  ///
+  /// In en, this message translates to:
+  /// **'Maps can follow the whole course.'**
+  String get courseDriveAllDrivable;
+
+  /// The drivable-stretch check could not run
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t check which stretches Maps can follow.'**
+  String get courseDriveCheckFailed;
+
+  /// Heading over stretches Maps cannot follow
+  ///
+  /// In en, this message translates to:
+  /// **'Maps can\'t follow these stretches'**
+  String get courseDriveUndrivableHeading;
+
+  /// A distance range on the course
+  ///
+  /// In en, this message translates to:
+  /// **'{from} to {to}'**
+  String courseDriveStretch(String from, String to);
+
+  /// Heading over the course notes
+  ///
+  /// In en, this message translates to:
+  /// **'Course notes'**
+  String get courseDriveNotesHeading;
+
+  /// The course has no markers to speak
+  ///
+  /// In en, this message translates to:
+  /// **'This course has no markers to read out.'**
+  String get courseDriveNoNotes;
+
+  /// Start the spoken notes
+  ///
+  /// In en, this message translates to:
+  /// **'Start spoken notes'**
+  String get courseDriveStart;
+
+  /// Stop the spoken notes
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get courseDriveStop;
+
+  /// Shown until the driver reaches the course
+  ///
+  /// In en, this message translates to:
+  /// **'Head to the course. Notes start when you reach it.'**
+  String get courseDriveWaiting;
+
+  /// Distance to the next course note
+  ///
+  /// In en, this message translates to:
+  /// **'Next note in {distance}'**
+  String courseDriveNextIn(String distance);
+
+  /// Every note has been spoken
+  ///
+  /// In en, this message translates to:
+  /// **'No more notes ahead.'**
+  String get courseDriveNoMoreNotes;
+
+  /// The drive reached the end of the course
+  ///
+  /// In en, this message translates to:
+  /// **'You reached the finish.'**
+  String get courseDriveFinished;
+
+  /// The drive stopped after 10 minutes off the course
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped: you were off the course for 10 minutes.'**
+  String get courseDriveAbandoned;
+
+  /// Location access is off
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off, so the notes can\'t follow you.'**
+  String get courseDriveLocationDenied;
+
+  /// The course could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this course.'**
+  String get courseDriveLoadFailed;
+
+  /// The Maps app could not be opened
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the Maps app.'**
+  String get courseDriveOpenFailed;
+
+  /// Cut-off time shown on a note
+  ///
+  /// In en, this message translates to:
+  /// **'Cut-off at {clock}'**
+  String courseDriveCutoffClock(String clock);
+
+  /// Cut-off shown as time after the start
+  ///
+  /// In en, this message translates to:
+  /// **'Cut-off {time} after the start'**
+  String courseDriveCutoffElapsed(String time);
+
+  /// Climb length and grade shown on a note
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} at about {grade}%'**
+  String courseDriveClimb(String distance, String grade);
 }
 
 class _AppLocalizationsDelegate

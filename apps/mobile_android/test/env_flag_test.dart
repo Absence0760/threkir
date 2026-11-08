@@ -273,6 +273,7 @@ void main() {
       'WEIGHT_FLUID_ENABLED': 'lib/weight_fluid_flag.dart',
       'CYCLE_PLANS_ENABLED': 'lib/cycle_plan_flag.dart',
       'FLYOVER_VIDEO_MAPTILER_ENABLED': 'lib/flyover_video_flag.dart',
+      'COURSE_DRIVE_ENABLED': 'lib/course_drive_flag.dart',
     };
 
     for (final owner in owners.entries) {
@@ -401,6 +402,7 @@ void main() {
       'WEIGHT_FLUID_ENABLED',
       'CYCLE_PLANS_ENABLED',
       'FLYOVER_VIDEO_MAPTILER_ENABLED',
+      'COURSE_DRIVE_ENABLED',
       'TILE_URL_TEMPLATE',
       'USDA_FDC_API_KEY',
     ]) {

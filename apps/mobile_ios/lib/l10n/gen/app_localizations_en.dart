@@ -20282,4 +20282,185 @@ class AppLocalizationsEn extends AppLocalizations {
   String runDetailBlockedDurationTooLong(int hours) {
     return 'This run lasts longer than $hours hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.';
   }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'In $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'In $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Now: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Now: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Just passed: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Just passed: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Services: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance at about $grade percent.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Cut-off at $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Cut-off $time after the start.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Drive notes on.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Leg $done done. Leg $next is ready.';
+  }
+
+  @override
+  String get ttsDriveFinished =>
+      'You\'ve reached the finish. Drive notes stopped.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'You\'ve been off the course for a while, so drive notes have stopped.';
+
+  @override
+  String get courseDriveTitle => 'Drive this course';
+
+  @override
+  String get courseDriveNoticeTitle => 'Before you drive';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Use this with a passenger or a mounted phone, and don\'t touch it while driving. Follow road rules and signs. Course roads may be closed on race day, and the Maps route may not match the course.';
+
+  @override
+  String get courseDriveNoticeAccept => 'I understand';
+
+  @override
+  String get courseDriveMapsApp => 'Open in';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Apple Maps';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Drive to the start';
+
+  @override
+  String get courseDriveLegsHeading => 'Legs';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Leg $n: $from to $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'The Maps route is guidance only. The notes follow the real course.';
+
+  @override
+  String get courseDriveChecking => 'Checking which stretches Maps can follow…';
+
+  @override
+  String get courseDriveAllDrivable => 'Maps can follow the whole course.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'We couldn\'t check which stretches Maps can follow.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'Maps can\'t follow these stretches';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return '$from to $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Course notes';
+
+  @override
+  String get courseDriveNoNotes => 'This course has no markers to read out.';
+
+  @override
+  String get courseDriveStart => 'Start spoken notes';
+
+  @override
+  String get courseDriveStop => 'Stop';
+
+  @override
+  String get courseDriveWaiting =>
+      'Head to the course. Notes start when you reach it.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Next note in $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'No more notes ahead.';
+
+  @override
+  String get courseDriveFinished => 'You reached the finish.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Stopped: you were off the course for 10 minutes.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'Location is off, so the notes can\'t follow you.';
+
+  @override
+  String get courseDriveLoadFailed => 'Couldn\'t load this course.';
+
+  @override
+  String get courseDriveOpenFailed => 'Couldn\'t open the Maps app.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Cut-off at $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Cut-off $time after the start';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance at about $grade%';
+  }
 }

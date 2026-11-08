@@ -20521,4 +20521,189 @@ class AppLocalizationsDe extends AppLocalizations {
   String runDetailBlockedDurationTooLong(int hours) {
     return 'Dieser Lauf dauert länger als $hours Stunden, was kein Lauf kann. Der Cloud-Speicher lehnt ihn daher ab, und ein neuer Versuch wird nie gelingen. Korrigiere die Dauer, um ihn hochzuladen.';
   }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'In $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'In $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Jetzt: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Jetzt: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Gerade passiert: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Gerade passiert: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Angebot: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance mit etwa $grade Prozent.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Zielschluss um $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Zielschluss $time nach dem Start.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Streckenhinweise an.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Etappe $done geschafft. Etappe $next ist bereit.';
+  }
+
+  @override
+  String get ttsDriveFinished => 'Du bist im Ziel. Streckenhinweise beendet.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'Du warst länger abseits der Strecke, deshalb wurden die Streckenhinweise beendet.';
+
+  @override
+  String get courseDriveTitle => 'Strecke abfahren';
+
+  @override
+  String get courseDriveNoticeTitle => 'Bevor du losfährst';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Nutze das nur mit Beifahrer oder fest montiertem Handy und bediene es nicht während der Fahrt. Beachte Verkehrsregeln und Schilder. Straßen der Strecke können am Renntag gesperrt sein, und die Route der Karten-App kann von der Strecke abweichen.';
+
+  @override
+  String get courseDriveNoticeAccept => 'Verstanden';
+
+  @override
+  String get courseDriveMapsApp => 'Öffnen in';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Apple Karten';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Zum Start fahren';
+
+  @override
+  String get courseDriveLegsHeading => 'Etappen';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Etappe $n: $from bis $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'Die Route der Karten-App dient nur zur Orientierung. Die Hinweise folgen der echten Strecke.';
+
+  @override
+  String get courseDriveChecking =>
+      'Prüfe, welchen Abschnitten die Karten-App folgen kann …';
+
+  @override
+  String get courseDriveAllDrivable =>
+      'Die Karten-App kann der ganzen Strecke folgen.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'Wir konnten nicht prüfen, welchen Abschnitten die Karten-App folgen kann.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'Diesen Abschnitten kann die Karten-App nicht folgen';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return '$from bis $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Streckenhinweise';
+
+  @override
+  String get courseDriveNoNotes =>
+      'Diese Strecke hat keine Markierungen zum Vorlesen.';
+
+  @override
+  String get courseDriveStart => 'Gesprochene Hinweise starten';
+
+  @override
+  String get courseDriveStop => 'Stopp';
+
+  @override
+  String get courseDriveWaiting =>
+      'Fahr zur Strecke. Die Hinweise beginnen, sobald du sie erreichst.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Nächster Hinweis in $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'Keine weiteren Hinweise.';
+
+  @override
+  String get courseDriveFinished => 'Du hast das Ziel erreicht.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Beendet: Du warst 10 Minuten abseits der Strecke.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'Der Standort ist aus, deshalb können die Hinweise dir nicht folgen.';
+
+  @override
+  String get courseDriveLoadFailed =>
+      'Diese Strecke konnte nicht geladen werden.';
+
+  @override
+  String get courseDriveOpenFailed =>
+      'Die Karten-App konnte nicht geöffnet werden.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Zielschluss um $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Zielschluss $time nach dem Start';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance mit etwa $grade %';
+  }
 }

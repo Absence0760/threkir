@@ -40,6 +40,7 @@
 	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 	import type { Route, RouteMarker } from '#lib/types.ts';
 	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import DriveCourseButton from '#lib/components/DriveCourseButton.svelte';
 	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
 	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
 
@@ -416,6 +417,7 @@
 							officialDistanceM={courseRoute.official_distance_m}
 							videoSource={courseRoute.user_id === auth.user?.id ? undefined : async () => ({ points: coursePoints })}
 						/>
+						<DriveCourseButton points={courseRoute.waypoints} markers={courseMarkers} title={race.name} />
 					</div>
 				{/if}
 			</section>

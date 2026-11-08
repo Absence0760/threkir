@@ -29,6 +29,7 @@
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
 	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import DriveCourseButton from '#lib/components/DriveCourseButton.svelte';
 	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
 	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
 	import { distinctTags } from '#lib/routes/route_tags.ts';
@@ -997,6 +998,10 @@
 						officialDistanceM={route.official_distance_m}
 						videoSource={isOwner ? undefined : async () => ({ points: previewPoints })}
 					/>
+					<!-- A private course offers no drive mode, its owner included (course_drive.md gotcha 6). -->
+					{#if route.is_public === true && !route.line_unavailable}
+						<DriveCourseButton points={displayWaypoints} markers={routeMarkers} title={route.name} />
+					{/if}
 					<button class="btn btn-outline btn-sm" onclick={handleExportGpx}>GPX</button>
 					<button class="btn btn-outline btn-sm" onclick={handleExportKml}>KML</button>
 					{#if routeMarkers.length > 0}

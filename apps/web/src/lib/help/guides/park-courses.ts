@@ -94,7 +94,7 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Right now a run is checked against park courses when you open it on the website. If a run you expected doesn\'t show up on a board, open it once on the web.',
+					text: "A run is checked against park courses on our servers shortly after it's saved or imported, from any device. A new time can take a few minutes to appear on a board.",
 				},
 			],
 		},

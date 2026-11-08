@@ -64,7 +64,7 @@ export const translation: GuideTranslation = {
 						"あなたがブロックした人は表示されず、その人にもあなたは表示されません。",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "現在、ランはウェブサイトで開いたときに公園コースと照合されます。載るはずのランがボードに表示されない場合は、ウェブで一度そのランを開いてください。" },
+				{ type: 'note', tone: 'caution', text: "ランは保存またはインポートの直後に、どの端末からでも、サーバー上で公園コースと照合されます。新しいタイムがランキングに表示されるまで数分かかることがあります。" },
 			],
 		},
 	],
@@ -93,6 +93,6 @@ export const translation: GuideTranslation = {
 		"s5.b0.i0": "bee88a50dcbbbfa2",
 		"s5.b0.i1": "25229437ce8179b8",
 		"s5.b0.i2": "c95241619d2e3582",
-		"s5.b1": "fc3e2e3220b4a510",
+		"s5.b1": "f0b47eeb5f542fe4",
 	},
 };

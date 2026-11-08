@@ -3356,7 +3356,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Por enquanto, uma corrida é comparada com os percursos de parques quando você a abre no site. Se uma corrida esperada não aparecer em nenhum ranking, abra-a uma vez na web."
+            "text": "Uma corrida é comparada com os percursos de parque nos nossos servidores logo depois de ser salva ou importada, de qualquer dispositivo. Um novo tempo pode levar alguns minutos para aparecer em um ranking."
           }
         ]
       }

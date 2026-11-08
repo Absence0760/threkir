@@ -3356,7 +3356,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Por ahora, una carrera se compara con los recorridos de parques cuando la abres en la web. Si una carrera que esperabas no aparece en ninguna clasificación, ábrela una vez en la web."
+            "text": "Una carrera se compara con los recorridos de parque en nuestros servidores poco después de guardarla o importarla, desde cualquier dispositivo. Un tiempo nuevo puede tardar unos minutos en aparecer en una clasificación."
           }
         ]
       }

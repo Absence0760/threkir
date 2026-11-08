@@ -64,7 +64,7 @@ export const translation: GuideTranslation = {
 						"Vous ne voyez pas les personnes que vous avez bloquées, et elles ne vous voient pas.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Pour l'instant, une sortie est comparée aux parcours des parcs quand vous l'ouvrez sur le site web. Si une sortie attendue n'apparaît dans aucun classement, ouvrez-la une fois sur le web." },
+				{ type: 'note', tone: 'caution', text: "Une sortie est comparée aux parcours de parc sur nos serveurs peu après son enregistrement ou son import, quel que soit l'appareil. Un nouveau temps peut mettre quelques minutes à apparaître dans un classement." },
 			],
 		},
 	],
@@ -93,6 +93,6 @@ export const translation: GuideTranslation = {
 		"s5.b0.i0": "bee88a50dcbbbfa2",
 		"s5.b0.i1": "25229437ce8179b8",
 		"s5.b0.i2": "c95241619d2e3582",
-		"s5.b1": "fc3e2e3220b4a510",
+		"s5.b1": "f0b47eeb5f542fe4",
 	},
 };

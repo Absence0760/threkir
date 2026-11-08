@@ -64,7 +64,7 @@ export const translation: GuideTranslation = {
 						"Você não vê as pessoas que bloqueou, e elas não veem você.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Por enquanto, uma corrida é comparada com os percursos de parques quando você a abre no site. Se uma corrida esperada não aparecer em nenhum ranking, abra-a uma vez na web." },
+				{ type: 'note', tone: 'caution', text: "Uma corrida é comparada com os percursos de parque nos nossos servidores logo depois de ser salva ou importada, de qualquer dispositivo. Um novo tempo pode levar alguns minutos para aparecer em um ranking." },
 			],
 		},
 	],
@@ -93,6 +93,6 @@ export const translation: GuideTranslation = {
 		"s5.b0.i0": "bee88a50dcbbbfa2",
 		"s5.b0.i1": "25229437ce8179b8",
 		"s5.b0.i2": "c95241619d2e3582",
-		"s5.b1": "fc3e2e3220b4a510",
+		"s5.b1": "f0b47eeb5f542fe4",
 	},
 };

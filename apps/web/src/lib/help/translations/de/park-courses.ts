@@ -64,7 +64,7 @@ export const translation: GuideTranslation = {
 						"Du siehst keine Personen, die du blockiert hast, und sie sehen dich nicht.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Derzeit wird ein Lauf mit den Parkstrecken abgeglichen, wenn du ihn auf der Website öffnest. Wenn ein erwarteter Lauf auf keiner Liste erscheint, öffne ihn einmal im Web." },
+				{ type: 'note', tone: 'caution', text: "Ein Lauf wird kurz nach dem Speichern oder Importieren auf unseren Servern mit den Parkstrecken abgeglichen, egal von welchem Gerät. Bis eine neue Zeit auf einer Liste erscheint, kann es ein paar Minuten dauern." },
 			],
 		},
 	],
@@ -93,6 +93,6 @@ export const translation: GuideTranslation = {
 		"s5.b0.i0": "bee88a50dcbbbfa2",
 		"s5.b0.i1": "25229437ce8179b8",
 		"s5.b0.i2": "c95241619d2e3582",
-		"s5.b1": "fc3e2e3220b4a510",
+		"s5.b1": "f0b47eeb5f542fe4",
 	},
 };

@@ -3356,7 +3356,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Derzeit wird ein Lauf mit den Parkstrecken abgeglichen, wenn du ihn auf der Website öffnest. Wenn ein erwarteter Lauf auf keiner Liste erscheint, öffne ihn einmal im Web."
+            "text": "Ein Lauf wird kurz nach dem Speichern oder Importieren auf unseren Servern mit den Parkstrecken abgeglichen, egal von welchem Gerät. Bis eine neue Zeit auf einer Liste erscheint, kann es ein paar Minuten dauern."
           }
         ]
       }

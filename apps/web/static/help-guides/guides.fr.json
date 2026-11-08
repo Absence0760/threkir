@@ -3356,7 +3356,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Pour l'instant, une sortie est comparée aux parcours des parcs quand vous l'ouvrez sur le site web. Si une sortie attendue n'apparaît dans aucun classement, ouvrez-la une fois sur le web."
+            "text": "Une sortie est comparée aux parcours de parc sur nos serveurs peu après son enregistrement ou son import, quel que soit l'appareil. Un nouveau temps peut mettre quelques minutes à apparaître dans un classement."
           }
         ]
       }

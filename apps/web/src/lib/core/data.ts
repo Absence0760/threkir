@@ -11026,7 +11026,10 @@ export interface DirectMessage {
 	/// Null once the sender unsent it (`unsent_at` set).
 	body: string | null;
 	created_at: string;
-	read_at: string | null;
+	/// When the recipient read it, as shared with the sender: set only while
+	/// both have read receipts on (migration 20271113000001). The recipient's
+	/// own `read_at` is not granted to clients, so a sender can never read it.
+	seen_at: string | null;
 	/// Typed route attachment (migration 20270619_001). Null on an ordinary
 	/// message. What the reader is allowed to SEE of the route it names is
 	/// decided at read time by [fetchRouteById], never by holding this id.
@@ -11037,6 +11040,11 @@ export interface DirectMessage {
 	/// send (migration 20271105000010).
 	conversation_id: string;
 }
+
+/// Every column a client may select on direct_messages: `read_at` is withheld
+/// by a column grant (migration 20271113000001), so `*` is refused.
+const DM_COLUMNS =
+	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id';
 
 export interface DmThread {
 	/// The conversation the mute, archive and delete-for-me actions act on.
@@ -11201,7 +11209,7 @@ export async function fetchDmThread(
 	const me = auth.user?.id;
 	if (!me) return { messages: [], hasMore: false };
 	const limit = opts.limit ?? DM_THREAD_PAGE_SIZE;
-	let query = supabase.from(TABLES.direct_messages).select('*');
+	let query = supabase.from(TABLES.direct_messages).select(DM_COLUMNS);
 	if (target.kind === 'deleted') {
 		query = query.eq('sender_id', me).eq('deleted_partner_key', target.deletedPartnerKey);
 	} else {
@@ -11246,7 +11254,7 @@ export async function sendDm(
 			body: trimmed,
 			route_id: routeId?.trim() || null,
 		})
-		.select('*')
+		.select(DM_COLUMNS)
 		.single();
 	if (error || !data) {
 		if (error?.code === '42501') {
@@ -11321,23 +11329,43 @@ export async function setDmConversationUnread(conversationId: string, unread: bo
 	if (error) throw dbError(error);
 }
 
-/// Marks the partner's unread messages read up to and including `through`, the
-/// newest one on screen (created_at, then id, the thread's own order). A reply
-/// that lands after the thread was read stays unread until it is shown.
-export async function markDmThreadRead(
-	otherId: string,
-	through: Pick<DirectMessage, 'id' | 'created_at'>,
-): Promise<void> {
-	const me = auth.user?.id;
-	if (!me) return;
-	const at = through.created_at;
+/// Marks the partner's unread messages read up to and including `throughId`,
+/// the newest one on screen (created_at, then id, the thread's own order). A
+/// reply that lands after the thread was read stays unread until it is shown.
+/// The server shares the read with the sender as `seen_at` only when both have
+/// read receipts on (migration 20271113000001).
+export async function markDmThreadRead(otherId: string, throughId: string): Promise<void> {
+	if (!auth.user?.id) return;
+	const { error } = await supabase.rpc('mark_direct_messages_read', {
+		p_partner_id: otherId,
+		p_through_message_id: throughId,
+	});
+	if (error) throw dbError(error);
+}
+
+/// The viewer's read-receipts setting (`user_settings.dm_read_receipts`, a
+/// column because the server reads it). Off: their reads are not shared and
+/// they see no one else's. No row yet reads as the default, on.
+export async function fetchMyDmReadReceipts(): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return true;
+	const { data, error } = await supabase
+		.from('user_settings')
+		.select('dm_read_receipts')
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.dm_read_receipts !== false;
+}
+
+/// Turning receipts off also withdraws every receipt already shown, both ways
+/// (a trigger does it in the same statement).
+export async function setDmReadReceipts(on: boolean): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
 	const { error } = await supabase
-		.from(TABLES.direct_messages)
-		.update({ read_at: new Date().toISOString() })
-		.eq('sender_id', otherId)
-		.eq('recipient_id', me)
-		.is('read_at', null)
-		.or(`created_at.lt."${at}",and(created_at.eq."${at}",id.lte.${through.id})`);
+		.from('user_settings')
+		.upsert({ user_id: userId, dm_read_receipts: on }, { onConflict: 'user_id' });
 	if (error) throw dbError(error);
 }
 

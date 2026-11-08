@@ -215,7 +215,9 @@ page. Same rule as the race page's course map.
 ### 9. Starting and stopping
 
 - **Joining.** The first fix within 300 m of the course is snapped to the
-  whole line (nearest point, earliest pass on a tie) and becomes the start;
+  whole line and becomes the start: the earliest pass within 50 m of the
+  nearest one, so a loop whose start and finish share a spot joins at the
+  start;
   every note behind it is retired silently. Until then the screen says "Head to
   the course. Notes start when you reach it."
 - **Finish.** Within 75 m of the end of the served line, the phone says "You've
@@ -254,11 +256,15 @@ owner to confirm:
 
 - Pure: `routes/course_drive.test.ts` ↔ `test/course_drive_test.dart` (24 each).
 - Mobile: `test/course_drive_tracker_test.dart` (tracker),
+  `test/course_drive_speech_test.dart` (spoken sentences),
   `test/course_drive_screen_test.dart` (hand-off, notice, spoken notes with a
   fake position stream and a fake speaker, finish, failed speech),
   `test/course_drive_isolation_test.dart` (no recorder imports).
 - Web: `tests-e2e/routes/course-drive.spec.ts` (route page as a non-owner,
   private route offers nothing, undrivable stretch from a mocked OSRM response,
-  links, notes list).
+  links, notes list) and `tests-e2e/races/race-plan.spec.ts` (the race page
+  offers it on a public course and not on a private one). Mobile entry points:
+  `route_detail_screen_test.dart`, `race_detail_screen_test.dart`.
+- Help: the `drive-a-course` guide, in every locale.
 - Manual: [manual_testing.md § Drive this course](../testing/manual_testing.md)
   is a real drive with Maps speaking.

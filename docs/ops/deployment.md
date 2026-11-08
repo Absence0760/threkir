@@ -759,6 +759,14 @@ A live share that runs on the runner's confirmed safety contacts only, with no p
 2. Counsel review of the same, plus the contact-facing copy in all seven locales (the `/live/[id]` notice and closed-link state, and the overdue / off-route email and SMS that now carry a personal link).
 3. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('safety_audience', true) on conflict (name) do update set enabled = true, updated_at = now();`. The same statement with `false` is the rollback; the default reverts for everyone who never touched the switch, and every outstanding link stops admitting on its next poll.
 
+### Drive this course — after counsel signs off on the safety notice
+
+Drive this course ([course_drive.md](../features/course_drive.md), decisions § 2380) is built on web and mobile behind `PUBLIC_COURSE_DRIVE_ENABLED` (a `release-web.yml` secret) and `COURSE_DRIVE_ENABLED` (a mobile dart-define), both default off.
+
+1. **Counsel:** review the driver safety notice (`courseDrive.notice` on web, `courseDriveNoticeBody` in the mobile ARBs, every locale) and the help guide's caution (`drive-a-course`), per decisions § 150. Loop in the CISO / Security Analyst for the record.
+2. **Operator:** a real drive per [manual_testing.md](../testing/manual_testing.md) ("Drive this course (real drive)"), including that Google's app takes nine stops.
+3. Set both flags together (web secret, then the mobile define in the next store build).
+
 ### Sign-up consent from metadata — after the legal memo and owner approval
 
 An email sign-up's 16+ and Terms stamps are written to `user_profiles` from its sign-up metadata when the account is confirmed (`private.stamp_signup_consent()`, migration `20271023000001`, decisions § 2238, #1229). Until then such accounts meet the consent gate again on their first sign-in. The trigger ships closed: no migration writes its flag row, so prod behaves exactly as before.

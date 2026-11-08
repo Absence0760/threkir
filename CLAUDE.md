@@ -29,6 +29,7 @@ Start with whichever row below is closest to the task you've been given:
 | Touching a trigger-maintained cache (PRs, route run_count, gym totals, coach usage) | [docs/backend/derived_state.md](docs/backend/derived_state.md) — the cache=authoritative-query contract per derived cache + retention |
 | Writing a migration that adds a constraint or backfills a big table | [docs/backend/migration_locks.md](docs/backend/migration_locks.md) — the online-DDL playbook (`NOT VALID` + `VALIDATE`, batched backfills, lock reference, pre-merge checklist); keeps a `db push` off the populated prod tables from taking blocking locks |
 | Touching the recording pipeline | [docs/features/run_recording.md](docs/features/run_recording.md) — state machine, filters, auto-pause |
+| Touching Drive this course (Maps hand-off, spoken course notes) | [docs/features/course_drive.md](docs/features/course_drive.md) — the `course_drive` parity pair, the drive tracker that is deliberately not `RunRecorder`, stop caps per Maps app, the default-off flag pending counsel (decisions § 2380) |
 | Touching the web auth flow | [docs/features/web_app_auth.md](docs/features/web_app_auth.md) |
 | Touching Edge Functions or the Supabase stack | [apps/backend/CLAUDE.md](apps/backend/CLAUDE.md) — functions, migrations, CLI gotchas |
 | Understanding an end-to-end user journey | [docs/features/flows.md](docs/features/flows.md) — sign-in, record, sync, spectator |

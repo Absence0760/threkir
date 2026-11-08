@@ -5751,6 +5751,7 @@ class ApiClient {
     String? gender,
     String? ageBand,
     String? clubId,
+    int? season,
     int limit = 50,
   }) async {
     final rows = await _client.rpc(
@@ -5761,6 +5762,7 @@ class ApiClient {
         'p_age_band': ?ageBand,
         'p_limit': limit,
         'p_club_id': ?clubId,
+        'p_season': ?season,
       },
       get: true,
     );
@@ -5792,6 +5794,92 @@ class ApiClient {
           rank: ranks[i],
         ),
     ];
+  }
+
+  /// Every active park with its current season, region then name order
+  /// (migration 20271115002383, decisions § 2383). Throws on a failed read.
+  Future<List<ParkListing>> fetchParks() async {
+    final rows = await _client
+        .from(ParkRow.table)
+        .select('*, park_season')
+        .order(ParkRow.colRegionCode, ascending: true)
+        .order(ParkRow.colName, ascending: true);
+    return [
+      for (final r in rows)
+        ParkListing(
+          park: ParkRow.fromJson(r),
+          season: (r['park_season'] as num).toInt(),
+        ),
+    ];
+  }
+
+  /// A park's courses with their catalogue segment, by slug. A course whose
+  /// segment was pulled is dropped (RLS hides the segment). Throws on a
+  /// failed read.
+  Future<List<ParkCourseListing>> fetchParkCourses(String parkId) async {
+    final rows = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colParkId, parkId)
+        .order(ParkCourseRow.colSlug, ascending: true);
+    return [
+      for (final r in rows)
+        if (r['global_segments'] is Map)
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson(r),
+            segment: GlobalSegmentRow.fromJson(
+              (r['global_segments'] as Map).cast<String, dynamic>(),
+            ),
+          ),
+    ];
+  }
+
+  /// The most-completions board on a catalogue segment
+  /// (`global_segment_completions`): one row per athlete, distinct local days
+  /// in the park's timezone. [season] null is all time. Tied counts share a
+  /// rank. Throws on a failed read.
+  Future<List<GlobalSegmentCompletionsEntry>> fetchGlobalSegmentCompletions(
+    String segmentId, {
+    int? season,
+    int limit = 50,
+  }) async {
+    final rows = await _client.rpc(
+      'global_segment_completions',
+      params: {
+        'p_segment_id': segmentId,
+        'p_season': ?season,
+        'p_limit': limit,
+      },
+      get: true,
+    );
+    if (rows is! List) return const [];
+    final out = <GlobalSegmentCompletionsEntry>[];
+    var rank = 0;
+    int? prev;
+    for (var i = 0; i < rows.length; i++) {
+      final r = (rows[i] as Map).cast<String, dynamic>();
+      final completions = (r['completions'] as num).toInt();
+      if (completions != prev) {
+        rank = i + 1;
+        prev = completions;
+      }
+      out.add(
+        GlobalSegmentCompletionsEntry(
+          athlete: PublicProfile(
+            id: r['user_id'] as String,
+            displayName: r['display_name'] as String?,
+            avatarUrl: r['avatar_url'] as String?,
+          ),
+          completions: completions,
+          lastCompletedAt: parseIsoStrictRequired(
+            r['last_completed_at'],
+            'last_completed_at',
+          ),
+          rank: rank,
+        ),
+      );
+    }
+    return out;
   }
 
   /// Catalogue-segment efforts a run earned, joined to the segment and ranked

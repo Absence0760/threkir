@@ -20886,4 +20886,186 @@ class AppLocalizationsEs extends AppLocalizations {
   String courseDriveClimb(String distance, String grade) {
     return '$distance a cerca del $grade %';
   }
+
+  @override
+  String get parksTitle => 'Recorridos de parques';
+
+  @override
+  String get parksIntro =>
+      'Recorridos contrarreloj permanentes en parques estatales y nacionales. Corre uno cualquier día y tu tiempo entra en la clasificación de este año.';
+
+  @override
+  String get parksLoading => 'Cargando recorridos…';
+
+  @override
+  String get parksLoadFailed => 'No se pudieron cargar los recorridos.';
+
+  @override
+  String get parksRetry => 'Reintentar';
+
+  @override
+  String get parksEmpty =>
+      'Todavía no hay recorridos. Los primeros están en camino.';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n recorridos',
+      one: '$n recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'Todos los recorridos';
+
+  @override
+  String get parksParkNotFoundTitle => 'Parque no encontrado';
+
+  @override
+  String get parksParkNotFoundBody =>
+      'Este parque no aparece, o ya no aparece, en la lista.';
+
+  @override
+  String get parksCourseNotFoundTitle => 'Recorrido no encontrado';
+
+  @override
+  String get parksCourseNotFoundBody =>
+      'Este recorrido no aparece, o ya no aparece, en la lista.';
+
+  @override
+  String get parksWebsite => 'Sitio web del parque';
+
+  @override
+  String get parksNoCourses => 'Todavía no hay recorridos en este parque.';
+
+  @override
+  String get parksAgencyNps => 'National Park Service';
+
+  @override
+  String get parksAgencyState => 'Parque estatal';
+
+  @override
+  String get parksAgencyCounty => 'Parque del condado';
+
+  @override
+  String get parksAgencyOther => 'Parque';
+
+  @override
+  String get parksShapeLoop => 'Circular';
+
+  @override
+  String get parksShapeOutAndBack => 'Ida y vuelta';
+
+  @override
+  String get parksShapePointToPoint => 'De punto a punto';
+
+  @override
+  String get parksStatusOpen => 'Abierto';
+
+  @override
+  String get parksStatusClosed => 'Cerrado';
+
+  @override
+  String get parksStatusSeasonal => 'De temporada';
+
+  @override
+  String get parksClosedBanner =>
+      'Este recorrido está cerrado. Sus tiempos y clasificaciones se conservan, pero no lo corras hasta que vuelva a abrir.';
+
+  @override
+  String parksStatusChecked(String date) {
+    return 'Estado comprobado el $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => 'Fácil';
+
+  @override
+  String get parksDifficultyModerate => 'Moderado';
+
+  @override
+  String get parksDifficultyHard => 'Difícil';
+
+  @override
+  String get parksStatDistance => 'Distancia';
+
+  @override
+  String get parksStatElevation => 'Desnivel positivo';
+
+  @override
+  String get parksStatShape => 'Forma';
+
+  @override
+  String get parksStatSurface => 'Superficie';
+
+  @override
+  String get parksStatDifficulty => 'Dificultad';
+
+  @override
+  String get parksBoardFastest => 'Más rápidos';
+
+  @override
+  String get parksBoardCompletions => 'Más completados';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return 'Este año ($year)';
+  }
+
+  @override
+  String get parksSeasonAllTime => 'Histórico';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n días',
+      one: '$n día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts =>
+      'Todavía no hay tiempos en esta clasificación. Corre el recorrido y el tuyo será el primero.';
+
+  @override
+  String get parksSignInForBoards =>
+      'Inicia sesión para ver las clasificaciones de este recorrido.';
+
+  @override
+  String get parksSignIn => 'Iniciar sesión';
+
+  @override
+  String get parksBoardFailed => 'No se pudo cargar esta clasificación.';
+
+  @override
+  String get parksSafetyNotice =>
+      'Mantente en el sendero señalizado. El cronometraje necesita cada punto de control, así que un atajo nunca cuenta. Es una contrarreloj, no una carrera: el sendero sigue abierto a todos y nadie lo controla.';
+
+  @override
+  String get parksAttributionOsm =>
+      'Trazado del recorrido © colaboradores de OpenStreetMap';
+
+  @override
+  String get parksAttributionNps =>
+      'Trazado del recorrido según los datos de senderos del National Park Service';
+
+  @override
+  String get parksAttributionAgency =>
+      'Trazado del recorrido según los datos de senderos del propio parque';
+
+  @override
+  String get parksAttributionTraced =>
+      'Trazado del recorrido dibujado sobre el mapa publicado del parque';
+
+  @override
+  String get parksNavigate => 'Navegar este recorrido';
+
+  @override
+  String get parksBrowseLink => 'Recorridos de parques';
 }

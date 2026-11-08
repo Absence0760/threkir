@@ -321,6 +321,17 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Shipped.** The full social layer: following graph + activity feed, the `/social` hub (Feed/People/Clubs), kudos + threaded comments, run reactions + comment likes + @mentions (2026-10-15, decisions § 1971), private profiles with follower approval (2026-10-15, § 1967), privacy zones, training-load curves, plan templates, run photos (server-side EXIF strip), segments + tiered leaderboards/crowns, the notifications inbox, and run streaks. Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
 
+### Park courses (#1313)
+
+Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_courses` schema, the checkpoint rule in the catalogue matcher, the fastest board by season (`p_season`, calendar year in the park's timezone) and the most-completions board, web `/parks` pages and the mobile park screens. **Open:**
+
+- [ ] Server-side matching via a `segment_match` job + bounding-box candidates + backfill (Phase 1), so phone-only and imported runs reach a board.
+- [ ] Loop courses (blocked on #1308).
+- [ ] Geometry pipeline under `scripts/parks/` and the first ten Virginia courses (operator load; see [park_courses.md § Loading courses](../features/park_courses.md#loading-courses)).
+- [ ] Indexable course pages (`share-entity`) and a sitemap entry, once courses are loaded.
+- [ ] Run-detail chip with season rank, `park_course` badges, the passport challenge, recap / year-in-review entries, share image (Phase 5).
+- [ ] NPS closures job and status tooling (Phase 6).
+
 ### Elevation and pace analysis (post-run)
 
 ✓ **Shipped.** Elevation profile + split table, interactive elevation/pace crosshair, best-effort auto-detection, and same-route PB comparison. Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).

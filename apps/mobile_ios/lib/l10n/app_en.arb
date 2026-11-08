@@ -26922,8 +26922,12 @@
   "@shareCardSplitsHeading": {
     "description": "Heading of the splits sticker, printed uppercase: how many splits and the average pace with its unit",
     "placeholders": {
-      "count": {"type": "int"},
-      "pace": {"type": "String"}
+      "count": {
+        "type": "int"
+      },
+      "pace": {
+        "type": "String"
+      }
     }
   },
   "shareCardStreakCaption": "days in a row",
@@ -27145,7 +27149,9 @@
   "@runDetailBlockedDurationTooLong": {
     "description": "Body of the blocked-upload card when a run is longer than the ten-day maximum the server accepts; {hours} is that maximum in hours (240)",
     "placeholders": {
-      "hours": {"type": "int"}
+      "hours": {
+        "type": "int"
+      }
     }
   },
   "ttsDriveAhead": "In {distance}: {kind}, {label}.",
@@ -27449,5 +27455,225 @@
         "type": "String"
       }
     }
+  },
+  "parksTitle": "Park courses",
+  "@parksTitle": {
+    "description": "Park courses (#1313): web key parks.title."
+  },
+  "parksIntro": "Standing time-trial courses in state and national parks. Run one on any day and your time lands on this year's board.",
+  "@parksIntro": {
+    "description": "Park courses (#1313): web key parks.intro."
+  },
+  "parksLoading": "Loading park courses…",
+  "@parksLoading": {
+    "description": "Park courses (#1313): web key parks.loading."
+  },
+  "parksLoadFailed": "Couldn't load park courses.",
+  "@parksLoadFailed": {
+    "description": "Park courses (#1313): web key parks.loadFailed."
+  },
+  "parksRetry": "Retry",
+  "@parksRetry": {
+    "description": "Park courses (#1313): web key parks.retry."
+  },
+  "parksEmpty": "No park courses yet. The first ones are on their way.",
+  "@parksEmpty": {
+    "description": "Park courses (#1313): web key parks.empty."
+  },
+  "parksCourseCount": "{n, plural, one {{n} course} other {{n} courses}}",
+  "@parksCourseCount": {
+    "description": "Park courses (#1313): web key parks.courseCount.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksBackToParks": "All park courses",
+  "@parksBackToParks": {
+    "description": "Park courses (#1313): web key parks.backToParks."
+  },
+  "parksParkNotFoundTitle": "Park not found",
+  "@parksParkNotFoundTitle": {
+    "description": "Park courses (#1313): web key parks.parkNotFoundTitle."
+  },
+  "parksParkNotFoundBody": "This park isn't listed, or isn't listed any more.",
+  "@parksParkNotFoundBody": {
+    "description": "Park courses (#1313): web key parks.parkNotFoundBody."
+  },
+  "parksCourseNotFoundTitle": "Course not found",
+  "@parksCourseNotFoundTitle": {
+    "description": "Park courses (#1313): web key parks.courseNotFoundTitle."
+  },
+  "parksCourseNotFoundBody": "This course isn't listed, or isn't listed any more.",
+  "@parksCourseNotFoundBody": {
+    "description": "Park courses (#1313): web key parks.courseNotFoundBody."
+  },
+  "parksWebsite": "Park website",
+  "@parksWebsite": {
+    "description": "Park courses (#1313): web key parks.website."
+  },
+  "parksNoCourses": "No courses listed in this park yet.",
+  "@parksNoCourses": {
+    "description": "Park courses (#1313): web key parks.noCourses."
+  },
+  "parksAgencyNps": "National Park Service",
+  "@parksAgencyNps": {
+    "description": "Park courses (#1313): web key parks.agencyNps."
+  },
+  "parksAgencyState": "State park",
+  "@parksAgencyState": {
+    "description": "Park courses (#1313): web key parks.agencyState."
+  },
+  "parksAgencyCounty": "County park",
+  "@parksAgencyCounty": {
+    "description": "Park courses (#1313): web key parks.agencyCounty."
+  },
+  "parksAgencyOther": "Park",
+  "@parksAgencyOther": {
+    "description": "Park courses (#1313): web key parks.agencyOther."
+  },
+  "parksShapeLoop": "Loop",
+  "@parksShapeLoop": {
+    "description": "Park courses (#1313): web key parks.shapeLoop."
+  },
+  "parksShapeOutAndBack": "Out and back",
+  "@parksShapeOutAndBack": {
+    "description": "Park courses (#1313): web key parks.shapeOutAndBack."
+  },
+  "parksShapePointToPoint": "Point to point",
+  "@parksShapePointToPoint": {
+    "description": "Park courses (#1313): web key parks.shapePointToPoint."
+  },
+  "parksStatusOpen": "Open",
+  "@parksStatusOpen": {
+    "description": "Park courses (#1313): web key parks.statusOpen."
+  },
+  "parksStatusClosed": "Closed",
+  "@parksStatusClosed": {
+    "description": "Park courses (#1313): web key parks.statusClosed."
+  },
+  "parksStatusSeasonal": "Seasonal",
+  "@parksStatusSeasonal": {
+    "description": "Park courses (#1313): web key parks.statusSeasonal."
+  },
+  "parksClosedBanner": "This course is closed. Its times and boards stay, but please don't run it until it reopens.",
+  "@parksClosedBanner": {
+    "description": "Park courses (#1313): web key parks.closedBanner."
+  },
+  "parksStatusChecked": "Status checked {date}",
+  "@parksStatusChecked": {
+    "description": "Park courses (#1313): web key parks.statusChecked.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "parksDifficultyEasy": "Easy",
+  "@parksDifficultyEasy": {
+    "description": "Park courses (#1313): web key parks.difficultyEasy."
+  },
+  "parksDifficultyModerate": "Moderate",
+  "@parksDifficultyModerate": {
+    "description": "Park courses (#1313): web key parks.difficultyModerate."
+  },
+  "parksDifficultyHard": "Hard",
+  "@parksDifficultyHard": {
+    "description": "Park courses (#1313): web key parks.difficultyHard."
+  },
+  "parksStatDistance": "Distance",
+  "@parksStatDistance": {
+    "description": "Park courses (#1313): web key parks.statDistance."
+  },
+  "parksStatElevation": "Elevation gain",
+  "@parksStatElevation": {
+    "description": "Park courses (#1313): web key parks.statElevation."
+  },
+  "parksStatShape": "Shape",
+  "@parksStatShape": {
+    "description": "Park courses (#1313): web key parks.statShape."
+  },
+  "parksStatSurface": "Surface",
+  "@parksStatSurface": {
+    "description": "Park courses (#1313): web key parks.statSurface."
+  },
+  "parksStatDifficulty": "Difficulty",
+  "@parksStatDifficulty": {
+    "description": "Park courses (#1313): web key parks.statDifficulty."
+  },
+  "parksBoardFastest": "Fastest",
+  "@parksBoardFastest": {
+    "description": "Park courses (#1313): web key parks.boardFastest."
+  },
+  "parksBoardCompletions": "Most completions",
+  "@parksBoardCompletions": {
+    "description": "Park courses (#1313): web key parks.boardCompletions."
+  },
+  "parksSeasonThisYear": "This year ({year})",
+  "@parksSeasonThisYear": {
+    "description": "Park courses (#1313): web key parks.seasonThisYear.",
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "parksSeasonAllTime": "All time",
+  "@parksSeasonAllTime": {
+    "description": "Park courses (#1313): web key parks.seasonAllTime."
+  },
+  "parksCompletionDays": "{n, plural, one {{n} day} other {{n} days}}",
+  "@parksCompletionDays": {
+    "description": "Park courses (#1313): web key parks.completionDays.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksNoEfforts": "No times on this board yet. Run the course and yours is the first.",
+  "@parksNoEfforts": {
+    "description": "Park courses (#1313): web key parks.noEfforts."
+  },
+  "parksSignInForBoards": "Sign in to see this course's boards.",
+  "@parksSignInForBoards": {
+    "description": "Park courses (#1313): web key parks.signInForBoards."
+  },
+  "parksSignIn": "Sign in",
+  "@parksSignIn": {
+    "description": "Park courses (#1313): web key parks.signIn."
+  },
+  "parksBoardFailed": "Couldn't load this board.",
+  "@parksBoardFailed": {
+    "description": "Park courses (#1313): web key parks.boardFailed."
+  },
+  "parksSafetyNotice": "Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.",
+  "@parksSafetyNotice": {
+    "description": "Park courses (#1313): web key parks.safetyNotice."
+  },
+  "parksAttributionOsm": "Course line © OpenStreetMap contributors",
+  "@parksAttributionOsm": {
+    "description": "Park courses (#1313): web key parks.attributionOsm."
+  },
+  "parksAttributionNps": "Course line from National Park Service trail data",
+  "@parksAttributionNps": {
+    "description": "Park courses (#1313): web key parks.attributionNps."
+  },
+  "parksAttributionAgency": "Course line from the park's own trail data",
+  "@parksAttributionAgency": {
+    "description": "Park courses (#1313): web key parks.attributionAgency."
+  },
+  "parksAttributionTraced": "Course line traced against the park's published map",
+  "@parksAttributionTraced": {
+    "description": "Park courses (#1313): web key parks.attributionTraced."
+  },
+  "parksNavigate": "Navigate this course",
+  "@parksNavigate": {
+    "description": "Park courses (#1313): web key parks.navigate."
+  },
+  "parksBrowseLink": "Park courses",
+  "@parksBrowseLink": {
+    "description": "Park courses (#1313): web key parks.browseLink."
   }
 }

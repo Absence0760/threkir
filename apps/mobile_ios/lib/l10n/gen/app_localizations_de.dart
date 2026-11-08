@@ -20914,4 +20914,187 @@ class AppLocalizationsDe extends AppLocalizations {
   String courseDriveClimb(String distance, String grade) {
     return '$distance mit etwa $grade %';
   }
+
+  @override
+  String get parksTitle => 'Parkstrecken';
+
+  @override
+  String get parksIntro =>
+      'Feste Zeitfahrstrecken in State- und Nationalparks. Lauf eine an einem beliebigen Tag, und deine Zeit landet auf der Bestenliste dieses Jahres.';
+
+  @override
+  String get parksLoading => 'Parkstrecken werden geladen…';
+
+  @override
+  String get parksLoadFailed => 'Parkstrecken konnten nicht geladen werden.';
+
+  @override
+  String get parksRetry => 'Erneut versuchen';
+
+  @override
+  String get parksEmpty =>
+      'Noch keine Parkstrecken. Die ersten sind unterwegs.';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Strecken',
+      one: '$n Strecke',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'Alle Parkstrecken';
+
+  @override
+  String get parksParkNotFoundTitle => 'Park nicht gefunden';
+
+  @override
+  String get parksParkNotFoundBody =>
+      'Dieser Park ist nicht (mehr) aufgeführt.';
+
+  @override
+  String get parksCourseNotFoundTitle => 'Strecke nicht gefunden';
+
+  @override
+  String get parksCourseNotFoundBody =>
+      'Diese Strecke ist nicht (mehr) aufgeführt.';
+
+  @override
+  String get parksWebsite => 'Website des Parks';
+
+  @override
+  String get parksNoCourses =>
+      'In diesem Park sind noch keine Strecken aufgeführt.';
+
+  @override
+  String get parksAgencyNps => 'National Park Service';
+
+  @override
+  String get parksAgencyState => 'State Park';
+
+  @override
+  String get parksAgencyCounty => 'County Park';
+
+  @override
+  String get parksAgencyOther => 'Park';
+
+  @override
+  String get parksShapeLoop => 'Rundstrecke';
+
+  @override
+  String get parksShapeOutAndBack => 'Hin und zurück';
+
+  @override
+  String get parksShapePointToPoint => 'Von A nach B';
+
+  @override
+  String get parksStatusOpen => 'Geöffnet';
+
+  @override
+  String get parksStatusClosed => 'Gesperrt';
+
+  @override
+  String get parksStatusSeasonal => 'Saisonal';
+
+  @override
+  String get parksClosedBanner =>
+      'Diese Strecke ist gesperrt. Zeiten und Bestenlisten bleiben erhalten, aber bitte lauf sie erst wieder, wenn sie geöffnet ist.';
+
+  @override
+  String parksStatusChecked(String date) {
+    return 'Status geprüft am $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => 'Leicht';
+
+  @override
+  String get parksDifficultyModerate => 'Mittel';
+
+  @override
+  String get parksDifficultyHard => 'Schwer';
+
+  @override
+  String get parksStatDistance => 'Distanz';
+
+  @override
+  String get parksStatElevation => 'Höhenmeter';
+
+  @override
+  String get parksStatShape => 'Form';
+
+  @override
+  String get parksStatSurface => 'Untergrund';
+
+  @override
+  String get parksStatDifficulty => 'Schwierigkeit';
+
+  @override
+  String get parksBoardFastest => 'Schnellste';
+
+  @override
+  String get parksBoardCompletions => 'Meiste Läufe';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return 'Dieses Jahr ($year)';
+  }
+
+  @override
+  String get parksSeasonAllTime => 'Gesamt';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Tage',
+      one: '$n Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts =>
+      'Noch keine Zeiten auf dieser Liste. Lauf die Strecke, und deine ist die erste.';
+
+  @override
+  String get parksSignInForBoards =>
+      'Melde dich an, um die Bestenlisten dieser Strecke zu sehen.';
+
+  @override
+  String get parksSignIn => 'Anmelden';
+
+  @override
+  String get parksBoardFailed => 'Diese Liste konnte nicht geladen werden.';
+
+  @override
+  String get parksSafetyNotice =>
+      'Bleib auf dem markierten Weg. Die Zeitmessung braucht jeden Kontrollpunkt, eine Abkürzung zählt also nie. Das ist ein Zeitfahren, kein Rennen: Der Weg bleibt für alle offen und wird nicht betreut.';
+
+  @override
+  String get parksAttributionOsm =>
+      'Streckenverlauf © OpenStreetMap-Mitwirkende';
+
+  @override
+  String get parksAttributionNps =>
+      'Streckenverlauf aus Wegdaten des National Park Service';
+
+  @override
+  String get parksAttributionAgency =>
+      'Streckenverlauf aus den Wegdaten des Parks';
+
+  @override
+  String get parksAttributionTraced =>
+      'Streckenverlauf nach der veröffentlichten Karte des Parks gezeichnet';
+
+  @override
+  String get parksNavigate => 'Diese Strecke navigieren';
+
+  @override
+  String get parksBrowseLink => 'Parkstrecken';
 }

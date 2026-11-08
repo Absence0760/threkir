@@ -20668,4 +20668,184 @@ class AppLocalizationsEn extends AppLocalizations {
   String courseDriveClimb(String distance, String grade) {
     return '$distance at about $grade%';
   }
+
+  @override
+  String get parksTitle => 'Park courses';
+
+  @override
+  String get parksIntro =>
+      'Standing time-trial courses in state and national parks. Run one on any day and your time lands on this year\'s board.';
+
+  @override
+  String get parksLoading => 'Loading park courses…';
+
+  @override
+  String get parksLoadFailed => 'Couldn\'t load park courses.';
+
+  @override
+  String get parksRetry => 'Retry';
+
+  @override
+  String get parksEmpty =>
+      'No park courses yet. The first ones are on their way.';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'All park courses';
+
+  @override
+  String get parksParkNotFoundTitle => 'Park not found';
+
+  @override
+  String get parksParkNotFoundBody =>
+      'This park isn\'t listed, or isn\'t listed any more.';
+
+  @override
+  String get parksCourseNotFoundTitle => 'Course not found';
+
+  @override
+  String get parksCourseNotFoundBody =>
+      'This course isn\'t listed, or isn\'t listed any more.';
+
+  @override
+  String get parksWebsite => 'Park website';
+
+  @override
+  String get parksNoCourses => 'No courses listed in this park yet.';
+
+  @override
+  String get parksAgencyNps => 'National Park Service';
+
+  @override
+  String get parksAgencyState => 'State park';
+
+  @override
+  String get parksAgencyCounty => 'County park';
+
+  @override
+  String get parksAgencyOther => 'Park';
+
+  @override
+  String get parksShapeLoop => 'Loop';
+
+  @override
+  String get parksShapeOutAndBack => 'Out and back';
+
+  @override
+  String get parksShapePointToPoint => 'Point to point';
+
+  @override
+  String get parksStatusOpen => 'Open';
+
+  @override
+  String get parksStatusClosed => 'Closed';
+
+  @override
+  String get parksStatusSeasonal => 'Seasonal';
+
+  @override
+  String get parksClosedBanner =>
+      'This course is closed. Its times and boards stay, but please don\'t run it until it reopens.';
+
+  @override
+  String parksStatusChecked(String date) {
+    return 'Status checked $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => 'Easy';
+
+  @override
+  String get parksDifficultyModerate => 'Moderate';
+
+  @override
+  String get parksDifficultyHard => 'Hard';
+
+  @override
+  String get parksStatDistance => 'Distance';
+
+  @override
+  String get parksStatElevation => 'Elevation gain';
+
+  @override
+  String get parksStatShape => 'Shape';
+
+  @override
+  String get parksStatSurface => 'Surface';
+
+  @override
+  String get parksStatDifficulty => 'Difficulty';
+
+  @override
+  String get parksBoardFastest => 'Fastest';
+
+  @override
+  String get parksBoardCompletions => 'Most completions';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return 'This year ($year)';
+  }
+
+  @override
+  String get parksSeasonAllTime => 'All time';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days',
+      one: '$n day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts =>
+      'No times on this board yet. Run the course and yours is the first.';
+
+  @override
+  String get parksSignInForBoards => 'Sign in to see this course\'s boards.';
+
+  @override
+  String get parksSignIn => 'Sign in';
+
+  @override
+  String get parksBoardFailed => 'Couldn\'t load this board.';
+
+  @override
+  String get parksSafetyNotice =>
+      'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.';
+
+  @override
+  String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';
+
+  @override
+  String get parksAttributionNps =>
+      'Course line from National Park Service trail data';
+
+  @override
+  String get parksAttributionAgency =>
+      'Course line from the park\'s own trail data';
+
+  @override
+  String get parksAttributionTraced =>
+      'Course line traced against the park\'s published map';
+
+  @override
+  String get parksNavigate => 'Navigate this course';
+
+  @override
+  String get parksBrowseLink => 'Park courses';
 }

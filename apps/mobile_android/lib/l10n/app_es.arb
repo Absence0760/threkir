@@ -2947,6 +2947,7 @@
   "segmentsPanelLeaderboardLoading": "Cargando…",
   "segmentsPanelLeaderboardEmptyFiltered": "Ningún esfuerzo coincide con este filtro: prueba a ampliarlo.",
   "segmentsPanelLeaderboardEmpty": "Aún no hay esfuerzos: sé el primero en correr este segmento.",
+  "segmentOldMatchNote": "Algunos intentos antiguos se midieron a la manera anterior, pasando cerca de la salida y la llegada en lugar de cruzar las líneas. Cada uno se vuelve a medir la próxima vez que su corredor abra la carrera.",
   "segmentsPanelCrownBanner": "Tienes esta corona: {label}.",
   "segmentsPanelRunnerFallback": "Corredor",
   "goalEditorTitleNew": "Nuevo objetivo",

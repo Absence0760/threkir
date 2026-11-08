@@ -17505,6 +17505,12 @@ abstract class AppLocalizations {
   /// **'No efforts yet — be the first to run this segment.'**
   String get segmentsPanelLeaderboardEmpty;
 
+  /// Note above a catalogue segment leaderboard timed by start and end lines, shown while some efforts on it were still measured by the old near-the-start-and-finish rule
+  ///
+  /// In en, this message translates to:
+  /// **'Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.'**
+  String get segmentOldMatchNote;
+
   /// Banner shown when the viewer holds the segment crown
   ///
   /// In en, this message translates to:

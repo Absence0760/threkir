@@ -5740,6 +5740,20 @@ class ApiClient {
     ];
   }
 
+  /// Whether any effort the viewer can see on [segmentId] was matched by the
+  /// circles (`global_segment_efforts.matched_by = 'zone'`). On a segment
+  /// timed by its lines that is an effort written before the line matcher,
+  /// waiting for its runner's next view to be re-matched (issue #1308).
+  /// Mirrors web `globalSegmentHasZoneEfforts`.
+  Future<bool> globalSegmentHasZoneEfforts(String segmentId) async {
+    final count = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .count(CountOption.exact)
+        .eq(GlobalSegmentEffortRow.colGlobalSegmentId, segmentId)
+        .eq(GlobalSegmentEffortRow.colMatchedBy, 'zone');
+    return count > 0;
+  }
+
   /// Block-guarded catalogue-segment leaderboard. Mirrors
   /// [fetchSegmentLeaderboardTiered] but calls `global_segment_leaderboard`
   /// (migration 20270411_001) — no per-route visibility branch, since the

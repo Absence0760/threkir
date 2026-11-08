@@ -4174,6 +4174,7 @@ export const messages = {
 	"segmentDetail.statSurface": "Piso",
 	"segmentDetail.leaderboard": "Classificação",
 	"segmentDetail.noEfforts": "Ainda sem tentativas — corra este segmento para ser o primeiro no ranking.",
+	"segmentDetail.oldMatchNote": "Algumas tentativas mais antigas foram medidas do jeito antigo, passando perto da largada e da chegada em vez de cruzar as linhas. Cada uma é medida de novo na próxima vez que o corredor abrir a corrida.",
 	"settingsGear.title": "Equipamento",
 	"settingsGear.tagline": "Acompanhe tênis e bicicletas. Marque corridas com o equipamento usado na página de detalhes; metas de aposentadoria avisam quando um par passa da quilometragem planejada.",
 	"settingsGear.tabShoes": "Tênis",

@@ -4170,6 +4170,7 @@ export const messages = {
 	"segmentDetail.statSurface": "路面",
 	"segmentDetail.leaderboard": "ランキング",
 	"segmentDetail.noEfforts": "まだ記録がありません。このセグメントを走って先頭に立ちましょう。",
+	"segmentDetail.oldMatchNote": "一部の古い記録は、ラインを横切るのではなくスタートとフィニッシュの近くを通過したかどうかで測る従来の方法で計測されています。各記録は、そのランナーが次にランを開いたときに計測し直されます。",
 	"settingsGear.title": "ギア",
 	"settingsGear.tagline": "シューズとバイクを管理。ラン詳細ページで使用したギアをランに紐づけられます。引退目標を設定すると、予定走行距離を超えたときに知らせます。",
 	"settingsGear.tabShoes": "シューズ",

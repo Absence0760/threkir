@@ -4188,6 +4188,7 @@ export const en = {
 	"segmentDetail.statSurface": "Surface",
 	"segmentDetail.leaderboard": "Leaderboard",
 	"segmentDetail.noEfforts": "No efforts yet — run this segment to be the first on the board.",
+	"segmentDetail.oldMatchNote": "Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.",
 	"settingsGear.title": "Gear",
 	"settingsGear.tagline": "Track shoes and bikes. Tag runs with the gear you wore on the run-detail page; retirement targets nudge you when a pair crosses its planned mileage.",
 	"settingsGear.tabShoes": "Shoes",

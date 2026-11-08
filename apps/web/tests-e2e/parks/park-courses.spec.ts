@@ -102,6 +102,7 @@ async function plantEffort(p: Planted, userId: string, timeS: number, startedAt:
 		user_id: userId,
 		time_seconds: timeS,
 		started_at: startedAt.toISOString(),
+		matched_by: 'gate',
 	});
 	if (error) throw error;
 }
@@ -192,18 +193,20 @@ test.describe('park courses', () => {
 
 				const start = Date.parse('2026-05-01T08:00:00Z');
 				const track: { lat: number; lng: number; ts: string }[] = [];
-				for (let d = 0; d <= 900; d += 20) {
+				// From 40 m before the start line, which the course inherits from
+				// its segment (decisions § 2402) and the run must cross.
+				for (let d = -40; d <= 900; d += 20) {
 					track.push({
 						lat: BASE_LAT + d / M_PER_DEG_LAT,
 						lng: LNG,
-						ts: new Date(start + (d / 2) * 1000).toISOString(),
+						ts: new Date(start + ((d + 40) / 2) * 1000).toISOString(),
 					});
 				}
 				runId = await insertRun({
 					user_id: USER_A.id,
 					started_at: '2026-05-01T08:00:00Z',
-					duration_s: 450,
-					distance_m: 900,
+					duration_s: 470,
+					distance_m: 940,
 					is_public: true,
 					track,
 				});

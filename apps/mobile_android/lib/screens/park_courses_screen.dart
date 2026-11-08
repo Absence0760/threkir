@@ -25,6 +25,7 @@ import 'help_screen.dart' show openGuide;
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
+import '../widgets/old_match_note.dart';
 import '../widgets/track_preview.dart';
 
 /// Park courses (issue #1313, decisions § 2383): parks by region. Mobile
@@ -672,6 +673,8 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
             ],
           ),
         const SizedBox(height: 8),
+        if (_kind == ParkBoardKind.fastest && !_boardFailed)
+          OldMatchNote(api: api, segment: widget.course.segment),
         ..._boardBody(theme, l10n, api.userId),
       ],
     );

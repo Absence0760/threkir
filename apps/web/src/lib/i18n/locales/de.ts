@@ -4175,6 +4175,7 @@ export const messages = {
 	"segmentDetail.statSurface": "Untergrund",
 	"segmentDetail.leaderboard": "Bestenliste",
 	"segmentDetail.noEfforts": "Noch keine Versuche – laufe dieses Segment und sei die Erste auf der Liste.",
+	"segmentDetail.oldMatchNote": "Einige ältere Versuche wurden noch auf die alte Art gemessen: durch Vorbeilaufen nahe Start und Ziel statt durch Überqueren der Linien. Jeder wird neu gemessen, sobald die Person den Lauf das nächste Mal öffnet.",
 	"settingsGear.title": "Ausrüstung",
 	"settingsGear.tagline": "Verfolge Schuhe und Räder. Markiere Läufe auf der Laufdetailseite mit der getragenen Ausrüstung; Verschleißziele erinnern dich, wenn ein Paar seine geplante Laufleistung überschreitet.",
 	"settingsGear.tabShoes": "Schuhe",

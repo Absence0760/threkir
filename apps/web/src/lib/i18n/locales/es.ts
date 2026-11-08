@@ -4175,6 +4175,7 @@ export const messages = {
 	"segmentDetail.statSurface": "Superficie",
 	"segmentDetail.leaderboard": "Clasificación",
 	"segmentDetail.noEfforts": "Aún no hay intentos: corre este segmento y sé el primero en la tabla.",
+	"segmentDetail.oldMatchNote": "Algunos intentos antiguos se midieron a la manera anterior, pasando cerca de la salida y la llegada en lugar de cruzar las líneas. Cada uno se vuelve a medir la próxima vez que su corredor abra la carrera.",
 	"settingsGear.title": "Equipamiento",
 	"settingsGear.tagline": "Lleva el control de zapatillas y bicicletas. Etiqueta carreras con el equipo que usaste desde la página de detalle; los objetivos de retiro te avisan cuando un par supera su kilometraje previsto.",
 	"settingsGear.tabShoes": "Zapatillas",

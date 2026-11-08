@@ -18,7 +18,8 @@ import { readRows } from '../fixtures/db-read';
  *      role) — a straight 800 m line in rural Victoria, far from every
  *      seeded geometry so no other catalogue row matches the track.
  *   2. USER_A seeds a ROUTE-LESS run whose timed track traces that line at
- *      a constant 2.0 m/s → a deterministic 400 s (6:40) effort. No effort
+ *      a constant 2.0 m/s, from just before its start line through its end
+ *      line → a deterministic 400 s (6:40) effort. No effort
  *      exists yet; the track is the only input.
  *   3. USER_A opens /runs/[id]. The Segments section renders even though
  *      route_id is null; RunSegmentEfforts walks the track via
@@ -49,9 +50,11 @@ function buildTrack(opts: {
 }): { lat: number; lng: number; ts: string }[] {
 	const { baseLat, lng, lengthM, stepM, speedMps, startedAtMs } = opts;
 	const pts: { lat: number; lng: number; ts: string }[] = [];
-	for (let d = 0; d <= lengthM + 1e-6; d += stepM) {
+	// Two steps before the segment start: the segment is timed by its start
+	// line (decisions § 2402), which a track starting on it never crosses.
+	for (let d = -2 * stepM; d <= lengthM + 1e-6; d += stepM) {
 		const lat = baseLat + d / M_PER_DEG_LAT;
-		const ts = new Date(startedAtMs + (d / speedMps) * 1000).toISOString();
+		const ts = new Date(startedAtMs + ((d + 2 * stepM) / speedMps) * 1000).toISOString();
 		pts.push({ lat, lng, ts });
 	}
 	return pts;

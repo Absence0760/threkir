@@ -18,6 +18,7 @@
 	import Avatar from '#lib/components/Avatar.svelte';
 	import RunMap from '#lib/components/RunMap.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
+	import OldMatchNote from '#lib/components/OldMatchNote.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
@@ -219,6 +220,8 @@
 					</button>
 				{/if}
 			</div>
+
+			<OldMatchNote {segment} />
 
 			{#if boardFailed}
 				<p class="muted small board-error" role="alert" data-testid="segment-board-error">

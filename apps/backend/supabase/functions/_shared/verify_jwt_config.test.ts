@@ -23,6 +23,9 @@ const ANON_REACHABLE = [
   'race-listings-sweep',
   'refresh-tokens',
   'revenuecat-webhook',
+  // The job worker's server key is not a JWT on new-format projects; the key is
+  // compared in-handler against the project's own (segment-match/lib.ts).
+  'segment-match',
   'strava-webhook',
   'stripe-events-webhook',
 ].sort()

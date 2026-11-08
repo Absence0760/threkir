@@ -3253,9 +3253,9 @@
   },
   {
     "id": "park-courses",
-    "lang": "en",
-    "title": "Park courses: checkpoints, seasons and the boards",
-    "summary": "How a park course times your run, why every checkpoint counts, when a season starts, and how the Fastest and Most completions boards rank people.",
+    "lang": "pt-PT",
+    "title": "Percursos de parques: pontos de controlo, épocas e classificações",
+    "summary": "Como um percurso de parque cronometra a sua corrida, porque conta cada ponto de controlo, quando começa uma época e como ordenam as classificações Mais rápidos e Mais conclusões.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3273,90 +3273,90 @@
     ],
     "sections": [
       {
-        "heading": "What a park course is",
+        "heading": "O que é um percurso de parque",
         "blocks": [
           {
             "type": "p",
-            "text": "A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under [[route:/parks|Park courses]]."
+            "text": "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em [[route:/parks|Percursos de parques]]."
           },
           {
             "type": "list",
             "items": [
-              "It is a time trial, not a race. The trail stays open to everyone and nobody marshals it, so follow the park's rules and give way to other people on the trail.",
-              "Each course page shows the distance, elevation gain, shape, surface and difficulty, where the course line came from, and whether the course is open.",
-              "Select **Navigate this course** to follow the course as a route. It isn't offered while the course is closed."
+              "É um contrarrelógio, não uma prova. O trilho continua aberto a todos e ninguém o controla, por isso cumpra as regras do parque e dê passagem às outras pessoas no trilho.",
+              "Cada página de percurso mostra a distância, o desnível positivo, o formato, o piso e a dificuldade, de onde vem a linha do percurso e se está aberto.",
+              "Selecione **Navegar neste percurso** para seguir o percurso como uma rota. A opção não aparece enquanto o percurso estiver fechado."
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "A closed course keeps its times and boards, but please don't run it until it reopens. The page shows when its status was last checked."
+            "text": "Um percurso fechado mantém os tempos e as classificações, mas não o corra até reabrir. A página mostra quando o estado foi verificado pela última vez."
           }
         ]
       },
       {
-        "heading": "Checkpoints: why shortcuts never count",
+        "heading": "Pontos de controlo: porque é que os atalhos nunca contam",
         "blocks": [
           {
             "type": "p",
-            "text": "Besides the start and the finish, a course can have checkpoints along the way. Your run is only timed when it passes every checkpoint, in order, between the start and the finish. A run that cuts a corner, skips a switchback or takes a path across the middle misses a checkpoint and gets no time."
+            "text": "Além da partida e da chegada, um percurso pode ter pontos de controlo pelo caminho. A sua corrida só é cronometrada se passar por todos os pontos de controlo, pela ordem, entre a partida e a chegada. Uma corrida que corta uma curva, salta um ziguezague ou atravessa pelo meio falha um ponto de controlo e não obtém tempo."
           },
           {
             "type": "p",
-            "text": "Stay on the marked trail. Cutting a trail damages it, and parks treat it as a breach of their rules."
+            "text": "Mantenha-se no trilho marcado. Cortar caminho danifica o trilho, e os parques consideram-no uma infração às suas regras."
           }
         ]
       },
       {
-        "heading": "Seasons follow the park's clock",
+        "heading": "As épocas seguem o relógio do parque",
         "blocks": [
           {
             "type": "p",
-            "text": "A season is a calendar year in the park's own time zone, not yours. The boards start again at midnight on 1 January where the park is."
+            "text": "Uma época é um ano civil no fuso horário do parque, não no seu. As classificações recomeçam à meia-noite de 1 de janeiro onde o parque fica."
           },
           {
             "type": "p",
-            "text": "For example, a run that starts at 22:00 on 31 December in a Virginia park counts for that year, even if your phone is set to a time zone where it is already 1 January."
+            "text": "Por exemplo, uma corrida que começa às 22:00 de 31 de dezembro num parque da Virgínia conta para esse ano, mesmo que o seu telemóvel esteja num fuso horário em que já é 1 de janeiro."
           }
         ]
       },
       {
-        "heading": "The Fastest board",
+        "heading": "A classificação Mais rápidos",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Fastest** ranks each runner by their best time on the course. You appear once, with your best run.",
-              "It shows this year by default. Select **All time** for the best times ever.",
-              "Filter by gender or age band. The age filter only includes runners who have agreed to share health data, so it may be shorter than the full board."
+              "**Mais rápidos** ordena cada corredor pelo seu melhor tempo no percurso. Aparece uma vez, com a sua melhor corrida.",
+              "Por predefinição mostra este ano. Selecione **Desde sempre** para ver os melhores tempos de sempre.",
+              "Filtre por género ou escalão etário. O filtro de idade só inclui quem aceitou partilhar dados de saúde, por isso pode ser mais curto do que a classificação completa."
             ]
           }
         ]
       },
       {
-        "heading": "The Most completions board",
+        "heading": "A classificação Mais conclusões",
         "blocks": [
           {
             "type": "p",
-            "text": "**Most completions** rewards the regulars. It counts the days you completed the course, in the park's time zone, so running several laps on one day counts as one."
+            "text": "**Mais conclusões** premeia os habituais. Conta os dias em que concluiu o percurso, no fuso horário do parque, por isso várias voltas no mesmo dia contam como uma."
           }
         ]
       },
       {
-        "heading": "Who appears on the boards",
+        "heading": "Quem aparece nas classificações",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "You need to be signed in to see the boards. Signed out, a course page still shows the course and a **Sign in** link.",
-              "A time from a run other people can't see isn't shown to them.",
-              "You won't see people you have blocked, and they won't see you."
+              "Tem de ter sessão iniciada para ver as classificações. Sem sessão iniciada, a página do percurso continua a mostrar o percurso e uma ligação **Iniciar sessão**.",
+              "O tempo de uma corrida que os outros não podem ver não lhes é mostrado.",
+              "Não vê as pessoas que bloqueou, e elas não o veem a si."
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Right now a run is checked against park courses when you open it on the website. If a run you expected doesn't show up on a board, open it once on the web."
+            "text": "Por agora, uma corrida é comparada com os percursos de parques quando a abre no site. Se uma corrida esperada não aparecer em nenhuma classificação, abra-a uma vez na web."
           }
         ]
       }

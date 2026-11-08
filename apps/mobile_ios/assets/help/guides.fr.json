@@ -3253,9 +3253,9 @@
   },
   {
     "id": "park-courses",
-    "lang": "en",
-    "title": "Park courses: checkpoints, seasons and the boards",
-    "summary": "How a park course times your run, why every checkpoint counts, when a season starts, and how the Fastest and Most completions boards rank people.",
+    "lang": "fr",
+    "title": "Parcours des parcs : points de contrôle, saisons et classements",
+    "summary": "Comment un parcours de parc chronomètre votre sortie, pourquoi chaque point de contrôle compte, quand commence une saison et comment se classent Plus rapides et Le plus de passages.",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3273,90 +3273,90 @@
     ],
     "sections": [
       {
-        "heading": "What a park course is",
+        "heading": "Qu'est-ce qu'un parcours de parc",
         "blocks": [
           {
             "type": "p",
-            "text": "A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under [[route:/parks|Park courses]]."
+            "text": "Un parcours de parc est un parcours de contre-la-montre fixe sur un sentier d'un parc d'État ou d'un parc national. Il n'y a ni organisateur ni jour de course : courez-le quand le parc est ouvert, et une sortie qui couvre tout le parcours est chronométrée. Retrouvez-les dans [[route:/parks|Parcours des parcs]]."
           },
           {
             "type": "list",
             "items": [
-              "It is a time trial, not a race. The trail stays open to everyone and nobody marshals it, so follow the park's rules and give way to other people on the trail.",
-              "Each course page shows the distance, elevation gain, shape, surface and difficulty, where the course line came from, and whether the course is open.",
-              "Select **Navigate this course** to follow the course as a route. It isn't offered while the course is closed."
+              "C'est un contre-la-montre, pas une course. Le sentier reste ouvert à tous et personne ne l'encadre : respectez le règlement du parc et cédez le passage aux autres usagers du sentier.",
+              "Chaque page de parcours indique la distance, le dénivelé positif, la forme, le revêtement et la difficulté, l'origine du tracé et si le parcours est ouvert.",
+              "Sélectionnez **Suivre ce parcours** pour suivre le parcours comme un itinéraire. Cette option n'est pas proposée tant que le parcours est fermé."
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "A closed course keeps its times and boards, but please don't run it until it reopens. The page shows when its status was last checked."
+            "text": "Un parcours fermé garde ses temps et ses classements, mais merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois."
           }
         ]
       },
       {
-        "heading": "Checkpoints: why shortcuts never count",
+        "heading": "Points de contrôle : pourquoi les raccourcis ne comptent jamais",
         "blocks": [
           {
             "type": "p",
-            "text": "Besides the start and the finish, a course can have checkpoints along the way. Your run is only timed when it passes every checkpoint, in order, between the start and the finish. A run that cuts a corner, skips a switchback or takes a path across the middle misses a checkpoint and gets no time."
+            "text": "En plus du départ et de l'arrivée, un parcours peut avoir des points de contrôle en chemin. Votre sortie n'est chronométrée que si elle passe par chaque point de contrôle, dans l'ordre, entre le départ et l'arrivée. Une sortie qui coupe un virage, saute un lacet ou traverse par le milieu manque un point de contrôle et n'obtient pas de temps."
           },
           {
             "type": "p",
-            "text": "Stay on the marked trail. Cutting a trail damages it, and parks treat it as a breach of their rules."
+            "text": "Restez sur le sentier balisé. Couper un sentier l'abîme, et les parcs le considèrent comme une infraction à leur règlement."
           }
         ]
       },
       {
-        "heading": "Seasons follow the park's clock",
+        "heading": "Les saisons suivent l'heure du parc",
         "blocks": [
           {
             "type": "p",
-            "text": "A season is a calendar year in the park's own time zone, not yours. The boards start again at midnight on 1 January where the park is."
+            "text": "Une saison est une année civile dans le fuseau horaire du parc, pas le vôtre. Les classements repartent à zéro à minuit le 1er janvier là où se trouve le parc."
           },
           {
             "type": "p",
-            "text": "For example, a run that starts at 22:00 on 31 December in a Virginia park counts for that year, even if your phone is set to a time zone where it is already 1 January."
+            "text": "Par exemple, une sortie qui démarre à 22 h le 31 décembre dans un parc de Virginie compte pour cette année-là, même si votre téléphone est réglé sur un fuseau où l'on est déjà le 1er janvier."
           }
         ]
       },
       {
-        "heading": "The Fastest board",
+        "heading": "Le classement Plus rapides",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Fastest** ranks each runner by their best time on the course. You appear once, with your best run.",
-              "It shows this year by default. Select **All time** for the best times ever.",
-              "Filter by gender or age band. The age filter only includes runners who have agreed to share health data, so it may be shorter than the full board."
+              "**Plus rapides** classe chaque coureur selon son meilleur temps sur le parcours. Vous apparaissez une seule fois, avec votre meilleure sortie.",
+              "Il affiche cette année par défaut. Sélectionnez **Depuis toujours** pour les meilleurs temps de tous les temps.",
+              "Filtrez par genre ou par tranche d'âge. Le filtre d'âge n'inclut que les coureurs qui ont accepté de partager leurs données de santé, il peut donc être plus court que le classement complet."
             ]
           }
         ]
       },
       {
-        "heading": "The Most completions board",
+        "heading": "Le classement Le plus de passages",
         "blocks": [
           {
             "type": "p",
-            "text": "**Most completions** rewards the regulars. It counts the days you completed the course, in the park's time zone, so running several laps on one day counts as one."
+            "text": "**Le plus de passages** récompense les habitués. Il compte les jours où vous avez bouclé le parcours, dans le fuseau horaire du parc : plusieurs tours le même jour comptent pour un."
           }
         ]
       },
       {
-        "heading": "Who appears on the boards",
+        "heading": "Qui apparaît dans les classements",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "You need to be signed in to see the boards. Signed out, a course page still shows the course and a **Sign in** link.",
-              "A time from a run other people can't see isn't shown to them.",
-              "You won't see people you have blocked, and they won't see you."
+              "Vous devez être connecté pour voir les classements. Sans connexion, une page de parcours affiche quand même le parcours et un lien **Se connecter**.",
+              "Le temps d'une sortie que les autres ne peuvent pas voir ne leur est pas montré.",
+              "Vous ne voyez pas les personnes que vous avez bloquées, et elles ne vous voient pas."
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Right now a run is checked against park courses when you open it on the website. If a run you expected doesn't show up on a board, open it once on the web."
+            "text": "Pour l'instant, une sortie est comparée aux parcours des parcs quand vous l'ouvrez sur le site web. Si une sortie attendue n'apparaît dans aucun classement, ouvrez-la une fois sur le web."
           }
         ]
       }

@@ -3253,9 +3253,9 @@
   },
   {
     "id": "park-courses",
-    "lang": "en",
-    "title": "Park courses: checkpoints, seasons and the boards",
-    "summary": "How a park course times your run, why every checkpoint counts, when a season starts, and how the Fastest and Most completions boards rank people.",
+    "lang": "ja",
+    "title": "公園コース：チェックポイント、シーズン、ボード",
+    "summary": "公園コースがランをどう計測するか、チェックポイントがなぜ大切か、シーズンがいつ始まるか、そして「最速」と「完走回数」のボードの順位づけを説明します。",
     "kind": "explainer",
     "category": "running",
     "audience": [
@@ -3273,90 +3273,90 @@
     ],
     "sections": [
       {
-        "heading": "What a park course is",
+        "heading": "公園コースとは",
         "blocks": [
           {
             "type": "p",
-            "text": "A park course is a fixed time-trial course on a trail in a state or national park. There is no organiser and no race day: run it whenever the park is open, and a run that covers the whole course is timed against it. Find them under [[route:/parks|Park courses]]."
+            "text": "公園コースは、州立公園や国立公園のトレイルに設けられた固定のタイムトライアルコースです。主催者も大会当日もありません。公園が開いていればいつでも走れて、コース全体を走ったランにタイムがつきます。[[route:/parks|公園コース]]から探せます。"
           },
           {
             "type": "list",
             "items": [
-              "It is a time trial, not a race. The trail stays open to everyone and nobody marshals it, so follow the park's rules and give way to other people on the trail.",
-              "Each course page shows the distance, elevation gain, shape, surface and difficulty, where the course line came from, and whether the course is open.",
-              "Select **Navigate this course** to follow the course as a route. It isn't offered while the course is closed."
+              "これはレースではなく、タイムトライアルです。トレイルは誰にでも開かれていて、誘導や監視をする人はいません。公園のルールに従い、トレイルではほかの人に道を譲ってください。",
+              "各コースのページには、距離、獲得標高、形状、路面、難易度、コースのラインの出典、そしてコースが開いているかどうかが表示されます。",
+              "**このコースをナビ**を選ぶと、コースをルートとしてたどれます。コースが閉鎖中のときは表示されません。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "A closed course keeps its times and boards, but please don't run it until it reopens. The page shows when its status was last checked."
+            "text": "閉鎖中のコースもタイムとボードは残りますが、再開するまでは走らないでください。ページには、状況が最後に確認された日が表示されます。"
           }
         ]
       },
       {
-        "heading": "Checkpoints: why shortcuts never count",
+        "heading": "チェックポイント：近道が決して認められない理由",
         "blocks": [
           {
             "type": "p",
-            "text": "Besides the start and the finish, a course can have checkpoints along the way. Your run is only timed when it passes every checkpoint, in order, between the start and the finish. A run that cuts a corner, skips a switchback or takes a path across the middle misses a checkpoint and gets no time."
+            "text": "コースには、スタートとフィニッシュのほかに途中のチェックポイントがある場合があります。ランにタイムがつくのは、スタートからフィニッシュまでの間にすべてのチェックポイントを順番どおりに通過したときだけです。角を切る、つづら折りを飛ばす、真ん中を横切るといったランはチェックポイントを外れ、タイムがつきません。"
           },
           {
             "type": "p",
-            "text": "Stay on the marked trail. Cutting a trail damages it, and parks treat it as a breach of their rules."
+            "text": "標識のあるトレイルから外れないでください。ショートカットはトレイルを傷め、公園はそれをルール違反として扱います。"
           }
         ]
       },
       {
-        "heading": "Seasons follow the park's clock",
+        "heading": "シーズンは公園の時計に従う",
         "blocks": [
           {
             "type": "p",
-            "text": "A season is a calendar year in the park's own time zone, not yours. The boards start again at midnight on 1 January where the park is."
+            "text": "シーズンは、あなたではなく公園のタイムゾーンでの暦年です。ボードは、公園のある場所の 1 月 1 日午前 0 時にリセットされます。"
           },
           {
             "type": "p",
-            "text": "For example, a run that starts at 22:00 on 31 December in a Virginia park counts for that year, even if your phone is set to a time zone where it is already 1 January."
+            "text": "たとえば、バージニア州の公園で 12 月 31 日 22:00 にスタートしたランは、スマートフォンがすでに 1 月 1 日になっているタイムゾーンに設定されていても、その年のランとして数えられます。"
           }
         ]
       },
       {
-        "heading": "The Fastest board",
+        "heading": "最速ボード",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Fastest** ranks each runner by their best time on the course. You appear once, with your best run.",
-              "It shows this year by default. Select **All time** for the best times ever.",
-              "Filter by gender or age band. The age filter only includes runners who have agreed to share health data, so it may be shorter than the full board."
+              "**最速**は、各ランナーをこのコースでのベストタイムで順位づけします。あなたはベストのランで一度だけ載ります。",
+              "初期表示は今年です。歴代のベストタイムを見るには**全期間**を選びます。",
+              "性別や年齢層で絞り込めます。年齢の絞り込みには健康データの共有に同意したランナーだけが含まれるため、全体のボードより短くなることがあります。"
             ]
           }
         ]
       },
       {
-        "heading": "The Most completions board",
+        "heading": "完走回数ボード",
         "blocks": [
           {
             "type": "p",
-            "text": "**Most completions** rewards the regulars. It counts the days you completed the course, in the park's time zone, so running several laps on one day counts as one."
+            "text": "**完走回数**は常連を称えるボードです。公園のタイムゾーンでコースを完走した日数を数えるので、同じ日に何周しても 1 日として数えます。"
           }
         ]
       },
       {
-        "heading": "Who appears on the boards",
+        "heading": "ボードに載る人",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "You need to be signed in to see the boards. Signed out, a course page still shows the course and a **Sign in** link.",
-              "A time from a run other people can't see isn't shown to them.",
-              "You won't see people you have blocked, and they won't see you."
+              "ボードを見るにはサインインが必要です。サインインしていなくても、コースのページにはコースと**サインイン**のリンクが表示されます。",
+              "ほかの人が見られないランのタイムは、その人たちには表示されません。",
+              "あなたがブロックした人は表示されず、その人にもあなたは表示されません。"
             ]
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Right now a run is checked against park courses when you open it on the website. If a run you expected doesn't show up on a board, open it once on the web."
+            "text": "現在、ランはウェブサイトで開いたときに公園コースと照合されます。載るはずのランがボードに表示されない場合は、ウェブで一度そのランを開いてください。"
           }
         ]
       }

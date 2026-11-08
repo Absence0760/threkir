@@ -585,6 +585,8 @@
   "runMarkLapA11yHint": "Registra o parcial atual",
   "runCollapseStatsPanel": "Recolher painel de estatísticas",
   "runExpandStatsPanel": "Expandir painel de estatísticas",
+  "runStatsPageA11yLabel": "Página de estatísticas {page} de {total}",
+  "runStatsNextPageA11yHint": "Mostra as próximas estatísticas",
   "runRouteRemaining": "faltam {distance}",
   "runOffRoute": "Fora da rota — a {metres} m",
   "runPermissionRevoked": "Permissão de localização revogada",

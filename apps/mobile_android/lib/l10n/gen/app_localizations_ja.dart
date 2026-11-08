@@ -2054,6 +2054,14 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runExpandStatsPanel => '統計パネルを開く';
 
   @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return '統計ページ $page/$total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => '次の統計を表示します';
+
+  @override
   String runRouteRemaining(String distance) {
     return '残り $distance';
   }

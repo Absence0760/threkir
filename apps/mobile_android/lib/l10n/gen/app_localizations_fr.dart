@@ -2152,6 +2152,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runExpandStatsPanel => 'Agrandir le panneau de stats';
 
   @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return 'Page de stats $page sur $total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => 'Affiche les stats suivantes';
+
+  @override
   String runRouteRemaining(String distance) {
     return '$distance restant';
   }

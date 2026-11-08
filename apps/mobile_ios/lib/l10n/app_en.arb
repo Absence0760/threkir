@@ -2787,6 +2787,22 @@
   "@runExpandStatsPanel": {
     "description": "Screen-reader label for the drag handle when the stats panel is collapsed"
   },
+  "runStatsPageA11yLabel": "Stats page {page} of {total}",
+  "@runStatsPageA11yLabel": {
+    "description": "Screen-reader label for the paged row of live stat tiles on the recording panel; tapping or swiping it shows the next page",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "runStatsNextPageA11yHint": "Shows the next stats",
+  "@runStatsNextPageA11yHint": {
+    "description": "Screen-reader hint for the paged row of live stat tiles on the recording panel"
+  },
   "runRouteRemaining": "{distance} to go",
   "@runRouteRemaining": {
     "description": "Badge showing remaining distance to the end of the selected route",

@@ -388,6 +388,49 @@ test('global: tolerates start/end falling between run samples', () => {
 	assert.ok(Math.abs(eff!.time_seconds - 100) < 2);
 });
 
+test('checkpoints: a run passing every checkpoint in order matches', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [coordAt(100), coordAt(600)],
+		distance_m: 500,
+		checkpoints: [coordAt(250), coordAt(450)],
+	});
+	assert.notEqual(eff, null);
+	assert.ok(Math.abs(eff!.time_seconds - 100) < 1);
+});
+
+test('checkpoints: a checkpoint the run never passes refuses the match', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [coordAt(100), coordAt(600)],
+		distance_m: 500,
+		// ~1 km east of the track: the far side of a cut-through.
+		checkpoints: [{ lat: 37.0 + 350 / 111_320, lng: -121.988 }],
+	});
+	assert.equal(eff, null);
+});
+
+test('checkpoints: checkpoints passed out of order refuse the match', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [coordAt(100), coordAt(600)],
+		distance_m: 500,
+		checkpoints: [coordAt(450), coordAt(250)],
+	});
+	assert.equal(eff, null);
+});
+
+test('checkpoints: a checkpoint outside the start-end window refuses the match', () => {
+	const track = straightTrack({ points: 200, stepM: 5, stepS: 1 });
+	const eff = computeGlobalSegmentEffort(track, {
+		points: [coordAt(100), coordAt(600)],
+		distance_m: 500,
+		// On the track, but after the end crossing.
+		checkpoints: [coordAt(800)],
+	});
+	assert.equal(eff, null);
+});
+
 // ─── computeGlobalSegmentEfforts (catalogue sweep) ───
 
 /**

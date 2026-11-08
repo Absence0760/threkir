@@ -134,6 +134,12 @@ export interface GlobalSegmentGeometry {
 	points: { lat: number; lng: number }[];
 	/** The catalogue's stored length in metres — the end-to-end guard. */
 	distance_m: number;
+	/** Ordered points the run must also pass, in order, within the match
+	 *  tolerance between the start and end crossings (a park course's
+	 *  `checkpoints`, decisions § 2383). The 25% length guard alone lets a
+	 *  runner cut a fifth off an out-and-back or take a cut-through on a
+	 *  trail network; a checkpoint on the far side of the cut refuses it. */
+	checkpoints?: { lat: number; lng: number }[];
 }
 
 /**
@@ -251,10 +257,41 @@ function scoreAgainstTrack(
 	// mistaken for running the segment.
 	if (Math.abs(dEnd - dStart - segment.distance_m) / segment.distance_m > 0.25) return null;
 
+	if (!passesCheckpoints(track, segment.checkpoints, startIdx, endIdx, toleranceM)) return null;
+
 	return effortFromIndex(track, index, {
 		start_distance_m: dStart,
 		end_distance_m: dEnd,
 	});
+}
+
+/**
+ * Whether the track passes every checkpoint, in order, between the start and
+ * end crossings. Each checkpoint takes the FIRST in-tolerance track index at
+ * or after the previous one's, so a checkpoint only reachable by doubling back
+ * past a later one fails rather than matching out of order.
+ */
+function passesCheckpoints(
+	track: TrackPoint[],
+	checkpoints: readonly { lat: number; lng: number }[] | undefined,
+	startIdx: number,
+	endIdx: number,
+	toleranceM: number,
+): boolean {
+	if (!checkpoints || checkpoints.length === 0) return true;
+	let cursor = startIdx;
+	for (const cp of checkpoints) {
+		let hit = -1;
+		for (let i = cursor; i <= endIdx; i++) {
+			if (haversineMetres(lineLat(track[i]), lineLng(track[i]), cp.lat, cp.lng) <= toleranceM) {
+				hit = i;
+				break;
+			}
+		}
+		if (hit < 0) return false;
+		cursor = hit;
+	}
+	return true;
 }
 
 /**

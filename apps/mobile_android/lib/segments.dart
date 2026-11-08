@@ -129,7 +129,18 @@ EffortResult? _effortFromIndex(
 class GlobalSegmentGeometry {
   final List<Waypoint> points;
   final double distanceM;
-  const GlobalSegmentGeometry({required this.points, required this.distanceM});
+
+  /// Ordered points the run must also pass, in order, within the match
+  /// tolerance between the start and end crossings (a park course's
+  /// `checkpoints`, decisions § 2383). The 25% length guard alone lets a
+  /// runner cut a fifth off an out-and-back or take a cut-through on a trail
+  /// network; a checkpoint on the far side of the cut refuses it.
+  final List<Waypoint> checkpoints;
+  const GlobalSegmentGeometry({
+    required this.points,
+    required this.distanceM,
+    this.checkpoints = const [],
+  });
 }
 
 /// Scores a run track against a free-standing catalogue-segment geometry
@@ -188,6 +199,34 @@ List<EffortResult?> computeGlobalSegmentEfforts(
     out[i] = _scoreAgainstTrack(track, index, segment, toleranceM);
   }
   return out;
+}
+
+/// Whether the track passes every checkpoint, in order, between the start and
+/// end crossings. Each checkpoint takes the FIRST in-tolerance track index at
+/// or after the previous one's, so a checkpoint only reachable by doubling
+/// back past a later one fails rather than matching out of order.
+bool _passesCheckpoints(
+  List<Waypoint> track,
+  List<Waypoint> checkpoints,
+  int startIdx,
+  int endIdx,
+  double toleranceM,
+) {
+  if (checkpoints.isEmpty) return true;
+  var cursor = startIdx;
+  for (final cp in checkpoints) {
+    var hit = -1;
+    for (var i = cursor; i <= endIdx; i++) {
+      if (haversineMetres(track[i].lineLat, track[i].lineLng, cp.lat, cp.lng) <=
+          toleranceM) {
+        hit = i;
+        break;
+      }
+    }
+    if (hit < 0) return false;
+    cursor = hit;
+  }
+  return true;
 }
 
 /// Latitude / longitude extent of a run track. Longitudes are unwrapped
@@ -313,6 +352,11 @@ EffortResult? _scoreAgainstTrack(
   // straight-line shortcut between distant endpoints isn't mistaken for
   // running the segment.
   if ((dEnd - dStart - segment.distanceM).abs() / segment.distanceM > 0.25) {
+    return null;
+  }
+
+  if (!_passesCheckpoints(
+      track, segment.checkpoints, startIdx, endIdx, toleranceM)) {
     return null;
   }
 

@@ -237,6 +237,64 @@ void main() {
     expect((eff!.timeSeconds - 100).abs() < 2, isTrue);
   });
 
+  test('checkpoints: a run passing every checkpoint in order matches', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        checkpoints: [coordAt(250), coordAt(450)],
+      ),
+    );
+    expect(eff, isNotNull);
+    expect((eff!.timeSeconds - 100).abs() < 1, isTrue);
+  });
+
+  test('checkpoints: a checkpoint the run never passes refuses the match', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        // ~1 km east of the track: the far side of a cut-through.
+        checkpoints: [
+          const Waypoint(lat: 37.0 + 350 / 111320, lng: -121.988),
+        ],
+      ),
+    );
+    expect(eff, isNull);
+  });
+
+  test('checkpoints: checkpoints passed out of order refuse the match', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        checkpoints: [coordAt(450), coordAt(250)],
+      ),
+    );
+    expect(eff, isNull);
+  });
+
+  test('checkpoints: a checkpoint outside the start-end window refuses the match',
+      () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        // On the track, but after the end crossing.
+        checkpoints: [coordAt(800)],
+      ),
+    );
+    expect(eff, isNull);
+  });
+
   // ─── computeGlobalSegmentEfforts (catalogue sweep) ───
 
   /// `n` catalogue geometries spread around the world, none near `coordAt`.

@@ -2496,6 +2496,17 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			name: "event_result_claims.json", table: schema.TableEventResultClaims,
 			filter: "claimant_id=eq." + uid, sel: "*",
 		},
+		// race_course_suggestions — the routes the subject suggested as a
+		// race's course, with their note and the review outcome (migration
+		// 20271114002381). reviewed_by is the organiser-club admin who ruled
+		// on it, kept as a recipient disclosure under Art 15(1)(c).
+		{name: "race_course_suggestions.json", table: schema.TableRaceCourseSuggestions, filter: uidEq, sel: "*"},
+		// race_listing_audit — the race claims, course links and reviews the
+		// subject made as a verified club's admin (migration 20271114002381).
+		{
+			name: "race_listing_audit.json", table: schema.TableRaceListingAudit,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
 		// user_blocks — the subject's own block list (who they blocked +
 		// why). audit-findings (2026-05-30) High.
 		{

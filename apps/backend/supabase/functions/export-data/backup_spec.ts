@@ -309,6 +309,24 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `claimant_id=eq.${uid}`,
 			select: '*',
 		},
+		// race_course_suggestions — the routes the subject suggested as a
+		// race's course, with their note and the review outcome (migration
+		// 20271114002381). `reviewed_by` is the organiser-club admin who ruled
+		// on it, kept as a recipient disclosure under Art 15(1)(c).
+		{
+			entry: 'race_course_suggestions.json',
+			table: 'race_course_suggestions',
+			filter: uidEq,
+			select: '*',
+		},
+		// race_listing_audit — the race claims, course links and reviews the
+		// subject made as a verified club's admin (migration 20271114002381).
+		{
+			entry: 'race_listing_audit.json',
+			table: 'race_listing_audit',
+			filter: `actor_id=eq.${uid}`,
+			select: '*',
+		},
 		// user_blocks — the subject's own block list. High.
 		{
 			entry: 'user_blocks.json',

@@ -66,6 +66,8 @@ const (
 	TableEventAttendees           = "event_attendees"
 	TableEventResults             = "event_results"
 	TableEventResultClaims        = "event_result_claims"
+	TableRaceCourseSuggestions    = "race_course_suggestions"
+	TableRaceListingAudit         = "race_listing_audit"
 	TableCheckpointCrossings      = "checkpoint_crossings"
 	TableEventExceptions          = "event_exceptions"
 	TableClubMembers              = "club_members"

@@ -83,6 +83,7 @@ const HOMES: Record<string, Home> = {
 	dashboard_training_load_expanded: {
 		none: "the /dashboard expander's own remembered state, not a control",
 	},
+	dashboard_hidden_cards: { page: 'display', via: 'DASHBOARD_HIDDEN_CARDS_KEY' },
 	coach_personality: { page: 'training' },
 	multi_modal_nav: { none: 'dormant: read by nothing since the § 63 amendment' },
 	voice_feedback_enabled: { page: 'recording', also: { devices: PER_DEVICE_OVERRIDE } },

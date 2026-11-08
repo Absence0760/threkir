@@ -81,29 +81,40 @@ List<InboxEntry<T>> inboxEntries<T>(
   return [...dms.sublist(0, index), row, ...dms.sublist(index)];
 }
 
-/// The inbox's conversations and its Archived list, each in the order given.
-/// A conversation is archived only while nothing newer than the archive
-/// arrived, which `dm_threads()` (migration 20271105000010) has already
-/// decided, so a reply is never filed away.
-({List<T> inbox, List<T> archived}) partitionArchived<T>(
+/// The inbox's conversations, its Archived list and its Requests list, each
+/// in the order given. A conversation is archived only while nothing newer
+/// than the archive arrived, which `dm_threads()` (migration 20271105000010)
+/// has already decided, so a reply is never filed away. A message request
+/// (migration 20271115002384) goes to Requests whatever else is set: it
+/// leaves that list only by being accepted, declined or answered.
+({List<T> inbox, List<T> archived, List<T> requests}) partitionArchived<T>(
   List<T> threads, {
   required bool Function(T) archived,
+  required bool Function(T) request,
 }) {
   final inbox = <T>[];
   final filed = <T>[];
+  final requests = <T>[];
   for (final t in threads) {
-    (archived(t) ? filed : inbox).add(t);
+    (request(t)
+            ? requests
+            : archived(t)
+                ? filed
+                : inbox)
+        .add(t);
   }
-  return (inbox: inbox, archived: filed);
+  return (inbox: inbox, archived: filed, requests: requests);
 }
 
 /// The nav badge: unread messages in conversations the runner has neither
-/// muted nor archived. A muted one is still listed with its own count.
+/// muted nor archived, and that are not unanswered requests. A muted one is
+/// still listed with its own count; a request is counted in Requests only.
 int unreadDmBadgeCount(
-    Iterable<({int unread, bool muted, bool archived})> threads) {
+    Iterable<({int unread, bool muted, bool archived, bool request})>
+        threads) {
   var total = 0;
   for (final t in threads) {
-    if (t.muted || t.archived) continue;
+    if (t.muted || t.archived || t.request) continue;
     total += t.unread < 0 ? 0 : t.unread;
   }
   return total;

@@ -131,6 +131,10 @@ class _MessagesScreenState extends State<MessagesScreen>
   /// The inbox is showing its Archived list.
   bool _showingArchived = false;
 
+  /// The inbox is showing its Requests list (message requests the runner has
+  /// not answered, migration 20271115002384).
+  bool _showingRequests = false;
+
   @override
   void initState() {
     super.initState();
@@ -159,6 +163,7 @@ class _MessagesScreenState extends State<MessagesScreen>
       _coach = null;
       _loadError = null;
       _showingArchived = false;
+      _showingRequests = false;
     });
     _hideReader.reset();
     if (userId == null) return;
@@ -404,6 +409,7 @@ class _MessagesScreenState extends State<MessagesScreen>
                 initialMuted: t.muted,
                 initialArchived: t.archived,
                 initialMarkedUnread: t.markedUnread,
+                initialRequest: t.request,
               ),
       ),
     );
@@ -455,16 +461,22 @@ class _MessagesScreenState extends State<MessagesScreen>
     final hides = DmPendingHides.instance;
     final readAt = _threadsReadAt;
     // Archived conversations sit in their own list until a newer message
-    // arrives (dm_threads() decides that). The Coach row belongs to the inbox.
+    // arrives (dm_threads() decides that), and message requests the runner
+    // has not answered sit in Requests. The Coach row belongs to the inbox.
     final split = partitionArchived<DmThread>(
       [
         for (final t in _threads)
           if (readAt == null || !hides.hides(t.conversationId, readAt)) t,
       ],
       archived: (t) => t.archived,
+      request: (t) => t.request,
     );
-    final showingArchived = _showingArchived && split.archived.isNotEmpty;
-    final entries = showingArchived
+    final showingRequests = _showingRequests && split.requests.isNotEmpty;
+    final showingArchived =
+        !showingRequests && _showingArchived && split.archived.isNotEmpty;
+    final entries = showingRequests
+        ? [for (final t in split.requests) DmInboxEntry<DmThread>(t)]
+        : showingArchived
         ? [for (final t in split.archived) DmInboxEntry<DmThread>(t)]
         : inboxEntries<DmThread>(
             split.inbox,
@@ -480,7 +492,7 @@ class _MessagesScreenState extends State<MessagesScreen>
     if (_loadError != null && _threads.isEmpty && !hasCoachRow) {
       return ErrorState(message: l10n.messagesLoadError, onRetry: _load);
     }
-    if (entries.isEmpty && split.archived.isEmpty) {
+    if (entries.isEmpty && split.archived.isEmpty && split.requests.isEmpty) {
       return EmptyState(
         icon: Icons.chat_bubble_outline,
         title: l10n.messagesEmptyTitle,
@@ -490,15 +502,30 @@ class _MessagesScreenState extends State<MessagesScreen>
     final tag = localeToTag(Localizations.localeOf(context));
     // With the Coach as the only row, the empty-inbox guidance still says how
     // a conversation with a person starts.
-    final Widget? header = showingArchived
+    final Widget? header = showingArchived || showingRequests
         ? ListTile(
             key: const ValueKey('inbox-back-to-inbox'),
             leading: const Icon(Icons.arrow_back),
             title: Text(l10n.messagesBackToInbox),
-            onTap: () => setState(() => _showingArchived = false),
+            onTap: () => setState(() {
+              _showingArchived = false;
+              _showingRequests = false;
+            }),
           )
         : null;
-    final Widget? archivedLink = !showingArchived && split.archived.isNotEmpty
+    final Widget? requestsLink = !showingArchived &&
+            !showingRequests &&
+            split.requests.isNotEmpty
+        ? ListTile(
+            key: const ValueKey('inbox-show-requests'),
+            leading: const Icon(Icons.person_add_alt),
+            title: Text(l10n.messagesRequestsCount(split.requests.length)),
+            onTap: () => setState(() => _showingRequests = true),
+          )
+        : null;
+    final Widget? archivedLink = !showingArchived &&
+            !showingRequests &&
+            split.archived.isNotEmpty
         ? ListTile(
             key: const ValueKey('inbox-show-archived'),
             leading: const Icon(Icons.archive_outlined),
@@ -506,7 +533,7 @@ class _MessagesScreenState extends State<MessagesScreen>
             onTap: () => setState(() => _showingArchived = true),
           )
         : null;
-    final footer = split.inbox.isEmpty && !showingArchived
+    final footer = split.inbox.isEmpty && !showingArchived && !showingRequests
         ? Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
@@ -528,6 +555,7 @@ class _MessagesScreenState extends State<MessagesScreen>
         itemCount: (header == null ? 0 : 1) +
             entries.length +
             (footer == null ? 0 : 1) +
+            (requestsLink == null ? 0 : 1) +
             (archivedLink == null ? 0 : 1),
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (context, i) {
@@ -544,6 +572,10 @@ class _MessagesScreenState extends State<MessagesScreen>
           i -= entries.length;
           if (footer != null) {
             if (i == 0) return footer;
+            i -= 1;
+          }
+          if (requestsLink != null) {
+            if (i == 0) return requestsLink;
             i -= 1;
           }
           return archivedLink!;

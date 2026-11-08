@@ -50,6 +50,7 @@
 		badgeStickerBody,
 		prStickerBody,
 		raceStickerBody,
+		courseStickerBody,
 		routeStickerBody,
 		streakStickerBody,
 		type PhotoLaid,
@@ -102,6 +103,9 @@
 		race?: { name: string; time: string | null } | null;
 		/// The single-run distance badge this run earned.
 		badge?: { badgeKey: string; tier: AchievementTier } | null;
+		/// The park course time this run set (`pickShareCourse`), with its
+		/// place on that season's board when it holds one.
+		course?: { name: string; park: string; timeS: number; season: number; rank: number | null } | null;
 	}
 
 	let {
@@ -121,6 +125,7 @@
 		streakDays = 0,
 		race = null,
 		badge = null,
+		course = null,
 	}: Props = $props();
 
 	const STYLES: { value: Style; label: MessageKey; icon: string }[] = [
@@ -156,6 +161,7 @@
 		pr: 'runShare.kindPr',
 		streak: 'runShare.kindStreak',
 		race: 'runShare.kindRace',
+		course: 'runShare.kindCourse',
 		badge: 'runShare.kindBadge',
 		route: 'runShare.layoutRoute',
 	};
@@ -195,6 +201,7 @@
 			records: records.length,
 			streakDays,
 			race: race !== null,
+			course: course !== null,
 			badge: badge !== null,
 			route: line.length >= 2,
 		}),
@@ -313,6 +320,20 @@
 				});
 			case 'race':
 				return raceStickerBody({ name: race!.name, finisher: m('runShare.raceFinisher'), time: race!.time }, hasRoute);
+			case 'course': {
+				const c = course!;
+				const nf = new Intl.NumberFormat(currentLocale(), { useGrouping: false });
+				return courseStickerBody(
+					{
+						kicker: m('runShare.courseKicker'),
+						name: c.name,
+						park: c.park,
+						time: formatShareDuration(c.timeS),
+						rank: c.rank != null ? m('runShare.courseRank', { rank: nf.format(c.rank), season: nf.format(c.season) }) : null,
+					},
+					hasRoute,
+				);
+			}
 			case 'badge': {
 				const t = tierFor(badge!.badgeKey, badge!.tier);
 				return badgeStickerBody({
@@ -386,7 +407,7 @@
 		const r = record;
 		const k = kind;
 		if (s === 'versus' || (s === 'photo' && !p)) return;
-		const occasion = k === 'stats' ? null : [k, r, streakDays, race, badge, splits.length];
+		const occasion = k === 'stats' ? null : [k, r, streakDays, race, course, badge, splits.length];
 		const key = JSON.stringify([s, l, s === 'photo' ? photoSeq : 0, s === 'pr' ? r : null, occasion]);
 		if (preview?.key === key) return;
 		const seq = ++renderSeq;

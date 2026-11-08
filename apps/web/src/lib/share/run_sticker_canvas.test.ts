@@ -18,6 +18,7 @@ import {
 	OCCASION_CONTENT_WIDTH,
 	SPLIT_ROW_TEXT,
 	badgeStickerBody,
+	courseStickerBody,
 	layoutBodyContent,
 	prStickerBody,
 	raceStickerBody,
@@ -207,6 +208,8 @@ const occasions: Record<string, StickerBody> = {
 	raceTimed: raceStickerBody({ name: 'Richmond Marathon', finisher: 'Finisher', time: '3:41:07' }, true),
 	raceUntimed: raceStickerBody({ name: 'Richmond Marathon', finisher: 'Finisher', time: null }, false),
 	badge: badgeStickerBody({ kicker: 'Badge earned', name: 'Marathon finisher', tier: 'Gold' }),
+	courseRanked: courseStickerBody({ kicker: 'Park course time', name: 'Beaver Lake Trail', park: 'Pocahontas State Park', time: '18:42', rank: '#3 in 2027' }, true),
+	courseUnranked: courseStickerBody({ kicker: 'Park course time', name: 'Beaver Lake Trail', park: 'Pocahontas State Park', time: '18:42', rank: null }, false),
 	route: routeStickerBody(),
 };
 
@@ -232,6 +235,15 @@ describe('occasion stickers', () => {
 		const untimed = texts(layoutBodyContent(occasions.raceUntimed, null, measure).ops);
 		assert.equal(untimed.find((t) => t.text === 'Finisher')?.ink, 'accent');
 		assert.equal(of(layoutBodyContent(occasions.raceUntimed, null, measure).ops, 'route').length, 0);
+	});
+
+	test('the course sticker heroes the time and adds the season place only when there is one', () => {
+		const ranked = texts(layoutBodyContent(occasions.courseRanked, null, measure).ops);
+		assert.equal(ranked.find((t) => t.text === '18:42')?.ink, 'accent');
+		assert.ok(ranked.some((t) => t.text === '#3 in 2027'));
+		const unranked = texts(layoutBodyContent(occasions.courseUnranked, null, measure).ops);
+		assert.equal(unranked.length, ranked.length - 1);
+		assert.equal(of(layoutBodyContent(occasions.courseUnranked, null, measure).ops, 'route').length, 0);
 	});
 
 	test('the route sticker draws the line alone', () => {

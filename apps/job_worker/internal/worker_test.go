@@ -112,6 +112,9 @@ type fakeBackend struct {
 	// map_match tests that do not care skip the step. Methods live in
 	// road_distance_test.go.
 	road *fakeRoadDistance
+	// segment_match state; nil fails every call. Methods live in
+	// handler_segment_match_test.go.
+	segmentMatch *fakeSegmentMatch
 
 	// downloadDelay, when non-zero, makes DownloadTrack block for
 	// that duration OR until the caller's context is cancelled.

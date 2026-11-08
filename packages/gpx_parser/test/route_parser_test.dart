@@ -7,6 +7,41 @@ import 'package:test/test.dart';
 const _equatorOneThousandthDeg = 111.1949;
 
 void main() {
+  // Issue #1297: a course file sampled from a DEM wobbles a metre or two
+  // between points, and the importer summed every rise (Honolulu's GPX read
+  // 267 m of climb against 139 m through a 3 m band). A 40 m climb then a
+  // flat, with a 2 m wobble on every other point, sums to 120 m raw. Mirrors
+  // apps/web/src/lib/integrations/import_elevation.test.ts.
+  group('imported climb goes through the noise band', () {
+    Map<String, dynamic> wobblyCourse() => {
+          'type': 'Feature',
+          'properties': {'name': 'Ele test'},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': [
+              for (var i = 0; i <= 100; i++)
+                [i * 0.001, 0, (i <= 40 ? 10 + i : 50) + (i.isOdd ? 2 : 0)],
+            ],
+          },
+        };
+
+    test('a wobbly 40 m climb reads 42 m, not the 120 m raw sum', () {
+      final r = RouteParser.fromGeoJson(wobblyCourse());
+      expect(r.elevationGainMetres, 42);
+    });
+
+    test('a rise inside the noise band is not climb', () {
+      const gpx = '''<?xml version="1.0"?>
+<gpx><trk><trkseg>
+  <trkpt lat="0.0" lon="0.0"><ele>100</ele></trkpt>
+  <trkpt lat="0.0" lon="0.001"><ele>102</ele></trkpt>
+  <trkpt lat="0.0" lon="0.002"><ele>100</ele></trkpt>
+  <trkpt lat="0.0" lon="0.003"><ele>102.5</ele></trkpt>
+</trkseg></trk></gpx>''';
+      expect(RouteParser.fromGpx(gpx).elevationGainMetres, 0);
+    });
+  });
+
   group('RouteParser.fromGpx', () {
     test('parses trkpt nodes with elevation, summing distance', () {
       const gpx = '''<?xml version="1.0"?>

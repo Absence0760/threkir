@@ -13,6 +13,7 @@
 import JSZip from 'jszip';
 import type { TrackPoint } from '../types';
 import { haversineMetres } from '../runs/run_stats';
+import { computeElevationGain } from '../routes/route_simplify';
 import { AppError } from '../core/app_error';
 
 export interface ImportedRoute {
@@ -423,10 +424,14 @@ export function geoJsonName(value: unknown, fallback: string): string {
 	return typeof value === 'string' && value.trim() !== '' ? value.trim() : fallback;
 }
 
+// A file's climb goes through the same noise band a recorded run's does: a
+// DEM-sampled course file (3DEP, SRTM) wobbles a metre or two between points,
+// and summing every rise read Honolulu's course as 267 m of climb against
+// 139 m (issue #1297). A finite pair can still overflow (`-1e308` then `1e308`
+// climbs by Infinity), so an infinite total reads as no climb known. The Dart
+// twin is `importedElevationGain` in packages/gpx_parser.
 function buildRoute(name: string, waypoints: TrackPoint[]): ImportedRoute {
 	let distance = 0;
-	let elevGain = 0;
-
 	for (let i = 1; i < waypoints.length; i++) {
 		distance += haversineMetres(
 			waypoints[i - 1].lat,
@@ -434,26 +439,13 @@ function buildRoute(name: string, waypoints: TrackPoint[]): ImportedRoute {
 			waypoints[i].lat,
 			waypoints[i].lng,
 		);
-		// Only count climb between two points that BOTH carry a real
-		// elevation. Coercing a missing reading to 0 (the old behaviour)
-		// fabricated a full descent-then-climb every time a single point
-		// lacked `<ele>`, inflating total gain. Mirrors the Dart twin's
-		// `prev != null && curr != null && curr > prev` guard.
-		const prevEle = waypoints[i - 1].ele;
-		const currEle = waypoints[i].ele;
-		// A finite pair can still overflow (`-1e308` then `1e308` climbs by
-		// Infinity), so the climb itself has to be finite to count — the Dart
-		// twin's `_buildRoute` skips the same pair.
-		if (typeof prevEle === 'number' && typeof currEle === 'number' && currEle > prevEle) {
-			const climb = currEle - prevEle;
-			if (Number.isFinite(climb)) elevGain += climb;
-		}
 	}
+	const gain = computeElevationGain(waypoints);
 
 	return {
 		name,
 		waypoints,
 		distance_m: Math.round(distance * 100) / 100,
-		elevation_m: elevGain > 0 ? Math.round(elevGain) : null,
+		elevation_m: Number.isFinite(gain) && gain > 0 ? Math.round(gain) : null,
 	};
 }

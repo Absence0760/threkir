@@ -107,3 +107,33 @@ test('GeoJSON import — a lat/lng written in the wrong order is refused, not ma
 		/no line-based routes/,
 	);
 });
+
+// Issue #1297: a course file sampled from a DEM wobbles a metre or two between
+// points, and the importer summed every rise (Honolulu's GPX read 267 m of
+// climb against 139 m through a 3 m band). A 40 m climb then a flat, with a
+// 2 m wobble on every other point, sums to 120 m raw. Mirrored by the
+// "imported climb goes through the noise band" case in
+// packages/gpx_parser/test/route_parser_test.dart.
+function wobblyCourse(): number[][] {
+	const coords: number[][] = [];
+	for (let i = 0; i <= 100; i++) {
+		const base = i <= 40 ? 10 + i : 50;
+		coords.push([i * 0.001, 0, base + (i % 2 === 1 ? 2 : 0)]);
+	}
+	return coords;
+}
+
+test('buildRoute — imported climb goes through the 3 m noise band, not a raw sum', async () => {
+	const routes = await parseRouteFile(geojsonFile(wobblyCourse()));
+	assert.equal(routes[0].elevation_m, 42);
+});
+
+test('buildRoute — a rise inside the noise band is not climb', async () => {
+	const routes = await parseRouteFile(geojsonFile([
+		[0, 0, 100],
+		[0, 0.001, 102],
+		[0, 0.002, 100],
+		[0, 0.003, 102.5],
+	]));
+	assert.equal(routes[0].elevation_m, null);
+});

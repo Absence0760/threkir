@@ -48,7 +48,7 @@
 -- ── Locks ────────────────────────────────────────────────────────────────
 --
 -- The CHECK swap takes a brief ACCESS EXCLUSIVE on notifications with no scan
--- (NOT VALID); 20271115002383 validates it in its own transaction. The table
+-- (NOT VALID); 20271115002386 validates it in its own transaction. The table
 -- is new and empty. The functions are catalogue-only.
 
 alter table notifications drop constraint notifications_kind_check;

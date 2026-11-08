@@ -65,6 +65,18 @@ If the database ever moves to an EU region, this flips back to `lhr`/`cdg` — a
 - 1 machine baseline. Add a second when the active set in `jobs.status='queued' AND scheduled_at <= now()` regularly exceeds ~50, or when concurrent live-spectator viewers regularly exceed ~500. (Per-room fan-out is in-process, so a second machine roughly halves the per-machine viewer load.)
 - `auto_start_machines = true`, `auto_stop_machines = false`. The worker is supposed to be always-on; auto-stop would just delay the next claim by the cold-start time. Live-hub WS subscribers also drop if the machine stops.
 
+### `segment_match` depends on an Edge Function
+
+The worker scores catalogue segments by POSTing each `segment_match` job to the
+`segment-match` Edge Function (decisions § 2393), at `SUPABASE_URL` with the
+worker's own server key, so it needs no new secret. Deploy the function (the
+`backend@` release deploys every function) before or with the worker build that
+carries the kind. A worker that runs ahead of it gets a 404 for each job, which
+fails the job; `select enqueue_segment_backfill('<segment>')` per catalogue
+segment rescores whatever was missed. A
+backfill batch can take longer than the shared 30 s client timeout, so the call
+has its own 150 s clock (`SegmentMatchTimeout`), inside the 5-minute job clock.
+
 ### `fly.toml`
 
 Lives at [`fly.toml`](fly.toml). Shape (matches the actual checked-in file — keep this snippet in sync if you edit it):

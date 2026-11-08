@@ -182,8 +182,8 @@ export function gateRouteRelation(gate: Gate, route: readonly GatePoint[]): Gate
 	};
 }
 
-/** How a race starts its clock (#1303; Scheduled GO and Self-timed arrive with #1306). */
-export type RaceStartMode = 'host_go' | 'scheduled_go' | 'self_timed';
+/** How a race session starts its clock (#1303; Scheduled GO and Self-timed arrive with #1306). */
+export type SessionStartMode = 'host_go' | 'scheduled_go' | 'self_timed';
 
 export type CourseGateWarning = 'far_from_route' | 'against_route' | 'self_cross' | 'start_required';
 
@@ -196,7 +196,7 @@ export function gateWarnings(input: {
 	gate: Gate | null;
 	route: readonly GatePoint[] | null;
 	selfCross: boolean;
-	mode: RaceStartMode;
+	mode: SessionStartMode;
 }): CourseGateWarning[] {
 	const out: CourseGateWarning[] = [];
 	if (input.gate === null) {
@@ -245,7 +245,7 @@ export interface PreflightIssue {
  *
  * A course with no route has nothing to measure an organiser line against.
  */
-export function racePreflight(courses: readonly PreflightCourse[], mode: RaceStartMode): PreflightIssue[] {
+export function racePreflight(courses: readonly PreflightCourse[], mode: SessionStartMode): PreflightIssue[] {
 	const selfTimed = mode === 'self_timed';
 	const out: PreflightIssue[] = [];
 	for (const c of courses) {

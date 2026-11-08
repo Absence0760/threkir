@@ -82,9 +82,9 @@ void _nearBearing(double actual, double expected, String what) {
 
 const _which = {'start': GateWhich.start, 'finish': GateWhich.finish};
 const _modes = {
-  'host_go': RaceStartMode.hostGo,
-  'scheduled_go': RaceStartMode.scheduledGo,
-  'self_timed': RaceStartMode.selfTimed,
+  'host_go': SessionStartMode.hostGo,
+  'scheduled_go': SessionStartMode.scheduledGo,
+  'self_timed': SessionStartMode.selfTimed,
 };
 const _warningWire = {
   CourseGateWarning.farFromRoute: 'far_from_route',

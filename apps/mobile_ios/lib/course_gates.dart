@@ -201,9 +201,9 @@ GateRouteRelation? gateRouteRelation(Gate gate, List<GatePoint> route) {
   );
 }
 
-/// How a race starts its clock (#1303; Scheduled GO and Self-timed arrive
-/// with #1306).
-enum RaceStartMode { hostGo, scheduledGo, selfTimed }
+/// How a race session starts its clock (#1303; Scheduled GO and Self-timed
+/// arrive with #1306).
+enum SessionStartMode { hostGo, scheduledGo, selfTimed }
 
 enum CourseGateWarning { farFromRoute, againstRoute, selfCross, startRequired }
 
@@ -214,11 +214,11 @@ List<CourseGateWarning> gateWarnings({
   required Gate? gate,
   required List<GatePoint>? route,
   required bool selfCross,
-  required RaceStartMode mode,
+  required SessionStartMode mode,
 }) {
   final out = <CourseGateWarning>[];
   if (gate == null) {
-    if (which == GateWhich.start && mode == RaceStartMode.selfTimed) {
+    if (which == GateWhich.start && mode == SessionStartMode.selfTimed) {
       out.add(CourseGateWarning.startRequired);
     }
     return out;
@@ -288,8 +288,8 @@ class PreflightIssue {
 ///
 /// A course with no route has nothing to measure an organiser line against.
 List<PreflightIssue> racePreflight(
-    List<PreflightCourse> courses, RaceStartMode mode) {
-  final selfTimed = mode == RaceStartMode.selfTimed;
+    List<PreflightCourse> courses, SessionStartMode mode) {
+  final selfTimed = mode == SessionStartMode.selfTimed;
   final hard = selfTimed ? PreflightSeverity.error : PreflightSeverity.warning;
   final out = <PreflightIssue>[];
   for (final c in courses) {

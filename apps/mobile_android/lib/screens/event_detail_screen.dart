@@ -12,7 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../column_limits.dart';
 import '../course_gates.dart'
-    show CourseGate, PreflightCourse, RaceStartMode, racePreflight;
+    show CourseGate, PreflightCourse, SessionStartMode, racePreflight;
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../calendar_intent.dart';
@@ -827,7 +827,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           selfCross: c.finishLineSelfCross,
           route: null,
         ),
-    ], RaceStartMode.hostGo);
+    ], SessionStartMode.hostGo);
     final names = {for (final c in courses) c.id: c.name};
     final go =
         await confirmRacePreflight(context, issues, (id) => names[id] ?? '');

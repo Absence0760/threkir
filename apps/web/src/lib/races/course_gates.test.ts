@@ -24,7 +24,7 @@ import {
 	type GateWhich,
 	type GatePoint,
 	type PreflightCourse,
-	type RaceStartMode,
+	type SessionStartMode,
 } from './course_gates';
 
 // The TS reader of fixtures/course_gates_cases.json, the case table the
@@ -179,7 +179,7 @@ test('gateWarnings', () => {
 			gate: c.gate === null ? null : gate(c.gate as Obj),
 			route: route(c.route),
 			selfCross: c.selfCross as boolean,
-			mode: c.mode as RaceStartMode,
+			mode: c.mode as SessionStartMode,
 		});
 		assert.deepEqual(got, c.expected, String(c.note));
 	}
@@ -195,13 +195,13 @@ test('racePreflight and preflightBlocks', () => {
 			selfCross: o.selfCross as boolean,
 			route: route(o.route),
 		}));
-		const got = racePreflight(courses, c.mode as RaceStartMode).map((i) => ({
+		const got = racePreflight(courses, c.mode as SessionStartMode).map((i) => ({
 			courseId: i.courseId,
 			code: i.code,
 			severity: i.severity,
 			which: i.which ?? null,
 		}));
 		assert.deepEqual(got, c.expected, String(c.note));
-		assert.equal(preflightBlocks(racePreflight(courses, c.mode as RaceStartMode)), c.blocks, String(c.note));
+		assert.equal(preflightBlocks(racePreflight(courses, c.mode as SessionStartMode)), c.blocks, String(c.note));
 	}
 });

@@ -7943,6 +7943,16 @@ export type Database = {
         Returns: string
       }
       publish_plan_to_library: { Args: { p_plan_id: string }; Returns: string }
+      race_course_review_queue: {
+        Args: never
+        Returns: {
+          listing_id: string
+          name: string
+          organiser_club_id: string
+          pending_count: number
+          race_date: string
+        }[]
+      }
       race_course_suggestions_for_review: {
         Args: { p_listing_id: string }
         Returns: {

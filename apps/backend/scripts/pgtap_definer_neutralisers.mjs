@@ -516,10 +516,11 @@ $neutralised$;`,
   [
     'global_segment_leaderboard',
     {
-      why: "the catalogue twin of `segment_leaderboard_tiered`: drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check, the club-membership gate, the shadow-hidden name masking and the `health_data_consent_at` requirement on the age band; keeps the segment id, the gender filter and the age arithmetic itself, which are the query the caller asked for",
+      why: "the catalogue twin of `segment_leaderboard_tiered`: drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check, the club-membership gate, the shadow-hidden name masking and the `health_data_consent_at` requirement on the age band; keeps the segment id, the gender filter, the age arithmetic itself and the park-timezone season (decisions § 2383), which are the query the caller asked for",
       sql: `create or replace function public.global_segment_leaderboard(
    p_segment_id uuid, p_gender text default null::text, p_age_band text default null::text,
-   p_limit integer default 50, p_club_id uuid default null::uuid)
+   p_limit integer default 50, p_club_id uuid default null::uuid,
+   p_season integer default null::integer)
  returns table(effort_id uuid, user_id uuid, run_id uuid, time_seconds integer,
                started_at timestamptz, display_name text, avatar_url text,
                gender text, age integer)
@@ -547,6 +548,12 @@ as $neutralised$
                       then split_part(p_age_band, '-', 2)::integer end)
       )
     )
+    and (
+      p_season is null
+      or extract(year from (se.started_at at time zone coalesce(
+           (select p.timezone from public.park_courses pc join public.parks p on p.id = pc.park_id
+             where pc.global_segment_id = p_segment_id), 'UTC')))::integer = p_season
+    )
     and ${mine('se')}
   order by se.user_id, se.time_seconds asc, se.started_at asc;
 $neutralised$;`,
@@ -565,6 +572,51 @@ $neutralised$;`,
                          true);`,
         probe: `select count(*) from global_segment_leaderboard(
                   '00000000-0000-0000-0000-0000000f0002'::uuid);`,
+      },
+    },
+  ],
+  [
+    'global_segment_completions',
+    {
+      why: 'the most-completions board beside `global_segment_leaderboard` (decisions § 2383): drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check and the shadow-hidden name masking; keeps the segment id, the park-timezone season and the distinct-local-day count, which are the query the caller asked for',
+      sql: `create or replace function public.global_segment_completions(
+   p_segment_id uuid, p_season integer default null::integer, p_limit integer default 50)
+ returns table(user_id uuid, completions integer, last_completed_at timestamptz,
+               display_name text, avatar_url text)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  with tz as (
+    select coalesce(
+      (select p.timezone from public.park_courses pc join public.parks p on p.id = pc.park_id
+        where pc.global_segment_id = p_segment_id), 'UTC') as v
+  )
+  select se.user_id,
+         count(distinct (se.started_at at time zone tz.v)::date)::integer,
+         max(se.started_at), max(up.display_name), max(up.avatar_url)
+  from public.global_segment_efforts se
+  cross join tz
+  join public.user_profiles up on up.id = se.user_id
+  where se.global_segment_id = p_segment_id
+    and (p_season is null
+         or extract(year from (se.started_at at time zone tz.v))::integer = p_season)
+    and ${mine('se')}
+  group by se.user_id;
+$neutralised$;`,
+      subject: 'global_segment_efforts se',
+      witness: {
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+                 values ('00000000-0000-0000-0000-0000000f0003', 'guard witness',
+                         '[{"lat":40.0,"lng":-73.0},{"lat":40.002,"lng":-73.0}]', 400, false);
+                insert into global_segment_efforts
+                       (global_segment_id, run_id, user_id, time_seconds, started_at)
+                 values ('00000000-0000-0000-0000-0000000f0003',
+                         (select id from runs order by id limit 1),
+                         (select user_id from runs order by id limit 1), 100, now());
+                select set_config('request.jwt.claims',
+                         json_build_object('sub', (select id from auth.users order by id desc limit 1))::text,
+                         true);`,
+        probe: `select count(*) from global_segment_completions(
+                  '00000000-0000-0000-0000-0000000f0003'::uuid);`,
       },
     },
   ],

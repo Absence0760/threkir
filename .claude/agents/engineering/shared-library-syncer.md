@@ -219,6 +219,7 @@ You enforce the "TS↔Dart parity helper" invariant. Several pure-logic modules 
 | `apps/web/src/lib/share/pr_card.ts` (`prCardEntries`, `prImprovementSeconds`, `formatPrImprovement`, `PR_BRACKETS`, `PR_BRACKET_METRES`) | `apps/mobile_android/lib/pr_card.dart` (`prCardEntries`, `prImprovementSeconds`, `formatPrImprovement`, `prBrackets`, `prBracketMetres`) | `share/pr_card.test.ts` ↔ `test/pr_card_test.dart` |
 | `apps/web/src/lib/training/load_chart_ticks.ts` | `apps/mobile_android/lib/widgets/training_load_chart.dart` (`trainingLoadTickStep` + `trainingLoadTickValues` only; the painter is not part of the pair) | `training/load_chart_ticks.test.ts` ↔ `test/training_load_chart_test.dart` (the `trainingLoadTickStep` + `trainingLoadTickValues` groups) |
 | `apps/web/src/lib/share/share_ref.ts` (partial: `parseShareRef`, `withShareRef`, and `TRACKED_SHARE_KINDS` ↔ `ShareStat.kinds` only; the sign-up, search and bot helpers are web-only and `ShareStat.fromRow` is phone-only) | `apps/mobile_android/lib/share_ref.dart` | `share/share_ref.test.ts` ↔ `test/share_ref_test.dart` |
+| `apps/web/src/lib/parks/park_courses.ts` | `apps/mobile_android/lib/park_courses.dart` | `parks/park_courses.test.ts` ↔ `test/park_courses_test.dart` |
 
 
 > The embedded factor tables `apps/web/src/lib/runs/age_grade_tables.ts` ↔ `apps/mobile_android/lib/age_grade_tables.dart` are part of the `age_grade` pair but are **generated** from `scripts/age_grade/` and stay identical by construction — never hand-edit them.

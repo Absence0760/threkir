@@ -1,6 +1,6 @@
 // AWS Lambda Function URL handler for the shared entity-SSR surface.
 //
-// One Lambda owning the eight public /share/* entity paths and the challenge
+// One Lambda owning the nine public /share/* entity paths and the challenge
 // card's /og/challenge PNG, all routed here by CloudFront (see the
 // share-entity behaviours in infra/modules/web-stack/main.tf):
 //   - /share/event/<id>        public club event   → SportsEvent/Event JSON-LD
@@ -11,6 +11,8 @@
 //   - /share/workout/<id>      public gym workout  → WebPage + breadcrumb
 //   - /share/plan/<id>         public-library plan → WebPage + breadcrumb
 //   - /share/challenge/<id>    public challenge    → Event JSON-LD
+//   - /share/course/<region>/<park>/<course>
+//                              park course         → SportsActivityLocation JSON-LD
 //   - /og/challenge/<id>.png   that challenge's og:image card
 //
 // Each renders at request time so an entity created/edited after the last
@@ -34,6 +36,7 @@ import { lookupSharedSession } from '../../../src/lib/share/share_session_lookup
 import { lookupSharedWorkout } from '../../../src/lib/share/share_workout_lookup';
 import { lookupSharedPlan } from '../../../src/lib/share/share_plan_lookup';
 import { lookupSharedChallenge } from '../../../src/lib/share/share_challenge_lookup';
+import { lookupSharedCourse } from '../../../src/lib/share/share_course_lookup';
 import { renderChallengeOgPng } from '../../../src/lib/share/og_challenge_png';
 import {
 	buildShareEventHead,
@@ -64,6 +67,10 @@ import {
 	buildShareChallengeHead,
 	renderShareChallengeHeadTags,
 } from '../../../src/lib/share/share_challenge_meta';
+import {
+	buildShareCourseHead,
+	renderShareCourseHeadTags,
+} from '../../../src/lib/share/share_course_meta';
 import { injectEntityHead } from '../../../src/lib/share/entity_spa_shell';
 import { siteOrigin } from '../../../src/lib/core/site_url';
 import { shareMethodRefusal } from '../../../src/lib/share/share_method_gate';
@@ -159,6 +166,20 @@ const ROUTES: Array<{
 			if (!challenge) return null;
 			return renderShareChallengeHeadTags(
 				buildShareChallengeHead({ id, challenge, siteUrl: c.siteUrl }),
+			);
+		},
+	},
+	{
+		// Three slugs, the in-app /parks/[region]/[park]/[course] path's own.
+		// Everything after the prefix is one key; the lookup splits and
+		// validates it, so a mangled path is the branded not-found rather
+		// than the JSON 404.
+		re: /^\/share\/course\/(.+?)\/?$/,
+		render: async (key, c) => {
+			const { course } = await lookupSharedCourse(key, c);
+			if (!course) return null;
+			return renderShareCourseHeadTags(
+				buildShareCourseHead({ key, course, siteUrl: c.siteUrl }),
 			);
 		},
 	},

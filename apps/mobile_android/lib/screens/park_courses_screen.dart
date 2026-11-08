@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         ChoiceChipOption,
@@ -10,14 +13,18 @@ import 'package:ui_kit/ui_kit.dart'
         StatGrid,
         StatTile;
 
+import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../park_courses.dart';
 import '../preferences.dart';
 import '../route_surface_label.dart';
+import '../share_sheet.dart';
 import '../widgets/error_state.dart';
+import 'help_screen.dart' show openGuide;
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
+import '../widgets/top_banner.dart';
 import '../widgets/track_preview.dart';
 
 /// Park courses (issue #1313, decisions § 2383): parks by region. Mobile
@@ -363,6 +370,51 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     }
   }
 
+  /// Shares the course line as GPX with its checkpoints and the geometry
+  /// credit, which has to travel with the file (OpenStreetMap's licence asks
+  /// for it on the exported work).
+  Future<void> _shareGpx(BuildContext anchor) async {
+    final l10n = AppLocalizations.of(context);
+    final course = widget.course.course;
+    final segment = widget.course.segment;
+    final park = widget.listing.park;
+    try {
+      final gpx = parkCourseGpx(
+        name: segment.name,
+        waypoints: [
+          for (final w in ApiClient.globalSegmentGeometry(segment))
+            (lat: w.lat, lng: w.lng, ele: w.elevationMetres),
+        ],
+        checkpoints: parseCourseCheckpoints(course.checkpoints),
+        attribution: courseAttribution(
+          course.geometrySource,
+          parkName: park.name,
+          parkWebsiteUrl: park.websiteUrl,
+        ),
+      );
+      final safe = segment.name
+          .replaceAll(RegExp(r'[^a-zA-Z0-9-_ ]'), '')
+          .replaceAll(RegExp(r'\s+'), '_');
+      final tmp = await getTemporaryDirectory();
+      final file = File('${tmp.path}/${safe.isEmpty ? 'course' : safe}.gpx');
+      await file.writeAsString(gpx);
+      if (!anchor.mounted) return;
+      await shareFilesFrom(
+        anchor,
+        files: [XFile(file.path, mimeType: 'application/gpx+xml')],
+        text: segment.name,
+      );
+    } catch (e) {
+      debugPrint('park course share GPX failed: $e');
+      if (mounted) {
+        showTopBanner(
+          context,
+          l10n.routeDetailShareFailed('GPX', friendlyError(l10n, e)),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -374,7 +426,17 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final elevation = segment.elevationM;
     final difficulty = courseDifficultyLabel(l10n, course.difficulty);
     return Scaffold(
-      appBar: AppBar(title: Text(segment.name)),
+      appBar: AppBar(
+        title: Text(segment.name),
+        actions: [
+          IconButton(
+            key: const Key('park-course-help'),
+            icon: const Icon(Icons.help_outline),
+            tooltip: l10n.infoTipReadGuide,
+            onPressed: () => openGuide(context, 'park-courses'),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
@@ -475,6 +537,20 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
               ),
             ],
           ),
+          if (geometry.length >= 2 && course.status != 'closed') ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Builder(
+                builder: (anchor) => OutlinedButton.icon(
+                  key: const Key('park-course-share-gpx'),
+                  onPressed: () => _shareGpx(anchor),
+                  icon: const Icon(Icons.ios_share),
+                  label: Text(l10n.parksShareGpx),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           _buildBoards(context, l10n),
         ],

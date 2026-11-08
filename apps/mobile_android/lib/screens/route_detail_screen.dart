@@ -31,6 +31,7 @@ import '../reactive_ble_watch_transport.dart';
 import '../route_describe_client.dart';
 import '../route_description.dart';
 import '../route_geometry.dart' show interpolateAlongRoute;
+import '../park_courses.dart';
 import '../route_gpx.dart';
 import '../official_distance.dart';
 import '../share_sheet.dart';
@@ -2125,6 +2126,32 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       }
     }
 
+    // A park course's route carries third-party geometry, so its exported
+    // file carries the credit. Park course routes are official routes, so a
+    // failed check refuses an official route's export rather than writing it
+    // uncredited, and lets any other route export as before (offline too).
+    GpxAttribution? attribution;
+    try {
+      final provenance =
+          await widget.apiClient?.fetchRouteCourseProvenance(widget.route.id);
+      if (provenance != null) {
+        attribution = courseAttribution(
+          provenance.geometrySource,
+          parkName: provenance.parkName,
+          parkWebsiteUrl: provenance.parkWebsiteUrl,
+        );
+      }
+    } catch (e) {
+      debugPrint('shareAs $format: fetchRouteCourseProvenance failed: $e');
+      if (widget.route.official) {
+        if (context.mounted) {
+          showTopBanner(context,
+              AppLocalizations.of(context).routeDetailExportCreditFailed);
+        }
+        return;
+      }
+    }
+
     try {
       final tmp = await getTemporaryDirectory();
       final safe = route.name
@@ -2139,11 +2166,11 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       final file = File('${tmp.path}/$fileName');
       final String contents;
       if (isKml) {
-        contents = _routeToKml(route);
+        contents = routeToKml(route, attribution);
       } else if (withMarkers) {
-        contents = routeGpxFromRoute(route, markers);
+        contents = routeGpxFromRoute(route, markers, attribution);
       } else {
-        contents = _routeToGpx(route);
+        contents = routeToGpx(route, attribution);
       }
       await file.writeAsString(contents);
       await shareFilesFrom(
@@ -2380,7 +2407,8 @@ List<String> routeDeleteConfirmLines(
   return lines;
 }
 
-String _routeToKml(cm.Route route) {
+/// The route as KML. [attribution] becomes the Document description.
+String routeToKml(cm.Route route, [GpxAttribution? attribution]) {
   final coords = StringBuffer();
   // A waypoint without finite coordinates is dropped rather than written as
   // `NaN`, which every KML reader refuses; a non-finite elevation is 0.
@@ -2395,6 +2423,7 @@ String _routeToKml(cm.Route route) {
       '<kml xmlns="http://www.opengis.net/kml/2.2">\n'
       '  <Document>\n'
       '    <name>${escapeXmlText(route.name)}</name>\n'
+      '${attribution != null ? '    <description>${escapeXmlText(attribution.notice)}</description>\n' : ''}'
       '    <Placemark>\n'
       '      <name>${escapeXmlText(route.name)}</name>\n'
       '      <Style>\n'
@@ -2413,13 +2442,15 @@ String _routeToKml(cm.Route route) {
       '</kml>\n';
 }
 
-String _routeToGpx(cm.Route route) {
+/// The route as plain GPX. [attribution] lands in `<metadata>`.
+String routeToGpx(cm.Route route, [GpxAttribution? attribution]) {
   final buf = StringBuffer();
   buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
   buf.writeln(
       '<gpx version="1.1" creator="Run" xmlns="http://www.topografix.com/GPX/1/1">');
   buf.writeln('  <metadata>');
   buf.writeln('    <name>${escapeXmlText(route.name)}</name>');
+  buf.write(gpxAttributionMetadata(attribution));
   buf.writeln('    <time>${DateTime.now().toUtc().toIso8601String()}</time>');
   buf.writeln('  </metadata>');
   buf.writeln('  <trk>');
@@ -2444,7 +2475,11 @@ String _routeToGpx(cm.Route route) {
 /// plus one `<wpt>` per course marker. Pure composition over
 /// `toRouteGpxWithMarkers` so the share path stays testable without file
 /// IO. `[lng, lat]` order matches the shared emitter.
-String routeGpxFromRoute(cm.Route route, List<cm.RouteMarkerRow> markers) {
+String routeGpxFromRoute(
+  cm.Route route,
+  List<cm.RouteMarkerRow> markers, [
+  GpxAttribution? attribution,
+]) {
   final coordinates = <List<double>>[];
   final elevations = <double>[];
   for (final w in route.waypoints) {
@@ -2462,7 +2497,8 @@ String routeGpxFromRoute(cm.Route route, List<cm.RouteMarkerRow> markers) {
                 : <String, dynamic>{},
           ))
       .toList();
-  return toRouteGpxWithMarkers(route.name, coordinates, elevations, gpxMarkers);
+  return toRouteGpxWithMarkers(
+      route.name, coordinates, elevations, gpxMarkers, attribution);
 }
 
 /// Horizontal scrubber for previewing a route's direction. Hosted

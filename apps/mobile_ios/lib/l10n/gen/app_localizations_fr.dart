@@ -4421,6 +4421,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Impossible de vérifier les crédits cartographiques de cet itinéraire : rien n\'a été exporté. Réessayez.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Impossible de charger vos clubs — vérifiez votre réseau.';
 
@@ -21148,6 +21152,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksNavigate => 'Suivre ce parcours';
+
+  @override
+  String get parksShareGpx => 'Partager le GPX';
 
   @override
   String get parksBrowseLink => 'Parcours des parcs';

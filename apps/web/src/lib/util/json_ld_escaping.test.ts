@@ -36,6 +36,7 @@ import { buildEventJsonLd } from '../share/share_event_meta';
 import { buildRouteJsonLd, buildRunJsonLd } from '../share/share_meta';
 import { buildProfileJsonLd } from '../share/share_profile_meta';
 import { buildRaceJsonLd } from '../share/share_race_meta';
+import { buildCourseJsonLd } from '../share/share_course_meta';
 import { buildSessionJsonLd } from '../share/share_session_meta';
 import { buildWorkoutJsonLd } from '../share/share_workout_meta';
 import { buildPlanJsonLd } from '../share/share_plan_meta';
@@ -123,6 +124,36 @@ const REGISTER: Record<string, Record<string, () => string>> = {
 	},
 	'src/lib/share/share_profile_meta.ts': {
 		buildProfileJsonLd: () => buildProfileJsonLd(hostileRow as never, { id: INJ, base }),
+	},
+	'src/lib/share/share_course_meta.ts': {
+		buildCourseJsonLd: () =>
+			buildCourseJsonLd(
+				{
+					slug: 'lake-loop',
+					course_shape: 'loop',
+					status: 'open',
+					status_note: INJ,
+					geometry_source: 'osm',
+					difficulty: null,
+					segment: {
+						name: INJ,
+						description: INJ,
+						distance_m: 5000,
+						elevation_m: null,
+						surface: INJ,
+						waypoints: [{ lat: 37.1, lng: -77.5, ele: null }],
+					},
+					park: {
+						slug: 'p',
+						name: INJ,
+						region_code: INJ,
+						country_code: INJ,
+						agency: 'state',
+						website_url: `https://x.test/${INJ}`,
+					},
+				},
+				{ key: INJ, base },
+			),
 	},
 	'src/lib/share/share_race_meta.ts': {
 		buildRaceJsonLd: () => buildRaceJsonLd(hostileRow as never, { id: INJ, base }),

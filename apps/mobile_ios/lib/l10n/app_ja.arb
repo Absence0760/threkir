@@ -1226,6 +1226,7 @@
   "routeDetailTagSaveFailed": "タグを保存できませんでした: {error}",
   "routeDetailTagRemoveFailed": "タグを削除できませんでした: {error}",
   "routeDetailShareFailed": "{format} を共有できませんでした: {error}",
+  "routeDetailExportCreditFailed": "このルートの地図クレジットを確認できなかったため、エクスポートしませんでした。もう一度お試しください。",
   "routeDetailClubsLoadTimeout": "クラブを読み込めませんでした — ネットワークを確認してください。",
   "routeDetailClubsLoadFailed": "クラブを読み込めませんでした。",
   "routeDetailDetached": "クラブから切り離しました。ルートは個人用になりました。",
@@ -5857,5 +5858,6 @@
   "parksAttributionAgency": "コースラインは公園のトレイルデータに基づきます",
   "parksAttributionTraced": "コースラインは公園の公開地図をもとに作成しました",
   "parksNavigate": "このコースをナビ",
+  "parksShareGpx": "GPXを共有",
   "parksBrowseLink": "公園コース"
 }

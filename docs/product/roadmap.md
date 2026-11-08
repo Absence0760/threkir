@@ -323,13 +323,16 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ### Park courses (#1313)
 
-Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_courses` schema, the checkpoint rule in the catalogue matcher, the fastest board by season (`p_season`, calendar year in the park's timezone) and the most-completions board, web `/parks` pages and the mobile park screens. **Open:**
+Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_courses` schema, the checkpoint rule in the catalogue matcher, the fastest board by season (`p_season`, calendar year in the park's timezone) and the most-completions board, web `/parks` pages and the mobile park screens; then the indexable course page, the help guide, the Learn page and the export credit (§ 2394, § 2395). **Open:**
 
 - [x] Server-side matching via a `segment_match` job + bounding-box candidates + backfill (Phase 1), so phone-only and imported runs reach a board (2026-11-08, decisions § 2392 / § 2393).
 - [ ] Remove the run-detail owner-on-view scorer and the owner-insert policy on `global_segment_efforts` once the server job has run in production (closes the checkpoint bypass § 2383 names).
 - [ ] Loop courses (blocked on #1308).
 - [ ] Geometry pipeline under `scripts/parks/` and the first ten Virginia courses (operator load; see [park_courses.md § Loading courses](../features/park_courses.md#loading-courses)).
-- [ ] Indexable course pages (`share-entity`) and a sitemap entry, once courses are loaded.
+- [x] Indexable course pages (`/share/course/…` through `share-entity`) and a sitemap entry (decisions § 2394); they go live with the next `terraform apply` + `web@*` deploy.
+- [x] Help guide `park-courses` and the Learn page "Park courses: how timing works".
+- [x] NPS / OSM credit in every GPX / KML export of a course or its route, and a course GPX on web and mobile (decisions § 2395).
+- [ ] Indexable park pages (`/share/park/…`), if search data says park pages are where people land.
 - [ ] Run-detail chip with season rank, `park_course` badges, the passport challenge, recap / year-in-review entries, share image (Phase 5).
 - [ ] NPS closures job and status tooling (Phase 6).
 

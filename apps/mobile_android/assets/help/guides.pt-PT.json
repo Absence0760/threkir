@@ -3252,6 +3252,121 @@
     ]
   },
   {
+    "id": "park-courses",
+    "lang": "pt-PT",
+    "title": "Percursos de parques: pontos de controlo, épocas e classificações",
+    "summary": "Como um percurso de parque cronometra a sua corrida, porque conta cada ponto de controlo, quando começa uma época e como ordenam as classificações Mais rápidos e Mais conclusões.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/parks",
+      "/parks/[region]/[park]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "O que é um percurso de parque",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em [[route:/parks|Percursos de parques]]."
+          },
+          {
+            "type": "list",
+            "items": [
+              "É um contrarrelógio, não uma prova. O trilho continua aberto a todos e ninguém o controla, por isso cumpra as regras do parque e dê passagem às outras pessoas no trilho.",
+              "Cada página de percurso mostra a distância, o desnível positivo, o formato, o piso e a dificuldade, de onde vem a linha do percurso e se está aberto.",
+              "Selecione **Navegar neste percurso** para seguir o percurso como uma rota. A opção não aparece enquanto o percurso estiver fechado."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Um percurso fechado mantém os tempos e as classificações, mas não o corra até reabrir. A página mostra quando o estado foi verificado pela última vez."
+          }
+        ]
+      },
+      {
+        "heading": "Pontos de controlo: porque é que os atalhos nunca contam",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Além da partida e da chegada, um percurso pode ter pontos de controlo pelo caminho. A sua corrida só é cronometrada se passar por todos os pontos de controlo, pela ordem, entre a partida e a chegada. Uma corrida que corta uma curva, salta um ziguezague ou atravessa pelo meio falha um ponto de controlo e não obtém tempo."
+          },
+          {
+            "type": "p",
+            "text": "Mantenha-se no trilho marcado. Cortar caminho danifica o trilho, e os parques consideram-no uma infração às suas regras."
+          }
+        ]
+      },
+      {
+        "heading": "As épocas seguem o relógio do parque",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Uma época é um ano civil no fuso horário do parque, não no seu. As classificações recomeçam à meia-noite de 1 de janeiro onde o parque fica."
+          },
+          {
+            "type": "p",
+            "text": "Por exemplo, uma corrida que começa às 22:00 de 31 de dezembro num parque da Virgínia conta para esse ano, mesmo que o seu telemóvel esteja num fuso horário em que já é 1 de janeiro."
+          }
+        ]
+      },
+      {
+        "heading": "A classificação Mais rápidos",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Mais rápidos** ordena cada corredor pelo seu melhor tempo no percurso. Aparece uma vez, com a sua melhor corrida.",
+              "Por predefinição mostra este ano. Selecione **Desde sempre** para ver os melhores tempos de sempre.",
+              "Filtre por género ou escalão etário. O filtro de idade só inclui quem aceitou partilhar dados de saúde, por isso pode ser mais curto do que a classificação completa."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "A classificação Mais conclusões",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "**Mais conclusões** premeia os habituais. Conta os dias em que concluiu o percurso, no fuso horário do parque, por isso várias voltas no mesmo dia contam como uma."
+          }
+        ]
+      },
+      {
+        "heading": "Quem aparece nas classificações",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Tem de ter sessão iniciada para ver as classificações. Sem sessão iniciada, a página do percurso continua a mostrar o percurso e uma ligação **Iniciar sessão**.",
+              "O tempo de uma corrida que os outros não podem ver não lhes é mostrado.",
+              "Não vê as pessoas que bloqueou, e elas não o veem a si."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Por agora, uma corrida é comparada com os percursos de parques quando a abre no site. Se uma corrida esperada não aparecer em nenhuma classificação, abra-a uma vez na web."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "import-your-history",
+      "record-your-first-run"
+    ]
+  },
+  {
     "id": "privacy-zones",
     "lang": "pt-PT",
     "title": "Esconder a sua casa com zonas de privacidade",

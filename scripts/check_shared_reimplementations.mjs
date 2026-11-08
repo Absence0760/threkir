@@ -158,16 +158,16 @@ export const REGISTERED = [
 	{
 		kind: 'clone',
 		key:
-			'apps/web/src/lib/share/share_challenge_meta.ts:renderShareChallengeHeadTags|apps/web/src/lib/share/share_event_meta.ts:renderShareEventHeadTags|apps/web/src/lib/share/share_race_meta.ts:renderShareRaceHeadTags|apps/web/src/lib/share/share_route_meta.ts:renderShareRouteHeadTags',
+			'apps/web/src/lib/share/share_challenge_meta.ts:renderShareChallengeHeadTags|apps/web/src/lib/share/share_course_meta.ts:renderShareCourseHeadTags|apps/web/src/lib/share/share_event_meta.ts:renderShareEventHeadTags|apps/web/src/lib/share/share_race_meta.ts:renderShareRaceHeadTags|apps/web/src/lib/share/share_route_meta.ts:renderShareRouteHeadTags',
 		reason:
-			'Deliberate. Each renders the head tags for one `/share/{entity}` surface and they are identical only because the four surfaces currently carry the same tag set. They are per-entity by design (§ 205 gives each its own JSON-LD shape), so collapsing them would have to be undone the first time one surface needs a tag the others do not.',
+			'Deliberate. Each renders the head tags for one `/share/{entity}` surface and they are identical only because the five surfaces currently carry the same tag set. They are per-entity by design (§ 205 gives each its own JSON-LD shape), so collapsing them would have to be undone the first time one surface needs a tag the others do not.',
 	},
 	{
 		kind: 'clone',
 		key:
 			'apps/web/src/lib/share/share_plan_meta.ts:renderSharePlanHeadTags|apps/web/src/lib/share/share_session_meta.ts:renderShareSessionHeadTags|apps/web/src/lib/share/share_workout_meta.ts:renderShareWorkoutHeadTags',
 		reason:
-			'Deliberate, and the same reason as the four-way sibling group above: one head-tag renderer per /share/{entity} surface, identical today only because the three carry the same tag set, and per-entity by design so a collapse would have to be undone the first time one needs a tag the others do not.',
+			'Deliberate, and the same reason as the five-way sibling group above: one head-tag renderer per /share/{entity} surface, identical today only because the three carry the same tag set, and per-entity by design so a collapse would have to be undone the first time one needs a tag the others do not.',
 	},
 	{
 		kind: 'clone',

@@ -18,7 +18,16 @@
 		type SegmentAgeBand,
 		type SegmentGenderFilter,
 	} from '#lib/core/data.ts';
-	import { regionCodeFromSlug, regionName } from '#lib/parks/park_courses.ts';
+	import {
+		courseAttribution,
+		parkCourseGpx,
+		regionCodeFromSlug,
+		regionName,
+	} from '#lib/parks/park_courses.ts';
+	import { downloadFile } from '#lib/routes/gpx.ts';
+	import { PUBLIC_SITE_URL } from '$app/env/public';
+	import { siteOrigin } from '#lib/core/site_url.ts';
+	import { buildCourseShareCanonical } from '#lib/share/share_course_meta.ts';
 	import {
 		ATTRIBUTION_LABEL,
 		DIFFICULTY_LABEL,
@@ -27,11 +36,21 @@
 		labelKey,
 	} from '#lib/parks/park_labels.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import RunMap from '#lib/components/RunMap.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
+
+	// The indexable home of a course is its share page, keyed by the same
+	// three slugs as this URL, so the canonical needs no data load.
+	let canonicalUrl = $derived(
+		buildCourseShareCanonical(
+			siteOrigin(PUBLIC_SITE_URL),
+			`${data.region}/${data.park}/${data.course}`,
+		),
+	);
 
 	let park = $state<Park | null>(null);
 	let course = $state<ParkCourse | null>(null);
@@ -112,6 +131,21 @@
 		return `${value.toFixed(2)} ${unit}`;
 	}
 
+	function downloadGpx() {
+		if (!park || !course) return;
+		const gpx = parkCourseGpx({
+			name: course.segment.name,
+			waypoints: mapTrack,
+			checkpoints: course.checkpoints,
+			attribution: courseAttribution(course.geometry_source, {
+				name: park.name,
+				websiteUrl: park.website_url,
+			}),
+		});
+		const base = course.segment.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
+		downloadFile(gpx, `${base || 'course'}.gpx`, 'application/gpx+xml');
+	}
+
 	const shapeKey = $derived(labelKey(SHAPE_LABEL, course?.course_shape));
 	const difficultyKey = $derived(labelKey(DIFFICULTY_LABEL, course?.difficulty));
 	const statusKey = $derived(labelKey(STATUS_LABEL, course?.status));
@@ -123,7 +157,10 @@
 	);
 </script>
 
-<svelte:head><title>{course?.segment.name ?? m('parks.title')}</title></svelte:head>
+<svelte:head>
+	<title>{course?.segment.name ?? m('parks.title')}</title>
+	<link rel="canonical" href={canonicalUrl} />
+</svelte:head>
 
 <div class="page">
 	{#if park}
@@ -153,6 +190,7 @@
 	{:else}
 		<header class="detail-header">
 			<h1>{course.segment.name}</h1>
+			<HelpLink route="/parks/[region]/[park]/[course]" />
 			<p class="meta">
 				<span class="material-symbols" aria-hidden="true">park</span>
 				{park.name}&nbsp;·&nbsp;{regionName(park.region_code)}
@@ -220,12 +258,25 @@
 			{m('parks.safetyNotice')}
 		</p>
 
-		{#if course.route_id && course.status !== 'closed'}
-			<a class="btn btn-outline btn-sm navigate" href="/routes/{course.route_id}">
-				<span class="material-symbols" aria-hidden="true">directions_run</span>
-				{m('parks.navigate')}
-			</a>
-		{/if}
+		<div class="course-actions">
+			{#if course.route_id && course.status !== 'closed'}
+				<a class="btn btn-outline btn-sm navigate" href="/routes/{course.route_id}">
+					<span class="material-symbols" aria-hidden="true">directions_run</span>
+					{m('parks.navigate')}
+				</a>
+			{/if}
+			{#if mapTrack.length >= 2 && course.status !== 'closed'}
+				<button
+					type="button"
+					class="btn btn-outline btn-sm navigate"
+					onclick={downloadGpx}
+					data-testid="park-course-gpx"
+				>
+					<span class="material-symbols" aria-hidden="true">download</span>
+					{m('parks.downloadGpx')}
+				</button>
+			{/if}
+		</div>
 
 		<section class="section">
 			{#if !auth.loggedIn}
@@ -467,6 +518,11 @@
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
+	}
+	.course-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
 	}
 	.navigate {
 		display: inline-flex;

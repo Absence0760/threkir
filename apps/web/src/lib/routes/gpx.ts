@@ -3,11 +3,13 @@
  */
 
 import { escapeXml, xmlNumber } from '../util/html_escape';
+import { gpxAttributionMetadata, type GpxAttribution } from './route_gpx';
 
 export function toGpx(
 	name: string,
 	coordinates: [number, number][],
-	elevations: number[]
+	elevations: number[],
+	attribution: GpxAttribution | null = null
 ): string {
 	const now = new Date().toISOString();
 
@@ -28,7 +30,7 @@ export function toGpx(
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
     <name>${escapeXml(name)}</name>
-    <time>${now}</time>
+${gpxAttributionMetadata(attribution)}    <time>${now}</time>
   </metadata>
   <trk>
     <name>${escapeXml(name)}</name>
@@ -101,7 +103,8 @@ export function downloadFile(content: string, filename: string, mimeType: string
 export function toKml(
 	name: string,
 	coordinates: [number, number][],
-	elevations: number[]
+	elevations: number[],
+	attribution: GpxAttribution | null = null
 ): string {
 	const coordString = coordinates
 		.flatMap(([lng, lat], i) => {
@@ -116,7 +119,7 @@ export function toKml(
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>${escapeXml(name)}</name>
-    <Placemark>
+${attribution ? `    <description>${escapeXml(attribution.notice)}</description>\n` : ''}    <Placemark>
       <name>${escapeXml(name)}</name>
       <Style>
         <LineStyle>

@@ -1226,6 +1226,7 @@
   "routeDetailTagSaveFailed": "Tag konnte nicht gespeichert werden: {error}",
   "routeDetailTagRemoveFailed": "Tag konnte nicht entfernt werden: {error}",
   "routeDetailShareFailed": "{format} konnte nicht geteilt werden: {error}",
+  "routeDetailExportCreditFailed": "Die Kartenquellen dieser Route konnten nicht geprüft werden, daher wurde nichts exportiert. Versuch es noch einmal.",
   "routeDetailClubsLoadTimeout": "Deine Clubs konnten nicht geladen werden — überprüfe dein Netzwerk.",
   "routeDetailClubsLoadFailed": "Deine Clubs konnten nicht geladen werden.",
   "routeDetailDetached": "Vom Club getrennt; die Route ist jetzt persönlich.",
@@ -5857,5 +5858,6 @@
   "parksAttributionAgency": "Streckenverlauf aus den Wegdaten des Parks",
   "parksAttributionTraced": "Streckenverlauf nach der veröffentlichten Karte des Parks gezeichnet",
   "parksNavigate": "Diese Strecke navigieren",
+  "parksShareGpx": "GPX teilen",
   "parksBrowseLink": "Parkstrecken"
 }

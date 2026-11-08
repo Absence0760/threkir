@@ -4366,6 +4366,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Couldn\'t check this route\'s map credits, so nothing was exported. Try again.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Couldn\'t load your clubs — check your network.';
 
@@ -20882,6 +20886,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parksNavigate => 'Navigate this course';
+
+  @override
+  String get parksShareGpx => 'Share GPX';
 
   @override
   String get parksBrowseLink => 'Park courses';

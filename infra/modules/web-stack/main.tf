@@ -2735,6 +2735,28 @@ resource "aws_cloudfront_distribution" "this" {
     }
   }
 
+  # Park courses (issue #1313, decisions § 2394): the indexable course page,
+  # keyed by the in-app path's three slugs. HTML only, no card.
+  ordered_cache_behavior {
+    path_pattern               = "/share/course/*"
+    target_origin_id           = "lambda-share-entity"
+    viewer_protocol_policy     = "redirect-to-https"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    compress                   = true
+    cache_policy_id            = aws_cloudfront_cache_policy.share_entity.id
+    origin_request_policy_id   = aws_cloudfront_origin_request_policy.share_entity.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security.id
+
+    dynamic "function_association" {
+      for_each = local.www_redirect_associations
+      content {
+        event_type   = "viewer-request"
+        function_arn = function_association.value
+      }
+    }
+  }
+
   # Creator challenges (decisions § 2261): the public share page and its
   # og:image card. The one share-entity surface with a PNG, so the bundle
   # carries the resvg addon the share-badge Lambda already ships.

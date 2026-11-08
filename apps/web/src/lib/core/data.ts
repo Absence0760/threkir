@@ -190,7 +190,12 @@ import {
 import { compareLeaderboard } from '../runs/race_leaderboard';
 import { readRankRows } from '../segments/effort_rank';
 import { trackExtent, type TrackExtent } from '../segments/track_extent';
-import { parseCourseCheckpoints, type CourseCheckpoint } from '../parks/park_courses';
+import {
+	courseAttribution,
+	parseCourseCheckpoints,
+	type CourseCheckpoint,
+} from '../parks/park_courses';
+import type { GpxAttribution } from '../routes/route_gpx';
 import type { RecapPeriodKind } from '../types';
 import { GYM_SESSION_DRAFT_KEY, hasSessionDraft } from '../gym/gym_session_draft';
 import { dedupeShadowedExercises } from '../gym/exercise_catalogue';
@@ -11220,6 +11225,26 @@ export async function fetchParkCourseForSegment(
 		.maybeSingle();
 	if (parkError) throw dbError(parkError);
 	return park ? { course: data, park: park as unknown as Park } : null;
+}
+
+/// The credit an exported file of this route must carry when the route is a
+/// park course's official route (OpenStreetMap's licence asks for it on the
+/// exported work, not only on the page). Null for any other route. Throws on
+/// a failed read, so an export never goes out uncredited because the check
+/// could not run.
+export async function fetchRouteCourseAttribution(routeId: string): Promise<GpxAttribution | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('geometry_source, parks(name, website_url)')
+		.eq('route_id', routeId)
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return courseAttribution(
+		data.geometry_source,
+		data.parks ? { name: data.parks.name, websiteUrl: data.parks.website_url } : null,
+	);
 }
 
 /// Checkpoints per catalogue segment that is a park course, for the scorer.

@@ -5890,6 +5890,10 @@
       }
     }
   },
+  "routeDetailExportCreditFailed": "Couldn't check this route's map credits, so nothing was exported. Try again.",
+  "@routeDetailExportCreditFailed": {
+    "description": "Banner when the check for a park course route's geometry credit fails, so the GPX/KML export is refused rather than written uncredited. Web key routeDetail.exportCreditFailed."
+  },
   "routeDetailClubsLoadTimeout": "Couldn't load your clubs — check your network.",
   "@routeDetailClubsLoadTimeout": {
     "description": "Banner shown when the transfer-to-club club fetch times out"
@@ -27720,6 +27724,10 @@
   "parksNavigate": "Navigate this course",
   "@parksNavigate": {
     "description": "Park courses (#1313): web key parks.navigate."
+  },
+  "parksShareGpx": "Share GPX",
+  "@parksShareGpx": {
+    "description": "Park courses (#1313): shares the course line as a GPX file with its checkpoints and geometry credit. Web key parks.downloadGpx."
   },
   "parksBrowseLink": "Park courses",
   "@parksBrowseLink": {

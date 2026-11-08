@@ -138,4 +138,98 @@ void main() {
   test('kCourseShapes matches the course_shape CHECK', () {
     expect(kCourseShapes, ['loop', 'out_and_back', 'point_to_point']);
   });
+
+  const parkName = 'Fixture State Park';
+  const parkSite = 'https://example.gov/fixture';
+
+  test('courseAttribution: osm names the ODbL and links the OpenStreetMap copyright page', () {
+    final a = courseAttribution('osm', parkName: parkName, parkWebsiteUrl: parkSite);
+    expect(a?.author, 'OpenStreetMap contributors');
+    expect(a?.licenseUrl, 'https://opendatacommons.org/licenses/odbl/1-0/');
+    expect(a?.linkHref, 'https://www.openstreetmap.org/copyright');
+    expect(a?.linkText, '© OpenStreetMap contributors');
+    expect(a?.notice, contains('© OpenStreetMap contributors'));
+  });
+
+  test('courseAttribution: nps credits the National Park Service with no licence claim', () {
+    final a = courseAttribution('nps', parkName: parkName, parkWebsiteUrl: parkSite);
+    expect(a?.author, 'National Park Service');
+    expect(a?.licenseUrl, isNull);
+    expect(a?.linkHref, 'https://www.nps.gov/');
+    expect(a?.notice, 'Course line from National Park Service trail data.');
+  });
+
+  test('courseAttribution: agency credits the park and links its site only over https', () {
+    final a = courseAttribution('agency', parkName: parkName, parkWebsiteUrl: parkSite);
+    expect(a?.author, 'Fixture State Park');
+    expect(a?.linkHref, 'https://example.gov/fixture');
+    expect(a?.notice, 'Course line from trail data published by Fixture State Park.');
+    expect(
+      courseAttribution('agency', parkName: 'P', parkWebsiteUrl: 'http://x.test')?.linkHref,
+      isNull,
+    );
+    expect(courseAttribution('agency', parkName: 'P', parkWebsiteUrl: null)?.linkHref, isNull);
+  });
+
+  test('courseAttribution: a park the reader cannot see still yields an unnamed credit', () {
+    expect(
+      courseAttribution('osm', parkName: null, parkWebsiteUrl: null)?.author,
+      'OpenStreetMap contributors',
+    );
+    final a = courseAttribution('agency', parkName: null, parkWebsiteUrl: null);
+    expect(a?.author, isNull);
+    expect(a?.linkHref, isNull);
+    expect(a?.notice, 'Course line from trail data published by the park.');
+  });
+
+  test('courseAttribution: traced names no rights holder', () {
+    final a = courseAttribution('traced', parkName: parkName, parkWebsiteUrl: parkSite);
+    expect(a?.author, isNull);
+    expect(
+      a?.notice,
+      'Course line traced against the published trail map of Fixture State Park.',
+    );
+  });
+
+  test('courseAttribution: a value outside the vocabulary, or none, has no attribution', () {
+    expect(courseAttribution('strava', parkName: parkName, parkWebsiteUrl: parkSite), isNull);
+    expect(courseAttribution(null, parkName: parkName, parkWebsiteUrl: parkSite), isNull);
+  });
+
+  test('parkCourseGpx: the line, one waypoint per checkpoint in order, and the credit', () {
+    final xml = parkCourseGpx(
+      name: 'Lake Loop',
+      waypoints: const [
+        (lat: 37.1, lng: -77.5, ele: 50.0),
+        (lat: 37.2, lng: -77.6, ele: null),
+      ],
+      checkpoints: const [
+        CourseCheckpoint(lat: 37.11, lng: -77.51),
+        CourseCheckpoint(lat: 37.15, lng: -77.55),
+      ],
+      attribution: courseAttribution('osm', parkName: parkName, parkWebsiteUrl: parkSite),
+    );
+    expect(xml, contains('<trkpt lat="37.1" lon="-77.5"><ele>50</ele></trkpt>'));
+    expect(xml, contains('<trkpt lat="37.2" lon="-77.6"><ele>0</ele></trkpt>'));
+    final first = xml.indexOf('<name>Checkpoint 1</name>');
+    final second = xml.indexOf('<name>Checkpoint 2</name>');
+    expect(first > 0 && second > first, isTrue);
+    expect(
+      xml,
+      contains('<wpt lat="37.11" lon="-77.51"><name>Checkpoint 1</name><type>checkpoint</type></wpt>'),
+    );
+    expect(xml, contains('<copyright author="OpenStreetMap contributors">'));
+  });
+
+  test('parkCourseGpx: an unreadable checkpoint list writes no waypoints, never a partial set', () {
+    final xml = parkCourseGpx(
+      name: 'Lake Loop',
+      waypoints: const [(lat: 37.1, lng: -77.5, ele: null)],
+      checkpoints: null,
+      attribution: null,
+    );
+    expect(xml, isNot(contains('<wpt')));
+    expect(xml, isNot(contains('<desc>')));
+  });
 }
+

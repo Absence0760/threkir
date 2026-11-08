@@ -4408,6 +4408,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'No se pudieron comprobar los créditos del mapa de esta ruta, así que no se exportó nada. Inténtalo de nuevo.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'No se pudieron cargar tus clubes — comprueba tu red.';
 
@@ -21102,6 +21106,9 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get parksNavigate => 'Navegar este recorrido';
+
+  @override
+  String get parksShareGpx => 'Compartir GPX';
 
   @override
   String get parksBrowseLink => 'Recorridos de parques';

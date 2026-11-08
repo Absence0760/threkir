@@ -232,6 +232,8 @@ void main() {
       expect(api.leaderboardSeasons, [2026]);
       expect(find.byKey(const Key('park-course-safety')), findsOneWidget);
       expect(find.byKey(const Key('park-course-attribution')), findsOneWidget);
+      expect(find.byKey(const Key('park-course-share-gpx')), findsOneWidget);
+      expect(find.byKey(const Key('park-course-help')), findsOneWidget);
       expect(find.text('This year (2026)'), findsOneWidget);
       expect(find.text('Bea'), findsOneWidget);
 
@@ -249,6 +251,7 @@ void main() {
   testWidgets('ParkCourseScreen shows the closed banner on a closed course', (
     tester,
   ) async {
+    tallView(tester);
     await tester.pumpWidget(
       _host(
         ParkCourseScreen(
@@ -260,6 +263,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('park-course-closed')), findsOneWidget);
+    // A closed course offers nothing to follow, the GPX included.
+    expect(find.byKey(const Key('park-course-share-gpx')), findsNothing);
+    expect(find.byKey(const Key('park-course-safety')), findsOneWidget);
   });
 
   testWidgets(

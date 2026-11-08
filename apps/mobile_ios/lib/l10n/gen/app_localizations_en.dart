@@ -781,6 +781,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardTrendGroupRecentHint => 'Your latest sessions';
 
   @override
+  String get dashboardHeroNothingPlanned => 'Nothing planned today';
+
+  @override
+  String get dashboardHeroRestDay => 'Rest day';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Nothing on the plan today.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Readiness $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Hide from Home';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name is hidden. You can bring it back in Settings.';
+  }
+
+  @override
+  String get dashboardHideCardFailed => 'Couldn\'t hide that card. Try again.';
+
+  @override
   String get readinessFromLoadOnly =>
       'Scored from your training load only. Sleep and resting heart rate are not part of it yet.';
 
@@ -19666,6 +19691,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsDisclosureLevel => 'How much detail';
+
+  @override
+  String get prefsHomeCards => 'Home cards';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Untick a group to take it off Home. The choice follows you to every device.';
 
   @override
   String get prefsDisclosureAuto => 'Automatic';

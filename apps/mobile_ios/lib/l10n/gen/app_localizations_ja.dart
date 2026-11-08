@@ -756,6 +756,31 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardTrendGroupRecentHint => '最近のセッション';
 
   @override
+  String get dashboardHeroNothingPlanned => '今日は予定なし';
+
+  @override
+  String get dashboardHeroRestDay => '休養日';
+
+  @override
+  String get dashboardHeroRestDayBody => '今日はプランに予定がありません。';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return '準備度 $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'ホームで非表示';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$nameを非表示にしました。設定から再表示できます。';
+  }
+
+  @override
+  String get dashboardHideCardFailed => 'カードを非表示にできませんでした。もう一度お試しください。';
+
+  @override
   String get readinessFromLoadOnly =>
       'トレーニング負荷のみから算出しています。睡眠と安静時心拍数はまだ含まれていません。';
 
@@ -18924,6 +18949,13 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsDisclosureLevel => '表示する情報量';
+
+  @override
+  String get prefsHomeCards => 'ホームのカード';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'チェックを外したグループはホームに表示されません。この設定はすべてのデバイスに適用されます。';
 
   @override
   String get prefsDisclosureAuto => '自動';

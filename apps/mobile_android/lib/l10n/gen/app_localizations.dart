@@ -1283,6 +1283,48 @@ abstract class AppLocalizations {
   /// **'Your latest sessions'**
   String get dashboardTrendGroupRecentHint;
 
+  /// Title of the Today hero on Home when nothing is planned and nothing was run today
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing planned today'**
+  String get dashboardHeroNothingPlanned;
+
+  /// Title of the Today hero on a training-plan rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get dashboardHeroRestDay;
+
+  /// Line under the rest-day title in the Today hero
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on the plan today.'**
+  String get dashboardHeroRestDayBody;
+
+  /// One-line readiness score in the Today hero; {score} is 0-100
+  ///
+  /// In en, this message translates to:
+  /// **'Readiness {score}'**
+  String dashboardHeroReadiness(int score);
+
+  /// Long-press action on a Home trend group that hides it from Home
+  ///
+  /// In en, this message translates to:
+  /// **'Hide from Home'**
+  String get dashboardHideFromHome;
+
+  /// Banner after hiding a Home trend group; {name} is the group title
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is hidden. You can bring it back in Settings.'**
+  String dashboardCardHidden(String name);
+
+  /// Banner when hiding a Home trend group could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t hide that card. Try again.'**
+  String get dashboardHideCardFailed;
+
   /// Footnote on the readiness card: the score is computed from training balance (TSB) alone, because no sleep or resting heart rate is read yet. Shown only while neither of those contributes.
   ///
   /// In en, this message translates to:
@@ -32044,6 +32086,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'How much detail'**
   String get prefsDisclosureLevel;
+
+  /// Settings row and sheet title listing the Home trend groups to show or hide
+  ///
+  /// In en, this message translates to:
+  /// **'Home cards'**
+  String get prefsHomeCards;
+
+  /// Explanation under the Home cards setting
+  ///
+  /// In en, this message translates to:
+  /// **'Untick a group to take it off Home. The choice follows you to every device.'**
+  String get prefsHomeCardsHint;
 
   /// Disclosure-level option: no stored level, derived from the onboarding goal and run count
   ///

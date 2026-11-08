@@ -789,6 +789,32 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dashboardTrendGroupRecentHint => 'Tus últimas sesiones';
 
   @override
+  String get dashboardHeroNothingPlanned => 'Nada planificado hoy';
+
+  @override
+  String get dashboardHeroRestDay => 'Día de descanso';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Hoy no hay nada en el plan.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Preparación $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Ocultar de Inicio';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name está oculto. Puedes recuperarlo en Ajustes.';
+  }
+
+  @override
+  String get dashboardHideCardFailed =>
+      'No se pudo ocultar la tarjeta. Inténtalo de nuevo.';
+
+  @override
   String get readinessFromLoadOnly =>
       'Calculada solo a partir de tu carga de entrenamiento. El sueño y la frecuencia cardíaca en reposo aún no cuentan.';
 
@@ -19869,6 +19895,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsDisclosureLevel => 'Cuánto detalle';
+
+  @override
+  String get prefsHomeCards => 'Tarjetas de Inicio';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Desmarca un grupo para quitarlo de Inicio. La elección te sigue en todos tus dispositivos.';
 
   @override
   String get prefsDisclosureAuto => 'Automático';

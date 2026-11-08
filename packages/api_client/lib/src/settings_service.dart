@@ -198,6 +198,11 @@ class SettingsKeys {
   /// See settings.md.
   static const dashboardTrainingLoadExpanded =
       'dashboard_training_load_expanded';
+  /// Trend groups hidden from Home (a list of `volume` / `fitness` /
+  /// `performance` / `effort` / `recent`), read through `parseHiddenCards`.
+  /// Web twin: `DASHBOARD_HIDDEN_CARDS_KEY` (`dashboard_layout.ts`). See
+  /// settings.md.
+  static const dashboardHiddenCards = 'dashboard_hidden_cards';
 
   // Device (D)
   static const voiceFeedbackEnabled = 'voice_feedback_enabled';

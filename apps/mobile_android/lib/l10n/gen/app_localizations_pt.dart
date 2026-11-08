@@ -791,6 +791,32 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardTrendGroupRecentHint => 'As suas sessões mais recentes';
 
   @override
+  String get dashboardHeroNothingPlanned => 'Nada planeado para hoje';
+
+  @override
+  String get dashboardHeroRestDay => 'Dia de descanso';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Nada no plano para hoje.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Prontidão $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Ocultar do Início';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name está oculto. Pode voltar a mostrá-lo nas Definições.';
+  }
+
+  @override
+  String get dashboardHideCardFailed =>
+      'Não foi possível ocultar o cartão. Tente novamente.';
+
+  @override
   String get readinessFromLoadOnly =>
       'Calculada apenas a partir da sua carga de treino. O sono e a frequência cardíaca em repouso ainda não são considerados.';
 
@@ -19870,6 +19896,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prefsDisclosureLevel => 'Quanto detalhe';
 
   @override
+  String get prefsHomeCards => 'Cartões do Início';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Desmarque um grupo para o retirar do Início. A escolha aplica-se a todos os seus dispositivos.';
+
+  @override
   String get prefsDisclosureAuto => 'Automático';
 
   @override
@@ -21157,6 +21190,32 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashboardTrendGroupRecentHint => 'Suas sessões mais recentes';
+
+  @override
+  String get dashboardHeroNothingPlanned => 'Nada planejado para hoje';
+
+  @override
+  String get dashboardHeroRestDay => 'Dia de descanso';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Nada no plano para hoje.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Prontidão $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Ocultar do Início';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name está oculto. Você pode trazê-lo de volta nas Configurações.';
+  }
+
+  @override
+  String get dashboardHideCardFailed =>
+      'Não foi possível ocultar o cartão. Tente novamente.';
 
   @override
   String get readinessFromLoadOnly =>
@@ -40220,6 +40279,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsDisclosureLevel => 'Quanto detalhe';
+
+  @override
+  String get prefsHomeCards => 'Cartões do Início';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Desmarque um grupo para tirá-lo do Início. A escolha vale em todos os seus dispositivos.';
 
   @override
   String get prefsDisclosureAuto => 'Automático';

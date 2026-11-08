@@ -1,5 +1,5 @@
 // Package gpsdistance is the Go port of the GPS distance estimator,
-// spec v1.4 (docs/features/gps_distance.md). The reference implementation
+// spec v1.5 (docs/features/gps_distance.md). The reference implementation
 // is scripts/gps_distance/reference.py and this file follows it
 // operation for operation; every port replays
 // fixtures/gps_distance_vectors.json to 1e-3 m, so a change here without
@@ -15,7 +15,7 @@ package gpsdistance
 import "math"
 
 // SpecVersion is the spec this port implements.
-const SpecVersion = "1.4"
+const SpecVersion = "1.5"
 
 const (
 	EarthRadiusM              = 6371008.8
@@ -68,6 +68,10 @@ const (
 	ZuptVelSigmaMps        = 0.1
 	ZuptDopplerOverrideMps = 1.0
 	ZuptReleaseM           = 40.0
+	// Spec v1.5: the ZUPT window stretches to the pedometer's delivery cadence.
+	ZuptBatchMinCadenceSps = 1.0
+	ZuptBatchMargin        = 1.5
+	ZuptMaxNoStepS         = 30.0
 
 	StopHalfWindowS  = 20.0
 	StopMinHalfFixes = 3
@@ -208,9 +212,11 @@ type Estimator struct {
 	// StrideM is nil until a stride has been learned.
 	StrideM *float64
 	// Diagnostics (spec v1.2 and v1.3).
-	RScale         float64
-	RejectedFixes  int
-	ZuptFixes      int
+	RScale        float64
+	RejectedFixes int
+	ZuptFixes     int
+	// StepBatchS is the longest walking span between two step increases (spec v1.5).
+	StepBatchS     float64
 	DopplerTrusted bool
 	// DopplerScale is the learned Doppler speed scale (spec v1.3).
 	DopplerScale float64
@@ -322,10 +328,17 @@ func (e *Estimator) Unproject(x, y float64) (float64, float64) {
 	return lat, wrapLng(lng)
 }
 
+// ZuptWindowS is how long without a step increase reads as stationary (spec
+// v1.5): Android delivers the step counter in batches while the screen is off,
+// so it stretches to the batches the pedometer has shown.
+func (e *Estimator) ZuptWindowS() float64 {
+	return math.Min(math.Max(ZuptNoStepS, ZuptBatchMargin*e.StepBatchS), ZuptMaxNoStepS)
+}
+
 // zuptDue: the pedometer says stationary — steps seen this run, none for
-// ZuptNoStepS, and trusted Doppler not contradicting it.
+// ZuptWindowS, and trusted Doppler not contradicting it.
 func (e *Estimator) zuptDue(t float64, dopOK bool, dop float64) bool {
-	if !e.stepsSeen || e.zuptReleased || t-e.lastStepIncT <= ZuptNoStepS {
+	if !e.stepsSeen || e.zuptReleased || t-e.lastStepIncT <= e.ZuptWindowS() {
 		return false
 	}
 	return !(dopOK && e.DopplerTrusted && dop >= ZuptDopplerOverrideMps)
@@ -593,6 +606,12 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 	}
 	d := cumulativeSteps - prev
 	if d > 0 {
+		if e.stepsSeen {
+			span := t - e.lastStepIncT
+			if float64(d) >= ZuptBatchMinCadenceSps*span {
+				e.StepBatchS = math.Max(e.StepBatchS, span)
+			}
+		}
 		e.stepsSeen = true
 		e.lastStepIncT = t
 		e.zuptReleased = false

@@ -1,4 +1,4 @@
-//! GPS distance estimator, spec v1.4 forward filter — the `no_std` port of
+//! GPS distance estimator, spec v1.5 forward filter — the `no_std` port of
 //! `scripts/gps_distance/reference.py` (docs/features/gps_distance.md). The
 //! spec's smoother needs the whole run in memory and is not ported here; the
 //! phone or server re-derives a saved figure from the uploaded track.
@@ -64,7 +64,11 @@ pub const ZUPT_NO_STEP_S: f64 = 6.0;
 pub const ZUPT_VEL_SIGMA_MPS: f64 = 0.1;
 pub const ZUPT_DOPPLER_OVERRIDE_MPS: f64 = 1.0;
 pub const ZUPT_RELEASE_M: f64 = 40.0;
-pub const SPEC_VERSION: &str = "1.4";
+/// Spec v1.5: the ZUPT window stretches to the pedometer's delivery cadence.
+pub const ZUPT_BATCH_MIN_CADENCE_SPS: f64 = 1.0;
+pub const ZUPT_BATCH_MARGIN: f64 = 1.5;
+pub const ZUPT_MAX_NO_STEP_S: f64 = 30.0;
+pub const SPEC_VERSION: &str = "1.5";
 pub const DEFAULT_MAX_SPEED_MPS: f64 = 10.0;
 
 const DEG_TO_RAD: f64 = core::f64::consts::PI / 180.0;
@@ -195,6 +199,7 @@ pub struct GpsDistanceEstimator {
     rejected_fixes: u32,
     reject_streak: u32,
     zupt_fixes: u32,
+    step_batch_s: f64,
     doppler_trusted: bool,
     steps_seen: bool,
     zupt_released: bool,
@@ -221,11 +226,11 @@ pub struct GpsDistanceEstimator {
 /// the pin is about noticing growth rather than a hard ceiling. Measured at
 /// spec v1.2: v1.1's 248 B plus 112 B for the gate, adaptive-R, cross-check
 /// and ZUPT state; spec v1.3 adds 88 B for the Doppler scale; spec v1.4's two
-/// stride-learning flags spill one more 8 B word. The state stays `f64`: the projection and the covariance
+/// stride-learning flags spill one more 8 B word; spec v1.5's step-batch span adds 8 B. The state stays `f64`: the projection and the covariance
 /// recursion over a run of thousands of fixes do not hold the vectors' 1e-3 m
 /// in `f32`. Identical on both targets because every field is 8-aligned
 /// scalars, `u32`s and `bool`s.
-const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 456);
+const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 464);
 
 impl Default for GpsDistanceEstimator {
     fn default() -> Self {
@@ -276,6 +281,7 @@ impl GpsDistanceEstimator {
             rejected_fixes: 0,
             reject_streak: 0,
             zupt_fixes: 0,
+            step_batch_s: 0.0,
             doppler_trusted: true,
             steps_seen: false,
             zupt_released: false,
@@ -332,10 +338,26 @@ impl GpsDistanceEstimator {
         self.doppler_scale
     }
 
+    /// The longest walking span between two step increases (spec v1.5).
+    pub fn step_batch_s(&self) -> f64 {
+        self.step_batch_s
+    }
+
+    /// How long without a step increase reads as stationary (spec v1.5): a
+    /// pedometer that delivers in batches stretches it to the batches it has shown.
+    pub fn zupt_window_s(&self) -> f64 {
+        ZUPT_NO_STEP_S
+            .max(ZUPT_BATCH_MARGIN * self.step_batch_s)
+            .min(ZUPT_MAX_NO_STEP_S)
+    }
+
     /// The pedometer says stationary: steps seen this run, none for
-    /// [`ZUPT_NO_STEP_S`], and trusted Doppler not contradicting it.
+    /// [`Self::zupt_window_s`], and trusted Doppler not contradicting it.
     fn zupt_due(&self, t: f64, dop: Option<f64>) -> bool {
-        if !self.steps_seen || self.zupt_released || t - self.last_step_inc_t <= ZUPT_NO_STEP_S {
+        if !self.steps_seen
+            || self.zupt_released
+            || t - self.last_step_inc_t <= self.zupt_window_s()
+        {
             return false;
         }
         !matches!(dop, Some(d) if self.doppler_trusted && d >= ZUPT_DOPPLER_OVERRIDE_MPS)
@@ -645,6 +667,12 @@ impl GpsDistanceEstimator {
         }
         let d = cumulative_steps - prev;
         if d > 0 {
+            if self.steps_seen {
+                let span = t - self.last_step_inc_t;
+                if d as f64 >= ZUPT_BATCH_MIN_CADENCE_SPS * span {
+                    self.step_batch_s = self.step_batch_s.max(span);
+                }
+            }
             self.steps_seen = true;
             self.last_step_inc_t = t;
             self.zupt_released = false;
@@ -842,13 +870,16 @@ mod tests {
         assert_eq!(f("ZUPT_VEL_SIGMA_MPS"), ZUPT_VEL_SIGMA_MPS);
         assert_eq!(f("ZUPT_DOPPLER_OVERRIDE_MPS"), ZUPT_DOPPLER_OVERRIDE_MPS);
         assert_eq!(f("ZUPT_RELEASE_M"), ZUPT_RELEASE_M);
+        assert_eq!(f("ZUPT_BATCH_MIN_CADENCE_SPS"), ZUPT_BATCH_MIN_CADENCE_SPS);
+        assert_eq!(f("ZUPT_BATCH_MARGIN"), ZUPT_BATCH_MARGIN);
+        assert_eq!(f("ZUPT_MAX_NO_STEP_S"), ZUPT_MAX_NO_STEP_S);
     }
 
     #[test]
     fn the_fixture_is_this_port_s_spec_version() {
         let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
-        assert_eq!(SPEC_VERSION, "1.4");
-        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.4"));
+        assert_eq!(SPEC_VERSION, "1.5");
+        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.5"));
     }
 
     #[test]

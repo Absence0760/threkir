@@ -10,10 +10,12 @@ MLAT = 111195.0
 
 def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=False, cadence=2.8,
          gaps_steps=True, every=1, lat0=LAT0, lng0=LNG0, h0=0.0, speed_at=None, dop2d=None, bias=0.0, scale=1.0,
-         spikes=(), jump=None, acc=None, steps_until=None, canopy=None, speed_acc=None):
+         spikes=(), jump=None, acc=None, steps_until=None, canopy=None, speed_acc=None, step_batch=None):
     """canopy: (start, length, extra_sigma_m, stated_acc_m, stated_speed_acc_mps) — a stretch
     under trees: extra white position noise, the stated accuracies, and Doppler with that
-    stated speed accuracy (its noise drawn to match)."""
+    stated speed accuracy (its noise drawn to match).
+    step_batch: the pedometer's count reaches the estimator only every this many seconds
+    (Android's step counter batching while the screen is off), stamped on arrival."""
     r = random.Random(seed)
     mlng = MLAT * math.cos(math.radians(lat0))
     x = y = 0.0; h = math.radians(h0); nx = ny = 0.0; k = math.sqrt(1 - rho * rho); ev = []; cnt = 0; stepacc = 0.0
@@ -25,7 +27,7 @@ def walk(T, v, seed, sigma=3.0, rho=0.9, doppler=True, stops=(), drop=(), steps=
         nx = rho * nx + k * r.gauss(0, sigma); ny = rho * ny + k * r.gauss(0, sigma)
         if steps and s > 0 and (steps_until is None or t < steps_until):
             stepacc += cadence
-        if steps:
+        if steps and (step_batch is None or (t + 1) % step_batch == 0):
             cnt = int(stepacc)
             ev.append({"type": "steps", "t": float(t) + 0.5, "count": cnt})
         if any(a <= t < a + l for a, l in drop) or t % every:
@@ -170,6 +172,12 @@ add("fused_no_stride_learning", "v1.4 fused: learnStride false, steps throughout
     walk(160, 2.68, 44, drop=((80, 30),), steps=True), learn_stride=False)
 add("fused_seeded_stride", "v1.4 fused: learnStride false with initialStrideM 0.95; the seeded stride fills the gap and is never updated",
     walk(160, 2.68, 45, drop=((80, 30),), steps=True), stride=0.95, learn_stride=False)
+
+# v1.5 scenarios.
+add("zupt_batched_steps", "v1.5 ZUPT window: a 1.3 m/s pocket walk on the fused provider (no Doppler, learnStride false) whose step count arrives in 15 s batches; the window stretches to 1.5 x the batch span, so walking between batches is not a stop",
+    walk(300, 1.3, 50, doppler=False, steps=True, cadence=1.8, step_batch=15), max_speed=5.0, stride=0.72, learn_stride=False)
+add("zupt_batched_steps_stop", "v1.5 ZUPT window: the same 15 s batches with a 60 s stop at t=150; once the stretched window passes with no new steps the stop still zeroes distance",
+    walk(300, 1.3, 51, doppler=False, steps=True, cadence=1.8, step_batch=15, stops=((150, 60),)), max_speed=5.0, stride=0.72, learn_stride=False)
 
 doc = {"spec": "gps-distance-estimator v" + ref.SPEC_VERSION,
        "reference": "docs/features/gps_distance.md",

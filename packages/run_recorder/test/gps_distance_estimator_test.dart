@@ -59,9 +59,9 @@ void main() {
   final posTolerance = (vectors['position_tolerance_deg'] as num).toDouble();
   final scenarios = (vectors['scenarios'] as List).cast<Map<String, dynamic>>();
 
-  test('fixture is spec v1.4 and carries every scenario', () {
-    expect(vectors['spec'], 'gps-distance-estimator v1.4');
-    expect(GpsDistanceEstimator.specVersion, '1.4');
+  test('fixture is spec v1.5 and carries every scenario', () {
+    expect(vectors['spec'], 'gps-distance-estimator v1.5');
+    expect(GpsDistanceEstimator.specVersion, '1.5');
     expect(scenarios.length, greaterThanOrEqualTo(35));
   });
 
@@ -126,12 +126,18 @@ void main() {
       GpsDistanceEstimator.zuptDopplerOverrideMps,
     );
     expect(c['ZUPT_RELEASE_M'], GpsDistanceEstimator.zuptReleaseM);
+    expect(
+      c['ZUPT_BATCH_MIN_CADENCE_SPS'],
+      GpsDistanceEstimator.zuptBatchMinCadenceSps,
+    );
+    expect(c['ZUPT_BATCH_MARGIN'], GpsDistanceEstimator.zuptBatchMargin);
+    expect(c['ZUPT_MAX_NO_STEP_S'], GpsDistanceEstimator.zuptMaxNoStepS);
     expect(c['STOP_HALF_WINDOW_S'], GpsDistanceEstimator.stopHalfWindowS);
     expect(c['STOP_MIN_HALF_FIXES'], GpsDistanceEstimator.stopMinHalfFixes);
     expect(c['STOP_SPEED_MPS'], GpsDistanceEstimator.stopSpeedMps);
     expect(c['STOP_RADIUS_M'], GpsDistanceEstimator.stopRadiusM);
     // Every fixture constant is pinned above; a new one fails here until it is.
-    expect(c.length, 48);
+    expect(c.length, 51);
   });
 
   group('golden vectors', () {
@@ -372,5 +378,50 @@ void main() {
         expect(e.strideM, seed);
       }
     });
+  });
+
+  group('v1.5', () {
+    test('the ZUPT window stretches to the step batches walking delivers', () {
+      final e = GpsDistanceEstimator();
+      e.addSteps(0, 0);
+      e.addSteps(1, 2);
+      e.addSteps(16, 29);
+      expect(e.stepBatchS, 15);
+      expect(e.zuptWindowS, 22.5);
+      e.addSteps(41, 72);
+      expect(e.zuptWindowS, GpsDistanceEstimator.zuptMaxNoStepS);
+    });
+
+    test('a stop then a few steps is not a batch, so the window stays put', () {
+      final e = GpsDistanceEstimator();
+      e.addSteps(0, 0);
+      e.addSteps(1, 2);
+      e.addSteps(2, 4);
+      e.addSteps(62, 8);
+      expect(e.stepBatchS, 1);
+      expect(e.zuptWindowS, GpsDistanceEstimator.zuptNoStepS);
+    });
+
+    test(
+      'a fused pocket walk with 15 s step batches is not read as stopped',
+      () {
+        final e = GpsDistanceEstimator(
+          maxSpeedMps: 5,
+          initialStrideM: 0.72,
+          learnStride: false,
+        );
+        for (var i = 0; i < 300; i++) {
+          e.addFix(
+            t: i.toDouble(),
+            lat: 40 + i * 1.3 / 111195,
+            lng: -75,
+            accuracyM: 4,
+          );
+          if ((i + 1) % 15 == 0) e.addSteps(i + 0.5, ((i + 1) * 1.8).floor());
+        }
+        expect(e.zuptFixes, lessThanOrEqualTo(9));
+        expect(e.distanceM, closeTo(300 * 1.3, 300 * 1.3 * 0.05));
+      },
+    );
   });
 }

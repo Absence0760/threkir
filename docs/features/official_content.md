@@ -63,9 +63,11 @@ Each status change notifies the club's owner and active admins (`club_verificati
 
 Web is the whole flow. Mobile (Android and the iOS twin) shows the owner and admins a read-only status card on the club screen and points to the web; the request and review are web-only by decisions § 24. The notification opens the club on every platform.
 
+## What the badge lends
+
+The provenance labels (official / verified source / traced / community) on content, race listings and their courses, and organiser course alerts, are specified in [provenance.md](provenance.md) (decisions § 2406 / § 2407).
+
 ## Not built yet
 
-- Badge rendering on race listings and the provenance labels (*Official organiser*, *Verified source*, *Traced by Threkir*, *Community*).
-- Organiser course alerts.
 - Name dispute / takedown path tied to the report flow.
 - Trusted verifiers (a federation verifying its member races) — later, not v1.

@@ -4,8 +4,9 @@ Issue #1190, slices "Provenance labels ... and organiser course alerts" and
 "Badge rendering on routes, plans, routines, challenges, race listings".
 Decisions [§ 2406](../architecture/decisions.md) (labels) and
 [§ 2407](../architecture/decisions.md) (course alerts). Verification
-itself (how a club becomes `is_verified`) is out of scope here; this doc
-builds on `clubs.is_verified` as the source of truth.
+itself (how a club becomes `is_verified`) is
+[official_content.md](official_content.md); this doc builds on
+`clubs.is_verified` as the source of truth.
 
 ## The four labels
 

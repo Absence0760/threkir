@@ -177,6 +177,7 @@ unwired gate now fails in `src/lib/ci_workflow_guards.test.ts`. Setting one to
 | `PUBLIC_FUNDRAISING_ENABLED` | donations / fundraiser pages | Stripe Connect + owner + CISO + counsel |
 | `PUBLIC_CYCLE_PLANS_ENABLED` | the Art 9 cycle / pregnancy plan-adjust UI | owner + CISO + counsel |
 | `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` | MapTiler's basemap and terrain in the flyover **video** export (decisions § 2259); off, and with no local `PUBLIC_TILE_STYLE_URL` override, the export is not offered at all (§ 2270), and the on-screen 3D preview is unaffected. Flip together with mobile's `FLYOVER_VIDEO_MAPTILER_ENABLED`, which offers the phone's run **Video** share style (§ 2271) | operator confirms MapTiler's plan terms permit its terrain and imagery in published video (§ 2251 checklist) |
+| `PUBLIC_COURSE_DRIVE_ENABLED` | Drive this course on the route and race pages: the Maps hand-off, the "can't follow" check and the notes list ([course_drive.md](../../docs/features/course_drive.md), decisions § 2380); unset → no entry point renders. Flip together with mobile's `COURSE_DRIVE_ENABLED`, which adds the spoken notes | counsel signs off on the driver safety notice wording (decisions § 150; [deployment.md](../../docs/ops/deployment.md) pre-deploy checklist) |
 
 **Anything that should stay server-side does NOT have the `PUBLIC_` prefix and lives in the Lambda's env**, set by Terraform from the sops-encrypted file — not in the SvelteKit build, not in GitHub Secrets. The coach Lambda reads:
 

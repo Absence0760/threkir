@@ -721,8 +721,9 @@ grant select on public.race_session_courses to anon;
 grant select on public.race_session_courses to authenticated;
 grant select, insert, update, delete on public.race_session_courses to service_role;
 
--- Freeze one session's courses. Called when a session is created (Arm, for
--- Host GO); a later start mode that opens a window calls it at window open.
+-- Freeze one session's courses. Called when a session is created or moves
+-- into armed (Arm, for Host GO); a later start mode that opens a window calls
+-- it at window open.
 -- A second call replaces the copy, so the caller decides when it may move.
 create or replace function private.snapshot_race_session_courses(
   p_event_id uuid,
@@ -777,6 +778,14 @@ revoke execute on function public.race_sessions_freeze_courses() from public, an
 create trigger race_sessions_freeze_courses_trg
   after insert on public.race_sessions
   for each row execute function public.race_sessions_freeze_courses();
+
+-- The state machine allows no way back into armed today; if one is added, a
+-- session armed again freezes again rather than keeping an older race's copy.
+create trigger race_sessions_refreeze_courses_trg
+  after update of status on public.race_sessions
+  for each row
+  when (new.status = 'armed' and old.status is distinct from 'armed')
+  execute function public.race_sessions_freeze_courses();
 
 -- courses_frozen_at is the server's: a client cannot set or clear it. A
 -- trusted caller (the snapshot, the service role, direct SQL) writes it.

@@ -7,6 +7,7 @@ import type { SessionStartMode } from './course_gates';
 import {
 	effectiveRaceStatus,
 	localFromStartOffset,
+	parseStartMode,
 	raceCountdownS,
 	raceStartInstant,
 	selfTimedAttemptState,
@@ -117,4 +118,12 @@ test('selfTimedBoard puts start-line times first, longest on course first, then 
 		board.untimed.map((p) => p.userId),
 		['watch', 'old-app']
 	);
+});
+
+test('parseStartMode reads anything outside the CHECK as Host GO', () => {
+	assert.equal(parseStartMode('scheduled'), 'scheduled');
+	assert.equal(parseStartMode('self_timed'), 'self_timed');
+	assert.equal(parseStartMode('host_go'), 'host_go');
+	assert.equal(parseStartMode(null), 'host_go');
+	assert.equal(parseStartMode('scheduled_go'), 'host_go');
 });

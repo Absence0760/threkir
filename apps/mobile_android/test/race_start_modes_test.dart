@@ -127,4 +127,13 @@ void main() {
             windowOpensAt: b)),
         isNull);
   });
+
+  test('sessionStartModeFromWire reads anything outside the CHECK as Host GO',
+      () {
+    expect(sessionStartModeFromWire('scheduled'), SessionStartMode.scheduled);
+    expect(sessionStartModeFromWire('self_timed'), SessionStartMode.selfTimed);
+    expect(sessionStartModeFromWire('host_go'), SessionStartMode.hostGo);
+    expect(sessionStartModeFromWire(null), SessionStartMode.hostGo);
+    expect(sessionStartModeFromWire('scheduled_go'), SessionStartMode.hostGo);
+  });
 }

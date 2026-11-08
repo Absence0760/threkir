@@ -46,6 +46,14 @@ const ms = (iso: string | null): number | null => {
 	return Number.isFinite(t) ? t : null;
 };
 
+/**
+ * A start mode read off a row. Anything the CHECK would not hold reads as
+ * Host GO, the mode that needs an organiser to start anything.
+ */
+export function parseStartMode(v: unknown): SessionStartMode {
+	return v === 'scheduled' || v === 'self_timed' ? v : 'host_go';
+}
+
 /** The status a session is in on the server clock. */
 export function effectiveRaceStatus(session: StartModeSession, serverNowMs: number): RaceStatus {
 	const { status, startMode } = session;

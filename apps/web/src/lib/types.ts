@@ -3,6 +3,7 @@
 // unions and lazy-loaded client-side fields that the schema alone can't express.
 import type { Database, Json } from './database.types';
 import type { EventGymTemplate } from './social/event_gym_template';
+import type { SessionStartMode } from './races/course_gates';
 
 /// A jsonb bag as the column actually holds it.
 ///
@@ -693,8 +694,11 @@ export type Event = Omit<
 	| 'host_user_id'
 	| 'meet_lat'
 	| 'meet_lng'
+	| 'race_start_mode'
 > & {
 	recurrence_freq: RecurrenceFreq | null;
+	// How the event's races start (#1306), narrowed to the CHECK's set.
+	race_start_mode: SessionStartMode;
 	recurrence_byday: Weekday[] | null;
 	category: EventCategory;
 	// The class -> gym seam hint, parsed from the loose jsonb bag into the

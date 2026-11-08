@@ -4824,6 +4824,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get heatmapHeatDensity => 'Densidad de calor';
 
   @override
+  String get heatmapUpcomingRaces => 'Próximas carreras';
+
+  @override
+  String get heatmapViewRace => 'Ver carrera';
+
+  @override
+  String get heatmapRaceFallbackName => 'Carrera';
+
+  @override
   String get heatmapResetFilters => 'Restablecer filtros';
 
   @override

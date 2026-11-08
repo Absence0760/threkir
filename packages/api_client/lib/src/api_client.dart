@@ -2748,6 +2748,48 @@ class ApiClient {
     }
   }
 
+  /// Upcoming verified races inside the viewport bbox, for the discovery
+  /// map's race pins. Mirror of the web `fetchUpcomingRacesInBbox`;
+  /// [officialOnly] narrows to official organisers' races for the Official
+  /// lens. Fails soft.
+  Future<List<UpcomingRacePin>> fetchUpcomingRacesInBbox({
+    required double minLng,
+    required double minLat,
+    required double maxLng,
+    required double maxLat,
+    int limit = 100,
+    bool officialOnly = false,
+  }) async {
+    try {
+      final data = await _client.rpc('upcoming_races_in_bbox', params: {
+        'p_min_lng': minLng,
+        'p_min_lat': minLat,
+        'p_max_lng': maxLng,
+        'p_max_lat': maxLat,
+        'p_limit': limit,
+        'p_official_only': officialOnly,
+      }, get: true);
+      if (data is! List) return const [];
+      return data.map<UpcomingRacePin>((row) {
+        final r = row as Map<String, dynamic>;
+        return UpcomingRacePin(
+          id: r['id'] as String,
+          name: (r['name'] as String?) ?? '',
+          raceDate: r['race_date'] as String,
+          distanceM: (r['distance_m'] as num?)?.toInt(),
+          locationLabel: r['location_label'] as String?,
+          official: (r['is_official'] as bool?) ?? false,
+          hasCourse: (r['has_course'] as bool?) ?? false,
+          lat: (r['lat'] as num).toDouble(),
+          lng: (r['lng'] as num).toDouble(),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('fetchUpcomingRacesInBbox failed: ${safeErrorLabel(e)}');
+      return const [];
+    }
+  }
+
   // -- Route reviews --
 
   /// Fetch all reviews for a route, newest first, walked by keyset cursor so

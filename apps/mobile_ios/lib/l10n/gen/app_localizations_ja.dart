@@ -4539,6 +4539,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get heatmapHeatDensity => 'ヒート密度';
 
   @override
+  String get heatmapUpcomingRaces => '今後のレース';
+
+  @override
+  String get heatmapViewRace => 'レースを見る';
+
+  @override
+  String get heatmapRaceFallbackName => 'レース';
+
+  @override
   String get heatmapResetFilters => 'フィルターをリセット';
 
   @override

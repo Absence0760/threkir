@@ -6362,6 +6362,18 @@
   "@heatmapHeatDensity": {
     "description": "Filter chip toggling the heat-density layer in the heatmap filter sheet"
   },
+  "heatmapUpcomingRaces": "Upcoming races",
+  "@heatmapUpcomingRaces": {
+    "description": "Filter chip toggling the upcoming verified race pins (races in the next six months) in the heatmap filter sheet"
+  },
+  "heatmapViewRace": "View race",
+  "@heatmapViewRace": {
+    "description": "Button on a race pin's card on the heatmap that opens the race page"
+  },
+  "heatmapRaceFallbackName": "Race",
+  "@heatmapRaceFallbackName": {
+    "description": "Title shown on a heatmap race pin card when the race has no name"
+  },
   "heatmapResetFilters": "Reset filters",
   "@heatmapResetFilters": {
     "description": "Button to reset all heatmap filters"

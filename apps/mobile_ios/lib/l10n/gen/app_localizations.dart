@@ -7768,6 +7768,24 @@ abstract class AppLocalizations {
   /// **'Heat density'**
   String get heatmapHeatDensity;
 
+  /// Filter chip toggling the upcoming verified race pins (races in the next six months) in the heatmap filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming races'**
+  String get heatmapUpcomingRaces;
+
+  /// Button on a race pin's card on the heatmap that opens the race page
+  ///
+  /// In en, this message translates to:
+  /// **'View race'**
+  String get heatmapViewRace;
+
+  /// Title shown on a heatmap race pin card when the race has no name
+  ///
+  /// In en, this message translates to:
+  /// **'Race'**
+  String get heatmapRaceFallbackName;
+
   /// Button to reset all heatmap filters
   ///
   /// In en, this message translates to:

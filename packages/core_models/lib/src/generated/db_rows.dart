@@ -1167,6 +1167,7 @@ class DirectMessageRow {
   static const String colUnsentAt = 'unsent_at';
   static const String colDeletedPartnerKey = 'deleted_partner_key';
   static const String colConversationId = 'conversation_id';
+  static const String colSeenAt = 'seen_at';
 
   final String id;
   final String senderId;
@@ -1178,6 +1179,7 @@ class DirectMessageRow {
   final DateTime? unsentAt;
   final String? deletedPartnerKey;
   final String conversationId;
+  final DateTime? seenAt;
 
   const DirectMessageRow({
     required this.id,
@@ -1190,6 +1192,7 @@ class DirectMessageRow {
     this.unsentAt,
     this.deletedPartnerKey,
     required this.conversationId,
+    this.seenAt,
   });
 
   factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
@@ -1203,6 +1206,7 @@ class DirectMessageRow {
     unsentAt: parseIsoStrictValue(json['unsent_at']),
     deletedPartnerKey: json['deleted_partner_key'] as String?,
     conversationId: json['conversation_id'] as String,
+    seenAt: parseIsoStrictValue(json['seen_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1216,6 +1220,7 @@ class DirectMessageRow {
     colUnsentAt: unsentAt?.toIso8601String(),
     colDeletedPartnerKey: deletedPartnerKey,
     colConversationId: conversationId,
+    colSeenAt: seenAt?.toIso8601String(),
   };
 
   DirectMessageRow copyWith({
@@ -1229,6 +1234,7 @@ class DirectMessageRow {
     DateTime? unsentAt,
     String? deletedPartnerKey,
     String? conversationId,
+    DateTime? seenAt,
   }) => DirectMessageRow(
     id: id ?? this.id,
     senderId: senderId ?? this.senderId,
@@ -1240,6 +1246,7 @@ class DirectMessageRow {
     unsentAt: unsentAt ?? this.unsentAt,
     deletedPartnerKey: deletedPartnerKey ?? this.deletedPartnerKey,
     conversationId: conversationId ?? this.conversationId,
+    seenAt: seenAt ?? this.seenAt,
   );
 }
 
@@ -7771,12 +7778,14 @@ class UserSettingRow {
   static const String colUpdatedAt = 'updated_at';
   static const String colDiscoverableArea = 'discoverable_area';
   static const String colDiscoverableAreaLabel = 'discoverable_area_label';
+  static const String colDmReadReceipts = 'dm_read_receipts';
 
   final String userId;
   final dynamic prefs;
   final DateTime updatedAt;
   final dynamic discoverableArea;
   final String? discoverableAreaLabel;
+  final bool dmReadReceipts;
 
   const UserSettingRow({
     required this.userId,
@@ -7784,6 +7793,7 @@ class UserSettingRow {
     required this.updatedAt,
     this.discoverableArea,
     this.discoverableAreaLabel,
+    required this.dmReadReceipts,
   });
 
   factory UserSettingRow.fromJson(Map<String, dynamic> json) => UserSettingRow(
@@ -7792,6 +7802,7 @@ class UserSettingRow {
     updatedAt: parseIsoStrictRequired(json['updated_at'], 'updated_at'),
     discoverableArea: json['discoverable_area'],
     discoverableAreaLabel: json['discoverable_area_label'] as String?,
+    dmReadReceipts: (json['dm_read_receipts'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -7800,6 +7811,7 @@ class UserSettingRow {
     colUpdatedAt: updatedAt.toIso8601String(),
     colDiscoverableArea: discoverableArea,
     colDiscoverableAreaLabel: discoverableAreaLabel,
+    colDmReadReceipts: dmReadReceipts,
   };
 
   UserSettingRow copyWith({
@@ -7808,12 +7820,14 @@ class UserSettingRow {
     DateTime? updatedAt,
     dynamic discoverableArea,
     String? discoverableAreaLabel,
+    bool? dmReadReceipts,
   }) => UserSettingRow(
     userId: userId ?? this.userId,
     prefs: prefs ?? this.prefs,
     updatedAt: updatedAt ?? this.updatedAt,
     discoverableArea: discoverableArea ?? this.discoverableArea,
     discoverableAreaLabel: discoverableAreaLabel ?? this.discoverableAreaLabel,
+    dmReadReceipts: dmReadReceipts ?? this.dmReadReceipts,
   );
 }
 

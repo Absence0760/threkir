@@ -111,26 +111,19 @@ insert into write_lockdown_registry (role, tbl, verb, col, reason) values
   ('authenticated', 'event_attendees', 'INSERT', 'offer_expires_at', 'the paid-waitlist claim deadline (20270726000002); only the definer offer mover sets it, or a waiter could hold a seat forever'),
   ('authenticated', 'event_attendees', 'UPDATE', 'offer_expires_at', 'ditto — extending your own offer would starve the next waiter'),
 
-  -- direct_messages — 20271021000003 (issue #1216). The recipient's one write
-  -- is marking read; the table-level UPDATE it replaced let the recipient
-  -- rewrite the sender's body. Unsend is unsend_direct_message (SECURITY
-  -- DEFINER, sender only); the deleted-partner key is written by the
-  -- recipient_id ON DELETE SET NULL trigger. There is no client DELETE.
-  ('authenticated', 'direct_messages', 'UPDATE', 'id',                  'row identity'),
-  ('authenticated', 'direct_messages', 'UPDATE', 'sender_id',           'who wrote it; re-attributing a message forges it'),
-  ('authenticated', 'direct_messages', 'UPDATE', 'recipient_id',        'who it was sent to; moving it re-delivers private correspondence'),
-  ('authenticated', 'direct_messages', 'UPDATE', 'body',                'the sender''s words; the recipient rewriting them was the hole 20271021000003 closes'),
-  ('authenticated', 'direct_messages', 'UPDATE', 'created_at',          'thread ordering and the 2-year purge window'),
-  ('authenticated', 'direct_messages', 'UPDATE', 'route_id',            'the attachment the sender chose; cleared only by unsend_direct_message'),
-  ('authenticated', 'direct_messages', 'UPDATE', 'unsent_at',           'written only by unsend_direct_message, which checks the caller is the sender'),
-  ('authenticated', 'direct_messages', 'UPDATE', 'deleted_partner_key', 'written only by the recipient_id set-null trigger on account deletion'),
+  -- direct_messages — 20271021000003 (issue #1216) narrowed UPDATE to read_at;
+  -- 20271113000001 revoked even that, so there is no client UPDATE at all:
+  -- marking read is mark_direct_messages_read (SECURITY DEFINER, recipient
+  -- only), unsend is unsend_direct_message (sender only), and the
+  -- deleted-partner key is written by the recipient_id ON DELETE SET NULL
+  -- trigger. There is no client DELETE.
   ('authenticated', 'direct_messages', 'INSERT', 'created_at',          'defaults to now(); a client-set value backdates a message into a thread'),
   ('authenticated', 'direct_messages', 'INSERT', 'read_at',             'a message is not read when it is sent; a pre-read send hides it from the unread badge'),
   ('authenticated', 'direct_messages', 'INSERT', 'unsent_at',           'a message is not unsent when it is sent; unsending is the RPC'),
   ('authenticated', 'direct_messages', 'INSERT', 'deleted_partner_key', 'exists only once the recipient has deleted their account'),
+  ('authenticated', 'direct_messages', 'INSERT', 'seen_at',             'the shared read receipt (20271113000001); only mark_direct_messages_read writes it, and only while both participants have receipts on'),
   -- 20271105000010 (issue #1216): the direct_messages_set_conversation trigger
   -- assigns the pair's conversation on insert.
-  ('authenticated', 'direct_messages', 'UPDATE', 'conversation_id',     'moving a message into another conversation re-delivers it to that conversation''s participants'),
   ('authenticated', 'direct_messages', 'INSERT', 'conversation_id',     'set by the direct_messages_set_conversation trigger; a client-chosen one would post into a conversation the sender is not in');
 
 -- Columns a client may set once, at row creation, and never change. Each needs

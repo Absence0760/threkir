@@ -843,6 +843,7 @@ export type Database = {
           read_at: string | null
           recipient_id: string | null
           route_id: string | null
+          seen_at: string | null
           sender_id: string
           unsent_at: string | null
         }
@@ -855,6 +856,7 @@ export type Database = {
           read_at?: string | null
           recipient_id?: string | null
           route_id?: string | null
+          seen_at?: string | null
           sender_id: string
           unsent_at?: string | null
         }
@@ -867,6 +869,7 @@ export type Database = {
           read_at?: string | null
           recipient_id?: string | null
           route_id?: string | null
+          seen_at?: string | null
           sender_id?: string
           unsent_at?: string | null
         }
@@ -5438,6 +5441,7 @@ export type Database = {
         Row: {
           discoverable_area: unknown
           discoverable_area_label: string | null
+          dm_read_receipts: boolean
           prefs: Json
           updated_at: string
           user_id: string
@@ -5445,6 +5449,7 @@ export type Database = {
         Insert: {
           discoverable_area?: unknown
           discoverable_area_label?: string | null
+          dm_read_receipts?: boolean
           prefs?: Json
           updated_at?: string
           user_id: string
@@ -5452,6 +5457,7 @@ export type Database = {
         Update: {
           discoverable_area?: unknown
           discoverable_area_label?: string | null
+          dm_read_receipts?: boolean
           prefs?: Json
           updated_at?: string
           user_id?: string
@@ -7160,6 +7166,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_direct_messages_read: {
+        Args: { p_partner_id: string; p_through_message_id: string }
+        Returns: number
+      }
       merge_my_device_settings: {
         Args: {
           p_changes: Json
@@ -7954,6 +7964,7 @@ export type Database = {
           read_at: string | null
           recipient_id: string | null
           route_id: string | null
+          seen_at: string | null
           sender_id: string
           unsent_at: string | null
         }

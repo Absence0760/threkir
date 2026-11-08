@@ -950,6 +950,15 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 			t.Errorf("%s must be filtered by %q (scoped to the subject); got query=%q", c.name, c.want, c.query)
 		}
 	}
+	// read_at on a sent message is the recipient's own read time, withheld
+	// from the sender by a column grant (20271113000001); the export must not
+	// hand it back. seen_at is what the recipient chose to share.
+	if strings.Contains(dmSentQ, "read_at") || !strings.Contains(dmSentQ, "seen_at") {
+		t.Errorf("direct_messages (sent) select must carry seen_at and omit the recipient's read_at; got %q", dmSentQ)
+	}
+	if !strings.Contains(dmRecvQ, "select=%2A") && !strings.Contains(dmRecvQ, "select=*") {
+		t.Errorf("direct_messages (received) select must keep every column, the subject's own read_at included; got %q", dmRecvQ)
+	}
 	// invite_token is a redeemable credential — it must never be in the
 	// coach_athletes select projection.
 	for _, q := range []string{coachQ, athleteQ} {

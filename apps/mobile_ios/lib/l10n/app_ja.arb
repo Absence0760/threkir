@@ -5846,5 +5846,18 @@
   "parksAttributionAgency": "コースラインは公園のトレイルデータに基づきます",
   "parksAttributionTraced": "コースラインは公園の公開地図をもとに作成しました",
   "parksNavigate": "このコースをナビ",
-  "parksBrowseLink": "公園コース"
+  "parksBrowseLink": "公園コース",
+  "eventCourseLinesMapBoth": "コースのスタートラインとフィニッシュラインの地図",
+  "eventCourseLinesMapStart": "コースのスタートラインの地図",
+  "eventCourseLinesMapFinish": "コースのフィニッシュラインの地図",
+  "eventRacePreflightTitle": "準備完了にする前にコースを確認",
+  "eventRacePreflightBlockedTitle": "このレースはまだ準備完了にできません",
+  "eventRacePreflightFixOnWeb": "コースのラインはウェブのイベントエディターで編集します。",
+  "eventRaceArmAnyway": "このまま準備完了にする",
+  "eventRacePreflightOk": "OK",
+  "eventRacePreflightNoFinish": "{course}：フィニッシュラインもフィニッシュ地点もないため、ランナーは手動でフィニッシュします。",
+  "eventRacePreflightNoStart": "{course}：スタートラインがありません。セルフタイム方式のレースには必要です。",
+  "eventRacePreflightSelfCross": "{course}：ルートが終点より前に自身のフィニッシュラインを横切るため、ラインでのフィニッシュが早すぎる可能性があります。",
+  "eventRacePreflightFarStart": "{course}：スタートラインがルートから100 m以上離れています。",
+  "eventRacePreflightFarFinish": "{course}：フィニッシュラインがルートから100 m以上離れています。"
 }

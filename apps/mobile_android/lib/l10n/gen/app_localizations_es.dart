@@ -21068,4 +21068,58 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get parksBrowseLink => 'Recorridos de parques';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Mapa de las líneas de salida y meta del recorrido';
+
+  @override
+  String get eventCourseLinesMapStart =>
+      'Mapa de la línea de salida del recorrido';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Mapa de la línea de meta del recorrido';
+
+  @override
+  String get eventRacePreflightTitle => 'Revisa los recorridos antes de armar';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Esta carrera aún no se puede armar';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Las líneas del recorrido se editan en el editor de eventos de la web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armar de todos modos';
+
+  @override
+  String get eventRacePreflightOk => 'Aceptar';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: sin línea ni punto de meta, así que los corredores terminan a mano.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: sin línea de salida. Una carrera autocronometrada la necesita.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: la ruta cruza su propia línea de meta antes del final, así que una llegada por la línea podría adelantarse.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: la línea de salida está a más de 100 m de la ruta.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: la línea de meta está a más de 100 m de la ruta.';
+  }
 }

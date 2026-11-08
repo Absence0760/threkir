@@ -1014,6 +1014,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// The course of the race this recording is bound to, for the map's start
+  /// and finish lines; null when not racing.
+  RaceCourse? get _raceCourse {
+    final rc = widget.raceController;
+    return rc != null && rc.isHosting ? rc.course : null;
+  }
+
   bool _raceStopSheetOpen = false;
 
   /// Every Stop entry point lands here. During a live race with no outcome
@@ -5296,6 +5303,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             activity: isCountdown ? null : _activityType,
             ghostPosition: _computeGhostPosition(),
             approximateLocation: !isCountdown && _preciseLocationOff,
+            courseStartGate: _raceCourse?.startGate,
+            courseFinishGate: _raceCourse?.finishGate,
           ),
         ),
 

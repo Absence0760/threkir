@@ -20848,4 +20848,55 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parksBrowseLink => 'Park courses';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Map of the course\'s start and finish lines';
+
+  @override
+  String get eventCourseLinesMapStart => 'Map of the course\'s start line';
+
+  @override
+  String get eventCourseLinesMapFinish => 'Map of the course\'s finish line';
+
+  @override
+  String get eventRacePreflightTitle => 'Check the courses before arming';
+
+  @override
+  String get eventRacePreflightBlockedTitle => 'This race can\'t be armed yet';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Course lines are edited in the event editor on the web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Arm anyway';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: no finish line or finish point, so runners finish by hand.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: no start line. A self-timed race needs one.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: the route crosses its own finish line before the end, so a finish by the line could come early.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: the start line is more than 100 m from the route.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: the finish line is more than 100 m from the route.';
+  }
 }

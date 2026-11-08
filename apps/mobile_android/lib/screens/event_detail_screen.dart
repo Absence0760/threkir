@@ -11,6 +11,8 @@ import 'package:ui_kit/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../column_limits.dart';
+import '../course_gates.dart'
+    show CourseGate, PreflightCourse, RaceStartMode, racePreflight;
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../calendar_intent.dart';
@@ -35,6 +37,7 @@ import '../session_step_label.dart';
 import '../session_steps.dart';
 import '../social_service.dart';
 import '../backend_timeout.dart';
+import '../widgets/course_lines_map.dart';
 import '../widgets/error_state.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/event_photos.dart';
@@ -46,6 +49,7 @@ import '../widgets/help_button.dart';
 import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
+import '../widgets/race_preflight_dialog.dart';
 
 /// Host-only attendance marking is offered iff the viewer organises the
 /// event's club AND the event is a `class` (instructor_business.md M6).
@@ -160,6 +164,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// event, which RSVPs and races exactly as before courses existed.
   List<EventCourseView> _courses = const [];
   RaceSessionRow? _raceSession;
+
+  /// The occurrence's courses as frozen when its race session was created
+  /// (decisions § 2390), keyed by course id. Empty without a frozen copy, in
+  /// which case the course map reads the live course row.
+  Map<String, FrozenRaceCourse> _frozenCourses = const {};
   DateTime? _activeInstance;
   List<DateTime> _instances = const [];
   // Instance starts cancelled via `event_exceptions`. Filtered out of the
@@ -725,6 +734,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       });
       unawaited(_maybeLoadSessionPlan(event));
       unawaited(_maybeLoadGymRoutine(event));
+      unawaited(_loadFrozenCourses());
       if (isAthleticEventCategory(event.row.category)) {
         unawaited(_loadCourses(event.row.id));
       }
@@ -764,6 +774,64 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     } catch (e) {
       debugPrint('EventDetailScreen._loadCourses: ${safeErrorLabel(e)}');
     }
+  }
+
+  /// The frozen copy of the courses for the occurrence on screen, read only
+  /// once its race session says one exists. Off the critical path, like the
+  /// courses: a failed read leaves the map on the live course row.
+  Future<void> _loadFrozenCourses() async {
+    final e = _event;
+    final inst = _activeInstance;
+    final race = _raceSession;
+    if (e == null || inst == null || race?.coursesFrozenAt == null) {
+      if (_frozenCourses.isNotEmpty && mounted) {
+        setState(() => _frozenCourses = const {});
+      }
+      return;
+    }
+    try {
+      final frozen =
+          await widget.social.fetchRaceSessionCourses(e.row.id, inst);
+      if (mounted && identical(race, _raceSession)) {
+        setState(() => _frozenCourses = frozen);
+      }
+    } catch (err) {
+      debugPrint(
+          'EventDetailScreen._loadFrozenCourses: ${safeErrorLabel(err)}');
+    }
+  }
+
+  /// Arm, after the course preflight (#1305): warnings ask, errors block.
+  /// The courses are read fresh, so a line edited on the web since the page
+  /// loaded is what is checked; a failed read checks what the page holds.
+  /// The phone never reads a course's route, so the far-from-route row
+  /// (a warning the web editor shows inline) is not checked here.
+  Future<void> _armWithPreflight() async {
+    final e = _event;
+    if (e == null || _raceBusy) return;
+    var courses = _courses;
+    try {
+      courses = await widget.social.fetchEventCourses(e.row.id);
+    } catch (err) {
+      debugPrint(
+          'EventDetailScreen._armWithPreflight: ${safeErrorLabel(err)}');
+    }
+    if (!mounted) return;
+    final issues = racePreflight([
+      for (final c in courses)
+        PreflightCourse(
+          id: c.id,
+          startGate: c.startGate,
+          finishGate: c.finishGate,
+          hasFinishPoint: c.finishLat != null && c.finishLng != null,
+          selfCross: c.finishLineSelfCross,
+          route: null,
+        ),
+    ], RaceStartMode.hostGo);
+    final names = {for (final c in courses) c.id: c.name};
+    final go =
+        await confirmRacePreflight(context, issues, (id) => names[id] ?? '');
+    if (go && mounted) await _raceMutation(_RaceAction.arm);
   }
 
   /// The course on the viewer's own RSVP for the occurrence on screen.
@@ -977,6 +1045,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         _results = results;
         _raceSession = race;
       });
+      unawaited(_loadFrozenCourses());
     }
   }
 
@@ -1141,6 +1210,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       };
       if (mounted) {
         setState(() => _raceSession = row);
+        unawaited(_loadFrozenCourses());
       }
     } catch (err) {
       debugPrint('event race control failed: $err');
@@ -2153,6 +2223,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
+  /// A course's lines: the frozen copy while the occurrence has one, else
+  /// the live course row.
+  (CourseGate?, CourseGate?) _courseLines(EventCourseView c) {
+    final frozen = _frozenCourses[c.id];
+    if (frozen != null) return (frozen.startGate, frozen.finishGate);
+    return (c.startGate, c.finishGate);
+  }
+
   Widget _buildCourses(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
     final mine = _myCourseId;
@@ -2169,7 +2247,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        for (final c in _courses)
+        for (final c in _courses) ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
@@ -2201,6 +2279,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ],
             ),
           ),
+          if (_courseLines(c) case (final start, final finish)
+              when start != null || finish != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: CourseLinesMap(
+                key: Key('course-lines-map-${c.id}'),
+                start: start,
+                finish: finish,
+              ),
+            ),
+        ],
         if (canPick)
           Align(
             alignment: Alignment.centerLeft,
@@ -2310,7 +2399,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 onChanged: (v) => setState(() => _autoApproveOnArm = v ?? true),
               ),
               FilledButton.icon(
-                onPressed: _raceBusy ? null : () => _raceMutation(_RaceAction.arm),
+                onPressed: _raceBusy ? null : _armWithPreflight,
                 icon: const Icon(Icons.bolt),
                 label: Text(l10n.eventRaceArm),
               ),

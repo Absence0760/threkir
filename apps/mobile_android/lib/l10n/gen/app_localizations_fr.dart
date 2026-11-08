@@ -21115,4 +21115,58 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksBrowseLink => 'Parcours des parcs';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Carte des lignes de départ et d’arrivée du parcours';
+
+  @override
+  String get eventCourseLinesMapStart =>
+      'Carte de la ligne de départ du parcours';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Carte de la ligne d’arrivée du parcours';
+
+  @override
+  String get eventRacePreflightTitle => 'Vérifiez les parcours avant d’armer';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Cette course ne peut pas encore être armée';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Les lignes du parcours se modifient dans l’éditeur d’événement sur le web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armer quand même';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course : ni ligne ni point d’arrivée, les coureurs terminent donc à la main.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course : pas de ligne de départ. Une course chronométrée par chacun en a besoin.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course : l’itinéraire croise sa propre ligne d’arrivée avant la fin, une arrivée par la ligne pourrait donc venir trop tôt.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course : la ligne de départ est à plus de 100 m de l’itinéraire.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course : la ligne d’arrivée est à plus de 100 m de l’itinéraire.';
+  }
 }

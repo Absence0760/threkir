@@ -2912,7 +2912,6 @@ export const messages = {
 	"courseLines.remove": "Remover linha",
 	"courseLines.placeStart": "Colocar linha de largada",
 	"courseLines.placeFinish": "Colocar linha de chegada",
-	"courseLines.placeNeedsPosition": "Carregue o mapa e mova-o até onde a linha vai, depois coloque-a.",
 	"courseLines.editingStart": "Editando a linha de largada",
 	"courseLines.editingFinish": "Editando a linha de chegada",
 	"courseLines.latitude": "Latitude",

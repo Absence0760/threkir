@@ -2913,7 +2913,6 @@ export const messages = {
 	"courseLines.remove": "Supprimer la ligne",
 	"courseLines.placeStart": "Placer la ligne de départ",
 	"courseLines.placeFinish": "Placer la ligne d'arrivée",
-	"courseLines.placeNeedsPosition": "Chargez la carte et déplacez-la jusqu'à l'emplacement de la ligne, puis placez-la.",
 	"courseLines.editingStart": "Modification de la ligne de départ",
 	"courseLines.editingFinish": "Modification de la ligne d'arrivée",
 	"courseLines.latitude": "Latitude",

@@ -2926,7 +2926,6 @@ export const en = {
 	"courseLines.remove": "Remove line",
 	"courseLines.placeStart": "Place start line",
 	"courseLines.placeFinish": "Place finish line",
-	"courseLines.placeNeedsPosition": "Load the map and pan to where the line goes, then place it.",
 	"courseLines.editingStart": "Editing the start line",
 	"courseLines.editingFinish": "Editing the finish line",
 	"courseLines.latitude": "Latitude",

@@ -2908,7 +2908,6 @@ export const messages = {
 	"courseLines.remove": "ラインを削除",
 	"courseLines.placeStart": "スタートラインを設置",
 	"courseLines.placeFinish": "フィニッシュラインを設置",
-	"courseLines.placeNeedsPosition": "地図を読み込み、ラインを置く場所まで移動してから設置してください。",
 	"courseLines.editingStart": "スタートラインを編集中",
 	"courseLines.editingFinish": "フィニッシュラインを編集中",
 	"courseLines.latitude": "緯度",

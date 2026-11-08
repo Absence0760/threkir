@@ -46,6 +46,7 @@
 	let routeFailed = $state(false);
 	let editing = $state<GateWhich>('finish');
 	let busy = $state(false);
+	let placing = $state(false);
 	let error = $state<string | null>(null);
 	let getCenter: (() => GatePoint | null) | null = null;
 
@@ -91,6 +92,7 @@
 	// The inputs follow the line being edited whenever the server's copy moves.
 	$effect(() => {
 		const g = edited;
+		if (placing && !g) return;
 		formLat = g ? round(g.lat, 6) : null;
 		formLng = g ? round(g.lng, 6) : null;
 		formBearing = g ? round(g.bearingDeg, 1) : null;
@@ -113,6 +115,7 @@
 				bearingDeg: normalizeBearing(gate.bearingDeg),
 				halfWidthM: clampHalfWidth(gate.halfWidthM)
 			});
+			placing = false;
 			await onchanged();
 		} catch (e) {
 			error = errorCopy(e, m, 'courseLines.saveFailed', 'courseLines.saveFailed');
@@ -174,9 +177,16 @@
 
 	function place(which: GateWhich) {
 		editing = which;
+		error = null;
 		const p = placementPoint(which);
 		if (!p) {
-			error = m('courseLines.placeNeedsPosition');
+			// Nowhere to put it yet (no map, no route, no other line): open the
+			// inputs empty so the position can be typed.
+			placing = true;
+			formLat = null;
+			formLng = null;
+			formBearing = 0;
+			formWidth = COURSE_GATE_DEFAULT_HALF_WIDTH_M;
 			return;
 		}
 		const other = which === 'start' ? finish : start;
@@ -278,7 +288,7 @@
 		{/each}
 	</div>
 
-	{#if edited}
+	{#if edited || placing}
 		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class="gate-form"

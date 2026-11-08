@@ -2913,7 +2913,6 @@ export const messages = {
 	"courseLines.remove": "Linie entfernen",
 	"courseLines.placeStart": "Startlinie setzen",
 	"courseLines.placeFinish": "Ziellinie setzen",
-	"courseLines.placeNeedsPosition": "Lade die Karte und verschiebe sie dorthin, wo die Linie hin soll, dann setze sie.",
 	"courseLines.editingStart": "Startlinie bearbeiten",
 	"courseLines.editingFinish": "Ziellinie bearbeiten",
 	"courseLines.latitude": "Breitengrad",

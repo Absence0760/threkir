@@ -2913,7 +2913,6 @@ export const messages = {
 	"courseLines.remove": "Quitar la línea",
 	"courseLines.placeStart": "Colocar la línea de salida",
 	"courseLines.placeFinish": "Colocar la línea de meta",
-	"courseLines.placeNeedsPosition": "Carga el mapa y desplázalo hasta donde va la línea, y luego colócala.",
 	"courseLines.editingStart": "Editando la línea de salida",
 	"courseLines.editingFinish": "Editando la línea de meta",
 	"courseLines.latitude": "Latitud",

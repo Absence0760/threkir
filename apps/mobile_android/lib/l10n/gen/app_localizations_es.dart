@@ -150,6 +150,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recapLatestStartLabel => 'Salida más tardía';
 
   @override
+  String get recapParkCoursesLabel => 'Recorridos de parque';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'en # parques',
+      one: 'en # parque',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Parques donde corriste';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# recorridos',
+      one: '# recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'Elegir ruta';
 
   @override
@@ -14893,6 +14921,28 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get challengesMetricParkCourses => 'Recorridos de parque';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '# recorridos',
+      one: '# recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'recorridos';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Cuenta los recorridos de parque en $region';
+  }
+
+  @override
   String get challengesLeaveConfirmTitle => '¿Salir del desafío?';
 
   @override
@@ -15832,6 +15882,75 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => 'Completaste 10 planes de entrenamiento';
+
+  @override
+  String get badgesParkCourses1Label => 'Primer recorrido de parque';
+
+  @override
+  String get badgesParkCourses1Desc => 'Completaste un recorrido de parque';
+
+  @override
+  String get badgesParkCourses5Label => 'Habitual de los parques';
+
+  @override
+  String get badgesParkCourses5Desc =>
+      'Completaste 5 recorridos de parque distintos';
+
+  @override
+  String get badgesParkCourses10Label => 'Coleccionista de senderos';
+
+  @override
+  String get badgesParkCourses10Desc =>
+      'Completaste 10 recorridos de parque distintos';
+
+  @override
+  String get badgesParkCourses25Label => 'Explorador de parques';
+
+  @override
+  String get badgesParkCourses25Desc =>
+      'Completaste 25 recorridos de parque distintos';
+
+  @override
+  String get badgesParkComplete1Label => 'Parque completado';
+
+  @override
+  String get badgesParkComplete1Desc =>
+      'Completaste todos los recorridos de un parque';
+
+  @override
+  String get badgesParkComplete3Label => 'Tres parques completados';
+
+  @override
+  String get badgesParkComplete3Desc =>
+      'Completaste todos los recorridos de 3 parques';
+
+  @override
+  String get badgesParkComplete10Label => 'Completista de parques';
+
+  @override
+  String get badgesParkComplete10Desc =>
+      'Completaste todos los recorridos de 10 parques';
+
+  @override
+  String get badgesParkPassport1Label => 'Pasaporte de parques';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Completaste un recorrido en cada parque de un estado';
+
+  @override
+  String get badgesParkPassport3Label => 'Pasaporte sellado';
+
+  @override
+  String get badgesParkPassport3Desc =>
+      'Completaste un pasaporte de parques en 3 estados';
+
+  @override
+  String get badgesParkPassport10Label => 'Coleccionista de pasaportes';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Completaste un pasaporte de parques en 10 estados';
 
   @override
   String get racePredictorTitle => 'Predictor de tiempo de carrera';
@@ -20566,6 +20685,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get shareCardBadgeKicker => 'Insignia conseguida';
+
+  @override
+  String get shareCardKindCourse => 'Recorrido de parque';
+
+  @override
+  String get shareCardCourseKicker => 'Tiempo en recorrido de parque';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return 'N.º $rank en $season';
+  }
 
   @override
   String get runDetailSharePr => 'Compartir tarjeta de marca';

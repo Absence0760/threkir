@@ -335,6 +335,30 @@ abstract class AppLocalizations {
   /// **'Latest start'**
   String get recapLatestStartLabel;
 
+  /// Park courses phase 5 (recap.parkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get recapParkCoursesLabel;
+
+  /// Park courses phase 5 (recap.parkCoursesSub)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {in # park} other {in # parks}}'**
+  String recapParkCoursesSub(int n);
+
+  /// Park courses phase 5 (recap.parksHeading)
+  ///
+  /// In en, this message translates to:
+  /// **'Parks you ran'**
+  String get recapParksHeading;
+
+  /// Park courses phase 5 (recap.parkCourseCount)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {# course} other {# courses}}'**
+  String recapParkCourseCount(int n);
+
   /// App bar title for the full-screen route picker
   ///
   /// In en, this message translates to:
@@ -24128,6 +24152,30 @@ abstract class AppLocalizations {
   /// **'{n}'**
   String challengesUnitActivities(int n);
 
+  /// Park courses phase 5 (challenges.metricParkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get challengesMetricParkCourses;
+
+  /// Park courses phase 5 (challenges.unitParkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {# course} other {# courses}}'**
+  String challengesUnitParkCourses(int n);
+
+  /// Park courses phase 5 (challenges.goalSuffixCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'courses'**
+  String get challengesGoalSuffixCourses;
+
+  /// Park courses phase 5 (challenges.parkRegion)
+  ///
+  /// In en, this message translates to:
+  /// **'Counts park courses in {region}'**
+  String challengesParkRegion(String region);
+
   /// Leave-confirm dialog title
   ///
   /// In en, this message translates to:
@@ -25747,6 +25795,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Completed 10 training plans'**
   String get badgesPlan10Desc;
+
+  /// Park courses phase 5 (badges.parkCourses1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'First park course'**
+  String get badgesParkCourses1Label;
+
+  /// Park courses phase 5 (badges.parkCourses1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course'**
+  String get badgesParkCourses1Desc;
+
+  /// Park courses phase 5 (badges.parkCourses5.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park regular'**
+  String get badgesParkCourses5Label;
+
+  /// Park courses phase 5 (badges.parkCourses5.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 5 different park courses'**
+  String get badgesParkCourses5Desc;
+
+  /// Park courses phase 5 (badges.parkCourses10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Trail collector'**
+  String get badgesParkCourses10Label;
+
+  /// Park courses phase 5 (badges.parkCourses10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 10 different park courses'**
+  String get badgesParkCourses10Desc;
+
+  /// Park courses phase 5 (badges.parkCourses25.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park explorer'**
+  String get badgesParkCourses25Label;
+
+  /// Park courses phase 5 (badges.parkCourses25.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 25 different park courses'**
+  String get badgesParkCourses25Desc;
+
+  /// Park courses phase 5 (badges.parkComplete1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park finisher'**
+  String get badgesParkComplete1Label;
+
+  /// Park courses phase 5 (badges.parkComplete1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in a park'**
+  String get badgesParkComplete1Desc;
+
+  /// Park courses phase 5 (badges.parkComplete3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Three parks finished'**
+  String get badgesParkComplete3Label;
+
+  /// Park courses phase 5 (badges.parkComplete3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in 3 parks'**
+  String get badgesParkComplete3Desc;
+
+  /// Park courses phase 5 (badges.parkComplete10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park completionist'**
+  String get badgesParkComplete10Label;
+
+  /// Park courses phase 5 (badges.parkComplete10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in 10 parks'**
+  String get badgesParkComplete10Desc;
+
+  /// Park courses phase 5 (badges.parkPassport1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park passport'**
+  String get badgesParkPassport1Label;
+
+  /// Park courses phase 5 (badges.parkPassport1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a course in every park of a state'**
+  String get badgesParkPassport1Desc;
+
+  /// Park courses phase 5 (badges.parkPassport3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Passport stamped'**
+  String get badgesParkPassport3Label;
+
+  /// Park courses phase 5 (badges.parkPassport3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park passport in 3 states'**
+  String get badgesParkPassport3Desc;
+
+  /// Park courses phase 5 (badges.parkPassport10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Passport collector'**
+  String get badgesParkPassport10Label;
+
+  /// Park courses phase 5 (badges.parkPassport10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park passport in 10 states'**
+  String get badgesParkPassport10Desc;
 
   /// Title of the dashboard race-time predictor card
   ///
@@ -33202,6 +33370,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Badge earned'**
   String get shareCardBadgeKicker;
+
+  /// Park courses phase 5 (runShare.kindCourse)
+  ///
+  /// In en, this message translates to:
+  /// **'Park course'**
+  String get shareCardKindCourse;
+
+  /// Park courses phase 5 (runShare.courseKicker)
+  ///
+  /// In en, this message translates to:
+  /// **'Park course time'**
+  String get shareCardCourseKicker;
+
+  /// Park courses phase 5 (runShare.courseRank)
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank} in {season}'**
+  String shareCardCourseRank(String rank, String season);
 
   /// Run detail action that opens the share sheet on the PR card
   ///

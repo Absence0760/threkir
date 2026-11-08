@@ -120,7 +120,10 @@ class WorkoutRunnerTest {
 
         val fast = WorkoutRunner(workoutOf(listOf(rep)))
         fast.onTotals(0.0, 0.0, nowMs = 0)
-        assertTrue(fast.onTotals(120.0, 19.0, nowMs = 19_000).none { it is WorkoutEvent.PaceDrift })
+        // 100 m clears the distance floor; 19 s is short of the time floor.
+        assertTrue(fast.onTotals(100.0, 19.0, nowMs = 19_000).none { it is WorkoutEvent.PaceDrift })
+        // A feed only counts once it moves the distance, as on the phone, so
+        // the 20 s sample has to carry new metres: 120 m in 20 s = 167 s/km.
         val due = fast.onTotals(120.0, 20.0, nowMs = 20_000).filterIsInstance<WorkoutEvent.PaceDrift>()
         assertEquals(73, due.single().deltaSPerKm)
         assertTrue(due.single().ahead)

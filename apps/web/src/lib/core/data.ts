@@ -189,6 +189,7 @@ import {
 } from '../runs/smoothed_sidecar';
 import { compareLeaderboard } from '../runs/race_leaderboard';
 import { readRankRows } from '../segments/effort_rank';
+import { trackExtent, type TrackExtent } from '../segments/track_extent';
 import { parseCourseCheckpoints, type CourseCheckpoint } from '../parks/park_courses';
 import type { RecapPeriodKind } from '../types';
 import { GYM_SESSION_DRAFT_KEY, hasSessionDraft } from '../gym/gym_session_draft';
@@ -242,6 +243,8 @@ import {
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
 	GLOBAL_SEGMENT_SCORING_LIMIT,
+	GLOBAL_SEGMENT_CANDIDATE_LIMIT,
+	GLOBAL_SEGMENT_CANDIDATE_PAD_M,
 } from './data_normalise';
 import { dashboardRunsWindowStart } from './dashboard_runs';
 import {
@@ -10912,20 +10915,42 @@ export async function fetchGlobalSegmentLeaderboard(
 	}));
 }
 
-/// Backfill catalogue-segment efforts a run earned. Called from the
-/// run-detail page on mount (owner only). Scores the run's track against
-/// every active catalogue geometry via the pure `computeGlobalSegmentEffort`
-/// (end-to-end match, curated v1) and batch-upserts matches. Idempotent via
-/// unique(global_segment_id, run_id) + ignoreDuplicates. Returns new count.
+/// The active catalogue segments that could be timed on a track with this
+/// extent (`global_segments_in_bbox`, decisions § 2392): those whose own
+/// extent overlaps it padded by `GLOBAL_SEGMENT_CANDIDATE_PAD_M`. The same
+/// lookup, pad and cap the `segment-match` Edge Function scores with.
+export async function fetchGlobalSegmentsInBbox(
+	extent: TrackExtent,
+): Promise<{ segments: GlobalSegment[]; error: Error | null }> {
+	const { data, error } = await supabase.rpc('global_segments_in_bbox', {
+		p_min_lat: extent.minLat,
+		p_min_lng: extent.minLng,
+		p_max_lat: extent.maxLat,
+		p_max_lng: extent.maxLng,
+		p_pad_m: GLOBAL_SEGMENT_CANDIDATE_PAD_M,
+		p_limit: GLOBAL_SEGMENT_CANDIDATE_LIMIT,
+	});
+	if (error) {
+		console.warn('fetchGlobalSegmentsInBbox failed', error);
+		return { segments: [], error: dbError(error) };
+	}
+	return { segments: (data ?? []).map(asGlobalSegment), error: null };
+}
+
+/// Backfill catalogue-segment efforts a run earned, from the run-detail page
+/// on mount (owner only). The FALLBACK path: the `segment-match` job scores
+/// every run server-side when its track lands (decisions § 2392), and this
+/// stays until that job has run in production, then goes (issue #1313). It
+/// scores the run's track against the catalogue segments near it (the bbox
+/// lookup, not the whole catalogue) via the pure `computeGlobalSegmentEfforts`
+/// and batch-upserts matches. Idempotent via unique(global_segment_id, run_id)
+/// + ignoreDuplicates. Returns new count.
 ///
-/// The write-side upsert is idempotent, but the FETCH + client-side haversine
-/// match are not — without a short-circuit they'd re-run on every owner view
-/// forever (issue #333). A `runs.metadata.global_segments_scored_count` stamp
-/// records the catalogue size a run was last scored against; a cheap `count`
-/// query gates the expensive polyline fetch so a scored run only recomputes
-/// when the (deliberately growing) catalogue gains segments. Both the gate
-/// and the fetch are bounded by the shared GLOBAL_SEGMENT_SCORING_LIMIT —
-/// see its doc comment for why a drift between the two is a pessimisation.
+/// A `runs.metadata.global_segments_scored_count` stamp records the size of
+/// the active catalogue the run was last scored against (issue #333); a cheap
+/// `count` query gates the pass so a scored run only recomputes when the
+/// catalogue grows. The stamp is that count itself, not the number of rows a
+/// fetch returned, so it can always reach the count the gate compares.
 export async function computeGlobalSegmentEffortsForRun(input: {
 	run_id: string;
 	user_id: string;
@@ -10944,15 +10969,23 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	]);
 	const runMetadata = (runRow?.metadata ?? null) as JsonObject | null;
 	if (!shouldRescoreGlobalSegments(runMetadata, activeCount)) return 0;
+	// An unknown count cannot be stamped; the pass still runs, and the next
+	// view tries again.
+	const scoredCount = typeof activeCount === 'number' ? activeCount : null;
 
-	const { segments } = await fetchGlobalSegmentsWithError(GLOBAL_SEGMENT_SCORING_LIMIT);
-	if (segments.length === 0) return 0;
+	const extent = trackExtent(input.track);
+	if (!extent) return 0;
+	const { segments, error: candidatesError } = await fetchGlobalSegmentsInBbox(extent);
+	if (candidatesError) return 0;
 
 	// A park course's checkpoints are part of its match rule. Without them the
 	// matcher would time a run that cut the course, so a failed read scores
 	// nothing (and stamps nothing, so the next view retries), and a course
 	// whose list cannot be read is left out of the sweep.
-	const checkpointsBySegment = await fetchParkCourseCheckpoints();
+	const checkpointsBySegment =
+		segments.length > 0
+			? await fetchParkCourseCheckpoints(segments.map((seg) => seg.id))
+			: new Map<string, CourseCheckpoint[] | null>();
 	if (checkpointsBySegment === null) return 0;
 	const scorable = segments.filter((seg) => checkpointsBySegment.get(seg.id) !== null);
 
@@ -10964,9 +10997,8 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		time_seconds: number;
 		started_at: string;
 	}[] = [];
-	// One sweep over the catalogue rather than a call per segment: the track's
-	// extent is then measured once and the (overwhelming) majority of segments,
-	// which are nowhere near this run, are rejected without walking it.
+	// One sweep over the candidates rather than a call per segment: the
+	// track's extent is then measured once.
 	const efforts = computeGlobalSegmentEfforts(
 		input.track,
 		scorable.map((seg) => ({
@@ -11000,13 +11032,14 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		}
 		newCount = inserted?.length ?? 0;
 	}
+	if (scoredCount === null) return newCount;
 
 	// Stamp even when nothing matched (rows.length === 0): a no-match run
-	// must not re-fetch + re-match the whole catalogue every view either.
+	// must not re-fetch + re-match every view either.
 	//
 	// Re-read the bag here rather than merging into the copy read at the top
-	// of the function: the catalogue fetch + haversine pass above takes
-	// seconds, and `runs.metadata` is a whole-column jsonb write. Merging the
+	// of the function: the candidate fetch + haversine pass above takes
+	// time, and `runs.metadata` is a whole-column jsonb write. Merging the
 	// stale copy would silently revert any title / notes edit the owner made
 	// inside that window — the run-detail edit dialog writes the same column.
 	const { data: freshRow } = await supabase
@@ -11016,7 +11049,7 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		.maybeSingle();
 	const next = stampGlobalSegmentsScored(
 		(freshRow?.metadata ?? null) as JsonObject | null,
-		segments.length,
+		scoredCount,
 	);
 	const { error: stampErr } = await supabase
 		.from(TABLES.runs)
@@ -11120,13 +11153,14 @@ export async function fetchParkCourseForSegment(
 /// A segment absent from the map has no checkpoints; one mapped to null has a
 /// list that cannot be read and must not be scored. Null overall when the
 /// read failed, which the scorer treats as "score nothing this time".
-async function fetchParkCourseCheckpoints(): Promise<Map<
+async function fetchParkCourseCheckpoints(segmentIds: readonly string[]): Promise<Map<
 	string,
 	CourseCheckpoint[] | null
 > | null> {
 	const { data, error } = await supabase
 		.from(TABLES.park_courses)
-		.select('global_segment_id, checkpoints');
+		.select('global_segment_id, checkpoints')
+		.in('global_segment_id', [...segmentIds]);
 	if (error) {
 		console.warn('park course checkpoints read failed', error);
 		return null;

@@ -9,9 +9,8 @@ import { USER_A } from '../fixtures/users';
 
 /**
  * /dashboard's Today block shows the runner's next `going` club event when it
- * starts within the next 48 hours, the Run tab's window (decisions § 2388,
- * issue #1187). § 2285 had widened it to seven days; the owner kept 48 hours
- * on both platforms, because an event days away is not "today".
+ * starts within the next seven days (decisions § 2285, issue #1187). It used to
+ * be 48 hours, so a Saturday group run only appeared on the Thursday.
  *
  * A fresh saga user keeps the read honest: the card shows only the EARLIEST
  * going RSVP, so a shared seeded account's RSVPs from other specs could
@@ -21,7 +20,7 @@ import { USER_A } from '../fixtures/users';
 const CLUB_ID = 'c1111111-0000-0000-0000-000000000001';
 const DAY_MS = 24 * 3600 * 1000;
 
-test.describe('/dashboard — next club event within 48 hours', () => {
+test.describe('/dashboard — next club event within the week', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	let user: SagaUser;
@@ -71,9 +70,9 @@ test.describe('/dashboard — next club event within 48 hours', () => {
 		if (error) throw new Error(`event_attendees insert failed: ${error.message}`);
 	}
 
-	test('an event four days out is not on Home yet', async ({ browser }) => {
+	test('an event nine days out is not on Home yet', async ({ browser }) => {
 		const title = `e2e-upcoming-far ${Date.now()}`;
-		await goingTo(title, 4 * DAY_MS);
+		await goingTo(title, 9 * DAY_MS);
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
@@ -86,9 +85,10 @@ test.describe('/dashboard — next club event within 48 hours', () => {
 		}
 	});
 
-	test('an event twenty hours out is in the Today block, above Trends', async ({ browser }) => {
+	test('an event four days out is in the Today block, above Trends', async ({ browser }) => {
+		// Past the old 48-hour window, inside the week.
 		const title = `e2e-upcoming-near ${Date.now()}`;
-		await goingTo(title, 20 * 3600 * 1000);
+		await goingTo(title, 4 * DAY_MS);
 		const ctx = await browser.newContext({ storageState: user.storageStatePath });
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();

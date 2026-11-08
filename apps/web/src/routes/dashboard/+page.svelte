@@ -248,9 +248,9 @@
 	let weekStartDay = $state<'monday' | 'sunday'>('monday');
 	let upcomingEvent = $state<Awaited<ReturnType<typeof fetchNextRsvpedEvent>>>(null);
 	/// How far ahead the Today block looks for the next `going` club event:
-	/// 48 hours, the window the Run tab uses too (decisions § 2388, which
-	/// reverses § 2285's week). Mobile Home's `kHomeEventWindow` is the twin.
-	const HOME_EVENT_WINDOW_HOURS = 48;
+	/// a week, so a Saturday group run is on Home from the Sunday before
+	/// (decisions § 2285). Mobile Home's `kHomeEventWindow` is the twin.
+	const HOME_EVENT_WINDOW_HOURS = 7 * 24;
 	let fitnessHistory = $state<FitnessSnapshotRow[]>([]);
 	let liveSnap = $derived(computeSnapshot(runs));
 
@@ -1646,7 +1646,7 @@
 			</a>
 		{/if}
 
-		<!-- Next RSVP'd event within 48 hours, in the Today block so runners
+		<!-- Next RSVP'd event within seven days, in the Today block so runners
 		     remember to show up. Mirrors mobile Home's UpcomingEventCard.
 		     Hides when nothing matches. -->
 		{#if upcomingEvent}

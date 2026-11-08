@@ -462,11 +462,10 @@ user logs**, not a fixed grid. The ordering algorithm:
 > `tests-e2e/dashboard/week-lead.spec.ts`, `tests-e2e/dashboard/week-strip.spec.ts`.
 >
 > **Next club event (web + mobile, 2026-11-03, [decisions § 2285](../architecture/decisions.md);
-> window since 2026-11-08, [§ 2388](../architecture/decisions.md)):**
+> kept by [§ 2388](../architecture/decisions.md)):**
 > Home's Today block shows the runner's next `going` club event when it
-> starts within 48 hours, the Run tab's own window, after the next-race card
-> (mobile Home had no card before § 2285). § 2285 had widened it to seven
-> days; the owner kept 48 hours on both platforms.
+> starts within seven days, after the next-race card (mobile Home had no card
+> before § 2285; the Run tab keeps its own 48-hour window).
 > `test/dashboard_upcoming_event_test.dart`,
 > `tests-e2e/dashboard/upcoming-event.spec.ts`.
 >

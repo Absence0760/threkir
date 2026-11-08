@@ -182,8 +182,8 @@ export function gateRouteRelation(gate: Gate, route: readonly GatePoint[]): Gate
 	};
 }
 
-/** How a race session starts its clock (#1303; Scheduled GO and Self-timed arrive with #1306). */
-export type SessionStartMode = 'host_go' | 'scheduled_go' | 'self_timed';
+/** How a race session starts its clock (#1306): the values of `events.race_start_mode` and `race_sessions.start_mode`. */
+export type SessionStartMode = 'host_go' | 'scheduled' | 'self_timed';
 
 export type CourseGateWarning = 'far_from_route' | 'against_route' | 'self_cross' | 'start_required';
 

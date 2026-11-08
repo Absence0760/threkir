@@ -83,7 +83,7 @@ void _nearBearing(double actual, double expected, String what) {
 const _which = {'start': GateWhich.start, 'finish': GateWhich.finish};
 const _modes = {
   'host_go': SessionStartMode.hostGo,
-  'scheduled_go': SessionStartMode.scheduledGo,
+  'scheduled': SessionStartMode.scheduled,
   'self_timed': SessionStartMode.selfTimed,
 };
 const _warningWire = {

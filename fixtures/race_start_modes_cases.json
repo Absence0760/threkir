@@ -1,0 +1,405 @@
+{
+ "spec": "race_start_modes v1",
+ "reference": "decisions § 2400-§ 2401; private.race_session_effective_status and the events CHECKs in 20271121002400",
+ "readers": [
+  "apps/web/src/lib/races/race_start_modes.test.ts",
+  "apps/mobile_android/test/race_start_modes_test.dart"
+ ],
+ "schema": {
+  "serverNow": "the server instant every effectiveStatus case is judged at",
+  "effectiveStatus": "{status, mode, scheduledStartAt, windowOpensAt, windowClosesAt, expected}: effectiveRaceStatus at serverNow.",
+  "countdown": "{target, deviceNowMs (an ISO instant), serverOffsetMs, expected}: raceCountdownS; expected null without a target.",
+  "voiceCue": "{previous, current, expected}: voiceCountdownCue for a countdown moving from previous to current seconds left.",
+  "offsets": "{startMinuteOfDay, dayOffset, minuteOfDay, offsetS}: startOffsetFromLocal gives offsetS, and localFromStartOffset gives the day and minute back.",
+  "attemptState": "{effectiveStatus, going, courseCount, courseChosen, expected}: selfTimedAttemptState.",
+  "validate": "{mode, scheduledOffsetS, windowOpenOffsetS, windowLengthS, expected}: validateStartSettings, error codes in order."
+ },
+ "serverNow": "2026-11-08T10:00:00.000Z",
+ "effectiveStatus": [
+  {
+   "note": "host GO keeps the stored status",
+   "status": "armed",
+   "mode": "host_go",
+   "scheduledStartAt": null,
+   "windowOpensAt": null,
+   "windowClosesAt": null,
+   "expected": "armed"
+  },
+  {
+   "note": "host GO running",
+   "status": "running",
+   "mode": "host_go",
+   "scheduledStartAt": null,
+   "windowOpensAt": null,
+   "windowClosesAt": null,
+   "expected": "running"
+  },
+  {
+   "note": "scheduled, GO ahead",
+   "status": "armed",
+   "mode": "scheduled",
+   "scheduledStartAt": "2026-11-08T10:05:00.000Z",
+   "windowOpensAt": null,
+   "windowClosesAt": "2026-11-08T11:05:00.000Z",
+   "expected": "armed"
+  },
+  {
+   "note": "scheduled, GO passed before the job ran",
+   "status": "armed",
+   "mode": "scheduled",
+   "scheduledStartAt": "2026-11-08T09:59:00.000Z",
+   "windowOpensAt": null,
+   "windowClosesAt": "2026-11-08T10:59:00.000Z",
+   "expected": "running"
+  },
+  {
+   "note": "scheduled, GO exactly now",
+   "status": "armed",
+   "mode": "scheduled",
+   "scheduledStartAt": "2026-11-08T10:00:00.000Z",
+   "windowOpensAt": null,
+   "windowClosesAt": "2026-11-08T11:00:00.000Z",
+   "expected": "running"
+  },
+  {
+   "note": "scheduled, auto-end passed while stored running",
+   "status": "running",
+   "mode": "scheduled",
+   "scheduledStartAt": "2026-11-08T08:59:00.000Z",
+   "windowOpensAt": null,
+   "windowClosesAt": "2026-11-08T09:59:00.000Z",
+   "expected": "finished"
+  },
+  {
+   "note": "scheduled, the whole window passed while stored armed",
+   "status": "armed",
+   "mode": "scheduled",
+   "scheduledStartAt": "2026-11-08T08:00:00.000Z",
+   "windowOpensAt": null,
+   "windowClosesAt": "2026-11-08T09:00:00.000Z",
+   "expected": "finished"
+  },
+  {
+   "note": "self-timed, window not open",
+   "status": "armed",
+   "mode": "self_timed",
+   "scheduledStartAt": null,
+   "windowOpensAt": "2026-11-08T10:30:00.000Z",
+   "windowClosesAt": "2026-11-09T10:30:00.000Z",
+   "expected": "armed"
+  },
+  {
+   "note": "self-timed, window open before the job ran",
+   "status": "armed",
+   "mode": "self_timed",
+   "scheduledStartAt": null,
+   "windowOpensAt": "2026-11-08T09:58:00.000Z",
+   "windowClosesAt": "2026-11-09T09:58:00.000Z",
+   "expected": "running"
+  },
+  {
+   "note": "self-timed, window closed while stored running",
+   "status": "running",
+   "mode": "self_timed",
+   "scheduledStartAt": null,
+   "windowOpensAt": "2026-11-07T10:00:00.000Z",
+   "windowClosesAt": "2026-11-08T10:00:00.000Z",
+   "expected": "finished"
+  },
+  {
+   "note": "terminal statuses stand",
+   "status": "cancelled",
+   "mode": "scheduled",
+   "scheduledStartAt": "2026-11-08T09:55:00.000Z",
+   "windowOpensAt": null,
+   "windowClosesAt": "2026-11-08T10:55:00.000Z",
+   "expected": "cancelled"
+  },
+  {
+   "note": "finished stands",
+   "status": "finished",
+   "mode": "self_timed",
+   "scheduledStartAt": null,
+   "windowOpensAt": "2026-11-08T09:30:00.000Z",
+   "windowClosesAt": "2026-11-08T10:30:00.000Z",
+   "expected": "finished"
+  }
+ ],
+ "countdown": [
+  {
+   "note": "ten minutes out",
+   "target": "2026-11-08T10:10:00.000Z",
+   "deviceNowMs": "2026-11-08T10:00:00.000Z",
+   "serverOffsetMs": 0,
+   "expected": 600
+  },
+  {
+   "note": "a device 2 s slow reads 2 s less",
+   "target": "2026-11-08T10:10:00.000Z",
+   "deviceNowMs": "2026-11-08T09:59:58.000Z",
+   "serverOffsetMs": 2000,
+   "expected": 600
+  },
+  {
+   "note": "a partial second rounds up",
+   "target": "2026-11-08T10:01:00.000Z",
+   "deviceNowMs": "2026-11-08T10:00:00.400Z",
+   "serverOffsetMs": 0,
+   "expected": 60
+  },
+  {
+   "note": "past GO reads zero",
+   "target": "2026-11-08T09:59:00.000Z",
+   "deviceNowMs": "2026-11-08T10:00:00.000Z",
+   "serverOffsetMs": 0,
+   "expected": 0
+  },
+  {
+   "note": "no target",
+   "target": null,
+   "deviceNowMs": "2026-11-08T10:00:00.000Z",
+   "serverOffsetMs": 0,
+   "expected": null
+  }
+ ],
+ "voiceCue": [
+  {
+   "previous": 11,
+   "current": 10,
+   "expected": 10
+  },
+  {
+   "previous": 6,
+   "current": 5,
+   "expected": 5
+  },
+  {
+   "previous": 4,
+   "current": 3,
+   "expected": 3
+  },
+  {
+   "previous": 3,
+   "current": 2,
+   "expected": 2
+  },
+  {
+   "previous": 2,
+   "current": 1,
+   "expected": 1
+  },
+  {
+   "previous": 5,
+   "current": 4,
+   "expected": null
+  },
+  {
+   "note": "a skipped tick speaks nothing late",
+   "previous": 12,
+   "current": 9,
+   "expected": null
+  },
+  {
+   "note": "the same second twice speaks once",
+   "previous": 10,
+   "current": 10,
+   "expected": null
+  },
+  {
+   "previous": 1,
+   "current": 0,
+   "expected": null
+  },
+  {
+   "previous": null,
+   "current": 10,
+   "expected": null
+  }
+ ],
+ "offsets": [
+  {
+   "note": "GO at the occurrence start",
+   "startMinuteOfDay": 420,
+   "dayOffset": 0,
+   "minuteOfDay": 420,
+   "offsetS": 0
+  },
+  {
+   "note": "GO 30 minutes later",
+   "startMinuteOfDay": 420,
+   "dayOffset": 0,
+   "minuteOfDay": 450,
+   "offsetS": 1800
+  },
+  {
+   "note": "GO 15 minutes earlier",
+   "startMinuteOfDay": 420,
+   "dayOffset": 0,
+   "minuteOfDay": 405,
+   "offsetS": -900
+  },
+  {
+   "note": "window opens the next morning",
+   "startMinuteOfDay": 1080,
+   "dayOffset": 1,
+   "minuteOfDay": 360,
+   "offsetS": 43200
+  },
+  {
+   "note": "window opens the evening before",
+   "startMinuteOfDay": 420,
+   "dayOffset": -1,
+   "minuteOfDay": 1200,
+   "offsetS": -39600
+  },
+  {
+   "note": "a week later",
+   "startMinuteOfDay": 0,
+   "dayOffset": 7,
+   "minuteOfDay": 0,
+   "offsetS": 604800
+  }
+ ],
+ "attemptState": [
+  {
+   "effectiveStatus": "armed",
+   "going": true,
+   "courseCount": 1,
+   "courseChosen": true,
+   "expected": "not_open"
+  },
+  {
+   "effectiveStatus": "running",
+   "going": false,
+   "courseCount": 1,
+   "courseChosen": false,
+   "expected": "join"
+  },
+  {
+   "effectiveStatus": "running",
+   "going": true,
+   "courseCount": 2,
+   "courseChosen": false,
+   "expected": "choose_course"
+  },
+  {
+   "effectiveStatus": "running",
+   "going": true,
+   "courseCount": 2,
+   "courseChosen": true,
+   "expected": "attempt"
+  },
+  {
+   "effectiveStatus": "running",
+   "going": true,
+   "courseCount": 1,
+   "courseChosen": false,
+   "expected": "attempt"
+  },
+  {
+   "effectiveStatus": "running",
+   "going": true,
+   "courseCount": 0,
+   "courseChosen": false,
+   "expected": "attempt"
+  },
+  {
+   "effectiveStatus": "finished",
+   "going": true,
+   "courseCount": 1,
+   "courseChosen": true,
+   "expected": "closed"
+  },
+  {
+   "effectiveStatus": "cancelled",
+   "going": true,
+   "courseCount": 1,
+   "courseChosen": true,
+   "expected": "closed"
+  }
+ ],
+ "validate": [
+  {
+   "mode": "host_go",
+   "scheduledOffsetS": null,
+   "windowOpenOffsetS": null,
+   "windowLengthS": null,
+   "expected": []
+  },
+  {
+   "mode": "scheduled",
+   "scheduledOffsetS": 0,
+   "windowOpenOffsetS": null,
+   "windowLengthS": 3600,
+   "expected": []
+  },
+  {
+   "mode": "scheduled",
+   "scheduledOffsetS": null,
+   "windowOpenOffsetS": null,
+   "windowLengthS": null,
+   "expected": [
+    "scheduled_offset_required",
+    "window_length_required"
+   ]
+  },
+  {
+   "mode": "scheduled",
+   "scheduledOffsetS": 86401,
+   "windowOpenOffsetS": null,
+   "windowLengthS": 3600,
+   "expected": [
+    "scheduled_offset_range"
+   ]
+  },
+  {
+   "mode": "scheduled",
+   "scheduledOffsetS": -86400,
+   "windowOpenOffsetS": null,
+   "windowLengthS": 604800,
+   "expected": []
+  },
+  {
+   "mode": "self_timed",
+   "scheduledOffsetS": null,
+   "windowOpenOffsetS": 0,
+   "windowLengthS": 604800,
+   "expected": []
+  },
+  {
+   "mode": "self_timed",
+   "scheduledOffsetS": null,
+   "windowOpenOffsetS": 0,
+   "windowLengthS": 604801,
+   "expected": [
+    "window_length_range"
+   ]
+  },
+  {
+   "mode": "self_timed",
+   "scheduledOffsetS": null,
+   "windowOpenOffsetS": -86401,
+   "windowLengthS": 59,
+   "expected": [
+    "window_open_range",
+    "window_length_range"
+   ]
+  },
+  {
+   "mode": "self_timed",
+   "scheduledOffsetS": null,
+   "windowOpenOffsetS": null,
+   "windowLengthS": 3600,
+   "expected": [
+    "window_open_required"
+   ]
+  },
+  {
+   "mode": "self_timed",
+   "scheduledOffsetS": null,
+   "windowOpenOffsetS": 604800,
+   "windowLengthS": 60,
+   "expected": []
+  }
+ ]
+}

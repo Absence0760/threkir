@@ -424,6 +424,26 @@ void main() {
       expect(r.personalRecordCount, 2);
     });
 
+    test('park course extras flow through and clamp', () {
+      final year = buildYearInRunningRecap(
+        const [],
+        2025,
+        const RecapExtras(parkCourseCount: 4, parkCount: -1),
+      );
+      expect(year.parkCourseCount, 4);
+      expect(year.parkCount, 0);
+      final month = buildMonthInRunningRecap(
+        const [],
+        2025,
+        6,
+        const RecapExtras(parkCourseCount: 2, parkCount: 1),
+      );
+      expect(month.parkCourseCount, 2);
+      expect(month.parkCount, 1);
+      expect(recapSnapshotJson(month)['parkCourseCount'], 2);
+      expect(recapSnapshotJson(month)['parkCount'], 1);
+    });
+
     test('one badge per category — the highest tier reached wins', () {
       // 1,200 km should produce the 1,000 km badge only.
       final runs = [

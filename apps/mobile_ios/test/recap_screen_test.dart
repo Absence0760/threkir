@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,10 +13,28 @@ import '../lib/preferences.dart';
 import '../lib/recap_card_layout.dart';
 import '../lib/screens/recap_screen.dart';
 import '../lib/widgets/recap_share_card.dart';
+import 'pump_until.dart';
 
 /// A year that is always safely in the past, so "next period" is enabled and
 /// the recap window never lands on a future month.
 final int pastYear = DateTime.now().year - 1;
+
+typedef _ParkRow = ({String parkId, String parkName, String regionCode, String courseId});
+
+class _ParkApi extends ApiClient {
+  final List<_ParkRow> rows;
+  final bool fail;
+  _ParkApi(this.rows, {this.fail = false});
+
+  @override
+  String? get userId => 'me';
+
+  @override
+  Future<List<_ParkRow>> fetchRecapParkCourses(DateTime start, DateTime end) async {
+    if (fail) throw Exception('offline');
+    return rows;
+  }
+}
 
 Directory? _dir;
 
@@ -52,6 +71,7 @@ Future<void> _pump(
   required Preferences prefs,
   int? year,
   int? month,
+  ApiClient? api,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -62,6 +82,7 @@ Future<void> _pump(
         preferences: prefs,
         year: year,
         month: month,
+        api: api,
       ),
     ),
   );
@@ -286,5 +307,49 @@ void main() {
     expect(opened, [videoUrl, videoUrl]);
     expect(find.text("Couldn't open the browser. Try again."), findsOneWidget);
     await tester.pump(const Duration(seconds: 10));
+  });
+
+  testWidgets('park courses run in the period show a card and the parks list',
+      (tester) async {
+    late LocalRunStore runStore;
+    late Preferences prefs;
+    await tester.runAsync(() async {
+      final seeded = await _seed([_run('a', DateTime(pastYear, 5, 2, 8))]);
+      runStore = seeded.runStore;
+      prefs = seeded.prefs;
+    });
+    final api = _ParkApi(const [
+      (parkId: 'p1', parkName: 'Pocahontas State Park', regionCode: 'US-VA', courseId: 'c1'),
+      (parkId: 'p1', parkName: 'Pocahontas State Park', regionCode: 'US-VA', courseId: 'c2'),
+      (parkId: 'p2', parkName: 'Great Falls Park', regionCode: 'US-VA', courseId: 'c3'),
+    ]);
+    await _pump(tester, runStore: runStore, prefs: prefs, year: pastYear, api: api);
+    await pumpUntil(tester,
+        () => find.byKey(const Key('recap-park-courses')).evaluate().isNotEmpty,
+        describe: 'the park course card');
+
+    expect(find.text('in 2 parks'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Great Falls Park'), 200);
+    expect(find.text('Parks you ran'), findsOneWidget);
+    expect(find.text('Pocahontas State Park'), findsOneWidget);
+    expect(find.text('2 courses'), findsOneWidget);
+    expect(find.text('1 course'), findsOneWidget);
+  });
+
+  testWidgets('a failed park read leaves the recap without the park card',
+      (tester) async {
+    late LocalRunStore runStore;
+    late Preferences prefs;
+    await tester.runAsync(() async {
+      final seeded = await _seed([_run('a', DateTime(pastYear, 5, 2, 8))]);
+      runStore = seeded.runStore;
+      prefs = seeded.prefs;
+    });
+    await _pump(tester,
+        runStore: runStore, prefs: prefs, year: pastYear, api: _ParkApi(const [], fail: true));
+    await tester.pump();
+
+    expect(find.byKey(const Key('recap-park-courses')), findsNothing);
+    expect(find.text('Parks you ran'), findsNothing);
   });
 }

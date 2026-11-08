@@ -62,7 +62,16 @@ class RecapExtras {
   final int photoCount;
   final int personalRecordCount;
 
-  const RecapExtras({this.photoCount = 0, this.personalRecordCount = 0});
+  /// Distinct park courses completed in the period, and the parks they are in.
+  final int parkCourseCount;
+  final int parkCount;
+
+  const RecapExtras({
+    this.photoCount = 0,
+    this.personalRecordCount = 0,
+    this.parkCourseCount = 0,
+    this.parkCount = 0,
+  });
 }
 
 class YearInRunningRecap {
@@ -86,6 +95,8 @@ class YearInRunningRecap {
   final String? mostUsedActivity;
   final int photoCount;
   final int personalRecordCount;
+  final int parkCourseCount;
+  final int parkCount;
   final List<RecapBadge> badges;
 
   const YearInRunningRecap({
@@ -107,6 +118,8 @@ class YearInRunningRecap {
     required this.mostUsedActivity,
     required this.photoCount,
     required this.personalRecordCount,
+    this.parkCourseCount = 0,
+    this.parkCount = 0,
     required this.badges,
   });
 }
@@ -408,6 +421,8 @@ YearInRunningRecap buildYearInRunningRecap(
   final photoCount = extras.photoCount < 0 ? 0 : extras.photoCount;
   final personalRecordCount =
       extras.personalRecordCount < 0 ? 0 : extras.personalRecordCount;
+  final parkCourseCount = extras.parkCourseCount < 0 ? 0 : extras.parkCourseCount;
+  final parkCount = extras.parkCount < 0 ? 0 : extras.parkCount;
   final earliestStartLocal = earliestRun == null ? null : _hhmm(earliestRun);
   final latestStartLocal = latestRun == null ? null : _hhmm(latestRun);
 
@@ -443,6 +458,8 @@ YearInRunningRecap buildYearInRunningRecap(
     mostUsedActivity: mostUsedActivity,
     photoCount: photoCount,
     personalRecordCount: personalRecordCount,
+    parkCourseCount: parkCourseCount,
+    parkCount: parkCount,
     badges: badges,
   );
 }
@@ -541,6 +558,8 @@ YearInRunningRecap buildMonthInRunningRecap(
   final photoCount = extras.photoCount < 0 ? 0 : extras.photoCount;
   final personalRecordCount =
       extras.personalRecordCount < 0 ? 0 : extras.personalRecordCount;
+  final parkCourseCount = extras.parkCourseCount < 0 ? 0 : extras.parkCourseCount;
+  final parkCount = extras.parkCount < 0 ? 0 : extras.parkCount;
   final earliestStartLocal = earliestRun == null ? null : _hhmm(earliestRun);
   final latestStartLocal = latestRun == null ? null : _hhmm(latestRun);
 
@@ -577,6 +596,8 @@ YearInRunningRecap buildMonthInRunningRecap(
     mostUsedActivity: mostUsedActivity,
     photoCount: photoCount,
     personalRecordCount: personalRecordCount,
+    parkCourseCount: parkCourseCount,
+    parkCount: parkCount,
     badges: badges,
   );
 }
@@ -618,6 +639,8 @@ Map<String, dynamic> recapSnapshotJson(YearInRunningRecap r) => {
       'mostUsedActivity': r.mostUsedActivity,
       'photoCount': r.photoCount,
       'personalRecordCount': r.personalRecordCount,
+      'parkCourseCount': r.parkCourseCount,
+      'parkCount': r.parkCount,
       'badges': [
         for (final b in r.badges)
           {'id': b.id, 'icon': b.icon, 'label': b.label, 'detail': b.detail},

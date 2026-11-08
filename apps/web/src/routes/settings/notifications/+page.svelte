@@ -34,6 +34,7 @@
 	let notifyClubJoinRequest = $state(true);
 	let notifyClubJoinApproved = $state(true);
 	let notifyEventUpdated = $state(true);
+	let notifyRaceStartingSoon = $state(true);
 	// Unlike the mutes above this one also withholds the inbox row:
 	// enqueue_workout_reminders raises nothing for a runner who turned it off,
 	// because a clock raises it every morning rather than someone's action.
@@ -60,6 +61,7 @@
 		notifyClubJoinRequest = effective<string>(settings, 'notify_club_join_request', 'on') !== 'off';
 		notifyClubJoinApproved = effective<string>(settings, 'notify_club_join_approved', 'on') !== 'off';
 		notifyEventUpdated = effective<string>(settings, 'notify_event_updated', 'on') !== 'off';
+		notifyRaceStartingSoon = effective<string>(settings, 'notify_race_starting_soon', 'on') !== 'off';
 		notifyWorkoutReminder = effective<string>(settings, 'notify_workout_reminder', 'on') !== 'off';
 		emailNewDeviceAlerts = effective<string>(settings, 'email_new_device_alerts', 'on') !== 'off';
 	});
@@ -211,6 +213,18 @@
 			<span>
 				{m('prefs.notifyEventUpdated')}
 				<span class="hint">{m('prefs.notifyEventUpdatedHint')}</span>
+			</span>
+		</label>
+		<label class="checkbox-row">
+			<input
+				type="checkbox"
+				bind:checked={notifyRaceStartingSoon}
+				onchange={() => prefs.save({ notify_race_starting_soon: notifyRaceStartingSoon ? 'on' : 'off' })}
+				data-testid="notify-race-starting-soon"
+			/>
+			<span>
+				{m('prefs.notifyRaceStartingSoon')}
+				<span class="hint">{m('prefs.notifyRaceStartingSoonHint')}</span>
 			</span>
 		</label>
 		<label class="checkbox-row">

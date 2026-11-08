@@ -212,6 +212,14 @@
 				return item.event_title
 					? m('notificationsList.verbEventUpdatedTitled', { title: item.event_title })
 					: m('notificationsList.verbEventUpdated');
+			case 'race_starting_soon':
+				return item.event_title
+					? m('notificationsList.verbRaceStartingSoonTitled', { title: item.event_title })
+					: m('notificationsList.verbRaceStartingSoon');
+			case 'race_start_moved':
+				return item.event_title
+					? m('notificationsList.verbRaceStartMovedTitled', { title: item.event_title })
+					: m('notificationsList.verbRaceStartMoved');
 			case 'club_join_request':
 				return item.club_name
 					? m('notificationsList.verbClubJoinRequestNamed', { name, club: item.club_name })

@@ -57,7 +57,15 @@ test('a follow request links to the requests page, with or without an actor', ()
 });
 
 test('event kinds link to the club event, needing both event id and club slug', () => {
-	for (const kind of ['event_rsvp', 'event_cancel', 'event_reminder', 'event_waitlist_slot', 'event_updated']) {
+	for (const kind of [
+		'event_rsvp',
+		'event_cancel',
+		'event_reminder',
+		'event_waitlist_slot',
+		'event_updated',
+		'race_starting_soon',
+		'race_start_moved',
+	]) {
 		assert.equal(
 			notificationLinkFor(make({ kind, event_id: 'e1', event_club_slug: 'trail-club' })),
 			'/clubs/trail-club/events/e1',

@@ -155,6 +155,14 @@
 				return item.event_title
 					? m('notificationBell.eventUpdatedTitled', { title: item.event_title })
 					: m('notificationBell.eventUpdated');
+			case 'race_starting_soon':
+				return item.event_title
+					? m('notificationBell.raceStartingSoonTitled', { title: item.event_title })
+					: m('notificationBell.raceStartingSoon');
+			case 'race_start_moved':
+				return item.event_title
+					? m('notificationBell.raceStartMovedTitled', { title: item.event_title })
+					: m('notificationBell.raceStartMoved');
 			case 'club_join_request':
 				return item.club_name
 					? m('notificationBell.clubJoinRequestNamed', { name, club: item.club_name })

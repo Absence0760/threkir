@@ -6360,6 +6360,7 @@ export const messages = {
 	"admin.reports.reportBy": "通報者 {id}",
 	"admin.reports.noNotes": "メモなし",
 	"admin.reports.snapshotBy": "{id}からのメッセージ（送信: {when}）:",
+	"admin.reports.snapshotOriginal": "送信者が編集する前:",
 	"admin.reports.statusPending": "保留中",
 	"admin.reports.statusReviewed": "確認済み",
 	"admin.reports.statusDismissed": "却下",

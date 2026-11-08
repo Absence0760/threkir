@@ -6364,6 +6364,7 @@ export const messages = {
 	"admin.reports.reportBy": "Denunciante {id}",
 	"admin.reports.noNotes": "Sem notas",
 	"admin.reports.snapshotBy": "Mensagem de {id} ({when}):",
+	"admin.reports.snapshotOriginal": "Antes de o remetente a editar:",
 	"admin.reports.statusPending": "Pendente",
 	"admin.reports.statusReviewed": "Revisado",
 	"admin.reports.statusDismissed": "Descartado",

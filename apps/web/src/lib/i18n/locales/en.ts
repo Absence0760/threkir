@@ -6384,6 +6384,7 @@ export const en = {
 	"admin.reports.reportBy": "Reporter {id}",
 	"admin.reports.noNotes": "No notes",
 	"admin.reports.snapshotBy": "Message from {id} ({when}):",
+	"admin.reports.snapshotOriginal": "Before the sender edited it:",
 	"admin.reports.statusPending": "Pending",
 	"admin.reports.statusReviewed": "Reviewed",
 	"admin.reports.statusDismissed": "Dismissed",

@@ -413,6 +413,10 @@
 										})}
 									</p>
 									<p>{r.snapshot_body}</p>
+									{#if r.snapshot_original_body !== null}
+										<p class="muted">{t('admin.reports.snapshotOriginal')}</p>
+										<p data-testid="admin-report-snapshot-original">{r.snapshot_original_body}</p>
+									{/if}
 								</blockquote>
 							{/if}
 							<div class="hold-row">

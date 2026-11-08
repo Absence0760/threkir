@@ -13889,6 +13889,9 @@ export interface TargetReport {
 	snapshot_body: string | null;
 	snapshot_author_id: string | null;
 	snapshot_sent_at: string | null;
+	/// The message as first sent when it had been edited before the report
+	/// (migration 20271114000210); null when it never was.
+	snapshot_original_body: string | null;
 	legal_hold: boolean;
 	/** When the retention purge may delete this report; null while it is
 	 *  pending or held. */
@@ -13943,6 +13946,7 @@ export async function fetchReportsForTarget(
 		snapshot_body: (r.snapshot_body ?? null) as string | null,
 		snapshot_author_id: (r.snapshot_author_id ?? null) as string | null,
 		snapshot_sent_at: (r.snapshot_sent_at ?? null) as string | null,
+		snapshot_original_body: (r.snapshot_original_body ?? null) as string | null,
 		legal_hold: r.legal_hold === true,
 		purge_after: (r.purge_after ?? null) as string | null,
 	}));

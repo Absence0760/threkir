@@ -14210,6 +14210,127 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesSourceManual => 'ランナーが追加';
 
   @override
+  String racesSourceClub(String club) {
+    return '$clubが追加';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return '$clubの公式コース';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return '$clubが大会公表のコースマップから作成したコース';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return '最終確認 $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'コース更新 $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => '大会コース';
+
+  @override
+  String get raceCourseClaim => 'この大会を申請';
+
+  @override
+  String get raceCourseClaimTitle => 'この大会をクラブとして申請';
+
+  @override
+  String get raceCourseClaimBody =>
+      '申請すると大会が検証済みになり、クラブがコースをリンクできます。クラブが主催している大会、またはコースを作成している大会だけを申請してください。';
+
+  @override
+  String get raceCourseClaimClub => 'クラブ';
+
+  @override
+  String get raceCourseClaimConfirm => '大会を申請';
+
+  @override
+  String get raceCourseClaimed => '大会を申請しました。';
+
+  @override
+  String get raceCourseClaimFailed => 'この大会を申請できませんでした。';
+
+  @override
+  String get raceCourseLinkCourse => 'コースをリンク';
+
+  @override
+  String get raceCourseChangeCourse => 'コースを変更';
+
+  @override
+  String get raceCourseLinkTitle => 'コースをリンク';
+
+  @override
+  String get raceCourseLinkRoute => 'コースのルート';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'クラブにはまだ公開ルートがありません。クラブの「ルート」タブで作成して公開してから、ここでリンクしてください。';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'コースの出典';
+
+  @override
+  String get raceCourseSourceOptionOfficial => '主催者の公式コース';
+
+  @override
+  String get raceCourseSourceOptionTraced => '大会公表のコースマップからトレース';
+
+  @override
+  String get raceCourseLinkConfirm => 'コースをリンク';
+
+  @override
+  String get raceCourseLinked => 'コースをリンクしました。';
+
+  @override
+  String get raceCourseLinkFailed => 'コースを更新できませんでした。';
+
+  @override
+  String get raceCourseMarkChecked => 'コースを確認済みにする';
+
+  @override
+  String get raceCourseCheckedDone => 'コースを確認済みにしました。';
+
+  @override
+  String get raceCourseSuggest => 'コースを提案';
+
+  @override
+  String get raceCourseSuggestTitle => 'この大会のコースを提案';
+
+  @override
+  String get raceCourseSuggestBody =>
+      '公開ルートから1つ選んでください。大会の主催者が確認します。まだ誰も申請していない場合は検証済みクラブが確認します。';
+
+  @override
+  String get raceCourseSuggestRoute => 'あなたのルート';
+
+  @override
+  String get raceCourseSuggestNoRoutes => '公開ルートがまだありません。ルートを公開すると提案できます。';
+
+  @override
+  String get raceCourseSuggestNote => 'メモ(任意)';
+
+  @override
+  String get raceCourseSuggestConfirm => '提案を送信';
+
+  @override
+  String get raceCourseSuggested => '提案を送信しました。';
+
+  @override
+  String get raceCourseSuggestFailed => '提案を送信できませんでした。';
+
+  @override
+  String get raceCourseSuggestPending => 'コースを提案しました。確認待ちです。';
+
+  @override
   String get racesDetailShare => '共有';
 
   @override

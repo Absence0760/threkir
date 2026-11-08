@@ -30,7 +30,8 @@
 		type RaceListingRun,
 		type RaceListingPhoto
 	} from '#lib/core/data.ts';
-	import { raceSourceLabel } from '#lib/integrations/race_source.ts';
+	import { raceCourseSourceLabel, raceSourceLabel } from '#lib/integrations/race_source.ts';
+	import RaceCourseTools from '#lib/components/RaceCourseTools.svelte';
 	import { buildRaceShareCanonical } from '#lib/share/share_race_meta.ts';
 	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -89,6 +90,25 @@
 			void loadPlanContext(id);
 			const routeId = race.course?.routeId;
 			if (routeId) void loadCourse(id, routeId);
+		}
+	}
+
+	// After a claim or a course change: re-read the listing without the
+	// loading state, so the page stays put while the course updates.
+	async function refreshRace() {
+		const id = data.id;
+		try {
+			const next = await fetchRaceListing(id);
+			if (id !== data.id || !next) return;
+			race = next;
+			const routeId = next.course?.routeId;
+			if (routeId && routeId !== courseRoute?.id) void loadCourse(id, routeId);
+			if (!routeId) {
+				courseRoute = null;
+				courseMarkers = [];
+			}
+		} catch (e) {
+			console.error('race refresh failed', e);
 		}
 	}
 
@@ -225,6 +245,10 @@
 		return parts;
 	});
 
+	let courseSource = $derived(
+		race?.course ? raceCourseSourceLabel(race.course.source, race.organiser?.name ?? null) : null,
+	);
+
 	const coursePoints = $derived(routePathPoints(courseRoute?.waypoints));
 	const courseClimbNames = $derived(climbNamesFromMarkers(courseMarkers, coursePoints));
 
@@ -276,7 +300,9 @@
 				{#if race.distance_m}· {formatDistance(race.distance_m)}{/if}
 				{#if race.location_label}· {race.location_label}{/if}
 			</p>
-			<p class="source" data-testid="race-detail-source">{raceSourceLabel(race.provider)}</p>
+			<p class="source" data-testid="race-detail-source">
+				{raceSourceLabel(race.provider, race.organiser?.name ?? null)}
+			</p>
 			{#if !race.is_verified}
 				<span class="unverified">{m('races.unverified')}</span>
 			{/if}
@@ -359,6 +385,17 @@
 				{#if courseParts.length > 0}
 					<p class="course-summary">{courseParts.join(' · ')}</p>
 				{/if}
+				{#if courseSource}
+					<p class="course-provenance" data-testid="race-detail-course-source">
+						{courseSource}{#if race.course?.checkedAt}
+							· {m('raceCourse.checked', { date: formatDate(race.course.checkedAt.slice(0, 10)) })}{/if}
+					</p>
+				{/if}
+				{#if race.course?.updatedAt}
+					<p class="course-provenance" data-testid="race-detail-course-updated">
+						{m('raceCourse.updated', { date: formatDate(race.course.updatedAt.slice(0, 10)) })}
+					</p>
+				{/if}
 				{#if courseRoute && coursePoints.length > 1}
 					<a class="course-map card-elevated" href="/routes/{courseRoute.id}" data-testid="race-detail-course-map">
 						<span class="course-map-image">
@@ -383,6 +420,8 @@
 				{/if}
 			</section>
 		{/if}
+
+		<RaceCourseTools {race} signedIn={auth.user != null} onchanged={() => void refreshRace()} />
 
 		<section class="section" aria-labelledby="race-runs-heading">
 			<h2 id="race-runs-heading">{m('races.detailYourRuns')}</h2>
@@ -500,6 +539,11 @@
 	}
 	.course-summary {
 		margin: 0;
+	}
+	.course-provenance {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
 	}
 	.course-map {
 		display: flex;

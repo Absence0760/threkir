@@ -755,6 +755,23 @@ export const PAIRS = [
 		clients: [{ file: TS_TYPES, decl: 'RaceProvider', shape: 'union' }],
 	},
 	{
+		tableColumn: 'race_listings.course_source',
+		clients: [
+			{ file: TS_TYPES, decl: 'RaceCourseSource', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/race_service.dart', decl: 'kRaceCourseSources', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'race_listing_audit.action',
+		clients: [],
+		note: 'written only by the race-course definer RPCs (migration 20271114002381) and never named by a client.',
+	},
+	{
+		tableColumn: 'race_course_suggestions.status',
+		clients: [],
+		note: 'written only by suggest_race_course / review_race_course_suggestion; clients read pending rows by the literal and never enumerate the set.',
+	},
+	{
 		tableColumn: 'race_sessions.status',
 		clients: [
 			{ file: TS_TYPES, decl: 'RaceSessionStatus', shape: 'union' },

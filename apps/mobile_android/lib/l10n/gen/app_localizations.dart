@@ -24176,6 +24176,222 @@ abstract class AppLocalizations {
   /// **'Added by a runner'**
   String get racesSourceManual;
 
+  /// Race detail: a hand-added race credited to the verified club that claimed it.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by {club}'**
+  String racesSourceClub(String club);
+
+  /// Race detail: the course is the organiser club's official course.
+  ///
+  /// In en, this message translates to:
+  /// **'Official course from {club}'**
+  String raceCourseSourceOfficial(String club);
+
+  /// Race detail: the club traced the course from the race's published map.
+  ///
+  /// In en, this message translates to:
+  /// **'Course drawn by {club} from the race\'s published map'**
+  String raceCourseSourceTraced(String club);
+
+  /// Race detail: appended after the course source; when the club last checked the course.
+  ///
+  /// In en, this message translates to:
+  /// **'last checked {date}'**
+  String raceCourseChecked(String date);
+
+  /// Race detail: the course route's line changed after the club last checked it.
+  ///
+  /// In en, this message translates to:
+  /// **'Course updated {date}'**
+  String raceCourseUpdated(String date);
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Race course'**
+  String get raceCourseToolsHeading;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim this race'**
+  String get raceCourseClaim;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim this race for your club'**
+  String get raceCourseClaimTitle;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Claiming marks the race as verified and lets your club link its course. Claim only a race your club organises or draws courses for.'**
+  String get raceCourseClaimBody;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Club'**
+  String get raceCourseClaimClub;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim race'**
+  String get raceCourseClaimConfirm;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Race claimed.'**
+  String get raceCourseClaimed;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t claim this race.'**
+  String get raceCourseClaimFailed;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Link course'**
+  String get raceCourseLinkCourse;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Change course'**
+  String get raceCourseChangeCourse;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Link the course'**
+  String get raceCourseLinkTitle;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Course route'**
+  String get raceCourseLinkRoute;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Your club has no public routes yet. Create one from the club\'s Routes tab, make it public, then link it here.'**
+  String get raceCourseLinkNoRoutes;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Where the course comes from'**
+  String get raceCourseLinkSourceLabel;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'The organiser\'s official course'**
+  String get raceCourseSourceOptionOfficial;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Traced from the race\'s published map'**
+  String get raceCourseSourceOptionTraced;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Link course'**
+  String get raceCourseLinkConfirm;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Course linked.'**
+  String get raceCourseLinked;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the course.'**
+  String get raceCourseLinkFailed;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Mark course checked'**
+  String get raceCourseMarkChecked;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Course marked as checked.'**
+  String get raceCourseCheckedDone;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a course'**
+  String get raceCourseSuggest;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a course for this race'**
+  String get raceCourseSuggestTitle;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Pick one of your public routes. The race\'s organiser reviews it, or a verified club if nobody has claimed the race yet.'**
+  String get raceCourseSuggestBody;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Your route'**
+  String get raceCourseSuggestRoute;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'You have no public routes yet. Make a route public to suggest it.'**
+  String get raceCourseSuggestNoRoutes;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get raceCourseSuggestNote;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Send suggestion'**
+  String get raceCourseSuggestConfirm;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion sent.'**
+  String get raceCourseSuggested;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send your suggestion.'**
+  String get raceCourseSuggestFailed;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'You suggested a course. It\'s waiting for review.'**
+  String get raceCourseSuggestPending;
+
   /// Race detail screen: share the race link
   ///
   /// In en, this message translates to:

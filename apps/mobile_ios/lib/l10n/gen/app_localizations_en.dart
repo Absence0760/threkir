@@ -14770,6 +14770,131 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesSourceManual => 'Added by a runner';
 
   @override
+  String racesSourceClub(String club) {
+    return 'Added by $club';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return 'Official course from $club';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return 'Course drawn by $club from the race\'s published map';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return 'last checked $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'Course updated $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => 'Race course';
+
+  @override
+  String get raceCourseClaim => 'Claim this race';
+
+  @override
+  String get raceCourseClaimTitle => 'Claim this race for your club';
+
+  @override
+  String get raceCourseClaimBody =>
+      'Claiming marks the race as verified and lets your club link its course. Claim only a race your club organises or draws courses for.';
+
+  @override
+  String get raceCourseClaimClub => 'Club';
+
+  @override
+  String get raceCourseClaimConfirm => 'Claim race';
+
+  @override
+  String get raceCourseClaimed => 'Race claimed.';
+
+  @override
+  String get raceCourseClaimFailed => 'Couldn\'t claim this race.';
+
+  @override
+  String get raceCourseLinkCourse => 'Link course';
+
+  @override
+  String get raceCourseChangeCourse => 'Change course';
+
+  @override
+  String get raceCourseLinkTitle => 'Link the course';
+
+  @override
+  String get raceCourseLinkRoute => 'Course route';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'Your club has no public routes yet. Create one from the club\'s Routes tab, make it public, then link it here.';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'Where the course comes from';
+
+  @override
+  String get raceCourseSourceOptionOfficial =>
+      'The organiser\'s official course';
+
+  @override
+  String get raceCourseSourceOptionTraced =>
+      'Traced from the race\'s published map';
+
+  @override
+  String get raceCourseLinkConfirm => 'Link course';
+
+  @override
+  String get raceCourseLinked => 'Course linked.';
+
+  @override
+  String get raceCourseLinkFailed => 'Couldn\'t update the course.';
+
+  @override
+  String get raceCourseMarkChecked => 'Mark course checked';
+
+  @override
+  String get raceCourseCheckedDone => 'Course marked as checked.';
+
+  @override
+  String get raceCourseSuggest => 'Suggest a course';
+
+  @override
+  String get raceCourseSuggestTitle => 'Suggest a course for this race';
+
+  @override
+  String get raceCourseSuggestBody =>
+      'Pick one of your public routes. The race\'s organiser reviews it, or a verified club if nobody has claimed the race yet.';
+
+  @override
+  String get raceCourseSuggestRoute => 'Your route';
+
+  @override
+  String get raceCourseSuggestNoRoutes =>
+      'You have no public routes yet. Make a route public to suggest it.';
+
+  @override
+  String get raceCourseSuggestNote => 'Note (optional)';
+
+  @override
+  String get raceCourseSuggestConfirm => 'Send suggestion';
+
+  @override
+  String get raceCourseSuggested => 'Suggestion sent.';
+
+  @override
+  String get raceCourseSuggestFailed => 'Couldn\'t send your suggestion.';
+
+  @override
+  String get raceCourseSuggestPending =>
+      'You suggested a course. It\'s waiting for review.';
+
+  @override
   String get racesDetailShare => 'Share';
 
   @override

@@ -27,6 +27,12 @@ class RaceListingView {
   /// (decisions § 2157). Calendar search rows never carry it.
   final RaceListingCourse? course;
 
+  /// The verified club that claimed the race (decisions § 2381). Null while
+  /// unclaimed, and while the club is private or moderated away. Calendar
+  /// search rows never carry it.
+  final String? organiserClubId;
+  final String? organiserClubName;
+
   const RaceListingView({
     required this.id,
     required this.provider,
@@ -40,6 +46,8 @@ class RaceListingView {
     required this.isVerified,
     required this.distanceMAway,
     this.course,
+    this.organiserClubId,
+    this.organiserClubName,
   });
 
   factory RaceListingView.fromJson(Map<String, dynamic> j) => RaceListingView(
@@ -55,25 +63,109 @@ class RaceListingView {
         isVerified: j['is_verified'] as bool? ?? false,
         distanceMAway: (j['distance_m_away'] as num?)?.toDouble(),
         course: RaceListingCourse.fromViewRow(j),
+        organiserClubId: j['organiser_club_name'] == null
+            ? null
+            : j['organiser_club_id'] as String?,
+        organiserClubName: j['organiser_club_id'] == null
+            ? null
+            : j['organiser_club_name'] as String?,
       );
 }
+
+/// The CHECK'd vocabulary of `race_listings.course_source` (decisions § 2381);
+/// web's `RaceCourseSource`.
+const kRaceCourseSources = ['official', 'traced'];
 
 class RaceListingCourse {
   final double? distanceM;
   final double? ascentM;
   final String? surface;
 
-  const RaceListingCourse({this.distanceM, this.ascentM, this.surface});
+  /// Null unless the route is public (decisions § 2253).
+  final String? routeId;
+
+  /// `official` or `traced` (decisions § 2381); null on a course linked
+  /// before claims existed.
+  final String? source;
+  final String? checkedAt;
+
+  /// Set when the route's line changed after the club last checked it.
+  final String? updatedAt;
+
+  const RaceListingCourse({
+    this.distanceM,
+    this.ascentM,
+    this.surface,
+    this.routeId,
+    this.source,
+    this.checkedAt,
+    this.updatedAt,
+  });
 
   /// Null when the row carries none of the view's course columns.
   static RaceListingCourse? fromViewRow(Map<String, dynamic> j) {
     final distance = (j['course_distance_m'] as num?)?.toDouble();
     final ascent = (j['course_elevation_m'] as num?)?.toDouble();
     final surface = j['course_surface'] as String?;
-    if (distance == null && ascent == null && surface == null) return null;
+    final routeId = j['course_route_id'] as String?;
+    if (distance == null && ascent == null && surface == null && routeId == null) {
+      return null;
+    }
+    final source = j['course_source'] as String?;
     return RaceListingCourse(
-        distanceM: distance, ascentM: ascent, surface: surface);
+      distanceM: distance,
+      ascentM: ascent,
+      surface: surface,
+      routeId: routeId,
+      source: kRaceCourseSources.contains(source) ? source : null,
+      checkedAt: j['course_checked_at'] as String?,
+      updatedAt: j['course_updated_at'] as String?,
+    );
   }
+}
+
+/// A club the signed-in runner can claim races or link courses for.
+class OrganiserClub {
+  final String id;
+  final String name;
+  const OrganiserClub({required this.id, required this.name});
+}
+
+/// A route offered in the link or suggest picker.
+class CourseRouteOption {
+  final String id;
+  final String name;
+  const CourseRouteOption({required this.id, required this.name});
+}
+
+/// Which race-course actions the runner is offered (decisions § 2381). The
+/// RPCs are the gate; this only picks the buttons. Mirrors web's
+/// `raceCourseAccess` in `integrations/race_course_access.ts`.
+class RaceCourseAccess {
+  final bool canClaim;
+  final bool canManage;
+  final bool canSuggest;
+  const RaceCourseAccess({
+    required this.canClaim,
+    required this.canManage,
+    required this.canSuggest,
+  });
+}
+
+RaceCourseAccess raceCourseAccess({
+  required bool signedIn,
+  required String? organiserClubId,
+  required List<OrganiserClub> myOrganiserClubs,
+}) {
+  if (!signedIn) {
+    return const RaceCourseAccess(
+        canClaim: false, canManage: false, canSuggest: false);
+  }
+  final canManage = organiserClubId != null &&
+      myOrganiserClubs.any((c) => c.id == organiserClubId);
+  final canClaim = organiserClubId == null && myOrganiserClubs.isNotEmpty;
+  return RaceCourseAccess(
+      canClaim: canClaim, canManage: canManage, canSuggest: !canManage);
 }
 
 /// The matched-race view for a run: the run's owner-only race metadata + its
@@ -411,7 +503,7 @@ class RaceService extends ChangeNotifier {
     final row = await _c
         .from('public_race_listings')
         .select(
-            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface')
+            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name')
         .eq('id', id)
         .maybeSingle();
     if (row == null ||
@@ -440,6 +532,105 @@ class RaceService extends ChangeNotifier {
         .whereType<Map<String, dynamic>>()
         .map(RaceListingRun.fromJson)
         .toList();
+  }
+
+  bool get isSignedIn => isReady && _uid != null;
+
+  /// The clubs the runner is an active owner/admin of that are verified,
+  /// public and not hidden: the facts `private.is_official_publisher` reads.
+  Future<List<OrganiserClub>> fetchMyOrganiserClubs() async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    final rows = await _c
+        .from('club_members')
+        .select('club_id, role, status, clubs!inner(id, name, is_verified, is_public, shadow_hidden)')
+        .eq('user_id', uid)
+        .eq('status', 'active')
+        .inFilter('role', ['owner', 'admin']);
+    final out = <OrganiserClub>[];
+    for (final r in (rows as List).whereType<Map<String, dynamic>>()) {
+      final c = r['clubs'];
+      if (c is! Map) continue;
+      if (c['is_verified'] == true &&
+          c['is_public'] == true &&
+          c['shadow_hidden'] != true) {
+        out.add(OrganiserClub(id: c['id'] as String, name: c['name'] as String));
+      }
+    }
+    return out;
+  }
+
+  /// A club's public routes, for the link picker.
+  Future<List<CourseRouteOption>> fetchClubPublicRoutes(String clubId) async {
+    final rows = await _c
+        .from('routes')
+        .select('id, name')
+        .eq('club_id', clubId)
+        .eq('is_public', true)
+        .eq('shadow_hidden', false)
+        .order('created_at', ascending: false)
+        .limit(200);
+    return [
+      for (final r in (rows as List).whereType<Map<String, dynamic>>())
+        CourseRouteOption(id: r['id'] as String, name: r['name'] as String),
+    ];
+  }
+
+  /// The runner's own public routes, for the suggest picker.
+  Future<List<CourseRouteOption>> fetchMyPublicRoutes() async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    final rows = await _c
+        .from('routes')
+        .select('id, name')
+        .eq('user_id', uid)
+        .eq('is_public', true)
+        .eq('shadow_hidden', false)
+        .order('created_at', ascending: false)
+        .limit(200);
+    return [
+      for (final r in (rows as List).whereType<Map<String, dynamic>>())
+        CourseRouteOption(id: r['id'] as String, name: r['name'] as String),
+    ];
+  }
+
+  /// The route of the runner's own open suggestion for a race, or null.
+  Future<String?> fetchMyRaceCourseSuggestionRouteId(String listingId) async {
+    if (_uid == null || !_uuid.hasMatch(listingId)) return null;
+    final row = await _c
+        .from('race_course_suggestions')
+        .select('route_id')
+        .eq('listing_id', listingId)
+        .eq('status', 'pending')
+        .maybeSingle();
+    return row?['route_id'] as String?;
+  }
+
+  /// Mirrors web's `claimRaceListing`.
+  Future<void> claimRaceListing(String listingId, String clubId) async {
+    await _c.rpc('claim_race_listing',
+        params: {'p_listing_id': listingId, 'p_club_id': clubId});
+  }
+
+  /// Mirrors web's `linkRaceCourse`; linking the same route again re-checks it.
+  Future<void> linkRaceCourse(
+      String listingId, String? routeId, String? source) async {
+    await _c.rpc('link_race_course', params: {
+      'p_listing_id': listingId,
+      'p_route_id': routeId,
+      'p_source': source,
+    });
+  }
+
+  /// Mirrors web's `suggestRaceCourse`.
+  Future<void> suggestRaceCourse(
+      String listingId, String routeId, String? note) async {
+    final trimmed = note?.trim();
+    await _c.rpc('suggest_race_course', params: {
+      'p_listing_id': listingId,
+      'p_route_id': routeId,
+      'p_note': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
   }
 
   /// Submit a crowd-sourced manual listing. `is_verified` is forced false by

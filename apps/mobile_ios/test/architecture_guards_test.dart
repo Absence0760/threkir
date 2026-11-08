@@ -5714,6 +5714,13 @@ void main() {
       // Save replaces only the visible text, and the server keeps the text as
       // first sent for reports (migration 20271114000210).
       'screens/message_thread_screen.dart::l10n.messagesEditTitle': 1,
+      // The race-course tools (decisions § 2381). Claiming takes an
+      // unclaimed race and destroys nothing; linking replaces the course with
+      // another public club route, undone by linking the old one again;
+      // suggesting queues a suggestion and links nothing.
+      'screens/race_detail_screen.dart::l.raceCourseClaimTitle': 1,
+      'screens/race_detail_screen.dart::l.raceCourseLinkTitle': 1,
+      'screens/race_detail_screen.dart::l.raceCourseSuggestTitle': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

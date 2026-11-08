@@ -14918,6 +14918,134 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesSourceManual => 'Adicionada por um corredor';
 
   @override
+  String racesSourceClub(String club) {
+    return 'Adicionada por $club';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return 'Percurso oficial de $club';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return 'Percurso desenhado por $club a partir do mapa publicado da corrida';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return 'verificado a $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'Percurso atualizado a $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => 'Percurso da corrida';
+
+  @override
+  String get raceCourseClaim => 'Reivindicar esta corrida';
+
+  @override
+  String get raceCourseClaimTitle =>
+      'Reivindicar esta corrida para o seu clube';
+
+  @override
+  String get raceCourseClaimBody =>
+      'Reivindicar marca a corrida como verificada e permite que o seu clube associe o percurso. Reivindique apenas uma corrida que o seu clube organiza ou cujos percursos desenha.';
+
+  @override
+  String get raceCourseClaimClub => 'Clube';
+
+  @override
+  String get raceCourseClaimConfirm => 'Reivindicar corrida';
+
+  @override
+  String get raceCourseClaimed => 'Corrida reivindicada.';
+
+  @override
+  String get raceCourseClaimFailed =>
+      'Não foi possível reivindicar esta corrida.';
+
+  @override
+  String get raceCourseLinkCourse => 'Associar percurso';
+
+  @override
+  String get raceCourseChangeCourse => 'Alterar percurso';
+
+  @override
+  String get raceCourseLinkTitle => 'Associar o percurso';
+
+  @override
+  String get raceCourseLinkRoute => 'Rota do percurso';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'O seu clube ainda não tem rotas públicas. Crie uma no separador Rotas do clube, torne-a pública e associe-a aqui.';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'Origem do percurso';
+
+  @override
+  String get raceCourseSourceOptionOfficial =>
+      'O percurso oficial do organizador';
+
+  @override
+  String get raceCourseSourceOptionTraced =>
+      'Traçado a partir do mapa publicado da corrida';
+
+  @override
+  String get raceCourseLinkConfirm => 'Associar percurso';
+
+  @override
+  String get raceCourseLinked => 'Percurso associado.';
+
+  @override
+  String get raceCourseLinkFailed => 'Não foi possível atualizar o percurso.';
+
+  @override
+  String get raceCourseMarkChecked => 'Marcar percurso como verificado';
+
+  @override
+  String get raceCourseCheckedDone => 'Percurso marcado como verificado.';
+
+  @override
+  String get raceCourseSuggest => 'Sugerir um percurso';
+
+  @override
+  String get raceCourseSuggestTitle => 'Sugerir um percurso para esta corrida';
+
+  @override
+  String get raceCourseSuggestBody =>
+      'Escolha uma das suas rotas públicas. O organizador da corrida vai analisá-la, ou um clube verificado se ninguém tiver reivindicado a corrida.';
+
+  @override
+  String get raceCourseSuggestRoute => 'A sua rota';
+
+  @override
+  String get raceCourseSuggestNoRoutes =>
+      'Ainda não tem rotas públicas. Torne uma rota pública para a sugerir.';
+
+  @override
+  String get raceCourseSuggestNote => 'Nota (opcional)';
+
+  @override
+  String get raceCourseSuggestConfirm => 'Enviar sugestão';
+
+  @override
+  String get raceCourseSuggested => 'Sugestão enviada.';
+
+  @override
+  String get raceCourseSuggestFailed =>
+      'Não foi possível enviar a sua sugestão.';
+
+  @override
+  String get raceCourseSuggestPending =>
+      'Sugeriu um percurso. Está a aguardar análise.';
+
+  @override
   String get racesDetailShare => 'Partilhar';
 
   @override
@@ -35274,6 +35402,133 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesSourceManual => 'Adicionada por um corredor';
+
+  @override
+  String racesSourceClub(String club) {
+    return 'Adicionada por $club';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return 'Percurso oficial de $club';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return 'Percurso desenhado por $club a partir do mapa publicado da corrida';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return 'verificado em $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'Percurso atualizado em $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => 'Percurso da corrida';
+
+  @override
+  String get raceCourseClaim => 'Reivindicar esta corrida';
+
+  @override
+  String get raceCourseClaimTitle =>
+      'Reivindicar esta corrida para o seu clube';
+
+  @override
+  String get raceCourseClaimBody =>
+      'Reivindicar marca a corrida como verificada e permite que seu clube vincule o percurso. Reivindique só uma corrida que seu clube organiza ou cujos percursos desenha.';
+
+  @override
+  String get raceCourseClaimClub => 'Clube';
+
+  @override
+  String get raceCourseClaimConfirm => 'Reivindicar corrida';
+
+  @override
+  String get raceCourseClaimed => 'Corrida reivindicada.';
+
+  @override
+  String get raceCourseClaimFailed =>
+      'Não foi possível reivindicar esta corrida.';
+
+  @override
+  String get raceCourseLinkCourse => 'Vincular percurso';
+
+  @override
+  String get raceCourseChangeCourse => 'Trocar percurso';
+
+  @override
+  String get raceCourseLinkTitle => 'Vincular o percurso';
+
+  @override
+  String get raceCourseLinkRoute => 'Rota do percurso';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'Seu clube ainda não tem rotas públicas. Crie uma na aba Rotas do clube, deixe-a pública e vincule aqui.';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'Origem do percurso';
+
+  @override
+  String get raceCourseSourceOptionOfficial =>
+      'O percurso oficial do organizador';
+
+  @override
+  String get raceCourseSourceOptionTraced =>
+      'Traçado a partir do mapa publicado da corrida';
+
+  @override
+  String get raceCourseLinkConfirm => 'Vincular percurso';
+
+  @override
+  String get raceCourseLinked => 'Percurso vinculado.';
+
+  @override
+  String get raceCourseLinkFailed => 'Não foi possível atualizar o percurso.';
+
+  @override
+  String get raceCourseMarkChecked => 'Marcar percurso como verificado';
+
+  @override
+  String get raceCourseCheckedDone => 'Percurso marcado como verificado.';
+
+  @override
+  String get raceCourseSuggest => 'Sugerir um percurso';
+
+  @override
+  String get raceCourseSuggestTitle => 'Sugerir um percurso para esta corrida';
+
+  @override
+  String get raceCourseSuggestBody =>
+      'Escolha uma das suas rotas públicas. O organizador da corrida vai analisá-la, ou um clube verificado se ninguém reivindicou a corrida ainda.';
+
+  @override
+  String get raceCourseSuggestRoute => 'Sua rota';
+
+  @override
+  String get raceCourseSuggestNoRoutes =>
+      'Você ainda não tem rotas públicas. Deixe uma rota pública para sugeri-la.';
+
+  @override
+  String get raceCourseSuggestNote => 'Observação (opcional)';
+
+  @override
+  String get raceCourseSuggestConfirm => 'Enviar sugestão';
+
+  @override
+  String get raceCourseSuggested => 'Sugestão enviada.';
+
+  @override
+  String get raceCourseSuggestFailed => 'Não foi possível enviar sua sugestão.';
+
+  @override
+  String get raceCourseSuggestPending =>
+      'Você sugeriu um percurso. Ele está aguardando análise.';
 
   @override
   String get racesDetailShare => 'Compartilhar';

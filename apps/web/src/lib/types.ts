@@ -185,10 +185,21 @@ export type RaceProvider =
 	| 'raceresult'
 	| 'ultrasignup';
 
+// Where a linked race course came from (migration 20271114002381, decisions
+// § 2381): the organiser's official course, or one the club traced from the
+// race's published map. Narrow union enforced by the CHECK constraint +
+// check_constraint_unions.mjs.
+export type RaceCourseSource = 'official' | 'traced';
+
+export function parseRaceCourseSource(raw: string | null | undefined): RaceCourseSource | null {
+	return raw === 'official' || raw === 'traced' ? raw : null;
+}
+
 // submitted_by is omitted: reads go through the redacted public_race_listings
 // view (migration 20270320_001), which never carries the submitter crosswalk.
-export type RaceListing = Omit<RaceListingRow, 'provider' | 'submitted_by'> & {
+export type RaceListing = Omit<RaceListingRow, 'provider' | 'submitted_by' | 'course_source'> & {
 	provider: RaceProvider;
+	course_source: RaceCourseSource | null;
 };
 
 // Community condition reports on a route (migration 20270212_001). `condition`

@@ -26,8 +26,49 @@ class _FakeRaceService extends RaceService {
   int listingCalls = 0;
   int runsCalls = 0;
   String? lastImportProvider;
+  bool signedIn = false;
+  List<OrganiserClub> clubs = const [];
+  List<CourseRouteOption> clubRoutes = const [];
+  List<CourseRouteOption> myRoutes = const [];
+  String? mySuggestionRouteId;
+  final List<List<String?>> claims = [];
+  final List<List<String?>> links = [];
+  final List<List<String?>> suggestions = [];
 
   _FakeRaceService({this.listing, this.listingFailures = 0});
+
+  @override
+  bool get isSignedIn => signedIn;
+
+  @override
+  Future<List<OrganiserClub>> fetchMyOrganiserClubs() async => clubs;
+
+  @override
+  Future<List<CourseRouteOption>> fetchClubPublicRoutes(String clubId) async =>
+      clubRoutes;
+
+  @override
+  Future<List<CourseRouteOption>> fetchMyPublicRoutes() async => myRoutes;
+
+  @override
+  Future<String?> fetchMyRaceCourseSuggestionRouteId(String listingId) async =>
+      mySuggestionRouteId;
+
+  @override
+  Future<void> claimRaceListing(String listingId, String clubId) async {
+    claims.add([listingId, clubId]);
+    listing = _copyWith(listing!, organiserClubId: clubId, organiserClubName: 'Moab Trail Club');
+  }
+
+  @override
+  Future<void> linkRaceCourse(String listingId, String? routeId, String? source) async {
+    links.add([listingId, routeId, source]);
+  }
+
+  @override
+  Future<void> suggestRaceCourse(String listingId, String routeId, String? note) async {
+    suggestions.add([listingId, routeId, note]);
+  }
 
   @override
   Future<RaceListingView?> fetchRaceListing(String id) async {
@@ -72,6 +113,25 @@ class _FakeRaceService extends RaceService {
   }
 }
 
+RaceListingView _copyWith(RaceListingView r,
+        {String? organiserClubId, String? organiserClubName}) =>
+    RaceListingView(
+      id: r.id,
+      provider: r.provider,
+      providerRaceId: r.providerRaceId,
+      name: r.name,
+      raceDate: r.raceDate,
+      distanceM: r.distanceM,
+      locationLabel: r.locationLabel,
+      entryUrl: r.entryUrl,
+      resultsUrl: r.resultsUrl,
+      isVerified: r.isVerified,
+      distanceMAway: r.distanceMAway,
+      course: r.course,
+      organiserClubId: organiserClubId,
+      organiserClubName: organiserClubName,
+    );
+
 String _isoDaysOut(int days) => toIsoDate(DateTime.now().add(Duration(days: days)));
 
 RaceListingView _listing({
@@ -79,6 +139,8 @@ RaceListingView _listing({
   required String raceDate,
   String? entryUrl,
   RaceListingCourse? course,
+  String? organiserClubId,
+  String? organiserClubName,
 }) =>
     RaceListingView(
       id: '11111111-1111-4111-8111-111111111111',
@@ -93,6 +155,8 @@ RaceListingView _listing({
       isVerified: true,
       distanceMAway: null,
       course: course,
+      organiserClubId: organiserClubId,
+      organiserClubName: organiserClubName,
     );
 
 Widget _app(RaceService service, {_FakeTraining? training, bool aiPlan = false}) =>
@@ -283,6 +347,166 @@ void main() {
     expect(find.widgetWithText(OutlinedButton, 'Build a plan for this race'), findsOneWidget);
     expect(find.textContaining('Starts after Autumn 10k ends on'), findsOneWidget);
     expect(find.textContaining('with 3 days to recover'), findsOneWidget);
+  });
+
+  testWidgets('a hand-added race a club claimed is credited to the club',
+      (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(30),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Club',
+      ),
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Added by Moab Trail Club'), findsOneWidget);
+    expect(find.text('Added by a runner'), findsNothing);
+    expect(find.byKey(const Key('race-course-tools')), findsNothing,
+        reason: 'a signed-out reader is offered no course tools');
+  });
+
+  testWidgets('the course says where it came from, when it was checked and that it changed',
+      (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        provider: 'runsignup',
+        raceDate: _isoDaysOut(30),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Club',
+        course: const RaceListingCourse(
+          distanceM: 42195,
+          routeId: 'route-1',
+          source: 'traced',
+          checkedAt: '2036-10-01T10:00:00Z',
+          updatedAt: '2036-10-20T10:00:00Z',
+        ),
+      ),
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.text("Course drawn by Moab Trail Club from the race's published map"
+          ' · last checked 2036-10-01'),
+      findsOneWidget,
+    );
+    expect(find.text('Course updated 2036-10-20'), findsOneWidget);
+    expect(find.text('Listed on RunSignUp'), findsOneWidget);
+  });
+
+  testWidgets('a verified club admin claims an unclaimed race', (tester) async {
+    final service = _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(30)))
+      ..signedIn = true
+      ..clubs = const [OrganiserClub(id: 'club-1', name: 'Moab Trail Club')];
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('race-course-claim')));
+    await tester.pumpAndSettle();
+    expect(find.text('Claim this race for your club'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('race-course-claim-confirm')));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(service.claims, [
+      ['11111111-1111-4111-8111-111111111111', 'club-1'],
+    ]);
+    expect(find.text('Race claimed.'), findsOneWidget);
+    expect(find.text('Added by Moab Trail Club'), findsOneWidget,
+        reason: 'the screen re-reads the listing after the claim');
+    expect(find.byKey(const Key('race-course-claim')), findsNothing);
+    expect(find.byKey(const Key('race-course-link')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('the organiser club links a traced course', (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(30),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Club',
+      ),
+    )
+      ..signedIn = true
+      ..clubs = const [OrganiserClub(id: 'club-1', name: 'Moab Trail Club')]
+      ..clubRoutes = const [CourseRouteOption(id: 'route-1', name: 'Moab course')];
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('race-course-suggest')), findsNothing,
+        reason: 'the organiser links, it does not suggest');
+    await tester.tap(find.byKey(const Key('race-course-link')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('race-course-source-traced')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('race-course-link-confirm')));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(service.links, [
+      ['11111111-1111-4111-8111-111111111111', 'route-1', 'traced'],
+    ]);
+    expect(find.text('Course linked.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  testWidgets('a runner suggests one of their public routes', (tester) async {
+    final service = _FakeRaceService(
+      listing: _listing(
+        raceDate: _isoDaysOut(30),
+        organiserClubId: 'club-1',
+        organiserClubName: 'Moab Trail Club',
+      ),
+    )
+      ..signedIn = true
+      ..myRoutes = const [CourseRouteOption(id: 'mine-1', name: 'My trace')];
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('race-course-link')), findsNothing);
+    expect(find.byKey(const Key('race-course-claim')), findsNothing);
+    await tester.tap(find.byKey(const Key('race-course-suggest')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byKey(const Key('race-course-suggest-note')), 'From the 2036 map');
+    await tester.tap(find.byKey(const Key('race-course-suggest-confirm')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(service.suggestions, [
+      ['11111111-1111-4111-8111-111111111111', 'mine-1', 'From the 2036 map'],
+    ]);
+    expect(find.text('Suggestion sent.'), findsOneWidget);
+    expect(find.byKey(const Key('race-course-suggest-pending')), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+  });
+
+  test('raceCourseAccess matches web: claim, manage or suggest', () {
+    const mine = [OrganiserClub(id: 'c1', name: 'A')];
+    final unclaimed = raceCourseAccess(
+        signedIn: true, organiserClubId: null, myOrganiserClubs: mine);
+    expect([unclaimed.canClaim, unclaimed.canManage, unclaimed.canSuggest],
+        [true, false, true]);
+    final managed = raceCourseAccess(
+        signedIn: true, organiserClubId: 'c1', myOrganiserClubs: mine);
+    expect([managed.canClaim, managed.canManage, managed.canSuggest],
+        [false, true, false]);
+    final other = raceCourseAccess(
+        signedIn: true, organiserClubId: 'c2', myOrganiserClubs: mine);
+    expect([other.canClaim, other.canManage, other.canSuggest],
+        [false, false, true]);
+    final out = raceCourseAccess(
+        signedIn: false, organiserClubId: null, myOrganiserClubs: mine);
+    expect([out.canClaim, out.canManage, out.canSuggest], [false, false, false]);
   });
 
   test('raceShareUrl points at the public share page', () {

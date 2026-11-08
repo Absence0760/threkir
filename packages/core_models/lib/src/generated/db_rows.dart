@@ -737,6 +737,166 @@ class ClubPostRow {
   );
 }
 
+/// Row shape for the `club_verification_requests` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class ClubVerificationRequestRow {
+  static const String table = 'club_verification_requests';
+  static const String colId = 'id';
+  static const String colClubId = 'club_id';
+  static const String colSubmittedBy = 'submitted_by';
+  static const String colOrganisation = 'organisation';
+  static const String colDomain = 'domain';
+  static const String colNote = 'note';
+  static const String colToken = 'token';
+  static const String colStatus = 'status';
+  static const String colProofMethod = 'proof_method';
+  static const String colProofVerifiedAt = 'proof_verified_at';
+  static const String colProofDetail = 'proof_detail';
+  static const String colLastCheckedAt = 'last_checked_at';
+  static const String colCheckFailures = 'check_failures';
+  static const String colDecidedBy = 'decided_by';
+  static const String colDecidedAt = 'decided_at';
+  static const String colDecisionReason = 'decision_reason';
+  static const String colClosedBy = 'closed_by';
+  static const String colClosedAt = 'closed_at';
+  static const String colCloseReason = 'close_reason';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String clubId;
+  final String? submittedBy;
+  final String organisation;
+  final String domain;
+  final String? note;
+  final String token;
+  final String status;
+  final String? proofMethod;
+  final DateTime? proofVerifiedAt;
+  final String? proofDetail;
+  final DateTime? lastCheckedAt;
+  final int checkFailures;
+  final String? decidedBy;
+  final DateTime? decidedAt;
+  final String? decisionReason;
+  final String? closedBy;
+  final DateTime? closedAt;
+  final String? closeReason;
+  final DateTime createdAt;
+
+  const ClubVerificationRequestRow({
+    required this.id,
+    required this.clubId,
+    this.submittedBy,
+    required this.organisation,
+    required this.domain,
+    this.note,
+    required this.token,
+    required this.status,
+    this.proofMethod,
+    this.proofVerifiedAt,
+    this.proofDetail,
+    this.lastCheckedAt,
+    required this.checkFailures,
+    this.decidedBy,
+    this.decidedAt,
+    this.decisionReason,
+    this.closedBy,
+    this.closedAt,
+    this.closeReason,
+    required this.createdAt,
+  });
+
+  factory ClubVerificationRequestRow.fromJson(Map<String, dynamic> json) => ClubVerificationRequestRow(
+    id: json['id'] as String,
+    clubId: json['club_id'] as String,
+    submittedBy: json['submitted_by'] as String?,
+    organisation: json['organisation'] as String,
+    domain: json['domain'] as String,
+    note: json['note'] as String?,
+    token: json['token'] as String,
+    status: json['status'] as String,
+    proofMethod: json['proof_method'] as String?,
+    proofVerifiedAt: parseIsoStrictValue(json['proof_verified_at']),
+    proofDetail: json['proof_detail'] as String?,
+    lastCheckedAt: parseIsoStrictValue(json['last_checked_at']),
+    checkFailures: (json['check_failures'] as num).toInt(),
+    decidedBy: json['decided_by'] as String?,
+    decidedAt: parseIsoStrictValue(json['decided_at']),
+    decisionReason: json['decision_reason'] as String?,
+    closedBy: json['closed_by'] as String?,
+    closedAt: parseIsoStrictValue(json['closed_at']),
+    closeReason: json['close_reason'] as String?,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colClubId: clubId,
+    colSubmittedBy: submittedBy,
+    colOrganisation: organisation,
+    colDomain: domain,
+    colNote: note,
+    colToken: token,
+    colStatus: status,
+    colProofMethod: proofMethod,
+    colProofVerifiedAt: proofVerifiedAt?.toIso8601String(),
+    colProofDetail: proofDetail,
+    colLastCheckedAt: lastCheckedAt?.toIso8601String(),
+    colCheckFailures: checkFailures,
+    colDecidedBy: decidedBy,
+    colDecidedAt: decidedAt?.toIso8601String(),
+    colDecisionReason: decisionReason,
+    colClosedBy: closedBy,
+    colClosedAt: closedAt?.toIso8601String(),
+    colCloseReason: closeReason,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  ClubVerificationRequestRow copyWith({
+    String? id,
+    String? clubId,
+    String? submittedBy,
+    String? organisation,
+    String? domain,
+    String? note,
+    String? token,
+    String? status,
+    String? proofMethod,
+    DateTime? proofVerifiedAt,
+    String? proofDetail,
+    DateTime? lastCheckedAt,
+    int? checkFailures,
+    String? decidedBy,
+    DateTime? decidedAt,
+    String? decisionReason,
+    String? closedBy,
+    DateTime? closedAt,
+    String? closeReason,
+    DateTime? createdAt,
+  }) => ClubVerificationRequestRow(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    submittedBy: submittedBy ?? this.submittedBy,
+    organisation: organisation ?? this.organisation,
+    domain: domain ?? this.domain,
+    note: note ?? this.note,
+    token: token ?? this.token,
+    status: status ?? this.status,
+    proofMethod: proofMethod ?? this.proofMethod,
+    proofVerifiedAt: proofVerifiedAt ?? this.proofVerifiedAt,
+    proofDetail: proofDetail ?? this.proofDetail,
+    lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
+    checkFailures: checkFailures ?? this.checkFailures,
+    decidedBy: decidedBy ?? this.decidedBy,
+    decidedAt: decidedAt ?? this.decidedAt,
+    decisionReason: decisionReason ?? this.decisionReason,
+    closedBy: closedBy ?? this.closedBy,
+    closedAt: closedAt ?? this.closedAt,
+    closeReason: closeReason ?? this.closeReason,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
 /// Row shape for the `clubs` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class ClubRow {

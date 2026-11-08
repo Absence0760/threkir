@@ -78,6 +78,7 @@ insert into anon_callable (fn, why) values
   ('challenge_invite_preview',        'a follower previews a challenge invite link before signing up'),
   ('clip_route_for_viewer',           'public route page geometry'),
   ('clubs_in_bbox',                   'logged-out map discovery'),
+  ('confirm_club_verification_email', 'the address at a club''s claimed domain confirms the email proof from a mailed link with no account; the 192-bit single-use token is the capability'),
   ('confirm_safety_contact_by_token', 'a trusted contact confirms from an emailed link with no account'),
   ('discoverable_routes_in_bbox',     'logged-out map discovery'),
   ('event_gallery_photos',            'public event page'),

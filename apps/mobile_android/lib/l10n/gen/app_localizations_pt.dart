@@ -157,8 +157,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'em # parques',
-      one: 'em # parque',
+      other: 'em $n parques',
+      one: 'em $n parque',
     );
     return '$_temp0';
   }
@@ -171,8 +171,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# percursos',
-      one: '# percurso',
+      other: '$n percursos',
+      one: '$n percurso',
     );
     return '$_temp0';
   }
@@ -14932,8 +14932,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# percursos',
-      one: '# percurso',
+      other: '$n percursos',
+      one: '$n percurso',
     );
     return '$_temp0';
   }
@@ -21453,8 +21453,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'em # parques',
-      one: 'em # parque',
+      other: 'em $n parques',
+      one: 'em $n parque',
     );
     return '$_temp0';
   }
@@ -21467,8 +21467,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# percursos',
-      one: '# percurso',
+      other: '$n percursos',
+      one: '$n percurso',
     );
     return '$_temp0';
   }
@@ -36217,8 +36217,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# percursos',
-      one: '# percurso',
+      other: '$n percursos',
+      one: '$n percurso',
     );
     return '$_temp0';
   }

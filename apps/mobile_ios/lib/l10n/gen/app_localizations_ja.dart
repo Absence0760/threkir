@@ -153,7 +153,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '#か所のパーク',
+      other: '$nか所のパーク',
     );
     return '$_temp0';
   }
@@ -163,7 +163,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String recapParkCourseCount(int n) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#コース');
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$nコース',
+    );
     return '$_temp0';
   }
 
@@ -14211,7 +14215,11 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String challengesUnitParkCourses(int n) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#コース');
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$nコース',
+    );
     return '$_temp0';
   }
 

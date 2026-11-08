@@ -76,6 +76,8 @@ ChallengeView _ch({
   String creatorId = 'creator',
   String scope = 'individual',
   String? myTeamClubId,
+  String metric = 'distance',
+  String? parkRegionCode,
 }) {
   final now = DateTime.now();
   return ChallengeView(
@@ -84,7 +86,7 @@ ChallengeView _ch({
     clubId: null,
     title: 'Pace challenge',
     description: null,
-    metric: 'distance',
+    metric: metric,
     scope: scope,
     goalValue: goalValue,
     activityType: null,
@@ -95,6 +97,7 @@ ChallengeView _ch({
     joined: true,
     myValue: myValue,
     myTeamClubId: myTeamClubId,
+    parkRegionCode: parkRegionCode,
   );
 }
 
@@ -152,6 +155,23 @@ void main() {
 
     expect(find.text('Ahead of pace'), findsOneWidget);
     expect(find.textContaining('per day to finish'), findsNothing);
+  });
+
+  testWidgets('a park courses challenge names its region and counts courses',
+      (tester) async {
+    await tester.pumpWidget(_app(_FakeSocial(_ch(
+        myValue: 2, goalValue: 10, metric: 'park_courses', parkRegionCode: 'US-VA'))));
+    await tester.pump();
+
+    expect(find.text('Counts park courses in US-VA'), findsOneWidget);
+    expect(find.textContaining('10 courses', findRichText: true), findsWidgets);
+  });
+
+  testWidgets('a distance challenge shows no park region line', (tester) async {
+    await tester.pumpWidget(_app(_FakeSocial(_ch(myValue: 20000))));
+    await tester.pump();
+
+    expect(find.byKey(const Key('challenge-park-region')), findsNothing);
   });
 
   testWidgets('goal-less board renders no pace hint', (tester) async {

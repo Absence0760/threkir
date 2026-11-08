@@ -19,6 +19,8 @@ String challengeMetricLabel(AppLocalizations l10n, String metric) {
       return l10n.challengesMetricActivityCount;
     case 'streak_days':
       return l10n.challengesMetricStreak;
+    case 'park_courses':
+      return l10n.challengesMetricParkCourses;
     case 'distance':
     default:
       return l10n.challengesMetricDistance;
@@ -39,6 +41,8 @@ String challengeValueLabel(AppLocalizations l10n, String metric, num value) {
       return l10n.challengesUnitDays(value.round());
     case 'activity_count':
       return l10n.challengesUnitActivities(value.round());
+    case 'park_courses':
+      return l10n.challengesUnitParkCourses(value.round());
     case 'distance':
     default:
       return formatDistanceForPref(value.toDouble());

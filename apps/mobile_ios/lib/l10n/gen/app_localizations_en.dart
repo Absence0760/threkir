@@ -156,8 +156,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: 'in # parks',
-      one: 'in # park',
+      other: 'in $n parks',
+      one: 'in $n park',
     );
     return '$_temp0';
   }
@@ -170,8 +170,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# courses',
-      one: '# course',
+      other: '$n courses',
+      one: '$n course',
     );
     return '$_temp0';
   }
@@ -14780,8 +14780,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# courses',
-      one: '# course',
+      other: '$n courses',
+      one: '$n course',
     );
     return '$_temp0';
   }

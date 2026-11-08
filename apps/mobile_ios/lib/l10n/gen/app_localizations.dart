@@ -344,7 +344,7 @@ abstract class AppLocalizations {
   /// Park courses phase 5 (recap.parkCoursesSub)
   ///
   /// In en, this message translates to:
-  /// **'{n, plural, one {in # park} other {in # parks}}'**
+  /// **'{n, plural, one {in {n} park} other {in {n} parks}}'**
   String recapParkCoursesSub(int n);
 
   /// Park courses phase 5 (recap.parksHeading)
@@ -356,7 +356,7 @@ abstract class AppLocalizations {
   /// Park courses phase 5 (recap.parkCourseCount)
   ///
   /// In en, this message translates to:
-  /// **'{n, plural, one {# course} other {# courses}}'**
+  /// **'{n, plural, one {{n} course} other {{n} courses}}'**
   String recapParkCourseCount(int n);
 
   /// App bar title for the full-screen route picker
@@ -24161,7 +24161,7 @@ abstract class AppLocalizations {
   /// Park courses phase 5 (challenges.unitParkCourses)
   ///
   /// In en, this message translates to:
-  /// **'{n, plural, one {# course} other {# courses}}'**
+  /// **'{n, plural, one {{n} course} other {{n} courses}}'**
   String challengesUnitParkCourses(int n);
 
   /// Park courses phase 5 (challenges.goalSuffixCourses)

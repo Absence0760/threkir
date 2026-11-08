@@ -220,7 +220,7 @@
   "@recapParkCoursesLabel": {
     "description": "Park courses phase 5 (recap.parkCourses)"
   },
-  "recapParkCoursesSub": "{n, plural, one {in # park} other {in # parks}}",
+  "recapParkCoursesSub": "{n, plural, one {in {n} park} other {in {n} parks}}",
   "@recapParkCoursesSub": {
     "description": "Park courses phase 5 (recap.parkCoursesSub)",
     "placeholders": {
@@ -233,7 +233,7 @@
   "@recapParksHeading": {
     "description": "Park courses phase 5 (recap.parksHeading)"
   },
-  "recapParkCourseCount": "{n, plural, one {# course} other {# courses}}",
+  "recapParkCourseCount": "{n, plural, one {{n} course} other {{n} courses}}",
   "@recapParkCourseCount": {
     "description": "Park courses phase 5 (recap.parkCourseCount)",
     "placeholders": {
@@ -19709,7 +19709,7 @@
   "@challengesMetricParkCourses": {
     "description": "Park courses phase 5 (challenges.metricParkCourses)"
   },
-  "challengesUnitParkCourses": "{n, plural, one {# course} other {# courses}}",
+  "challengesUnitParkCourses": "{n, plural, one {{n} course} other {{n} courses}}",
   "@challengesUnitParkCourses": {
     "description": "Park courses phase 5 (challenges.unitParkCourses)",
     "placeholders": {

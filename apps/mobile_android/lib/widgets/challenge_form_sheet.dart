@@ -24,6 +24,7 @@ const List<String> kChallengeMetrics = [
   'vert',
   'activity_count',
   'streak_days',
+  'park_courses',
 ];
 
 /// The scope vocabulary `challenges_scope_ck` admits.
@@ -52,6 +53,8 @@ String challengeGoalSuffix(
       return l10n.challengesSuffixActivities;
     case ChallengeGoalUnit.days:
       return l10n.challengesSuffixDays;
+    case ChallengeGoalUnit.courses:
+      return l10n.challengesGoalSuffixCourses;
     case ChallengeGoalUnit.distance:
       return UnitFormat.distanceLabel(unit);
   }

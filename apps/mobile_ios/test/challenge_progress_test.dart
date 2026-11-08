@@ -63,6 +63,10 @@ void main() {
     expect(metricFromActivity({}, ChallengeMetric.streakDays, null), 1);
   });
 
+  test('park_courses is server-only: an activity contributes 0', () {
+    expect(metricFromActivity({'distance_m': 5000}, ChallengeMetric.parkCourses, null), 0);
+  });
+
   test('metricFromActivity activity_type filter excludes non-matching', () {
     expect(
         metricFromActivity({'distance_m': 5000, 'activity_type': 'walk'}, ChallengeMetric.distance, 'run'),

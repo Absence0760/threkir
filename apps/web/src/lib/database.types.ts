@@ -1472,18 +1472,23 @@ export type Database = {
           distance_m: number
           duration_s: number
           event_id: string
+          finish_at: string | null
+          finish_detection: string | null
           finish_method: string | null
           finisher_name: string | null
           finisher_status: string
           gun_time_s: number | null
           id: string
           instance_start: string
+          needs_review: boolean
           note: string | null
           organiser_approved: boolean
           organiser_approved_at: string | null
           organiser_approved_by: string | null
           rank: number | null
           run_id: string | null
+          start_at: string | null
+          start_detection: string | null
           updated_at: string
           user_id: string | null
         }
@@ -1496,18 +1501,23 @@ export type Database = {
           distance_m: number
           duration_s: number
           event_id: string
+          finish_at?: string | null
+          finish_detection?: string | null
           finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string
           gun_time_s?: number | null
           id?: string
           instance_start: string
+          needs_review?: boolean
           note?: string | null
           organiser_approved?: boolean
           organiser_approved_at?: string | null
           organiser_approved_by?: string | null
           rank?: number | null
           run_id?: string | null
+          start_at?: string | null
+          start_detection?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1520,18 +1530,23 @@ export type Database = {
           distance_m?: number
           duration_s?: number
           event_id?: string
+          finish_at?: string | null
+          finish_detection?: string | null
           finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string
           gun_time_s?: number | null
           id?: string
           instance_start?: string
+          needs_review?: boolean
           note?: string | null
           organiser_approved?: boolean
           organiser_approved_at?: string | null
           organiser_approved_by?: string | null
           rank?: number | null
           run_id?: string | null
+          start_at?: string | null
+          start_detection?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -1600,6 +1615,11 @@ export type Database = {
           meet_lat: number | null
           meet_lng: number | null
           pace_target_sec: number | null
+          race_auto_approve: boolean | null
+          race_scheduled_offset_s: number | null
+          race_start_mode: string
+          race_window_length_s: number | null
+          race_window_open_offset_s: number | null
           recurrence_byday: string[] | null
           recurrence_count: number | null
           recurrence_freq: string | null
@@ -1630,6 +1650,11 @@ export type Database = {
           meet_lat?: number | null
           meet_lng?: number | null
           pace_target_sec?: number | null
+          race_auto_approve?: boolean | null
+          race_scheduled_offset_s?: number | null
+          race_start_mode?: string
+          race_window_length_s?: number | null
+          race_window_open_offset_s?: number | null
           recurrence_byday?: string[] | null
           recurrence_count?: number | null
           recurrence_freq?: string | null
@@ -1660,6 +1685,11 @@ export type Database = {
           meet_lat?: number | null
           meet_lng?: number | null
           pace_target_sec?: number | null
+          race_auto_approve?: boolean | null
+          race_scheduled_offset_s?: number | null
+          race_start_mode?: string
+          race_window_length_s?: number | null
+          race_window_open_offset_s?: number | null
           recurrence_byday?: string[] | null
           recurrence_count?: number | null
           recurrence_freq?: string | null
@@ -3995,6 +4025,7 @@ export type Database = {
           instance_start: string
           lat: number
           lng: number
+          since_start_line_s: number | null
           user_id: string
         }
         Insert: {
@@ -4008,6 +4039,7 @@ export type Database = {
           instance_start: string
           lat: number
           lng: number
+          since_start_line_s?: number | null
           user_id: string
         }
         Update: {
@@ -4021,6 +4053,7 @@ export type Database = {
           instance_start?: string
           lat?: number
           lng?: number
+          since_start_line_s?: number | null
           user_id?: string
         }
         Relationships: [
@@ -4120,10 +4153,14 @@ export type Database = {
           finished_at: string | null
           instance_start: string
           is_auto_approve: boolean
+          scheduled_start_at: string | null
+          start_mode: string
           started_at: string | null
           started_by: string | null
           status: string
           updated_at: string
+          window_closes_at: string | null
+          window_opens_at: string | null
         }
         Insert: {
           courses_frozen_at?: string | null
@@ -4132,10 +4169,14 @@ export type Database = {
           finished_at?: string | null
           instance_start: string
           is_auto_approve?: boolean
+          scheduled_start_at?: string | null
+          start_mode?: string
           started_at?: string | null
           started_by?: string | null
           status?: string
           updated_at?: string
+          window_closes_at?: string | null
+          window_opens_at?: string | null
         }
         Update: {
           courses_frozen_at?: string | null
@@ -4144,10 +4185,14 @@ export type Database = {
           finished_at?: string | null
           instance_start?: string
           is_auto_approve?: boolean
+          scheduled_start_at?: string | null
+          start_mode?: string
           started_at?: string | null
           started_by?: string | null
           status?: string
           updated_at?: string
+          window_closes_at?: string | null
+          window_opens_at?: string | null
         }
         Relationships: [
           {
@@ -6166,16 +6211,19 @@ export type Database = {
           distance_m: number | null
           duration_s: number | null
           event_id: string | null
+          finish_detection: string | null
           finish_method: string | null
           finisher_name: string | null
           finisher_status: string | null
           gun_time_s: number | null
           id: string | null
           instance_start: string | null
+          needs_review: boolean | null
           note: string | null
           organiser_approved: boolean | null
           rank: number | null
           run_id: string | null
+          start_detection: string | null
           updated_at: string | null
           user_id: string | null
         }
@@ -6188,16 +6236,19 @@ export type Database = {
           distance_m?: number | null
           duration_s?: number | null
           event_id?: string | null
+          finish_detection?: never
           finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string | null
           gun_time_s?: number | null
           id?: string | null
           instance_start?: string | null
+          needs_review?: never
           note?: never
           organiser_approved?: boolean | null
           rank?: number | null
           run_id?: never
+          start_detection?: never
           updated_at?: string | null
           user_id?: string | null
         }
@@ -6210,16 +6261,19 @@ export type Database = {
           distance_m?: number | null
           duration_s?: number | null
           event_id?: string | null
+          finish_detection?: never
           finish_method?: string | null
           finisher_name?: string | null
           finisher_status?: string | null
           gun_time_s?: number | null
           id?: string | null
           instance_start?: string | null
+          needs_review?: never
           note?: never
           organiser_approved?: boolean | null
           rank?: number | null
           run_id?: never
+          start_detection?: never
           updated_at?: string | null
           user_id?: string | null
         }
@@ -6613,38 +6667,53 @@ export type Database = {
         Row: {
           courses_frozen_at: string | null
           created_at: string | null
+          effective_status: string | null
           event_id: string | null
           finished_at: string | null
           instance_start: string | null
           is_auto_approve: boolean | null
+          scheduled_start_at: string | null
+          start_mode: string | null
           started_at: string | null
           started_by: string | null
           status: string | null
           updated_at: string | null
+          window_closes_at: string | null
+          window_opens_at: string | null
         }
         Insert: {
           courses_frozen_at?: string | null
           created_at?: string | null
+          effective_status?: never
           event_id?: string | null
           finished_at?: string | null
           instance_start?: string | null
           is_auto_approve?: never
+          scheduled_start_at?: string | null
+          start_mode?: string | null
           started_at?: string | null
           started_by?: never
           status?: string | null
           updated_at?: string | null
+          window_closes_at?: string | null
+          window_opens_at?: string | null
         }
         Update: {
           courses_frozen_at?: string | null
           created_at?: string | null
+          effective_status?: never
           event_id?: string | null
           finished_at?: string | null
           instance_start?: string | null
           is_auto_approve?: never
+          scheduled_start_at?: string | null
+          start_mode?: string | null
           started_at?: string | null
           started_by?: never
           status?: string | null
           updated_at?: string | null
+          window_closes_at?: string | null
+          window_opens_at?: string | null
         }
         Relationships: [
           {
@@ -6902,18 +6971,23 @@ export type Database = {
           distance_m: number
           duration_s: number
           event_id: string
+          finish_at: string | null
+          finish_detection: string | null
           finish_method: string | null
           finisher_name: string | null
           finisher_status: string
           gun_time_s: number | null
           id: string
           instance_start: string
+          needs_review: boolean
           note: string | null
           organiser_approved: boolean
           organiser_approved_at: string | null
           organiser_approved_by: string | null
           rank: number | null
           run_id: string | null
+          start_at: string | null
+          start_detection: string | null
           updated_at: string
           user_id: string | null
         }
@@ -7360,6 +7434,10 @@ export type Database = {
       }
       enqueue_weekly_digests: { Args: never; Returns: number }
       enqueue_workout_reminders: { Args: { p_now?: string }; Returns: number }
+      ensure_race_session: {
+        Args: { p_event_id: string; p_instance_start: string }
+        Returns: boolean
+      }
       escalate_run_off_route: { Args: { p_run_id: string }; Returns: boolean }
       event_gallery_photos: {
         Args: { p_event_id: string; p_instance: string; p_limit?: number }
@@ -7886,6 +7964,7 @@ export type Database = {
           instance_start: string
           lat: number
           lng: number
+          since_start_line_s: number | null
           user_id: string
         }[]
         SetofOptions: {
@@ -7976,6 +8055,24 @@ export type Database = {
           has_phone: boolean
           id: string
           owner_name: string
+        }[]
+      }
+      my_race_sessions: {
+        Args: never
+        Returns: {
+          course_id: string
+          effective_status: string
+          event_id: string
+          event_timezone: string
+          event_title: string
+          instance_start: string
+          scheduled_start_at: string
+          server_now: string
+          start_mode: string
+          started_at: string
+          status: string
+          window_closes_at: string
+          window_opens_at: string
         }[]
       }
       my_share_ref: { Args: never; Returns: string }
@@ -8189,6 +8286,7 @@ export type Database = {
         Args: { p_event_id: string; p_instance_start: string }
         Returns: number
       }
+      race_sessions_tick: { Args: never; Returns: undefined }
       recompute_challenge_completion: {
         Args: { p_challenge_id: string; p_user_id: string }
         Returns: undefined
@@ -8655,6 +8753,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      server_now: { Args: never; Returns: string }
       set_apple_refresh_token: {
         Args: {
           p_client_id: string

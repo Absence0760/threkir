@@ -120,6 +120,7 @@ insert into anon_callable (fn, why) values
   ('search_public_events',            'logged-out search'),
   ('search_race_listings',            'logged-out search'),
   ('segment_effort_ranks',            'public segment board'),
+  ('server_now',                      'the logged-out spectator page counts down to a scheduled GO on the server clock'),
   ('share_attribution_enabled',       'a /share page decides whether to count the view'),
   ('signup_source_enabled',           'a sign-up, made with no session, decides whether to send its first-touch source');
 
@@ -203,6 +204,7 @@ insert into server_only (fn, keeps_service_role) values
   ('privacy_distance_m', false),
   ('privacy_in_any_zone', false),
   ('prune_sign_in_devices', true),
+  ('race_sessions_tick', true),
   ('recompute_event_ranks', false),
   ('record_map_match_result', true),
   ('record_segment_match', true),

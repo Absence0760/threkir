@@ -2410,6 +2410,76 @@ export const UNOBSERVED_RPC_WRITES = [
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
   {
+    file: 'race_start_modes_test.sql',
+    description: 'a scheduled race whose start passed takes pings before the job moves it',
+    columns: ['race_pings.lat', 'race_pings.lng'],
+    readBack: 'the early ping lands where it was sent',
+    reason:
+      '`race_pings_drop_in_zone` rewrites or drops a ping inside the runner\'s privacy zone. The ' +
+      'assertion is about the clock-live policy accepting the row at all, and the read-back proves ' +
+      'the row landed with the coordinates sent rather than relying on the fixture having no zone.',
+  },
+  {
+    file: 'race_courses_test.sql',
+    description: 'an armed race does not lock a racer out of filing their own result',
+    columns: ['event_results.duration_s'],
+    readBack: "the racer's own DNS on an armed race is stored with the duration it sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'race_result_guard_test.sql',
+    description: 'a racer submits their own time on an armed race',
+    columns: ['event_results.duration_s'],
+    readBack: "the racer's own time on an armed race is stored as sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'race_result_guard_test.sql',
+    description: 'a racer files their own DNS on a cancelled race',
+    columns: ['event_results.duration_s'],
+    readBack: "the racer's own DNS on a cancelled race is stored with the duration it sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'rls_event_results_bulk_import_test.sql',
+    description: 'a plain event_organiser can INSERT a bib-only result',
+    columns: ['event_results.duration_s'],
+    readBack: "the organiser's bib-only result is stored with the time it sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'rls_event_results_bulk_import_test.sql',
+    description: 'a plain event_organiser can UPDATE a bib-only result (re-import path)',
+    columns: ['event_results.duration_s'],
+    readBack: "the re-imported bib-only time replaces the old one",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'typed_events_guards_test.sql',
+    description: 'event_results insert on a cycle event succeeds',
+    columns: ['event_results.duration_s'],
+    readBack: "the cycle event's result is stored with the time it sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
     file: 'unbounded_numeric_column_bounds_test.sql',
     description: 'a real 15-minute embedded 5k still stores',
     columns: ['runs.fastest_5k_s'],

@@ -738,6 +738,12 @@ neither, and neither carries a `List-Unsubscribe` header.
   exists as well as in `kindMuted`. One per runner per local day, claimed in
   `private.workout_reminder_claims`. The kind widen is the `NOT VALID` half in
   `20270913000001` and the `VALIDATE` in `20270913000002`.
+- [x] **Course alerts** — issue #1190, `decisions.md § 2407`, migrations
+  `20271124002407`-`09`. `course_alert` (to runners training for a race, or
+  who saved its course, when the verified organiser posts a reroute,
+  closure, course-direction or notice) is in `importantKinds` with the
+  opt-OUT mute `notify_course_alert`. Deep link `/course-alerts/{id}`, the
+  web resolver that opens the race or route. Copy in all seven locales.
 - [x] **Club and event notices** — issue #1300 BUG-009 / 010 / 016,
   `decisions.md § 2358`, migrations `20271112000010`-`13` (the kind widen's
   `VALIDATE` is `20271112000011`). `club_join_request` (to a request-to-join

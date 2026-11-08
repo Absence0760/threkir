@@ -150,6 +150,8 @@ object is not swept (followups).
 
 ### Verifying a club (operator)
 
+What a verified club's badge lends its content, race listings and courses (the four provenance labels and organiser course alerts) is in [provenance.md](provenance.md).
+
 `clubs.is_verified` (the verified badge) is set by an operator, not by the
 club. Two triggers guard it: `freeze_club_managed_columns` discards a write from
 an `anon` / `authenticated` session, and `clubs_protect_is_verified`

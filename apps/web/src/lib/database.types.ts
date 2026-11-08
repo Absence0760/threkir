@@ -1341,12 +1341,23 @@ export type Database = {
           created_at: string
           distance_m: number | null
           event_id: string
+          finish_gate_bearing_deg: number | null
+          finish_gate_half_width_m: number | null
+          finish_gate_lat: number | null
+          finish_gate_lng: number | null
+          finish_gate_source: string | null
           finish_lat: number | null
+          finish_line_self_cross: boolean
           finish_lng: number | null
           id: string
           name: string
           route_id: string | null
           sort_order: number
+          start_gate_bearing_deg: number | null
+          start_gate_half_width_m: number | null
+          start_gate_lat: number | null
+          start_gate_lng: number | null
+          start_gate_source: string | null
           start_lat: number | null
           start_lng: number | null
         }
@@ -1354,12 +1365,23 @@ export type Database = {
           created_at?: string
           distance_m?: number | null
           event_id: string
+          finish_gate_bearing_deg?: number | null
+          finish_gate_half_width_m?: number | null
+          finish_gate_lat?: number | null
+          finish_gate_lng?: number | null
+          finish_gate_source?: string | null
           finish_lat?: number | null
+          finish_line_self_cross?: boolean
           finish_lng?: number | null
           id?: string
           name: string
           route_id?: string | null
           sort_order?: number
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+          start_gate_source?: string | null
           start_lat?: number | null
           start_lng?: number | null
         }
@@ -1367,12 +1389,23 @@ export type Database = {
           created_at?: string
           distance_m?: number | null
           event_id?: string
+          finish_gate_bearing_deg?: number | null
+          finish_gate_half_width_m?: number | null
+          finish_gate_lat?: number | null
+          finish_gate_lng?: number | null
+          finish_gate_source?: string | null
           finish_lat?: number | null
+          finish_line_self_cross?: boolean
           finish_lng?: number | null
           id?: string
           name?: string
           route_id?: string | null
           sort_order?: number
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+          start_gate_source?: string | null
           start_lat?: number | null
           start_lng?: number | null
         }
@@ -4171,8 +4204,88 @@ export type Database = {
           },
         ]
       }
+      race_session_courses: {
+        Row: {
+          course_id: string
+          distance_m: number | null
+          event_id: string
+          finish_gate_bearing_deg: number | null
+          finish_gate_half_width_m: number | null
+          finish_gate_lat: number | null
+          finish_gate_lng: number | null
+          finish_lat: number | null
+          finish_line_self_cross: boolean
+          finish_lng: number | null
+          frozen_at: string
+          instance_start: string
+          start_gate_bearing_deg: number | null
+          start_gate_half_width_m: number | null
+          start_gate_lat: number | null
+          start_gate_lng: number | null
+        }
+        Insert: {
+          course_id: string
+          distance_m?: number | null
+          event_id: string
+          finish_gate_bearing_deg?: number | null
+          finish_gate_half_width_m?: number | null
+          finish_gate_lat?: number | null
+          finish_gate_lng?: number | null
+          finish_lat?: number | null
+          finish_line_self_cross?: boolean
+          finish_lng?: number | null
+          frozen_at?: string
+          instance_start: string
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+        }
+        Update: {
+          course_id?: string
+          distance_m?: number | null
+          event_id?: string
+          finish_gate_bearing_deg?: number | null
+          finish_gate_half_width_m?: number | null
+          finish_gate_lat?: number | null
+          finish_gate_lng?: number | null
+          finish_lat?: number | null
+          finish_line_self_cross?: boolean
+          finish_lng?: number | null
+          frozen_at?: string
+          instance_start?: string
+          start_gate_bearing_deg?: number | null
+          start_gate_half_width_m?: number | null
+          start_gate_lat?: number | null
+          start_gate_lng?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_session_courses_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "event_courses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_session_courses_session_fkey"
+            columns: ["event_id", "instance_start"]
+            isOneToOne: false
+            referencedRelation: "race_sessions"
+            referencedColumns: ["event_id", "instance_start"]
+          },
+          {
+            foreignKeyName: "race_session_courses_session_fkey"
+            columns: ["event_id", "instance_start"]
+            isOneToOne: false
+            referencedRelation: "race_sessions_redacted"
+            referencedColumns: ["event_id", "instance_start"]
+          },
+        ]
+      }
       race_sessions: {
         Row: {
+          courses_frozen_at: string | null
           created_at: string
           event_id: string
           finished_at: string | null
@@ -4184,6 +4297,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          courses_frozen_at?: string | null
           created_at?: string
           event_id: string
           finished_at?: string | null
@@ -4195,6 +4309,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          courses_frozen_at?: string | null
           created_at?: string
           event_id?: string
           finished_at?: string | null
@@ -5241,6 +5356,65 @@ export type Database = {
             foreignKeyName: "run_shares_run_id_fkey"
             columns: ["run_id"]
             isOneToOne: false
+            referencedRelation: "shared_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      run_track_extents: {
+        Row: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+          run_id: string
+          scored_at: string
+          track_version: string
+        }
+        Insert: {
+          max_lat: number
+          max_lng: number
+          min_lat: number
+          min_lng: number
+          run_id: string
+          scored_at?: string
+          track_version: string
+        }
+        Update: {
+          max_lat?: number
+          max_lng?: number
+          min_lat?: number
+          min_lng?: number
+          run_id?: string
+          scored_at?: string
+          track_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "run_track_extents_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: true
+            referencedRelation: "coached_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_track_extents_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: true
+            referencedRelation: "public_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_track_extents_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: true
+            referencedRelation: "runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "run_track_extents_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: true
             referencedRelation: "shared_runs"
             referencedColumns: ["id"]
           },
@@ -6608,6 +6782,7 @@ export type Database = {
       }
       race_sessions_redacted: {
         Row: {
+          courses_frozen_at: string | null
           created_at: string | null
           event_id: string | null
           finished_at: string | null
@@ -6619,6 +6794,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          courses_frozen_at?: string | null
           created_at?: string | null
           event_id?: string | null
           finished_at?: string | null
@@ -6630,6 +6806,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          courses_frozen_at?: string | null
           created_at?: string | null
           event_id?: string | null
           finished_at?: string | null
@@ -7408,6 +7585,10 @@ export type Database = {
       enqueue_route_photo_orphan_sweep: { Args: never; Returns: undefined }
       enqueue_run_rematch: { Args: { p_run_id: string }; Returns: Json }
       enqueue_safety_overdue_emails: { Args: never; Returns: undefined }
+      enqueue_segment_backfill: {
+        Args: { p_after_run_id?: string; p_segment_id: string }
+        Returns: number
+      }
       enqueue_weekly_digests: { Args: never; Returns: number }
       enqueue_workout_reminders: { Args: { p_now?: string }; Returns: number }
       escalate_run_off_route: { Args: { p_run_id: string }; Returns: boolean }
@@ -7691,6 +7872,36 @@ export type Database = {
           time_seconds: number
           user_id: string
         }[]
+      }
+      global_segments_in_bbox: {
+        Args: {
+          p_limit?: number
+          p_max_lat: number
+          p_max_lng: number
+          p_min_lat: number
+          p_min_lng: number
+          p_pad_m?: number
+        }
+        Returns: {
+          country_code: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          distance_m: number
+          elevation_m: number | null
+          id: string
+          is_active: boolean
+          name: string
+          region: string | null
+          surface: string
+          waypoints: Json
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "global_segments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       grant_health_data_consent: { Args: never; Returns: string }
       gym_exercise_names: {
@@ -8175,6 +8386,16 @@ export type Database = {
         Returns: string
       }
       publish_plan_to_library: { Args: { p_plan_id: string }; Returns: string }
+      race_course_review_queue: {
+        Args: never
+        Returns: {
+          listing_id: string
+          name: string
+          organiser_club_id: string
+          pending_count: number
+          race_date: string
+        }[]
+      }
       race_course_suggestions_for_review: {
         Args: { p_listing_id: string }
         Returns: {
@@ -8239,6 +8460,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_segment_match: {
+        Args: {
+          p_candidates: string[]
+          p_efforts: Json
+          p_max_lat: number
+          p_max_lng: number
+          p_min_lat: number
+          p_min_lng: number
+          p_run_id: string
+          p_track_version: string
+        }
+        Returns: string
+      }
       record_share_visit: {
         Args: { p_bot?: boolean; p_id: string; p_kind: string; p_ref?: string }
         Returns: undefined
@@ -8298,6 +8532,10 @@ export type Database = {
       }
       reschedule_plan_workouts: {
         Args: { p_moves: Json; p_plan_id: string }
+        Returns: undefined
+      }
+      reset_event_course_gate: {
+        Args: { p_course_id: string; p_which: string }
         Returns: undefined
       }
       resolve_target_reports: {
@@ -8620,6 +8858,16 @@ export type Database = {
           id: string
         }[]
       }
+      segment_backfill_runs: {
+        Args: {
+          p_after_run_id?: string
+          p_limit?: number
+          p_segment_id: string
+        }
+        Returns: {
+          run_id: string
+        }[]
+      }
       segment_effort_ranks: {
         Args: { p_run_id: string }
         Returns: {
@@ -8644,6 +8892,15 @@ export type Database = {
           run_id: string
           started_at: string
           time_seconds: number
+          user_id: string
+        }[]
+      }
+      segment_match_run_source: {
+        Args: { p_run_id: string }
+        Returns: {
+          metadata: Json
+          track_url: string
+          track_version: string
           user_id: string
         }[]
       }
@@ -8678,6 +8935,17 @@ export type Database = {
       set_discoverable_area: {
         Args: { p_label?: string; p_lat: number; p_lng: number }
         Returns: string
+      }
+      set_event_course_gate: {
+        Args: {
+          p_bearing_deg: number
+          p_course_id: string
+          p_half_width_m: number
+          p_lat: number
+          p_lng: number
+          p_which: string
+        }
+        Returns: undefined
       }
       set_event_photo_hidden: {
         Args: { p_hidden: boolean; p_photo_id: string }

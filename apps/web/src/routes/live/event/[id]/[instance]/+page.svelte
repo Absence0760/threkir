@@ -30,6 +30,8 @@
 		fetchEventResults,
 		fetchEventCourses,
 		fetchAttendeeCourses,
+		fetchCourseLinesForOccurrence,
+		type CourseLinesRow,
 		type RacePingRow,
 		type RaceSessionRow,
 		type EventResultWithUser
@@ -49,6 +51,8 @@
 		groupRunnersByCourse,
 		type EventCourse
 	} from '#lib/social/event_courses.ts';
+	import { courseGate } from '#lib/races/course_gates.ts';
+	import { addCourseGateLayers, type DrawnGate } from '#lib/races/course_gate_layers.ts';
 
 	let eventId = $derived(page.params.id as string);
 	let instance = $derived(decodeURIComponent(page.params.instance as string));
@@ -60,6 +64,19 @@
 	let results = $state<EventResultWithUser[]>([]);
 	// Courses of a multi-course race: one finisher board per course.
 	let courses = $state<EventCourse[]>([]);
+	// Every course's start and finish lines (#1305), from the race's frozen
+	// copy once it has one: the lines the runners are crossing.
+	let courseLines = $state<CourseLinesRow[]>([]);
+	let liveGates = $derived.by<DrawnGate[]>(() => {
+		const out: DrawnGate[] = [];
+		for (const row of courseLines) {
+			const s = courseGate(row, 'start');
+			const f = courseGate(row, 'finish');
+			if (s) out.push({ which: 'start', gate: s, courseId: row.course_id });
+			if (f) out.push({ which: 'finish', gate: f, courseId: row.course_id });
+		}
+		return out;
+	});
 	// Each runner's RSVP'd course, which splits the on-course board the way
 	// the finisher boards are split. Read only for a multi-course race.
 	let courseByUser = $state<Map<string, string>>(new Map());
@@ -184,6 +201,14 @@
 				courses = [];
 			}
 			courseByUser = await readCourseByUser();
+			try {
+				courseLines =
+					courses.length > 0
+						? await fetchCourseLinesForOccurrence(eventId, instance, !!race?.courses_frozen_at)
+						: [];
+			} catch (le) {
+				console.warn('live/event: course lines read failed', le);
+			}
 		} catch (e) {
 			// Public spectator page — a rejected fetch would otherwise hang on
 			// "Loading…" forever with no recourse. Surface it with a retry.
@@ -568,6 +593,8 @@
 
 	function addOverlays() {
 		if (!map) return;
+		// Under the runners, so a runner on the line stays visible.
+		addCourseGateLayers(map, 'course-gates', liveGates, darkBasemap);
 		map.addSource('runner-trails', { type: 'geojson', data: buildTrailsGeoJSON() });
 		map.addSource('runner-positions', { type: 'geojson', data: buildPositionsGeoJSON() });
 
@@ -676,6 +703,12 @@
 		void pings;
 		void trailsByUser;
 		refreshMapData();
+	});
+
+	$effect(() => {
+		const gates = liveGates;
+		if (!map || !mapReady) return;
+		addCourseGateLayers(map, 'course-gates', gates, darkBasemap);
 	});
 
 	let currentStyle: ReturnType<typeof getMapStyle> = getMapStyle();

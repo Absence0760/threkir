@@ -128,6 +128,12 @@ The placeholders are deliberately loud magenta, so a renderer that forgot one sh
 5. Run `pnpm gen:help-guides` and commit every JSON file it writes with the guide.
 6. Run `npx tsx --test src/lib/help/help_guides_guard.test.ts` from `apps/web` and `node scripts/check_help_translations.mjs`.
 
+## Guides by surface
+
+Most guides are listed by their own `routes`; one is worth naming because its surface is new and its text is phase-dependent:
+
+- **`park-courses`** (`running`, issue #1313) covers `/parks`, `/parks/[region]/[park]` and `/parks/[region]/[park]/[course]`: what a park course is, checkpoints, seasons in the park's time zone, the Fastest and Most completions boards, and who appears on them. Its last note says a run is checked against park courses when it is opened on the website, which is true until server-side matching ([park_courses.md](park_courses.md), Phase 1) lands; that change must edit the note and re-translate that one string. Translated into all six locales.
+
 ## Guards
 
 `apps/web/src/lib/help/help_guides_guard.test.ts` (unit job) fails when:

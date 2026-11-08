@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { toRouteGpxWithMarkers, type RouteGpxMarker } from './route_gpx';
+import { toRouteGpxWithMarkers, type GpxAttribution, type RouteGpxMarker } from './route_gpx';
 
 const COORDS_3: [number, number][] = [
 	[8.54, 47.37],
@@ -192,4 +192,56 @@ test('toRouteGpxWithMarkers — tab, newline and astral characters are legal XML
 	const xml = toRouteGpxWithMarkers('Col\tdu\nGéant \u{1F3D4}', COORDS_3, ELEVS_3, []);
 	assert.ok(xml.includes('<name>Col\tdu\nGéant \u{1F3D4}</name>'));
 	assert.ok(!xml.includes('�'));
+});
+
+const OSM: GpxAttribution = {
+	notice: 'Course line © OpenStreetMap contributors, available under the Open Database License (ODbL).',
+	author: 'OpenStreetMap contributors',
+	licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
+	linkHref: 'https://www.openstreetmap.org/copyright',
+	linkText: '© OpenStreetMap contributors'
+};
+
+test('toRouteGpxWithMarkers — attribution lands in metadata as desc, copyright, link in GPX 1.1 order', () => {
+	const xml = toRouteGpxWithMarkers('Loop', COORDS_3, ELEVS_3, [], OSM);
+	assert.ok(
+		xml.includes(
+			'  <metadata>\n' +
+				'    <name>Loop</name>\n' +
+				'    <desc>Course line © OpenStreetMap contributors, available under the Open Database License (ODbL).</desc>\n' +
+				'    <copyright author="OpenStreetMap contributors"><license>https://opendatacommons.org/licenses/odbl/1-0/</license></copyright>\n' +
+				'    <link href="https://www.openstreetmap.org/copyright"><text>© OpenStreetMap contributors</text></link>\n' +
+				'  </metadata>\n'
+		)
+	);
+});
+
+test('toRouteGpxWithMarkers — attribution with no rights holder or link writes only the desc', () => {
+	const xml = toRouteGpxWithMarkers('Loop', COORDS_3, ELEVS_3, [], {
+		notice: 'Traced.',
+		author: null,
+		licenseUrl: null,
+		linkHref: null,
+		linkText: 'Park'
+	});
+	assert.ok(xml.includes('    <name>Loop</name>\n    <desc>Traced.</desc>\n  </metadata>\n'));
+	assert.doesNotMatch(xml, /<copyright|<link/);
+});
+
+test('toRouteGpxWithMarkers — a rights holder with no licence writes an empty copyright, and every field is escaped', () => {
+	const xml = toRouteGpxWithMarkers('Loop', COORDS_3, ELEVS_3, [], {
+		notice: 'A & B',
+		author: 'Smith\'s "Park"',
+		licenseUrl: null,
+		linkHref: 'https://example.com/?a=1&b=2',
+		linkText: '<Park>'
+	});
+	assert.ok(xml.includes('<desc>A &amp; B</desc>'));
+	assert.ok(xml.includes('<copyright author="Smith&#39;s &quot;Park&quot;"></copyright>'));
+	assert.ok(xml.includes('<link href="https://example.com/?a=1&amp;b=2"><text>&lt;Park&gt;</text></link>'));
+});
+
+test('toRouteGpxWithMarkers — no attribution leaves the metadata as the name alone', () => {
+	const xml = toRouteGpxWithMarkers('Loop', COORDS_3, ELEVS_3, [], null);
+	assert.ok(xml.includes('  <metadata>\n    <name>Loop</name>\n  </metadata>\n'));
 });

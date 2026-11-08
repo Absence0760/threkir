@@ -63,22 +63,23 @@ export function applyRunMetadataPatch(
 	return next;
 }
 
-/// Row cap on the catalogue fetch the run-detail backfill scores a run
-/// against, and therefore the ceiling the `global_segments_scored_count`
-/// stamp can ever reach. It is also the DEFAULT of
-/// `fetchGlobalSegmentsWithError`, so it is the bound on every catalogue
-/// read in the app — including the `/segments` browse page, which must not
-/// be able to see less of the catalogue than the scoring sweep does.
-/// Owned here, next to the gate that consumes it,
-/// and imported by the `data.ts` fetch call site so the two numbers
-/// cannot drift — the same contract `DASHBOARD_RUNS_WINDOW_DAYS` holds
-/// for the dashboard window. Drift is not a rounding error: gating an
-/// UNCAPPED `count(*)` against a stamp a CAPPED fetch can never exceed
-/// saturates the stamp once the active catalogue passes this limit, so
-/// `activeCount > scored` stays permanently true and every run re-scores
-/// on every view forever — strictly worse than not gating at all (same
-/// heavy fetch, plus a count query and a metadata read + write per view).
+/// Row cap on a whole-catalogue read: the DEFAULT of `fetchGlobalSegments`
+/// and `fetchGlobalSegmentsWithError`, so the `/segments` browse page and
+/// every other caller that omits the argument agree on what "the catalogue"
+/// means. Scoring no longer reads the whole catalogue: it asks for the
+/// segments near a track (`GLOBAL_SEGMENT_CANDIDATE_LIMIT`, decisions § 2392).
 export const GLOBAL_SEGMENT_SCORING_LIMIT = 500;
+
+/// Cap on the candidates one track is scored against (`global_segments_in_bbox`).
+/// A track meets a handful of segments; this only bounds a pathological
+/// catalogue. The same figure as CANDIDATE_LIMIT in the `segment-match` Edge
+/// Function, so the fallback and the server score the same set.
+export const GLOBAL_SEGMENT_CANDIDATE_LIMIT = 1000;
+
+/// Metres the track's extent is padded by when asking for candidates, above
+/// the matcher's 35 m tolerance so no segment it could time is missed. The
+/// same figure as CANDIDATE_PAD_M in the `segment-match` Edge Function.
+export const GLOBAL_SEGMENT_CANDIDATE_PAD_M = 50;
 
 /// The `runs.metadata.global_segments_scored_count` stamp: the number
 /// of active `global_segments` a run's catalogue efforts were last
@@ -105,20 +106,18 @@ export function readGlobalSegmentsScoredCount(
 /// query) fails open to true — better to re-score once than to never
 /// score a run whose catalogue size we couldn't read.
 ///
-/// `activeCount` is an unbounded `count(*)` of the active catalogue but
-/// the stamp records a fetch capped at `scoringLimit`, so the comparison
-/// is made against the clamped count — an active catalogue of 520 was
-/// still only scored against 500 rows, and demanding a 520 stamp the
-/// fetch can never produce would re-score forever.
+/// The stamp is the active count the pass ran under, not the size of a
+/// capped fetch, so it can always reach the count it is compared with. A
+/// run stamped 500 by the old capped fetch under a larger catalogue is
+/// re-scored once, which is right: it was never scored against the tail.
 export function shouldRescoreGlobalSegments(
 	metadata: JsonObject | null | undefined,
 	activeCount: number | null | undefined,
-	scoringLimit: number = GLOBAL_SEGMENT_SCORING_LIMIT,
 ): boolean {
 	const scored = readGlobalSegmentsScoredCount(metadata);
 	if (scored == null) return true;
 	if (typeof activeCount !== 'number' || !Number.isFinite(activeCount)) return true;
-	return Math.min(activeCount, scoringLimit) > scored;
+	return activeCount > scored;
 }
 
 /// Merge the `global_segments_scored_count` stamp into a run's metadata

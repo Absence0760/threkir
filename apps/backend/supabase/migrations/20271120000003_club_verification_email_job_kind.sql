@@ -22,7 +22,7 @@ alter table public.jobs
       'weekly_digest', 'native_push', 'lifecycle_drip', 'route_photo_process',
       'club_photo_process', 'safety_sms', 'data_export', 'export_blob_reap',
       'distance_recompute', 'security_email', 'route_photo_orphan_sweep',
-      'club_verification_email'
+      'segment_match', 'club_verification_email'
     )
   )
   not valid;

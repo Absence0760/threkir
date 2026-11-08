@@ -113,6 +113,22 @@
 		}
 	}
 
+	// While a course removal waits out its undo window the page shows the race
+	// without it; the returned function puts it back on Undo or a failure.
+	function hideCourse(): () => void {
+		const id = race?.id;
+		const before = { course: race?.course ?? null, route: courseRoute, markers: courseMarkers };
+		if (race) race = { ...race, course: null };
+		courseRoute = null;
+		courseMarkers = [];
+		return () => {
+			if (!race || race.id !== id) return;
+			race = { ...race, course: before.course };
+			courseRoute = before.route;
+			courseMarkers = before.markers;
+		};
+	}
+
 	// The line comes from `fetchPublicRoute`, so a non-owner gets the
 	// privacy-clipped line the route's own page shows them, never one read
 	// off the race listing.
@@ -423,7 +439,12 @@
 			</section>
 		{/if}
 
-		<RaceCourseTools {race} signedIn={auth.user != null} onchanged={() => void refreshRace()} />
+		<RaceCourseTools
+			{race}
+			signedIn={auth.user != null}
+			onchanged={() => void refreshRace()}
+			onhidecourse={hideCourse}
+		/>
 
 		<section class="section" aria-labelledby="race-runs-heading">
 			<h2 id="race-runs-heading">{m('races.detailYourRuns')}</h2>

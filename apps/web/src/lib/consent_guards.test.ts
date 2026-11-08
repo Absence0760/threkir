@@ -372,12 +372,18 @@ test('MapTiler tile fetches on anon public pages are gated on consent', () => {
 		'loadMapNow must defer initMap until the map container has mounted.',
 	);
 
-	// The two share surfaces must pass the consent-required prop.
+	// The three map-bearing share surfaces must pass the consent-required prop.
 	const routeShareSrc = read('src/routes/share/route/[id]/+page.svelte');
 	assert.match(
 		routeShareSrc,
 		/<RunMap[^>]*requireExplicitConsent/,
 		'/share/route/[id] must pass requireExplicitConsent to RunMap.',
+	);
+	const courseShareSrc = read('src/routes/share/course/[region]/[park]/[course]/+page.svelte');
+	assert.match(
+		courseShareSrc,
+		/<RunMap[^>]*requireExplicitConsent/,
+		'/share/course/[region]/[park]/[course] must pass requireExplicitConsent to RunMap.',
 	);
 	const runShareSrc = read('src/lib/components/RunShareView.svelte');
 	assert.match(

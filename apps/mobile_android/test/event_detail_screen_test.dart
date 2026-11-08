@@ -7,6 +7,7 @@ import 'package:ui_kit/ui_kit.dart' show TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
+import '../lib/course_gates.dart' show CourseGate, GateSource;
 import '../lib/event_category.dart';
 import '../lib/event_gym_template.dart';
 import '../lib/gym_routine.dart' show PlannedExercise, PlannedRoutine, PlannedSet;
@@ -122,8 +123,13 @@ class _EventSocial extends SocialService {
     this.courses = const [],
     this.raceStatus,
     this.dnfCount,
+    this.frozen = const {},
   });
   List<EventCourseView> courses;
+  /// The occurrence's frozen courses; a non-empty map also stamps the race
+  /// session's courses_frozen_at.
+  Map<String, FrozenRaceCourse> frozen;
+  int armCalls = 0;
   /// The occurrence's race session status, or null for none.
   String? raceStatus;
   /// What `race_pending_dnf_count` answers; null when it cannot be read.
@@ -190,6 +196,31 @@ class _EventSocial extends SocialService {
       createdAt: at,
       updatedAt: at,
       isAutoApprove: true,
+      coursesFrozenAt: frozen.isEmpty ? null : at,
+    );
+  }
+
+  @override
+  Future<Map<String, FrozenRaceCourse>> fetchRaceSessionCourses(
+    String eventId,
+    DateTime instance,
+  ) async => frozen;
+
+  @override
+  Future<RaceSessionRow> armRace({
+    required String eventId,
+    required DateTime instance,
+    bool isAutoApprove = true,
+  }) async {
+    armCalls++;
+    final at = DateTime.utc(2026, 6, 20, 8);
+    return RaceSessionRow(
+      eventId: eventId,
+      instanceStart: instance,
+      status: 'armed',
+      createdAt: at,
+      updatedAt: at,
+      isAutoApprove: isAutoApprove,
     );
   }
 
@@ -1245,6 +1276,112 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
     }
+
+    const lineStart = CourseGate(
+      lat: 51.5,
+      lng: -0.1,
+      bearingDeg: 0,
+      halfWidthM: 15,
+      source: GateSource.derived,
+    );
+    const lineFinish = CourseGate(
+      lat: 51.501,
+      lng: -0.1,
+      bearingDeg: 0,
+      halfWidthM: 15,
+      source: GateSource.derived,
+    );
+    const lined = EventCourseView(
+      id: 'c-lined',
+      eventId: 'e1',
+      routeId: 'r-lined',
+      name: 'Lined 5K',
+      distanceM: 5000,
+      sortOrder: 0,
+      finishLat: 51.501,
+      finishLng: -0.1,
+      startGate: lineStart,
+      finishGate: lineFinish,
+    );
+
+    realtimeWidgetTest('a course with lines shows its course map (#1305)', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [lined, tenK],
+      );
+      await pumpCourses(tester, social);
+      expect(find.byKey(const Key('course-lines-map-c-lined')), findsOneWidget);
+      expect(find.byKey(const Key('course-lines-map-c-10k')), findsNothing);
+      expect(find.byKey(const ValueKey('course-gate-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('course-gate-finish')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the course map reads the frozen copy once armed', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [lined],
+        raceStatus: 'armed',
+        frozen: const {
+          'c-lined': FrozenRaceCourse(courseId: 'c-lined', finishGate: lineFinish),
+        },
+      );
+      await pumpCourses(tester, social);
+      await tester.pump(const Duration(milliseconds: 50));
+      // The frozen copy has no start line, so the live row's is not drawn.
+      expect(find.byKey(const ValueKey('course-gate-start')), findsNothing);
+      expect(find.byKey(const ValueKey('course-gate-finish')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('Arm warns about a hand-finish course; Cancel arms nothing', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [fiveK]);
+      await pumpCourses(tester, social);
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('race-preflight-dialog')), findsOneWidget);
+      expect(find.textContaining('5K loop: no finish line'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('race-preflight-cancel')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.armCalls, 0);
+    });
+
+    realtimeWidgetTest('Arm anyway arms through a warning', (tester) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [fiveK]);
+      await pumpCourses(tester, social);
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const Key('race-preflight-arm')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.armCalls, 1);
+    });
+
+    realtimeWidgetTest('a course with a finish point arms with no dialog', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [lined]);
+      await pumpCourses(tester, social);
+      // The course map lands after the first layout; settle it before
+      // scrolling the Arm button into view.
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.pump();
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('race-preflight-dialog')), findsNothing);
+      expect(social.armCalls, 1);
+    });
 
     realtimeWidgetTest('the courses are listed under the RSVP row', (
       tester,

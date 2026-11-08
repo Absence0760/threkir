@@ -40,7 +40,12 @@ rewrites `runs.distance_m` + the `fastest_*` bests,
 stamping `distance_estimator = "kalman_v4"` and keeping the recorder's figure
 in `metadata.distance_recorded_m`; a `kalman_v1`, `kalman_v2` or `kalman_v3` recompute is eligible again; imports, indoor /
 pedometer / treadmill, manual and in-progress runs are skipped as no-ops —
-[`../../docs/features/gps_distance.md`](../../docs/features/gps_distance.md)). Data-export will land as an
+[`../../docs/features/gps_distance.md`](../../docs/features/gps_distance.md)). `segment_match` (catalogue segment scoring, decisions § 2392 / § 2393: the
+worker validates the payload and POSTs it to the `segment-match` Edge Function,
+which runs the canonical TS matcher from a generated bundle and writes
+`global_segment_efforts`; the function's 2xx / 5xx / 4xx becomes done / retry /
+failed through `HTTPError` — there is deliberately no Go port of the matcher).
+Data-export will land as an
 additional kind in `internal/worker.go`'s dispatch when that Edge
 Function moves per
 [`../../docs/product/roadmap.md`](../../docs/product/roadmap.md) §214.

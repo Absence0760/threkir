@@ -4164,6 +4164,10 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'このルートの地図クレジットを確認できなかったため、エクスポートしませんでした。もう一度お試しください。';
+
+  @override
   String get routeDetailClubsLoadTimeout => 'クラブを読み込めませんでした — ネットワークを確認してください。';
 
   @override
@@ -14480,6 +14484,41 @@ class AppLocalizationsJa extends AppLocalizations {
   String get raceCourseSuggestPending => 'コースを提案しました。確認待ちです。';
 
   @override
+  String get raceCourseUnlink => 'コースを外す';
+
+  @override
+  String get raceCourseUnlinked => 'コースを外しました。';
+
+  @override
+  String get raceCourseReviewHeading => 'コースの提案';
+
+  @override
+  String get raceCourseReviewClaimFirst => '提案を承認または却下するには、この大会を申請してください。';
+
+  @override
+  String get raceCourseReviewApprove => '承認';
+
+  @override
+  String get raceCourseReviewReject => '却下';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'このコースを承認';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'コースはクラブが所有する公開ルートである必要があります。$routeのクラブ用コピーを選んでください。';
+  }
+
+  @override
+  String get raceCourseReviewApproved => '提案を承認し、コースをリンクしました。';
+
+  @override
+  String get raceCourseReviewRejected => '提案を却下しました。';
+
+  @override
+  String get raceCourseReviewFailed => '提案を確認できませんでした。';
+
+  @override
   String get racesDetailShare => '共有';
 
   @override
@@ -20048,7 +20087,59 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksNavigate => 'このコースをナビ';
 
   @override
+  String get parksShareGpx => 'GPXを共有';
+
+  @override
   String get parksBrowseLink => '公園コース';
+
+  @override
+  String get eventCourseLinesMapBoth => 'コースのスタートラインとフィニッシュラインの地図';
+
+  @override
+  String get eventCourseLinesMapStart => 'コースのスタートラインの地図';
+
+  @override
+  String get eventCourseLinesMapFinish => 'コースのフィニッシュラインの地図';
+
+  @override
+  String get eventRacePreflightTitle => '準備完了にする前にコースを確認';
+
+  @override
+  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備完了にできません';
+
+  @override
+  String get eventRacePreflightFixOnWeb => 'コースのラインはウェブのイベントエディターで編集します。';
+
+  @override
+  String get eventRaceArmAnyway => 'このまま準備完了にする';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course：フィニッシュラインもフィニッシュ地点もないため、ランナーは手動でフィニッシュします。';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course：スタートラインがありません。セルフタイム方式のレースには必要です。';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course：ルートが終点より前に自身のフィニッシュラインを横切るため、ラインでのフィニッシュが早すぎる可能性があります。';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course：スタートラインがルートから100 m以上離れています。';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course：フィニッシュラインがルートから100 m以上離れています。';
+  }
 
   @override
   String get clubVerificationStatusTitle => '公式認証';

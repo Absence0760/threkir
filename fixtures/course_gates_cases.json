@@ -1,0 +1,1018 @@
+{
+ "spec": "course_gates v1",
+ "reference": "docs/architecture/parity_pairs.md (course_gates, TS<->Dart); issue #1305; decisions § 1856 (this file's schema convention), § 2390 (course start and finish lines)",
+ "readers": [
+  "apps/web/src/lib/races/course_gates.test.ts",
+  "apps/mobile_android/test/course_gates_test.dart"
+ ],
+ "schema": {
+  "general": [
+   "Every reader loads this whole file and runs every case in every section below, and fails on a section it does not know; a section a reader skips is a rule that side no longer has to keep.",
+   "A field documented as nullable is present with the JSON value null when absent; readers must not treat a missing key as null.",
+   "degreeTolerance applies to every compared latitude or longitude, bearingTolerance to every compared bearing, distanceToleranceM to every compared distance. Every other comparison is exact.",
+   "Every expected value is hand-computed in the case's note from R = 6371008.8 m (one metre is 8.993203637e-6 degrees of latitude, and of longitude on the equator), never copied from a port."
+  ],
+  "constants": "The helper's named constants; each reader asserts its own values equal these.",
+  "normalizeBearing": "{in, out}: any finite bearing into [0, 360).",
+  "clampHalfWidth": "{in, out}: held to [halfWidthMinM, halfWidthMaxM], rounded to the metre; a non-finite input gives defaultHalfWidthM.",
+  "courseGate": "{row, which, expected}: row holds the ten line columns (sources may be absent, which reads as derived); expected is null or {lat, lng, bearingDeg, halfWidthM, source}.",
+  "bearingTo": "{from, to, bearingDeg}.",
+  "lineEnds": "{gate, left, right}: the line's ends, left of travel first.",
+  "arrowTip": "{gate, tip}.",
+  "routeRelation": "{gate, route, expected}: expected is null or {distanceM, routeBearingDeg, against}.",
+  "warnings": "{which, gate, route, selfCross, mode, expected}: gate and route are nullable; expected is the warning codes in order.",
+  "preflight": "{mode, courses, expected}: each course {id, startGate, finishGate, hasFinishPoint, selfCross, route}, gates nullable and carrying a source; expected is the issues in order, each {courseId, code, severity, which} with which null except on gate_far_from_route; blocks is preflightBlocks of the result."
+ },
+ "degreeTolerance": 1e-09,
+ "bearingTolerance": 1e-06,
+ "distanceToleranceM": 0.001,
+ "constants": {
+  "halfWidthMinM": 5,
+  "halfWidthMaxM": 100,
+  "defaultHalfWidthM": 15,
+  "routeWarnM": 100,
+  "againstRouteDeg": 90
+ },
+ "normalizeBearing": [
+  {
+   "in": 0,
+   "out": 0,
+   "note": "already in range"
+  },
+  {
+   "in": 359.5,
+   "out": 359.5,
+   "note": "already in range"
+  },
+  {
+   "in": 360,
+   "out": 0,
+   "note": "a full turn is north"
+  },
+  {
+   "in": -90,
+   "out": 270,
+   "note": "-90 + 360"
+  },
+  {
+   "in": 450,
+   "out": 90,
+   "note": "450 - 360"
+  },
+  {
+   "in": -720,
+   "out": 0,
+   "note": "two turns back"
+  }
+ ],
+ "clampHalfWidth": [
+  {
+   "in": 15,
+   "out": 15,
+   "note": "in range"
+  },
+  {
+   "in": 3,
+   "out": 5,
+   "note": "raised to the minimum"
+  },
+  {
+   "in": 250,
+   "out": 100,
+   "note": "lowered to the maximum"
+  },
+  {
+   "in": 12.6,
+   "out": 13,
+   "note": "rounded to the metre"
+  },
+  {
+   "in": "NaN",
+   "out": 15,
+   "note": "not a number: the default"
+  }
+ ],
+ "courseGate": [
+  {
+   "note": "a full start line with an organiser source",
+   "which": "start",
+   "row": {
+    "start_gate_lat": 51.5,
+    "start_gate_lng": -0.1,
+    "start_gate_bearing_deg": 90,
+    "start_gate_half_width_m": 20,
+    "start_gate_source": "organiser",
+    "finish_gate_lat": null,
+    "finish_gate_lng": null,
+    "finish_gate_bearing_deg": null,
+    "finish_gate_half_width_m": null,
+    "finish_gate_source": null
+   },
+   "expected": {
+    "lat": 51.5,
+    "lng": -0.1,
+    "bearingDeg": 90,
+    "halfWidthM": 20,
+    "source": "organiser"
+   }
+  },
+  {
+   "note": "a frozen copy carries no source, so its finish line reads as derived",
+   "which": "finish",
+   "row": {
+    "start_gate_lat": null,
+    "start_gate_lng": null,
+    "start_gate_bearing_deg": null,
+    "start_gate_half_width_m": null,
+    "finish_gate_lat": 51.6,
+    "finish_gate_lng": -0.2,
+    "finish_gate_bearing_deg": 180,
+    "finish_gate_half_width_m": 15
+   },
+   "expected": {
+    "lat": 51.6,
+    "lng": -0.2,
+    "bearingDeg": 180,
+    "halfWidthM": 15,
+    "source": "derived"
+   }
+  },
+  {
+   "note": "a line missing its direction is no line",
+   "which": "start",
+   "row": {
+    "start_gate_lat": 51.5,
+    "start_gate_lng": -0.1,
+    "start_gate_bearing_deg": null,
+    "start_gate_half_width_m": 20,
+    "start_gate_source": "organiser",
+    "finish_gate_lat": null,
+    "finish_gate_lng": null,
+    "finish_gate_bearing_deg": null,
+    "finish_gate_half_width_m": null,
+    "finish_gate_source": null
+   },
+   "expected": null
+  }
+ ],
+ "bearingTo": [
+  {
+   "from": {
+    "lat": 0,
+    "lng": 0
+   },
+   "to": {
+    "lat": 0,
+    "lng": 0.001
+   },
+   "bearingDeg": 90,
+   "note": "due east"
+  },
+  {
+   "from": {
+    "lat": 0,
+    "lng": 0
+   },
+   "to": {
+    "lat": -0.001,
+    "lng": 0
+   },
+   "bearingDeg": 180,
+   "note": "due south"
+  },
+  {
+   "from": {
+    "lat": 0,
+    "lng": 0
+   },
+   "to": {
+    "lat": 0.001,
+    "lng": -0.001
+   },
+   "bearingDeg": 315,
+   "note": "north-west on the equator, where a degree of longitude equals a degree of latitude: atan2(-1, 1) = -45, so 315"
+  },
+  {
+   "from": {
+    "lat": 0,
+    "lng": 179.9995
+   },
+   "to": {
+    "lat": 0,
+    "lng": -179.9995
+   },
+   "bearingDeg": 90,
+   "note": "east across the antimeridian: the longitude difference wraps to +0.001"
+  }
+ ],
+ "lineEnds": [
+  {
+   "note": "travel north on the equator, 10 m wide each side: the ends sit 10 m west (left) and east (right), 8.993203637e-5 degrees of longitude",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 10
+   },
+   "left": {
+    "lat": 0,
+    "lng": -8.99320363724538e-05
+   },
+   "right": {
+    "lat": 0,
+    "lng": 8.99320363724538e-05
+   }
+  },
+  {
+   "note": "travel east on the equator: left of travel is north, right is south, 10 m each",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 90,
+    "halfWidthM": 10
+   },
+   "left": {
+    "lat": 8.99320363724538e-05,
+    "lng": 0
+   },
+   "right": {
+    "lat": -8.99320363724538e-05,
+    "lng": 0
+   }
+  }
+ ],
+ "arrowTip": [
+  {
+   "note": "east, half-width 10: the arrow is the 20 m floor, 1.798640727e-4 degrees east",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 90,
+    "halfWidthM": 10
+   },
+   "tip": {
+    "lat": 0,
+    "lng": 0.0001798640727449076
+   }
+  },
+  {
+   "note": "north, half-width 30: the arrow is the half-width, 30 m north = 2.697961091e-4 degrees",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 30
+   },
+   "tip": {
+    "lat": 0.0002697961091173614,
+    "lng": 0
+   }
+  }
+ ],
+ "routeRelation": [
+  {
+   "note": "a northbound route 0.001 degrees east of a northbound line on the equator: 111.195 m away (radians(0.001) x R), same direction",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0.001
+    },
+    {
+     "lat": 0.001,
+     "lng": 0.001
+    }
+   ],
+   "expected": {
+    "distanceM": 111.19508023353292,
+    "routeBearingDeg": 0,
+    "against": false
+   }
+  },
+  {
+   "note": "the same route run southbound: 180 degrees from the line, so against it",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": 0.001,
+     "lng": 0.001
+    },
+    {
+     "lat": -0.001,
+     "lng": 0.001
+    }
+   ],
+   "expected": {
+    "distanceM": 111.19508023353292,
+    "routeBearingDeg": 180,
+    "against": true
+   }
+  },
+  {
+   "note": "a route through the centre heading east, the line facing north: 90 degrees apart is not more than 90, so not against",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": 0,
+     "lng": -0.001
+    },
+    {
+     "lat": 0,
+     "lng": 0.001
+    }
+   ],
+   "expected": {
+    "distanceM": 0,
+    "routeBearingDeg": 90,
+    "against": false
+   }
+  },
+  {
+   "note": "a single point is no route",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": 0,
+     "lng": 0.001
+    }
+   ],
+   "expected": null
+  }
+ ],
+ "warnings": [
+  {
+   "note": "a start line on a northbound route, facing along it: nothing to say",
+   "which": "start",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0
+    },
+    {
+     "lat": 0.001,
+     "lng": 0
+    }
+   ],
+   "selfCross": false,
+   "mode": "host_go",
+   "expected": []
+  },
+  {
+   "note": "a line facing south on a northbound route: 180 degrees from it",
+   "which": "start",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 180,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0
+    },
+    {
+     "lat": 0.001,
+     "lng": 0
+    }
+   ],
+   "selfCross": false,
+   "mode": "host_go",
+   "expected": [
+    "against_route"
+   ]
+  },
+  {
+   "note": "0.002 degrees east of the route on the equator is 222.39 m, over 100 m; direction is not judged that far off",
+   "which": "finish",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 180,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0.002
+    },
+    {
+     "lat": 0.001,
+     "lng": 0.002
+    }
+   ],
+   "selfCross": false,
+   "mode": "host_go",
+   "expected": [
+    "far_from_route"
+   ]
+  },
+  {
+   "note": "a finish line on a self-crossing course",
+   "which": "finish",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0
+    },
+    {
+     "lat": 0.001,
+     "lng": 0
+    }
+   ],
+   "selfCross": true,
+   "mode": "host_go",
+   "expected": [
+    "self_cross"
+   ]
+  },
+  {
+   "note": "the self-cross flag is about the finish line, never the start",
+   "which": "start",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 0,
+    "halfWidthM": 15
+   },
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0
+    },
+    {
+     "lat": 0.001,
+     "lng": 0
+    }
+   ],
+   "selfCross": true,
+   "mode": "host_go",
+   "expected": []
+  },
+  {
+   "note": "a routeless course has nothing to measure a line against",
+   "which": "finish",
+   "gate": {
+    "lat": 0,
+    "lng": 0,
+    "bearingDeg": 180,
+    "halfWidthM": 15
+   },
+   "route": null,
+   "selfCross": false,
+   "mode": "host_go",
+   "expected": []
+  },
+  {
+   "note": "no start line on a self-timed course",
+   "which": "start",
+   "gate": null,
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0
+    },
+    {
+     "lat": 0.001,
+     "lng": 0
+    }
+   ],
+   "selfCross": false,
+   "mode": "self_timed",
+   "expected": [
+    "start_required"
+   ]
+  },
+  {
+   "note": "no start line under a gun mode is fine",
+   "which": "start",
+   "gate": null,
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0
+    },
+    {
+     "lat": 0.001,
+     "lng": 0
+    }
+   ],
+   "selfCross": false,
+   "mode": "scheduled_go",
+   "expected": []
+  },
+  {
+   "note": "no finish line is never an editor warning; the preflight decides",
+   "which": "finish",
+   "gate": null,
+   "route": [
+    {
+     "lat": -0.001,
+     "lng": 0
+    },
+    {
+     "lat": 0.001,
+     "lng": 0
+    }
+   ],
+   "selfCross": false,
+   "mode": "self_timed",
+   "expected": []
+  }
+ ],
+ "preflight": [
+  {
+   "note": "a course with both lines and a finish point: clean under every mode",
+   "mode": "host_go",
+   "courses": [
+    {
+     "id": "c1",
+     "startGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "finishGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "hasFinishPoint": true,
+     "selfCross": false,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [],
+   "blocks": false
+  },
+  {
+   "note": "the same course self-timed: still clean",
+   "mode": "self_timed",
+   "courses": [
+    {
+     "id": "c1",
+     "startGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "finishGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "hasFinishPoint": true,
+     "selfCross": false,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [],
+   "blocks": false
+  },
+  {
+   "note": "hand finish (no finish line, no finish point) under Host GO: a warning",
+   "mode": "host_go",
+   "courses": [
+    {
+     "id": "c2",
+     "startGate": null,
+     "finishGate": null,
+     "hasFinishPoint": false,
+     "selfCross": false,
+     "route": null
+    }
+   ],
+   "expected": [
+    {
+     "courseId": "c2",
+     "code": "no_finish",
+     "severity": "warning",
+     "which": null
+    }
+   ],
+   "blocks": false
+  },
+  {
+   "note": "the same under Scheduled GO: a warning",
+   "mode": "scheduled_go",
+   "courses": [
+    {
+     "id": "c2",
+     "startGate": null,
+     "finishGate": null,
+     "hasFinishPoint": false,
+     "selfCross": false,
+     "route": null
+    }
+   ],
+   "expected": [
+    {
+     "courseId": "c2",
+     "code": "no_finish",
+     "severity": "warning",
+     "which": null
+    }
+   ],
+   "blocks": false
+  },
+  {
+   "note": "the same self-timed: no finish is an error, and so is no start line",
+   "mode": "self_timed",
+   "courses": [
+    {
+     "id": "c2",
+     "startGate": null,
+     "finishGate": null,
+     "hasFinishPoint": false,
+     "selfCross": false,
+     "route": null
+    }
+   ],
+   "expected": [
+    {
+     "courseId": "c2",
+     "code": "no_finish",
+     "severity": "error",
+     "which": null
+    },
+    {
+     "courseId": "c2",
+     "code": "no_start",
+     "severity": "error",
+     "which": null
+    }
+   ],
+   "blocks": true
+  },
+  {
+   "note": "a finish point but no lines, self-timed: the point is a finish, the missing start line is an error",
+   "mode": "self_timed",
+   "courses": [
+    {
+     "id": "c3",
+     "startGate": null,
+     "finishGate": null,
+     "hasFinishPoint": true,
+     "selfCross": false,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "courseId": "c3",
+     "code": "no_start",
+     "severity": "error",
+     "which": null
+    }
+   ],
+   "blocks": true
+  },
+  {
+   "note": "a finish point but no lines under Host GO: nothing (the 30 m circle finishes, as today)",
+   "mode": "host_go",
+   "courses": [
+    {
+     "id": "c3",
+     "startGate": null,
+     "finishGate": null,
+     "hasFinishPoint": true,
+     "selfCross": false,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [],
+   "blocks": false
+  },
+  {
+   "note": "a self-crossing course under Host GO: a warning",
+   "mode": "host_go",
+   "courses": [
+    {
+     "id": "c4",
+     "startGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "finishGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "hasFinishPoint": true,
+     "selfCross": true,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "courseId": "c4",
+     "code": "self_cross",
+     "severity": "warning",
+     "which": null
+    }
+   ],
+   "blocks": false
+  },
+  {
+   "note": "the same self-timed: an error",
+   "mode": "self_timed",
+   "courses": [
+    {
+     "id": "c4",
+     "startGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "finishGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "hasFinishPoint": true,
+     "selfCross": true,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "courseId": "c4",
+     "code": "self_cross",
+     "severity": "error",
+     "which": null
+    }
+   ],
+   "blocks": true
+  },
+  {
+   "note": "organiser lines 222 m from the route: a warning per line under every mode",
+   "mode": "self_timed",
+   "courses": [
+    {
+     "id": "c5",
+     "startGate": {
+      "lat": 0,
+      "lng": 0.002,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "organiser"
+     },
+     "finishGate": {
+      "lat": 0,
+      "lng": 0.002,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "organiser"
+     },
+     "hasFinishPoint": true,
+     "selfCross": false,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "courseId": "c5",
+     "code": "gate_far_from_route",
+     "severity": "warning",
+     "which": "start"
+    },
+    {
+     "courseId": "c5",
+     "code": "gate_far_from_route",
+     "severity": "warning",
+     "which": "finish"
+    }
+   ],
+   "blocks": false
+  },
+  {
+   "note": "a derived line is never judged against the route it came from",
+   "mode": "host_go",
+   "courses": [
+    {
+     "id": "c6",
+     "startGate": {
+      "lat": 0,
+      "lng": 0.002,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "finishGate": null,
+     "hasFinishPoint": true,
+     "selfCross": false,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [],
+   "blocks": false
+  },
+  {
+   "note": "a routeless course's organiser lines have no route to be far from",
+   "mode": "host_go",
+   "courses": [
+    {
+     "id": "c7",
+     "startGate": {
+      "lat": 0,
+      "lng": 0.002,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "organiser"
+     },
+     "finishGate": {
+      "lat": 0,
+      "lng": 0.002,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "organiser"
+     },
+     "hasFinishPoint": false,
+     "selfCross": false,
+     "route": null
+    }
+   ],
+   "expected": [],
+   "blocks": false
+  },
+  {
+   "note": "issues keep course order",
+   "mode": "host_go",
+   "courses": [
+    {
+     "id": "c2",
+     "startGate": null,
+     "finishGate": null,
+     "hasFinishPoint": false,
+     "selfCross": false,
+     "route": null
+    },
+    {
+     "id": "c4",
+     "startGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "finishGate": {
+      "lat": 0,
+      "lng": 0.0,
+      "bearingDeg": 0,
+      "halfWidthM": 15,
+      "source": "derived"
+     },
+     "hasFinishPoint": true,
+     "selfCross": true,
+     "route": [
+      {
+       "lat": -0.001,
+       "lng": 0
+      },
+      {
+       "lat": 0.001,
+       "lng": 0
+      }
+     ]
+    }
+   ],
+   "expected": [
+    {
+     "courseId": "c2",
+     "code": "no_finish",
+     "severity": "warning",
+     "which": null
+    },
+    {
+     "courseId": "c4",
+     "code": "self_cross",
+     "severity": "warning",
+     "which": null
+    }
+   ],
+   "blocks": false
+  }
+ ]
+}

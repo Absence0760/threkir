@@ -482,6 +482,37 @@ retention cron referenced in a comment that was never created.
 
 ---
 
+## `global_segment_efforts` (catalogue efforts) and `run_track_extents`
+
+Not trigger-maintained: a job keeps them, because the recompute is the TS
+matcher over a stored track, which SQL cannot run (decisions § 2392).
+
+- **What it caches:** for each run and each active catalogue segment near its
+  track, the effort time the `segments` matcher computes
+  (`computeGlobalSegmentEfforts`, with a park course's checkpoints), and in
+  `run_track_extents` the extent of the track that was scored.
+- **Authoritative recompute:** the owner's stored track (plus the smoothed
+  sidecar the run's metadata names for those bytes), scored against
+  `global_segments_in_bbox(extent, 50 m)` minus courses whose checkpoints do not
+  parse. For each such candidate, the effort row must exist iff the matcher
+  times the run, with that time and start.
+- **Writers:** the `segment-match` Edge Function, through
+  `record_segment_match` (service role), for a `segment_match` job queued by
+  `runs_enqueue_segment_match` (a new `track_url`) or
+  `runs_track_object_enqueue_segment_match` (the bytes uploaded or rewritten).
+  A result for bytes that are no longer stored is refused and the job retried.
+  The web run-detail fallback (`computeGlobalSegmentEffortsForRun`) still
+  inserts missing rows as the owner, never updating or removing one.
+- **Not recomputed on:** a segment's geometry being edited or a new segment
+  being added. That is the launch backfill below, an explicit operator step.
+- **Manual rebuild:** one run, `insert into jobs (kind, payload) values
+  ('segment_match', jsonb_build_object('run_id', '<run>'))`; one segment over
+  all history, `select enqueue_segment_backfill('<segment>')`.
+- **Retention:** both cascade from `runs`, so a deleted run or account takes
+  them. `run_track_extents` is location-derived, has no client grant, and is
+  not exported (the export carries the track it is derived from).
+- **pgtap:** `segment_match_jobs_test.sql`.
+
 ## Adding a new derived cache
 
 When you add a trigger-maintained denormalised column or a derived table:

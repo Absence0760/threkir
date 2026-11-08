@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
 
+import 'route_parser.dart' show importedElevationGain;
+
 /// Minimal FIT file parser that extracts GPS trackpoints from activity files.
 ///
 /// The FIT (Flexible and Interoperable Data Transfer) protocol is Garmin's
@@ -267,7 +269,6 @@ class FitParser {
 
   static Route _buildRoute(List<Waypoint> points) {
     double distance = 0;
-    double elevationGain = 0;
     for (int i = 1; i < points.length; i++) {
       distance += _haversine(
         points[i - 1].lat,
@@ -275,18 +276,13 @@ class FitParser {
         points[i].lat,
         points[i].lng,
       );
-      final prev = points[i - 1].elevationMetres;
-      final curr = points[i].elevationMetres;
-      if (prev != null && curr != null && curr > prev) {
-        elevationGain += curr - prev;
-      }
     }
     return Route(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: 'FIT activity',
       waypoints: points,
       distanceMetres: distance,
-      elevationGainMetres: elevationGain,
+      elevationGainMetres: importedElevationGain(points),
     );
   }
 

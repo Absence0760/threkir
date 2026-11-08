@@ -75,6 +75,8 @@ import {
 	type CourseDraft,
 	type EventCourse,
 } from '../social/event_courses';
+import type { CourseGateColumns, GateWhich } from '../races/course_gates';
+import type { Gate } from '../geo/gate_crossing';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
 import {
@@ -198,7 +200,13 @@ import {
 } from '../runs/smoothed_sidecar';
 import { compareLeaderboard } from '../runs/race_leaderboard';
 import { readRankRows } from '../segments/effort_rank';
-import { parseCourseCheckpoints, type CourseCheckpoint } from '../parks/park_courses';
+import { trackExtent, type TrackExtent } from '../segments/track_extent';
+import {
+	courseAttribution,
+	parseCourseCheckpoints,
+	type CourseCheckpoint,
+} from '../parks/park_courses';
+import type { GpxAttribution } from '../routes/route_gpx';
 import type { RecapPeriodKind } from '../types';
 import { GYM_SESSION_DRAFT_KEY, hasSessionDraft } from '../gym/gym_session_draft';
 import { dedupeShadowedExercises } from '../gym/exercise_catalogue';
@@ -251,6 +259,8 @@ import {
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
 	GLOBAL_SEGMENT_SCORING_LIMIT,
+	GLOBAL_SEGMENT_CANDIDATE_LIMIT,
+	GLOBAL_SEGMENT_CANDIDATE_PAD_M,
 } from './data_normalise';
 import { dashboardRunsWindowStart } from './dashboard_runs';
 import {
@@ -3032,17 +3042,34 @@ export interface RaceListingCourse {
 	updatedAt: string | null;
 }
 
-export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
-	if (!isEntityId(id)) return null;
-	const { data, error } = await supabase
-		.from('public_race_listings')
-		.select(
-			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug'
-		)
-		.eq('id', id)
-		.maybeSingle();
-	if (error) throw dbError(error);
-	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
+const RACE_LISTING_DETAIL_COLUMNS =
+	'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug';
+
+type RaceListingDetailRow = Pick<
+	Database['public']['Views']['public_race_listings']['Row'],
+	| 'id'
+	| 'provider'
+	| 'name'
+	| 'race_date'
+	| 'distance_m'
+	| 'location_label'
+	| 'entry_url'
+	| 'results_url'
+	| 'is_verified'
+	| 'course_distance_m'
+	| 'course_elevation_m'
+	| 'course_surface'
+	| 'course_route_id'
+	| 'course_source'
+	| 'course_checked_at'
+	| 'course_updated_at'
+	| 'organiser_club_id'
+	| 'organiser_club_name'
+	| 'organiser_club_slug'
+>;
+
+function raceListingDetailFromRow(data: RaceListingDetailRow): RaceListingDetail | null {
+	if (!data.id || !data.name || !data.race_date || !data.provider) return null;
 	const hasCourse =
 		data.course_distance_m != null ||
 		data.course_elevation_m != null ||
@@ -3074,6 +3101,38 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 				}
 			: null
 	};
+}
+
+export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
+	if (!isEntityId(id)) return null;
+	const { data, error } = await supabase
+		.from('public_race_listings')
+		.select(RACE_LISTING_DETAIL_COLUMNS)
+		.eq('id', id)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? raceListingDetailFromRow(data) : null;
+}
+
+/// Several listings in one read, for the course-suggestion review queue.
+/// Order follows `ids`; an id the view no longer returns is dropped.
+export async function fetchRaceListings(ids: readonly string[]): Promise<RaceListingDetail[]> {
+	const wanted = [...new Set(ids.filter(isEntityId))];
+	if (wanted.length === 0) return [];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase
+			.from('public_race_listings')
+			.select(RACE_LISTING_DETAIL_COLUMNS)
+			.in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const byId = new Map<string, RaceListingDetail>();
+	for (const row of rows) {
+		const detail = raceListingDetailFromRow(row);
+		if (detail) byId.set(detail.id, detail);
+	}
+	return wanted.flatMap((id) => byId.get(id) ?? []);
 }
 
 /// A verified club claims an unclaimed race (decisions § 2381). The RPC is
@@ -3159,6 +3218,30 @@ export async function fetchRaceCourseSuggestionsForReview(
 		routeClubId: r.route_club_id,
 		note: r.note,
 		createdAt: r.created_at
+	}));
+}
+
+/// A race with pending course suggestions the signed-in runner may review
+/// (decisions § 2396): a race their verified club claimed, or an unclaimed
+/// race while they administer any verified club.
+export interface RaceCourseReviewQueueItem {
+	listingId: string;
+	name: string;
+	raceDate: string;
+	/// Null while the race is unclaimed; claiming it is the first step.
+	organiserClubId: string | null;
+	pendingCount: number;
+}
+
+export async function fetchRaceCourseReviewQueue(): Promise<RaceCourseReviewQueueItem[]> {
+	const { data, error } = await supabase.rpc('race_course_review_queue', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		listingId: r.listing_id,
+		name: r.name,
+		raceDate: r.race_date,
+		organiserClubId: r.organiser_club_id,
+		pendingCount: r.pending_count
 	}));
 }
 
@@ -5551,6 +5634,9 @@ export interface RaceSessionRow {
 	is_auto_approve: boolean;
 	created_at: string;
 	updated_at: string;
+	/// When the race froze its courses' lines (`race_session_courses`); null
+	/// for a race armed before the frozen copy existed.
+	courses_frozen_at?: string | null;
 }
 
 export async function fetchRaceSession(
@@ -5753,6 +5839,81 @@ export async function fetchEventCourses(eventId: string): Promise<EventCourse[]>
 		.order('name', { ascending: true });
 	if (error) throw dbError(error);
 	return sortCourses(data ?? []);
+}
+
+/// One course's timing lines and finish point (#1305), from the live course
+/// row or a race's frozen copy. `course_id` is the course either way.
+export interface CourseLinesRow extends CourseGateColumns {
+	course_id: string;
+	finish_lat: number | null;
+	finish_lng: number | null;
+	finish_line_self_cross: boolean;
+}
+
+/// Every course's lines as they stand now. The source columns say whether an
+/// organiser placed a line, which the editor and the preflight need.
+export async function fetchEventCourseLines(eventId: string): Promise<CourseLinesRow[]> {
+	const { data, error } = await supabase
+		.from(TABLES.event_courses)
+		.select(
+			'id, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, start_gate_source, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_gate_source, finish_lat, finish_lng, finish_line_self_cross'
+		)
+		.eq('event_id', eventId);
+	if (error) throw dbError(error);
+	return (data ?? []).map(({ id, ...rest }) => ({ course_id: id, ...rest }));
+}
+
+/// The lines a race froze when it was armed (`race_session_courses`), which
+/// is what its runners cross. Empty for a race armed before the copy existed;
+/// `race_sessions_redacted.courses_frozen_at` says whether there is one.
+export async function fetchRaceSessionCourseLines(
+	eventId: string,
+	instanceStart: string
+): Promise<CourseLinesRow[]> {
+	const { data, error } = await supabase
+		.from(TABLES.race_session_courses)
+		.select(
+			'course_id, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_lat, finish_lng, finish_line_self_cross'
+		)
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// The lines a viewer of one occurrence should see: the race's frozen copy
+/// once it has one, otherwise the courses as they stand.
+export async function fetchCourseLinesForOccurrence(
+	eventId: string,
+	instanceStart: string | null,
+	frozen: boolean
+): Promise<CourseLinesRow[]> {
+	if (frozen && instanceStart) return fetchRaceSessionCourseLines(eventId, instanceStart);
+	return fetchEventCourseLines(eventId);
+}
+
+/// Place one of a course's lines (organiser only, `set_event_course_gate`).
+/// The server normalises the bearing into [0, 360) and refuses a half-width
+/// outside 5-100 m.
+export async function setEventCourseGate(courseId: string, which: GateWhich, gate: Gate): Promise<void> {
+	const { error } = await supabase.rpc('set_event_course_gate', {
+		p_course_id: courseId,
+		p_which: which,
+		p_lat: gate.lat,
+		p_lng: gate.lng,
+		p_bearing_deg: gate.bearingDeg,
+		p_half_width_m: gate.halfWidthM,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Put a line back to the route's (or to none on a routeless course).
+export async function resetEventCourseGate(courseId: string, which: GateWhich): Promise<void> {
+	const { error } = await supabase.rpc('reset_event_course_gate', {
+		p_course_id: courseId,
+		p_which: which,
+	});
+	if (error) throw dbError(error);
 }
 
 /// Persist the event editor's course list (a dropped course's RSVPs and
@@ -10921,20 +11082,42 @@ export async function fetchGlobalSegmentLeaderboard(
 	}));
 }
 
-/// Backfill catalogue-segment efforts a run earned. Called from the
-/// run-detail page on mount (owner only). Scores the run's track against
-/// every active catalogue geometry via the pure `computeGlobalSegmentEffort`
-/// (end-to-end match, curated v1) and batch-upserts matches. Idempotent via
-/// unique(global_segment_id, run_id) + ignoreDuplicates. Returns new count.
+/// The active catalogue segments that could be timed on a track with this
+/// extent (`global_segments_in_bbox`, decisions § 2392): those whose own
+/// extent overlaps it padded by `GLOBAL_SEGMENT_CANDIDATE_PAD_M`. The same
+/// lookup, pad and cap the `segment-match` Edge Function scores with.
+export async function fetchGlobalSegmentsInBbox(
+	extent: TrackExtent,
+): Promise<{ segments: GlobalSegment[]; error: Error | null }> {
+	const { data, error } = await supabase.rpc('global_segments_in_bbox', {
+		p_min_lat: extent.minLat,
+		p_min_lng: extent.minLng,
+		p_max_lat: extent.maxLat,
+		p_max_lng: extent.maxLng,
+		p_pad_m: GLOBAL_SEGMENT_CANDIDATE_PAD_M,
+		p_limit: GLOBAL_SEGMENT_CANDIDATE_LIMIT,
+	}, { get: true });
+	if (error) {
+		console.warn('fetchGlobalSegmentsInBbox failed', error);
+		return { segments: [], error: dbError(error) };
+	}
+	return { segments: (data ?? []).map(asGlobalSegment), error: null };
+}
+
+/// Backfill catalogue-segment efforts a run earned, from the run-detail page
+/// on mount (owner only). The FALLBACK path: the `segment-match` job scores
+/// every run server-side when its track lands (decisions § 2392), and this
+/// stays until that job has run in production, then goes (issue #1313). It
+/// scores the run's track against the catalogue segments near it (the bbox
+/// lookup, not the whole catalogue) via the pure `computeGlobalSegmentEfforts`
+/// and batch-upserts matches. Idempotent via unique(global_segment_id, run_id)
+/// + ignoreDuplicates. Returns new count.
 ///
-/// The write-side upsert is idempotent, but the FETCH + client-side haversine
-/// match are not — without a short-circuit they'd re-run on every owner view
-/// forever (issue #333). A `runs.metadata.global_segments_scored_count` stamp
-/// records the catalogue size a run was last scored against; a cheap `count`
-/// query gates the expensive polyline fetch so a scored run only recomputes
-/// when the (deliberately growing) catalogue gains segments. Both the gate
-/// and the fetch are bounded by the shared GLOBAL_SEGMENT_SCORING_LIMIT —
-/// see its doc comment for why a drift between the two is a pessimisation.
+/// A `runs.metadata.global_segments_scored_count` stamp records the size of
+/// the active catalogue the run was last scored against (issue #333); a cheap
+/// `count` query gates the pass so a scored run only recomputes when the
+/// catalogue grows. The stamp is that count itself, not the number of rows a
+/// fetch returned, so it can always reach the count the gate compares.
 export async function computeGlobalSegmentEffortsForRun(input: {
 	run_id: string;
 	user_id: string;
@@ -10953,15 +11136,23 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	]);
 	const runMetadata = (runRow?.metadata ?? null) as JsonObject | null;
 	if (!shouldRescoreGlobalSegments(runMetadata, activeCount)) return 0;
+	// An unknown count cannot be stamped; the pass still runs, and the next
+	// view tries again.
+	const scoredCount = typeof activeCount === 'number' ? activeCount : null;
 
-	const { segments } = await fetchGlobalSegmentsWithError(GLOBAL_SEGMENT_SCORING_LIMIT);
-	if (segments.length === 0) return 0;
+	const extent = trackExtent(input.track);
+	if (!extent) return 0;
+	const { segments, error: candidatesError } = await fetchGlobalSegmentsInBbox(extent);
+	if (candidatesError) return 0;
 
 	// A park course's checkpoints are part of its match rule. Without them the
 	// matcher would time a run that cut the course, so a failed read scores
 	// nothing (and stamps nothing, so the next view retries), and a course
 	// whose list cannot be read is left out of the sweep.
-	const checkpointsBySegment = await fetchParkCourseCheckpoints();
+	const checkpointsBySegment =
+		segments.length > 0
+			? await fetchParkCourseCheckpoints(segments.map((seg) => seg.id))
+			: new Map<string, CourseCheckpoint[] | null>();
 	if (checkpointsBySegment === null) return 0;
 	const scorable = segments.filter((seg) => checkpointsBySegment.get(seg.id) !== null);
 
@@ -10973,9 +11164,8 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		time_seconds: number;
 		started_at: string;
 	}[] = [];
-	// One sweep over the catalogue rather than a call per segment: the track's
-	// extent is then measured once and the (overwhelming) majority of segments,
-	// which are nowhere near this run, are rejected without walking it.
+	// One sweep over the candidates rather than a call per segment: the
+	// track's extent is then measured once.
 	const efforts = computeGlobalSegmentEfforts(
 		input.track,
 		scorable.map((seg) => ({
@@ -11009,13 +11199,14 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		}
 		newCount = inserted?.length ?? 0;
 	}
+	if (scoredCount === null) return newCount;
 
 	// Stamp even when nothing matched (rows.length === 0): a no-match run
-	// must not re-fetch + re-match the whole catalogue every view either.
+	// must not re-fetch + re-match every view either.
 	//
 	// Re-read the bag here rather than merging into the copy read at the top
-	// of the function: the catalogue fetch + haversine pass above takes
-	// seconds, and `runs.metadata` is a whole-column jsonb write. Merging the
+	// of the function: the candidate fetch + haversine pass above takes
+	// time, and `runs.metadata` is a whole-column jsonb write. Merging the
 	// stale copy would silently revert any title / notes edit the owner made
 	// inside that window — the run-detail edit dialog writes the same column.
 	const { data: freshRow } = await supabase
@@ -11025,7 +11216,7 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		.maybeSingle();
 	const next = stampGlobalSegmentsScored(
 		(freshRow?.metadata ?? null) as JsonObject | null,
-		segments.length,
+		scoredCount,
 	);
 	const { error: stampErr } = await supabase
 		.from(TABLES.runs)
@@ -11125,17 +11316,42 @@ export async function fetchParkCourseForSegment(
 	return park ? { course: data, park: park as unknown as Park } : null;
 }
 
+/// The credit an exported file of this route must carry when the route is a
+/// park course's official route (OpenStreetMap's licence asks for it on the
+/// exported work, not only on the page). Null for any other route. Throws on
+/// a failed read, so an export never goes out uncredited because the check
+/// could not run.
+export async function fetchRouteCourseAttribution(routeId: string): Promise<GpxAttribution | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('geometry_source, parks(name, website_url)')
+		.eq('route_id', routeId)
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return courseAttribution(
+		data.geometry_source,
+		data.parks ? { name: data.parks.name, websiteUrl: data.parks.website_url } : null,
+	);
+}
+
 /// Checkpoints per catalogue segment that is a park course, for the scorer.
 /// A segment absent from the map has no checkpoints; one mapped to null has a
 /// list that cannot be read and must not be scored. Null overall when the
 /// read failed, which the scorer treats as "score nothing this time".
-async function fetchParkCourseCheckpoints(): Promise<Map<
+async function fetchParkCourseCheckpoints(segmentIds: readonly string[]): Promise<Map<
 	string,
 	CourseCheckpoint[] | null
 > | null> {
-	const { data, error } = await supabase
-		.from(TABLES.park_courses)
-		.select('global_segment_id, checkpoints');
+	// Up to GLOBAL_SEGMENT_CANDIDATE_LIMIT ids, past the in-filter bound, so
+	// chunked: an over-long list can come back empty rather than failing.
+	const { data, error } = await queryChunked(segmentIds, (part) =>
+		supabase
+			.from(TABLES.park_courses)
+			.select('global_segment_id, checkpoints')
+			.in('global_segment_id', part),
+	);
 	if (error) {
 		console.warn('park course checkpoints read failed', error);
 		return null;

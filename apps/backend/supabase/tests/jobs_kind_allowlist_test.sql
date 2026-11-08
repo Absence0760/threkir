@@ -48,7 +48,7 @@
 
 begin;
 
-select plan(24);
+select plan(25);
 
 -- The one list: each row is both an INSERT the CHECK must accept and a
 -- kind the CHECK must admit. The payloads are representative of what the
@@ -98,6 +98,7 @@ insert into job_kind (kind, payload) values
                                               'browser', 'firefox',
                                               'platform', 'linux',
                                               'signed_in_at', '2026-10-14T09:30:00Z')),
+  ('segment_match',        jsonb_build_object('run_id', gen_random_uuid())),
   ('club_verification_email', jsonb_build_object('email', 'hostmaster@race.example.org',
                                               'domain', 'race.example.org',
                                               'token', repeat('ab', 24)));

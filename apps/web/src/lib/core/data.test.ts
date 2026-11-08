@@ -931,36 +931,31 @@ test('/live/[id] hydrateBacklog fetches newest-first + capped, then replays reve
 	);
 });
 
-test('computeGlobalSegmentEffortsForRun bounds its gate and its fetch by ONE shared constant', () => {
-	// Reason: the rescore gate compares an UNCAPPED count(*) of the active
-	// catalogue against a stamp written from a CAPPED fetch. If the gate's
-	// clamp and the fetch's `.limit()` are separate literals they drift, and
-	// once the catalogue passes the fetch cap the stamp saturates —
-	// `activeCount > scored` is then permanently true and every run re-scores
-	// on EVERY view forever, a net pessimisation over having no gate at all
-	// (same heavy fetch, plus a count query and a metadata read + write per
-	// view). The only structural defence is that both sides read the same
-	// exported constant, so a bare numeric literal here is the bug.
+test('computeGlobalSegmentEffortsForRun reads candidates by extent and stamps the count it gated on', () => {
+	// Reason (decisions § 2392): the fallback scorer used to fetch the first
+	// 500 catalogue rows alphabetically, so a catalogue past 500 silently
+	// dropped its tail from scoring, and the stamp was the fetch size, which
+	// had to be clamped against the uncapped gate or every run re-scored on
+	// every view (issue #333). Candidates now come from the bbox lookup the
+	// server uses, and the stamp is the active count itself, which the gate can
+	// always see reached. A whole-catalogue fetch, or a stamp built from the
+	// candidate list's length, would bring back one of those two bugs.
 	const source = read('src/lib/core/data.ts');
 	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
 	assert.ok(start >= 0, 'Could not locate computeGlobalSegmentEffortsForRun — rename?');
 	const next = source.indexOf('\nexport ', start + 1);
 	const body = source.slice(start, next > start ? next : undefined);
-	assert.match(
-		body,
-		/fetchGlobalSegmentsWithError\(GLOBAL_SEGMENT_SCORING_LIMIT\)/,
-		'The catalogue fetch must be bounded by the shared GLOBAL_SEGMENT_SCORING_LIMIT, not a literal.',
+	assert.match(body, /await fetchGlobalSegmentsInBbox\(extent\)/, 'candidates must come from the bbox lookup');
+	assert.doesNotMatch(body, /fetchGlobalSegmentsWithError\(/, 'no whole-catalogue fetch in the scorer');
+	assert.match(body, /stampGlobalSegmentsScored\([\s\S]*?scoredCount,\s*\)/, 'the stamp is the gated count');
+	assert.doesNotMatch(body, /segments\.length,\s*\)/, 'never stamp the candidate count');
+
+	const lookup = source.slice(
+		source.indexOf('export async function fetchGlobalSegmentsInBbox'),
+		source.indexOf('export async function computeGlobalSegmentEffortsForRun'),
 	);
-	assert.doesNotMatch(
-		body,
-		/fetchGlobalSegmentsWithError\(\s*\d+\s*\)/,
-		'A numeric literal here drifts from the gate clamp — that is the saturation bug.',
-	);
-	assert.match(
-		source,
-		/GLOBAL_SEGMENT_SCORING_LIMIT,?\n\}\s*from '\.\/data_normalise'|GLOBAL_SEGMENT_SCORING_LIMIT,/,
-		'data.ts must import the limit from data_normalise (where the gate clamps against it).',
-	);
+	assert.match(lookup, /p_pad_m: GLOBAL_SEGMENT_CANDIDATE_PAD_M/);
+	assert.match(lookup, /p_limit: GLOBAL_SEGMENT_CANDIDATE_LIMIT/);
 });
 
 test('computeGlobalSegmentEffortsForRun re-reads runs.metadata immediately before the stamp write', () => {
@@ -977,7 +972,7 @@ test('computeGlobalSegmentEffortsForRun re-reads runs.metadata immediately befor
 	const next = source.indexOf('\nexport ', start + 1);
 	const body = source.slice(start, next > start ? next : undefined);
 
-	const fetchAt = body.indexOf('fetchGlobalSegmentsWithError(');
+	const fetchAt = body.indexOf('fetchGlobalSegmentsInBbox(');
 	const stampAt = body.indexOf('stampGlobalSegmentsScored(');
 	const writeAt = body.indexOf('.update({ metadata: next })');
 	assert.ok(fetchAt >= 0 && stampAt >= 0 && writeAt >= 0, 'scoring pass / stamp / write missing');
@@ -1012,7 +1007,7 @@ test('computeGlobalSegmentEffortsForRun scores park courses with their checkpoin
 	const next = source.indexOf('\nexport ', start + 1);
 	const body = source.slice(start, next > start ? next : undefined);
 
-	const readAt = body.indexOf('await fetchParkCourseCheckpoints()');
+	const readAt = body.indexOf('await fetchParkCourseCheckpoints(');
 	const scoreAt = body.indexOf('computeGlobalSegmentEfforts(');
 	assert.ok(readAt >= 0 && scoreAt > readAt, 'the checkpoint read must precede the matcher');
 	assert.match(

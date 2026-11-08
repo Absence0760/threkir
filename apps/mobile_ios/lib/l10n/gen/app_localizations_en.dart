@@ -4366,6 +4366,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Couldn\'t check this route\'s map credits, so nothing was exported. Try again.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Couldn\'t load your clubs — check your network.';
 
@@ -15050,6 +15054,43 @@ class AppLocalizationsEn extends AppLocalizations {
       'You suggested a course. It\'s waiting for review.';
 
   @override
+  String get raceCourseUnlink => 'Remove course';
+
+  @override
+  String get raceCourseUnlinked => 'Course removed.';
+
+  @override
+  String get raceCourseReviewHeading => 'Course suggestions';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Claim this race to approve or reject a suggestion.';
+
+  @override
+  String get raceCourseReviewApprove => 'Approve';
+
+  @override
+  String get raceCourseReviewReject => 'Reject';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Approve this course';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'The course must be a public route your club owns. Pick the club\'s copy of $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Suggestion approved and course linked.';
+
+  @override
+  String get raceCourseReviewRejected => 'Suggestion rejected.';
+
+  @override
+  String get raceCourseReviewFailed => 'Couldn\'t review the suggestion.';
+
+  @override
   String get racesDetailShare => 'Share';
 
   @override
@@ -20847,7 +20888,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksNavigate => 'Navigate this course';
 
   @override
+  String get parksShareGpx => 'Share GPX';
+
+  @override
   String get parksBrowseLink => 'Park courses';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Map of the course\'s start and finish lines';
+
+  @override
+  String get eventCourseLinesMapStart => 'Map of the course\'s start line';
+
+  @override
+  String get eventCourseLinesMapFinish => 'Map of the course\'s finish line';
+
+  @override
+  String get eventRacePreflightTitle => 'Check the courses before arming';
+
+  @override
+  String get eventRacePreflightBlockedTitle => 'This race can\'t be armed yet';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Course lines are edited in the event editor on the web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Arm anyway';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: no finish line or finish point, so runners finish by hand.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: no start line. A self-timed race needs one.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: the route crosses its own finish line before the end, so a finish by the line could come early.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: the start line is more than 100 m from the route.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: the finish line is more than 100 m from the route.';
+  }
 
   @override
   String get clubVerificationStatusTitle => 'Official verification';

@@ -11,6 +11,7 @@ import '../lib/screens/course_drive_screen.dart';
 import '../lib/screens/race_detail_screen.dart';
 import '../lib/training.dart' show toIsoDate;
 import '../lib/training_service.dart';
+import '../lib/widgets/undo_bar.dart';
 
 class _FakeTraining extends TrainingService {
   List<TrainingPlanRow> plans = const [];
@@ -37,6 +38,8 @@ class _FakeRaceService extends RaceService {
   final List<List<String?>> claims = [];
   final List<List<String?>> links = [];
   final List<List<String?>> suggestions = [];
+  List<RaceCourseSuggestion> forReview = const [];
+  final List<List<Object?>> reviews = [];
 
   _FakeRaceService({this.listing, this.listingFailures = 0});
 
@@ -71,6 +74,18 @@ class _FakeRaceService extends RaceService {
   @override
   Future<void> suggestRaceCourse(String listingId, String routeId, String? note) async {
     suggestions.add([listingId, routeId, note]);
+  }
+
+  @override
+  Future<List<RaceCourseSuggestion>> fetchRaceCourseSuggestionsForReview(
+          String listingId) async =>
+      forReview;
+
+  @override
+  Future<void> reviewRaceCourseSuggestion(String suggestionId, bool approve,
+      {String? routeId, String source = 'official'}) async {
+    reviews.add([suggestionId, approve, routeId, source]);
+    forReview = forReview.where((s) => s.id != suggestionId).toList();
   }
 
   @override
@@ -558,6 +573,174 @@ void main() {
     expect(find.text('Suggestion sent.'), findsOneWidget);
     expect(find.byKey(const Key('race-course-suggest-pending')), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
+  });
+
+  group('review and remove (decisions § 2381, § 2396)', () {
+    tearDown(debugResetUndo);
+
+    // The armed undo window owns a real Timer; drain it before the test ends.
+    Future<void> drain(WidgetTester tester) =>
+        tester.pump(const Duration(seconds: 9));
+
+    _FakeRaceService organiser({RaceListingCourse? course}) => _FakeRaceService(
+          listing: _listing(
+            raceDate: _isoDaysOut(30),
+            organiserClubId: 'club-1',
+            organiserClubName: 'Moab Trail Club',
+            course: course,
+          ),
+        )
+          ..signedIn = true
+          ..clubs = const [OrganiserClub(id: 'club-1', name: 'Moab Trail Club')]
+          ..clubRoutes = const [
+            CourseRouteOption(id: 'route-1', name: 'Moab course'),
+            CourseRouteOption(id: 'route-2', name: 'Moab course (club copy)'),
+          ];
+
+    const linked = RaceListingCourse(
+      distanceM: 42195,
+      routeId: 'route-1',
+      source: 'official',
+      checkedAt: '2036-10-01T10:00:00Z',
+    );
+
+    testWidgets('removing the course is held for undo, and Undo keeps it',
+        (tester) async {
+      final service = organiser(course: linked);
+      await tester.pumpWidget(_app(service));
+      await tester.pump();
+      await tester.pump();
+      expect(find.textContaining('Official course from Moab Trail Club'),
+          findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('race-course-link')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('race-course-unlink')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Course removed.'), findsOneWidget);
+      expect(find.textContaining('Official course from Moab Trail Club'),
+          findsNothing,
+          reason: 'the course leaves the screen while the removal is held');
+      expect(service.links, isEmpty,
+          reason: 'nothing reaches the server while the offer stands');
+
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      expect(find.textContaining('Official course from Moab Trail Club'),
+          findsOneWidget);
+      await drain(tester);
+      expect(service.links, isEmpty);
+    });
+
+    testWidgets('a removal the undo window lets through unlinks the course',
+        (tester) async {
+      final service = organiser(course: linked);
+      await tester.pumpWidget(_app(service));
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('race-course-link')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('race-course-unlink')));
+      await tester.pump();
+      await drain(tester);
+
+      expect(service.links, [
+        ['11111111-1111-4111-8111-111111111111', null, null],
+      ]);
+    });
+
+    testWidgets('the organiser approves a suggestion with the club copy',
+        (tester) async {
+      final service = organiser()
+        ..forReview = const [
+          RaceCourseSuggestion(
+            id: 'sug-1',
+            routeId: 'runner-route',
+            routeName: 'Runner trace',
+            note: 'From the 2036 map',
+          ),
+        ];
+      await tester.pumpWidget(_app(service));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Course suggestions'), findsOneWidget);
+      expect(find.text('Runner trace'), findsOneWidget);
+      expect(find.text('From the 2036 map'), findsOneWidget);
+      expect(find.byKey(const Key('race-course-review-claim-first')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('race-course-approve')));
+      await tester.pumpAndSettle();
+      expect(find.text('Approve this course'), findsOneWidget);
+      expect(find.byKey(const Key('race-course-unlink')), findsNothing,
+          reason: 'approving never offers to remove the course');
+      await tester.tap(find.byKey(const Key('race-course-link-confirm')));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(service.reviews, [
+        ['sug-1', true, 'route-1', 'official'],
+      ]);
+      expect(find.text('Suggestion approved and course linked.'), findsOneWidget);
+      expect(find.text('Runner trace'), findsNothing,
+          reason: 'the queue is re-read after the review');
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('rejecting a suggestion is held for undo', (tester) async {
+      final service = organiser()
+        ..forReview = const [
+          RaceCourseSuggestion(
+              id: 'sug-1', routeId: 'runner-route', routeName: 'Runner trace'),
+        ];
+      await tester.pumpWidget(_app(service));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.byKey(const Key('race-course-reject')));
+      await tester.pump();
+      expect(find.text('Suggestion rejected.'), findsOneWidget);
+      expect(find.text('Runner trace'), findsNothing);
+      expect(service.reviews, isEmpty);
+
+      await tester.tap(find.text('Undo'));
+      await tester.pump();
+      expect(find.text('Runner trace'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('race-course-reject')));
+      await tester.pump();
+      await drain(tester);
+      expect(service.reviews, [
+        ['sug-1', false, null, 'official'],
+      ]);
+    });
+
+    testWidgets('on an unclaimed race a verified admin is told to claim first',
+        (tester) async {
+      final service = _FakeRaceService(listing: _listing(raceDate: _isoDaysOut(30)))
+        ..signedIn = true
+        ..clubs = const [OrganiserClub(id: 'club-1', name: 'Moab Trail Club')]
+        ..forReview = const [
+          RaceCourseSuggestion(
+              id: 'sug-1', routeId: 'runner-route', routeName: 'Runner trace'),
+        ];
+      await tester.pumpWidget(_app(service));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Runner trace'), findsOneWidget);
+      expect(find.byKey(const Key('race-course-review-claim-first')), findsOneWidget);
+      expect(find.byKey(const Key('race-course-approve')), findsNothing);
+      expect(find.byKey(const Key('race-course-reject')), findsNothing);
+      expect(find.byKey(const Key('race-course-claim')), findsOneWidget);
+    });
   });
 
   test('raceCourseAccess matches web: claim, manage or suggest', () {

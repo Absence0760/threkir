@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'challenge_list.dart';
 import 'challenge_progress.dart';
+import 'course_gates.dart' show CourseGate, GateWhich, courseGate;
 import 'event_category.dart';
 import 'event_host_cancel.dart';
 import 'event_occurrence.dart';
@@ -233,6 +234,16 @@ class EventCourseView {
   /// (decisions § 1845); null when the row has none or it was clipped away.
   final double? startLat;
   final double? startLng;
+
+  /// The course's timing lines (migration `20271116002390`, decisions
+  /// § 2390): derived from the clipped route or placed by an organiser. Null
+  /// when the course has none at that end.
+  final CourseGate? startGate;
+  final CourseGate? finishGate;
+
+  /// The route crosses its own finish line before its end, so a line finish
+  /// could fire early (server-computed).
+  final bool finishLineSelfCross;
   const EventCourseView({
     required this.id,
     required this.eventId,
@@ -244,6 +255,9 @@ class EventCourseView {
     this.finishLng,
     this.startLat,
     this.startLng,
+    this.startGate,
+    this.finishGate,
+    this.finishLineSelfCross = false,
   });
 
   static EventCourseView? fromJson(Map<String, dynamic> m) {
@@ -271,9 +285,59 @@ class EventCourseView {
       finishLng: hasFinish ? lng.toDouble() : null,
       startLat: hasStart ? sLat.toDouble() : null,
       startLng: hasStart ? sLng.toDouble() : null,
+      startGate: courseGate(m, GateWhich.start),
+      finishGate: courseGate(m, GateWhich.finish),
+      finishLineSelfCross: m['finish_line_self_cross'] == true,
     );
   }
 }
+
+/// One `race_session_courses` row: a course as it was frozen when its race
+/// session was created (Arm, for Host GO; decisions § 2391). Devices and the
+/// race screen read this rather than the live course row, so a route or zone
+/// edit mid-race moves only the next race.
+class FrozenRaceCourse {
+  final String courseId;
+  final CourseGate? startGate;
+  final CourseGate? finishGate;
+  final double? finishLat;
+  final double? finishLng;
+  final double? distanceM;
+  final bool finishLineSelfCross;
+  const FrozenRaceCourse({
+    required this.courseId,
+    this.startGate,
+    this.finishGate,
+    this.finishLat,
+    this.finishLng,
+    this.distanceM,
+    this.finishLineSelfCross = false,
+  });
+
+  static FrozenRaceCourse? fromJson(Map<String, dynamic> m) {
+    final id = m['course_id'];
+    if (id is! String) return null;
+    final lat = m['finish_lat'];
+    final lng = m['finish_lng'];
+    final hasFinish = lat is num && lng is num;
+    final distance = m['distance_m'];
+    return FrozenRaceCourse(
+      courseId: id,
+      startGate: courseGate(m, GateWhich.start),
+      finishGate: courseGate(m, GateWhich.finish),
+      finishLat: hasFinish ? lat.toDouble() : null,
+      finishLng: hasFinish ? lng.toDouble() : null,
+      distanceM: distance is num ? distance.toDouble() : null,
+      finishLineSelfCross: m['finish_line_self_cross'] == true,
+    );
+  }
+}
+
+/// The line columns every course read selects, live row and frozen copy.
+const String kCourseGateColumns =
+    'start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, '
+    'finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, '
+    'finish_line_self_cross';
 
 /// A challenge plus the caller-relative meta the list + detail surfaces need.
 /// `metric` / `scope` stay raw strings here (the narrow unions live in
@@ -2136,13 +2200,31 @@ class SocialService extends ChangeNotifier {
     final rows = await _c
         .from('event_courses')
         .select(
-            'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng, start_lat, start_lng')
+            'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng, start_lat, start_lng, '
+            'start_gate_source, finish_gate_source, $kCourseGateColumns')
         .eq('event_id', eventId)
         .order('sort_order', ascending: true);
     return [
       for (final r in (rows as List).whereType<Map>())
         ?EventCourseView.fromJson(r.cast<String, dynamic>()),
     ];
+  }
+
+  /// The occurrence's frozen courses, keyed by course id. Empty when the
+  /// session has no frozen copy (one created before 20271116002390, or none
+  /// yet); a read error throws so the caller can keep the live row.
+  Future<Map<String, FrozenRaceCourse>> fetchRaceSessionCourses(
+      String eventId, DateTime instance) async {
+    final rows = await _c
+        .from('race_session_courses')
+        .select('course_id, finish_lat, finish_lng, distance_m, $kCourseGateColumns')
+        .eq('event_id', eventId)
+        .eq('instance_start', instanceStartKey(instance));
+    return {
+      for (final r in (rows as List).whereType<Map>())
+        if (FrozenRaceCourse.fromJson(r.cast<String, dynamic>()) case final f?)
+          f.courseId: f,
+    };
   }
 
   /// The event's own `distance_m`: what a race with no courses is gated on.

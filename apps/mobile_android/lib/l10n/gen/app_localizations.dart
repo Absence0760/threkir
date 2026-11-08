@@ -7222,6 +7222,12 @@ abstract class AppLocalizations {
   /// **'Could not share {format}: {error}'**
   String routeDetailShareFailed(String format, String error);
 
+  /// Banner when the check for a park course route's geometry credit fails, so the GPX/KML export is refused rather than written uncredited. Web key routeDetail.exportCreditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check this route\'s map credits, so nothing was exported. Try again.'**
+  String get routeDetailExportCreditFailed;
+
   /// Banner shown when the transfer-to-club club fetch times out
   ///
   /// In en, this message translates to:
@@ -24644,6 +24650,72 @@ abstract class AppLocalizations {
   /// **'You suggested a course. It\'s waiting for review.'**
   String get raceCourseSuggestPending;
 
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Remove course'**
+  String get raceCourseUnlink;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Course removed.'**
+  String get raceCourseUnlinked;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Course suggestions'**
+  String get raceCourseReviewHeading;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim this race to approve or reject a suggestion.'**
+  String get raceCourseReviewClaimFirst;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get raceCourseReviewApprove;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get raceCourseReviewReject;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Approve this course'**
+  String get raceCourseReviewApproveTitle;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'The course must be a public route your club owns. Pick the club\'s copy of {route}.'**
+  String raceCourseReviewApproveBody(String route);
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion approved and course linked.'**
+  String get raceCourseReviewApproved;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion rejected.'**
+  String get raceCourseReviewRejected;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t review the suggestion.'**
+  String get raceCourseReviewFailed;
+
   /// Race detail screen: share the race link
   ///
   /// In en, this message translates to:
@@ -33977,11 +34049,95 @@ abstract class AppLocalizations {
   /// **'Navigate this course'**
   String get parksNavigate;
 
+  /// Park courses (#1313): shares the course line as a GPX file with its checkpoints and geometry credit. Web key parks.downloadGpx.
+  ///
+  /// In en, this message translates to:
+  /// **'Share GPX'**
+  String get parksShareGpx;
+
   /// Park courses (#1313): web key parks.browseLink.
   ///
   /// In en, this message translates to:
   /// **'Park courses'**
   String get parksBrowseLink;
+
+  /// Accessible label of the event course map showing start and finish timing lines (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s start and finish lines'**
+  String get eventCourseLinesMapBoth;
+
+  /// Accessible label of the event course map showing only the start line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s start line'**
+  String get eventCourseLinesMapStart;
+
+  /// Accessible label of the event course map showing only the finish line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s finish line'**
+  String get eventCourseLinesMapFinish;
+
+  /// Title of the dialog listing course warnings before a race is armed (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Check the courses before arming'**
+  String get eventRacePreflightTitle;
+
+  /// Title of the dialog when course errors stop a race from being armed (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'This race can\'t be armed yet'**
+  String get eventRacePreflightBlockedTitle;
+
+  /// Closing line of the Arm preflight dialog: course lines are edited on the web (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Course lines are edited in the event editor on the web.'**
+  String get eventRacePreflightFixOnWeb;
+
+  /// Button in the Arm preflight dialog that arms the race despite warnings (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Arm anyway'**
+  String get eventRaceArmAnyway;
+
+  /// Button closing the dialog when course errors stop arming (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get eventRacePreflightOk;
+
+  /// Arm preflight issue: a course with no finish line and no finish point (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no finish line or finish point, so runners finish by hand.'**
+  String eventRacePreflightNoFinish(String course);
+
+  /// Arm preflight issue: a self-timed course with no start line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no start line. A self-timed race needs one.'**
+  String eventRacePreflightNoStart(String course);
+
+  /// Arm preflight issue: the course route crosses its own finish line before its end (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the route crosses its own finish line before the end, so a finish by the line could come early.'**
+  String eventRacePreflightSelfCross(String course);
+
+  /// Arm preflight issue: an organiser-placed start line more than 100 m from the route (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the start line is more than 100 m from the route.'**
+  String eventRacePreflightFarStart(String course);
+
+  /// Arm preflight issue: an organiser-placed finish line more than 100 m from the route (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the finish line is more than 100 m from the route.'**
+  String eventRacePreflightFarFinish(String course);
 
   /// Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins
   ///

@@ -590,7 +590,7 @@ The centre button's long-press start-options sheet (decisions § 1892, § 1897):
 
 The minimum-data account on every mobile surface that derives a number from a run (issue #1161 round 3): run detail, a history row, the history list sorted fastest-first, and Home's card stack, each fed a 10 s / 3 m run over a two-point, one-point or empty track, a 0 m run with a one-point or empty track, and a 0 s / 0 m run, in km and in mi, as a run and as a ride, and on Home under a weekly goal on every target, once for every fixture and once for a week of only 0 m runs. Each case asserts no exception, the honest missing-value spelling (`--:--` for a pace, `--` for a speed), and a clean text sweep. The sweep is `test/rendered_text_sweep.dart`: it collects every `RichText`, `EditableText`, `Semantics` label and `Tooltip` message, offstage included, and fails on `NaN`, `Infinity`, `∞` or a negative zero (`-0`, `-0.00`, `-0:00`, U+2212 too) while letting a date, `UTC-0`, `-0.05` and a `-0:30` delta through; the suite's first two tests pin that pattern so a sweep that matches nothing cannot pass silently. The surfaces are pumped on a 400 × 9000 surface so every lazily-built list child is laid out and swept. Nine declarations, 41 cases once the fixture loops expand.
 
-### `apps/mobile_ios/test/` — 848 files, byte-for-byte
+### `apps/mobile_ios/test/` — 850 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -646,9 +646,9 @@ The tests run under `flutter test` because `api_client` transitively depends on 
 
 The per-package runner table in [`testing.md` § Which runner a package takes](testing.md), checked rather than read (§ 1592). Three claims, each catching a drift the other two miss: every package holding a `test/` directory is named exactly once, so a new one cannot arrive with no documented runner; a package that declares `flutter: sdk: flutter` in its own pubspec is not offered to `dart test`, DERIVED from the pubspec rather than copied from the table; and the packages the table says CI runs are exactly the `--scope=` list of the `test-packages` job, which is the drift that once left `ui_kit` and `core_models` running nowhere. A fourth names this package outright, because the derivation cannot reach it — nothing in this repo says `supabase_flutter` pulls in the Flutter SDK, which is exactly why `api_client` is the package that costs a session a run.
 
-### `packages/gpx_parser/test/route_parser_test.dart` — 62 tests
+### `packages/gpx_parser/test/route_parser_test.dart` — 64 tests
 
-Pure-parser coverage for `RouteParser` (GPX/KML/TCX/GeoJSON) and `FitParser`. GPX block (9 tests): `<trkpt>` happy path with elevation gain summed correctly, `<rtept>` and `<wpt>` fallbacks when no track points, malformed `lat="bad"` skipped, `name` defaults to "Imported route", elevation gain ignores descents, `<time>` parsed onto `Waypoint.timestamp`, missing `<time>` leaves it null, empty document returns an empty waypoint list. KML block (4 tests): LineString with elevation, missing `<coordinates>` element, non-numeric triples dropped, 2D coordinates leave elevation null. TCX block (3 tests): `<Trackpoint><Position>` with altitude + timestamps, missing `<Position>` skipped, `<Notes>` fallback when `<Name>` is absent. GeoJSON block (5 tests): `[lng, lat, ele]` order, 2D coordinates, missing geometry, missing `properties.name`, malformed coordinate entries skipped. FIT block (4 tests): too-short bytes throw, `.FIT` signature mismatch throws, header size other than 12/14 throws, valid empty header parses to an empty route.
+Pure-parser coverage for `RouteParser` (GPX/KML/TCX/GeoJSON) and `FitParser`. GPX block (9 tests): `<trkpt>` happy path with elevation gain summed correctly, `<rtept>` and `<wpt>` fallbacks when no track points, malformed `lat="bad"` skipped, `name` defaults to "Imported route", elevation gain ignores descents, `<time>` parsed onto `Waypoint.timestamp`, missing `<time>` leaves it null, empty document returns an empty waypoint list. KML block (4 tests): LineString with elevation, missing `<coordinates>` element, non-numeric triples dropped, 2D coordinates leave elevation null. TCX block (3 tests): `<Trackpoint><Position>` with altitude + timestamps, missing `<Position>` skipped, `<Notes>` fallback when `<Name>` is absent. GeoJSON block (5 tests): `[lng, lat, ele]` order, 2D coordinates, missing geometry, missing `properties.name`, malformed coordinate entries skipped. FIT block (4 tests): too-short bytes throw, `.FIT` signature mismatch throws, header size other than 12/14 throws, valid empty header parses to an empty route. Noise band (2 tests, issue #1297): an imported climb goes through the 3 m band (a wobbly 40 m climb reads 42 m, not its 120 m raw sum) and a rise inside the band is not climb; mirrored by `import_elevation.test.ts`.
 
 ### `packages/core_models/test/run_source_test.dart` — 2 tests
 
@@ -890,9 +890,9 @@ One declaration, two derivations ([decisions § 1294](../architecture/decisions.
 
 Pure tests for the Open-Meteo elevation helpers (`lib/elevation.ts`). `calculateElevationGain` covers positive-delta accumulation, flat profile = 0, descending profile = 0, empty / single-point input, and the rounding contract (sum of three +0.4 deltas → 1). `sampleCoordinates` covers passthrough below `maxPoints`, equal-count passthrough, exact-`maxPoints` cap when input is larger (with first + last endpoints retained), and the `indices ↔ sampled` alignment invariant.
 
-### `apps/web/src/lib/routes/gpx.test.ts` — 18 tests
+### `apps/web/src/lib/routes/gpx.test.ts` — 20 tests
 
-Pure tests for the GPX / KML / run-GPX writers in `lib/gpx.ts`. `toGpx` covers the GPX 1.1 namespace + creator, one trkpt per coordinate, the lat/lon attribute mapping (input `[lng, lat]` → `lat="..." lon="..."`), missing-elevation falls back to 0, XML escaping in the name (`& < >`), and an empty-coordinates input emits a well-formed empty trkseg. `toRunGpx` covers per-point `<time>` emission when present, omission of `<ele>` when null and `<time>` when missing, the metadata `<time>` carrying `startedAtIso` (not the local clock), and name escaping. `toKml` covers the KML 2.2 namespace + the `lng,lat,ele` coordinate-string ordering, missing-elevation = 0, and name escaping in both Document and Placemark scopes. Five more pin that `toRunGpx` escapes the start time and every point timestamp, drops a point whose lat/lng is not a finite number and omits a non-numeric elevation, that `toGpx` / `toKml` drop a non-finite coordinate and read a non-finite elevation as the 0 fallback, and that a control character in the name (forbidden in XML 1.0) is replaced with U+FFFD in all three writers.
+Pure tests for the GPX / KML / run-GPX writers in `lib/gpx.ts`. `toGpx` covers the GPX 1.1 namespace + creator, one trkpt per coordinate, the lat/lon attribute mapping (input `[lng, lat]` → `lat="..." lon="..."`), missing-elevation falls back to 0, XML escaping in the name (`& < >`), and an empty-coordinates input emits a well-formed empty trkseg. `toRunGpx` covers per-point `<time>` emission when present, omission of `<ele>` when null and `<time>` when missing, the metadata `<time>` carrying `startedAtIso` (not the local clock), and name escaping. `toKml` covers the KML 2.2 namespace + the `lng,lat,ele` coordinate-string ordering, missing-elevation = 0, and name escaping in both Document and Placemark scopes. Five more pin that `toRunGpx` escapes the start time and every point timestamp, drops a point whose lat/lng is not a finite number and omits a non-numeric elevation, that `toGpx` / `toKml` drop a non-finite coordinate and read a non-finite elevation as the 0 fallback, and that a control character in the name (forbidden in XML 1.0) is replaced with U+FFFD in all three writers. Two more pin a park course's geometry credit (decisions § 2395): `toGpx` writes it between `<name>` and `<time>` as GPX 1.1 orders metadata, and `toKml` writes it as the Document description; neither writes one without it.
 
 ### `apps/web/src/lib/core/gear_undo_scope.test.ts` — 2 tests
 
@@ -1123,7 +1123,7 @@ Three source-level resilience guards were added on 2026-09-03 in the same idiom 
 
 The handful of Wear OS surfaces NOT covered (need instrumentation): `Pedometer` sensor binding itself, `HeartRateMonitor.MeasureCallback` registration with Health Services, `GpsRecorder`'s `GPS_PROVIDER` and `FusedLocationProviderClient` callbacks, foreground-service lifecycle, Compose UI screen rendering (the team deliberately stayed off Robolectric — `ScreenWiringTest`'s source-grep approach is the cheap-but-effective alternative).
 
-### `apps/job_worker/internal/**/*_test.go` — 1030 tests across 100 files (Go unit tests)
+### `apps/job_worker/internal/**/*_test.go` — 1034 tests across 101 files (Go unit tests)
 
 Run with `go test ./...` from `apps/job_worker`. No network or Postgres dependency — the worker tests use a fake `Backend`, the matcher tests use `httptest.Server` to stand in for OSRM. Gated in CI by the `test-worker` job (`go vet` + `go test ./...`), so a Go-side guard like `internal/personal_data_export_guard_test.go` (the GDPR Art 20 export-completeness tripwire — fails the build when a new `user_id`-bearing table isn't wired into `exportPersonalDataSpecs` or the reasoned exclusion list) now fails a PR, not just a local run. Files:
 
@@ -1363,7 +1363,7 @@ Pins migration `20271111000001` (decisions § 2353, issue #1300 BUG-015). An org
 
 Pins migration `20271112000001` (decisions § 2356, issue #1300 BUG-005). `private.is_event_visible_to` agrees with the events SELECT policy, evaluated as each of five viewers (owner, active member, pending, stranger, private-club member) over public / private / shadow-hidden clubs and public / members-only events, the matrix holds both outcomes, and a shadow-hidden club's public event is seen by its owner and members only. Rejecting a pending request leaves its RSVPs. The owner removing an active member from their own session drops the member's upcoming members-only RSVP and waitlist entry and promotes the next waitlister into the capped seat, while a past occurrence's RSVP and a public event in a public club stay. A member holding a paid seat keeps it and the order is untouched, and a member with a checkout still in flight keeps their waitlist row. A member leaving a private club on their own loses the RSVP to its public event; a status change out of `active` is an exit too, and a role change is not. Neither function is executable by clients, and a club delete cascading through its members still succeeds. Removing the two triggers fails five of the assertions.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1520 deno tests across 114 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1535 deno tests across 117 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-clubs`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
@@ -1415,7 +1415,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,504 declared tests across 657 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,516 declared tests across 660 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -2962,3 +2962,31 @@ Replaces `paged_read_test.dart` with `readAllPages`. No `.range()` or `readAllPa
 ### `apps/backend/supabase/tests/roster_keyset_indexes_test.sql` — 5 tests
 
 Migration `20270817000021`: `club_members` has a plain ascending btree on `(club_id, joined_at, user_id)` and `event_attendees` one on `(event_id, instance_start, joined_at, user_id)`, matched by key columns, `indoption` and no predicate or expression; `event_attendees_instance_roster` exists by name; and the left-prefix `event_attendees_event_instance` is gone, by name and by shape.
+
+## Course start and finish lines (#1305, 2026-11-08)
+
+[decisions § 2390](../architecture/decisions.md) and § 2391.
+
+### `apps/backend/supabase/tests/course_timing_lines_test.sql` — 29 tests
+
+Migration `20271116002390`: derived lines on a straight route, a loop and a route whose start the owner's zone clipped (no start line, a finish line), each at 15 m; `finish_line_self_cross` off for one lap and on for three; the organiser RPCs (a plain member and anon refused, no privacy-zone check, a routeless course takes both lines, the bearing normalised); a waypoint edit turning a derived line and leaving an organiser's; reset to the route or to none; a client's direct write to the line columns ignored; the RPC's and the table's CHECKs, the source allowlist validated; the frozen copy taken at Arm, holding the values of the moment and not moved by a later route edit, linked from `race_sessions_redacted`, its stamp guarded; and anon reading a public event's lines and copy but not a private club's.
+
+### `apps/web/src/lib/races/course_gates.test.ts` — 11 tests
+
+The TS reader of `fixtures/course_gates_cases.json`, one test per section plus the section and constant checks: bearing normalisation, the half-width clamp, a line read off a row, bearings, line ends, the arrow tip, a line against a route, the editor's warnings and every row of the Arm preflight table under all three start modes.
+
+### `apps/mobile_android/test/course_gates_test.dart` — 11 tests
+
+The Dart half of the pair above, same case table.
+
+### `apps/web/src/lib/races/course_gate_layers.test.ts` — 3 tests
+
+The GeoJSON the maps draw: a start line is one segment with no arrow; a finish line carries an arrow with a chevron head, ahead of the centre by the 20 m floor; and the bounds cover every line and arrow.
+
+### `apps/mobile_android/test/course_lines_map_test.dart` — 10 tests
+
+The phone's course map draws the start and the finish line with its arrow, and the Arm preflight dialog: warnings offer Arm anyway or Cancel, an error offers only OK.
+
+### `apps/web/tests-e2e/clubs/event-course-lines.spec.ts` — 3 tests
+
+Through the numeric inputs: place, turn and remove a line on a routeless course; a line turned against the route warned about and Reset to route restoring it; and Arm opening the preflight dialog for a course with no finish, Arm anyway arming the race and freezing its course.

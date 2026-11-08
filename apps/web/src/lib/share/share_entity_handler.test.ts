@@ -48,6 +48,8 @@ test('a malformed path answers the branded noindex 404, never a 5xx', async () =
 		'/share/session/%zz',
 		'/share/workout/%zz',
 		'/share/event/%zz',
+		'/share/course/%zz/park/course',
+		'/share/course/us-va/park',
 	]) {
 		const res = await handler(urlEvent(path));
 		assert.notEqual(typeof res, 'string');

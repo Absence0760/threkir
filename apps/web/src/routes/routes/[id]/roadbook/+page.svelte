@@ -5,7 +5,12 @@
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
-	import { fetchRouteById, fetchRouteMarkers, updateRouteMarker } from '#lib/core/data.ts';
+	import {
+		fetchRouteById,
+		fetchRouteCourseAttribution,
+		fetchRouteMarkers,
+		updateRouteMarker,
+	} from '#lib/core/data.ts';
 	import type { Route, RouteMarker } from '#lib/types.ts';
 	import {
 		buildRoadbook,
@@ -359,10 +364,23 @@
 		return m(`routeMarker.service.${s}` as 'routeMarker.service.water');
 	}
 
-	function handleExportGpxWithMarkers() {
+	async function handleExportGpxWithMarkers() {
 		if (!route) return;
 		const wps = route.waypoints ?? [];
 		if (!wps.length) return;
+		// A park course's route exports with its geometry credit; a failed
+		// check refuses the export rather than writing it uncredited, unless
+		// the route is known not to be official (park course routes are).
+		let attribution = null;
+		try {
+			attribution = await fetchRouteCourseAttribution(route.id);
+		} catch (e) {
+			console.error('roadbook export attribution failed', e);
+			if (route.is_official !== false) {
+				showToast(m('routeDetail.exportCreditFailed'), 'error');
+				return;
+			}
+		}
 		const coords: [number, number][] = wps.map((w) => [w.lng, w.lat]);
 		const eles = wps.map((w, i) => w.ele ?? fetchedEle?.[i] ?? 0);
 		const gpxMarkers: RouteGpxMarker[] = markers.map((mk) => ({
@@ -372,7 +390,7 @@
 			kind: mk.kind,
 			meta: mk.meta
 		}));
-		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers);
+		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers, attribution);
 		const filename =
 			route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '_with_markers.gpx';
 		downloadFile(gpx, filename, 'application/gpx+xml');

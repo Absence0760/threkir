@@ -4421,6 +4421,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Impossible de vérifier les crédits cartographiques de cet itinéraire : rien n\'a été exporté. Réessayez.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Impossible de charger vos clubs — vérifiez votre réseau.';
 
@@ -15231,6 +15235,42 @@ class AppLocalizationsFr extends AppLocalizations {
       'Vous avez suggéré un parcours. Il attend d\'être examiné.';
 
   @override
+  String get raceCourseUnlink => 'Retirer le parcours';
+
+  @override
+  String get raceCourseUnlinked => 'Parcours retiré.';
+
+  @override
+  String get raceCourseReviewHeading => 'Suggestions de parcours';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Revendiquez cette course pour accepter ou refuser une suggestion.';
+
+  @override
+  String get raceCourseReviewApprove => 'Accepter';
+
+  @override
+  String get raceCourseReviewReject => 'Refuser';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Accepter ce parcours';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'Le parcours doit être un itinéraire public de votre club. Choisissez la copie du club de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved => 'Suggestion acceptée et parcours lié.';
+
+  @override
+  String get raceCourseReviewRejected => 'Suggestion refusée.';
+
+  @override
+  String get raceCourseReviewFailed => 'Impossible d\'examiner la suggestion.';
+
+  @override
   String get racesDetailShare => 'Partager';
 
   @override
@@ -21114,7 +21154,64 @@ class AppLocalizationsFr extends AppLocalizations {
   String get parksNavigate => 'Suivre ce parcours';
 
   @override
+  String get parksShareGpx => 'Partager le GPX';
+
+  @override
   String get parksBrowseLink => 'Parcours des parcs';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Carte des lignes de départ et d’arrivée du parcours';
+
+  @override
+  String get eventCourseLinesMapStart =>
+      'Carte de la ligne de départ du parcours';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Carte de la ligne d’arrivée du parcours';
+
+  @override
+  String get eventRacePreflightTitle => 'Vérifiez les parcours avant d’armer';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Cette course ne peut pas encore être armée';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Les lignes du parcours se modifient dans l’éditeur d’événement sur le web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armer quand même';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course : ni ligne ni point d’arrivée, les coureurs terminent donc à la main.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course : pas de ligne de départ. Une course chronométrée par chacun en a besoin.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course : l’itinéraire croise sa propre ligne d’arrivée avant la fin, une arrivée par la ligne pourrait donc venir trop tôt.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course : la ligne de départ est à plus de 100 m de l’itinéraire.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course : la ligne d’arrivée est à plus de 100 m de l’itinéraire.';
+  }
 
   @override
   String get clubVerificationStatusTitle => 'Vérification officielle';

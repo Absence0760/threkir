@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'apple_watch_race_bridge.dart';
+import 'course_gates.dart' show CourseGate;
 import 'race_finish.dart';
 import 'rate_limit_errors.dart';
 import 'social_service.dart';
@@ -189,8 +190,9 @@ class PendingRaceResult {
 }
 
 /// The course a racer is running: what the finish detector and the coverage
-/// gate need, resolved once when the recorder attaches. Read off the
-/// `event_courses` row alone — never the route.
+/// gate need, resolved once when the recorder attaches. Read off the race's
+/// frozen copy of the course (`race_session_courses`, decisions § 2391) when
+/// it has one, else the `event_courses` row — never the route.
 class RaceCourse {
   const RaceCourse({
     required this.courseId,
@@ -199,6 +201,8 @@ class RaceCourse {
     this.finishLng,
     this.startLat,
     this.startLng,
+    this.startGate,
+    this.finishGate,
   });
 
   /// Null for an event with no `event_courses` rows, raced on the event's
@@ -209,6 +213,11 @@ class RaceCourse {
   final double? finishLng;
   final double? startLat;
   final double? startLng;
+
+  /// The course's timing lines, drawn on the race screen's map. Detection by
+  /// the lines is #1307's; until then the finish rule is the 30 m circle.
+  final CourseGate? startGate;
+  final CourseGate? finishGate;
 
   bool get hasFinish => finishLat != null && finishLng != null;
   bool get hasStart => startLat != null && startLng != null;
@@ -753,6 +762,27 @@ class RaceController extends ChangeNotifier {
       final mine = pickRaceCourse(
           courses, await _social.fetchMyCourseId(eventId, instance));
       if (mine == null) return null;
+      // The frozen copy is what every racer in this race crosses; a race with
+      // none (created before it existed) or a failed read keeps the live row.
+      FrozenRaceCourse? frozen;
+      try {
+        frozen =
+            (await _social.fetchRaceSessionCourses(eventId, instance))[mine.id];
+      } catch (e) {
+        debugPrint('[RaceController._loadCourse frozen] ${safeErrorLabel(e)}');
+      }
+      if (frozen != null) {
+        return RaceCourse(
+          courseId: mine.id,
+          distanceM: frozen.distanceM,
+          finishLat: frozen.finishLat,
+          finishLng: frozen.finishLng,
+          startLat: mine.startLat,
+          startLng: mine.startLng,
+          startGate: frozen.startGate,
+          finishGate: frozen.finishGate,
+        );
+      }
       return RaceCourse(
         courseId: mine.id,
         distanceM: mine.distanceM,
@@ -760,6 +790,8 @@ class RaceController extends ChangeNotifier {
         finishLng: mine.finishLng,
         startLat: mine.startLat,
         startLng: mine.startLng,
+        startGate: mine.startGate,
+        finishGate: mine.finishGate,
       );
     }
     return RaceCourse(

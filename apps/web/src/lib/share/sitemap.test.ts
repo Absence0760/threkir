@@ -5,6 +5,7 @@ import {
 	buildSitemap,
 	changefreqForRunCount,
 	composeEntries,
+	courseEntries,
 	entityEntries,
 	learnEntries,
 	normaliseBase,
@@ -368,4 +369,26 @@ test('buildSitemap — a character XML forbids becomes U+FFFD, never reaches the
 	const xml = buildSitemap([{ loc: 'https://threkir.com/share/club/a\u0001b', lastmod: '2026-01-01\u000B' }]);
 	assert.ok(!/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(xml));
 	assert.ok(xml.includes('<loc>https://threkir.com/share/club/a�b</loc>'));
+});
+
+test('courseEntries — one /share/course entry per course, keyed by region, park and course slugs', () => {
+	const entries = courseEntries('https://threkir.com/', [
+		{ slug: 'lake-loop', park_slug: 'fixture-state-park', region_code: 'US-VA', updated_at: '2027-01-02T00:00:00Z' },
+		{ slug: 'ridge', park_slug: 'other', region_code: 'US-NC', updated_at: null },
+	]);
+	assert.deepEqual(entries, [
+		{
+			loc: 'https://threkir.com/share/course/us-va/fixture-state-park/lake-loop',
+			lastmod: '2027-01-02T00:00:00Z',
+			changefreq: 'monthly',
+			priority: 0.7,
+		},
+		{
+			loc: 'https://threkir.com/share/course/us-nc/other/ridge',
+			lastmod: undefined,
+			changefreq: 'monthly',
+			priority: 0.7,
+		},
+	]);
+	assert.deepEqual(courseEntries('https://threkir.com', []), []);
 });

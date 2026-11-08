@@ -4409,6 +4409,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Não foi possível verificar os créditos do mapa desta rota, por isso nada foi exportado. Tente novamente.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Não foi possível carregar os seus clubes — verifique a sua rede.';
 
@@ -15204,6 +15208,43 @@ class AppLocalizationsPt extends AppLocalizations {
       'Sugeriu um percurso. Está a aguardar análise.';
 
   @override
+  String get raceCourseUnlink => 'Remover percurso';
+
+  @override
+  String get raceCourseUnlinked => 'Percurso removido.';
+
+  @override
+  String get raceCourseReviewHeading => 'Sugestões de percurso';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Reivindique esta corrida para aprovar ou recusar uma sugestão.';
+
+  @override
+  String get raceCourseReviewApprove => 'Aprovar';
+
+  @override
+  String get raceCourseReviewReject => 'Recusar';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Aprovar este percurso';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'O percurso tem de ser uma rota pública do seu clube. Escolha a cópia do clube de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Sugestão aprovada e percurso associado.';
+
+  @override
+  String get raceCourseReviewRejected => 'Sugestão recusada.';
+
+  @override
+  String get raceCourseReviewFailed => 'Não foi possível analisar a sugestão.';
+
+  @override
   String get racesDetailShare => 'Partilhar';
 
   @override
@@ -21070,7 +21111,63 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksNavigate => 'Navegar neste percurso';
 
   @override
+  String get parksShareGpx => 'Partilhar GPX';
+
+  @override
   String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Mapa das linhas de partida e de chegada do percurso';
+
+  @override
+  String get eventCourseLinesMapStart => 'Mapa da linha de partida do percurso';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Mapa da linha de chegada do percurso';
+
+  @override
+  String get eventRacePreflightTitle => 'Verifique os percursos antes de armar';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Esta corrida ainda não pode ser armada';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'As linhas do percurso editam-se no editor de eventos na web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armar mesmo assim';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: sem linha nem ponto de chegada, por isso os corredores terminam manualmente.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: sem linha de partida. Uma corrida cronometrada por cada um precisa de uma.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: o trajeto cruza a sua própria linha de chegada antes do fim, por isso uma chegada pela linha pode ser antecipada.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: a linha de partida está a mais de 100 m do trajeto.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: a linha de chegada está a mais de 100 m do trajeto.';
+  }
 
   @override
   String get clubVerificationStatusTitle => 'Verificação oficial';
@@ -25538,6 +25635,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String routeDetailShareFailed(String format, String error) {
     return 'Não foi possível compartilhar $format: $error';
   }
+
+  @override
+  String get routeDetailExportCreditFailed =>
+      'Não foi possível verificar os créditos do mapa desta rota, então nada foi exportado. Tente novamente.';
 
   @override
   String get routeDetailClubsLoadTimeout =>
@@ -36323,6 +36424,43 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Você sugeriu um percurso. Ele está aguardando análise.';
 
   @override
+  String get raceCourseUnlink => 'Remover percurso';
+
+  @override
+  String get raceCourseUnlinked => 'Percurso removido.';
+
+  @override
+  String get raceCourseReviewHeading => 'Sugestões de percurso';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Reivindique esta corrida para aprovar ou recusar uma sugestão.';
+
+  @override
+  String get raceCourseReviewApprove => 'Aprovar';
+
+  @override
+  String get raceCourseReviewReject => 'Recusar';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Aprovar este percurso';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'O percurso precisa ser uma rota pública do seu clube. Escolha a cópia do clube de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Sugestão aprovada e percurso vinculado.';
+
+  @override
+  String get raceCourseReviewRejected => 'Sugestão recusada.';
+
+  @override
+  String get raceCourseReviewFailed => 'Não foi possível analisar a sugestão.';
+
+  @override
   String get racesDetailShare => 'Compartilhar';
 
   @override
@@ -42185,7 +42323,63 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get parksNavigate => 'Navegar neste percurso';
 
   @override
+  String get parksShareGpx => 'Compartilhar GPX';
+
+  @override
   String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Mapa das linhas de largada e chegada do percurso';
+
+  @override
+  String get eventCourseLinesMapStart => 'Mapa da linha de largada do percurso';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Mapa da linha de chegada do percurso';
+
+  @override
+  String get eventRacePreflightTitle => 'Confira os percursos antes de armar';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Esta corrida ainda não pode ser armada';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'As linhas do percurso são editadas no editor de eventos na web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armar mesmo assim';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: sem linha nem ponto de chegada, então os corredores terminam manualmente.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: sem linha de largada. Uma corrida cronometrada por cada um precisa de uma.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: o trajeto cruza a própria linha de chegada antes do fim, então uma chegada pela linha pode vir cedo demais.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: a linha de largada está a mais de 100 m do trajeto.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: a linha de chegada está a mais de 100 m do trajeto.';
+  }
 
   @override
   String get clubVerificationStatusTitle => 'Verificação oficial';

@@ -4419,6 +4419,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Die Kartenquellen dieser Route konnten nicht geprüft werden, daher wurde nichts exportiert. Versuch es noch einmal.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Deine Clubs konnten nicht geladen werden — überprüfe dein Netzwerk.';
 
@@ -15220,6 +15224,44 @@ class AppLocalizationsDe extends AppLocalizations {
       'Du hast eine Strecke vorgeschlagen. Sie wartet auf Prüfung.';
 
   @override
+  String get raceCourseUnlink => 'Strecke entfernen';
+
+  @override
+  String get raceCourseUnlinked => 'Strecke entfernt.';
+
+  @override
+  String get raceCourseReviewHeading => 'Streckenvorschläge';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Beanspruche dieses Rennen, um einen Vorschlag anzunehmen oder abzulehnen.';
+
+  @override
+  String get raceCourseReviewApprove => 'Annehmen';
+
+  @override
+  String get raceCourseReviewReject => 'Ablehnen';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Diese Strecke annehmen';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'Die Strecke muss eine öffentliche Route deines Vereins sein. Wähle die Vereinskopie von $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Vorschlag angenommen und Strecke verknüpft.';
+
+  @override
+  String get raceCourseReviewRejected => 'Vorschlag abgelehnt.';
+
+  @override
+  String get raceCourseReviewFailed =>
+      'Der Vorschlag konnte nicht geprüft werden.';
+
+  @override
   String get racesDetailShare => 'Teilen';
 
   @override
@@ -21096,7 +21138,63 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksNavigate => 'Diese Strecke navigieren';
 
   @override
+  String get parksShareGpx => 'GPX teilen';
+
+  @override
   String get parksBrowseLink => 'Parkstrecken';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Karte mit Start- und Ziellinie der Strecke';
+
+  @override
+  String get eventCourseLinesMapStart => 'Karte mit der Startlinie der Strecke';
+
+  @override
+  String get eventCourseLinesMapFinish => 'Karte mit der Ziellinie der Strecke';
+
+  @override
+  String get eventRacePreflightTitle =>
+      'Strecken vor dem Scharfschalten prüfen';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Dieses Rennen kann noch nicht scharfgeschaltet werden';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Streckenlinien werden im Event-Editor im Web bearbeitet.';
+
+  @override
+  String get eventRaceArmAnyway => 'Trotzdem scharfschalten';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: keine Ziellinie und kein Zielpunkt, daher beenden Läufer von Hand.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: keine Startlinie. Ein selbst gestopptes Rennen braucht eine.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: Die Route kreuzt ihre eigene Ziellinie vor dem Ende, ein Zieleinlauf über die Linie könnte also zu früh kommen.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: Die Startlinie liegt mehr als 100 m von der Route entfernt.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: Die Ziellinie liegt mehr als 100 m von der Route entfernt.';
+  }
 
   @override
   String get clubVerificationStatusTitle => 'Offizielle Verifizierung';

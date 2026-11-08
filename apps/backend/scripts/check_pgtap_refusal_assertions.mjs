@@ -1843,6 +1843,16 @@ export const FILTERED_RPC_ARGUMENTS = [
       'stored value of that club\'s only request.',
   },
   {
+    file: 'race_course_review_queue_test.sql',
+    description: 'the organiser rejects the only suggestion on its race',
+    columns: ['race_course_suggestions.status'],
+    readBack: 'the rejection marks the suggestion rejected',
+    reason:
+      'p_approve becomes the status text (approved / rejected) rather than landing as the boolean; ' +
+      'the read-back reads status from a row created pending, so a server that stopped writing it ' +
+      'would report pending.',
+  },
+  {
     file: 'race_course_link_test.sql',
     description: "the organiser approves, linking the club's own copy",
     columns: ['race_course_suggestions.status'],

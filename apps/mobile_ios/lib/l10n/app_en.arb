@@ -5890,6 +5890,10 @@
       }
     }
   },
+  "routeDetailExportCreditFailed": "Couldn't check this route's map credits, so nothing was exported. Try again.",
+  "@routeDetailExportCreditFailed": {
+    "description": "Banner when the check for a park course route's geometry credit fails, so the GPX/KML export is refused rather than written uncredited. Web key routeDetail.exportCreditFailed."
+  },
   "routeDetailClubsLoadTimeout": "Couldn't load your clubs — check your network.",
   "@routeDetailClubsLoadTimeout": {
     "description": "Banner shown when the transfer-to-club club fetch times out"
@@ -20107,6 +20111,55 @@
   "@raceCourseSuggestPending": {
     "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
   },
+  "raceCourseUnlink": "Remove course",
+  "@raceCourseUnlink": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseUnlinked": "Course removed.",
+  "@raceCourseUnlinked": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewHeading": "Course suggestions",
+  "@raceCourseReviewHeading": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewClaimFirst": "Claim this race to approve or reject a suggestion.",
+  "@raceCourseReviewClaimFirst": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewApprove": "Approve",
+  "@raceCourseReviewApprove": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewReject": "Reject",
+  "@raceCourseReviewReject": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewApproveTitle": "Approve this course",
+  "@raceCourseReviewApproveTitle": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewApproveBody": "The course must be a public route your club owns. Pick the club's copy of {route}.",
+  "@raceCourseReviewApproveBody": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396).",
+    "placeholders": {
+      "route": {
+        "type": "String"
+      }
+    }
+  },
+  "raceCourseReviewApproved": "Suggestion approved and course linked.",
+  "@raceCourseReviewApproved": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewRejected": "Suggestion rejected.",
+  "@raceCourseReviewRejected": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewFailed": "Couldn't review the suggestion.",
+  "@raceCourseReviewFailed": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
   "racesDetailShare": "Share",
   "@racesDetailShare": {
     "description": "Race detail screen: share the race link"
@@ -27672,9 +27725,90 @@
   "@parksNavigate": {
     "description": "Park courses (#1313): web key parks.navigate."
   },
+  "parksShareGpx": "Share GPX",
+  "@parksShareGpx": {
+    "description": "Park courses (#1313): shares the course line as a GPX file with its checkpoints and geometry credit. Web key parks.downloadGpx."
+  },
   "parksBrowseLink": "Park courses",
   "@parksBrowseLink": {
     "description": "Park courses (#1313): web key parks.browseLink."
+  },
+  "eventCourseLinesMapBoth": "Map of the course's start and finish lines",
+  "@eventCourseLinesMapBoth": {
+    "description": "Accessible label of the event course map showing start and finish timing lines (#1305)"
+  },
+  "eventCourseLinesMapStart": "Map of the course's start line",
+  "@eventCourseLinesMapStart": {
+    "description": "Accessible label of the event course map showing only the start line (#1305)"
+  },
+  "eventCourseLinesMapFinish": "Map of the course's finish line",
+  "@eventCourseLinesMapFinish": {
+    "description": "Accessible label of the event course map showing only the finish line (#1305)"
+  },
+  "eventRacePreflightTitle": "Check the courses before arming",
+  "@eventRacePreflightTitle": {
+    "description": "Title of the dialog listing course warnings before a race is armed (#1305)"
+  },
+  "eventRacePreflightBlockedTitle": "This race can't be armed yet",
+  "@eventRacePreflightBlockedTitle": {
+    "description": "Title of the dialog when course errors stop a race from being armed (#1305)"
+  },
+  "eventRacePreflightFixOnWeb": "Course lines are edited in the event editor on the web.",
+  "@eventRacePreflightFixOnWeb": {
+    "description": "Closing line of the Arm preflight dialog: course lines are edited on the web (#1305)"
+  },
+  "eventRaceArmAnyway": "Arm anyway",
+  "@eventRaceArmAnyway": {
+    "description": "Button in the Arm preflight dialog that arms the race despite warnings (#1305)"
+  },
+  "eventRacePreflightOk": "OK",
+  "@eventRacePreflightOk": {
+    "description": "Button closing the dialog when course errors stop arming (#1305)"
+  },
+  "eventRacePreflightNoFinish": "{course}: no finish line or finish point, so runners finish by hand.",
+  "@eventRacePreflightNoFinish": {
+    "description": "Arm preflight issue: a course with no finish line and no finish point (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightNoStart": "{course}: no start line. A self-timed race needs one.",
+  "@eventRacePreflightNoStart": {
+    "description": "Arm preflight issue: a self-timed course with no start line (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightSelfCross": "{course}: the route crosses its own finish line before the end, so a finish by the line could come early.",
+  "@eventRacePreflightSelfCross": {
+    "description": "Arm preflight issue: the course route crosses its own finish line before its end (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightFarStart": "{course}: the start line is more than 100 m from the route.",
+  "@eventRacePreflightFarStart": {
+    "description": "Arm preflight issue: an organiser-placed start line more than 100 m from the route (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightFarFinish": "{course}: the finish line is more than 100 m from the route.",
+  "@eventRacePreflightFarFinish": {
+    "description": "Arm preflight issue: an organiser-placed finish line more than 100 m from the route (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
   },
   "clubVerificationStatusTitle": "Official verification",
   "@clubVerificationStatusTitle": {

@@ -4,7 +4,7 @@
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
 	import { initial, hashHue } from '#lib/format/avatar.ts';
@@ -36,6 +36,9 @@
 		fetchRecentRunsForPicker,
 		fetchRaceSession,
 		armRace,
+		fetchCourseLinesForOccurrence,
+		fetchEventCourseLines,
+		type CourseLinesRow,
 		startRace,
 		endRace,
 		approveEventResult,
@@ -88,6 +91,15 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import CourseLinesMap from '#lib/components/CourseLinesMap.svelte';
+	import {
+		courseGate,
+		preflightBlocks,
+		racePreflight,
+		type GatePoint,
+		type PreflightIssue
+	} from '#lib/races/course_gates.ts';
+	import type { DrawnGate } from '#lib/races/course_gate_layers.ts';
 	import EventEditor from '#lib/components/EventEditor.svelte';
 	import GymEditor from '#lib/components/GymEditor.svelte';
 	import CheckpointManager from '#lib/components/CheckpointManager.svelte';
@@ -240,6 +252,29 @@
 	// the RSVP course select — seeded from their stored RSVP and written with
 	// the next RSVP (or straight away when they already have one).
 	let courses = $state<EventCourse[]>([]);
+	// Each course's start and finish lines for the occurrence on screen
+	// (#1305): the race's frozen copy once it is armed, else the courses as
+	// they stand. Auxiliary: a failed read leaves the page as it was.
+	let courseLines = $state<CourseLinesRow[]>([]);
+	let linesCourseId = $state('');
+	let linesCourse = $derived(
+		courses.find((c) => c.id === linesCourseId) ??
+			courses.find((c) => c.id === courseChoice) ??
+			courses[0] ??
+			null
+	);
+	let linesGates = $derived.by<DrawnGate[]>(() => {
+		const row = linesCourse ? courseLines.find((r) => r.course_id === linesCourse.id) : undefined;
+		if (!row) return [];
+		const out: DrawnGate[] = [];
+		const s = courseGate(row, 'start');
+		const f = courseGate(row, 'finish');
+		if (s) out.push({ which: 'start', gate: s, courseId: row.course_id });
+		if (f) out.push({ which: 'finish', gate: f, courseId: row.course_id });
+		return out;
+	});
+	// The Arm preflight's findings, shown before the race is armed.
+	let preflightIssues = $state<PreflightIssue[] | null>(null);
 	let courseChoice = $state('');
 	let courseError = $state<string | null>(null);
 	let resultBoards = $derived(groupResultsByCourse(results, courses));
@@ -266,6 +301,7 @@
 	// claim decision / "this is me"), so a double-tap can't fire the write twice.
 	let resultActionBusy = $state<string | null>(null);
 	let raceSession = $state<RaceSessionRow | null>(null);
+	let linesFrozen = $derived(!!raceSession?.courses_frozen_at);
 	let raceBusy = $state(false);
 	let nowTick = $state(Date.now());
 	let autoApproveOnArm = $state(true);
@@ -1072,16 +1108,104 @@
 		});
 	}
 
-	async function handleArm() {
+	async function loadCourseLines() {
+		if (!event || courses.length === 0) {
+			courseLines = [];
+			return;
+		}
+		try {
+			courseLines = await fetchCourseLinesForOccurrence(event.id, activeInstance, linesFrozen);
+		} catch (e) {
+			console.warn('fetchCourseLinesForOccurrence failed', e);
+		}
+	}
+
+	// Re-read when the courses, the occurrence or the frozen copy change: an
+	// Arm (here, or seen over realtime) swaps the live lines for the frozen ones.
+	$effect(() => {
+		void courses;
+		void activeInstance;
+		void linesFrozen;
+		untrack(() => void loadCourseLines());
+	});
+
+	/// #1305's Arm preflight, for Host GO (the only start mode until #1306).
+	/// A failed read skips it rather than blocking the race: the preflight
+	/// advises, and the race director is standing at the line.
+	async function preflightFor(eventId: string): Promise<PreflightIssue[]> {
+		try {
+			const rows = await fetchEventCourseLines(eventId);
+			const routeCache = new Map<string, GatePoint[] | null>();
+			const routeOf = async (routeId: string | null): Promise<GatePoint[] | null> => {
+				if (!routeId) return null;
+				if (!routeCache.has(routeId)) {
+					const r = await fetchRouteById(routeId).catch(() => null);
+					routeCache.set(
+						routeId,
+						r ? r.waypoints.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)) : null
+					);
+				}
+				return routeCache.get(routeId) ?? null;
+			};
+			const input = await Promise.all(
+				courses.map(async (c) => {
+					const row = rows.find((r) => r.course_id === c.id);
+					const startGate = row ? courseGate(row, 'start') : null;
+					const finishGate = row ? courseGate(row, 'finish') : null;
+					const placed = startGate?.source === 'organiser' || finishGate?.source === 'organiser';
+					return {
+						id: c.id,
+						startGate,
+						finishGate,
+						hasFinishPoint: row?.finish_lat != null && row?.finish_lng != null,
+						selfCross: row?.finish_line_self_cross ?? false,
+						route: placed ? await routeOf(c.route_id) : null
+					};
+				})
+			);
+			return racePreflight(input, 'host_go');
+		} catch (e) {
+			console.warn('race preflight skipped', e);
+			return [];
+		}
+	}
+
+	/// Arm, after #1305's preflight: findings open the preflight dialog, whose
+	/// "Arm anyway" comes back here with `checked`.
+	async function handleArm(checked = false) {
 		if (!event || !activeInstance || raceBusy) return;
 		raceBusy = true;
 		try {
+			if (!checked && courses.length > 0) {
+				const issues = await preflightFor(event.id);
+				if (issues.length > 0) {
+					preflightIssues = issues;
+					return;
+				}
+			}
+			preflightIssues = null;
 			raceSession = await armRace(event.id, activeInstance, autoApproveOnArm);
 			broadcastRaceStateChanged();
 		} catch (e: unknown) {
 			error = errorCopy(e, m, 'clubEvent.armFailed', 'clubEvent.armFailed');
 		} finally {
 			raceBusy = false;
+		}
+	}
+
+	function preflightCopy(i: PreflightIssue): string {
+		const name = courses.find((c) => c.id === i.courseId)?.name ?? '';
+		switch (i.code) {
+			case 'no_finish':
+				return m('courseLines.preflightNoFinish', { name });
+			case 'no_start':
+				return m('courseLines.preflightNoStart', { name });
+			case 'self_cross':
+				return m('courseLines.preflightSelfCross', { name });
+			case 'gate_far_from_route':
+				return i.which === 'start'
+					? m('courseLines.preflightStartFar', { name })
+					: m('courseLines.preflightFinishFar', { name });
 		}
 	}
 
@@ -2220,6 +2344,40 @@
 					</a>
 				{/if}
 
+				{#if isAthletic && courseLines.some((r) => courseGate(r, 'start') || courseGate(r, 'finish'))}
+					<section class="course-lines" data-testid="event-course-lines" aria-labelledby="course-lines-title">
+						<div class="course-lines-head">
+							<h3 id="course-lines-title">{m('courseLines.displayTitle')}</h3>
+							{#if courses.length > 1}
+								<label class="course-lines-pick">
+									<span class="visually-hidden">{m('courseLines.pickCourse')}</span>
+									<select
+										value={linesCourse?.id ?? ''}
+										onchange={(e) => (linesCourseId = e.currentTarget.value)}
+										data-testid="event-course-lines-course"
+									>
+										{#each courses as c (c.id)}
+											<option value={c.id}>{c.name}</option>
+										{/each}
+									</select>
+								</label>
+							{/if}
+						</div>
+						{#if linesGates.length > 0}
+							<CourseLinesMap
+								gates={linesGates}
+								label={m('courseLines.mapLabel', { name: linesCourse?.name ?? '' })}
+								testid="event-course-lines-map"
+							/>
+						{:else}
+							<p class="muted">{m('courseLines.noLinesForCourse')}</p>
+						{/if}
+						<p class="muted small">
+							{linesFrozen ? m('courseLines.frozenNote') : m('courseLines.legend')}
+						</p>
+					</section>
+				{/if}
+
 				{#if meetPoint}
 					<div class="meet-point">
 						{#if meetMapUrl}
@@ -2789,7 +2947,7 @@
 						<input type="checkbox" bind:checked={autoApproveOnArm} />
 						<span>{m('clubEvent.autoApproveResults')}</span>
 					</label>
-					<button type="button" class="btn btn-primary-sm" onclick={handleArm} disabled={raceBusy}>
+					<button type="button" class="btn btn-primary-sm" onclick={() => handleArm()} disabled={raceBusy}>
 						{m('clubEvent.armRace')}
 					</button>
 				{:else if raceSession.status === 'armed'}
@@ -3361,6 +3519,41 @@
 			{/if}
 		</section>
 	</div>
+
+<Modal
+	open={preflightIssues !== null}
+	title={m('courseLines.preflightTitle')}
+	onclose={() => (preflightIssues = null)}
+	data-testid="race-preflight-dialog"
+>
+	{#if preflightIssues}
+		{@const blocked = preflightBlocks(preflightIssues)}
+		<p>{blocked ? m('courseLines.preflightBlocked') : m('courseLines.preflightIntro')}</p>
+		<ul class="preflight-list">
+			{#each preflightIssues as issue, i (i)}
+				<li class="preflight-{issue.severity}" data-testid="race-preflight-{issue.severity}">
+					<span class="material-symbols" aria-hidden="true">{issue.severity === 'error' ? 'error' : 'warning'}</span>
+					<span>
+						<span class="visually-hidden">
+							{issue.severity === 'error' ? m('courseLines.severityError') : m('courseLines.severityWarning')}
+						</span>
+						{preflightCopy(issue)}
+					</span>
+				</li>
+			{/each}
+		</ul>
+		<div class="preflight-actions">
+			<button type="button" class="btn btn-secondary" onclick={() => (preflightIssues = null)}>
+				{m('common.cancel')}
+			</button>
+			{#if !blocked}
+				<button type="button" class="btn btn-primary" onclick={() => handleArm(true)} disabled={raceBusy} data-testid="race-preflight-arm">
+					{m('courseLines.armAnyway')}
+				</button>
+			{/if}
+		</div>
+	{/if}
+</Modal>
 
 <ConfirmDialog
 	open={showEndRaceConfirm !== null}
@@ -3970,6 +4163,51 @@
 		gap: 0.6rem;
 	}
 
+	.course-lines {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		margin-top: var(--space-md);
+	}
+	.course-lines-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+	}
+	.course-lines-head h3 {
+		margin: 0;
+		font-size: 1rem;
+	}
+	.course-lines .small {
+		font-size: 0.85rem;
+		margin: 0;
+	}
+	.preflight-list {
+		list-style: none;
+		padding: 0;
+		margin: var(--space-sm) 0;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-xs);
+	}
+	.preflight-list li {
+		display: flex;
+		gap: var(--space-xs);
+		align-items: flex-start;
+	}
+	.preflight-warning .material-symbols {
+		color: var(--color-warning-text);
+	}
+	.preflight-error .material-symbols {
+		color: var(--color-danger-text);
+	}
+	.preflight-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-sm);
+	}
 	.route-chip {
 		display: inline-flex;
 		align-items: center;

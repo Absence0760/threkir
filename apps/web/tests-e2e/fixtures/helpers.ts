@@ -183,3 +183,14 @@ export async function signOut(page: Page) {
 export async function switchRunsToAllTime(page: Page) {
 	await page.getByLabel('Date range').selectOption('all');
 }
+
+/// /plans/[id] folds the weeks before the current one into one summary row
+/// while the plan runs (decisions § 2363). A spec that reads the whole plan's
+/// week grid opens it first; on a plan with nothing folded this is a no-op.
+export async function showAllPlanWeeks(page: Page) {
+	await expect(page.locator('section.weeks .week').first()).toBeVisible({ timeout: 10_000 });
+	const earlier = page.getByTestId('plan-earlier-weeks');
+	if ((await earlier.count()) === 0) return;
+	if ((await earlier.getAttribute('aria-expanded')) !== 'true') await earlier.click();
+	await expect(earlier).toHaveAttribute('aria-expanded', 'true');
+}

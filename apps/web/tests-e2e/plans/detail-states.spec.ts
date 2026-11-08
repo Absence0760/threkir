@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
+import { showAllPlanWeeks } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
 import { readMaybeRow, readRows } from '../fixtures/db-read';
@@ -101,6 +102,7 @@ test.describe('/plans/[id] — workout and plan states', () => {
 		await admin.from('plan_weeks').update({ notes: 'Bring the race-day gels.' }).eq('id', race!.id);
 		try {
 			await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
+			await showAllPlanWeeks(page);
 			const weekCards = page.locator('.weeks .week');
 			await expect(weekCards.nth(taper!.week_index).getByTestId('plan-week-note')).toHaveText(
 				'Taper — volume comes down, sharpness stays.',

@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { liveMonthLabel, seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, showAllPlanWeeks } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — PlanCalendar.svelte (the month-view calendar mounted
@@ -366,6 +366,7 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		// also flips the matching calendar cell because PlanCalendar
 		// renders from the same `workouts` array. Pick a specific
 		// non-completed workout (Apr 7 tempo) to keep this deterministic.
+		await showAllPlanWeeks(page);
 		const tempoDay = page.locator('.weeks .week .day:not([data-status="done"]) .day-link', {
 			hasText: /Tempo/
 		}).first();

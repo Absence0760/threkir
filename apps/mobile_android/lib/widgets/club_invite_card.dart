@@ -96,6 +96,7 @@ class ClubInviteButton extends StatelessWidget {
       onPressed: () => showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
+        useSafeArea: true,
         showDragHandle: true,
         builder: (sheetContext) => SafeArea(
           child: SingleChildScrollView(

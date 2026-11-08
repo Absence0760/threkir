@@ -17,7 +17,13 @@
       "direction": "clockwise",
       "surface": "trail",
       "difficulty": "moderate",
-      "osm_ways": [303463878, 303485217, 303485220, 1066130682, 1066130683],
+      "osm_ways": [
+        303463878,
+        303485217,
+        303485220,
+        1066130682,
+        1066130683
+      ],
       "start_node": 3078237896,
       "start_note": "Where the spur from the Beaver Lake trailhead (by the CCC Museum parking) meets the loop.",
       "checkpoint_count": 3,
@@ -26,6 +32,112 @@
         "source": "https://www.dcr.virginia.gov/state-parks/hiking-central",
         "note": "DCR's central-region hiking page: a moderately difficult 2.3-mile loop. Other guides say 2.5 mi, which includes the trailhead spur."
       }
+    }
+  ],
+  "race_courses": [
+    {
+      "slug": "swift-creek-5k",
+      "name": "Swift Creek 5K",
+      "race_distance": "5k",
+      "laps": 1,
+      "surface": "trail",
+      "osm_ways": [
+        19937462,
+        19944982,
+        287546057,
+        287546059,
+        287546060,
+        287546061,
+        305588774,
+        307664200,
+        658276220,
+        1066130691,
+        1533115532,
+        1533115533,
+        1533115534,
+        1533115535
+      ],
+      "lead_in_via": [
+        209417837,
+        3816522348,
+        3457100638,
+        2911685944,
+        2911685950
+      ],
+      "loop_via": [
+        2911685950,
+        2911685967,
+        209612182,
+        6164550651,
+        13971353820,
+        13971353821,
+        13971353807,
+        6164550437,
+        6164550401,
+        13971353840,
+        2911685937,
+        4018834141,
+        2911685932,
+        6164550062,
+        6164550061,
+        6164550040,
+        2911685952,
+        2911685950
+      ],
+      "start_note": "Start and finish on the lead-in from the boat-ramp parking lot to the Swift Creek Lake footbridge; the loop runs clockwise from the far end of the bridge on the Forest Exploration, Loop Forest and Co-op trails.",
+      "checkpoints_per_lap": 3
+    },
+    {
+      "slug": "swift-creek-10k",
+      "name": "Swift Creek 10K",
+      "race_distance": "10k",
+      "laps": 2,
+      "surface": "trail",
+      "osm_ways": [
+        19937462,
+        19944982,
+        287546057,
+        287546059,
+        287546060,
+        287546061,
+        305588774,
+        307664200,
+        658276220,
+        1066130691,
+        1533115532,
+        1533115533,
+        1533115534,
+        1533115535
+      ],
+      "lead_in_via": [
+        209417837,
+        3816522348,
+        3457100638,
+        2911685944,
+        2911685950
+      ],
+      "loop_via": [
+        2911685950,
+        2911685967,
+        209612182,
+        6164550651,
+        13971353820,
+        13971353821,
+        13971353807,
+        6164550437,
+        6164550401,
+        13971353840,
+        2911685937,
+        4018834141,
+        2911685932,
+        6164550062,
+        6164550061,
+        6164550040,
+        2911685952,
+        2911685950
+      ],
+      "start_note": "Start and finish on the lead-in from the boat-ramp parking lot to the Swift Creek Lake footbridge; the loop runs clockwise from the far end of the bridge on the Forest Exploration, Loop Forest and Co-op trails.",
+      "checkpoints_per_lap": 3
     }
   ]
 }

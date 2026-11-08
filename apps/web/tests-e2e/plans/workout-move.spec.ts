@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — moving a workout to another day from the workout editor
@@ -13,6 +14,10 @@ import { USER_A } from '../fixtures/users';
  */
 test.describe('/plans/[id] — move a workout to another day', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	const admin = getAdminClient();
 	let planId: string;

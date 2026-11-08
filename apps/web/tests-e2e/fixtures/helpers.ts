@@ -2,6 +2,8 @@ import { chromium, expect, type Browser, type BrowserContext, type Page } from '
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
+import { PLAN_DETAIL_DISCLOSURE_DEFAULTS, PLAN_DETAIL_DISCLOSURE_SCOPE } from '../../src/lib/training/plan_detail_sections.ts';
+import { disclosureStorageKey } from '../../src/lib/util/disclosure_state.ts';
 import type { SeededUser } from './users';
 
 /**
@@ -184,10 +186,29 @@ export async function switchRunsToAllTime(page: Page) {
 	await page.getByLabel('Date range').selectOption('all');
 }
 
-/// /plans/[id] folds the weeks before the current one into one summary row
-/// while the plan runs (decisions § 2366). A spec that reads the whole plan's
-/// week grid opens it first; on a plan with nothing folded this is a no-op.
+/// /plans/[id] opens with every named section shut (decisions § 2375). A spec
+/// about what sits inside one seeds the state a runner who had opened them all
+/// would have remembered, so it reads the section rather than the default.
+/// The result is `local` storage for `acceptCookieConsent` / `setStorageOnLoad`;
+/// it is rewritten on every load, so a spec that toggles a section itself
+/// leaves this out.
+export function planSectionsOpen(userId: string): Record<string, string> {
+	const open = Object.fromEntries(Object.keys(PLAN_DETAIL_DISCLOSURE_DEFAULTS).map((k) => [k, true]));
+	return { [disclosureStorageKey(PLAN_DETAIL_DISCLOSURE_SCOPE, userId)]: JSON.stringify(open) };
+}
+
+/// /plans/[id] starts the **Week by week** section shut (decisions § 2375)
+/// and folds the weeks before the current one into one summary row while the
+/// plan runs (§ 2366). A spec that reads the whole plan's week grid opens both
+/// first, through the same clicks a runner would; either step is a no-op when
+/// it is already open or there is nothing folded.
 export async function showAllPlanWeeks(page: Page) {
+	const section = page.locator('section.weeks details');
+	await expect(section).toBeAttached({ timeout: 10_000 });
+	if ((await section.getAttribute('open')) === null) {
+		await page.locator('#plan-weeks-title').click();
+		await expect(section).toHaveAttribute('open', '');
+	}
 	await expect(page.locator('section.weeks .week').first()).toBeVisible({ timeout: 10_000 });
 	const earlier = page.getByTestId('plan-earlier-weeks');
 	if ((await earlier.count()) === 0) return;

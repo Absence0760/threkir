@@ -4,7 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
 import { readMaybeRow } from '../fixtures/db-read';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, planSectionsOpen } from '../fixtures/helpers';
 
 /**
  * Workout structured-interval edit (web).
@@ -27,7 +27,7 @@ test.describe('Workout structured-interval edit (web)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	test.beforeEach(async ({ context }) => {
-		await acceptCookieConsent(context);
+		await acceptCookieConsent(context, planSectionsOpen(USER_A.id));
 	});
 
 	test('edit interval structure (warmup + reps + recovery) and persist', async ({

@@ -5,7 +5,7 @@ import { expect, test } from '../fixtures/test';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A, USER_B } from '../fixtures/users';
-import { acceptCookieConsent, setStorageOnLoad, showAllPlanWeeks } from '../fixtures/helpers';
+import { acceptCookieConsent, setStorageOnLoad, showAllPlanWeeks, planSectionsOpen } from '../fixtures/helpers';
 import {
 	createThrowawayPlan,
 	deleteThrowawayPlan,
@@ -118,7 +118,7 @@ test.describe('runs ↔ plans on /plans/[id]', () => {
 
 	async function openPlan(browser: Browser): Promise<Page> {
 		ctx = await browser.newContext({ storageState: plan!.user.storageStatePath });
-		await acceptCookieConsent(ctx);
+		await acceptCookieConsent(ctx, planSectionsOpen(plan!.user.id));
 		const page = await ctx.newPage();
 		await page.goto(`/plans/${plan!.planId}`);
 		return page;

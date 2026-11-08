@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { browserDate } from '../fixtures/dates';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B, USER_C_PRO } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — who gets the workout editor (issue #1186). The plan_workouts
@@ -56,6 +57,9 @@ test.describe('/plans/[id] — the workout editor is offered only to who may sav
 	}
 
 	test.beforeEach(cleanLinks);
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_B.id) });
+	});
 	test.afterEach(async () => {
 		await admin.from('training_plans').delete().eq('id', planId);
 		await cleanLinks();

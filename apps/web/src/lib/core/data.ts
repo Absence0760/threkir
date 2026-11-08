@@ -6089,6 +6089,9 @@ export interface RacePingRow {
 	elapsed_s: number | null;
 	bpm: number | null;
 	coarse: boolean;
+	/// Seconds since this runner crossed the start line (#1306 M13). Null
+	/// from an Apple Watch relay, an older app, or before the crossing.
+	since_start_line_s?: number | null;
 }
 
 /// Recent pings for a race instance, newest first. The spectator page

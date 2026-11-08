@@ -68,6 +68,7 @@ const HOMES: Record<string, Home> = {
 	notify_club_join_request: { page: 'notifications' },
 	notify_club_join_approved: { page: 'notifications' },
 	notify_event_updated: { page: 'notifications' },
+	notify_course_alert: { page: 'notifications' },
 	notify_workout_reminder: { page: 'notifications' },
 	email_new_device_alerts: { page: 'notifications' },
 	locale: {

@@ -12,6 +12,7 @@ function make(overrides: {
 	plan_id?: string | null;
 	achievement_id?: string | null;
 	challenge_id?: string | null;
+	course_alert_id?: string | null;
 	event_club_slug?: string | null;
 	club_slug?: string | null;
 }): NotificationLinkInput {
@@ -25,6 +26,7 @@ function make(overrides: {
 			plan_id: overrides.plan_id ?? null,
 			achievement_id: overrides.achievement_id ?? null,
 			challenge_id: overrides.challenge_id ?? null,
+			course_alert_id: overrides.course_alert_id ?? null,
 		},
 		event_club_slug: overrides.event_club_slug ?? null,
 		club_slug: overrides.club_slug ?? null,
@@ -241,6 +243,7 @@ test('every routed kind reaches a destination when it has its ids', () => {
 		plan_id: 'p-1',
 		achievement_id: 'a-1',
 		challenge_id: 'c-1',
+		course_alert_id: 'ca-1',
 		event_club_slug: 'club',
 		club_slug: 'club',
 	};
@@ -272,3 +275,8 @@ test('the unlinked register does not name a kind the column dropped', () => {
 	}
 });
 
+
+test('course_alert opens the stable-id resolver, and nothing without its id', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'course_alert', course_alert_id: 'ca-1' })), '/course-alerts/ca-1');
+	assert.equal(notificationLinkFor(make({ kind: 'course_alert' })), null);
+});

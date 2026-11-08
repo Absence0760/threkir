@@ -19,6 +19,7 @@ export interface NotificationLinkInput {
 		plan_id: string | null;
 		achievement_id: string | null;
 		challenge_id: string | null;
+		course_alert_id?: string | null;
 	};
 	event_club_slug: string | null;
 	club_slug: string | null;
@@ -102,6 +103,10 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			return r.event_id && item.event_club_slug
 				? `/clubs/${item.event_club_slug}/events/${r.event_id}`
 				: null;
+		case 'course_alert':
+			// The stable-id resolver opens the race or route the alert is on
+			// (decisions § 2407); the row carries only the alert's id.
+			return r.course_alert_id ? `/course-alerts/${r.course_alert_id}` : null;
 		case 'content_hidden':
 			return null;
 		default:

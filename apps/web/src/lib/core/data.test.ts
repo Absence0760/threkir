@@ -2274,7 +2274,14 @@ test('every gym / meal-template / recipe read and the row type it is read as nam
 			extra: { routine_exercise_id: 'the grouping key the rows are bucketed by, not a field of a set' },
 		},
 		{ fn: 'createGymRoutine', type: 'GymRoutineSummary', table: 'gym_routines' },
-		{ fn: 'fetchClubGymRoutineTemplates', type: 'GymRoutineSummary', table: 'gym_routines' },
+		{
+			fn: 'fetchClubGymRoutineTemplates',
+			type: 'GymRoutineSummary',
+			table: 'gym_routines',
+			extra: {
+				is_official: 'the computed field (20271021000030); the club page reads it as OfficialFlag beside the summary to badge a verified organiser\'s routine',
+			},
+		},
 		{
 			fn: 'fetchPublicGymRoutineLibrary',
 			type: 'GymRoutineSummary',

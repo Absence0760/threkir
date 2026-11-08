@@ -57,7 +57,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
 	import type { GymRoutineSummary } from '#lib/core/data.ts';
-	import type { Route, TrainingPlan, SessionPlan } from '#lib/types.ts';
+	import type { OfficialFlag, Route, TrainingPlan, SessionPlan } from '#lib/types.ts';
 	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -69,6 +69,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import ClubPhotos from '#lib/components/ClubPhotos.svelte';
 	import type {
 		ClubWithMeta,
@@ -134,7 +135,7 @@
 	let clubTemplates = $state<TrainingPlan[]>([]);
 	let sessionTemplates = $state<SessionPlan[]>([]);
 	let adoptingSession = $state('');
-	let gymRoutineTemplates = $state<GymRoutineSummary[]>([]);
+	let gymRoutineTemplates = $state<(GymRoutineSummary & OfficialFlag)[]>([]);
 	let adoptingRoutine = $state('');
 	const templatesCount = $derived(
 		clubTemplates.length + sessionTemplates.length + gymRoutineTemplates.length
@@ -1721,7 +1722,7 @@
 						{#each gymRoutineTemplates as g (g.id)}
 							<li class="template-row">
 								<a href="/gym/routines/{g.id}" class="template-link">
-									<strong>{g.title}</strong>
+									<strong>{g.title}{#if g.is_official}<OfficialBadge />{/if}</strong>
 									<span class="template-meta">
 										{tr('clubHome.routineExerciseCount', { n: g.exercise_count })}
 									</span>

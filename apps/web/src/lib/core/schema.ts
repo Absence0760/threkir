@@ -63,6 +63,7 @@ export const TABLES = {
 	run_photos: 'run_photos',
 	run_gear: 'run_gear',
 	notifications: 'notifications',
+	course_alerts: 'course_alerts',
 	direct_messages: 'direct_messages',
 	coach_athletes: 'coach_athletes',
 	plan_change_requests: 'plan_change_requests',

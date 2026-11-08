@@ -140,6 +140,7 @@ import type {
 	FundraiserStatus,
 	FundraiserFeedEntry,
 	FundraiserTotals,
+	CourseAlertKind,
 	RaceCourseSource,
 	RaceListing,
 	RaceProvider,
@@ -155,6 +156,7 @@ import {
 	parseNutritionAssignmentStatus,
 	parseNutritionGoalPhase,
 	parseNutritionProgression,
+	parseCourseAlertKind,
 	parseRaceCourseSource,
 	parseRouteSurface,
 	parseRunMetadata,
@@ -2966,6 +2968,9 @@ export interface RaceListingResult {
 	results_url: string | null;
 	is_verified: boolean;
 	distance_m_away: number | null;
+	/// The claiming club is verified, public and unhidden right now
+	/// (public_race_listings, decisions § 2406). Never stored per row.
+	organiser_is_official: boolean;
 }
 
 /// Race discovery (security invoker, public clubs/listings). Mirrors
@@ -3006,6 +3011,9 @@ export interface RaceListingDetail {
 	/// The verified club that claimed the race (decisions § 2381). Null while
 	/// unclaimed, and while the club is private or moderated away.
 	organiser: RaceOrganiser | null;
+	/// The organiser club is verified right now (decisions § 2406); a club
+	/// whose badge was revoked still names itself but vouches for nothing.
+	organiserIsOfficial: boolean;
 	/// The linked course's summary. The view fills it only while the route is
 	/// public, so null covers "no course" and "a course nobody may see" alike
 	/// (decisions § 2157).
@@ -3034,7 +3042,7 @@ export interface RaceListingCourse {
 }
 
 const RACE_LISTING_DETAIL_COLUMNS =
-	'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug';
+	'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug, organiser_is_official';
 
 type RaceListingDetailRow = Pick<
 	Database['public']['Views']['public_race_listings']['Row'],
@@ -3057,6 +3065,7 @@ type RaceListingDetailRow = Pick<
 	| 'organiser_club_id'
 	| 'organiser_club_name'
 	| 'organiser_club_slug'
+	| 'organiser_is_official'
 >;
 
 function raceListingDetailFromRow(data: RaceListingDetailRow): RaceListingDetail | null {
@@ -3080,6 +3089,7 @@ function raceListingDetailFromRow(data: RaceListingDetailRow): RaceListingDetail
 			data.organiser_club_id && data.organiser_club_name
 				? { id: data.organiser_club_id, name: data.organiser_club_name, slug: data.organiser_club_slug }
 				: null,
+		organiserIsOfficial: data.organiser_is_official === true,
 		course: hasCourse
 			? {
 					distanceM: data.course_distance_m,
@@ -3210,6 +3220,95 @@ export async function fetchRaceCourseSuggestionsForReview(
 		note: r.note,
 		createdAt: r.created_at
 	}));
+}
+
+/// An organiser's course alert on a race it claimed or a route its club
+/// owns (decisions § 2407). Readable only while the club is still verified,
+/// and a route alert only by someone who can see the route; who typed it is
+/// never readable.
+export interface CourseAlert {
+	id: string;
+	clubId: string;
+	listingId: string | null;
+	routeId: string | null;
+	kind: CourseAlertKind;
+	message: string;
+	createdAt: string;
+}
+
+export type CourseAlertTarget = { listingId: string; routeId?: undefined } | { routeId: string; listingId?: undefined };
+
+const COURSE_ALERT_COLUMNS = 'id, club_id, listing_id, route_id, kind, message, created_at';
+
+function courseAlertFromRow(r: {
+	id: string;
+	club_id: string;
+	listing_id: string | null;
+	route_id: string | null;
+	kind: string;
+	message: string;
+	created_at: string;
+}): CourseAlert {
+	return {
+		id: r.id,
+		clubId: r.club_id,
+		listingId: r.listing_id,
+		routeId: r.route_id,
+		kind: parseCourseAlertKind(r.kind),
+		message: r.message,
+		createdAt: r.created_at
+	};
+}
+
+/// A race's or a route's alerts, newest first.
+export async function fetchCourseAlerts(target: CourseAlertTarget, limit = 20): Promise<CourseAlert[]> {
+	const id = target.listingId ?? target.routeId;
+	if (!isEntityId(id)) return [];
+	const query = supabase.from(TABLES.course_alerts).select(COURSE_ALERT_COLUMNS);
+	const { data, error } = await (target.listingId
+		? query.eq('listing_id', target.listingId)
+		: query.eq('route_id', id))
+		.order('created_at', { ascending: false })
+		.limit(limit);
+	if (error) throw dbError(error);
+	return (data ?? []).map(courseAlertFromRow);
+}
+
+/// Where an alert points, for the stable-id resolver a notification links to.
+/// Null when the alert is gone or its club no longer vouches for it.
+export async function fetchCourseAlertTarget(
+	alertId: string
+): Promise<{ listingId: string | null; routeId: string | null } | null> {
+	if (!isEntityId(alertId)) return null;
+	const { data, error } = await supabase
+		.from(TABLES.course_alerts)
+		.select('listing_id, route_id')
+		.eq('id', alertId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? { listingId: data.listing_id, routeId: data.route_id } : null;
+}
+
+/// Posts an alert as the organiser club; the RPC is the gate and tells the
+/// runners training for the race or who saved its course.
+export async function postCourseAlert(
+	target: CourseAlertTarget,
+	kind: CourseAlertKind,
+	message: string
+): Promise<string> {
+	const { data, error } = await supabase.rpc('post_course_alert', {
+		p_listing_id: target.listingId ?? null,
+		p_route_id: target.routeId ?? null,
+		p_kind: kind,
+		p_message: message.trim()
+	});
+	if (error) throw dbError(error);
+	return data;
+}
+
+export async function deleteCourseAlert(alertId: string): Promise<void> {
+	const { error } = await supabase.rpc('delete_course_alert', { p_alert_id: alertId });
+	if (error) throw dbError(error);
 }
 
 /// A race with pending course suggestions the signed-in runner may review
@@ -14844,17 +14943,19 @@ export async function cloneSessionTemplate(templateId: string): Promise<string> 
 
 /** Club-owned gym routines published as templates (gym_routines.club_id set).
  *  RLS exposes these to club members via private.is_club_member. */
-export async function fetchClubGymRoutineTemplates(clubId: string): Promise<GymRoutineSummary[]> {
+export async function fetchClubGymRoutineTemplates(
+	clubId: string,
+): Promise<(GymRoutineSummary & OfficialFlag)[]> {
 	const { data, error } = await supabase
 		.from(TABLES.gym_routines)
-		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at')
+		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at, is_official')
 		.eq('club_id', clubId)
 		.order('last_modified_at', { ascending: false });
 	if (error) {
 		console.error('fetchClubGymRoutineTemplates failed', error);
 		return [];
 	}
-	return (data ?? []) as GymRoutineSummary[];
+	return data ?? [];
 }
 
 /** Publish a personal gym routine into a club-owned template. The

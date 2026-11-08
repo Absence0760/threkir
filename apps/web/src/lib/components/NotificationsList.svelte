@@ -212,6 +212,10 @@
 				return item.event_title
 					? m('notificationsList.verbEventUpdatedTitled', { title: item.event_title })
 					: m('notificationsList.verbEventUpdated');
+			case 'course_alert':
+				return item.club_name
+					? m('notificationsList.verbCourseAlertNamed', { club: item.club_name })
+					: m('notificationsList.verbCourseAlert');
 			case 'club_join_request':
 				return item.club_name
 					? m('notificationsList.verbClubJoinRequestNamed', { name, club: item.club_name })

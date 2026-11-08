@@ -19,6 +19,7 @@ export interface GroupableNotification {
 	plan_id: string | null;
 	achievement_id: string | null;
 	challenge_id: string | null;
+	course_alert_id?: string | null;
 	read_at: string | null;
 	created_at: string;
 }
@@ -89,6 +90,10 @@ function targetKeyFor(n: GroupableNotification): string {
 		case 'personal_record':
 			// One per run (the trigger collapses the brackets a run improved),
 			// and two runs are two records: "and 1 other" would hide one.
+			return solo;
+		case 'course_alert':
+			// One notice per recipient per alert, and two alerts are two
+			// different course changes: never collapse them.
 			return solo;
 		case 'workout_reminder':
 			// One a day, each about that day's session: yesterday's is not a

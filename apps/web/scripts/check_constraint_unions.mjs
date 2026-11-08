@@ -826,6 +826,16 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'course_alerts.kind',
+		clients: [
+			{ file: TS_TYPES, decl: 'CourseAlertKind', shape: 'union' },
+			{ file: TS_TYPES, decl: 'COURSE_ALERT_KINDS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/race_service.dart', decl: 'kCourseAlertKinds', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/widgets/course_alerts_section.dart', decl: 'courseAlertKindLabel', shape: 'switch' },
+			{ file: 'apps/mobile_android/lib/widgets/course_alerts_section.dart', decl: 'courseAlertIcon', shape: 'switch' },
+		],
+	},
+	{
 		tableColumn: 'race_listing_audit.action',
 		clients: [],
 		note: 'written only by the race-course definer RPCs (migration 20271114002381) and never named by a client.',

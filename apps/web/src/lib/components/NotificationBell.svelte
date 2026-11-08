@@ -155,6 +155,10 @@
 				return item.event_title
 					? m('notificationBell.eventUpdatedTitled', { title: item.event_title })
 					: m('notificationBell.eventUpdated');
+			case 'course_alert':
+				return item.club_name
+					? m('notificationBell.courseAlertNamed', { club: item.club_name })
+					: m('notificationBell.courseAlert');
 			case 'club_join_request':
 				return item.club_name
 					? m('notificationBell.clubJoinRequestNamed', { name, club: item.club_name })

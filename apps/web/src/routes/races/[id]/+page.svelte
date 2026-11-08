@@ -32,6 +32,9 @@
 	} from '#lib/core/data.ts';
 	import { raceCourseSourceLabel, raceSourceLabel } from '#lib/integrations/race_source.ts';
 	import RaceCourseTools from '#lib/components/RaceCourseTools.svelte';
+	import ProvenanceBadge from '#lib/components/ProvenanceBadge.svelte';
+	import CourseAlerts from '#lib/components/CourseAlerts.svelte';
+	import { raceCourseProvenance, raceListingProvenance } from '#lib/social/provenance.ts';
 	import { buildRaceShareCanonical } from '#lib/share/share_race_meta.ts';
 	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -262,8 +265,30 @@
 		return parts;
 	});
 
+	let listingProvenance = $derived(
+		race
+			? raceListingProvenance({
+					organiserIsOfficial: race.organiserIsOfficial,
+					provider: race.provider,
+					isVerified: race.is_verified,
+				})
+			: null,
+	);
+	let courseProvenance = $derived(
+		race
+			? raceCourseProvenance({
+					hasCourse: race.course != null,
+					organiserIsOfficial: race.organiserIsOfficial,
+					courseSource: race.course?.source ?? null,
+				})
+			: null,
+	);
+	// The sentence names the club as the course's source, so it is shown only
+	// while that club still vouches for it (decisions § 2406).
 	let courseSource = $derived(
-		race?.course ? raceCourseSourceLabel(race.course.source, race.organiser?.name ?? null) : null,
+		race?.course && race.organiserIsOfficial
+			? raceCourseSourceLabel(race.course.source, race.organiser?.name ?? null)
+			: null,
 	);
 
 	const coursePoints = $derived(routePathPoints(courseRoute?.waypoints));
@@ -317,6 +342,11 @@
 				{#if race.distance_m}· {formatDistance(race.distance_m)}{/if}
 				{#if race.location_label}· {race.location_label}{/if}
 			</p>
+			{#if listingProvenance}
+				<p class="source" data-testid="race-detail-provenance">
+					<ProvenanceBadge kind={listingProvenance} />
+				</p>
+			{/if}
 			<p class="source" data-testid="race-detail-source">
 				{raceSourceLabel(race.provider, race.organiser?.name ?? null)}
 			</p>
@@ -402,6 +432,11 @@
 				{#if courseParts.length > 0}
 					<p class="course-summary">{courseParts.join(' · ')}</p>
 				{/if}
+				{#if courseProvenance}
+					<p class="course-provenance" data-testid="race-detail-course-provenance">
+						<ProvenanceBadge kind={courseProvenance} />
+					</p>
+				{/if}
 				{#if courseSource}
 					<p class="course-provenance" data-testid="race-detail-course-source">
 						{courseSource}{#if race.course?.checkedAt}
@@ -438,6 +473,12 @@
 				{/if}
 			</section>
 		{/if}
+
+		<CourseAlerts
+			target={{ listingId: race.id }}
+			clubId={race.organiserIsOfficial ? (race.organiser?.id ?? null) : null}
+			signedIn={auth.user != null}
+		/>
 
 		<RaceCourseTools
 			{race}

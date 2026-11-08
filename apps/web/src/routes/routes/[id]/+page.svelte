@@ -10,6 +10,7 @@
 	import { goto } from '$app/navigation';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import CourseAlerts from '#lib/components/CourseAlerts.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
 	import type { RouteMarker } from '#lib/types.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -1241,6 +1242,8 @@
 					</p>
 				{/if}
 			</section>
+
+			<CourseAlerts target={{ routeId: route.id }} clubId={route.club_id ?? null} signedIn={auth.loggedIn} />
 
 			<section class="section">
 				<SegmentsPanel

@@ -195,6 +195,18 @@ export function parseRaceCourseSource(raw: string | null | undefined): RaceCours
 	return raw === 'official' || raw === 'traced' ? raw : null;
 }
 
+// What an organiser's course alert is about (migration 20271124002407,
+// decisions § 2407): a reroute, a closure, the course direction (Comrades'
+// up/down year) or a general notice. Narrow union enforced by the CHECK
+// constraint + check_constraint_unions.mjs.
+export type CourseAlertKind = 'reroute' | 'closure' | 'direction' | 'notice';
+
+export const COURSE_ALERT_KINDS: readonly CourseAlertKind[] = ['reroute', 'closure', 'direction', 'notice'];
+
+export function parseCourseAlertKind(raw: string | null | undefined): CourseAlertKind {
+	return raw === 'reroute' || raw === 'closure' || raw === 'direction' ? raw : 'notice';
+}
+
 // submitted_by is omitted: reads go through the redacted public_race_listings
 // view (migration 20270320_001), which never carries the submitter crosswalk.
 export type RaceListing = Omit<RaceListingRow, 'provider' | 'submitted_by' | 'course_source'> & {
@@ -637,7 +649,8 @@ export type NotificationKind =
 	| 'club_join_approved'
 	| 'event_updated'
 	| 'plan_change_request'
-	| 'plan_change_decision';
+	| 'plan_change_decision'
+	| 'course_alert';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

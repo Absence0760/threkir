@@ -350,6 +350,9 @@ var importantKinds = map[string]bool{
 	// athlete is waiting on the answer (decisions § 2382).
 	"plan_change_request":  true,
 	"plan_change_decision": true,
+	// A club's verified badge was granted, refused, revoked or dropped; the
+	// owner may have to act to get it back (decisions § 2398).
+	"club_verification": true,
 }
 
 // pushImportantKinds are carried by the default "important" PUSH mode but not
@@ -551,6 +554,10 @@ func pathForKind(kind, base string, n NotificationRow) string {
 	case "club_join_request", "club_join_approved":
 		// The club home, where a request's approve and decline sit for its
 		// admins and where an approved member lands.
+		return clubPath(base, n)
+	case "club_verification":
+		// The club home, whose verification card says what changed and why
+		// (decisions § 2398).
 		return clubPath(base, n)
 	case "plan_update", "plan_assigned":
 		// Training plans live at /plans — there is no /training route, so the

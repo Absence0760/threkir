@@ -210,6 +210,25 @@ export const PAIRS = [
 		clients: [{ file: TS_TYPES, decl: 'MembershipStatus', shape: 'union' }],
 	},
 	{
+		tableColumn: 'club_verification_requests.status',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/widgets/club_verification_status_card.dart', decl: '_statusLine', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'club_verification_requests.proof_method',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_PROOF_METHODS', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'club_verification_audit.action',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_AUDIT_ACTIONS', shape: 'strings' },
+		],
+	},
+	{
 		tableColumn: 'clubs.join_policy',
 		clients: [{ file: TS_TYPES, decl: 'JoinPolicy', shape: 'union' }],
 	},

@@ -5872,5 +5872,20 @@
   "eventRacePreflightNoStart": "{course}: sem linha de partida. Uma corrida cronometrada por cada um precisa de uma.",
   "eventRacePreflightSelfCross": "{course}: o trajeto cruza a sua própria linha de chegada antes do fim, por isso uma chegada pela linha pode ser antecipada.",
   "eventRacePreflightFarStart": "{course}: a linha de partida está a mais de 100 m do trajeto.",
-  "eventRacePreflightFarFinish": "{course}: a linha de chegada está a mais de 100 m do trajeto."
+  "eventRacePreflightFarFinish": "{course}: a linha de chegada está a mais de 100 m do trajeto.",
+  "clubVerificationStatusTitle": "Verificação oficial",
+  "clubVerificationStatusVerified": "Verificado como a presença oficial de {org} ({domain}).",
+  "clubVerificationStatusVerifiedLegacy": "Verificado como organização oficial.",
+  "clubVerificationStatusPending": "O pedido para {org} aguarda análise. Ainda não foi encontrada prova do domínio.",
+  "clubVerificationStatusPendingProof": "O pedido para {org} aguarda análise. Prova do domínio encontrada.",
+  "clubVerificationStatusRejected": "O último pedido não foi aprovado: {reason}",
+  "clubVerificationStatusRevoked": "O selo foi removido: {reason}",
+  "clubVerificationStatusLapsed": "O selo foi removido após uma alteração no clube ou no seu domínio e precisa de uma nova análise.",
+  "clubVerificationStatusWithdrawn": "O último pedido foi retirado.",
+  "clubVerificationStatusNone": "Não verificado.",
+  "clubVerificationStatusWebHint": "Os pedidos e as provas de domínio são geridos na web.",
+  "clubVerificationStatusLoadFailed": "Não foi possível carregar o estado da verificação.",
+  "clubVerificationStatusRetry": "Tentar novamente",
+  "profileNotifClubVerification": "Há uma novidade sobre a verificação do seu clube",
+  "profileNotifClubVerificationNamed": "Há uma novidade sobre a verificação de {club}"
 }

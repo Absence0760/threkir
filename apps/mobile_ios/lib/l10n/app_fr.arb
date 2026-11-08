@@ -5872,5 +5872,20 @@
   "eventRacePreflightNoStart": "{course} : pas de ligne de départ. Une course chronométrée par chacun en a besoin.",
   "eventRacePreflightSelfCross": "{course} : l’itinéraire croise sa propre ligne d’arrivée avant la fin, une arrivée par la ligne pourrait donc venir trop tôt.",
   "eventRacePreflightFarStart": "{course} : la ligne de départ est à plus de 100 m de l’itinéraire.",
-  "eventRacePreflightFarFinish": "{course} : la ligne d’arrivée est à plus de 100 m de l’itinéraire."
+  "eventRacePreflightFarFinish": "{course} : la ligne d’arrivée est à plus de 100 m de l’itinéraire.",
+  "clubVerificationStatusTitle": "Vérification officielle",
+  "clubVerificationStatusVerified": "Vérifié comme présence officielle de {org} ({domain}).",
+  "clubVerificationStatusVerifiedLegacy": "Vérifié comme organisation officielle.",
+  "clubVerificationStatusPending": "La demande pour {org} attend d'être examinée. Aucune preuve de domaine trouvée pour l'instant.",
+  "clubVerificationStatusPendingProof": "La demande pour {org} attend d'être examinée. Preuve de domaine trouvée.",
+  "clubVerificationStatusRejected": "La dernière demande n'a pas été approuvée : {reason}",
+  "clubVerificationStatusRevoked": "Le badge a été retiré : {reason}",
+  "clubVerificationStatusLapsed": "Le badge a été retiré après une modification du club ou de son domaine, et doit être examiné à nouveau.",
+  "clubVerificationStatusWithdrawn": "La dernière demande a été retirée.",
+  "clubVerificationStatusNone": "Non vérifié.",
+  "clubVerificationStatusWebHint": "Les demandes et les preuves de domaine se gèrent sur le Web.",
+  "clubVerificationStatusLoadFailed": "Impossible de charger l'état de la vérification.",
+  "clubVerificationStatusRetry": "Réessayer",
+  "profileNotifClubVerification": "Il y a du nouveau sur la vérification de votre club",
+  "profileNotifClubVerificationNamed": "Il y a du nouveau sur la vérification de {club}"
 }

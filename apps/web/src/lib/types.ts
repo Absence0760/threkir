@@ -637,7 +637,8 @@ export type NotificationKind =
 	| 'club_join_approved'
 	| 'event_updated'
 	| 'plan_change_request'
-	| 'plan_change_decision';
+	| 'plan_change_decision'
+	| 'club_verification';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

@@ -543,6 +543,177 @@ export type Database = {
           },
         ]
       }
+      club_verification_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          club_id: string | null
+          club_name: string
+          created_at: string
+          detail: string | null
+          id: number
+          request_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          club_id?: string | null
+          club_name: string
+          created_at?: string
+          detail?: string | null
+          id?: never
+          request_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          club_id?: string | null
+          club_name?: string
+          created_at?: string
+          detail?: string | null
+          id?: never
+          request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_verification_audit_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_verification_audit_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
+          {
+            foreignKeyName: "club_verification_audit_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "club_verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_verification_email_challenges: {
+        Row: {
+          address: string
+          expires_at: string
+          request_id: string
+          sent_at: string
+          token_hash: string
+        }
+        Insert: {
+          address: string
+          expires_at: string
+          request_id: string
+          sent_at?: string
+          token_hash: string
+        }
+        Update: {
+          address?: string
+          expires_at?: string
+          request_id?: string
+          sent_at?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_verification_email_challenges_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: true
+            referencedRelation: "club_verification_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      club_verification_requests: {
+        Row: {
+          check_failures: number
+          close_reason: string | null
+          closed_at: string | null
+          closed_by: string | null
+          club_id: string
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_reason: string | null
+          domain: string
+          id: string
+          last_checked_at: string | null
+          note: string | null
+          organisation: string
+          proof_detail: string | null
+          proof_method: string | null
+          proof_verified_at: string | null
+          status: string
+          submitted_by: string | null
+          token: string
+        }
+        Insert: {
+          check_failures?: number
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          club_id: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_reason?: string | null
+          domain: string
+          id?: string
+          last_checked_at?: string | null
+          note?: string | null
+          organisation: string
+          proof_detail?: string | null
+          proof_method?: string | null
+          proof_verified_at?: string | null
+          status?: string
+          submitted_by?: string | null
+          token?: string
+        }
+        Update: {
+          check_failures?: number
+          close_reason?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          club_id?: string
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_reason?: string | null
+          domain?: string
+          id?: string
+          last_checked_at?: string | null
+          note?: string | null
+          organisation?: string
+          proof_detail?: string | null
+          proof_method?: string | null
+          proof_verified_at?: string | null
+          status?: string
+          submitted_by?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "club_verification_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_verification_requests_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
+        ]
+      }
       clubs: {
         Row: {
           avatar_url: string | null
@@ -6886,6 +7057,10 @@ export type Database = {
         Args: { p_changes: Json; p_plan_id: string }
         Returns: undefined
       }
+      approve_club_verification: {
+        Args: { p_note?: string; p_request_id: string }
+        Returns: undefined
+      }
       approve_event_result: {
         Args: {
           p_approve: boolean
@@ -7137,6 +7312,54 @@ export type Database = {
         Returns: string
       }
       clone_session_template: { Args: { template_id: string }; Returns: string }
+      club_verification_audit_log: {
+        Args: { p_club_id: string }
+        Returns: {
+          action: string
+          actor_name: string
+          club_name: string
+          created_at: string
+          detail: string
+          id: number
+          request_id: string
+        }[]
+      }
+      club_verification_queue: {
+        Args: { p_view?: string }
+        Returns: {
+          check_failures: number
+          close_reason: string
+          closed_at: string
+          club_id: string
+          club_is_public: boolean
+          club_is_verified: boolean
+          club_name: string
+          club_slug: string
+          club_website_url: string
+          created_at: string
+          decided_at: string
+          decision_reason: string
+          domain: string
+          last_checked_at: string
+          member_count: number
+          note: string
+          organisation: string
+          owner_name: string
+          proof_detail: string
+          proof_method: string
+          proof_verified_at: string
+          request_id: string
+          status: string
+        }[]
+      }
+      club_verifications_due_for_recheck: {
+        Args: { p_limit?: number }
+        Returns: {
+          domain: string
+          id: string
+          token: string
+        }[]
+      }
       clubs_in_bbox: {
         Args: {
           p_limit?: number
@@ -7179,6 +7402,14 @@ export type Database = {
       confirm_age_and_terms: {
         Args: { p_preferred_unit?: string }
         Returns: undefined
+      }
+      confirm_club_verification_email: {
+        Args: { p_token: string }
+        Returns: {
+          club_name: string
+          club_slug: string
+          outcome: string
+        }[]
       }
       confirm_safety_contact: {
         Args: { p_id: string; p_sms_opt_in?: boolean }
@@ -7801,6 +8032,7 @@ export type Database = {
       }
       hr_prescription_enabled: { Args: never; Returns: boolean }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
+      invoke_club_verification_recheck: { Args: never; Returns: number }
       invoke_event_refund_sweep: { Args: never; Returns: number }
       invoke_race_listings_sweep: { Args: never; Returns: number }
       is_blocked_either_way: {
@@ -8204,6 +8436,15 @@ export type Database = {
           version: number
         }[]
       }
+      record_club_verification_check: {
+        Args: {
+          p_detail?: string
+          p_method: string
+          p_ok: boolean
+          p_request_id: string
+        }
+        Returns: string
+      }
       record_coach_consent: { Args: never; Returns: string }
       record_map_match_result: {
         Args: {
@@ -8260,6 +8501,10 @@ export type Database = {
       refund_rate_limit_slot: {
         Args: { p_bucket: string; p_spend_id: string; p_user_id: string }
         Returns: boolean
+      }
+      reject_club_verification: {
+        Args: { p_reason: string; p_request_id: string }
+        Returns: undefined
       }
       repeat_plan_week: {
         Args: {
@@ -8321,6 +8566,10 @@ export type Database = {
           p_source?: string
           p_suggestion_id: string
         }
+        Returns: undefined
+      }
+      revoke_club_verification: {
+        Args: { p_club_id: string; p_reason: string }
         Returns: undefined
       }
       revoke_live_overlay_token: { Args: never; Returns: undefined }
@@ -8655,6 +8904,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      send_club_verification_email: {
+        Args: { p_local_part: string; p_request_id: string }
+        Returns: undefined
+      }
       set_apple_refresh_token: {
         Args: {
           p_client_id: string
@@ -8786,6 +9039,10 @@ export type Database = {
           spend_id: string
         }[]
       }
+      submit_club_verification: {
+        Args: { p_club_id: string; p_note?: string; p_organisation: string }
+        Returns: string
+      }
       submit_report: {
         Args: {
           p_notes?: string
@@ -8891,6 +9148,10 @@ export type Database = {
         }[]
       }
       withdraw_ai_disclosure_consent: { Args: never; Returns: undefined }
+      withdraw_club_verification: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
       withdraw_coach_consent: { Args: never; Returns: undefined }
       withdraw_health_data_consent: { Args: never; Returns: undefined }
       withdraw_plan_change: {

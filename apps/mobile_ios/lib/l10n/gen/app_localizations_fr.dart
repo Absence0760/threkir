@@ -21212,4 +21212,67 @@ class AppLocalizationsFr extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course : la ligne d’arrivée est à plus de 100 m de l’itinéraire.';
   }
+
+  @override
+  String get clubVerificationStatusTitle => 'Vérification officielle';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Vérifié comme présence officielle de $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Vérifié comme organisation officielle.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'La demande pour $org attend d\'être examinée. Aucune preuve de domaine trouvée pour l\'instant.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'La demande pour $org attend d\'être examinée. Preuve de domaine trouvée.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'La dernière demande n\'a pas été approuvée : $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'Le badge a été retiré : $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'Le badge a été retiré après une modification du club ou de son domaine, et doit être examiné à nouveau.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'La dernière demande a été retirée.';
+
+  @override
+  String get clubVerificationStatusNone => 'Non vérifié.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Les demandes et les preuves de domaine se gèrent sur le Web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Impossible de charger l\'état de la vérification.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Réessayer';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Il y a du nouveau sur la vérification de votre club';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Il y a du nouveau sur la vérification de $club';
+  }
 }

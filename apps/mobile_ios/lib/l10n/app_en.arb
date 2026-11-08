@@ -20113,35 +20113,35 @@
   },
   "raceCourseUnlink": "Remove course",
   "@raceCourseUnlink": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseUnlinked": "Course removed.",
   "@raceCourseUnlinked": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseReviewHeading": "Course suggestions",
   "@raceCourseReviewHeading": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseReviewClaimFirst": "Claim this race to approve or reject a suggestion.",
   "@raceCourseReviewClaimFirst": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseReviewApprove": "Approve",
   "@raceCourseReviewApprove": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseReviewReject": "Reject",
   "@raceCourseReviewReject": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseReviewApproveTitle": "Approve this course",
   "@raceCourseReviewApproveTitle": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseReviewApproveBody": "The course must be a public route your club owns. Pick the club's copy of {route}.",
   "@raceCourseReviewApproveBody": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396).",
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396).",
     "placeholders": {
       "route": {
         "type": "String"
@@ -20150,15 +20150,15 @@
   },
   "raceCourseReviewApproved": "Suggestion approved and course linked.",
   "@raceCourseReviewApproved": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseReviewRejected": "Suggestion rejected.",
   "@raceCourseReviewRejected": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "raceCourseReviewFailed": "Couldn't review the suggestion.",
   "@raceCourseReviewFailed": {
-    "description": "Race detail race-course tools, review and remove (decisions \u00a7 2381, \u00a7 2396)."
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "racesDetailShare": "Share",
   "@racesDetailShare": {
@@ -27806,6 +27806,99 @@
     "description": "Arm preflight issue: an organiser-placed finish line more than 100 m from the route (#1305)",
     "placeholders": {
       "course": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusTitle": "Official verification",
+  "@clubVerificationStatusTitle": {
+    "description": "Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins"
+  },
+  "clubVerificationStatusVerified": "Verified as the official presence of {org} ({domain}).",
+  "@clubVerificationStatusVerified": {
+    "description": "The club is verified; org is the organisation it officially represents and domain the website domain that was verified",
+    "placeholders": {
+      "org": {
+        "type": "String"
+      },
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusVerifiedLegacy": "Verified as an official organisation.",
+  "@clubVerificationStatusVerifiedLegacy": {
+    "description": "The club is verified but no request with a domain is on record"
+  },
+  "clubVerificationStatusPending": "The request for {org} is waiting for review. No domain proof found yet.",
+  "@clubVerificationStatusPending": {
+    "description": "A verification request for the named organisation is waiting for review and the domain proof has not been found yet",
+    "placeholders": {
+      "org": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusPendingProof": "The request for {org} is waiting for review. Domain proof found.",
+  "@clubVerificationStatusPendingProof": {
+    "description": "A verification request for the named organisation is waiting for review and the domain proof was found",
+    "placeholders": {
+      "org": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusRejected": "The last request was not approved: {reason}",
+  "@clubVerificationStatusRejected": {
+    "description": "The last verification request was rejected; reason is the reviewer's own text",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusRevoked": "The badge was removed: {reason}",
+  "@clubVerificationStatusRevoked": {
+    "description": "A reviewer removed the club's verified badge; reason is their own text",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusLapsed": "The badge was removed after a change to the club or its domain, and needs a new review.",
+  "@clubVerificationStatusLapsed": {
+    "description": "The badge dropped on its own: the club was renamed or moved domain, or the domain proof disappeared"
+  },
+  "clubVerificationStatusWithdrawn": "The last request was withdrawn.",
+  "@clubVerificationStatusWithdrawn": {
+    "description": "The club owner withdrew the last verification request"
+  },
+  "clubVerificationStatusNone": "Not verified.",
+  "@clubVerificationStatusNone": {
+    "description": "The club has never asked for verification"
+  },
+  "clubVerificationStatusWebHint": "Requests and domain proof are managed on the web.",
+  "@clubVerificationStatusWebHint": {
+    "description": "Tells the club admin that requesting verification happens on the web app"
+  },
+  "clubVerificationStatusLoadFailed": "Couldn't load the verification status.",
+  "@clubVerificationStatusLoadFailed": {
+    "description": "The verification status could not be loaded"
+  },
+  "clubVerificationStatusRetry": "Retry",
+  "@clubVerificationStatusRetry": {
+    "description": "Retry button tooltip for loading the verification status"
+  },
+  "profileNotifClubVerification": "There's a verification update for your club",
+  "@profileNotifClubVerification": {
+    "description": "Notification text: a club the recipient owns or administers had its verification approved, rejected, removed or dropped; club name unknown"
+  },
+  "profileNotifClubVerificationNamed": "There's a verification update for {club}",
+  "@profileNotifClubVerificationNamed": {
+    "description": "Notification text: the named club the recipient owns or administers had its verification approved, rejected, removed or dropped",
+    "placeholders": {
+      "club": {
         "type": "String"
       }
     }

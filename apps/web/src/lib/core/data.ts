@@ -88,6 +88,15 @@ import {
 import { planHeadCopyFields, planWeekCopyRows, planWorkoutCopyRows } from './plan_copy';
 import { clubSlug, CLUB_SLUG_FALLBACK } from '../social/club_slug';
 import {
+	CLUB_VERIFICATION_REQUEST_COLUMNS,
+	type ClubVerificationAuditAction,
+	type ClubVerificationProofMethod,
+	type ClubVerificationRequest,
+	type ClubVerificationStatus,
+	type ProofCheckResult,
+	verificationErrorKey,
+} from '../social/club_verification';
+import {
 	ROUTE_LIST_COLS,
 	PUBLIC_ROUTE_LIST_COLS,
 	type RouteListItem,
@@ -14533,6 +14542,154 @@ export async function setEventGymRoutine(
 		)
 		.eq('id', eventId);
 	if (error) throw dbError(error);
+}
+
+// ─── Club verification (issue #1190 § 2, decisions § 2398) ───────────
+// The owner's half reads the club's requests under RLS (owner + active
+// admins) and acts through definer RPCs that re-check the owner. The site
+// admin's half is the queue and the review RPCs, each hard-denying a
+// non-admin at the database (42501).
+
+/** A verification RPC's own refusal (it raises a stable code) as the
+ *  sentence for it; any other failure unchanged. */
+function clubVerificationError(error: unknown): Error {
+	const key = verificationErrorKey(error);
+	return key ? new AppError(key) : dbError(error);
+}
+
+/** Every verification request of one club the caller may read, newest first. */
+export async function fetchClubVerificationRequests(clubId: string): Promise<ClubVerificationRequest[]> {
+	const { data, error } = await supabase
+		.from(TABLES.club_verification_requests)
+		.select(CLUB_VERIFICATION_REQUEST_COLUMNS)
+		.eq('club_id', clubId)
+		.order('created_at', { ascending: false })
+		.limit(20);
+	if (error) throw dbError(error);
+	return (data ?? []) as ClubVerificationRequest[];
+}
+
+/** Opens a request for the club's website domain. Owner only. */
+export async function submitClubVerification(clubId: string, organisation: string, note: string | null): Promise<string> {
+	const { data, error } = await supabase.rpc('submit_club_verification', {
+		p_club_id: clubId,
+		p_organisation: organisation,
+		p_note: note,
+	});
+	if (error) throw clubVerificationError(error);
+	return data as string;
+}
+
+export async function withdrawClubVerification(requestId: string): Promise<void> {
+	const { error } = await supabase.rpc('withdraw_club_verification', { p_request_id: requestId });
+	if (error) throw clubVerificationError(error);
+}
+
+/** Mails a one-time confirm link to `<localPart>@<the request's domain>`. */
+export async function sendClubVerificationEmail(requestId: string, localPart: string): Promise<void> {
+	const { error } = await supabase.rpc('send_club_verification_email', {
+		p_request_id: requestId,
+		p_local_part: localPart,
+	});
+	if (error) throw clubVerificationError(error);
+}
+
+/** Runs the DNS TXT and .well-known checks for a pending request. */
+export async function checkClubVerificationProof(requestId: string): Promise<ProofCheckResult> {
+	const { data, error } = await supabase.functions.invoke('club-verification', {
+		body: { request_id: requestId },
+	});
+	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'club_verification_check_failed'));
+	return data as ProofCheckResult;
+}
+
+export interface ClubVerificationConfirmation {
+	outcome: 'confirmed' | 'invalid';
+	club_name: string | null;
+	club_slug: string | null;
+}
+
+/** The mailed link's landing page; the token is the credential. */
+export async function confirmClubVerificationEmail(token: string): Promise<ClubVerificationConfirmation> {
+	const { data, error } = await supabase.rpc('confirm_club_verification_email', { p_token: token });
+	if (error) throw clubVerificationError(error);
+	const row = (data ?? [])[0];
+	return {
+		outcome: row?.outcome === 'confirmed' ? 'confirmed' : 'invalid',
+		club_name: row?.club_name ?? null,
+		club_slug: row?.club_slug ?? null,
+	};
+}
+
+export type ClubVerificationQueueView = 'pending' | 'verified' | 'closed';
+
+export interface ClubVerificationQueueRow {
+	request_id: string | null;
+	club_id: string;
+	club_name: string;
+	club_slug: string;
+	club_website_url: string | null;
+	club_is_verified: boolean;
+	club_is_public: boolean;
+	member_count: number;
+	owner_name: string | null;
+	organisation: string | null;
+	domain: string | null;
+	note: string | null;
+	status: ClubVerificationStatus | null;
+	proof_method: ClubVerificationProofMethod | null;
+	proof_verified_at: string | null;
+	proof_detail: string | null;
+	last_checked_at: string | null;
+	check_failures: number;
+	decision_reason: string | null;
+	close_reason: string | null;
+	created_at: string | null;
+	decided_at: string | null;
+	closed_at: string | null;
+}
+
+export async function fetchClubVerificationQueue(view: ClubVerificationQueueView): Promise<ClubVerificationQueueRow[]> {
+	const { data, error } = await supabase.rpc('club_verification_queue', { p_view: view }, { get: true });
+	if (error) throw clubVerificationError(error);
+	return (data ?? []).map((r) => ({
+		...r,
+		member_count: Number(r.member_count ?? 0),
+		check_failures: Number(r.check_failures ?? 0),
+		status: r.status as ClubVerificationStatus | null,
+		proof_method: r.proof_method as ClubVerificationProofMethod | null,
+	}));
+}
+
+export interface ClubVerificationAuditRow {
+	id: number;
+	request_id: string | null;
+	club_name: string;
+	actor_name: string | null;
+	action: ClubVerificationAuditAction;
+	detail: string | null;
+	created_at: string;
+}
+
+export async function fetchClubVerificationAudit(clubId: string): Promise<ClubVerificationAuditRow[]> {
+	const { data, error } = await supabase.rpc('club_verification_audit_log', { p_club_id: clubId }, { get: true });
+	if (error) throw clubVerificationError(error);
+	return (data ?? []).map((r) => ({ ...r, id: Number(r.id), action: r.action as ClubVerificationAuditAction }));
+}
+
+export async function approveClubVerification(requestId: string, note: string | null): Promise<void> {
+	const { error } = await supabase.rpc('approve_club_verification', { p_request_id: requestId, p_note: note });
+	if (error) throw clubVerificationError(error);
+}
+
+export async function rejectClubVerification(requestId: string, reason: string): Promise<void> {
+	const { error } = await supabase.rpc('reject_club_verification', { p_request_id: requestId, p_reason: reason });
+	if (error) throw clubVerificationError(error);
+}
+
+export async function revokeClubVerification(clubId: string, reason: string): Promise<void> {
+	const { error } = await supabase.rpc('revoke_club_verification', { p_club_id: clubId, p_reason: reason });
+	if (error) throw clubVerificationError(error);
 }
 
 // ─── Admin moderation (web-only back-office; /admin/reports) ─────────

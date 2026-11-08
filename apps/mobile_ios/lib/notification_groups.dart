@@ -60,6 +60,7 @@ String _targetKeyFor(NotificationRow n) {
     case 'club_post':
     case 'club_join_request':
     case 'club_join_approved':
+    case 'club_verification':
       return n.clubId != null ? 'club:${n.clubId}' : solo;
     case 'plan_update':
     case 'plan_assigned':

@@ -21195,4 +21195,67 @@ class AppLocalizationsDe extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course: Die Ziellinie liegt mehr als 100 m von der Route entfernt.';
   }
+
+  @override
+  String get clubVerificationStatusTitle => 'Offizielle Verifizierung';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verifiziert als offizieller Auftritt von $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Als offizielle Organisation verifiziert.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'Der Antrag für $org wartet auf Prüfung. Noch kein Domain-Nachweis gefunden.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'Der Antrag für $org wartet auf Prüfung. Domain-Nachweis gefunden.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'Der letzte Antrag wurde nicht angenommen: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'Das Abzeichen wurde entfernt: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'Das Abzeichen wurde nach einer Änderung am Club oder seiner Domain entfernt und muss neu geprüft werden.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'Der letzte Antrag wurde zurückgezogen.';
+
+  @override
+  String get clubVerificationStatusNone => 'Nicht verifiziert.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Anträge und Domain-Nachweise werden im Web verwaltet.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Der Verifizierungsstatus konnte nicht geladen werden.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Erneut versuchen';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Es gibt ein Update zur Verifizierung deines Clubs';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Es gibt ein Update zur Verifizierung von $club';
+  }
 }

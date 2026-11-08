@@ -1204,6 +1204,20 @@ class SocialService extends ChangeNotifier {
         .join();
   }
 
+  /// A club's verification requests, newest first. RLS lets the club's owner
+  /// and active admins read them; anyone else gets none. Read-only here: the
+  /// request and review flow is on the web (decisions § 2398).
+  Future<List<ClubVerificationRequestRow>> fetchClubVerificationRequests(
+      String clubId) async {
+    final rows = await _c
+        .from('club_verification_requests')
+        .select(_clubVerificationColumns)
+        .eq('club_id', clubId)
+        .order('created_at', ascending: false)
+        .limit(20);
+    return rows.map(ClubVerificationRequestRow.fromJson).toList();
+  }
+
   /// Pending join requests on a club (admins only — RLS will filter), oldest
   /// first. Walked by keyset cursor in [clubMemberOrder]: nothing bounds
   /// how many requests a request-to-join club accumulates, and an unranged
@@ -3224,3 +3238,8 @@ String fmtRelative(DateTime when, String localeTag, {DateTime? now}) {
 String fmtEventDate(DateTime when, String localeTag) =>
     '${formatDateShort(when, localeTag)}, ${formatTime(when, localeTag)}';
 
+const _clubVerificationColumns =
+    'id, club_id, submitted_by, organisation, domain, note, token, status, '
+    'proof_method, proof_verified_at, proof_detail, last_checked_at, '
+    'check_failures, decided_by, decided_at, decision_reason, closed_by, '
+    'closed_at, close_reason, created_at';

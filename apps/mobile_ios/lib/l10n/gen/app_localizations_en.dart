@@ -20943,4 +20943,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course: the finish line is more than 100 m from the route.';
   }
+
+  @override
+  String get clubVerificationStatusTitle => 'Official verification';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verified as the official presence of $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verified as an official organisation.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'The request for $org is waiting for review. No domain proof found yet.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'The request for $org is waiting for review. Domain proof found.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'The last request was not approved: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'The badge was removed: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'The badge was removed after a change to the club or its domain, and needs a new review.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'The last request was withdrawn.';
+
+  @override
+  String get clubVerificationStatusNone => 'Not verified.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Requests and domain proof are managed on the web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Couldn\'t load the verification status.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Retry';
+
+  @override
+  String get profileNotifClubVerification =>
+      'There\'s a verification update for your club';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'There\'s a verification update for $club';
+  }
 }

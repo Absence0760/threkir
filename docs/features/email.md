@@ -80,6 +80,18 @@ drive the worker:
   password-changed notice is **not** this kind — GoTrue sends it through the
   `auth-email` hook. § Security emails below; decisions 1893 / 1894.
 
+- **`club_verification_email`** — the email proof of a club verification
+  request (`{email, locale, club_name, organisation, domain, token}`, migration
+  `20271120000003` / `20271120000004`). Enqueued by `send_club_verification_email`
+  (the club owner names the part before the @; the domain is the club's
+  website), at most three a request a day. The recipient need not be a user, so
+  the address and the submitter's locale ride in the payload; no preference
+  gates it. The CTA is `/club-verification/confirm#token=…` (fragment, so the
+  token never reaches a server log), and the page confirms only on a click, so a
+  mail scanner that opens the link confirms nothing. The club name and
+  organisation are kept out of the subject. Footer `footerClubVerification`.
+  Decisions § 2398.
+
 A **non-email** job kind reuses the same notifications rows over a
 different transport:
 
@@ -260,6 +272,8 @@ Shared pieces:
 | **Lifecycle drip** (onboarding / first-week / re-engagement / streak nudges) | `lifecycle_drip` (`drip_onboarding`, `drip_first_week`, `drip_reengagement`, `drip_streak`) | daily pg_cron `enqueue_lifecycle_drip()` selects the cohort in SQL; handler gates on the opt-IN `email_lifecycle_drip` pref + `email_suppressions` + a working opt-out (unset `WEEKLY_DIGEST_UNSUB_SECRET` → no unsubscribe URL → log + skip); RFC 8058 one-click unsubscribe (`/unsubscribe/lifecycle-drip`). Enqueue dedupe excludes `done` for onboarding + first-week + re-engagement (`20270423_001`, issue #376) so the daily cron can't re-send a completed nudge; streak stays daily-repeating by design. **SEND fail-closed on the unset SMTP credential + CISO/counsel sign-off** (built, migration `20270223_001`) | ✓ | §177 |
 | **Password changed** (security notice, not optional) | GoTrue `password_changed_notification` → `auth-email` hook | every password change a user makes — settings change and recovery reset alike; enabled by `config.toml [auth.email.notification.password_changed]` locally, the Auth → Emails security-notification toggle in prod | ✓ | 1893 |
 | **New-device sign-in** (security notice, opt-out) | `security_email` (`new_device_sign_in`) | `auth.sessions` AFTER INSERT / first-known `user_agent` UPDATE, when the `(browser, platform)` class is new to an account that already had one; gated at send time on `email_new_device_alerts != 'off'` | ✓ | 1894 |
+| **Club verification proof** (confirm link to an address at the club's domain) | `club_verification_email` | `send_club_verification_email` RPC, owner only, ≤ 3 a request a day | ✓ | 2398 |
+| **Club verification update** (approved / rejected / revoked / lapsed) | `notification_email` (`club_verification`) + push | `private.notify_club_verification`, to the club's owner and active admins; important kind | ✓ | 2398 |
 | **Email address changed** (security notice, not optional) | GoTrue `email_changed_notification` → `auth-email` hook | a confirmed email change; sent to the **previous** address (`email_data.old_email`); `config.toml [auth.email.notification.email_changed]` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
 | **Phone number changed** (security notice, not optional) | GoTrue `phone_changed_notification` → `auth-email` hook | a confirmed phone change; `config.toml [auth.email.notification.phone_changed]` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |
 | **Sign-in method linked / removed** (security notice, not optional) | GoTrue `identity_linked_notification` / `identity_unlinked_notification` → `auth-email` hook | an identity (Google, Apple, email…) linked to or unlinked from the account; names the provider; `config.toml [auth.email.notification.identity_linked]` / `identity_unlinked` locally — **prod: enable in the dashboard Security list** | ✓ | 1900 |

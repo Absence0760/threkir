@@ -88,6 +88,7 @@ export const TABLES = {
 	challenges: 'challenges',
 	challenge_participants: 'challenge_participants',
 	challenge_badges: 'challenge_badges',
+	club_verification_requests: 'club_verification_requests',
 } as const;
 
 /// Supabase Storage buckets reached via `supabase.storage.from(...)`.

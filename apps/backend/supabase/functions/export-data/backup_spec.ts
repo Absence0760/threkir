@@ -343,6 +343,24 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			filter: `actor_id=eq.${uid}`,
 			select: '*',
 		},
+		// club_verification_requests — the verification requests the subject
+		// submitted as a club owner: the organisation and domain they claimed,
+		// the proof and the review outcome (migration 20271120000004). The
+		// reviewer is kept as an id only, as a recipient disclosure.
+		{
+			entry: 'club_verification_requests.json',
+			table: 'club_verification_requests',
+			filter: `submitted_by=eq.${uid}`,
+			select: '*',
+		},
+		// club_verification_audit — the verification actions the subject took
+		// (submit, withdraw, email proof sent; as a site admin, reviews).
+		{
+			entry: 'club_verification_audit.json',
+			table: 'club_verification_audit',
+			filter: `actor_id=eq.${uid}`,
+			select: '*',
+		},
 		// user_blocks — the subject's own block list. High.
 		{
 			entry: 'user_blocks.json',

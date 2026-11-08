@@ -5872,5 +5872,20 @@
   "eventRacePreflightNoStart": "{course}：スタートラインがありません。セルフタイム方式のレースには必要です。",
   "eventRacePreflightSelfCross": "{course}：ルートが終点より前に自身のフィニッシュラインを横切るため、ラインでのフィニッシュが早すぎる可能性があります。",
   "eventRacePreflightFarStart": "{course}：スタートラインがルートから100 m以上離れています。",
-  "eventRacePreflightFarFinish": "{course}：フィニッシュラインがルートから100 m以上離れています。"
+  "eventRacePreflightFarFinish": "{course}：フィニッシュラインがルートから100 m以上離れています。",
+  "clubVerificationStatusTitle": "公式認証",
+  "clubVerificationStatusVerified": "{org}（{domain}）の公式アカウントとして認証済みです。",
+  "clubVerificationStatusVerifiedLegacy": "公式の組織として認証されています。",
+  "clubVerificationStatusPending": "{org} の依頼は審査待ちです。ドメインの証明はまだ確認できていません。",
+  "clubVerificationStatusPendingProof": "{org} の依頼は審査待ちです。ドメインの証明を確認しました。",
+  "clubVerificationStatusRejected": "前回の依頼は承認されませんでした：{reason}",
+  "clubVerificationStatusRevoked": "バッジが外されました：{reason}",
+  "clubVerificationStatusLapsed": "クラブまたはドメインの変更によりバッジが外されました。再審査が必要です。",
+  "clubVerificationStatusWithdrawn": "前回の依頼は取り下げられました。",
+  "clubVerificationStatusNone": "未認証です。",
+  "clubVerificationStatusWebHint": "依頼とドメインの証明はウェブで管理します。",
+  "clubVerificationStatusLoadFailed": "認証状況を読み込めませんでした。",
+  "clubVerificationStatusRetry": "再試行",
+  "profileNotifClubVerification": "あなたのクラブの認証についてお知らせがあります",
+  "profileNotifClubVerificationNamed": "{club} の認証についてお知らせがあります"
 }

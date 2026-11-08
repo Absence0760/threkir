@@ -74,6 +74,7 @@ const _tables = <String>{
   'clubs',
   'club_members',
   'club_photos',
+  'club_verification_requests',
   'events',
   'event_attendees',
   'event_courses',

@@ -21166,4 +21166,67 @@ class AppLocalizationsEs extends AppLocalizations {
   String eventRacePreflightFarFinish(String course) {
     return '$course: la línea de meta está a más de 100 m de la ruta.';
   }
+
+  @override
+  String get clubVerificationStatusTitle => 'Verificación oficial';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verificado como la presencia oficial de $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verificado como organización oficial.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'La solicitud de $org está pendiente de revisión. Aún no hay prueba del dominio.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'La solicitud de $org está pendiente de revisión. Prueba del dominio encontrada.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'La última solicitud no se aprobó: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'Se quitó la insignia: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'Se quitó la insignia tras un cambio en el club o en su dominio, y necesita una nueva revisión.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'La última solicitud se retiró.';
+
+  @override
+  String get clubVerificationStatusNone => 'No verificado.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Las solicitudes y las pruebas de dominio se gestionan en la web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'No se pudo cargar el estado de verificación.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Reintentar';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Hay novedades sobre la verificación de tu club';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Hay novedades sobre la verificación de $club';
+  }
 }

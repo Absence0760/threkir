@@ -812,6 +812,16 @@ The RunSignUp legs need no key ([decisions § 1903](../architecture/decisions.md
 3. Add the URL entry in the SQL editor: `select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/race-listings-sweep', 'race_listings_sweep_url');`.
 4. Verify one run by hand: `select public.invoke_race_listings_sweep();` returns a request id, and `select status_code, left(content::text, 200) from net._http_response order by id desc limit 1;` shows `200` with a `window` and `synced` / `unplaced` counts. A `complete: false` (and a `window filled the page` log) means a 14-day window held 500 races — narrow `SWEEP_WINDOW_DAYS`.
 
+### Club verification re-check — arm the schedule (one Vault entry)
+
+Migration `20271120000004` schedules `club-verification-recheck` hourly ([decisions § 2398](../architecture/decisions.md)); its invoker calls nothing until both Vault secrets exist, so verified clubs are simply not re-checked until this is done. The owner-facing `club-verification` function needs nothing beyond the deploy.
+
+1. Deploy both functions: `supabase functions deploy club-verification` and `supabase functions deploy club-verification-recheck` (the latter's `verify_jwt = false` comes from `config.toml`). `CRON_SECRET` is the same function secret the other sweeps use.
+2. Add the URL entry: `select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/club-verification-recheck', 'club_verification_recheck_url');`.
+3. Verify one run: `select public.invoke_club_verification_recheck();` returns a request id, and the latest `net._http_response` shows `200` with `checked` / `verified` / `failed` / `lapsed` / `skipped` counts.
+
+The email proof needs no new credential: it rides the worker's existing SMTP transport and `APP_BASE_URL`.
+
 ### Lambda secrets — one apply, before the next web deploy
 
 [decisions § 1671](../architecture/decisions.md) moved the coach and

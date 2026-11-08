@@ -265,6 +265,7 @@ export type Database = {
           id: string
           is_public: boolean
           metric: string
+          park_region_code: string | null
           participant_count: number
           scope: string
           starts_at: string
@@ -281,6 +282,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           metric: string
+          park_region_code?: string | null
           participant_count?: number
           scope: string
           starts_at: string
@@ -297,6 +299,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           metric?: string
+          park_region_code?: string | null
           participant_count?: number
           scope?: string
           starts_at?: string
@@ -8709,6 +8712,22 @@ export type Database = {
           comment_count: number
           kudos_count: number
           run_id: string
+        }[]
+      }
+      run_park_course_times: {
+        Args: { p_run_id: string }
+        Returns: {
+          course_name: string
+          course_slug: string
+          effort_id: string
+          global_segment_id: string
+          park_name: string
+          park_slug: string
+          region_code: string
+          season: number
+          season_rank: number
+          started_at: string
+          time_seconds: number
         }[]
       }
       run_reaction_summary: {

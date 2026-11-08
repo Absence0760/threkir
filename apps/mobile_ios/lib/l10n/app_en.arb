@@ -216,6 +216,32 @@
   "@recapLatestStartLabel": {
     "description": "Stat card label for the latest run start time"
   },
+  "recapParkCoursesLabel": "Park courses",
+  "@recapParkCoursesLabel": {
+    "description": "Park courses phase 5 (recap.parkCourses)"
+  },
+  "recapParkCoursesSub": "{n, plural, one {in {n} park} other {in {n} parks}}",
+  "@recapParkCoursesSub": {
+    "description": "Park courses phase 5 (recap.parkCoursesSub)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "recapParksHeading": "Parks you ran",
+  "@recapParksHeading": {
+    "description": "Park courses phase 5 (recap.parksHeading)"
+  },
+  "recapParkCourseCount": "{n, plural, one {{n} course} other {{n} courses}}",
+  "@recapParkCourseCount": {
+    "description": "Park courses phase 5 (recap.parkCourseCount)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "routePickerTitle": "Choose route",
   "@routePickerTitle": {
     "description": "App bar title for the full-screen route picker"
@@ -19691,6 +19717,32 @@
       }
     }
   },
+  "challengesMetricParkCourses": "Park courses",
+  "@challengesMetricParkCourses": {
+    "description": "Park courses phase 5 (challenges.metricParkCourses)"
+  },
+  "challengesUnitParkCourses": "{n, plural, one {{n} course} other {{n} courses}}",
+  "@challengesUnitParkCourses": {
+    "description": "Park courses phase 5 (challenges.unitParkCourses)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "challengesGoalSuffixCourses": "courses",
+  "@challengesGoalSuffixCourses": {
+    "description": "Park courses phase 5 (challenges.goalSuffixCourses)"
+  },
+  "challengesParkRegion": "Counts park courses in {region}",
+  "@challengesParkRegion": {
+    "description": "Park courses phase 5 (challenges.parkRegion)",
+    "placeholders": {
+      "region": {
+        "type": "String"
+      }
+    }
+  },
   "challengesLeaveConfirmTitle": "Leave challenge?",
   "@challengesLeaveConfirmTitle": {
     "description": "Leave-confirm dialog title"
@@ -20959,6 +21011,86 @@
   "badgesPlan10Desc": "Completed 10 training plans",
   "@badgesPlan10Desc": {
     "description": "Badge description"
+  },
+  "badgesParkCourses1Label": "First park course",
+  "@badgesParkCourses1Label": {
+    "description": "Park courses phase 5 (badges.parkCourses1.label)"
+  },
+  "badgesParkCourses1Desc": "Completed a park course",
+  "@badgesParkCourses1Desc": {
+    "description": "Park courses phase 5 (badges.parkCourses1.desc)"
+  },
+  "badgesParkCourses5Label": "Park regular",
+  "@badgesParkCourses5Label": {
+    "description": "Park courses phase 5 (badges.parkCourses5.label)"
+  },
+  "badgesParkCourses5Desc": "Completed 5 different park courses",
+  "@badgesParkCourses5Desc": {
+    "description": "Park courses phase 5 (badges.parkCourses5.desc)"
+  },
+  "badgesParkCourses10Label": "Trail collector",
+  "@badgesParkCourses10Label": {
+    "description": "Park courses phase 5 (badges.parkCourses10.label)"
+  },
+  "badgesParkCourses10Desc": "Completed 10 different park courses",
+  "@badgesParkCourses10Desc": {
+    "description": "Park courses phase 5 (badges.parkCourses10.desc)"
+  },
+  "badgesParkCourses25Label": "Park explorer",
+  "@badgesParkCourses25Label": {
+    "description": "Park courses phase 5 (badges.parkCourses25.label)"
+  },
+  "badgesParkCourses25Desc": "Completed 25 different park courses",
+  "@badgesParkCourses25Desc": {
+    "description": "Park courses phase 5 (badges.parkCourses25.desc)"
+  },
+  "badgesParkComplete1Label": "Park finisher",
+  "@badgesParkComplete1Label": {
+    "description": "Park courses phase 5 (badges.parkComplete1.label)"
+  },
+  "badgesParkComplete1Desc": "Completed every course in a park",
+  "@badgesParkComplete1Desc": {
+    "description": "Park courses phase 5 (badges.parkComplete1.desc)"
+  },
+  "badgesParkComplete3Label": "Three parks finished",
+  "@badgesParkComplete3Label": {
+    "description": "Park courses phase 5 (badges.parkComplete3.label)"
+  },
+  "badgesParkComplete3Desc": "Completed every course in 3 parks",
+  "@badgesParkComplete3Desc": {
+    "description": "Park courses phase 5 (badges.parkComplete3.desc)"
+  },
+  "badgesParkComplete10Label": "Park completionist",
+  "@badgesParkComplete10Label": {
+    "description": "Park courses phase 5 (badges.parkComplete10.label)"
+  },
+  "badgesParkComplete10Desc": "Completed every course in 10 parks",
+  "@badgesParkComplete10Desc": {
+    "description": "Park courses phase 5 (badges.parkComplete10.desc)"
+  },
+  "badgesParkPassport1Label": "Park passport",
+  "@badgesParkPassport1Label": {
+    "description": "Park courses phase 5 (badges.parkPassport1.label)"
+  },
+  "badgesParkPassport1Desc": "Completed a course in every park of a state",
+  "@badgesParkPassport1Desc": {
+    "description": "Park courses phase 5 (badges.parkPassport1.desc)"
+  },
+  "badgesParkPassport3Label": "Passport stamped",
+  "@badgesParkPassport3Label": {
+    "description": "Park courses phase 5 (badges.parkPassport3.label)"
+  },
+  "badgesParkPassport3Desc": "Completed a park passport in 3 states",
+  "@badgesParkPassport3Desc": {
+    "description": "Park courses phase 5 (badges.parkPassport3.desc)"
+  },
+  "badgesParkPassport10Label": "Passport collector",
+  "@badgesParkPassport10Label": {
+    "description": "Park courses phase 5 (badges.parkPassport10.label)"
+  },
+  "badgesParkPassport10Desc": "Completed a park passport in 10 states",
+  "@badgesParkPassport10Desc": {
+    "description": "Park courses phase 5 (badges.parkPassport10.desc)"
   },
   "racePredictorTitle": "Race-time predictor",
   "@racePredictorTitle": {
@@ -27006,6 +27138,26 @@
   "shareCardBadgeKicker": "Badge earned",
   "@shareCardBadgeKicker": {
     "description": "Kicker over the badge name on the badge sticker"
+  },
+  "shareCardKindCourse": "Park course",
+  "@shareCardKindCourse": {
+    "description": "Park courses phase 5 (runShare.kindCourse)"
+  },
+  "shareCardCourseKicker": "Park course time",
+  "@shareCardCourseKicker": {
+    "description": "Park courses phase 5 (runShare.courseKicker)"
+  },
+  "shareCardCourseRank": "#{rank} in {season}",
+  "@shareCardCourseRank": {
+    "description": "Park courses phase 5 (runShare.courseRank)",
+    "placeholders": {
+      "rank": {
+        "type": "String"
+      },
+      "season": {
+        "type": "String"
+      }
+    }
   },
   "runDetailSharePr": "Share PR card",
   "@runDetailSharePr": {

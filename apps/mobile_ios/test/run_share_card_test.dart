@@ -14,6 +14,7 @@ import '../lib/preferences.dart';
 import '../lib/privacy.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/run_share_stats.dart';
+import '../lib/park_courses.dart' show RunParkCourseTime;
 import '../lib/share_look.dart';
 import '../lib/share_placement.dart';
 import '../lib/share_sheet.dart' show XFile;
@@ -539,6 +540,19 @@ void main() {
           name: 'Richmond Marathon', finisher: 'Finisher', hasRoute: false),
       'badge': badgeStickerBody(
           kicker: 'Badge earned', name: 'Marathon finisher', tier: 'Gold'),
+      'course ranked': courseStickerBody(
+          kicker: 'Park course time',
+          name: 'Beaver Lake Trail, the long way round the north shore',
+          park: 'Pocahontas State Park',
+          time: '24:12',
+          rank: '#3 in 2027',
+          hasRoute: true),
+      'course unranked': courseStickerBody(
+          kicker: 'Park course time',
+          name: 'Beaver Lake Trail',
+          park: 'Pocahontas State Park',
+          time: '24:12',
+          hasRoute: false),
       'route': routeStickerBody(),
     };
 
@@ -804,6 +818,7 @@ void main() {
       RunShareUrlOpener? openUrl,
       Run? run,
       Map<String, Object> prefs = const {},
+      RunShareCourseLoader? courseLoad,
     }) async {
       tester.view.physicalSize = const Size(1200, 3300);
       tester.view.devicePixelRatio = 3;
@@ -822,6 +837,7 @@ void main() {
                 pickPhotoOverride: pick ?? () async => null,
                 saveImageOverride: save ?? (_, __) async {},
                 openUrlOverride: openUrl ?? (_) async => true,
+                courseLoad: courseLoad,
               ),
               child: const Text('open'),
             ),
@@ -902,6 +918,31 @@ void main() {
       expect(button(tester, 'Image').enabled, isFalse);
       // Let the banner's dismiss timer run out so none is left pending.
       await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('a park course time is offered as a sticker and prints its rank',
+        (tester) async {
+      await openSheet(tester,
+          courseLoad: () async => const RunParkCourseTime(
+              courseName: 'Beaver Lake Trail',
+              parkName: 'Pocahontas State Park',
+              timeSeconds: 1452,
+              season: 2027,
+              seasonRank: 3));
+      await tapChip(tester, 'Sticker');
+      await tapChip(tester, 'Park course');
+      expect(find.text('Beaver Lake Trail'), findsOneWidget);
+      expect(find.text('Pocahontas State Park'), findsOneWidget);
+      expect(find.text('#3 in 2027'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a failed course read leaves the course sticker unoffered',
+        (tester) async {
+      await openSheet(tester, courseLoad: () async => throw Exception('offline'));
+      await tapChip(tester, 'Sticker');
+      expect(find.text('Park course'), findsNothing);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('the sticker shows its hint and the look controls',

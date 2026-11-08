@@ -20,7 +20,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Loop courses | Blocked on #1308 (start = end defeats the end search) |
-| Badges (`park_course` family), passport challenge, recap entries, share image | Not built (Phase 5) |
+| Badges (`park_courses` / `park_complete` / `park_passport`), passport challenge metric, recap entries, course share sticker | Shipped (migration `20271123002404`, decisions § 2404 / § 2405); see *Collections* |
 | NPS closures job | Not built (Phase 6) |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
 | Indexable park pages | Not built; see *SEO* |
@@ -199,6 +199,39 @@ Phase 1 lane updates that sentence. The public Learn page
 `/learn/park-courses-how-timing-works` explains the same timing without
 naming the scoring path, and ends on a "Find a park course" CTA to `/parks`.
 
+## Collections
+
+Phase 5 (decisions § 2404 / § 2405). Everything here counts completions, never
+rank, and a closed course drops out of the "every" counts while it is closed.
+
+- **Badges** (`achievement_tiers_met`, catalogue `social/badges.ts` ↔
+  `badges.dart`): `park_courses` for distinct courses (1 / 5 / 10 / 25),
+  `park_complete` for parks where every course not closed is done (1 / 3 / 10;
+  only parks with two or more such courses), `park_passport` for regions where
+  a course is done in every active park holding one (1 / 3 / 10; only regions
+  with three or more such parks). Awarded by statement triggers on
+  `global_segment_efforts` insert and on `park_courses` insert / update, so a
+  course loaded or closed re-derives for runners already there. The award
+  stores a count with `source_id` null, so a public badge names no course or
+  park. Private runs count, as for every family.
+- **Passport challenge**: the `park_courses` challenge metric counts distinct
+  courses (not closed, active park) completed inside the window, optionally
+  narrowed by `challenges.park_region_code` (`US-VA`). The yearly official
+  passport ("Run 10 Virginia park courses in 2027") is created by the official
+  club with that region set; the create forms offer the metric without a
+  region. A new effort re-checks the runner's open park challenges, and the
+  daily sweep is the backstop.
+- **Recap**: the year and month recaps carry `parkCourseCount` and
+  `parkCount` (`recapParkSummary` in the `park_courses` pair) and show a
+  park courses card when there are any; the owner's page also lists the parks
+  run with a course count each. A published recap snapshot holds the two
+  counts and no park.
+- **Share image**: a run that completed a park course offers the **Park
+  course** occasion sticker (photo and sticker styles): the course, its park,
+  the time and, when the run is the runner's best this season and inside the
+  top 100, its place on that season's fastest board (`run_park_course_times`,
+  owner-only; `pickShareCourse` chooses among several).
+
 ## Pre-deploy checklist
 
 These gate going live, not the code:
@@ -236,6 +269,18 @@ These gate going live, not the code:
   Playwright `tests-e2e/parks/park-courses.spec.ts` covers the three pages, both
   boards and seasons, the signed-out view, and a run that skips a checkpoint.
 - Mobile: `test/park_courses_screen_test.dart`.
+- Collections: pgTAP `park_course_badges_test.sql` (each family, the floors,
+  the closed-course rule, the course-update trigger, DNF runs, notifications,
+  the challenge metric and its region, `run_park_course_times` and its grants);
+  the park cases in `badges.test.ts` ↔ `badges_test.dart`,
+  `challenge_goal` / `challenge_progress`, `recap.test.ts` ↔ `recap_test.dart`,
+  `share_look` and `run_sticker_canvas.test.ts`, the `recapParkSummary` /
+  `pickShareCourse` cases in the `park_courses` pair; Playwright
+  `parks/park-course-collections.spec.ts` (badge, recap card, regional
+  challenge) and the course case in `runs/share-image-editor.spec.ts`; mobile
+  `recap_screen_test.dart`, `run_share_card_test.dart`,
+  `challenge_detail_screen_test.dart` and `api_client`
+  `park_course_reads_test.dart`.
 
 ## Owner decisions taken as the issue's recommended default
 

@@ -428,6 +428,10 @@ class ChallengeView implements MyProgressRow {
   /// (migration 20271021000030), present on the list and detail reads.
   final bool isOfficial;
 
+  /// A `park_courses` challenge narrowed to one region's parks (ISO 3166-2,
+  /// `US-VA`); null counts every park.
+  final String? parkRegionCode;
+
   const ChallengeView({
     required this.id,
     required this.creatorId,
@@ -448,6 +452,7 @@ class ChallengeView implements MyProgressRow {
     this.completedAt,
     this.myTeamClubId,
     this.isOfficial = false,
+    this.parkRegionCode,
   });
 
   /// The caller-relative half of the row replaced with what `mergeMyProgress`
@@ -474,6 +479,7 @@ class ChallengeView implements MyProgressRow {
         completedAt: merged.completedAt,
         myTeamClubId: myTeamClubId,
         isOfficial: isOfficial,
+        parkRegionCode: parkRegionCode,
       );
 }
 
@@ -2868,6 +2874,7 @@ class SocialService extends ChangeNotifier {
       completedAt: completedAt,
       myTeamClubId: myTeamClubId,
       isOfficial: r['is_official'] == true,
+      parkRegionCode: r['park_region_code'] as String?,
     );
   }
 

@@ -132,10 +132,17 @@ void main() {
         records: 1,
         streakDays: 9,
         race: true,
+        course: true,
         badge: true,
         route: true,
       );
       expect(offeredStickerKinds(all), RunStickerKind.values);
+    });
+
+    test('course is offered only for a run with a park course time', () {
+      expect(offeredStickerKinds(none), isNot(contains(RunStickerKind.course)));
+      expect(offeredStickerKinds(const RunStickerOccasions(course: true)),
+          [RunStickerKind.stats, RunStickerKind.course]);
     });
 
     test('one split is not a splits sticker, and a first run is not a streak',

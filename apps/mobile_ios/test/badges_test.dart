@@ -96,6 +96,9 @@ void main() {
       bestStreakDays: 400,
       prCount: 5,
       completedPlanCount: 12,
+      parkCourseCount: 30,
+      completeParkCount: 12,
+      passportRegionCount: 12,
     ));
     expect(all.length, kBadgeCatalogue.length);
     for (final b in kBadgeCatalogue) {
@@ -113,6 +116,9 @@ void main() {
       bestStreakDays: 7,
       prCount: 1,
       completedPlanCount: 1,
+      parkCourseCount: 1,
+      completeParkCount: 1,
+      passportRegionCount: 1,
     ));
     expect(all.map((e) => e.badgeKey).toList(),
         kBadgeCatalogue.map((b) => b.id).toList());
@@ -122,5 +128,24 @@ void main() {
     expect(tierFor('streak', 'gold')?.threshold, 100);
     expect(tierFor('nope', 'bronze'), isNull);
     expect(tierFor('streak', 'platinum')?.threshold, 365);
+  });
+
+  test('park course families award the highest tier met', () {
+    const input = BadgeInput(parkCourseCount: 12, completeParkCount: 3, passportRegionCount: 1);
+    expect(_find(input, 'park_courses')?.tier, 'gold');
+    expect(_find(input, 'park_complete')?.tier, 'silver');
+    expect(_find(input, 'park_passport')?.tier, 'bronze');
+    expect(_find(input, 'park_courses')?.sourceKind, 'segment');
+  });
+
+  test('park course families are absent at zero', () {
+    final all = evaluateBadges(const BadgeInput());
+    expect(all.where((e) => e.badgeKey.startsWith('park_')), isEmpty);
+  });
+
+  test('park passport tops out at gold', () {
+    final b = _find(const BadgeInput(passportRegionCount: 50), 'park_passport');
+    expect(b?.tier, 'gold');
+    expect(b?.threshold, 10);
   });
 }

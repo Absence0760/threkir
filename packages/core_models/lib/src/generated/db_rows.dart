@@ -291,6 +291,7 @@ class ChallengeRow {
   static const String colIsPublic = 'is_public';
   static const String colCreatedAt = 'created_at';
   static const String colParticipantCount = 'participant_count';
+  static const String colParkRegionCode = 'park_region_code';
 
   final String id;
   final String? creatorId;
@@ -306,6 +307,7 @@ class ChallengeRow {
   final bool isPublic;
   final DateTime createdAt;
   final int participantCount;
+  final String? parkRegionCode;
 
   const ChallengeRow({
     required this.id,
@@ -322,6 +324,7 @@ class ChallengeRow {
     required this.isPublic,
     required this.createdAt,
     required this.participantCount,
+    this.parkRegionCode,
   });
 
   factory ChallengeRow.fromJson(Map<String, dynamic> json) => ChallengeRow(
@@ -339,6 +342,7 @@ class ChallengeRow {
     isPublic: (json['is_public'] as bool?) ?? false,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     participantCount: (json['participant_count'] as num).toInt(),
+    parkRegionCode: json['park_region_code'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -356,6 +360,7 @@ class ChallengeRow {
     colIsPublic: isPublic,
     colCreatedAt: createdAt.toIso8601String(),
     colParticipantCount: participantCount,
+    colParkRegionCode: parkRegionCode,
   };
 
   ChallengeRow copyWith({
@@ -373,6 +378,7 @@ class ChallengeRow {
     bool? isPublic,
     DateTime? createdAt,
     int? participantCount,
+    String? parkRegionCode,
   }) => ChallengeRow(
     id: id ?? this.id,
     creatorId: creatorId ?? this.creatorId,
@@ -388,6 +394,7 @@ class ChallengeRow {
     isPublic: isPublic ?? this.isPublic,
     createdAt: createdAt ?? this.createdAt,
     participantCount: participantCount ?? this.participantCount,
+    parkRegionCode: parkRegionCode ?? this.parkRegionCode,
   );
 }
 

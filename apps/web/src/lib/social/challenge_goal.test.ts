@@ -18,12 +18,13 @@ const METRICS: ChallengeMetric[] = [
 	'vert',
 	'activity_count',
 	'streak_days',
+	'park_courses',
 ];
 
 test('challengeGoalUnit names one unit for every metric the CHECK admits', () => {
 	assert.deepEqual(
 		METRICS.map(challengeGoalUnit),
-		['distance', 'hours', 'elevation', 'activities', 'days'],
+		['distance', 'hours', 'elevation', 'activities', 'days', 'courses'],
 	);
 });
 
@@ -47,6 +48,13 @@ test('the two counting metrics pass through unconverted under either unit', () =
 		assert.equal(challengeGoalToStored(10, 'activity_count', unit), 10);
 		assert.equal(challengeGoalToStored(7, 'streak_days', unit), 7);
 	}
+});
+
+test('park_courses goals are a bare course count', () => {
+	for (const unit of ['km', 'mi'] as const) {
+		assert.equal(challengeGoalToStored(10, 'park_courses', unit), 10);
+	}
+	assert.equal(checkChallengeGoal(10, 'park_courses', 0, DAY), null);
 });
 
 test('challengeGoalFromStored inverts every metric', () => {

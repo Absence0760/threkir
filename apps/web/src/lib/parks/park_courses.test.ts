@@ -11,6 +11,8 @@ import {
 	regionCodeFromSlug,
 	regionName,
 	regionSlug,
+	pickShareCourse,
+	recapParkSummary,
 } from './park_courses';
 
 test('parseCourseCheckpoints: reads an ordered list of points', () => {
@@ -175,4 +177,60 @@ test('parkCourseGpx: an unreadable checkpoint list writes no waypoints, never a 
 	});
 	assert.doesNotMatch(xml, /<wpt/);
 	assert.doesNotMatch(xml, /<desc>/);
+});
+
+test('recapParkSummary: nothing run is nothing to say', () => {
+	assert.deepEqual(recapParkSummary([]), { courseCount: 0, parkCount: 0, parks: [] });
+});
+
+test('recapParkSummary: a course run twice counts once, per park and overall', () => {
+	const s = recapParkSummary([
+		{ parkId: 'p1', parkName: 'Pocahontas', regionCode: 'US-VA', courseId: 'c1' },
+		{ parkId: 'p1', parkName: 'Pocahontas', regionCode: 'US-VA', courseId: 'c1' },
+		{ parkId: 'p1', parkName: 'Pocahontas', regionCode: 'US-VA', courseId: 'c2' },
+		{ parkId: 'p2', parkName: 'Hungry Mother', regionCode: 'US-VA', courseId: 'c3' },
+	]);
+	assert.equal(s.courseCount, 3);
+	assert.equal(s.parkCount, 2);
+	assert.deepEqual(
+		s.parks.map((p) => [p.parkId, p.courseCount]),
+		[
+			['p1', 2],
+			['p2', 1],
+		],
+	);
+});
+
+test('recapParkSummary: parks with equal counts sort by name', () => {
+	const s = recapParkSummary([
+		{ parkId: 'b', parkName: 'Shenandoah', regionCode: 'US-VA', courseId: 'c1' },
+		{ parkId: 'a', parkName: 'Great Falls', regionCode: 'US-VA', courseId: 'c2' },
+	]);
+	assert.deepEqual(
+		s.parks.map((p) => p.name),
+		['Great Falls', 'Shenandoah'],
+	);
+});
+
+const TIME = { course_name: 'Lake Loop', park_name: 'Pocahontas', time_seconds: 900, season: 2027 };
+
+test('pickShareCourse: no park course, no sticker', () => {
+	assert.equal(pickShareCourse([]), null);
+});
+
+test('pickShareCourse: the best season rank wins', () => {
+	const rows = [
+		{ ...TIME, course_name: 'A', season_rank: 7 },
+		{ ...TIME, course_name: 'B', season_rank: 2 },
+		{ ...TIME, course_name: 'C', season_rank: null },
+	];
+	assert.equal(pickShareCourse(rows)?.course_name, 'B');
+});
+
+test('pickShareCourse: with nothing ranked, the first time', () => {
+	const rows = [
+		{ ...TIME, course_name: 'A', season_rank: null },
+		{ ...TIME, course_name: 'B', season_rank: null },
+	];
+	assert.equal(pickShareCourse(rows)?.course_name, 'A');
 });

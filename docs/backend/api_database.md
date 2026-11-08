@@ -705,6 +705,8 @@ Park courses (issue #1313, migration `20271115002383`, [decisions § 2383](../ar
 
 - `park_season(parks)` — computed field, SECURITY INVOKER: the calendar year it is now in the park's timezone. Anon-callable; clients pass it back as `p_season`.
 - `global_segment_completions(p_segment_id, p_season, p_limit)` — SECURITY DEFINER, `set search_path = public, private`, 42501 for a null caller and revoked from anon. One row per athlete with `completions` = distinct local days (park timezone) with an effort the caller may see; same `is_run_visible_to`, block and shadow-hidden rules as the time board, no demographic filters. Ordered by completions desc, then earliest last completion; `p_limit` clamped to 1..200. pgTAP `park_courses_test.sql`.
+- `run_park_course_times(p_run_id)` — SECURITY INVOKER, authenticated only (EXECUTE revoked from anon). The park courses the caller's OWN run completed (rows only where the effort's `user_id` is the caller): course and park names and slugs, `region_code`, `time_seconds`, the `season` (calendar year in the park's timezone) and `season_rank`, the effort's place on `global_segment_leaderboard(..., p_season)` read through that RPC with ordinality (top 100, and only when the effort is the runner's best that season), so it applies the board's own visibility, block and consent rules. Feeds the share image's course sticker (migration `20271123002404`, [decisions § 2405](../architecture/decisions.md)). pgTAP `park_course_badges_test.sql`.
+- **Badge triggers** (`20271123002404`, [decisions § 2404](../architecture/decisions.md)): `global_segment_efforts_award_park_achievements` (AFTER INSERT, statement level) and `park_courses_award_achievements_insert` / `_update` call `private.award_park_course_achievements`, which runs `award_achievements_for_user` and re-checks the runner's open `park_courses` challenges, each failure a warning that never fails the write. The three park families live in `achievement_tiers_met`.
 
 ---
 
@@ -3028,6 +3030,7 @@ Migrations `20270209_001_challenges.sql` (schema + RLS) + `20270210_001_challeng
 - `challenges` SELECT: public OR creator OR participant OR active member of `club_id`. INSERT: `auth.uid() = creator_id` AND (open OR `is_club_admin(club_id)`). UPDATE/DELETE: creator OR club admin. The `is_challenge_visible(uuid)` SECURITY DEFINER helper encapsulates the SELECT predicate for the child tables.
 - `challenge_participants` SELECT inherits `is_challenge_visible`; INSERT is self-only + visible + (team join requires active membership of `team_club_id`); DELETE self-only.
 - `challenge_badges` SELECT: owner OR the badge's challenge is public.
+- `challenges.metric` admits `park_courses` and `challenges.park_region_code` (ISO 3166-2, `challenges_park_region_code_ck` refuses it on any other metric) since `20271123002404`; both RPCs below count distinct park courses (not closed, active park, the region when set) for that metric ([decisions § 2405](../architecture/decisions.md)).
 
 ### RPCs
 

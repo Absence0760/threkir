@@ -5949,6 +5949,55 @@ class ApiClient {
     return out;
   }
 
+  /// The park courses the signed-in runner's own [runId] completed, from
+  /// `run_park_course_times`: course and park names, the time, the season (the
+  /// calendar year in the park's timezone) and the effort's place on that
+  /// season's fastest board when it is the runner's best and in the top 100.
+  /// Raw rows; the app parses them in its `park_courses` pair. Mirrors web
+  /// `fetchRunParkCourseTimes`. Throws on a failed read.
+  Future<List<Map<String, dynamic>>> fetchRunParkCourseTimes(String runId) async {
+    final data = await _client.rpc('run_park_course_times',
+        params: {'p_run_id': runId}, get: true);
+    return [
+      for (final r in (data as List? ?? const <dynamic>[]))
+        Map<String, dynamic>.from(r as Map),
+    ];
+  }
+
+  /// The signed-in runner's park course efforts started in `[start, end)`,
+  /// each with its course and park, for the recap's park lines. Mirrors web
+  /// `fetchRecapParkCourses`. Empty when signed out; throws on a failed read.
+  Future<List<({String parkId, String parkName, String regionCode, String courseId})>>
+      fetchRecapParkCourses(DateTime start, DateTime end) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return const [];
+    final effortRows = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .select(GlobalSegmentEffortRow.colGlobalSegmentId)
+        .eq(GlobalSegmentEffortRow.colUserId, uid)
+        .gte(GlobalSegmentEffortRow.colStartedAt, start.toUtc().toIso8601String())
+        .lt(GlobalSegmentEffortRow.colStartedAt, end.toUtc().toIso8601String());
+    final segmentIds = {
+      for (final r in effortRows) r[GlobalSegmentEffortRow.colGlobalSegmentId] as String,
+    }.toList();
+    final courseRows = await readChunked(
+      segmentIds,
+      (chunk) async => List<Map<String, dynamic>>.from(await _client
+          .from(ParkCourseRow.table)
+          .select('id, park_id, parks!inner(name, region_code)')
+          .inFilter(ParkCourseRow.colGlobalSegmentId, chunk)),
+    );
+    return [
+      for (final r in courseRows)
+        (
+          parkId: r['park_id'] as String,
+          parkName: (r['parks'] as Map)['name'] as String,
+          regionCode: (r['parks'] as Map)['region_code'] as String,
+          courseId: r['id'] as String,
+        ),
+    ];
+  }
+
   /// Catalogue-segment efforts a run earned, joined to the segment and ranked
   /// in one round-trip via `global_segment_effort_ranks`. The catalogue twin of
   /// [fetchEffortsForRunWithSegments], and cheaper: the ranks arrive from the

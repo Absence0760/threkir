@@ -118,11 +118,11 @@ describe('share look json', () => {
 });
 
 describe('sticker kinds', () => {
-	const none = { splits: 0, records: 0, streakDays: 0, race: false, badge: false, route: false };
+	const none = { splits: 0, records: 0, streakDays: 0, race: false, course: false, badge: false, route: false };
 
 	test('stats is always offered, and an occasion only when the run has its data', () => {
 		assert.deepEqual(offeredStickerKinds(none), ['stats']);
-		const all = { splits: 5, records: 1, streakDays: 9, race: true, badge: true, route: true };
+		const all = { splits: 5, records: 1, streakDays: 9, race: true, course: true, badge: true, route: true };
 		assert.deepEqual(offeredStickerKinds(all), [...RUN_STICKER_KINDS]);
 	});
 
@@ -131,6 +131,11 @@ describe('sticker kinds', () => {
 		assert.ok(offeredStickerKinds({ ...none, splits: MIN_SPLITS_STICKER_ROWS }).includes('splits'));
 		assert.ok(!offeredStickerKinds({ ...none, streakDays: MIN_STREAK_STICKER_DAYS - 1 }).includes('streak'));
 		assert.ok(offeredStickerKinds({ ...none, streakDays: MIN_STREAK_STICKER_DAYS }).includes('streak'));
+	});
+
+	test('course is offered only for a run with a park course time', () => {
+		assert.ok(!offeredStickerKinds(none).includes('course'));
+		assert.deepEqual(offeredStickerKinds({ ...none, course: true }), ['stats', 'course']);
 	});
 
 	test('a remembered kind the run cannot print falls back to stats', () => {

@@ -62,6 +62,18 @@ IconData badgeIconData(String name) {
       return Icons.emoji_events;
     case 'flag':
       return Icons.flag_outlined;
+    case 'park':
+      return Icons.park;
+    case 'hiking':
+      return Icons.hiking;
+    case 'forest':
+      return Icons.forest;
+    case 'explore':
+      return Icons.explore;
+    case 'flag_circle':
+      return Icons.flag_circle;
+    case 'map':
+      return Icons.map;
     default:
       return Icons.military_tech;
   }
@@ -144,6 +156,46 @@ String badgeText(AppLocalizations l10n, String key) {
       return l10n.badgesPlan10Label;
     case 'badgesPlan10Desc':
       return l10n.badgesPlan10Desc;
+    case 'badgesParkCourses1Label':
+      return l10n.badgesParkCourses1Label;
+    case 'badgesParkCourses1Desc':
+      return l10n.badgesParkCourses1Desc;
+    case 'badgesParkCourses5Label':
+      return l10n.badgesParkCourses5Label;
+    case 'badgesParkCourses5Desc':
+      return l10n.badgesParkCourses5Desc;
+    case 'badgesParkCourses10Label':
+      return l10n.badgesParkCourses10Label;
+    case 'badgesParkCourses10Desc':
+      return l10n.badgesParkCourses10Desc;
+    case 'badgesParkCourses25Label':
+      return l10n.badgesParkCourses25Label;
+    case 'badgesParkCourses25Desc':
+      return l10n.badgesParkCourses25Desc;
+    case 'badgesParkComplete1Label':
+      return l10n.badgesParkComplete1Label;
+    case 'badgesParkComplete1Desc':
+      return l10n.badgesParkComplete1Desc;
+    case 'badgesParkComplete3Label':
+      return l10n.badgesParkComplete3Label;
+    case 'badgesParkComplete3Desc':
+      return l10n.badgesParkComplete3Desc;
+    case 'badgesParkComplete10Label':
+      return l10n.badgesParkComplete10Label;
+    case 'badgesParkComplete10Desc':
+      return l10n.badgesParkComplete10Desc;
+    case 'badgesParkPassport1Label':
+      return l10n.badgesParkPassport1Label;
+    case 'badgesParkPassport1Desc':
+      return l10n.badgesParkPassport1Desc;
+    case 'badgesParkPassport3Label':
+      return l10n.badgesParkPassport3Label;
+    case 'badgesParkPassport3Desc':
+      return l10n.badgesParkPassport3Desc;
+    case 'badgesParkPassport10Label':
+      return l10n.badgesParkPassport10Label;
+    case 'badgesParkPassport10Desc':
+      return l10n.badgesParkPassport10Desc;
     default:
       return key;
   }

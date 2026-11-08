@@ -22,6 +22,7 @@ import { AppError } from '../core/app_error';
 const BUCKETS = [
 	'create_club',
 	'create_route',
+	'edit_direct_message',
 	'create_report',
 	'create_challenge',
 	'join_challenge_by_token',

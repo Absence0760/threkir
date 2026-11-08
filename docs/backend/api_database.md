@@ -1870,6 +1870,7 @@ create table rate_limits (
 | `create_live_overlay_token` | 10 | 3600 | `create_live_overlay_token()` |
 | `create_report` | 10 | 3600 | `submit_report()` |
 | `create_route` | 30 | 3600 | `routes_create_rate_limit_trigger()` |
+| `edit_direct_message` | 60 | 3600 | `edit_direct_message()` |
 | `join_challenge_by_token` | 30 | 3600 | `join_challenge_by_token()` (misses included) |
 | `plan_calendar_rotate` | 20 | 3600 | `rotate_plan_calendar_feed()` |
 | `publish_gym_routine_as_template` | 20 | 3600 | `publish_gym_routine_as_template()` |

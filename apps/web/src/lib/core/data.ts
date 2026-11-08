@@ -11039,12 +11039,15 @@ export interface DirectMessage {
 	/// The conversation the message belongs to, assigned by the server on
 	/// send (migration 20271105000010).
 	conversation_id: string;
+	/// When the sender last edited it (migration 20271114000210); null when
+	/// never edited. Both sides show an "edited" mark while it is set.
+	edited_at: string | null;
 }
 
 /// Every column a client may select on direct_messages: `read_at` is withheld
 /// by a column grant (migration 20271113000001), so `*` is refused.
 const DM_COLUMNS =
-	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id';
+	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at';
 
 export interface DmThread {
 	/// The conversation the mute, archive and delete-for-me actions act on.
@@ -11277,6 +11280,30 @@ export async function unsendDm(messageId: string): Promise<DirectMessage> {
 		p_message_id: messageId,
 	});
 	if (error || !data) throw error ? dbError(error) : new Error('Unsend failed');
+	return data as DirectMessage;
+}
+
+/// Replace the text of one of the viewer's own messages (migration
+/// 20271114000210). The server allows it for 15 minutes after sending, on a
+/// live message, between a pair neither of whom has blocked the other, and
+/// answers every one of those refusals with one 55000 so a block is not
+/// revealed; that, and a message the viewer did not send (P0002), reach the
+/// caller as `messages.editClosed`. Returns the updated row.
+export async function editDm(messageId: string, body: string): Promise<DirectMessage> {
+	const trimmed = body.trim();
+	if (!trimmed) throw new AppError('messages.emptyBody', { message: 'Message is empty' });
+	const { data, error } = await supabase.rpc('edit_direct_message', {
+		p_message_id: messageId,
+		p_body: trimmed,
+	});
+	if (error || !data) {
+		if (error?.code === '55000' || error?.code === 'P0002') {
+			throw new AppError('messages.editClosed', { message: m('messages.editClosed') });
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('Edit failed');
+	}
 	return data as DirectMessage;
 }
 

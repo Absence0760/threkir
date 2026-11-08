@@ -4,8 +4,8 @@
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
-	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
-	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, updateRouteDetails, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
+	import { toRouteGpxWithMarkers, type GpxAttribution, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
+	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteCourseAttribution, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, updateRouteDetails, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
 	import { routeDeleteImpactLines } from '#lib/routes/route_delete_impact.ts';
 	import { goto } from '$app/navigation';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
@@ -528,28 +528,47 @@
 		}
 	}
 
-	function handleExportGpx() {
+	// A park course's route carries third-party geometry, so its exports carry
+	// the credit. Undefined means the check failed: the export is refused
+	// rather than written uncredited.
+	async function exportAttribution(id: string): Promise<GpxAttribution | null | undefined> {
+		try {
+			return await fetchRouteCourseAttribution(id);
+		} catch (e) {
+			console.error('route export attribution failed', e);
+			showToast(m('routeDetail.exportCreditFailed'), 'error');
+			return undefined;
+		}
+	}
+
+	async function handleExportGpx() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route.id);
+		if (attribution === undefined) return;
 		// Use displayWaypoints (clipped for non-owners) so a non-owner
 		// download doesn't leak what the renderer hides.
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
 		const eles = displayWaypoints.map((w) => w.ele ?? 0);
-		const gpx = toGpx(route.name, coords, eles);
+		const gpx = toGpx(route.name, coords, eles, attribution);
 		const filename = route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '.gpx';
 		downloadFile(gpx, filename, 'application/gpx+xml');
 	}
 
-	function handleExportKml() {
+	async function handleExportKml() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route.id);
+		if (attribution === undefined) return;
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
 		const eles = displayWaypoints.map((w) => w.ele ?? 0);
-		const kml = toKml(route.name, coords, eles);
+		const kml = toKml(route.name, coords, eles, attribution);
 		const filename = route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '.kml';
 		downloadFile(kml, filename, 'application/vnd.google-earth.kml+xml');
 	}
 
-	function handleExportGpxWithMarkers() {
+	async function handleExportGpxWithMarkers() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route.id);
+		if (attribution === undefined) return;
 		// displayWaypoints is privacy-clipped for non-owners, so a download
 		// can't leak hidden geometry.
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
@@ -561,7 +580,7 @@
 			kind: mk.kind,
 			meta: mk.meta
 		}));
-		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers);
+		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers, attribution);
 		const filename =
 			route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '_with_markers.gpx';
 		downloadFile(gpx, filename, 'application/gpx+xml');

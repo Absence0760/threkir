@@ -4164,6 +4164,10 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'このルートの地図クレジットを確認できなかったため、エクスポートしませんでした。もう一度お試しください。';
+
+  @override
   String get routeDetailClubsLoadTimeout => 'クラブを読み込めませんでした — ネットワークを確認してください。';
 
   @override
@@ -20046,6 +20050,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksNavigate => 'このコースをナビ';
+
+  @override
+  String get parksShareGpx => 'GPXを共有';
 
   @override
   String get parksBrowseLink => '公園コース';

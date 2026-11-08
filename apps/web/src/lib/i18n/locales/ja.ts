@@ -1172,6 +1172,7 @@ export const messages = {
 	"routeDetail.private": "非公開",
 	"routeDetail.share": "共有",
 	"routeDetail.exportGpxMarkers": "GPX + マーカー",
+	"routeDetail.exportCreditFailed": "このルートの地図クレジットを確認できなかったため、エクスポートしませんでした。もう一度お試しください。",
 	"routeDetail.reportRoute": "このルートを報告",
 	"routeDetail.reportReview": "このレビューを報告",
 	"routeDetail.deleteReview": "自分のレビューを削除",
@@ -7413,5 +7414,6 @@ export const messages = {
 	"parks.attributionAgency": "コースラインは公園のトレイルデータに基づきます",
 	"parks.attributionTraced": "コースラインは公園の公開地図をもとに作成しました",
 	"parks.navigate": "このコースをナビ",
+	"parks.downloadGpx": "GPXをダウンロード",
 	"parks.browseLink": "公園コース",
 } satisfies Messages;

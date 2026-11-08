@@ -7222,6 +7222,12 @@ abstract class AppLocalizations {
   /// **'Could not share {format}: {error}'**
   String routeDetailShareFailed(String format, String error);
 
+  /// Banner when the check for a park course route's geometry credit fails, so the GPX/KML export is refused rather than written uncredited. Web key routeDetail.exportCreditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check this route\'s map credits, so nothing was exported. Try again.'**
+  String get routeDetailExportCreditFailed;
+
   /// Banner shown when the transfer-to-club club fetch times out
   ///
   /// In en, this message translates to:
@@ -33976,6 +33982,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Navigate this course'**
   String get parksNavigate;
+
+  /// Park courses (#1313): shares the course line as a GPX file with its checkpoints and geometry credit. Web key parks.downloadGpx.
+  ///
+  /// In en, this message translates to:
+  /// **'Share GPX'**
+  String get parksShareGpx;
 
   /// Park courses (#1313): web key parks.browseLink.
   ///

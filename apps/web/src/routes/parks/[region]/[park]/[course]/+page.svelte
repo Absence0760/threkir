@@ -18,7 +18,13 @@
 		type SegmentAgeBand,
 		type SegmentGenderFilter,
 	} from '#lib/core/data.ts';
-	import { regionCodeFromSlug, regionName } from '#lib/parks/park_courses.ts';
+	import {
+		courseAttribution,
+		parkCourseGpx,
+		regionCodeFromSlug,
+		regionName,
+	} from '#lib/parks/park_courses.ts';
+	import { downloadFile } from '#lib/routes/gpx.ts';
 	import {
 		ATTRIBUTION_LABEL,
 		DIFFICULTY_LABEL,
@@ -110,6 +116,21 @@
 	function fmtDist(metres: number): string {
 		const { value, unit } = distanceInPreferred(metres);
 		return `${value.toFixed(2)} ${unit}`;
+	}
+
+	function downloadGpx() {
+		if (!park || !course) return;
+		const gpx = parkCourseGpx({
+			name: course.segment.name,
+			waypoints: mapTrack,
+			checkpoints: course.checkpoints,
+			attribution: courseAttribution(course.geometry_source, {
+				name: park.name,
+				websiteUrl: park.website_url,
+			}),
+		});
+		const base = course.segment.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
+		downloadFile(gpx, `${base || 'course'}.gpx`, 'application/gpx+xml');
 	}
 
 	const shapeKey = $derived(labelKey(SHAPE_LABEL, course?.course_shape));
@@ -220,12 +241,25 @@
 			{m('parks.safetyNotice')}
 		</p>
 
-		{#if course.route_id && course.status !== 'closed'}
-			<a class="btn btn-outline btn-sm navigate" href="/routes/{course.route_id}">
-				<span class="material-symbols" aria-hidden="true">directions_run</span>
-				{m('parks.navigate')}
-			</a>
-		{/if}
+		<div class="course-actions">
+			{#if course.route_id && course.status !== 'closed'}
+				<a class="btn btn-outline btn-sm navigate" href="/routes/{course.route_id}">
+					<span class="material-symbols" aria-hidden="true">directions_run</span>
+					{m('parks.navigate')}
+				</a>
+			{/if}
+			{#if mapTrack.length >= 2 && course.status !== 'closed'}
+				<button
+					type="button"
+					class="btn btn-outline btn-sm navigate"
+					onclick={downloadGpx}
+					data-testid="park-course-gpx"
+				>
+					<span class="material-symbols" aria-hidden="true">download</span>
+					{m('parks.downloadGpx')}
+				</button>
+			{/if}
+		</div>
 
 		<section class="section">
 			{#if !auth.loggedIn}
@@ -467,6 +501,11 @@
 		font-size: 0.85rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
+	}
+	.course-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
 	}
 	.navigate {
 		display: inline-flex;

@@ -157,3 +157,26 @@ test('toGpx / toRunGpx / toKml — a control character in the name cannot make t
 		assert.ok(xml.includes('Bell� lap� �'), 'the name keeps every character it can');
 	}
 });
+
+const ATTRIBUTION = {
+	notice: 'Course line © OpenStreetMap contributors.',
+	author: 'OpenStreetMap contributors',
+	licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
+	linkHref: 'https://www.openstreetmap.org/copyright',
+	linkText: '© OpenStreetMap contributors',
+};
+
+test('toGpx — attribution sits between the name and the time, as GPX 1.1 orders metadata', () => {
+	const xml = toGpx('Loop', COORDS_3, ELEVS_3, ATTRIBUTION);
+	assert.match(
+		xml,
+		/<name>Loop<\/name>\n    <desc>Course line © OpenStreetMap contributors\.<\/desc>\n    <copyright author="OpenStreetMap contributors"><license>https:\/\/opendatacommons\.org\/licenses\/odbl\/1-0\/<\/license><\/copyright>\n    <link href="https:\/\/www\.openstreetmap\.org\/copyright"><text>© OpenStreetMap contributors<\/text><\/link>\n    <time>/,
+	);
+	assert.doesNotMatch(toGpx('Loop', COORDS_3, ELEVS_3), /<desc>|<copyright|<link/);
+});
+
+test('toKml — attribution becomes the Document description', () => {
+	const xml = toKml('Loop', COORDS_3, ELEVS_3, ATTRIBUTION);
+	assert.match(xml, /<Document>\n    <name>Loop<\/name>\n    <description>Course line © OpenStreetMap contributors\.<\/description>\n    <Placemark>/);
+	assert.doesNotMatch(toKml('Loop', COORDS_3, ELEVS_3), /<description>/);
+});

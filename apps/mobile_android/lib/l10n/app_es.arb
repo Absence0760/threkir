@@ -1226,6 +1226,7 @@
   "routeDetailTagSaveFailed": "No se pudo guardar la etiqueta: {error}",
   "routeDetailTagRemoveFailed": "No se pudo quitar la etiqueta: {error}",
   "routeDetailShareFailed": "No se pudo compartir {format}: {error}",
+  "routeDetailExportCreditFailed": "No se pudieron comprobar los créditos del mapa de esta ruta, así que no se exportó nada. Inténtalo de nuevo.",
   "routeDetailClubsLoadTimeout": "No se pudieron cargar tus clubes — comprueba tu red.",
   "routeDetailClubsLoadFailed": "No se pudieron cargar tus clubes.",
   "routeDetailDetached": "Separada del club; la ruta ahora es personal.",
@@ -5846,5 +5847,6 @@
   "parksAttributionAgency": "Trazado del recorrido según los datos de senderos del propio parque",
   "parksAttributionTraced": "Trazado del recorrido dibujado sobre el mapa publicado del parque",
   "parksNavigate": "Navegar este recorrido",
+  "parksShareGpx": "Compartir GPX",
   "parksBrowseLink": "Recorridos de parques"
 }

@@ -2,9 +2,11 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import {
 	COURSE_SHAPES,
+	courseAttribution,
 	courseIsCountable,
 	groupParksByRegion,
 	MAX_COURSE_CHECKPOINTS,
+	parkCourseGpx,
 	parseCourseCheckpoints,
 	regionCodeFromSlug,
 	regionName,
@@ -92,4 +94,85 @@ test('groupParksByRegion: regions in code order, parks by name within each', () 
 
 test('COURSE_SHAPES matches the course_shape CHECK', () => {
 	assert.deepEqual([...COURSE_SHAPES], ['loop', 'out_and_back', 'point_to_point']);
+});
+
+const PARK = { name: 'Fixture State Park', websiteUrl: 'https://example.gov/fixture' };
+
+test('courseAttribution: osm names the ODbL and links the OpenStreetMap copyright page', () => {
+	const a = courseAttribution('osm', PARK);
+	assert.equal(a?.author, 'OpenStreetMap contributors');
+	assert.equal(a?.licenseUrl, 'https://opendatacommons.org/licenses/odbl/1-0/');
+	assert.equal(a?.linkHref, 'https://www.openstreetmap.org/copyright');
+	assert.equal(a?.linkText, '© OpenStreetMap contributors');
+	assert.match(a?.notice ?? '', /© OpenStreetMap contributors/);
+});
+
+test('courseAttribution: nps credits the National Park Service with no licence claim', () => {
+	const a = courseAttribution('nps', PARK);
+	assert.equal(a?.author, 'National Park Service');
+	assert.equal(a?.licenseUrl, null);
+	assert.equal(a?.linkHref, 'https://www.nps.gov/');
+	assert.equal(a?.notice, 'Course line from National Park Service trail data.');
+});
+
+test('courseAttribution: agency credits the park and links its site only over https', () => {
+	const a = courseAttribution('agency', PARK);
+	assert.equal(a?.author, 'Fixture State Park');
+	assert.equal(a?.linkHref, 'https://example.gov/fixture');
+	assert.equal(a?.notice, 'Course line from trail data published by Fixture State Park.');
+	assert.equal(courseAttribution('agency', { name: 'P', websiteUrl: 'http://x.test' })?.linkHref, null);
+	assert.equal(courseAttribution('agency', { name: 'P', websiteUrl: null })?.linkHref, null);
+});
+
+test('courseAttribution: a park the reader cannot see still yields an unnamed credit', () => {
+	assert.equal(courseAttribution('osm', null)?.author, 'OpenStreetMap contributors');
+	const a = courseAttribution('agency', null);
+	assert.equal(a?.author, null);
+	assert.equal(a?.linkHref, null);
+	assert.equal(a?.notice, 'Course line from trail data published by the park.');
+});
+
+test('courseAttribution: traced names no rights holder', () => {
+	const a = courseAttribution('traced', PARK);
+	assert.equal(a?.author, null);
+	assert.equal(a?.notice, 'Course line traced against the published trail map of Fixture State Park.');
+});
+
+test('courseAttribution: a value outside the vocabulary, or none, has no attribution', () => {
+	assert.equal(courseAttribution('strava', PARK), null);
+	assert.equal(courseAttribution(null, PARK), null);
+	assert.equal(courseAttribution(undefined, PARK), null);
+});
+
+test('parkCourseGpx: the line, one waypoint per checkpoint in order, and the credit', () => {
+	const xml = parkCourseGpx({
+		name: 'Lake Loop',
+		waypoints: [
+			{ lat: 37.1, lng: -77.5, ele: 50 },
+			{ lat: 37.2, lng: -77.6 },
+		],
+		checkpoints: [
+			{ lat: 37.11, lng: -77.51 },
+			{ lat: 37.15, lng: -77.55 },
+		],
+		attribution: courseAttribution('osm', PARK),
+	});
+	assert.ok(xml.includes('<trkpt lat="37.1" lon="-77.5"><ele>50</ele></trkpt>'));
+	assert.ok(xml.includes('<trkpt lat="37.2" lon="-77.6"><ele>0</ele></trkpt>'));
+	const first = xml.indexOf('<name>Checkpoint 1</name>');
+	const second = xml.indexOf('<name>Checkpoint 2</name>');
+	assert.ok(first > 0 && second > first);
+	assert.ok(xml.includes('<wpt lat="37.11" lon="-77.51"><name>Checkpoint 1</name><type>checkpoint</type></wpt>'));
+	assert.ok(xml.includes('<copyright author="OpenStreetMap contributors">'));
+});
+
+test('parkCourseGpx: an unreadable checkpoint list writes no waypoints, never a partial set', () => {
+	const xml = parkCourseGpx({
+		name: 'Lake Loop',
+		waypoints: [{ lat: 37.1, lng: -77.5 }],
+		checkpoints: null,
+		attribution: null,
+	});
+	assert.doesNotMatch(xml, /<wpt/);
+	assert.doesNotMatch(xml, /<desc>/);
 });

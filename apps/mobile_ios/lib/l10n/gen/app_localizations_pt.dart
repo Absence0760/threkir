@@ -4409,6 +4409,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Não foi possível verificar os créditos do mapa desta rota, por isso nada foi exportado. Tente novamente.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Não foi possível carregar os seus clubes — verifique a sua rede.';
 
@@ -21070,6 +21074,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksNavigate => 'Navegar neste percurso';
 
   @override
+  String get parksShareGpx => 'Partilhar GPX';
+
+  @override
   String get parksBrowseLink => 'Percursos de parques';
 }
 
@@ -25476,6 +25483,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String routeDetailShareFailed(String format, String error) {
     return 'Não foi possível compartilhar $format: $error';
   }
+
+  @override
+  String get routeDetailExportCreditFailed =>
+      'Não foi possível verificar os créditos do mapa desta rota, então nada foi exportado. Tente novamente.';
 
   @override
   String get routeDetailClubsLoadTimeout =>
@@ -42121,6 +42132,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksNavigate => 'Navegar neste percurso';
+
+  @override
+  String get parksShareGpx => 'Compartilhar GPX';
 
   @override
   String get parksBrowseLink => 'Percursos de parques';

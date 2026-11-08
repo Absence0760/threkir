@@ -1177,6 +1177,7 @@ export const messages = {
 	"routeDetail.private": "Privat",
 	"routeDetail.share": "Teilen",
 	"routeDetail.exportGpxMarkers": "GPX + Markierungen",
+	"routeDetail.exportCreditFailed": "Die Kartenquellen dieser Route konnten nicht geprüft werden, daher wurde nichts exportiert. Versuch es noch einmal.",
 	"routeDetail.reportRoute": "Diese Route melden",
 	"routeDetail.reportReview": "Diese Bewertung melden",
 	"routeDetail.deleteReview": "Eigene Bewertung löschen",
@@ -7418,5 +7419,6 @@ export const messages = {
 	"parks.attributionAgency": "Streckenverlauf aus den Wegdaten des Parks",
 	"parks.attributionTraced": "Streckenverlauf nach der veröffentlichten Karte des Parks gezeichnet",
 	"parks.navigate": "Diese Strecke navigieren",
+	"parks.downloadGpx": "GPX herunterladen",
 	"parks.browseLink": "Parkstrecken",
 } satisfies Messages;

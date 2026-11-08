@@ -4419,6 +4419,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Die Kartenquellen dieser Route konnten nicht geprüft werden, daher wurde nichts exportiert. Versuch es noch einmal.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Deine Clubs konnten nicht geladen werden — überprüfe dein Netzwerk.';
 
@@ -21094,6 +21098,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksNavigate => 'Diese Strecke navigieren';
+
+  @override
+  String get parksShareGpx => 'GPX teilen';
 
   @override
   String get parksBrowseLink => 'Parkstrecken';

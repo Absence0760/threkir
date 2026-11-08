@@ -5834,6 +5834,31 @@ class ApiClient {
     ];
   }
 
+  /// The geometry provenance of the park course whose official route is
+  /// [routeId], with its park's name and site, for the credit an exported
+  /// file of that route must carry. Null for any other route; the park fields
+  /// are null when the park is hidden from the reader. Throws on a failed
+  /// read, so an export never goes out uncredited because the check could
+  /// not run.
+  Future<({String geometrySource, String? parkName, String? parkWebsiteUrl})?>
+      fetchRouteCourseProvenance(String routeId) async {
+    final row = await _client
+        .from(ParkCourseRow.table)
+        .select('${ParkCourseRow.colGeometrySource}, parks(name, website_url)')
+        .eq(ParkCourseRow.colRouteId, routeId)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return null;
+    final park = row['parks'] is Map
+        ? (row['parks'] as Map).cast<String, dynamic>()
+        : null;
+    return (
+      geometrySource: row[ParkCourseRow.colGeometrySource] as String,
+      parkName: park?['name'] as String?,
+      parkWebsiteUrl: park?['website_url'] as String?,
+    );
+  }
+
   /// The most-completions board on a catalogue segment
   /// (`global_segment_completions`): one row per athlete, distinct local days
   /// in the park's timezone. [season] null is all time. Tied counts share a

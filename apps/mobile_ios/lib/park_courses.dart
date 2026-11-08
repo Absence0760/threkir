@@ -7,6 +7,8 @@
 /// `apps/web/scripts/check_constraint_unions.mjs`.
 library;
 
+import 'route_gpx.dart';
+
 const List<String> kParkAgencies = ['nps', 'state', 'county', 'other'];
 
 const List<String> kCourseShapes = ['loop', 'out_and_back', 'point_to_point'];
@@ -154,4 +156,99 @@ List<ParkRegionGroup<T>> groupParksByRegion<T>(
           ..sort((a, b) => nameOf(a).compareTo(nameOf(b))),
       ),
   ];
+}
+
+const GpxAttribution _osmAttribution = GpxAttribution(
+  notice: 'Course line © OpenStreetMap contributors, available under the '
+      'Open Database License (ODbL).',
+  author: 'OpenStreetMap contributors',
+  licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
+  linkHref: 'https://www.openstreetmap.org/copyright',
+  linkText: '© OpenStreetMap contributors',
+);
+
+const GpxAttribution _npsAttribution = GpxAttribution(
+  notice: 'Course line from National Park Service trail data.',
+  author: 'National Park Service',
+  licenseUrl: null,
+  linkHref: 'https://www.nps.gov/',
+  linkText: 'National Park Service',
+);
+
+/// The credit an exported course file carries, from the course's
+/// `geometry_source` and its park. Canonical English, like every other GPX
+/// `<desc>` the app writes, so the file is the same whoever downloads it.
+/// Null for a value outside the vocabulary: the CHECK constraint makes that
+/// unreachable for a stored course, and a caller with no course passes null.
+/// A park the reader cannot see (pulled) still yields a credit, unnamed.
+///
+/// `osm` names the ODbL and links OpenStreetMap's copyright page, which is
+/// what its licence asks of a produced work. `nps` credits the National Park
+/// Service whatever licence a given dataset states. `agency` credits the park
+/// and links its own site; `traced` was drawn by us, so it names no rights
+/// holder and only says what it was traced against.
+GpxAttribution? courseAttribution(
+  String? geometrySource, {
+  required String? parkName,
+  required String? parkWebsiteUrl,
+}) {
+  final website = parkWebsiteUrl != null && parkWebsiteUrl.startsWith('https://')
+      ? parkWebsiteUrl
+      : null;
+  switch (geometrySource) {
+    case 'osm':
+      return _osmAttribution;
+    case 'nps':
+      return _npsAttribution;
+    case 'agency':
+      return GpxAttribution(
+        notice:
+            'Course line from trail data published by ${parkName ?? 'the park'}.',
+        author: parkName,
+        licenseUrl: null,
+        linkHref: website,
+        linkText: parkName ?? website ?? '',
+      );
+    case 'traced':
+      return GpxAttribution(
+        notice: 'Course line traced against the published trail map of '
+            '${parkName ?? 'the park'}.',
+        author: null,
+        licenseUrl: null,
+        linkHref: website,
+        linkText: parkName ?? website ?? '',
+      );
+    default:
+      return null;
+  }
+}
+
+/// The GPX a course screen shares: the course line, one `<wpt>` per
+/// checkpoint in order (so a watch shows the points a run must pass), and the
+/// geometry credit in `<metadata>`. A checkpoint list that could not be read
+/// (null) writes no waypoints rather than a partial set. [waypoints] are
+/// `(lat, lng, ele)` triples.
+String parkCourseGpx({
+  required String name,
+  required List<({double lat, double lng, double? ele})> waypoints,
+  required List<CourseCheckpoint>? checkpoints,
+  required GpxAttribution? attribution,
+}) {
+  final cps = checkpoints ?? const <CourseCheckpoint>[];
+  return toRouteGpxWithMarkers(
+    name,
+    [for (final w in waypoints) [w.lng, w.lat]],
+    [for (final w in waypoints) w.ele ?? 0],
+    [
+      for (var i = 0; i < cps.length; i++)
+        RouteGpxMarker(
+          label: 'Checkpoint ${i + 1}',
+          lat: cps[i].lat,
+          lng: cps[i].lng,
+          kind: 'checkpoint',
+          meta: const {},
+        ),
+    ],
+    attribution,
+  );
 }

@@ -3,9 +3,10 @@
 /// by every Garmin/Coros/Suunto so the runner sees "Aid 2 in 1.3 km" on the
 /// wrist mid-race.
 ///
-/// Pure + deterministic (no `DateTime.now()`): the GPX `<metadata>` carries
-/// only a `<name>`, so the output is byte-stable for tests. GPX 1.1 schema
-/// requires `<wpt>` elements BEFORE `<trk>`, so waypoints are emitted first.
+/// Pure + deterministic (no `DateTime.now()`): the GPX `<metadata>` carries a
+/// `<name>` and, for a line someone else holds rights in, its attribution, so
+/// the output is byte-stable for tests. GPX 1.1 schema requires `<wpt>`
+/// elements BEFORE `<trk>`, so waypoints are emitted first.
 ///
 /// Twin of `apps/web/src/lib/routes/route_gpx.ts` — keep the element order,
 /// `<sym>` mapping, `<desc>` construction, escaping, and test count in
@@ -34,6 +35,59 @@ class RouteGpxMarker {
   });
 }
 
+/// Credit for a line drawn from third-party data (a park course traced from
+/// OpenStreetMap or National Park Service trails). It travels in the file's
+/// `<metadata>` because the file outlives the page that credited it, and
+/// OpenStreetMap's licence requires the credit on the exported work too.
+class GpxAttribution {
+  /// One canonical-English sentence, written to `<desc>`.
+  final String notice;
+
+  /// Rights holder for `<copyright author>`; null when no third party holds
+  /// rights.
+  final String? author;
+
+  /// Licence URL for `<copyright><license>`.
+  final String? licenseUrl;
+
+  /// Credit link for `<link href>`; null writes no `<link>`.
+  final String? linkHref;
+
+  /// `<link><text>`.
+  final String linkText;
+
+  const GpxAttribution({
+    required this.notice,
+    required this.author,
+    required this.licenseUrl,
+    required this.linkHref,
+    required this.linkText,
+  });
+}
+
+/// The `<desc>`, `<copyright>` and `<link>` lines of a GPX 1.1 `<metadata>`,
+/// in the schema's order (they follow `<name>` and precede `<time>`), each
+/// indented four spaces and newline-terminated. Empty for no attribution.
+String gpxAttributionMetadata(GpxAttribution? attribution) {
+  if (attribution == null) return '';
+  final lines = ['    <desc>${escapeXmlText(attribution.notice)}</desc>'];
+  final author = attribution.author;
+  if (author != null && author.isNotEmpty) {
+    final licenseUrl = attribution.licenseUrl;
+    final license = licenseUrl != null && licenseUrl.isNotEmpty
+        ? '<license>${escapeXmlText(licenseUrl)}</license>'
+        : '';
+    lines.add(
+        '    <copyright author="${escapeXmlText(author)}">$license</copyright>');
+  }
+  final href = attribution.linkHref;
+  if (href != null && href.isNotEmpty) {
+    lines.add('    <link href="${escapeXmlText(href)}">'
+        '<text>${escapeXmlText(attribution.linkText)}</text></link>');
+  }
+  return lines.map((l) => '$l\n').join();
+}
+
 /// Garmin-recognised `<sym>` name per marker kind; absent → no `<sym>`.
 const Map<String, String> _symByKind = {
   'aid_station': 'Water Source',
@@ -50,8 +104,9 @@ String toRouteGpxWithMarkers(
   String name,
   List<List<double>> coordinates,
   List<double> elevations,
-  List<RouteGpxMarker> markers,
-) {
+  List<RouteGpxMarker> markers, [
+  GpxAttribution? attribution,
+]) {
   final waypoints =
       markers.map(_renderWaypoint).whereType<String>().join('\n');
 
@@ -77,7 +132,7 @@ String toRouteGpxWithMarkers(
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
     <name>${escapeXmlText(name)}</name>
-  </metadata>
+${gpxAttributionMetadata(attribution)}  </metadata>
 ${waypoints.isNotEmpty ? '$waypoints\n' : ''}  <trk>
     <name>${escapeXmlText(name)}</name>
     <trkseg>

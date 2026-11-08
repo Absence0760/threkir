@@ -158,4 +158,58 @@ void main() {
     expect(xml, contains('<ele>410.5</ele>'));
     expect(xml, contains('<ele>0</ele>'));
   });
+
+  const osm = GpxAttribution(
+    notice: 'Course line © OpenStreetMap contributors, available under the Open Database License (ODbL).',
+    author: 'OpenStreetMap contributors',
+    licenseUrl: 'https://opendatacommons.org/licenses/odbl/1-0/',
+    linkHref: 'https://www.openstreetmap.org/copyright',
+    linkText: '© OpenStreetMap contributors',
+  );
+
+  test('toRouteGpxWithMarkers — attribution lands in metadata as desc, copyright, link in GPX 1.1 order', () {
+    final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [], osm);
+    expect(
+      xml,
+      contains('  <metadata>\n'
+          '    <name>Loop</name>\n'
+          '    <desc>Course line © OpenStreetMap contributors, available under the Open Database License (ODbL).</desc>\n'
+          '    <copyright author="OpenStreetMap contributors"><license>https://opendatacommons.org/licenses/odbl/1-0/</license></copyright>\n'
+          '    <link href="https://www.openstreetmap.org/copyright"><text>© OpenStreetMap contributors</text></link>\n'
+          '  </metadata>\n'),
+    );
+  });
+
+  test('toRouteGpxWithMarkers — attribution with no rights holder or link writes only the desc', () {
+    final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [],
+        const GpxAttribution(
+          notice: 'Traced.',
+          author: null,
+          licenseUrl: null,
+          linkHref: null,
+          linkText: 'Park',
+        ));
+    expect(xml, contains('    <name>Loop</name>\n    <desc>Traced.</desc>\n  </metadata>\n'));
+    expect(xml, isNot(contains('<copyright')));
+    expect(xml, isNot(contains('<link')));
+  });
+
+  test('toRouteGpxWithMarkers — a rights holder with no licence writes an empty copyright, and every field is escaped', () {
+    final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [],
+        const GpxAttribution(
+          notice: 'A & B',
+          author: 'Smith\'s "Park"',
+          licenseUrl: null,
+          linkHref: 'https://example.com/?a=1&b=2',
+          linkText: '<Park>',
+        ));
+    expect(xml, contains('<desc>A &amp; B</desc>'));
+    expect(xml, contains('<copyright author="Smith&#39;s &quot;Park&quot;"></copyright>'));
+    expect(xml, contains('<link href="https://example.com/?a=1&amp;b=2"><text>&lt;Park&gt;</text></link>'));
+  });
+
+  test('toRouteGpxWithMarkers — no attribution leaves the metadata as the name alone', () {
+    final xml = toRouteGpxWithMarkers('Loop', coords3, elevs3, [], null);
+    expect(xml, contains('  <metadata>\n    <name>Loop</name>\n  </metadata>\n'));
+  });
 }

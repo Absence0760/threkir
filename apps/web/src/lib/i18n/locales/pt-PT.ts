@@ -1176,6 +1176,7 @@ export const messages = {
 	"routeDetail.private": "Privada",
 	"routeDetail.share": "Partilhar",
 	"routeDetail.exportGpxMarkers": "GPX + marcadores",
+	"routeDetail.exportCreditFailed": "Não foi possível verificar os créditos do mapa desta rota, por isso nada foi exportado. Tente novamente.",
 	"routeDetail.reportRoute": "Denunciar esta rota",
 	"routeDetail.reportReview": "Denunciar esta avaliação",
 	"routeDetail.deleteReview": "Eliminar a sua avaliação",
@@ -7417,5 +7418,6 @@ export const messages = {
 	"parks.attributionAgency": "Traçado do percurso a partir dos dados de trilhos do próprio parque",
 	"parks.attributionTraced": "Traçado do percurso desenhado sobre o mapa publicado do parque",
 	"parks.navigate": "Navegar neste percurso",
+	"parks.downloadGpx": "Transferir GPX",
 	"parks.browseLink": "Percursos de parques",
 } satisfies Messages;

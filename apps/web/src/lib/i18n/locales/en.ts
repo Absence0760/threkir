@@ -1190,6 +1190,7 @@ export const en = {
 	"routeDetail.private": "Private",
 	"routeDetail.share": "Share",
 	"routeDetail.exportGpxMarkers": "GPX + markers",
+	"routeDetail.exportCreditFailed": "Couldn't check this route's map credits, so nothing was exported. Try again.",
 	"routeDetail.reportRoute": "Report this route",
 	"routeDetail.reportReview": "Report this review",
 	"routeDetail.deleteReview": "Delete your review",
@@ -7450,5 +7451,6 @@ export const en = {
 	"parks.attributionAgency": "Course line from the park's own trail data",
 	"parks.attributionTraced": "Course line traced against the park's published map",
 	"parks.navigate": "Navigate this course",
+	"parks.downloadGpx": "Download GPX",
 	"parks.browseLink": "Park courses",
 } satisfies Record<string, string>;

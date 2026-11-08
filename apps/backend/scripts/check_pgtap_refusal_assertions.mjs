@@ -1808,6 +1808,16 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'segment_match_jobs_test.sql',
+    description: 'an admin can start a backfill',
+    columns: ['jobs.payload'],
+    readBack: "the admin's start is queued as one backfill job for that segment, from the first run",
+    reason:
+      'enqueue_segment_backfill builds the payload with jsonb_strip_nulls(jsonb_build_object(...)) ' +
+      'rather than storing the argument; the read-back compares the whole stored payload of the queued ' +
+      'job, so a server that wrote a different segment, kept the null cursor or wrote nothing fails there.',
+  },
+  {
     file: 'club_verification_test.sql',
     description: 'the owner submits',
     columns: ['club_verification_requests.note', 'club_verification_requests.organisation'],

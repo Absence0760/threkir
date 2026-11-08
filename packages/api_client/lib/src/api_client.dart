@@ -9571,7 +9571,7 @@ class ApiClient {
   /// `DM_COLUMNS`.
   static const String dmColumns =
       'id, sender_id, recipient_id, body, created_at, seen_at, route_id, '
-      'unsent_at, deleted_partner_key, conversation_id';
+      'unsent_at, deleted_partner_key, conversation_id, edited_at';
 
   /// One page of a conversation, oldest message first. A partner thread is
   /// both directions between the viewer and the partner; a deleted-partner
@@ -9677,6 +9677,28 @@ class ApiClient {
       params: {'p_message_id': messageId},
     );
     return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+  }
+
+  /// Replace the text of one of the viewer's own messages through
+  /// `edit_direct_message` (migration 20271114000210), which allows it for 15
+  /// minutes after sending. A refusal (unsent, past the window, a block, or
+  /// not the viewer's message) is thrown as [DmEditClosed]; the edit throttle's
+  /// P0001 is rethrown as the `PostgrestException` it is, for the shared
+  /// `rateLimitErrorMessage` parser. Returns the updated row. Mirrors web
+  /// `editDm`.
+  Future<DirectMessageRow> editDm(String messageId, String body) async {
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) throw ArgumentError.value(body, 'body', 'is empty');
+    try {
+      final row = await _client.rpc(
+        'edit_direct_message',
+        params: {'p_message_id': messageId, 'p_body': trimmed},
+      );
+      return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      if (e.code == '55000' || e.code == 'P0002') throw const DmEditClosed();
+      rethrow;
+    }
   }
 
   /// Mark the messages [otherId] sent the viewer as read, up to and including

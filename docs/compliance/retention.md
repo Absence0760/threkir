@@ -91,7 +91,7 @@ checkpoint health job (scrubs columns), the export reap and the route-photo
 orphan sweep (each enqueues the job that erases Storage bytes), and the
 reports purge. The reports purge and the route-photo orphan sweep each read a
 `private.feature_flags` gate; the reports one is on (`20271022000001`), and the
-route-photo sweep does nothing until its gate is. The other fourteen live schedules are not retention
+route-photo sweep does nothing until its gate is. The other fifteen live schedules are not retention
 jobs and are excluded: `enqueue-token-refresh`, `enqueue-event-reminders`,
 `enqueue-workout-reminders`, `enqueue-weekly-digest`, `enqueue-lifecycle-drip`,
 `enqueue-safety-overdue-emails`, `sweep-challenge-completions`,
@@ -100,9 +100,12 @@ jobs and are excluded: `enqueue-token-refresh`, `enqueue-event-reminders`,
 removes a lapsed paid-waitlist offer so the seat can be offered on — a state
 change on a live registration, not a retention window),
 `event-refund-sweep` (which refunds orders still owed after a host cancel —
-it moves money and stamps orders, and deletes nothing) and
+it moves money and stamps orders, and deletes nothing),
 `race-listings-sweep` (which pulls public RunSignUp races into the race
-calendar — it inserts and updates listings, and deletes nothing). (`refresh-mv-weekly-mileage` is gone
+calendar — it inserts and updates listings, and deletes nothing) and
+`club-verification-recheck` (which re-checks verified clubs' domain proof and
+drops a badge whose proof has gone — it updates a request and a club, and
+deletes nothing). (`refresh-mv-weekly-mileage` is gone
 entirely — `20270530_001` dropped the materialized view and unscheduled it.) Window tightening is a
 single-file edit to the function body. The `gdpr_dsar_closeouts_test.sql`
 pgtap suite pins the existence of `purge-stale-jobs`; the matching pins for

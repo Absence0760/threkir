@@ -17551,6 +17551,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'Message unsent';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Seen $time';
+  }
+
+  @override
   String get messagesUnsend => 'Unsend';
 
   @override
@@ -19524,6 +19529,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'AI Coach in Messages';
+
+  @override
+  String get prefsReadReceipts => 'Read receipts';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Show people when you\'ve read their messages. Turn this off and you won\'t see when they\'ve read yours either.';
+
+  @override
+  String get prefsReadReceiptsFailed => 'Couldn\'t update read receipts.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Pinned at the top';

@@ -17771,6 +17771,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'Message retiré';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Vu $time';
+  }
+
+  @override
   String get messagesUnsend => 'Retirer';
 
   @override
@@ -19766,6 +19771,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'Coach IA dans Messages';
+
+  @override
+  String get prefsReadReceipts => 'Confirmations de lecture';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Indique aux autres quand vous avez lu leurs messages. Si vous les désactivez, vous ne verrez pas non plus quand ils ont lu les vôtres.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'Impossible de modifier les confirmations de lecture.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Épinglé en haut';

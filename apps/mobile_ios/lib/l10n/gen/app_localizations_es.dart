@@ -17728,6 +17728,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'Mensaje anulado';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Visto $time';
+  }
+
+  @override
   String get messagesUnsend => 'Anular envío';
 
   @override
@@ -19724,6 +19729,17 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'Entrenador IA en Mensajes';
+
+  @override
+  String get prefsReadReceipts => 'Confirmaciones de lectura';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Muestra a los demás cuándo has leído sus mensajes. Si lo desactivas, tampoco verás cuándo han leído los tuyos.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'No se pudieron cambiar las confirmaciones de lectura.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Fijado arriba';

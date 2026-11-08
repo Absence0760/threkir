@@ -17731,6 +17731,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'Envio da mensagem anulado';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Vista $time';
+  }
+
+  @override
   String get messagesUnsend => 'Anular envio';
 
   @override
@@ -19723,6 +19728,17 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'Coach de IA nas Mensagens';
+
+  @override
+  String get prefsReadReceipts => 'Confirmações de leitura';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Mostra às outras pessoas quando leu as mensagens delas. Se desativar, também não verá quando leram as suas.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'Não foi possível alterar as confirmações de leitura.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Fixado no topo';
@@ -37955,6 +37971,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get messagesUnsentPlaceholder => 'Mensagem removida';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Vista $time';
+  }
+
+  @override
   String get messagesUnsend => 'Desfazer envio';
 
   @override
@@ -39943,6 +39964,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get prefsCoachInMessages => 'Coach de IA em Mensagens';
+
+  @override
+  String get prefsReadReceipts => 'Confirmações de leitura';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Mostra às pessoas quando você leu as mensagens delas. Se desativar, você também não verá quando elas leram as suas.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'Não foi possível alterar as confirmações de leitura.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Fixado no topo';

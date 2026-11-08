@@ -32,6 +32,7 @@ DirectMessageRow _msg(
   String? body,
   String? routeId,
   bool read = true,
+  DateTime? seenAt,
 }) =>
     DirectMessageRow(
       id: id,
@@ -41,6 +42,7 @@ DirectMessageRow _msg(
       body: body ?? 'body $id',
       createdAt: DateTime.utc(2026, 10, 14, 8, minute),
       readAt: read ? DateTime.utc(2026, 10, 14, 9) : null,
+      seenAt: seenAt,
       routeId: routeId,
     );
 
@@ -580,11 +582,47 @@ void main() {
       expect(api.markReadCalls, 1);
     });
 
-    testWidgets('a conversation with nothing unread is not re-marked',
+    // read_at is withheld from clients (migration 20271113000001), so the
+    // screen cannot tell a read message from an unread one: it marks through
+    // the newest partner message once and remembers how far it marked.
+    testWidgets('opening marks once, and a poll with nothing new does not again',
         (tester) async {
       final api = _FakeApi()..newest = [_msg('m1')];
+      await _pumpThread(tester, api, poll: const Duration(seconds: 10));
+      expect(api.throughs.map((m) => m.id), ['m1']);
+
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump();
+      expect(api.markReadCalls, 1);
+    });
+
+    testWidgets('Seen sits under the viewer\'s newest message the partner read',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [
+          _msg('m1', from: _me, minute: 1, body: 'one', seenAt: DateTime.utc(2026, 10, 14, 9)),
+          _msg('m2', from: _me, minute: 2, body: 'two', seenAt: DateTime.utc(2026, 10, 14, 9, 5)),
+          _msg('m3', from: _me, minute: 3, body: 'three'),
+        ];
       await _pumpThread(tester, api);
-      expect(api.markReadCalls, 0);
+
+      final seen = find.byKey(const ValueKey('dm-seen'));
+      expect(seen, findsOneWidget);
+      expect(tester.widget<Text>(seen).data, startsWith('Seen '));
+      final column = find.ancestor(of: seen, matching: find.byType(Column)).first;
+      expect(find.descendant(of: column, matching: find.text('two')), findsOneWidget);
+      expect(find.descendant(of: column, matching: find.text('three')), findsNothing);
+    });
+
+    testWidgets('no receipt the server did not share: no Seen at all',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [
+          _msg('m1', from: _me, minute: 1, body: 'one'),
+          _msg('m2', minute: 2, body: 'reply', seenAt: DateTime.utc(2026, 10, 14, 9)),
+        ];
+      await _pumpThread(tester, api);
+      expect(find.byKey(const ValueKey('dm-seen')), findsNothing);
     });
 
     testWidgets('a failed load is an error with a retry and no composer',
@@ -709,7 +747,7 @@ void main() {
     testWidgets('a poll brings in a reply and marks it read', (tester) async {
       final api = _FakeApi()..newest = [_msg('m1', minute: 1, body: 'first')];
       await _pumpThread(tester, api, poll: const Duration(seconds: 10));
-      expect(api.markReadCalls, 0);
+      expect(api.markReadCalls, 1);
 
       api.newest = [
         ...api.newest,
@@ -720,7 +758,7 @@ void main() {
 
       expect(find.text('first'), findsOneWidget);
       expect(find.text('reply'), findsOneWidget);
-      expect(api.markReadCalls, 1);
+      expect(api.throughs.map((m) => m.id), ['m1', 'm2']);
     });
 
     testWidgets('a burst larger than a page leaves no gap in the conversation',

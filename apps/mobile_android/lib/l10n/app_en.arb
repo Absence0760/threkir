@@ -23137,6 +23137,15 @@
   "@messagesUnsentPlaceholder": {
     "description": "Placeholder shown in place of a message its sender unsent, to both people, and as the inbox preview"
   },
+  "messagesSeenAt": "Seen {time}",
+  "@messagesSeenAt": {
+    "description": "Under the newest message the viewer sent that the other person has read, when both have read receipts on. {time} is when they read it",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
   "messagesUnsend": "Unsend",
   "@messagesUnsend": {
     "description": "Action in the message options sheet, and the confirm button, to unsend (remove for both people) your own direct message"
@@ -25859,6 +25868,18 @@
   "prefsCoachInMessages": "AI Coach in Messages",
   "@prefsCoachInMessages": {
     "description": "Settings row: where the AI Coach appears in the Messages inbox"
+  },
+  "prefsReadReceipts": "Read receipts",
+  "@prefsReadReceipts": {
+    "description": "Settings switch: share and see direct-message read receipts"
+  },
+  "prefsReadReceiptsHint": "Show people when you've read their messages. Turn this off and you won't see when they've read yours either.",
+  "@prefsReadReceiptsHint": {
+    "description": "Subtitle of the read receipts switch; turning it off works both ways"
+  },
+  "prefsReadReceiptsFailed": "Couldn't update read receipts.",
+  "@prefsReadReceiptsFailed": {
+    "description": "Banner when the read receipts switch could not be saved"
   },
   "prefsCoachInMessagesPinned": "Pinned at the top",
   "@prefsCoachInMessagesPinned": {

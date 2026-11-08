@@ -16893,6 +16893,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'メッセージの送信が取り消されました';
 
   @override
+  String messagesSeenAt(String time) {
+    return '既読 $time';
+  }
+
+  @override
   String get messagesUnsend => '送信取消';
 
   @override
@@ -18785,6 +18790,16 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'メッセージでの AI コーチ';
+
+  @override
+  String get prefsReadReceipts => '既読表示';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'メッセージを読んだことを相手に知らせます。オフにすると、相手があなたのメッセージを読んだかどうかも表示されません。';
+
+  @override
+  String get prefsReadReceiptsFailed => '既読表示を変更できませんでした。';
 
   @override
   String get prefsCoachInMessagesPinned => '上部に固定';

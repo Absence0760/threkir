@@ -28826,6 +28826,12 @@ abstract class AppLocalizations {
   /// **'Message unsent'**
   String get messagesUnsentPlaceholder;
 
+  /// Under the newest message the viewer sent that the other person has read, when both have read receipts on. {time} is when they read it
+  ///
+  /// In en, this message translates to:
+  /// **'Seen {time}'**
+  String messagesSeenAt(String time);
+
   /// Action in the message options sheet, and the confirm button, to unsend (remove for both people) your own direct message
   ///
   /// In en, this message translates to:
@@ -31786,6 +31792,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI Coach in Messages'**
   String get prefsCoachInMessages;
+
+  /// Settings switch: share and see direct-message read receipts
+  ///
+  /// In en, this message translates to:
+  /// **'Read receipts'**
+  String get prefsReadReceipts;
+
+  /// Subtitle of the read receipts switch; turning it off works both ways
+  ///
+  /// In en, this message translates to:
+  /// **'Show people when you\'ve read their messages. Turn this off and you won\'t see when they\'ve read yours either.'**
+  String get prefsReadReceiptsHint;
+
+  /// Banner when the read receipts switch could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update read receipts.'**
+  String get prefsReadReceiptsFailed;
 
   /// Option: the AI Coach row stays at the top of the Messages inbox
   ///

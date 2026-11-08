@@ -17750,6 +17750,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get messagesUnsentPlaceholder => 'Nachricht zurückgezogen';
 
   @override
+  String messagesSeenAt(String time) {
+    return 'Gesehen $time';
+  }
+
+  @override
   String get messagesUnsend => 'Zurückziehen';
 
   @override
@@ -19742,6 +19747,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get prefsCoachInMessages => 'KI-Coach in Nachrichten';
+
+  @override
+  String get prefsReadReceipts => 'Lesebestätigungen';
+
+  @override
+  String get prefsReadReceiptsHint =>
+      'Andere sehen, wann du ihre Nachrichten gelesen hast. Wenn du das ausschaltest, siehst du auch nicht, wann sie deine gelesen haben.';
+
+  @override
+  String get prefsReadReceiptsFailed =>
+      'Lesebestätigungen konnten nicht geändert werden.';
 
   @override
   String get prefsCoachInMessagesPinned => 'Oben angeheftet';

@@ -1,0 +1,52 @@
+{
+ "spec": "provenance v1",
+ "reference": "docs/architecture/parity_pairs.md (provenance, TS<->Dart); issue #1190 provenance labels; decisions § 2406",
+ "readers": [
+  "apps/web/src/lib/social/provenance.test.ts",
+  "apps/mobile_android/test/provenance_test.dart"
+ ],
+ "schema": {
+  "general": [
+   "Every reader loads this whole file, runs every case in every section below, and fails on a section it does not know.",
+   "A field documented as nullable is present with the JSON value null when absent.",
+   "out is one of official, verified_source, traced, community, or null where the section allows it."
+  ],
+  "kinds": "The four provenance values in display order; each reader asserts its own list equals this.",
+  "content": "{isOfficial, out}: a route, plan, gym routine, challenge or session plan. isOfficial is the server-derived is_official (nullable: a projection that does not carry it).",
+  "listing": "{organiserIsOfficial, provider, isVerified, out}: a race listing read from public_race_listings. organiserIsOfficial and isVerified nullable; provider is the race_listings.provider token (nullable).",
+  "course": "{hasCourse, organiserIsOfficial, courseSource, out}: the course linked to a race listing. out is null when hasCourse is false.",
+  "badge": "{kind, out}: whether a card shows the badge for this provenance (community shows none)."
+ },
+ "kinds": ["official", "verified_source", "traced", "community"],
+ "content": [
+  {"isOfficial": true, "out": "official", "note": "published by an owner/admin of a verified club"},
+  {"isOfficial": false, "out": "community"},
+  {"isOfficial": null, "out": "community", "note": "a projection without the computed field never claims official"}
+ ],
+ "listing": [
+  {"organiserIsOfficial": true, "provider": "manual", "isVerified": true, "out": "official", "note": "claimed by a club that is verified right now"},
+  {"organiserIsOfficial": true, "provider": "runsignup", "isVerified": true, "out": "official", "note": "the organiser outranks the provider it was synced from"},
+  {"organiserIsOfficial": false, "provider": "runsignup", "isVerified": true, "out": "verified_source", "note": "a provider sync, nobody claimed it (or its club was revoked)"},
+  {"organiserIsOfficial": null, "provider": "ultrasignup", "isVerified": true, "out": "verified_source"},
+  {"organiserIsOfficial": false, "provider": "parkrun", "isVerified": true, "out": "verified_source"},
+  {"organiserIsOfficial": false, "provider": "runsignup", "isVerified": false, "out": "community", "note": "a provider token on an unverified row is not a partner sync"},
+  {"organiserIsOfficial": false, "provider": "manual", "isVerified": true, "out": "community", "note": "hand-added and verified by an operator, but no partner and no organiser vouches for it"},
+  {"organiserIsOfficial": false, "provider": "manual", "isVerified": false, "out": "community", "note": "a runner's own listing"},
+  {"organiserIsOfficial": null, "provider": null, "isVerified": null, "out": "community"}
+ ],
+ "course": [
+  {"hasCourse": true, "organiserIsOfficial": true, "courseSource": "official", "out": "official"},
+  {"hasCourse": true, "organiserIsOfficial": true, "courseSource": "traced", "out": "traced", "note": "drawn by the verified club from the race's published map"},
+  {"hasCourse": true, "organiserIsOfficial": false, "courseSource": "official", "out": "community", "note": "revoking the club takes the course's badge with it"},
+  {"hasCourse": true, "organiserIsOfficial": false, "courseSource": "traced", "out": "community"},
+  {"hasCourse": true, "organiserIsOfficial": true, "courseSource": null, "out": "community", "note": "linked by an operator before claims existed: nobody vouched for it"},
+  {"hasCourse": true, "organiserIsOfficial": null, "courseSource": "bogus", "out": "community"},
+  {"hasCourse": false, "organiserIsOfficial": true, "courseSource": "official", "out": null, "note": "no course, no label"}
+ ],
+ "badge": [
+  {"kind": "official", "out": true},
+  {"kind": "verified_source", "out": true},
+  {"kind": "traced", "out": true},
+  {"kind": "community", "out": false}
+ ]
+}

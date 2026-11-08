@@ -197,7 +197,7 @@
 				<p class="muted">{t('admin.clubVerification.empty')}</p>
 			</div>
 		{:else}
-			<ul class="queue">
+			<ul class="request-queue">
 				{#each rows as row (row.request_id ?? row.club_id)}
 					<li class="card-elevated" data-testid="club-verification-row" data-club={row.club_slug}>
 						<div class="row-head">
@@ -373,7 +373,7 @@
 		border-color: var(--color-primary);
 		color: var(--color-primary);
 	}
-	.queue {
+	.request-queue {
 		list-style: none;
 		margin: 0;
 		padding: 0;
@@ -381,7 +381,7 @@
 		flex-direction: column;
 		gap: var(--space-md);
 	}
-	.queue li {
+	.request-queue li {
 		padding: var(--space-lg);
 	}
 	.row-head {

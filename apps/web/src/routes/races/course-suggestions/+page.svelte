@@ -86,7 +86,7 @@
 	{:else if rows.length === 0}
 		<p class="state-msg" data-testid="race-course-queue-empty">{m('raceCourse.queueEmpty')}</p>
 	{:else}
-		<ul class="queue" data-testid="race-course-queue">
+		<ul class="queue-list" data-testid="race-course-queue">
 			{#each rows as { item, race } (item.listingId)}
 				<li class="card queue-item" data-testid="race-course-queue-item">
 					<div class="race-head">
@@ -137,7 +137,7 @@
 		gap: var(--space-md);
 		color: var(--color-danger-text);
 	}
-	.queue {
+	.queue-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;

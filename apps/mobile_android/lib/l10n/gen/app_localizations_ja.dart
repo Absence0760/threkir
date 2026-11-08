@@ -20091,4 +20091,53 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksBrowseLink => '公園コース';
+
+  @override
+  String get eventCourseLinesMapBoth => 'コースのスタートラインとフィニッシュラインの地図';
+
+  @override
+  String get eventCourseLinesMapStart => 'コースのスタートラインの地図';
+
+  @override
+  String get eventCourseLinesMapFinish => 'コースのフィニッシュラインの地図';
+
+  @override
+  String get eventRacePreflightTitle => '準備完了にする前にコースを確認';
+
+  @override
+  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備完了にできません';
+
+  @override
+  String get eventRacePreflightFixOnWeb => 'コースのラインはウェブのイベントエディターで編集します。';
+
+  @override
+  String get eventRaceArmAnyway => 'このまま準備完了にする';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course：フィニッシュラインもフィニッシュ地点もないため、ランナーは手動でフィニッシュします。';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course：スタートラインがありません。セルフタイム方式のレースには必要です。';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course：ルートが終点より前に自身のフィニッシュラインを横切るため、ラインでのフィニッシュが早すぎる可能性があります。';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course：スタートラインがルートから100 m以上離れています。';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course：フィニッシュラインがルートから100 m以上離れています。';
+  }
 }

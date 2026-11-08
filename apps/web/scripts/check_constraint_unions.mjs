@@ -836,6 +836,14 @@ export const PAIRS = [
 		note: 'written only by suggest_race_course / review_race_course_suggestion; clients read pending rows by the literal and never enumerate the set.',
 	},
 	{
+		tableColumn: 'event_courses.start_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'GateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'event_courses.finish_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'GateSource', shape: 'union' }],
+	},
+	{
 		tableColumn: 'race_sessions.status',
 		clients: [
 			{ file: TS_TYPES, decl: 'RaceSessionStatus', shape: 'union' },

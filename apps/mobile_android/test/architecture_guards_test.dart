@@ -5731,6 +5731,10 @@ void main() {
       // the screen before anything has started; "I understand" only records
       // that it was read on this device.
       'screens/course_drive_screen.dart::l.courseDriveNoticeTitle': 1,
+      // The Arm preflight (decisions § 2391). Arm anyway arms a race, which
+      // Cancel undoes from the race card; Cancel and the blocking dialog's OK
+      // leave the race unarmed. Nothing is discarded either way.
+      'widgets/race_preflight_dialog.dart::blocked': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

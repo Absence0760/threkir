@@ -5859,5 +5859,18 @@
   "parksAttributionTraced": "Traçado do percurso desenhado sobre o mapa publicado do parque",
   "parksNavigate": "Navegar neste percurso",
   "parksShareGpx": "Compartilhar GPX",
-  "parksBrowseLink": "Percursos de parques"
+  "parksBrowseLink": "Percursos de parques",
+  "eventCourseLinesMapBoth": "Mapa das linhas de largada e chegada do percurso",
+  "eventCourseLinesMapStart": "Mapa da linha de largada do percurso",
+  "eventCourseLinesMapFinish": "Mapa da linha de chegada do percurso",
+  "eventRacePreflightTitle": "Confira os percursos antes de armar",
+  "eventRacePreflightBlockedTitle": "Esta corrida ainda não pode ser armada",
+  "eventRacePreflightFixOnWeb": "As linhas do percurso são editadas no editor de eventos na web.",
+  "eventRaceArmAnyway": "Armar mesmo assim",
+  "eventRacePreflightOk": "OK",
+  "eventRacePreflightNoFinish": "{course}: sem linha nem ponto de chegada, então os corredores terminam manualmente.",
+  "eventRacePreflightNoStart": "{course}: sem linha de largada. Uma corrida cronometrada por cada um precisa de uma.",
+  "eventRacePreflightSelfCross": "{course}: o trajeto cruza a própria linha de chegada antes do fim, então uma chegada pela linha pode vir cedo demais.",
+  "eventRacePreflightFarStart": "{course}: a linha de largada está a mais de 100 m do trajeto.",
+  "eventRacePreflightFarFinish": "{course}: a linha de chegada está a mais de 100 m do trajeto."
 }

@@ -34060,6 +34060,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Park courses'**
   String get parksBrowseLink;
+
+  /// Accessible label of the event course map showing start and finish timing lines (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s start and finish lines'**
+  String get eventCourseLinesMapBoth;
+
+  /// Accessible label of the event course map showing only the start line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s start line'**
+  String get eventCourseLinesMapStart;
+
+  /// Accessible label of the event course map showing only the finish line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s finish line'**
+  String get eventCourseLinesMapFinish;
+
+  /// Title of the dialog listing course warnings before a race is armed (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Check the courses before arming'**
+  String get eventRacePreflightTitle;
+
+  /// Title of the dialog when course errors stop a race from being armed (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'This race can\'t be armed yet'**
+  String get eventRacePreflightBlockedTitle;
+
+  /// Closing line of the Arm preflight dialog: course lines are edited on the web (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Course lines are edited in the event editor on the web.'**
+  String get eventRacePreflightFixOnWeb;
+
+  /// Button in the Arm preflight dialog that arms the race despite warnings (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Arm anyway'**
+  String get eventRaceArmAnyway;
+
+  /// Button closing the dialog when course errors stop arming (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get eventRacePreflightOk;
+
+  /// Arm preflight issue: a course with no finish line and no finish point (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no finish line or finish point, so runners finish by hand.'**
+  String eventRacePreflightNoFinish(String course);
+
+  /// Arm preflight issue: a self-timed course with no start line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no start line. A self-timed race needs one.'**
+  String eventRacePreflightNoStart(String course);
+
+  /// Arm preflight issue: the course route crosses its own finish line before its end (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the route crosses its own finish line before the end, so a finish by the line could come early.'**
+  String eventRacePreflightSelfCross(String course);
+
+  /// Arm preflight issue: an organiser-placed start line more than 100 m from the route (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the start line is more than 100 m from the route.'**
+  String eventRacePreflightFarStart(String course);
+
+  /// Arm preflight issue: an organiser-placed finish line more than 100 m from the route (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the finish line is more than 100 m from the route.'**
+  String eventRacePreflightFarFinish(String course);
 }
 
 class _AppLocalizationsDelegate

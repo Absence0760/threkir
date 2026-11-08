@@ -1619,6 +1619,17 @@ class EventCourseRow {
   static const String colCreatedAt = 'created_at';
   static const String colStartLat = 'start_lat';
   static const String colStartLng = 'start_lng';
+  static const String colStartGateLat = 'start_gate_lat';
+  static const String colStartGateLng = 'start_gate_lng';
+  static const String colStartGateBearingDeg = 'start_gate_bearing_deg';
+  static const String colStartGateHalfWidthM = 'start_gate_half_width_m';
+  static const String colStartGateSource = 'start_gate_source';
+  static const String colFinishGateLat = 'finish_gate_lat';
+  static const String colFinishGateLng = 'finish_gate_lng';
+  static const String colFinishGateBearingDeg = 'finish_gate_bearing_deg';
+  static const String colFinishGateHalfWidthM = 'finish_gate_half_width_m';
+  static const String colFinishGateSource = 'finish_gate_source';
+  static const String colFinishLineSelfCross = 'finish_line_self_cross';
 
   final String id;
   final String eventId;
@@ -1631,6 +1642,17 @@ class EventCourseRow {
   final DateTime createdAt;
   final double? startLat;
   final double? startLng;
+  final double? startGateLat;
+  final double? startGateLng;
+  final double? startGateBearingDeg;
+  final double? startGateHalfWidthM;
+  final String? startGateSource;
+  final double? finishGateLat;
+  final double? finishGateLng;
+  final double? finishGateBearingDeg;
+  final double? finishGateHalfWidthM;
+  final String? finishGateSource;
+  final bool finishLineSelfCross;
 
   const EventCourseRow({
     required this.id,
@@ -1644,6 +1666,17 @@ class EventCourseRow {
     required this.createdAt,
     this.startLat,
     this.startLng,
+    this.startGateLat,
+    this.startGateLng,
+    this.startGateBearingDeg,
+    this.startGateHalfWidthM,
+    this.startGateSource,
+    this.finishGateLat,
+    this.finishGateLng,
+    this.finishGateBearingDeg,
+    this.finishGateHalfWidthM,
+    this.finishGateSource,
+    required this.finishLineSelfCross,
   });
 
   factory EventCourseRow.fromJson(Map<String, dynamic> json) => EventCourseRow(
@@ -1658,6 +1691,17 @@ class EventCourseRow {
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     startLat: _toDoubleOrNull(json['start_lat']),
     startLng: _toDoubleOrNull(json['start_lng']),
+    startGateLat: _toDoubleOrNull(json['start_gate_lat']),
+    startGateLng: _toDoubleOrNull(json['start_gate_lng']),
+    startGateBearingDeg: _toDoubleOrNull(json['start_gate_bearing_deg']),
+    startGateHalfWidthM: _toDoubleOrNull(json['start_gate_half_width_m']),
+    startGateSource: json['start_gate_source'] as String?,
+    finishGateLat: _toDoubleOrNull(json['finish_gate_lat']),
+    finishGateLng: _toDoubleOrNull(json['finish_gate_lng']),
+    finishGateBearingDeg: _toDoubleOrNull(json['finish_gate_bearing_deg']),
+    finishGateHalfWidthM: _toDoubleOrNull(json['finish_gate_half_width_m']),
+    finishGateSource: json['finish_gate_source'] as String?,
+    finishLineSelfCross: (json['finish_line_self_cross'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1672,6 +1716,17 @@ class EventCourseRow {
     colCreatedAt: createdAt.toIso8601String(),
     colStartLat: startLat,
     colStartLng: startLng,
+    colStartGateLat: startGateLat,
+    colStartGateLng: startGateLng,
+    colStartGateBearingDeg: startGateBearingDeg,
+    colStartGateHalfWidthM: startGateHalfWidthM,
+    colStartGateSource: startGateSource,
+    colFinishGateLat: finishGateLat,
+    colFinishGateLng: finishGateLng,
+    colFinishGateBearingDeg: finishGateBearingDeg,
+    colFinishGateHalfWidthM: finishGateHalfWidthM,
+    colFinishGateSource: finishGateSource,
+    colFinishLineSelfCross: finishLineSelfCross,
   };
 
   EventCourseRow copyWith({
@@ -1686,6 +1741,17 @@ class EventCourseRow {
     DateTime? createdAt,
     double? startLat,
     double? startLng,
+    double? startGateLat,
+    double? startGateLng,
+    double? startGateBearingDeg,
+    double? startGateHalfWidthM,
+    String? startGateSource,
+    double? finishGateLat,
+    double? finishGateLng,
+    double? finishGateBearingDeg,
+    double? finishGateHalfWidthM,
+    String? finishGateSource,
+    bool? finishLineSelfCross,
   }) => EventCourseRow(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
@@ -1698,6 +1764,17 @@ class EventCourseRow {
     createdAt: createdAt ?? this.createdAt,
     startLat: startLat ?? this.startLat,
     startLng: startLng ?? this.startLng,
+    startGateLat: startGateLat ?? this.startGateLat,
+    startGateLng: startGateLng ?? this.startGateLng,
+    startGateBearingDeg: startGateBearingDeg ?? this.startGateBearingDeg,
+    startGateHalfWidthM: startGateHalfWidthM ?? this.startGateHalfWidthM,
+    startGateSource: startGateSource ?? this.startGateSource,
+    finishGateLat: finishGateLat ?? this.finishGateLat,
+    finishGateLng: finishGateLng ?? this.finishGateLng,
+    finishGateBearingDeg: finishGateBearingDeg ?? this.finishGateBearingDeg,
+    finishGateHalfWidthM: finishGateHalfWidthM ?? this.finishGateHalfWidthM,
+    finishGateSource: finishGateSource ?? this.finishGateSource,
+    finishLineSelfCross: finishLineSelfCross ?? this.finishLineSelfCross,
   );
 }
 
@@ -5618,6 +5695,7 @@ class RaceSessionRow {
   static const String colCreatedAt = 'created_at';
   static const String colUpdatedAt = 'updated_at';
   static const String colIsAutoApprove = 'is_auto_approve';
+  static const String colCoursesFrozenAt = 'courses_frozen_at';
 
   final String eventId;
   final DateTime instanceStart;
@@ -5628,6 +5706,7 @@ class RaceSessionRow {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isAutoApprove;
+  final DateTime? coursesFrozenAt;
 
   const RaceSessionRow({
     required this.eventId,
@@ -5639,6 +5718,7 @@ class RaceSessionRow {
     required this.createdAt,
     required this.updatedAt,
     required this.isAutoApprove,
+    this.coursesFrozenAt,
   });
 
   factory RaceSessionRow.fromJson(Map<String, dynamic> json) => RaceSessionRow(
@@ -5651,6 +5731,7 @@ class RaceSessionRow {
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     updatedAt: parseIsoStrictRequired(json['updated_at'], 'updated_at'),
     isAutoApprove: (json['is_auto_approve'] as bool?) ?? false,
+    coursesFrozenAt: parseIsoStrictValue(json['courses_frozen_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5663,6 +5744,7 @@ class RaceSessionRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
     colIsAutoApprove: isAutoApprove,
+    colCoursesFrozenAt: coursesFrozenAt?.toIso8601String(),
   };
 
   RaceSessionRow copyWith({
@@ -5675,6 +5757,7 @@ class RaceSessionRow {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isAutoApprove,
+    DateTime? coursesFrozenAt,
   }) => RaceSessionRow(
     eventId: eventId ?? this.eventId,
     instanceStart: instanceStart ?? this.instanceStart,
@@ -5685,6 +5768,7 @@ class RaceSessionRow {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     isAutoApprove: isAutoApprove ?? this.isAutoApprove,
+    coursesFrozenAt: coursesFrozenAt ?? this.coursesFrozenAt,
   );
 }
 

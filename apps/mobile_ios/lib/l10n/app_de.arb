@@ -5859,5 +5859,18 @@
   "parksAttributionTraced": "Streckenverlauf nach der veröffentlichten Karte des Parks gezeichnet",
   "parksNavigate": "Diese Strecke navigieren",
   "parksShareGpx": "GPX teilen",
-  "parksBrowseLink": "Parkstrecken"
+  "parksBrowseLink": "Parkstrecken",
+  "eventCourseLinesMapBoth": "Karte mit Start- und Ziellinie der Strecke",
+  "eventCourseLinesMapStart": "Karte mit der Startlinie der Strecke",
+  "eventCourseLinesMapFinish": "Karte mit der Ziellinie der Strecke",
+  "eventRacePreflightTitle": "Strecken vor dem Scharfschalten prüfen",
+  "eventRacePreflightBlockedTitle": "Dieses Rennen kann noch nicht scharfgeschaltet werden",
+  "eventRacePreflightFixOnWeb": "Streckenlinien werden im Event-Editor im Web bearbeitet.",
+  "eventRaceArmAnyway": "Trotzdem scharfschalten",
+  "eventRacePreflightOk": "OK",
+  "eventRacePreflightNoFinish": "{course}: keine Ziellinie und kein Zielpunkt, daher beenden Läufer von Hand.",
+  "eventRacePreflightNoStart": "{course}: keine Startlinie. Ein selbst gestopptes Rennen braucht eine.",
+  "eventRacePreflightSelfCross": "{course}: Die Route kreuzt ihre eigene Ziellinie vor dem Ende, ein Zieleinlauf über die Linie könnte also zu früh kommen.",
+  "eventRacePreflightFarStart": "{course}: Die Startlinie liegt mehr als 100 m von der Route entfernt.",
+  "eventRacePreflightFarFinish": "{course}: Die Ziellinie liegt mehr als 100 m von der Route entfernt."
 }

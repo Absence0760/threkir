@@ -21115,6 +21115,59 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Mapa das linhas de partida e de chegada do percurso';
+
+  @override
+  String get eventCourseLinesMapStart => 'Mapa da linha de partida do percurso';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Mapa da linha de chegada do percurso';
+
+  @override
+  String get eventRacePreflightTitle => 'Verifique os percursos antes de armar';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Esta corrida ainda não pode ser armada';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'As linhas do percurso editam-se no editor de eventos na web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armar mesmo assim';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: sem linha nem ponto de chegada, por isso os corredores terminam manualmente.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: sem linha de partida. Uma corrida cronometrada por cada um precisa de uma.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: o trajeto cruza a sua própria linha de chegada antes do fim, por isso uma chegada pela linha pode ser antecipada.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: a linha de partida está a mais de 100 m do trajeto.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: a linha de chegada está a mais de 100 m do trajeto.';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -42212,4 +42265,57 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Mapa das linhas de largada e chegada do percurso';
+
+  @override
+  String get eventCourseLinesMapStart => 'Mapa da linha de largada do percurso';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Mapa da linha de chegada do percurso';
+
+  @override
+  String get eventRacePreflightTitle => 'Confira os percursos antes de armar';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Esta corrida ainda não pode ser armada';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'As linhas do percurso são editadas no editor de eventos na web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armar mesmo assim';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: sem linha nem ponto de chegada, então os corredores terminam manualmente.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: sem linha de largada. Uma corrida cronometrada por cada um precisa de uma.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: o trajeto cruza a própria linha de chegada antes do fim, então uma chegada pela linha pode vir cedo demais.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: a linha de largada está a mais de 100 m do trajeto.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: a linha de chegada está a mais de 100 m do trajeto.';
+  }
 }

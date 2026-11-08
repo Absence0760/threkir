@@ -59,6 +59,7 @@ const MAP_SURFACES: Record<string, ['shared' | 'unkeyed', string]> = {
 	'lib/components/PrivacyZonePicker.svelte': ['shared', 'the privacy-zone circle'],
 	'lib/components/CoursePreview3D.svelte': ['shared', 'the 3D course preview'],
 	'lib/components/course_preview/flyover_video_export.ts': ['shared', 'the offscreen map the flyover video records'],
+	'lib/components/CourseLinesMap.svelte': ['shared', 'a course\'s start and finish lines, and the editor that moves them'],
 };
 
 /// Infrastructure, not a surface: the MapLibre re-export and the resize
@@ -75,6 +76,7 @@ const NOT_SURFACES = new Set([
 	'lib/routes/dev_basemap_fallback.ts',
 	'lib/routes/map_resize.ts',
 	'lib/components/course_preview/course_layers.ts',
+	'lib/races/course_gate_layers.ts',
 ]);
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
@@ -262,7 +264,7 @@ test('a map surface resolves its style URL through the shared precedence', () =>
 	}
 	assert.equal(
 		Object.keys(MAP_SURFACES).length,
-		9,
+		10,
 		'the population this scan ran over — a shrinking register would let it pass over nothing',
 	);
 	assert.deepEqual(

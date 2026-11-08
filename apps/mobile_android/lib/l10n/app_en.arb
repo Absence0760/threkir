@@ -27732,5 +27732,82 @@
   "parksBrowseLink": "Park courses",
   "@parksBrowseLink": {
     "description": "Park courses (#1313): web key parks.browseLink."
+  },
+  "eventCourseLinesMapBoth": "Map of the course's start and finish lines",
+  "@eventCourseLinesMapBoth": {
+    "description": "Accessible label of the event course map showing start and finish timing lines (#1305)"
+  },
+  "eventCourseLinesMapStart": "Map of the course's start line",
+  "@eventCourseLinesMapStart": {
+    "description": "Accessible label of the event course map showing only the start line (#1305)"
+  },
+  "eventCourseLinesMapFinish": "Map of the course's finish line",
+  "@eventCourseLinesMapFinish": {
+    "description": "Accessible label of the event course map showing only the finish line (#1305)"
+  },
+  "eventRacePreflightTitle": "Check the courses before arming",
+  "@eventRacePreflightTitle": {
+    "description": "Title of the dialog listing course warnings before a race is armed (#1305)"
+  },
+  "eventRacePreflightBlockedTitle": "This race can't be armed yet",
+  "@eventRacePreflightBlockedTitle": {
+    "description": "Title of the dialog when course errors stop a race from being armed (#1305)"
+  },
+  "eventRacePreflightFixOnWeb": "Course lines are edited in the event editor on the web.",
+  "@eventRacePreflightFixOnWeb": {
+    "description": "Closing line of the Arm preflight dialog: course lines are edited on the web (#1305)"
+  },
+  "eventRaceArmAnyway": "Arm anyway",
+  "@eventRaceArmAnyway": {
+    "description": "Button in the Arm preflight dialog that arms the race despite warnings (#1305)"
+  },
+  "eventRacePreflightOk": "OK",
+  "@eventRacePreflightOk": {
+    "description": "Button closing the dialog when course errors stop arming (#1305)"
+  },
+  "eventRacePreflightNoFinish": "{course}: no finish line or finish point, so runners finish by hand.",
+  "@eventRacePreflightNoFinish": {
+    "description": "Arm preflight issue: a course with no finish line and no finish point (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightNoStart": "{course}: no start line. A self-timed race needs one.",
+  "@eventRacePreflightNoStart": {
+    "description": "Arm preflight issue: a self-timed course with no start line (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightSelfCross": "{course}: the route crosses its own finish line before the end, so a finish by the line could come early.",
+  "@eventRacePreflightSelfCross": {
+    "description": "Arm preflight issue: the course route crosses its own finish line before its end (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightFarStart": "{course}: the start line is more than 100 m from the route.",
+  "@eventRacePreflightFarStart": {
+    "description": "Arm preflight issue: an organiser-placed start line more than 100 m from the route (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightFarFinish": "{course}: the finish line is more than 100 m from the route.",
+  "@eventRacePreflightFarFinish": {
+    "description": "Arm preflight issue: an organiser-placed finish line more than 100 m from the route (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
   }
 }

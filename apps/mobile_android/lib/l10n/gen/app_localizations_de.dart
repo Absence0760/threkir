@@ -21142,4 +21142,57 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksBrowseLink => 'Parkstrecken';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Karte mit Start- und Ziellinie der Strecke';
+
+  @override
+  String get eventCourseLinesMapStart => 'Karte mit der Startlinie der Strecke';
+
+  @override
+  String get eventCourseLinesMapFinish => 'Karte mit der Ziellinie der Strecke';
+
+  @override
+  String get eventRacePreflightTitle =>
+      'Strecken vor dem Scharfschalten prüfen';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Dieses Rennen kann noch nicht scharfgeschaltet werden';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Streckenlinien werden im Event-Editor im Web bearbeitet.';
+
+  @override
+  String get eventRaceArmAnyway => 'Trotzdem scharfschalten';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: keine Ziellinie und kein Zielpunkt, daher beenden Läufer von Hand.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: keine Startlinie. Ein selbst gestopptes Rennen braucht eine.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: Die Route kreuzt ihre eigene Ziellinie vor dem Ende, ein Zieleinlauf über die Linie könnte also zu früh kommen.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: Die Startlinie liegt mehr als 100 m von der Route entfernt.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: Die Ziellinie liegt mehr als 100 m von der Route entfernt.';
+  }
 }

@@ -5859,5 +5859,18 @@
   "parksAttributionTraced": "Trazado del recorrido dibujado sobre el mapa publicado del parque",
   "parksNavigate": "Navegar este recorrido",
   "parksShareGpx": "Compartir GPX",
-  "parksBrowseLink": "Recorridos de parques"
+  "parksBrowseLink": "Recorridos de parques",
+  "eventCourseLinesMapBoth": "Mapa de las líneas de salida y meta del recorrido",
+  "eventCourseLinesMapStart": "Mapa de la línea de salida del recorrido",
+  "eventCourseLinesMapFinish": "Mapa de la línea de meta del recorrido",
+  "eventRacePreflightTitle": "Revisa los recorridos antes de armar",
+  "eventRacePreflightBlockedTitle": "Esta carrera aún no se puede armar",
+  "eventRacePreflightFixOnWeb": "Las líneas del recorrido se editan en el editor de eventos de la web.",
+  "eventRaceArmAnyway": "Armar de todos modos",
+  "eventRacePreflightOk": "Aceptar",
+  "eventRacePreflightNoFinish": "{course}: sin línea ni punto de meta, así que los corredores terminan a mano.",
+  "eventRacePreflightNoStart": "{course}: sin línea de salida. Una carrera autocronometrada la necesita.",
+  "eventRacePreflightSelfCross": "{course}: la ruta cruza su propia línea de meta antes del final, así que una llegada por la línea podría adelantarse.",
+  "eventRacePreflightFarStart": "{course}: la línea de salida está a más de 100 m de la ruta.",
+  "eventRacePreflightFarFinish": "{course}: la línea de meta está a más de 100 m de la ruta."
 }

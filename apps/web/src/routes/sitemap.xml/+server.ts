@@ -12,6 +12,7 @@ import {
 import { listGuides } from '#lib/learn/guides.ts';
 import { CATEGORIES } from '#lib/learn/categories.ts';
 import { siteOrigin } from '#lib/core/site_url.ts';
+import { TABLES } from '#lib/core/schema.ts';
 
 // Build-time sitemap. `adapter-static` runs this once during the
 // production build because of `prerender = true`; the resulting
@@ -131,7 +132,7 @@ export const GET: RequestHandler = async () => {
 					.order('race_date', { ascending: false })
 					.limit(MAX_ENTITIES),
 				supabase
-					.from('park_courses')
+					.from(TABLES.park_courses)
 					.select(
 						'slug, created_at, status_checked_at, parks!inner(slug, region_code), global_segments!inner(id)',
 					)

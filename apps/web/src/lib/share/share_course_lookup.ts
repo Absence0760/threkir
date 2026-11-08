@@ -18,6 +18,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { thrownMessage } from '../core/supabase_error';
 import { regionCodeFromSlug } from '../parks/park_courses';
+import { TABLES } from '../core/schema';
 
 export interface SharedCoursePoint {
 	lat: number;
@@ -111,7 +112,7 @@ export async function lookupSharedCourse(
 			auth: { persistSession: false },
 		});
 		const { data, error } = await supabase
-			.from('park_courses')
+			.from(TABLES.park_courses)
 			.select(
 				'slug, course_shape, status, status_note, geometry_source, difficulty, ' +
 					'global_segments!inner(name, description, distance_m, elevation_m, surface, waypoints), ' +

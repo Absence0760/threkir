@@ -277,6 +277,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     _maybeSuggestRoute();
     _loadViewerGender();
     _loadRunRecords();
+    _loadVisibility();
     _connectivitySub =
         Connectivity().onConnectivityChanged.listen(_onConnectivityChanged);
   }
@@ -292,6 +293,24 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     if (!online) return;
     if (!shouldRetryMatchFetch(_matchInfo, offline: _matchOffline)) return;
     _maybeFetchMatchedTrack();
+  }
+
+  /// Whether the run is public, read from the server because the mobile Run
+  /// model does not carry `is_public`. Null until known; "Make private" is
+  /// offered only on a known-public run, as on web. L4: a failed read leaves
+  /// the item hidden and nothing else.
+  bool? _isPublic;
+
+  Future<void> _loadVisibility() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    try {
+      final cols = await api.fetchAudienceColumns(ShareableKind.run, run.id);
+      if (!mounted) return;
+      setState(() => _isPublic = cols?.isPublic ?? false);
+    } catch (e) {
+      debugPrint('run visibility fetch failed: $e');
+    }
   }
 
   /// The personal records this run set, for the PR card. L4: a failed read
@@ -1141,7 +1160,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   title: Text(l10n.runDetailSaveAsRoute),
                 ),
               ),
-              if (widget.apiClient?.userId != null)
+              if (widget.apiClient?.userId != null && _isPublic == true)
                 PopupMenuItem(
                   value: 'make_private',
                   child: ListTile(
@@ -3038,6 +3057,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         backend: ApiAudienceBackend(api, ShareableKind.run, run.id),
       );
       if (!mounted) return;
+      unawaited(_loadVisibility());
       if (choice == AudienceSheetResult.shareLink) {
         await shareTextFrom(context, text: link, subject: _title);
         return;
@@ -3052,6 +3072,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         debugPrint('run visibility fetch failed: $e');
       }
       if (!mounted) return;
+      if (mounted && _isPublic != alreadyPublic) {
+        setState(() => _isPublic = alreadyPublic);
+      }
       if (alreadyPublic) {
         await shareTextFrom(context, text: link, subject: _title);
         return;
@@ -3080,6 +3103,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       return;
     }
     if (!mounted) return;
+    setState(() => _isPublic = true);
     await shareTextFrom(context, text: link, subject: _title);
   }
 
@@ -3144,9 +3168,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// Share here, a `public` privacy default, or an explicit "Keep
   /// public" at the end of a live-shared run (run_screen's post-stop
   /// dialog, issue #664 — live share itself no longer persists
-  /// is_public past the stop). Offered whenever signed in — the mobile
-  /// Run model doesn't surface is_public and makeRunPrivate is
-  /// idempotent, mirroring the always-prompt Share idiom above.
+  /// is_public past the stop). Offered only once [_isPublic] reads true.
   Future<void> _makePrivate() async {
     final api = widget.apiClient;
     if (api == null || api.userId == null) return;
@@ -3182,6 +3204,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       return;
     }
     if (!mounted) return;
+    setState(() => _isPublic = false);
     showTopBanner(context, AppLocalizations.of(context).runDetailMadePrivate);
   }
 

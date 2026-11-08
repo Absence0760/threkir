@@ -209,5 +209,12 @@ verify_jwt = false
 [functions.race-listings-sweep]
 verify_jwt = false
 
+# segment-match is invoked by the Go job worker with its server key on
+# `apikey`. An `sb_secret_` key is not a JWT, so the platform gate would 401 it
+# before handler.ts compares it against the project's own server keys
+# (decisions § 2392).
+[functions.segment-match]
+verify_jwt = false
+
 [functions.clip-public-track]
 verify_jwt = false

@@ -325,7 +325,8 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_courses` schema, the checkpoint rule in the catalogue matcher, the fastest board by season (`p_season`, calendar year in the park's timezone) and the most-completions board, web `/parks` pages and the mobile park screens. **Open:**
 
-- [ ] Server-side matching via a `segment_match` job + bounding-box candidates + backfill (Phase 1), so phone-only and imported runs reach a board.
+- [x] Server-side matching via a `segment_match` job + bounding-box candidates + backfill (Phase 1), so phone-only and imported runs reach a board (2026-11-08, decisions § 2392 / § 2393).
+- [ ] Remove the run-detail owner-on-view scorer and the owner-insert policy on `global_segment_efforts` once the server job has run in production (closes the checkpoint bypass § 2383 names).
 - [ ] Loop courses (blocked on #1308).
 - [ ] Geometry pipeline under `scripts/parks/` and the first ten Virginia courses (operator load; see [park_courses.md § Loading courses](../features/park_courses.md#loading-courses)).
 - [ ] Indexable course pages (`share-entity`) and a sitemap entry, once courses are loaded.

@@ -92,7 +92,7 @@ class ClubInviteButton extends StatelessWidget {
     return IconButton(
       key: const ValueKey('club-invite'),
       tooltip: l10n.clubInviteLinkTitle,
-      icon: const Icon(Icons.person_add_alt_1_outlined),
+      icon: const Icon(Icons.person_add_alt_1),
       onPressed: () => showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,

@@ -185,7 +185,7 @@ export async function switchRunsToAllTime(page: Page) {
 }
 
 /// /plans/[id] folds the weeks before the current one into one summary row
-/// while the plan runs (decisions § 2363). A spec that reads the whole plan's
+/// while the plan runs (decisions § 2366). A spec that reads the whole plan's
 /// week grid opens it first; on a plan with nothing folded this is a no-op.
 export async function showAllPlanWeeks(page: Page) {
 	await expect(page.locator('section.weeks .week').first()).toBeVisible({ timeout: 10_000 });

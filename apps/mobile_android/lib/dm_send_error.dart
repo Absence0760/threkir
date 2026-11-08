@@ -25,3 +25,20 @@ String dmSendErrorMessage(AppLocalizations l10n, Object error) {
   }
   return l10n.messagesSendFailed;
 }
+
+/// The sentence shown in the edit dialog when an edit did not save: the
+/// server refused it (window passed, unsent, a block, not yours — one
+/// sentence, so a block is not revealed), the edit throttle, offline, or
+/// anything else.
+String dmEditErrorMessage(AppLocalizations l10n, Object error) {
+  if (error is DmEditClosed) return l10n.messagesEditClosed;
+  if (error is PostgrestException) {
+    final throttled =
+        rateLimitErrorMessage(l10n, code: error.code, message: error.message);
+    if (throttled != null) return throttled;
+  }
+  if (classifyAuthError(error) == AuthErrorKind.offline) {
+    return l10n.authErrorOffline;
+  }
+  return l10n.messagesEditFailed;
+}

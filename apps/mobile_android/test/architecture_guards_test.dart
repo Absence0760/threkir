@@ -5710,6 +5710,10 @@ void main() {
       // the typed figures and "Fix it" returns to the form, so neither button
       // discards anything.
       'manual_duration_input.dart::l10n.manualDurationSlowTitle': 1,
+      // Edits a direct message's text. Cancel keeps the message as it was,
+      // Save replaces only the visible text, and the server keeps the text as
+      // first sent for reports (migration 20271114000210).
+      'screens/message_thread_screen.dart::l10n.messagesEditTitle': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {

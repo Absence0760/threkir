@@ -152,6 +152,17 @@ class _FakeApi extends ApiClient {
   final List<String> unsent = [];
   Object? unsendError;
 
+  final List<String> edits = [];
+  Object? editError;
+
+  @override
+  Future<DirectMessageRow> editDm(String messageId, String body) async {
+    edits.add(body);
+    if (editError != null) throw editError!;
+    final m = [...newest, ...?server].firstWhere((m) => m.id == messageId);
+    return m.copyWith(body: body, editedAt: DateTime.now().toUtc());
+  }
+
   @override
   Future<DirectMessageRow> unsendDm(String messageId) async {
     unsent.add(messageId);
@@ -822,6 +833,130 @@ void main() {
       expect(find.text(l10n.messagesLoadEarlier), findsNothing);
       expect(tester.getTopLeft(find.text('five')).dy,
           greaterThan(tester.getTopLeft(find.text('four')).dy));
+    });
+  });
+
+  group('edit', () {
+    DirectMessageRow fresh(String id, {String from = _me, String? body}) =>
+        DirectMessageRow(
+          id: id,
+          conversationId: 'c-1',
+          senderId: from,
+          recipientId: from == _me ? _partner : _me,
+          body: body ?? 'body $id',
+          createdAt:
+              DateTime.now().toUtc().subtract(const Duration(minutes: 1)),
+        );
+
+    Future<void> longPress(WidgetTester tester, String body) async {
+      await tester.longPress(find.text(body));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('your fresh message offers Edit; an old one does not',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [
+          _msg('m0', from: _me, body: 'old'),
+          fresh('m1', body: 'new'),
+        ];
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'new');
+      expect(find.byKey(const ValueKey('message-action-edit')), findsOneWidget);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      await longPress(tester, 'old');
+      expect(find.byKey(const ValueKey('message-action-edit')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('message-action-unsend')), findsOneWidget);
+    });
+
+    testWidgets("the other person's fresh message offers no Edit",
+        (tester) async {
+      final api = _FakeApi()..newest = [fresh('m1', from: _partner, body: 'hi')];
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'hi');
+      expect(find.byKey(const ValueKey('message-action-edit')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('message-action-report')), findsOneWidget);
+    });
+
+    testWidgets('a saved edit replaces the text and marks it Edited',
+        (tester) async {
+      final api = _FakeApi()..newest = [fresh('m1', body: 'see you at 7')];
+      await _pumpThread(tester, api);
+      expect(find.byKey(const ValueKey('dm-edited')), findsNothing);
+
+      await longPress(tester, 'see you at 7');
+      await tester.tap(find.byKey(const ValueKey('message-action-edit')));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.messagesEditTitle), findsWidgets);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('message-edit-field')), 'see you at 7:30');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('message-edit-save')));
+      await tester.pumpAndSettle();
+
+      expect(api.edits, ['see you at 7:30']);
+      expect(find.text('see you at 7:30'), findsOneWidget);
+      expect(find.text('see you at 7'), findsNothing);
+      expect(find.byKey(const ValueKey('dm-edited')), findsOneWidget);
+      expect(find.text(l10n.messagesEdited), findsOneWidget);
+    });
+
+    testWidgets('a refused edit keeps the dialog and the text, and says why',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [fresh('m1', body: 'see you at 7')]
+        ..editError = const DmEditClosed();
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'see you at 7');
+      await tester.tap(find.byKey(const ValueKey('message-action-edit')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const ValueKey('message-edit-field')), 'too late');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('message-edit-save')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(l10n.messagesEditClosed), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-edit-field')), findsOneWidget);
+      expect(find.text('too late'), findsOneWidget);
+
+      await tester.tap(find.text(l10n.commonCancel));
+      await tester.pumpAndSettle();
+      expect(find.text('see you at 7'), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-edited')), findsNothing);
+    });
+
+    testWidgets('an edit the other person made reads as Edited',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [
+          _msg('m1', body: 'changed').copyWith(
+              editedAt: DateTime.utc(2026, 10, 14, 8, 5)),
+        ];
+      await _pumpThread(tester, api);
+
+      expect(find.text('changed'), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-edited')), findsOneWidget);
+    });
+
+    test('the edit throttle says how long to wait', () {
+      final message = dmEditErrorMessage(
+        l10n,
+        const PostgrestException(
+          code: 'P0001',
+          message: 'rate limit exceeded for edit_direct_message, retry in 60s',
+        ),
+      );
+      expect(message, contains('editing messages too quickly'));
     });
   });
 

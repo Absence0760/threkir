@@ -16648,6 +16648,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String rateLimitEditMessage(String wait) {
+    return 'Está a editar mensagens demasiado depressa — aguarde $wait e tente novamente.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'Está a fazer isto demasiado depressa — aguarde $wait e tente novamente.';
   }
@@ -17834,6 +17839,24 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get messagesUnsendFailed =>
       'Não foi possível anular o envio da mensagem.';
+
+  @override
+  String get messagesEdit => 'Editar';
+
+  @override
+  String get messagesEdited => 'Editada';
+
+  @override
+  String get messagesEditTitle => 'Editar mensagem';
+
+  @override
+  String get messagesEditSave => 'Guardar';
+
+  @override
+  String get messagesEditFailed => 'Não foi possível editar a mensagem.';
+
+  @override
+  String get messagesEditClosed => 'Esta mensagem já não pode ser editada.';
 
   @override
   String get messagesReport => 'Denunciar';
@@ -36973,6 +36996,11 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String rateLimitEditMessage(String wait) {
+    return 'Você está editando mensagens rápido demais — espere $wait e tente de novo.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'Você está fazendo isso rápido demais — espere $wait e tente de novo.';
   }
@@ -38159,6 +38187,24 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get messagesUnsendFailed =>
       'Não foi possível desfazer o envio da mensagem.';
+
+  @override
+  String get messagesEdit => 'Editar';
+
+  @override
+  String get messagesEdited => 'Editada';
+
+  @override
+  String get messagesEditTitle => 'Editar mensagem';
+
+  @override
+  String get messagesEditSave => 'Salvar';
+
+  @override
+  String get messagesEditFailed => 'Não foi possível editar a mensagem.';
+
+  @override
+  String get messagesEditClosed => 'Esta mensagem não pode mais ser editada.';
 
   @override
   String get messagesReport => 'Denunciar';

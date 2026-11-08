@@ -16477,6 +16477,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String rateLimitEditMessage(String wait) {
+    return 'You\'re editing messages too quickly — please wait $wait and try again.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'You\'re doing that too quickly — please wait $wait and try again.';
   }
@@ -17651,6 +17656,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesUnsendFailed => 'Couldn\'t unsend the message.';
+
+  @override
+  String get messagesEdit => 'Edit';
+
+  @override
+  String get messagesEdited => 'Edited';
+
+  @override
+  String get messagesEditTitle => 'Edit message';
+
+  @override
+  String get messagesEditSave => 'Save';
+
+  @override
+  String get messagesEditFailed => 'Couldn\'t edit the message.';
+
+  @override
+  String get messagesEditClosed => 'This message can no longer be edited.';
 
   @override
   String get messagesReport => 'Report';

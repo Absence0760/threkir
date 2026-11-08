@@ -27092,6 +27092,12 @@ abstract class AppLocalizations {
   /// **'You\'re sending messages too quickly — please wait {wait} and try again.'**
   String rateLimitSendMessage(String wait);
 
+  /// Rate-limit refusal when the direct-message edit bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re editing messages too quickly — please wait {wait} and try again.'**
+  String rateLimitEditMessage(String wait);
+
   /// Rate-limit refusal for a bucket this build does not recognise
   ///
   /// In en, this message translates to:
@@ -29011,6 +29017,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t unsend the message.'**
   String get messagesUnsendFailed;
+
+  /// Action in the message options sheet that opens the editor for one of your own messages, offered for 15 minutes after sending
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get messagesEdit;
+
+  /// Small mark beside the time on a message its sender edited
+  ///
+  /// In en, this message translates to:
+  /// **'Edited'**
+  String get messagesEdited;
+
+  /// Title of the dialog that edits one of your own direct messages; also the text field label
+  ///
+  /// In en, this message translates to:
+  /// **'Edit message'**
+  String get messagesEditTitle;
+
+  /// Button that saves an edited direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get messagesEditSave;
+
+  /// Shown in the edit dialog when saving the edit failed for a reason other than the window closing
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t edit the message.'**
+  String get messagesEditFailed;
+
+  /// Shown in the edit dialog when the server refuses the edit: the 15-minute window passed, the message was unsent, or a block stands
+  ///
+  /// In en, this message translates to:
+  /// **'This message can no longer be edited.'**
+  String get messagesEditClosed;
 
   /// Action in the message options sheet that opens the report sheet for the other person's message
   ///

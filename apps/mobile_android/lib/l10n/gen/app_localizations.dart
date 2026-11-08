@@ -3659,6 +3659,18 @@ abstract class AppLocalizations {
   /// **'Expand stats panel'**
   String get runExpandStatsPanel;
 
+  /// Screen-reader label for the paged row of live stat tiles on the recording panel; tapping or swiping it shows the next page
+  ///
+  /// In en, this message translates to:
+  /// **'Stats page {page} of {total}'**
+  String runStatsPageA11yLabel(int page, int total);
+
+  /// Screen-reader hint for the paged row of live stat tiles on the recording panel
+  ///
+  /// In en, this message translates to:
+  /// **'Shows the next stats'**
+  String get runStatsNextPageA11yHint;
+
   /// Badge showing remaining distance to the end of the selected route
   ///
   /// In en, this message translates to:

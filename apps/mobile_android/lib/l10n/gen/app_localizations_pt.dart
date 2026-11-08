@@ -2145,6 +2145,14 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runExpandStatsPanel => 'Expandir painel de estatísticas';
 
   @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return 'Página de estatísticas $page de $total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => 'Mostra as estatísticas seguintes';
+
+  @override
   String runRouteRemaining(String distance) {
     return 'faltam $distance';
   }
@@ -22481,6 +22489,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runExpandStatsPanel => 'Expandir painel de estatísticas';
+
+  @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return 'Página de estatísticas $page de $total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => 'Mostra as próximas estatísticas';
 
   @override
   String runRouteRemaining(String distance) {

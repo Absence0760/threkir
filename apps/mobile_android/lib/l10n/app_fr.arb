@@ -585,6 +585,8 @@
   "runMarkLapA11yHint": "Enregistre le temps intermédiaire actuel",
   "runCollapseStatsPanel": "Réduire le panneau de stats",
   "runExpandStatsPanel": "Agrandir le panneau de stats",
+  "runStatsPageA11yLabel": "Page de stats {page} sur {total}",
+  "runStatsNextPageA11yHint": "Affiche les stats suivantes",
   "runRouteRemaining": "{distance} restant",
   "runOffRoute": "Hors parcours — à {metres} m",
   "runPermissionRevoked": "Autorisation de localisation révoquée",

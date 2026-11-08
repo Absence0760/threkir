@@ -585,6 +585,8 @@
   "runMarkLapA11yHint": "現在のスプリットを記録します",
   "runCollapseStatsPanel": "統計パネルを折りたたむ",
   "runExpandStatsPanel": "統計パネルを開く",
+  "runStatsPageA11yLabel": "統計ページ {page}/{total}",
+  "runStatsNextPageA11yHint": "次の統計を表示します",
   "runRouteRemaining": "残り {distance}",
   "runOffRoute": "コース外 — {metres} m 離れています",
   "runPermissionRevoked": "位置情報の権限が取り消されました",

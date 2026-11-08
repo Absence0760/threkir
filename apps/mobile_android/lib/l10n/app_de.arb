@@ -585,6 +585,8 @@
   "runMarkLapA11yHint": "Zeichnet die aktuelle Zwischenzeit auf",
   "runCollapseStatsPanel": "Statistik einklappen",
   "runExpandStatsPanel": "Statistik ausklappen",
+  "runStatsPageA11yLabel": "Statistikseite {page} von {total}",
+  "runStatsNextPageA11yHint": "Zeigt die nächsten Werte",
   "runRouteRemaining": "noch {distance}",
   "runOffRoute": "Abseits der Route — {metres} m entfernt",
   "runPermissionRevoked": "Standortberechtigung entzogen",

@@ -590,6 +590,29 @@ OccasionLinesBody raceStickerBody({
       route: hasRoute ? OccasionLayout.route : 0,
     );
 
+/// A park course time: what it is, the course and its park, the time in the
+/// accent, and the season place when the run holds one.
+OccasionLinesBody courseStickerBody({
+  required String kicker,
+  required String name,
+  required String park,
+  required String time,
+  String? rank,
+  required bool hasRoute,
+}) =>
+    OccasionLinesBody(
+      [
+        OccasionLine(kicker, OccasionStep.label, RunShareInkRole.muted),
+        OccasionLine(name, OccasionStep.headline, RunShareInkRole.text,
+            maxLines: 2),
+        OccasionLine(park, OccasionStep.title, RunShareInkRole.muted),
+        OccasionLine(time, OccasionStep.display, RunShareInkRole.accent),
+        if (rank != null)
+          OccasionLine(rank, OccasionStep.title, RunShareInkRole.text),
+      ],
+      route: hasRoute ? OccasionLayout.route : 0,
+    );
+
 /// A badge the run earned: its name, and its tier in the accent.
 OccasionLinesBody badgeStickerBody({
   required String kicker,

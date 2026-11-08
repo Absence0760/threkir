@@ -14,6 +14,9 @@ const ZERO: BadgeInput = {
 	bestStreakDays: 0,
 	prCount: 0,
 	completedPlanCount: 0,
+	parkCourseCount: 0,
+	completeParkCount: 0,
+	passportRegionCount: 0,
 };
 
 function earned(input: Partial<BadgeInput>) {
@@ -99,6 +102,21 @@ test('plan finisher: 1 bronze, 3 silver, 10 gold', () => {
 	assert.equal(find({ completedPlanCount: 10 }, 'plan_finisher')?.tier, 'gold');
 });
 
+test('park course families award the highest tier met', () => {
+	assert.equal(find({ parkCourseCount: 12 }, 'park_courses')?.tier, 'gold');
+	assert.equal(find({ completeParkCount: 3 }, 'park_complete')?.tier, 'silver');
+	assert.equal(find({ passportRegionCount: 1 }, 'park_passport')?.tier, 'bronze');
+	assert.equal(find({ parkCourseCount: 1 }, 'park_courses')?.sourceKind, 'segment');
+});
+
+test('park course families are absent at zero', () => {
+	assert.equal(earned({ longestRunM: 5000 }).some((e) => e.badgeKey.startsWith('park_')), false);
+});
+
+test('park passport tops out at gold', () => {
+	assert.equal(find({ passportRegionCount: 50 }, 'park_passport')?.tier, 'gold');
+});
+
 test('a maxed-out user earns one badge per family at the top tier', () => {
 	const all = earned({
 		longestRunM: 100000,
@@ -106,6 +124,9 @@ test('a maxed-out user earns one badge per family at the top tier', () => {
 		bestStreakDays: 400,
 		prCount: 5,
 		completedPlanCount: 12,
+		parkCourseCount: 30,
+		completeParkCount: 10,
+		passportRegionCount: 10,
 	});
 	assert.equal(all.length, BADGE_CATALOGUE.length);
 	for (const b of BADGE_CATALOGUE) {
@@ -123,6 +144,9 @@ test('output order follows catalogue order', () => {
 		bestStreakDays: 7,
 		prCount: 1,
 		completedPlanCount: 1,
+		parkCourseCount: 1,
+		completeParkCount: 1,
+		passportRegionCount: 1,
 	});
 	assert.deepEqual(
 		all.map((e) => e.badgeKey),

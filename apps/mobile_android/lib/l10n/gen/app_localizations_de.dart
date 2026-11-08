@@ -5318,6 +5318,128 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get planChangeTitle => 'Vorgeschlagene Planänderung';
+
+  @override
+  String get planChangeWaitingForCoach =>
+      'Wartet auf die Antwort deines Coachs';
+
+  @override
+  String get planChangeWaitingForYou => 'Dein Athlet wartet auf deine Antwort';
+
+  @override
+  String get planChangeApprovedByCoach => 'Vom Coach genehmigt und übernommen';
+
+  @override
+  String get planChangeApprovedInPartByCoach =>
+      'Vom Coach teilweise genehmigt; die angezeigten Zeilen wurden übernommen';
+
+  @override
+  String get planChangeDeclinedByCoach => 'Vom Coach abgelehnt';
+
+  @override
+  String get planChangeWithdrawnByAthlete => 'Vom Athleten zurückgezogen';
+
+  @override
+  String get planChangeAppliedByAthlete =>
+      'Vom Athleten ohne den Coach übernommen';
+
+  @override
+  String planChangeMinutes(int n) {
+    return '$n Min.';
+  }
+
+  @override
+  String planChangeIncludeLine(String line) {
+    return 'Diese Änderung übernehmen: $line';
+  }
+
+  @override
+  String planChangeWeekLabel(int n) {
+    return 'Ziel für Woche $n';
+  }
+
+  @override
+  String get planChangeSkipped => 'Ausgelassen';
+
+  @override
+  String planChangeWeekTarget(int n, String from, String to) {
+    return 'Ziel für Woche $n: $from → $to';
+  }
+
+  @override
+  String get planChangeUnreadable =>
+      'Einige dieser Änderungen können nicht mehr angezeigt werden.';
+
+  @override
+  String planChangeCoachNote(String note) {
+    return 'Notiz des Coachs: $note';
+  }
+
+  @override
+  String get planChangeNoteLabel => 'Notiz an deinen Athleten (optional)';
+
+  @override
+  String get planChangeNotePlaceholder =>
+      'Warum du genehmigt oder abgelehnt hast';
+
+  @override
+  String get planChangeDecline => 'Ablehnen';
+
+  @override
+  String get planChangeApprove => 'Genehmigen';
+
+  @override
+  String get planChangeApproveSelected => 'Auswahl genehmigen';
+
+  @override
+  String get planChangeApplyMyselfHint =>
+      'Der Plan gehört dir, also kannst du die Änderung selbst übernehmen. Dein Coach wird informiert.';
+
+  @override
+  String get planChangeWithdraw => 'Zurückziehen';
+
+  @override
+  String get planChangeApplyMyself => 'Selbst übernehmen';
+
+  @override
+  String get planChangeWithdrawConfirmTitle =>
+      'Diese vorgeschlagene Änderung zurückziehen?';
+
+  @override
+  String get planChangeWithdrawConfirmMessage =>
+      'Dein Coach wird nicht mehr um Genehmigung gebeten. Um sie erneut vorzuschlagen, bitte den Coach noch einmal, deinen Plan anzupassen.';
+
+  @override
+  String get planChangeKeep => 'Behalten';
+
+  @override
+  String planChangeFailed(String error) {
+    return 'Die vorgeschlagene Änderung konnte nicht aktualisiert werden: $error';
+  }
+
+  @override
+  String get planChangeApprovedToast =>
+      'Änderung genehmigt und in den Plan übernommen';
+
+  @override
+  String get planChangeDeclinedToast => 'Änderung abgelehnt';
+
+  @override
+  String get planChangeWithdrawnToast => 'Vorschlag zurückgezogen';
+
+  @override
+  String get planChangeAppliedToast =>
+      'Änderung in deinen Plan übernommen; dein Coach wurde informiert';
+
+  @override
+  String get planChangeLoadFailed =>
+      'Vorgeschlagene Planänderungen konnten nicht geladen werden.';
+
+  @override
+  String get planChangeRetry => 'Erneut versuchen';
+
+  @override
   String get profileNotifWorkoutReminder =>
       'Dein Training für heute wartet in deinem Plan';
 

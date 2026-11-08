@@ -9043,6 +9043,98 @@ class ApiClient {
     }).toList();
   }
 
+  // ──────────────────── Plan change requests (decisions § 2382) ──────────
+  //
+  // Mirror of the web layer (apps/web/src/lib/core/data.ts): a change to a
+  // coach-assigned plan the athlete sent to the coach. Mobile reads and acts
+  // on requests; it does not create them (AI plan edits are web-only).
+
+  /// The requests on one plan, or between the signed-in user and [partnerId]
+  /// on either side of the coaching link, newest first.
+  Future<List<PlanChangeRequestRow>> fetchPlanChangeRequests({
+    String? planId,
+    String? partnerId,
+  }) async {
+    final uid = userId;
+    if (uid == null || (planId == null && partnerId == null)) return const [];
+    var query = _client.from(PlanChangeRequestRow.table).select();
+    if (planId != null) {
+      query = query.eq(PlanChangeRequestRow.colPlanId, planId);
+    } else {
+      final p = partnerId!;
+      if (!RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(p)) return const [];
+      query = query.or(
+        'and(athlete_id.eq.$uid,coach_id.eq.$p),and(coach_id.eq.$uid,athlete_id.eq.$p)',
+      );
+    }
+    final rows = await query
+        .order(PlanChangeRequestRow.colCreatedAt, ascending: false)
+        .limit(20);
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .map(PlanChangeRequestRow.fromJson)
+        .toList();
+  }
+
+  /// The plan rows a request's lines describe, read by id under the viewer's
+  /// RLS (the athlete's own rows, or an active coach's read of them).
+  Future<({List<Map<String, dynamic>> workouts, List<Map<String, dynamic>> weeks})>
+      fetchPlanChangeTargets(List<String> workoutIds, List<String> weekIds) async {
+    final results = await Future.wait([
+      readChunked(
+        workoutIds,
+        (chunk) async => ((await _client
+                    .from(PlanWorkoutRow.table)
+                    .select(
+                        'id, scheduled_date, kind, target_distance_m, target_duration_seconds, skipped_at')
+                    .inFilter(PlanWorkoutRow.colId, chunk)) as List)
+            .cast<Map<String, dynamic>>(),
+      ),
+      readChunked(
+        weekIds,
+        (chunk) async => ((await _client
+                    .from(PlanWeekRow.table)
+                    .select('id, week_index, target_volume_m')
+                    .inFilter(PlanWeekRow.colId, chunk)) as List)
+            .cast<Map<String, dynamic>>(),
+      ),
+    ]);
+    return (workouts: results[0], weeks: results[1]);
+  }
+
+  /// The coach approves (the chosen lines, or every line when both lists
+  /// are null) or declines, with an optional note.
+  Future<void> decidePlanChange({
+    required String requestId,
+    required bool approve,
+    required String todayIso,
+    List<String>? workoutIds,
+    List<String>? weekIds,
+    String? note,
+  }) async {
+    final trimmed = note?.trim();
+    await _client.rpc('decide_plan_change', params: {
+      'p_request_id': requestId,
+      'p_approve': approve,
+      'p_today': todayIso,
+      'p_workout_ids': workoutIds,
+      'p_week_ids': weekIds,
+      'p_note': trimmed == null || trimmed.isEmpty ? null : trimmed,
+    });
+  }
+
+  Future<void> withdrawPlanChange(String requestId) async {
+    await _client.rpc('withdraw_plan_change', params: {'p_request_id': requestId});
+  }
+
+  /// The athlete applies their own request without the coach; the coach is told.
+  Future<void> applyPlanChangeMyself(String requestId, String todayIso) async {
+    await _client.rpc('apply_plan_change_myself', params: {
+      'p_request_id': requestId,
+      'p_today': todayIso,
+    });
+  }
+
   Future<List<CoachAthleteLink>> _linksWithProfiles(
       List<Map<String, dynamic>> rows, String otherIdCol) async {
     if (rows.isEmpty) return const [];

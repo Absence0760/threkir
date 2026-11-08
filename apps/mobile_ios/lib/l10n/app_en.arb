@@ -7071,6 +7071,174 @@
       }
     }
   },
+  "planChangeTitle": "Suggested plan change",
+  "@planChangeTitle": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): title"
+  },
+  "planChangeWaitingForCoach": "Waiting for your coach to answer",
+  "@planChangeWaitingForCoach": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): waitingForCoach"
+  },
+  "planChangeWaitingForYou": "Your athlete is waiting for your answer",
+  "@planChangeWaitingForYou": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): waitingForYou"
+  },
+  "planChangeApprovedByCoach": "Approved by the coach and applied",
+  "@planChangeApprovedByCoach": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approvedByCoach"
+  },
+  "planChangeApprovedInPartByCoach": "Approved in part by the coach; the lines shown were applied",
+  "@planChangeApprovedInPartByCoach": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approvedInPartByCoach"
+  },
+  "planChangeDeclinedByCoach": "Declined by the coach",
+  "@planChangeDeclinedByCoach": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): declinedByCoach"
+  },
+  "planChangeWithdrawnByAthlete": "Withdrawn by the athlete",
+  "@planChangeWithdrawnByAthlete": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdrawnByAthlete"
+  },
+  "planChangeAppliedByAthlete": "Applied by the athlete without the coach",
+  "@planChangeAppliedByAthlete": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): appliedByAthlete"
+  },
+  "planChangeMinutes": "{n} min",
+  "@planChangeMinutes": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): minutes",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planChangeIncludeLine": "Include this change: {line}",
+  "@planChangeIncludeLine": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): includeLine",
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeWeekLabel": "Week {n} target",
+  "@planChangeWeekLabel": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): weekLabel",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planChangeSkipped": "Skipped",
+  "@planChangeSkipped": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): skipped"
+  },
+  "planChangeWeekTarget": "Week {n} target: {from} → {to}",
+  "@planChangeWeekTarget": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): weekTarget",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeUnreadable": "Some of these changes can no longer be shown.",
+  "@planChangeUnreadable": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): unreadable"
+  },
+  "planChangeCoachNote": "Coach's note: {note}",
+  "@planChangeCoachNote": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): coachNote",
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeNoteLabel": "Note to your athlete (optional)",
+  "@planChangeNoteLabel": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): noteLabel"
+  },
+  "planChangeNotePlaceholder": "Why you approved or declined",
+  "@planChangeNotePlaceholder": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): notePlaceholder"
+  },
+  "planChangeDecline": "Decline",
+  "@planChangeDecline": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): decline"
+  },
+  "planChangeApprove": "Approve",
+  "@planChangeApprove": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approve"
+  },
+  "planChangeApproveSelected": "Approve selected",
+  "@planChangeApproveSelected": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approveSelected"
+  },
+  "planChangeApplyMyselfHint": "You own this plan, so you can apply the change yourself. Your coach will be told.",
+  "@planChangeApplyMyselfHint": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): applyMyselfHint"
+  },
+  "planChangeWithdraw": "Withdraw",
+  "@planChangeWithdraw": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdraw"
+  },
+  "planChangeApplyMyself": "Apply it myself",
+  "@planChangeApplyMyself": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): applyMyself"
+  },
+  "planChangeWithdrawConfirmTitle": "Withdraw this suggested change?",
+  "@planChangeWithdrawConfirmTitle": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdrawConfirmTitle"
+  },
+  "planChangeWithdrawConfirmMessage": "Your coach will no longer be asked to approve it. To suggest it again, ask the Coach to adjust your plan again.",
+  "@planChangeWithdrawConfirmMessage": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdrawConfirmMessage"
+  },
+  "planChangeKeep": "Keep it",
+  "@planChangeKeep": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): keep"
+  },
+  "planChangeFailed": "Couldn't update the suggested change: {error}",
+  "@planChangeFailed": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeApprovedToast": "Change approved and applied to the plan",
+  "@planChangeApprovedToast": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approvedToast"
+  },
+  "planChangeDeclinedToast": "Change declined",
+  "@planChangeDeclinedToast": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): declinedToast"
+  },
+  "planChangeWithdrawnToast": "Suggestion withdrawn",
+  "@planChangeWithdrawnToast": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdrawnToast"
+  },
+  "planChangeAppliedToast": "Change applied to your plan; your coach has been told",
+  "@planChangeAppliedToast": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): appliedToast"
+  },
+  "planChangeLoadFailed": "Couldn't load suggested plan changes.",
+  "@planChangeLoadFailed": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): loadFailed"
+  },
+  "planChangeRetry": "Try again",
+  "@planChangeRetry": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): retry"
+  },
   "profileNotifWorkoutReminder": "Today's workout is waiting in your plan",
   "@profileNotifWorkoutReminder": {
     "description": "Notification inbox line for the morning reminder that today has a workout on the runner's active training plan"

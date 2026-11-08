@@ -15,6 +15,8 @@ import { assert, assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.t
 const ANON_REACHABLE = [
   'auth-email',
   'clip-public-track',
+  // pg_cron's hourly re-check, authorised in-handler by the CRON_SECRET bearer.
+  'club-verification-recheck',
   'donations-checkout',
   'events-refund-sweep',
   // A subscribed calendar app sends no header at all; the 96-hex URL token

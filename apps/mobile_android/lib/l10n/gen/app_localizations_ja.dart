@@ -146,6 +146,32 @@ class AppLocalizationsJa extends AppLocalizations {
   String get recapLatestStartLabel => '最も遅いスタート';
 
   @override
+  String get recapParkCoursesLabel => 'パークコース';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$nか所のパーク',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => '走ったパーク';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$nコース',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'ルートを選択';
 
   @override
@@ -4537,6 +4563,15 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get heatmapHeatDensity => 'ヒート密度';
+
+  @override
+  String get heatmapUpcomingRaces => '今後のレース';
+
+  @override
+  String get heatmapViewRace => 'レースを見る';
+
+  @override
+  String get heatmapRaceFallbackName => 'レース';
 
   @override
   String get heatmapResetFilters => 'フィルターをリセット';
@@ -10383,6 +10418,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get segmentsPanelLeaderboardEmpty => 'まだ記録がありません。このセグメントを最初に走りましょう。';
 
   @override
+  String get segmentOldMatchNote =>
+      '一部の古い記録は、ラインを横切るのではなくスタートとフィニッシュの近くを通過したかどうかで測る従来の方法で計測されています。各記録は、そのランナーが次にランを開いたときに計測し直されます。';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'あなたがこの王冠を保持しています — $label。';
   }
@@ -14185,6 +14224,27 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get challengesMetricParkCourses => 'パークコース';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$nコース',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'コース';
+
+  @override
+  String challengesParkRegion(String region) {
+    return '$regionのパークコースが対象';
+  }
+
+  @override
   String get challengesLeaveConfirmTitle => 'チャレンジから退出しますか？';
 
   @override
@@ -15093,6 +15153,66 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => '10のトレーニングプランを完了';
+
+  @override
+  String get badgesParkCourses1Label => '初めてのパークコース';
+
+  @override
+  String get badgesParkCourses1Desc => 'パークコースを1つ完走';
+
+  @override
+  String get badgesParkCourses5Label => 'パークの常連';
+
+  @override
+  String get badgesParkCourses5Desc => '5つのパークコースを完走';
+
+  @override
+  String get badgesParkCourses10Label => 'トレイルコレクター';
+
+  @override
+  String get badgesParkCourses10Desc => '10のパークコースを完走';
+
+  @override
+  String get badgesParkCourses25Label => 'パークエクスプローラー';
+
+  @override
+  String get badgesParkCourses25Desc => '25のパークコースを完走';
+
+  @override
+  String get badgesParkComplete1Label => 'パーク制覇';
+
+  @override
+  String get badgesParkComplete1Desc => '1つのパークの全コースを完走';
+
+  @override
+  String get badgesParkComplete3Label => '3つのパークを制覇';
+
+  @override
+  String get badgesParkComplete3Desc => '3つのパークの全コースを完走';
+
+  @override
+  String get badgesParkComplete10Label => 'パークコンプリート';
+
+  @override
+  String get badgesParkComplete10Desc => '10のパークの全コースを完走';
+
+  @override
+  String get badgesParkPassport1Label => 'パークパスポート';
+
+  @override
+  String get badgesParkPassport1Desc => '1つの州のすべてのパークでコースを完走';
+
+  @override
+  String get badgesParkPassport3Label => 'スタンプ獲得';
+
+  @override
+  String get badgesParkPassport3Desc => '3つの州でパークパスポートを達成';
+
+  @override
+  String get badgesParkPassport10Label => 'パスポートコレクター';
+
+  @override
+  String get badgesParkPassport10Desc => '10の州でパークパスポートを達成';
 
   @override
   String get racePredictorTitle => 'レースタイム予測';
@@ -19589,6 +19709,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get shareCardBadgeKicker => 'バッジ獲得';
 
   @override
+  String get shareCardKindCourse => 'パークコース';
+
+  @override
+  String get shareCardCourseKicker => 'パークコースのタイム';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return '$season年 $rank位';
+  }
+
+  @override
   String get runDetailSharePr => '自己ベストカードを共有';
 
   @override
@@ -20139,6 +20270,64 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String eventRacePreflightFarFinish(String course) {
     return '$course：フィニッシュラインがルートから100 m以上離れています。';
+  }
+
+  @override
+  String get clubVerificationStatusTitle => '公式認証';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return '$org（$domain）の公式アカウントとして認証済みです。';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy => '公式の組織として認証されています。';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return '$org の依頼は審査待ちです。ドメインの証明はまだ確認できていません。';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return '$org の依頼は審査待ちです。ドメインの証明を確認しました。';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return '前回の依頼は承認されませんでした：$reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'バッジが外されました：$reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'クラブまたはドメインの変更によりバッジが外されました。再審査が必要です。';
+
+  @override
+  String get clubVerificationStatusWithdrawn => '前回の依頼は取り下げられました。';
+
+  @override
+  String get clubVerificationStatusNone => '未認証です。';
+
+  @override
+  String get clubVerificationStatusWebHint => '依頼とドメインの証明はウェブで管理します。';
+
+  @override
+  String get clubVerificationStatusLoadFailed => '認証状況を読み込めませんでした。';
+
+  @override
+  String get clubVerificationStatusRetry => '再試行';
+
+  @override
+  String get profileNotifClubVerification => 'あなたのクラブの認証についてお知らせがあります';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return '$club の認証についてお知らせがあります';
   }
 
   @override

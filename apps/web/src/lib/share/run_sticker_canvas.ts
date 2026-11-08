@@ -485,6 +485,22 @@ export function raceStickerBody(t: { name: string; finisher: string; time: strin
 	return { kind: 'lines', lines, route: hasRoute ? OCCASION_ROUTE : 0 };
 }
 
+/// A park course time: the course, its park, the time in the accent and, when
+/// the run holds a place on this season's board, that place.
+export function courseStickerBody(
+	t: { kicker: string; name: string; park: string; time: string; rank: string | null },
+	hasRoute: boolean,
+): StickerBody {
+	const lines: OccasionLine[] = [
+		{ text: t.kicker, step: 'label', ink: 'muted' },
+		{ text: t.name, step: 'headline', ink: 'text', maxLines: 2 },
+		{ text: t.park, step: 'title', ink: 'muted' },
+		{ text: t.time, step: 'display', ink: 'accent' },
+	];
+	if (t.rank) lines.push({ text: t.rank, step: 'title', ink: 'text' });
+	return { kind: 'lines', lines, route: hasRoute ? OCCASION_ROUTE : 0 };
+}
+
 /// A badge the run earned: its name, and its tier in the accent.
 export function badgeStickerBody(t: { kicker: string; name: string; tier: string }): StickerBody {
 	return {

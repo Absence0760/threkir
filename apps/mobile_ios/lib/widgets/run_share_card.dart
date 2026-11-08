@@ -30,6 +30,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../preferences.dart';
 import '../privacy.dart';
+import '../park_courses.dart' show RunParkCourseTime;
 import '../run_share_stats.dart';
 import '../share_look.dart';
 import '../share_placement.dart';
@@ -105,9 +106,9 @@ Future<void> saveShareImageToGallery(Uint8List png, String name) async {
 /// [initialStyle] opens the sheet on it from a personal_record notification.
 ///
 /// [streakDays] is the streak day the run was, as of its own day, and
-/// [badgeLoad] reads the single-run distance badge it earned: with the
-/// records, the run's splits and the race stamped on it, they decide which
-/// occasion stickers the sheet offers.
+/// [badgeLoad] reads the single-run distance badge it earned and [courseLoad]
+/// the park course time it set: with the records, the run's splits and the
+/// race stamped on it, they decide which occasion stickers the sheet offers.
 ///
 /// [pickPhotoOverride] and [saveImageOverride] replace the gallery picker and
 /// the photo-library write so a widget test can drive both without platform
@@ -122,6 +123,7 @@ Future<void> showRunShareSheet(
   RunShareStyle initialStyle = RunShareStyle.card,
   int streakDays = 0,
   RunShareBadgeLoader? badgeLoad,
+  RunShareCourseLoader? courseLoad,
   @visibleForTesting Future<XFile?> Function()? pickPhotoOverride,
   @visibleForTesting RunShareImageSaver? saveImageOverride,
   @visibleForTesting RunShareUrlOpener? openUrlOverride,
@@ -143,6 +145,7 @@ Future<void> showRunShareSheet(
       records: records,
       streakDays: streakDays,
       badgeLoad: badgeLoad,
+      courseLoad: courseLoad,
       initialStyle: initialStyle == RunShareStyle.pr && records.isEmpty
           ? RunShareStyle.card
           : initialStyle,
@@ -166,6 +169,10 @@ typedef RunShareBadge = ({String badgeKey, String tier});
 /// Reads the badge a run earned; null when it earned none.
 typedef RunShareBadgeLoader = Future<RunShareBadge?> Function();
 
+/// Reads the park course time the course sticker prints (`pickShareCourse`);
+/// null when the run completed no park course.
+typedef RunShareCourseLoader = Future<RunParkCourseTime?> Function();
+
 class _ShareRunSheet extends StatefulWidget {
   final Run run;
   final Preferences preferences;
@@ -175,6 +182,7 @@ class _ShareRunSheet extends StatefulWidget {
   final RunShareStyle initialStyle;
   final int streakDays;
   final RunShareBadgeLoader? badgeLoad;
+  final RunShareCourseLoader? courseLoad;
   final Future<XFile?> Function()? pickPhotoOverride;
   final RunShareImageSaver saveImage;
   final RunShareUrlOpener openUrl;
@@ -190,6 +198,7 @@ class _ShareRunSheet extends StatefulWidget {
     required this.initialStyle,
     this.streakDays = 0,
     this.badgeLoad,
+    this.courseLoad,
     required this.saveImage,
     required this.openUrl,
     this.pickPhotoOverride,
@@ -217,6 +226,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
   bool _picking = false;
 
   RunShareBadge? _badge;
+  RunParkCourseTime? _course;
 
   /// The run's splits, from its full track: the clipped share line would
   /// drop the first and last km. Mile ticks for a mile runner.
@@ -243,6 +253,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           records: widget.records.length,
           streakDays: widget.streakDays,
           race: _race != null,
+          course: _course != null,
           badge: _badge != null,
           route: runShareCardTrack(widget.run, widget.privacyZones).length >= 2,
         ),
@@ -259,6 +270,19 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
     super.initState();
     unawaited(_restoreLook());
     unawaited(_loadBadge());
+    unawaited(_loadCourse());
+  }
+
+  /// L4: a failed read leaves the course sticker unoffered and nothing else.
+  Future<void> _loadCourse() async {
+    final load = widget.courseLoad;
+    if (load == null) return;
+    try {
+      final course = await load();
+      if (mounted && course != null) setState(() => _course = course);
+    } catch (e) {
+      debugPrint('share course read failed: $e');
+    }
   }
 
   /// L4: a failed read leaves the badge sticker unoffered and nothing else.
@@ -331,6 +355,19 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
           name: race.name,
           finisher: l10n.shareCardRaceFinisher,
           time: race.time,
+          hasRoute: hasRoute,
+        );
+      case RunStickerKind.course:
+        final course = _course!;
+        return courseStickerBody(
+          kicker: l10n.shareCardCourseKicker,
+          name: course.courseName,
+          park: course.parkName,
+          time: formatShareDuration(Duration(seconds: course.timeSeconds)),
+          rank: course.seasonRank == null
+              ? null
+              : l10n.shareCardCourseRank(
+                  '${course.seasonRank}', '${course.season}'),
           hasRoute: hasRoute,
         );
       case RunStickerKind.badge:
@@ -739,6 +776,7 @@ class _ShareRunSheetState extends State<_ShareRunSheet> {
         RunStickerKind.pr => l10n.shareCardKindPr,
         RunStickerKind.streak => l10n.shareCardKindStreak,
         RunStickerKind.race => l10n.shareCardKindRace,
+        RunStickerKind.course => l10n.shareCardKindCourse,
         RunStickerKind.badge => l10n.shareCardKindBadge,
         RunStickerKind.route => l10n.shareCardLayoutRoute,
       };

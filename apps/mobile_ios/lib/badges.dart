@@ -100,12 +100,26 @@ class BadgeInput {
   /// Count of completed training plans.
   final double completedPlanCount;
 
+  /// Count of distinct park courses completed.
+  final double parkCourseCount;
+
+  /// Count of parks with every course not closed completed (parks with at
+  /// least two such courses; the server applies that floor).
+  final double completeParkCount;
+
+  /// Count of regions with a course completed in every active park (regions
+  /// with at least three such parks; the server applies that floor).
+  final double passportRegionCount;
+
   const BadgeInput({
     this.longestRunM = 0,
     this.lifetimeDistanceM = 0,
     this.bestStreakDays = 0,
     this.prCount = 0,
     this.completedPlanCount = 0,
+    this.parkCourseCount = 0,
+    this.completeParkCount = 0,
+    this.passportRegionCount = 0,
   });
 }
 
@@ -161,6 +175,34 @@ const List<Badge> kBadgeCatalogue = [
       BadgeTier(tier: 'gold', threshold: 10, icon: 'emoji_events', labelKey: 'badgesPlan10Label', descKey: 'badgesPlan10Desc'),
     ],
   ),
+  Badge(
+    id: 'park_courses',
+    sourceKind: 'segment',
+    tiers: [
+      BadgeTier(tier: 'bronze', threshold: 1, icon: 'park', labelKey: 'badgesParkCourses1Label', descKey: 'badgesParkCourses1Desc'),
+      BadgeTier(tier: 'silver', threshold: 5, icon: 'hiking', labelKey: 'badgesParkCourses5Label', descKey: 'badgesParkCourses5Desc'),
+      BadgeTier(tier: 'gold', threshold: 10, icon: 'forest', labelKey: 'badgesParkCourses10Label', descKey: 'badgesParkCourses10Desc'),
+      BadgeTier(tier: 'platinum', threshold: 25, icon: 'explore', labelKey: 'badgesParkCourses25Label', descKey: 'badgesParkCourses25Desc'),
+    ],
+  ),
+  Badge(
+    id: 'park_complete',
+    sourceKind: 'segment',
+    tiers: [
+      BadgeTier(tier: 'bronze', threshold: 1, icon: 'flag_circle', labelKey: 'badgesParkComplete1Label', descKey: 'badgesParkComplete1Desc'),
+      BadgeTier(tier: 'silver', threshold: 3, icon: 'flag_circle', labelKey: 'badgesParkComplete3Label', descKey: 'badgesParkComplete3Desc'),
+      BadgeTier(tier: 'gold', threshold: 10, icon: 'emoji_events', labelKey: 'badgesParkComplete10Label', descKey: 'badgesParkComplete10Desc'),
+    ],
+  ),
+  Badge(
+    id: 'park_passport',
+    sourceKind: 'segment',
+    tiers: [
+      BadgeTier(tier: 'bronze', threshold: 1, icon: 'map', labelKey: 'badgesParkPassport1Label', descKey: 'badgesParkPassport1Desc'),
+      BadgeTier(tier: 'silver', threshold: 3, icon: 'map', labelKey: 'badgesParkPassport3Label', descKey: 'badgesParkPassport3Desc'),
+      BadgeTier(tier: 'gold', threshold: 10, icon: 'public', labelKey: 'badgesParkPassport10Label', descKey: 'badgesParkPassport10Desc'),
+    ],
+  ),
 ];
 
 double _valueForBadge(Badge badge, BadgeInput input) {
@@ -175,6 +217,12 @@ double _valueForBadge(Badge badge, BadgeInput input) {
       return input.prCount;
     case 'plan_finisher':
       return input.completedPlanCount;
+    case 'park_courses':
+      return input.parkCourseCount;
+    case 'park_complete':
+      return input.completeParkCount;
+    case 'park_passport':
+      return input.passportRegionCount;
     default:
       return 0;
   }

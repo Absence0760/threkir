@@ -210,6 +210,25 @@ export const PAIRS = [
 		clients: [{ file: TS_TYPES, decl: 'MembershipStatus', shape: 'union' }],
 	},
 	{
+		tableColumn: 'club_verification_requests.status',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/widgets/club_verification_status_card.dart', decl: '_statusLine', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'club_verification_requests.proof_method',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_PROOF_METHODS', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'club_verification_audit.action',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_AUDIT_ACTIONS', shape: 'strings' },
+		],
+	},
+	{
 		tableColumn: 'clubs.join_policy',
 		clients: [{ file: TS_TYPES, decl: 'JoinPolicy', shape: 'union' }],
 	},
@@ -852,6 +871,21 @@ export const PAIRS = [
 	{
 		tableColumn: 'event_courses.finish_gate_source',
 		clients: [{ file: TS_TYPES, decl: 'GateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'global_segments.start_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'SegmentGateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'global_segments.end_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'SegmentGateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'global_segment_efforts.matched_by',
+		clients: [
+			{ file: TS_TYPES, decl: 'GlobalSegmentMatchedBy', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/segments.dart', decl: 'GlobalSegmentMatchedBy', shape: 'enum' },
+		],
 	},
 	{
 		tableColumn: 'race_sessions.status',

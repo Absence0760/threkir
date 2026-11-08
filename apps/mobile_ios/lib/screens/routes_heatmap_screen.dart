@@ -32,7 +32,9 @@ import '../widgets/map_attribution.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/place_search_panel.dart';
+import '../race_service.dart';
 import 'public_route_screen.dart';
+import 'race_detail_screen.dart';
 
 /// Route-discovery browser. Mobile mirror of the web RouteHeatmap.svelte
 /// surface (web keeps its desktop sidebar — this is a deliberate
@@ -43,7 +45,8 @@ import 'public_route_screen.dart';
 /// draws just that route's line + shows a compact card (the touch-device
 /// equivalent of web's hover preview). Nothing permanently covers the
 /// map. Backed by `heatmap_points_in_bbox`, `discoverable_routes_in_bbox`,
-/// and `clubs_in_bbox`.
+/// `clubs_in_bbox` and `upcoming_races_in_bbox` (verified races in the next
+/// ~6 months; a tap opens the race).
 ///
 /// Navigation:
 ///   * AppBar search field — MapTiler geocoding place search.
@@ -75,6 +78,10 @@ class RoutesHeatmapScreen extends StatefulWidget {
   /// MapController. Production callers leave null (city-scale default).
   final double? initialZoom;
 
+  /// Test seam — replaces pushing the race detail screen when a race pin's
+  /// sheet opens its race. Production callers leave null.
+  final void Function(BuildContext context, String raceId)? openRaceOverride;
+
   const RoutesHeatmapScreen({
     super.key,
     required this.api,
@@ -82,6 +89,7 @@ class RoutesHeatmapScreen extends StatefulWidget {
     this.locateFn,
     this.backgroundLocateFn,
     this.initialZoom,
+    this.openRaceOverride,
   });
 
   @override
@@ -95,6 +103,11 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
   List<cm.HeatmapPoint> _points = const [];
   List<cm.DiscoverableRoutePin> _pins = const [];
   List<cm.ClubPin> _clubs = const [];
+  List<cm.UpcomingRacePin> _races = const [];
+
+  /// Upcoming verified race pins, on by default like the club pins; off
+  /// skips the fetch.
+  bool _showRaces = true;
 
   /// Discovery lens: 'popular' (default) | 'official' | 'friends' |
   /// 'featured' | 'hidden_gems'. Mirrors the web DiscoverFilter union.
@@ -259,11 +272,21 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
         maxLng: bounds.east,
         maxLat: bounds.north,
       );
+      final races = _showRaces
+          ? await widget.api.fetchUpcomingRacesInBbox(
+              minLng: bounds.west,
+              minLat: bounds.south,
+              maxLng: bounds.east,
+              maxLat: bounds.north,
+              officialOnly: _filter == 'official',
+            )
+          : const <cm.UpcomingRacePin>[];
       if (!mounted) return;
       setState(() {
         _points = heat;
         _pins = pins;
         _clubs = clubs;
+        _races = races;
       });
       // If geolocation has already bowed out, frame the view on this
       // freshly-loaded data (no-op once the view has been framed).
@@ -438,6 +461,62 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     });
   }
 
+  Future<void> _showRaceSheet(cm.UpcomingRacePin race) async {
+    final l10n = AppLocalizations.of(context);
+    final meta = [
+      race.raceDate,
+      if (race.distanceM != null)
+        formatDistanceForPref(race.distanceM!.toDouble()),
+    ].join(' · ');
+    await showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                race.name.isEmpty ? l10n.heatmapRaceFallbackName : race.name,
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(meta, style: Theme.of(ctx).textTheme.bodyMedium),
+              if ((race.locationLabel ?? '').isNotEmpty)
+                Text(race.locationLabel!,
+                    style: Theme.of(ctx).textTheme.bodySmall),
+              const SizedBox(height: 12),
+              FilledButton(
+                key: const ValueKey('heatmap-race-view'),
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  _openRace(race.id);
+                },
+                child: Text(l10n.heatmapViewRace),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openRace(String raceId) {
+    final override = widget.openRaceOverride;
+    if (override != null) {
+      override(context, raceId);
+      return;
+    }
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => RaceDetailScreen(
+        service: RaceService(api: widget.api),
+        listingId: raceId,
+      ),
+    ));
+  }
+
   Future<void> _openFilterSheet() async {
     await showModalBottomSheet<void>(
       context: context,
@@ -501,6 +580,17 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                         selected: _showHeat,
                         onSelected: (_) {
                           setState(() => _showHeat = !_showHeat);
+                          setSheet(() {});
+                          _refresh();
+                        },
+                      ),
+                      FilterChip(
+                        key: const ValueKey('heatmap-race-pins-chip'),
+                        label: Text(AppLocalizations.of(context)
+                            .heatmapUpcomingRaces),
+                        selected: _showRaces,
+                        onSelected: (_) {
+                          setState(() => _showRaces = !_showRaces);
                           setSheet(() {});
                           _refresh();
                         },
@@ -854,6 +944,29 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                     ),
                 ],
               ),
+              // Upcoming verified race pins (violet); a tap opens the race's
+              // card.
+              if (_showRaces)
+                MarkerLayer(
+                  markers: [
+                    for (final race in _races)
+                      Marker(
+                        key: ValueKey('heatmap-race-pin-${race.id}'),
+                        point: LatLng(race.lat, race.lng),
+                        width: 48,
+                        height: 48,
+                        child: Semantics(
+                          button: true,
+                          label: race.name,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _showRaceSheet(race),
+                            child: _RacePinDot(official: race.official),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               // Clustered route pins — rebuilds on every camera change so
               // clusters break apart as you zoom in.
               Builder(
@@ -1287,6 +1400,10 @@ class _ClusterBubble extends StatelessWidget {
   }
 }
 
+/// The gold ring an editorial route pick and an official organiser's race
+/// carry.
+const Color _featuredRing = Color(0xFFFACC15);
+
 /// A single route pin — orange, gold ring when featured, enlarged when
 /// it's the currently selected route.
 class _RoutePinDot extends StatelessWidget {
@@ -1304,7 +1421,7 @@ class _RoutePinDot extends StatelessWidget {
           shape: BoxShape.circle,
           color: const Color(0xFFF08A5D),
           border: Border.all(
-            color: featured ? const Color(0xFFFACC15) : const Color(0xFF0F172A),
+            color: featured ? _featuredRing : const Color(0xFF0F172A),
             width: featured ? 3 : 2,
           ),
         ),
@@ -1329,6 +1446,31 @@ class _ClubPinDot extends StatelessWidget {
           BorderSide(
             color: verified ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
             width: verified ? 3 : 2,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// An upcoming verified race pin — violet, gold ring when an official
+/// organiser's race (official races also rank first).
+class _RacePinDot extends StatelessWidget {
+  final bool official;
+  const _RacePinDot({required this.official});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 16,
+        height: 16,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF9C7FD6),
+          border: Border.all(
+            color: official ? _featuredRing : const Color(0xFF0F172A),
+            width: official ? 3 : 2,
           ),
         ),
       ),

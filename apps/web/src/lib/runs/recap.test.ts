@@ -314,6 +314,17 @@ test('buildYearInRunningRecap: negative / fractional extras are clamped to a non
 	assert.equal(r.personalRecordCount, 2);
 });
 
+test('park course extras flow through and clamp', () => {
+	const run = mkRun({ startedAt: '2026-03-01T10:00:00', distance_m: 5000, duration_s: 1500 });
+	const year = buildYearInRunningRecap([run], 2026, { parkCourseCount: 4, parkCount: 2 });
+	assert.equal(year.parkCourseCount, 4);
+	assert.equal(year.parkCount, 2);
+	const month = buildMonthInRunningRecap([run], 2026, 3, { parkCourseCount: 1.7, parkCount: -1 });
+	assert.equal(month.parkCourseCount, 1);
+	assert.equal(month.parkCount, 0);
+	assert.equal(buildYearInRunningRecap([run], 2026).parkCourseCount, 0);
+});
+
 test('badges: one badge per category — the highest tier reached wins', () => {
 	// 1,200 km should produce the 1,000 km badge, not 500 + 100 too.
 	const runs = Array.from({ length: 12 }, (_, i) =>

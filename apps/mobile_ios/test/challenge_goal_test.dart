@@ -10,6 +10,7 @@ const List<String> _metrics = [
   'vert',
   'activity_count',
   'streak_days',
+  'park_courses',
 ];
 
 void main() {
@@ -21,7 +22,14 @@ void main() {
       ChallengeGoalUnit.elevation,
       ChallengeGoalUnit.activities,
       ChallengeGoalUnit.days,
+      ChallengeGoalUnit.courses,
     ]);
+  });
+
+  test('park_courses goals are a bare course count', () {
+    expect(challengeGoalUnit('park_courses'), ChallengeGoalUnit.courses);
+    expect(challengeGoalToStored(10, 'park_courses', DistanceUnit.km), 10);
+    expect(challengeGoalToStored(10, 'park_courses', DistanceUnit.mi), 10);
   });
 
   test('a distance goal is typed in the reader own unit', () {

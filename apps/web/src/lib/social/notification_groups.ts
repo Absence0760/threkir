@@ -74,6 +74,7 @@ function targetKeyFor(n: GroupableNotification): string {
 		case 'club_post':
 		case 'club_join_request':
 		case 'club_join_approved':
+		case 'club_verification':
 			return n.club_id ? `club:${n.club_id}` : solo;
 		case 'plan_update':
 		case 'plan_assigned':

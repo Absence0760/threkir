@@ -29,7 +29,8 @@ select plan(12);
 
 -- (1) Catch-all — readability. Only app_quota, deletion_audit_log,
 -- data_export_jobs, payment_refunds, apple_sign_in_tokens, platform_fees,
--- us_zcta_points, plan_calendar_feeds and run_track_extents are intentionally service_role-only (no
+-- us_zcta_points, plan_calendar_feeds, run_track_extents and
+-- club_verification_email_challenges are intentionally service_role-only (no
 -- anon/authenticated grant at all). data_export_jobs (20270603_001) holds the
 -- state of an Art 20 export request; the row is useless to a client without a
 -- signed URL, which only the service role can mint, so the whole read goes
@@ -59,6 +60,10 @@ select plan(12);
 -- track, read only by the segment-match backfill as the service role; it is
 -- location-derived, so no client role holds a grant (segment_match_jobs_test.sql
 -- pins that side).
+-- club_verification_email_challenges (20271120000004) holds the SHA-256 of a
+-- club verification's mailed confirm token: only the definer RPCs read and
+-- write it, so no client role holds a grant (club_verification_test.sql pins
+-- that side).
 select is(
   (select count(*)::int
      from pg_class c
@@ -66,7 +71,8 @@ select is(
      where c.relkind = 'r'
        and c.relname not in ('app_quota', 'deletion_audit_log', 'data_export_jobs',
                              'payment_refunds', 'apple_sign_in_tokens', 'platform_fees',
-                             'us_zcta_points', 'plan_calendar_feeds', 'run_track_extents')
+                             'us_zcta_points', 'plan_calendar_feeds', 'run_track_extents',
+                             'club_verification_email_challenges')
        and not has_table_privilege('authenticated', c.oid, 'SELECT')
        and not exists (
          select 1 from information_schema.role_column_grants g

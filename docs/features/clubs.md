@@ -148,28 +148,41 @@ The share page and its OG image already read the column. **Mobile has no logo
 control yet and still draws the initial** (`parity.md`). A deleted club's logo
 object is not swept (followups).
 
-### Verifying a club (operator)
+### Verifying a club
 
-What a verified club's badge lends its content, race listings and courses (the four provenance labels and organiser course alerts) is in [provenance.md](provenance.md).
+`clubs.is_verified` (the verified badge) is granted through the request flow of
+issue #1190, specified in [official_content.md](official_content.md)
+(decisions § 2398). What a verified club's badge then lends its content, race
+listings and courses (the four provenance labels and organiser course alerts)
+is in [provenance.md](provenance.md). In short:
 
-`clubs.is_verified` (the verified badge) is set by an operator, not by the
-club. Two triggers guard it: `freeze_club_managed_columns` discards a write from
-an `anon` / `authenticated` session, and `clubs_protect_is_verified`
-(migration `20260909_001`) refuses any change unless `auth.role()` is
-`service_role`. The Supabase SQL editor sends no JWT, so a plain
-`update public.clubs set is_verified = true …` there silently leaves the flag
-false. Until the admin review page planned in #1190 exists, run it as one
-transaction that sets the role claim first:
+- **The owner applies** from the "Official verification" card on the club page
+  (`ClubVerificationCard.svelte`, shown to the owner and active admins; only the
+  owner can act). The claimed domain is the host of the club's own website link,
+  so a club with no website is asked to add one first.
+- **Proof** is a DNS TXT record, a `/.well-known/threkir-verification` file, or a
+  one-time link mailed to an address at the domain. "Check now" runs the first
+  two in the `club-verification` Edge Function.
+- **A site admin decides** at `/admin/club-verification`: approve (a note is
+  required when there is no automated proof), reject with a reason, or revoke a
+  verified club's badge with a reason. Every action is in
+  `club_verification_audit` and notifies the club's owner and admins
+  (`club_verification`).
+- **Verified clubs are locked**: renaming one, changing its slug, or moving its
+  website to another domain drops the badge until it is reviewed again
+  (`clubs_verification_lock`). `ClubEditor` warns before the edit.
+- **Proof is re-checked** hourly for clubs approved on DNS or file proof; three
+  failed checks in a row drop the badge.
 
-```sql
-begin;
-select set_config('request.jwt.claims', '{"role":"service_role"}', true);
-update public.clubs set is_verified = true where slug = '<slug>' returning id, slug, is_verified;
-commit;
-```
+Mobile shows the owner and admins a read-only status card
+(`club_verification_status_card.dart`) and points to the web for the request.
 
-The `returning` row should read `is_verified = true`; the `true` third argument
-to `set_config` scopes the claim to that transaction.
+The badge is still writable by `service_role` and by a migration, and the
+legacy `clubs_protect_is_verified` trigger is gone (it keyed on the JWT role and
+would have reverted the admin's own approval inside the definer RPC). An
+operator who must set it by hand runs `update public.clubs set is_verified =
+true …` in the SQL editor, which sends no JWT and is not reverted; prefer the
+admin page, which leaves an audit row.
 
 ## Data model
 

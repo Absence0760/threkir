@@ -190,6 +190,11 @@
 			{#if challenge.description}
 				<p class="desc">{challenge.description}</p>
 			{/if}
+			{#if challenge.metric === 'park_courses' && challenge.park_region_code}
+				<p class="desc" data-testid="challenge-park-region">
+					{m('challenges.parkRegion', { region: challenge.park_region_code })}
+				</p>
+			{/if}
 		</header>
 
 		{#if challenge.joined && challenge.scope !== 'club_vs_club'}

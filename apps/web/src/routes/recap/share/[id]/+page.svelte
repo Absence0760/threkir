@@ -40,6 +40,8 @@
 			mostUsedActivity: s.mostUsedActivity ?? null,
 			photoCount: s.photoCount ?? 0,
 			personalRecordCount: s.personalRecordCount ?? 0,
+			parkCourseCount: s.parkCourseCount ?? 0,
+			parkCount: s.parkCount ?? 0,
 			badges: s.badges ?? []
 		};
 	});

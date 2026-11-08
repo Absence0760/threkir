@@ -20,6 +20,7 @@ import {
 } from '../_shared/smoothed_sidecar.ts';
 import {
   computeGlobalSegmentEfforts,
+  globalSegmentGeometry,
   parseCourseCheckpoints,
   trackExtent,
 } from '../_shared/segment_matcher.generated.js';
@@ -146,6 +147,14 @@ export interface CandidateRow {
   id: string;
   waypoints: unknown;
   distance_m: number | string;
+  start_gate_lat?: number | null;
+  start_gate_lng?: number | null;
+  start_gate_bearing_deg?: number | null;
+  start_gate_half_width_m?: number | null;
+  end_gate_lat?: number | null;
+  end_gate_lng?: number | null;
+  end_gate_bearing_deg?: number | null;
+  end_gate_half_width_m?: number | null;
 }
 
 export interface CheckpointRow {
@@ -153,17 +162,13 @@ export interface CheckpointRow {
   checkpoints: unknown;
 }
 
-export interface Geometry {
-  points: { lat: number; lng: number }[];
-  distance_m: number;
-  checkpoints?: { lat: number; lng: number }[];
-}
+export type Geometry = ReturnType<typeof globalSegmentGeometry>;
 
-/// The candidates the matcher may score, each with its geometry in the shape
-/// the web scorer builds (`computeGlobalSegmentEffortsForRun`: `Number()` on
-/// each coordinate and on the length). A park course's checkpoints are part of
-/// its rule, so a course whose list `parseCourseCheckpoints` cannot read is
-/// left out — scored by neither side, and so not a candidate whose effort the
+/// The candidates the matcher may score, each with its geometry built by the
+/// web module's own `globalSegmentGeometry` (polyline, length and the start
+/// and end lines, decisions § 2402), as the web fallback builds it. A park
+/// course's checkpoints are part of its rule, so a course whose list
+/// `parseCourseCheckpoints` cannot read is left out — scored by neither side, and so not a candidate whose effort the
 /// write may remove.
 export function scorableGeometries(
   candidates: readonly CandidateRow[],
@@ -178,16 +183,8 @@ export function scorableGeometries(
   for (const seg of candidates) {
     const cps = checkpoints.get(seg.id);
     if (cps === null) continue;
-    const waypoints = Array.isArray(seg.waypoints) ? seg.waypoints : [];
     ids.push(seg.id);
-    geometries.push({
-      points: waypoints.map((w: { lat?: unknown; lng?: unknown }) => ({
-        lat: Number(w?.lat),
-        lng: Number(w?.lng),
-      })),
-      distance_m: Number(seg.distance_m),
-      checkpoints: cps ?? undefined,
-    });
+    geometries.push(globalSegmentGeometry(seg, cps));
   }
   return { ids, geometries };
 }
@@ -308,10 +305,17 @@ export async function scoreRun(client: DbClient, runId: string): Promise<RunResu
 
   const { ids, geometries } = scorableGeometries(rows, checkpointRows);
   const results = computeGlobalSegmentEfforts(points, geometries);
-  const efforts: { global_segment_id: string; time_seconds: number; started_at: string }[] = [];
+  const efforts: { global_segment_id: string; time_seconds: number; started_at: string; matched_by: string }[] = [];
   for (let i = 0; i < ids.length; i++) {
     const eff = results[i];
-    if (eff) efforts.push({ global_segment_id: ids[i], time_seconds: eff.time_seconds, started_at: eff.started_at });
+    if (eff) {
+      efforts.push({
+        global_segment_id: ids[i],
+        time_seconds: eff.time_seconds,
+        started_at: eff.started_at,
+        matched_by: eff.matched_by,
+      });
+    }
   }
 
   const { data: status, error: recErr } = await client.rpc('record_segment_match', {

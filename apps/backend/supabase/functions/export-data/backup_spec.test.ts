@@ -62,9 +62,12 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// (migration 20271105000010) added conversation_settings. Race courses
 	// (migration 20271114002381) added race_course_suggestions + race_listing_audit.
 	// Plan change requests (migration 20271115002382) added both legs of
-	// plan_change_requests. Course alerts (migration 20271124002407) added
+	// plan_change_requests. Club verification (migration 20271120000004)
+	// added club_verification_requests + club_verification_audit.
+	// global_segment_efforts was in the Go worker's list and missing here
+	// until park course times (issue #1313) made it load-bearing. Course alerts (migration 20271124002407) added
 	// course_alerts.
-	assertEquals(specs.length, 82, `expected 82 specs, got ${specs.length}`);
+	assertEquals(specs.length, 85, `expected 85 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -117,6 +120,8 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'event_result_claims.json',
 		'race_course_suggestions.json',
 		'race_listing_audit.json',
+		'club_verification_requests.json',
+		'club_verification_audit.json',
 		'course_alerts.json',
 		'user_blocks.json',
 		'club_posts.json',
@@ -252,6 +257,7 @@ Deno.test('achievements / challenges / recaps exported owner-scoped (GDPR Art 20
 		'challenge_participants.json',
 		'challenge_badges.json',
 		'public_recaps.json',
+		'global_segment_efforts.json',
 	]) {
 		const spec = specs.find((s) => s.entry === entry);
 		assertExists(spec);

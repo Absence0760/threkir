@@ -78,6 +78,7 @@ insert into anon_callable (fn, why) values
   ('challenge_invite_preview',        'a follower previews a challenge invite link before signing up'),
   ('clip_route_for_viewer',           'public route page geometry'),
   ('clubs_in_bbox',                   'logged-out map discovery'),
+  ('confirm_club_verification_email', 'the address at a club''s claimed domain confirms the email proof from a mailed link with no account; the 192-bit single-use token is the capability'),
   ('confirm_safety_contact_by_token', 'a trusted contact confirms from an emailed link with no account'),
   ('discoverable_routes_in_bbox',     'logged-out map discovery'),
   ('event_gallery_photos',            'public event page'),
@@ -121,7 +122,8 @@ insert into anon_callable (fn, why) values
   ('search_race_listings',            'logged-out search'),
   ('segment_effort_ranks',            'public segment board'),
   ('share_attribution_enabled',       'a /share page decides whether to count the view'),
-  ('signup_source_enabled',           'a sign-up, made with no session, decides whether to send its first-touch source');
+  ('signup_source_enabled',           'a sign-up, made with no session, decides whether to send its first-touch source'),
+  ('upcoming_races_in_bbox',          'logged-out map discovery');
 
 -- The routines this repo STATES are withheld from `authenticated` as well as
 -- anon — the cron and job-queue family (20270626000001, and
@@ -166,6 +168,7 @@ insert into server_only (fn, keeps_service_role) values
   ('clear_device_token', true),
   ('clear_push_subscription', true),
   ('clip_track_for_user', true),
+  ('club_verifications_due_for_recheck', true),
   ('cron_schedule_status', true),
   ('defer_job', true),
   ('delete_user_integration_secrets', true),
@@ -188,6 +191,7 @@ insert into server_only (fn, keeps_service_role) values
   ('find_stuck_jobs', true),
   ('finish_job', true),
   ('get_apple_refresh_token', true),
+  ('invoke_club_verification_recheck', true),
   ('invoke_event_refund_sweep', true),
   ('invoke_race_listings_sweep', true),
   ('jobs_backlog_summary', true),
@@ -204,6 +208,7 @@ insert into server_only (fn, keeps_service_role) values
   ('privacy_in_any_zone', false),
   ('prune_sign_in_devices', true),
   ('recompute_event_ranks', false),
+  ('record_club_verification_check', true),
   ('record_map_match_result', true),
   ('record_segment_match', true),
   ('refresh_club_member_count', false),

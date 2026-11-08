@@ -167,6 +167,10 @@
 				return item.club_name
 					? m('notificationBell.clubJoinApprovedNamed', { club: item.club_name })
 					: m('notificationBell.clubJoinApproved');
+			case 'club_verification':
+				return item.club_name
+					? m('notificationBell.clubVerificationNamed', { club: item.club_name })
+					: m('notificationBell.clubVerification');
 			case 'event_waitlist_slot': {
 				const msg = waitlistSlotMessage('notificationBell', item.event_title);
 				return m(msg.key, msg.params);

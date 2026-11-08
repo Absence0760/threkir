@@ -29,6 +29,7 @@ import '../backend_timeout.dart';
 import '../widgets/activity_waiver_dialog.dart';
 import '../widgets/club_form_sheet.dart';
 import '../widgets/club_invite_card.dart';
+import '../widgets/club_verification_status_card.dart';
 import '../widgets/club_photos.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/collapsing_tab_host.dart';
@@ -1282,6 +1283,14 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                     l10n, null, widget.social.currentUserId ?? ''))),
                 subtitle: Text(l10n.clubDetailNameHintAction),
               ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (c.isAdmin) ...[
+            ClubVerificationStatusCard(
+              social: widget.social,
+              clubId: c.row.id,
+              isVerified: c.row.isVerified,
             ),
             const SizedBox(height: 12),
           ],

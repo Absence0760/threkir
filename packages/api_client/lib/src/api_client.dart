@@ -2748,6 +2748,48 @@ class ApiClient {
     }
   }
 
+  /// Upcoming verified races inside the viewport bbox, for the discovery
+  /// map's race pins. Mirror of the web `fetchUpcomingRacesInBbox`;
+  /// [officialOnly] narrows to official organisers' races for the Official
+  /// lens. Fails soft.
+  Future<List<UpcomingRacePin>> fetchUpcomingRacesInBbox({
+    required double minLng,
+    required double minLat,
+    required double maxLng,
+    required double maxLat,
+    int limit = 100,
+    bool officialOnly = false,
+  }) async {
+    try {
+      final data = await _client.rpc('upcoming_races_in_bbox', params: {
+        'p_min_lng': minLng,
+        'p_min_lat': minLat,
+        'p_max_lng': maxLng,
+        'p_max_lat': maxLat,
+        'p_limit': limit,
+        'p_official_only': officialOnly,
+      }, get: true);
+      if (data is! List) return const [];
+      return data.map<UpcomingRacePin>((row) {
+        final r = row as Map<String, dynamic>;
+        return UpcomingRacePin(
+          id: r['id'] as String,
+          name: (r['name'] as String?) ?? '',
+          raceDate: r['race_date'] as String,
+          distanceM: (r['distance_m'] as num?)?.toInt(),
+          locationLabel: r['location_label'] as String?,
+          official: (r['is_official'] as bool?) ?? false,
+          hasCourse: (r['has_course'] as bool?) ?? false,
+          lat: (r['lat'] as num).toDouble(),
+          lng: (r['lng'] as num).toDouble(),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('fetchUpcomingRacesInBbox failed: ${safeErrorLabel(e)}');
+      return const [];
+    }
+  }
+
   // -- Route reviews --
 
   /// Fetch all reviews for a route, newest first, walked by keyset cursor so
@@ -5740,6 +5782,20 @@ class ApiClient {
     ];
   }
 
+  /// Whether any effort the viewer can see on [segmentId] was matched by the
+  /// circles (`global_segment_efforts.matched_by = 'zone'`). On a segment
+  /// timed by its lines that is an effort written before the line matcher,
+  /// waiting for its runner's next view to be re-matched (issue #1308).
+  /// Mirrors web `globalSegmentHasZoneEfforts`.
+  Future<bool> globalSegmentHasZoneEfforts(String segmentId) async {
+    final count = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .count(CountOption.exact)
+        .eq(GlobalSegmentEffortRow.colGlobalSegmentId, segmentId)
+        .eq(GlobalSegmentEffortRow.colMatchedBy, 'zone');
+    return count > 0;
+  }
+
   /// Block-guarded catalogue-segment leaderboard. Mirrors
   /// [fetchSegmentLeaderboardTiered] but calls `global_segment_leaderboard`
   /// (migration 20270411_001) — no per-route visibility branch, since the
@@ -5785,6 +5841,9 @@ class ApiClient {
             timeSeconds: (maps[i]['time_seconds'] as num).toDouble(),
             startedAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
             createdAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
+            // The board RPC does not return how an effort was matched; no
+            // mobile surface reads it.
+            matchedBy: (maps[i]['matched_by'] as String?) ?? 'zone',
           ),
           athlete: PublicProfile(
             id: maps[i]['user_id'] as String,
@@ -5905,6 +5964,55 @@ class ApiClient {
       );
     }
     return out;
+  }
+
+  /// The park courses the signed-in runner's own [runId] completed, from
+  /// `run_park_course_times`: course and park names, the time, the season (the
+  /// calendar year in the park's timezone) and the effort's place on that
+  /// season's fastest board when it is the runner's best and in the top 100.
+  /// Raw rows; the app parses them in its `park_courses` pair. Mirrors web
+  /// `fetchRunParkCourseTimes`. Throws on a failed read.
+  Future<List<Map<String, dynamic>>> fetchRunParkCourseTimes(String runId) async {
+    final data = await _client.rpc('run_park_course_times',
+        params: {'p_run_id': runId}, get: true);
+    return [
+      for (final r in (data as List? ?? const <dynamic>[]))
+        Map<String, dynamic>.from(r as Map),
+    ];
+  }
+
+  /// The signed-in runner's park course efforts started in `[start, end)`,
+  /// each with its course and park, for the recap's park lines. Mirrors web
+  /// `fetchRecapParkCourses`. Empty when signed out; throws on a failed read.
+  Future<List<({String parkId, String parkName, String regionCode, String courseId})>>
+      fetchRecapParkCourses(DateTime start, DateTime end) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return const [];
+    final effortRows = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .select(GlobalSegmentEffortRow.colGlobalSegmentId)
+        .eq(GlobalSegmentEffortRow.colUserId, uid)
+        .gte(GlobalSegmentEffortRow.colStartedAt, start.toUtc().toIso8601String())
+        .lt(GlobalSegmentEffortRow.colStartedAt, end.toUtc().toIso8601String());
+    final segmentIds = {
+      for (final r in effortRows) r[GlobalSegmentEffortRow.colGlobalSegmentId] as String,
+    }.toList();
+    final courseRows = await readChunked(
+      segmentIds,
+      (chunk) async => List<Map<String, dynamic>>.from(await _client
+          .from(ParkCourseRow.table)
+          .select('id, park_id, parks!inner(name, region_code)')
+          .inFilter(ParkCourseRow.colGlobalSegmentId, chunk)),
+    );
+    return [
+      for (final r in courseRows)
+        (
+          parkId: r['park_id'] as String,
+          parkName: (r['parks'] as Map)['name'] as String,
+          regionCode: (r['parks'] as Map)['region_code'] as String,
+          courseId: r['id'] as String,
+        ),
+    ];
   }
 
   /// Catalogue-segment efforts a run earned, joined to the segment and ranked

@@ -22,10 +22,12 @@
 		fetchRouteById,
 		fetchClubsInBbox,
 		fetchDiscoverableRoutesInBbox,
+		fetchUpcomingRacesInBbox,
 		type DiscoverFilter,
 		type DiscoverableRoutePin,
 	} from '#lib/core/data.ts';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
+	import { formatDate } from '#lib/format/time.ts';
 	import { searchPlaces, type PlaceSearchResult } from '#lib/routes/geocoding.ts';
 	import {
 		DISTANCE_BANDS,
@@ -139,6 +141,8 @@
 	const ROUTE_PINNED_LAYER = 'heatmap-routes-pinned-line';
 	const CLUB_PINS_SOURCE = 'heatmap-clubs';
 	const CLUB_PINS_LAYER = 'heatmap-clubs-layer';
+	const RACE_PINS_SOURCE = 'heatmap-race-pins';
+	const RACE_PINS_LAYER = 'heatmap-race-pins-layer';
 	const ROUTE_PINS_SOURCE = 'heatmap-route-pins';
 	const ROUTE_PINS_LAYER = 'heatmap-route-pins-layer';
 	const ROUTE_CLUSTER_LAYER = 'heatmap-route-pins-cluster';
@@ -152,8 +156,11 @@
 	// in Filters to get the ambient "where people run" density.
 	let showClubPins = $state(true);
 	let showRoutePins = $state(true);
+	// Upcoming verified races (issue #1190 § 4): on by default, like clubs.
+	let showRacePins = $state(true);
 	let showHeatmapLayer = $state(false);
 	let clubPinsCount = $state(0);
+	let racePinsCount = $state(0);
 	let routePinsCount = $state(0);
 
 	// Route-discovery lens. The chip bar swaps which routes the pin
@@ -494,6 +501,57 @@
 				openHoverTip(coords, name);
 			});
 			map.on('mouseleave', CLUB_PINS_LAYER, () => {
+				if (map) map.getCanvas().style.cursor = '';
+				closeHoverTip();
+			});
+
+			// Upcoming verified races, at the course start when the course is
+			// public. A race claimed by a verified organiser takes the featured
+			// halo, the same ring an editorial route pick carries.
+			map.addSource(RACE_PINS_SOURCE, {
+				type: 'geojson',
+				data: { type: 'FeatureCollection', features: [] },
+			});
+			map.addLayer({
+				id: RACE_PINS_LAYER,
+				type: 'circle',
+				source: RACE_PINS_SOURCE,
+				layout: { visibility: showRacePins ? 'visible' : 'none' },
+				paint: {
+					'circle-color': '#9C7FD6',
+					'circle-radius': 9,
+					'circle-stroke-color': [
+						'case',
+						['get', 'is_official'],
+						mapFeaturedHalo(darkBasemap),
+						mapOverlayOutline(darkBasemap),
+					],
+					'circle-stroke-width': ['case', ['get', 'is_official'], 3, 2],
+					'circle-opacity': 0.92,
+				},
+			});
+			map.on('click', RACE_PINS_LAYER, (e) => {
+				const f = e.features?.[0];
+				if (!f || !map) return;
+				const p = f.properties ?? {};
+				const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+				openRacePopup(coords, {
+					id: p.id as string,
+					name: (p.name as string) || m('routeHeatmap.raceFallbackName'),
+					raceDate: p.race_date as string,
+					distanceM: typeof p.distance_m === 'number' ? p.distance_m : null,
+					locationLabel: (p.location_label as string) ?? '',
+				});
+			});
+			map.on('mouseenter', RACE_PINS_LAYER, (e) => {
+				if (!map) return;
+				map.getCanvas().style.cursor = 'pointer';
+				const f = e.features?.[0];
+				if (!f) return;
+				const coords = (f.geometry as GeoJSON.Point).coordinates as [number, number];
+				openHoverTip(coords, (f.properties?.name as string) ?? '');
+			});
+			map.on('mouseleave', RACE_PINS_LAYER, () => {
 				if (map) map.getCanvas().style.cursor = '';
 				closeHoverTip();
 			});
@@ -906,6 +964,36 @@
 		openPopupRaw(coords, html);
 	}
 
+	interface RacePopupData {
+		id: string;
+		name: string;
+		raceDate: string;
+		distanceM: number | null;
+		locationLabel: string;
+	}
+	function openRacePopup(coords: [number, number], d: RacePopupData) {
+		const meta = [formatDate(d.raceDate), d.distanceM ? formatDistance(d.distanceM) : '']
+			.filter(Boolean)
+			.join(' · ');
+		const subtitle = d.locationLabel
+			? `<span class="pin-popup-location">${escapeHtml(d.locationLabel)}</span>`
+			: '';
+		const html = `
+			<div class="pin-popup pin-popup-race">
+				<div class="pin-popup-titleblock">
+					<span class="pin-popup-title">${escapeHtml(d.name)}</span>
+					<span class="pin-popup-meta">${escapeHtml(meta)}</span>
+				</div>
+				${subtitle}
+				<a class="pin-popup-action" href="${escapeHtml(safeHref(`/races/${encodeURIComponent(d.id)}`))}"
+					data-sveltekit-preload-data="hover">
+					${escapeHtml(m('routeHeatmap.viewRace'))} &rarr;
+				</a>
+			</div>
+		`;
+		openPopupRaw(coords, html);
+	}
+
 	function openHoverTip(coords: [number, number], name: string) {
 		if (!map || !name) return;
 		hoverPopup?.remove();
@@ -983,11 +1071,13 @@
 				maxLng: b.getEast(),
 				maxLat: b.getNorth(),
 			};
-			const [clubs, routes] = await Promise.all([
+			const [clubs, routes, races] = await Promise.all([
 				fetchClubsInBbox(bbox),
 				fetchDiscoverableRoutesInBbox({ ...bbox, filter: routeFilter, bands: selectedBands }),
+				fetchUpcomingRacesInBbox({ ...bbox, officialOnly: routeFilter === 'official' }),
 			]);
 			clubPinsCount = clubs.length;
+			racePinsCount = races.length;
 			routePinsCount = routes.length;
 			routePins = routes;
 			// If geolocation has already bowed out, frame the view on this
@@ -1012,6 +1102,24 @@
 						is_verified: c.is_verified,
 					},
 					geometry: { type: 'Point', coordinates: [c.lng, c.lat] },
+				})),
+			});
+			const raceSrc = map.getSource(RACE_PINS_SOURCE) as
+				| maplibregl.GeoJSONSource
+				| undefined;
+			raceSrc?.setData({
+				type: 'FeatureCollection',
+				features: races.map((r) => ({
+					type: 'Feature',
+					properties: {
+						id: r.id,
+						name: r.name,
+						race_date: r.race_date,
+						distance_m: r.distance_m,
+						location_label: r.location_label,
+						is_official: r.is_official,
+					},
+					geometry: { type: 'Point', coordinates: [r.lng, r.lat] },
 				})),
 			});
 			const routeSrc = map.getSource(ROUTE_PINS_SOURCE) as
@@ -1055,6 +1163,11 @@
 		const visible = showClubPins;
 		if (!map || !mapLoaded) return;
 		map.setLayoutProperty(CLUB_PINS_LAYER, 'visibility', visible ? 'visible' : 'none');
+	});
+	$effect(() => {
+		const visible = showRacePins;
+		if (!map || !mapLoaded) return;
+		map.setLayoutProperty(RACE_PINS_LAYER, 'visibility', visible ? 'visible' : 'none');
 	});
 	$effect(() => {
 		const visible = showRoutePins;
@@ -1512,6 +1625,11 @@
 							<input type="checkbox" bind:checked={showClubPins} />
 							<span>{m('routeHeatmap.clubs')}</span>
 							<span class="layer-count">{clubPinsCount}</span>
+						</label>
+						<label class="layer-row" title={m('routeHeatmap.racesHint')}>
+							<input type="checkbox" bind:checked={showRacePins} data-testid="race-pins-toggle" />
+							<span>{m('routeHeatmap.races')}</span>
+							<span class="layer-count" data-testid="race-pins-count">{racePinsCount}</span>
 						</label>
 					</div>
 				</div>

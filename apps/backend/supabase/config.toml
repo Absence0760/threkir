@@ -216,5 +216,13 @@ verify_jwt = false
 [functions.segment-match]
 verify_jwt = false
 
+# club-verification-recheck is invoked by pg_cron
+# (invoke_club_verification_recheck, through pg_net) with the CRON_SECRET
+# bearer; the platform gate would 401 it before the bearer check runs
+# (decisions § 2398). club-verification itself keeps the gate: it is called
+# by a signed-in club owner.
+[functions.club-verification-recheck]
+verify_jwt = false
+
 [functions.clip-public-track]
 verify_jwt = false

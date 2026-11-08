@@ -69,6 +69,7 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
+	import ClubVerificationCard from '#lib/components/ClubVerificationCard.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import ClubPhotos from '#lib/components/ClubPhotos.svelte';
 	import type {
@@ -1147,6 +1148,10 @@
 					</button>
 				{/if}
 			</section>
+		{/if}
+
+		{#if isAdmin}
+			<ClubVerificationCard {club} isOwner={club.viewer_role === 'owner'} />
 		{/if}
 
 		{#if isAdmin && pendingError}

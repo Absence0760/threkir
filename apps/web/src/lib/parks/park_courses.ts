@@ -20,9 +20,6 @@ export type CourseStatus = (typeof COURSE_STATUSES)[number];
 export const GEOMETRY_SOURCES = ['osm', 'nps', 'agency', 'traced'] as const;
 export type GeometrySource = (typeof GEOMETRY_SOURCES)[number];
 
-export const COURSE_SURFACES = ['paved', 'gravel', 'trail', 'mixed'] as const;
-export type CourseSurface = (typeof COURSE_SURFACES)[number];
-
 export const COURSE_DIFFICULTIES = ['easy', 'moderate', 'hard'] as const;
 export type CourseDifficulty = (typeof COURSE_DIFFICULTIES)[number];
 

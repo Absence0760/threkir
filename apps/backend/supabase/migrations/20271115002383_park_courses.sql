@@ -4,7 +4,8 @@
 -- A park course is a catalogue segment (`global_segments`, 20270411_001) that
 -- belongs to a park. The course lives in its OWN table rather than as columns
 -- on `global_segments`, so the catalogue stays free-standing (decisions § 232)
--- and one park can hold several courses. Every run that covers the course is
+-- and one park can hold several courses. Surface is not repeated here: the
+-- segment's own `surface` already names it in the route-surface vocabulary. Every run that covers the course is
 -- timed by the existing catalogue matcher; the course adds the ordered
 -- `checkpoints` the matcher must also pass (the `segments` parity pair), so a
 -- shortcut across a trail network never earns a time.
@@ -151,9 +152,6 @@ create table public.park_courses (
                        constraint park_courses_source_ref_len_chk
                        check (source_ref is null or length(source_ref) <= 500),
   source_checked_at  timestamptz,
-  surface            text
-                       constraint park_courses_surface_check
-                       check (surface is null or surface in ('paved', 'gravel', 'trail', 'mixed')),
   difficulty         text
                        constraint park_courses_difficulty_check
                        check (difficulty is null or difficulty in ('easy', 'moderate', 'hard')),

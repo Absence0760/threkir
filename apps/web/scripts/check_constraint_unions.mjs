@@ -716,13 +716,6 @@ export const PAIRS = [
 		],
 	},
 	{
-		tableColumn: 'park_courses.surface',
-		clients: [
-			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_SURFACES', shape: 'strings' },
-			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseSurfaces', shape: 'strings' },
-		],
-	},
-	{
 		tableColumn: 'parks.agency',
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'PARK_AGENCIES', shape: 'strings' },

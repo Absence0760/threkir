@@ -3049,7 +3049,6 @@ export type Database = {
           status: string
           status_checked_at: string | null
           status_note: string | null
-          surface: string | null
         }
         Insert: {
           checkpoints?: Json
@@ -3067,7 +3066,6 @@ export type Database = {
           status?: string
           status_checked_at?: string | null
           status_note?: string | null
-          surface?: string | null
         }
         Update: {
           checkpoints?: Json
@@ -3085,7 +3083,6 @@ export type Database = {
           status?: string
           status_checked_at?: string | null
           status_note?: string | null
-          surface?: string | null
         }
         Relationships: [
           {

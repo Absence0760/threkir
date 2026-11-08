@@ -3066,10 +3066,10 @@ VALUES ('5eed0000-0000-4000-8000-0000000000a1', 'fixture-state-park', 'Fixture S
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO park_courses (id, park_id, global_segment_id, slug, course_shape, status,
-                          geometry_source, source_ref, surface, difficulty, checkpoints)
+                          geometry_source, source_ref, difficulty, checkpoints)
 VALUES ('5eed0000-0000-4000-8000-0000000000b1', '5eed0000-0000-4000-8000-0000000000a1',
         '5eed0000-0000-4000-8000-00000000c001', 'lake-loop', 'loop', 'open',
-        'traced', 'local fixture', 'trail', 'easy',
+        'traced', 'local fixture', 'easy',
         '[{"lat":37.5445,"lng":-77.4343}]')
 ON CONFLICT (id) DO NOTHING;
 

@@ -15,8 +15,6 @@ const List<String> kCourseStatuses = ['open', 'closed', 'seasonal'];
 
 const List<String> kGeometrySources = ['osm', 'nps', 'agency', 'traced'];
 
-const List<String> kCourseSurfaces = ['paved', 'gravel', 'trail', 'mixed'];
-
 const List<String> kCourseDifficulties = ['easy', 'moderate', 'hard'];
 
 class CourseCheckpoint {

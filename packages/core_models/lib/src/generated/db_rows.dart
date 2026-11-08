@@ -4601,7 +4601,6 @@ class ParkCourseRow {
   static const String colGeometrySource = 'geometry_source';
   static const String colSourceRef = 'source_ref';
   static const String colSourceCheckedAt = 'source_checked_at';
-  static const String colSurface = 'surface';
   static const String colDifficulty = 'difficulty';
   static const String colCheckpoints = 'checkpoints';
   static const String colCreatedAt = 'created_at';
@@ -4618,7 +4617,6 @@ class ParkCourseRow {
   final String geometrySource;
   final String? sourceRef;
   final DateTime? sourceCheckedAt;
-  final String? surface;
   final String? difficulty;
   final dynamic checkpoints;
   final DateTime createdAt;
@@ -4636,7 +4634,6 @@ class ParkCourseRow {
     required this.geometrySource,
     this.sourceRef,
     this.sourceCheckedAt,
-    this.surface,
     this.difficulty,
     required this.checkpoints,
     required this.createdAt,
@@ -4655,7 +4652,6 @@ class ParkCourseRow {
     geometrySource: json['geometry_source'] as String,
     sourceRef: json['source_ref'] as String?,
     sourceCheckedAt: parseIsoStrictValue(json['source_checked_at']),
-    surface: json['surface'] as String?,
     difficulty: json['difficulty'] as String?,
     checkpoints: json['checkpoints'],
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
@@ -4674,7 +4670,6 @@ class ParkCourseRow {
     colGeometrySource: geometrySource,
     colSourceRef: sourceRef,
     colSourceCheckedAt: sourceCheckedAt?.toIso8601String(),
-    colSurface: surface,
     colDifficulty: difficulty,
     colCheckpoints: checkpoints,
     colCreatedAt: createdAt.toIso8601String(),
@@ -4693,7 +4688,6 @@ class ParkCourseRow {
     String? geometrySource,
     String? sourceRef,
     DateTime? sourceCheckedAt,
-    String? surface,
     String? difficulty,
     dynamic checkpoints,
     DateTime? createdAt,
@@ -4710,7 +4704,6 @@ class ParkCourseRow {
     geometrySource: geometrySource ?? this.geometrySource,
     sourceRef: sourceRef ?? this.sourceRef,
     sourceCheckedAt: sourceCheckedAt ?? this.sourceCheckedAt,
-    surface: surface ?? this.surface,
     difficulty: difficulty ?? this.difficulty,
     checkpoints: checkpoints ?? this.checkpoints,
     createdAt: createdAt ?? this.createdAt,

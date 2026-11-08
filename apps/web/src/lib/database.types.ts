@@ -244,6 +244,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "challenge_participants_team_club_id_fkey"
+            columns: ["team_club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
         ]
       }
       challenges: {
@@ -302,6 +309,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenges_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
           },
         ]
       }
@@ -410,6 +424,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_members_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
         ]
       }
       club_photos: {
@@ -451,6 +472,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "club_photos_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
         ]
       }
       club_posts: {
@@ -491,6 +519,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "club_posts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
           },
           {
             foreignKeyName: "club_posts_event_id_fkey"
@@ -1606,6 +1641,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "events_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
+          {
             foreignKeyName: "events_gym_routine_id_fkey"
             columns: ["gym_routine_id"]
             isOneToOne: false
@@ -2337,6 +2379,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "gym_routines_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
         ]
       }
       gym_sets: {
@@ -2879,6 +2928,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
           },
           {
             foreignKeyName: "notifications_comment_id_fkey"
@@ -3431,8 +3487,149 @@ export type Database = {
         }
         Relationships: []
       }
+      race_course_suggestions: {
+        Row: {
+          created_at: string
+          id: string
+          listing_id: string
+          note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          route_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          listing_id: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          route_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          listing_id?: string
+          note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          route_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_course_suggestions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_course_suggestions_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "race_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_course_suggestions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "race_course_suggestions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_course_suggestions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_course_suggestions_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      race_listing_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          club_id: string | null
+          created_at: string
+          id: number
+          listing_id: string
+          route_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          club_id?: string | null
+          created_at?: string
+          id?: never
+          listing_id: string
+          route_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          club_id?: string | null
+          created_at?: string
+          id?: never
+          listing_id?: string
+          route_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "race_listing_audit_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_listing_audit_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
+          {
+            foreignKeyName: "race_listing_audit_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_listing_audit_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "race_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       race_listings: {
         Row: {
+          course_checked_at: string | null
+          course_source: string | null
+          course_updated_at: string | null
           created_at: string
           distance_m: number | null
           entry_url: string | null
@@ -3441,6 +3638,7 @@ export type Database = {
           location_label: string | null
           location_point: unknown
           name: string
+          organiser_club_id: string | null
           provider: string
           provider_race_id: string | null
           race_date: string
@@ -3450,6 +3648,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          course_checked_at?: string | null
+          course_source?: string | null
+          course_updated_at?: string | null
           created_at?: string
           distance_m?: number | null
           entry_url?: string | null
@@ -3458,6 +3659,7 @@ export type Database = {
           location_label?: string | null
           location_point?: unknown
           name: string
+          organiser_club_id?: string | null
           provider: string
           provider_race_id?: string | null
           race_date: string
@@ -3467,6 +3669,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          course_checked_at?: string | null
+          course_source?: string | null
+          course_updated_at?: string | null
           created_at?: string
           distance_m?: number | null
           entry_url?: string | null
@@ -3475,6 +3680,7 @@ export type Database = {
           location_label?: string | null
           location_point?: unknown
           name?: string
+          organiser_club_id?: string | null
           provider?: string
           provider_race_id?: string | null
           race_date?: string
@@ -3484,6 +3690,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "race_listings_organiser_club_id_fkey"
+            columns: ["organiser_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "race_listings_organiser_club_id_fkey"
+            columns: ["organiser_club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
           {
             foreignKeyName: "race_listings_route_id_fkey"
             columns: ["route_id"]
@@ -4171,6 +4391,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routes_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
           },
         ]
       }
@@ -5114,6 +5341,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "session_plans_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
         ]
       }
       sign_in_devices: {
@@ -5235,6 +5469,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clubs"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "training_plans_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
           },
           {
             foreignKeyName: "training_plans_library_copy_id_fkey"
@@ -5713,6 +5954,13 @@ export type Database = {
             referencedRelation: "clubs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "gym_routines_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
         ]
       }
       public_gym_sets: {
@@ -5798,10 +6046,13 @@ export type Database = {
       }
       public_race_listings: {
         Row: {
+          course_checked_at: string | null
           course_distance_m: number | null
           course_elevation_m: number | null
           course_route_id: string | null
+          course_source: string | null
           course_surface: string | null
+          course_updated_at: string | null
           created_at: string | null
           distance_m: number | null
           entry_url: string | null
@@ -5810,6 +6061,9 @@ export type Database = {
           location_label: string | null
           location_point: unknown
           name: string | null
+          organiser_club_id: string | null
+          organiser_club_name: string | null
+          organiser_club_slug: string | null
           provider: string | null
           provider_race_id: string | null
           race_date: string | null
@@ -6437,6 +6691,10 @@ export type Database = {
           kind: string
           payload: Json
         }[]
+      }
+      claim_race_listing: {
+        Args: { p_club_id: string; p_listing_id: string }
+        Returns: undefined
       }
       cleanup_account_deletion_receipts: { Args: never; Returns: undefined }
       cleanup_deletion_audit_log: { Args: never; Returns: undefined }
@@ -7171,6 +7429,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      link_race_course: {
+        Args: { p_listing_id: string; p_route_id: string; p_source?: string }
+        Returns: undefined
+      }
       live_heart_rate_shared: { Args: { p_user_id: string }; Returns: boolean }
       live_overlay_enabled: { Args: never; Returns: boolean }
       live_overlay_feed: {
@@ -7412,6 +7674,17 @@ export type Database = {
         Returns: string
       }
       publish_plan_to_library: { Args: { p_plan_id: string }; Returns: string }
+      race_course_suggestions_for_review: {
+        Args: { p_listing_id: string }
+        Returns: {
+          created_at: string
+          id: string
+          note: string
+          route_club_id: string
+          route_id: string
+          route_name: string
+        }[]
+      }
       race_listing_photos: {
         Args: { p_limit?: number; p_listing_id: string }
         Returns: {
@@ -7531,6 +7804,15 @@ export type Database = {
           p_from_week_index?: number
           p_plan_id: string
           p_shift_weeks?: number
+        }
+        Returns: undefined
+      }
+      review_race_course_suggestion: {
+        Args: {
+          p_approve: boolean
+          p_route_id?: string
+          p_source?: string
+          p_suggestion_id: string
         }
         Returns: undefined
       }
@@ -7974,6 +8256,10 @@ export type Database = {
           p_target_id: string
           p_target_kind: string
         }
+        Returns: string
+      }
+      suggest_race_course: {
+        Args: { p_listing_id: string; p_note?: string; p_route_id: string }
         Returns: string
       }
       sweep_challenge_completions: { Args: never; Returns: undefined }

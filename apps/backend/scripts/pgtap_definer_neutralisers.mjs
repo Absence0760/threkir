@@ -1659,6 +1659,47 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'race_course_suggestions_for_review',
+    {
+      why: "drops the reviewer gate (signed in; an owner/admin of the listing's verified organiser club, or of any verified club while the race is unclaimed); keeps `listing_id = p_listing_id`, the pending status and the public-route join, which say which suggestions the queue is about",
+      sql: `create or replace function public.race_course_suggestions_for_review(p_listing_id uuid)
+ returns table(id uuid, route_id uuid, route_name text, route_club_id uuid, note text, created_at timestamptz)
+ language plpgsql stable security definer set search_path to 'public'
+as $neutralised$
+begin
+  return query
+    select s.id, s.route_id, r.name, r.club_id, s.note, s.created_at
+      from race_course_suggestions s
+      join routes r on r.id = s.route_id
+     where s.listing_id = p_listing_id
+       and s.status = 'pending'
+       and r.is_public = true
+       and r.shadow_hidden = false
+       and ${mine('s')}
+     order by s.created_at;
+end;
+$neutralised$;`,
+      subject: 'race_course_suggestions s — the queued suggestions whose reviewer gate was dropped',
+      witness: {
+        // Its own listing, route and suggester, and no claims set: the real
+        // function returns nothing to a caller who is not signed in.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0e1', 'authenticated', 'authenticated',
+                   'pgtap-guard-rcs@local', '', now(), now());
+                insert into routes (id, user_id, name, waypoints, distance_m, is_public)
+                  values ('00000000-0000-0000-0000-00000000c0e2', '00000000-0000-0000-0000-00000000c0e1',
+                          'guard witness course', '[]'::jsonb, 5000, true);
+                insert into race_listings (id, provider, name, race_date)
+                  values ('00000000-0000-0000-0000-00000000c0e3', 'manual', 'guard witness race', '2036-01-01');
+                insert into race_course_suggestions (listing_id, route_id, user_id)
+                  values ('00000000-0000-0000-0000-00000000c0e3', '00000000-0000-0000-0000-00000000c0e2',
+                          '00000000-0000-0000-0000-00000000c0e1');
+                select set_config('request.jwt.claims', '', true);`,
+        probe: `select count(*) from race_course_suggestions_for_review('00000000-0000-0000-0000-00000000c0e3');`,
+      },
+    },
+  ],
 ]);
 
 // Definer relations a zero-or-empty assertion reads and that deliberately have

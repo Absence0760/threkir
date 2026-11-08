@@ -1808,6 +1808,16 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'race_course_link_test.sql',
+    description: "the organiser approves, linking the club's own copy",
+    columns: ['race_course_suggestions.status'],
+    readBack: "approval marks the suggestion and links the club's course",
+    reason:
+      'p_approve becomes the status text (approved / rejected) rather than landing as the boolean; ' +
+      'the read-back reads status from a row created pending, so a server that stopped writing it ' +
+      'would report pending.',
+  },
+  {
     file: 'dm_conversations_test.sql',
     description: 'a participant can mute the conversation',
     columns: ['conversation_participants.muted_at'],

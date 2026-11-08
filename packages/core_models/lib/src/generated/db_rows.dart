@@ -4999,6 +4999,10 @@ class RaceListingRow {
   static const String colCreatedAt = 'created_at';
   static const String colUpdatedAt = 'updated_at';
   static const String colRouteId = 'route_id';
+  static const String colOrganiserClubId = 'organiser_club_id';
+  static const String colCourseSource = 'course_source';
+  static const String colCourseCheckedAt = 'course_checked_at';
+  static const String colCourseUpdatedAt = 'course_updated_at';
 
   final String id;
   final String provider;
@@ -5015,6 +5019,10 @@ class RaceListingRow {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? routeId;
+  final String? organiserClubId;
+  final String? courseSource;
+  final DateTime? courseCheckedAt;
+  final DateTime? courseUpdatedAt;
 
   const RaceListingRow({
     required this.id,
@@ -5032,6 +5040,10 @@ class RaceListingRow {
     required this.createdAt,
     required this.updatedAt,
     this.routeId,
+    this.organiserClubId,
+    this.courseSource,
+    this.courseCheckedAt,
+    this.courseUpdatedAt,
   });
 
   factory RaceListingRow.fromJson(Map<String, dynamic> json) => RaceListingRow(
@@ -5050,6 +5062,10 @@ class RaceListingRow {
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     updatedAt: parseIsoStrictRequired(json['updated_at'], 'updated_at'),
     routeId: json['route_id'] as String?,
+    organiserClubId: json['organiser_club_id'] as String?,
+    courseSource: json['course_source'] as String?,
+    courseCheckedAt: parseIsoStrictValue(json['course_checked_at']),
+    courseUpdatedAt: parseIsoStrictValue(json['course_updated_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5068,6 +5084,10 @@ class RaceListingRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
     colRouteId: routeId,
+    colOrganiserClubId: organiserClubId,
+    colCourseSource: courseSource,
+    colCourseCheckedAt: courseCheckedAt?.toIso8601String(),
+    colCourseUpdatedAt: courseUpdatedAt?.toIso8601String(),
   };
 
   RaceListingRow copyWith({
@@ -5086,6 +5106,10 @@ class RaceListingRow {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? routeId,
+    String? organiserClubId,
+    String? courseSource,
+    DateTime? courseCheckedAt,
+    DateTime? courseUpdatedAt,
   }) => RaceListingRow(
     id: id ?? this.id,
     provider: provider ?? this.provider,
@@ -5102,6 +5126,10 @@ class RaceListingRow {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     routeId: routeId ?? this.routeId,
+    organiserClubId: organiserClubId ?? this.organiserClubId,
+    courseSource: courseSource ?? this.courseSource,
+    courseCheckedAt: courseCheckedAt ?? this.courseCheckedAt,
+    courseUpdatedAt: courseUpdatedAt ?? this.courseUpdatedAt,
   );
 }
 

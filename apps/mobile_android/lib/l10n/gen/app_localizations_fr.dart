@@ -16695,6 +16695,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'Vous avez lancé beaucoup de demandes de message aujourd\'hui — veuillez patienter $wait et réessayer.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'Vous faites cela trop rapidement — veuillez patienter $wait et réessayer.';
   }
@@ -17835,7 +17840,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get messagesSendNotAllowed =>
-      'Vous ne pouvez écrire qu\'aux personnes que vous suivez ou qui vous suivent, et qui ne vous ont pas bloqué.';
+      'Vous pouvez écrire aux personnes que vous suivez ou qui vous suivent, ou à quelqu\'un avec qui vous partagez un club ou un événement, sauf si l\'un de vous a bloqué l\'autre.';
 
   @override
   String get messagesLoadEarlier => 'Charger les messages précédents';
@@ -17965,6 +17970,44 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get messagesBackToInbox => 'Retour à la boîte de réception';
+
+  @override
+  String get messagesRequestCapReached =>
+      'Vous pouvez envoyer jusqu\'à 3 messages tant que votre demande n\'est pas acceptée.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Demandes ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name souhaite vous écrire. Cette personne ne saura pas que vous l\'avez lu, sauf si vous acceptez.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Accepter';
+
+  @override
+  String get messagesRequestDecline => 'Refuser';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'Refuser cette demande ?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'Ses messages quittent vos demandes, et cette personne ne pourra plus vous écrire, sauf si vous lui écrivez d\'abord. Elle n\'en sera pas informée.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Demande acceptée';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Demande refusée';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'Impossible de mettre à jour la demande : $error';
+  }
 
   @override
   String get messagesMutedMark => 'En sourdine';

@@ -16659,6 +16659,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'Has iniciado muchas solicitudes de mensaje hoy: espera $wait e inténtalo de nuevo.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'Estás haciendo eso demasiado rápido: espera $wait e inténtalo de nuevo.';
   }
@@ -17791,7 +17796,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get messagesSendNotAllowed =>
-      'Solo puedes escribir a personas que sigues o que te siguen, y que no te han bloqueado.';
+      'Puedes enviar mensajes a quienes sigues o te siguen, o a alguien con quien compartes un club o un evento, salvo que uno de los dos haya bloqueado al otro.';
 
   @override
   String get messagesLoadEarlier => 'Cargar mensajes anteriores';
@@ -17921,6 +17926,44 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get messagesBackToInbox => 'Volver a la bandeja de entrada';
+
+  @override
+  String get messagesRequestCapReached =>
+      'Puedes enviar hasta 3 mensajes hasta que acepten tu solicitud.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Solicitudes ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name quiere enviarte mensajes. No sabrá que lo has leído a menos que aceptes.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Aceptar';
+
+  @override
+  String get messagesRequestDecline => 'Rechazar';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => '¿Rechazar esta solicitud?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'Sus mensajes desaparecen de tus solicitudes y no podrá volver a escribirte a menos que tú le escribas primero. No se le avisará.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Solicitud aceptada';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Solicitud rechazada';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'No se pudo actualizar la solicitud: $error';
+  }
 
   @override
   String get messagesMutedMark => 'Silenciada';

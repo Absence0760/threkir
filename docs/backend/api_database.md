@@ -1876,6 +1876,7 @@ create table rate_limits (
 | `create_route` | 30 | 3600 | `routes_create_rate_limit_trigger()` |
 | `edit_direct_message` | 60 | 3600 | `edit_direct_message()` |
 | `join_challenge_by_token` | 30 | 3600 | `join_challenge_by_token()` (misses included) |
+| `open_message_request` | 20 | 86400 | `private.direct_messages_request_state()` (after-insert trigger; a send that opens a message request) |
 | `plan_calendar_rotate` | 20 | 3600 | `rotate_plan_calendar_feed()` |
 | `publish_gym_routine_as_template` | 20 | 3600 | `publish_gym_routine_as_template()` |
 | `repeat_plan_week` | 20 | 3600 | `repeat_plan_week()` |

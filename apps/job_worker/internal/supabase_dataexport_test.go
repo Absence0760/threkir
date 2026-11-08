@@ -961,6 +961,11 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 	if !strings.Contains(dmSentQ, "edited_at") || !strings.Contains(dmSentQ, "original_body") {
 		t.Errorf("direct_messages (sent) select must carry edited_at and original_body; got %q", dmSentQ)
 	}
+	// Where a message request to or from the subject stands is their own
+	// conversation state (20271115002384).
+	if !strings.Contains(convQ, "request_state") || !strings.Contains(convQ, "requested_at") {
+		t.Errorf("conversation_participants select must carry request_state and requested_at; got %q", convQ)
+	}
 	if !strings.Contains(dmRecvQ, "select=%2A") && !strings.Contains(dmRecvQ, "select=*") {
 		t.Errorf("direct_messages (received) select must keep every column, the subject's own read_at included; got %q", dmRecvQ)
 	}

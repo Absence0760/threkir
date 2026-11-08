@@ -359,7 +359,7 @@ Deno.test('conversation_participants exports only the subject\'s own row (GDPR A
 	if (!own) throw new Error('conversation_settings.json missing');
 	assertEquals(own.table, 'conversation_participants');
 	assertEquals(own.filter, 'user_id=eq.user-A');
-	assertEquals(own.select, 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at');
+	assertEquals(own.select, 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at');
 });
 
 Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {

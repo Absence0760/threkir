@@ -122,6 +122,11 @@ export const PAIRS = [
 		note: 'server-side quota bookkeeping; the two values are written by SQL and never named by a client.',
 	},
 	{
+		tableColumn: 'conversation_participants.request_state',
+		clients: [],
+		note: 'message requests (migration 20271115002384): written only by the direct_messages_request_state trigger and the accept/decline RPCs; clients read the derived dm_threads().request boolean and never name a state.',
+	},
+	{
 		tableColumn: 'conversations.kind',
 		clients: [],
 		note: 'only direct exists (migration 20271105000010); written by the direct_messages_set_conversation trigger and never named by a client.',

@@ -12,6 +12,7 @@ Traces of the user journeys that cross multiple files, packages, or platforms. E
 - [Record a run (Android)](#record-a-run-android)
 - [Sync (Android offline → cloud)](#sync-android-offline--cloud)
 - [Spectator live tracking](#spectator-live-tracking)
+- [AI Coach and a coach-approved plan change](#ai-coach-and-a-coach-approved-plan-change)
 
 ---
 
@@ -336,3 +337,39 @@ OBS browser source (no session)
 - **The next cut-off card fails to `unknown`, never to a guess.** A stale fix or unknown pace suppresses the verdict (see "Predictive next cut-off"). Don't "fix" a missing chip by defaulting it to on-pace — `unknown` is the correct, honest state.
 - **Live tracking battery drain** is the main risk of this feature. Every-3-second GPS → INSERT/send ≈ 5% extra battery per hour. Roadmap § "Open risks" says the feature must be opt-in per run, never on by default.
 - **The public `/live/{run_id}` page works without auth.** No user JWT, no session cookie. The hub treats `run_id` as a bearer token; the Realtime channel name is `live:{run_id}` (anyone with the run id can subscribe — shareability is the feature).
+
+---
+
+## AI Coach and a coach-approved plan change
+
+The AI Coach is one row of the Messages inbox ([decisions § 2227](../architecture/decisions.md)). A change to a plan a coach assigned can go to that coach for approval ([decisions § 2382](../architecture/decisions.md)). AI text and human messages never share a thread. What crosses between the two people is a structured change set.
+
+```
+Athlete (web)                     Supabase                              Coach (web or mobile)
+  /messages → pinned "AI Coach" row
+    → /messages/coach?plan=<id> (CoachChat; /coach redirects here)
+  asks for a change → Coach reply carries [Adjust my plan]
+    → CoachPlanEditCard (or Adjust with AI on /plans/<id>)
+       POST /api/coach/plan-edit → validated ops → graded diff
+  plan.assigned_by_coach_id + active coach_athletes link?
+    no  → Apply → apply_ai_plan_edits
+    yes → "Send to <coach> for approval"
+          → propose_plan_change ────► dry run of the apply (rolled back, PC001)
+                                      insert plan_change_requests (pending)
+                                      notification plan_change_request ──► bell / email / push
+                                                                            → /plans/<id> or /messages/<athlete>
+                                                                            PlanChangeRequestCard:
+                                                                              before = plan rows now
+                                                                              after  = stored change
+                                      decide_plan_change ◄───────────────── Approve (ticked lines) / Decline + note
+                                        approve → private.apply_plan_edit_changes(athlete, …)
+                                      notification plan_change_decision
+  ◄── bell / email / push → card shows Approved / Approved in part / Declined + note
+  pending, the athlete can instead:
+    Withdraw (confirm) → withdraw_plan_change
+    Apply it myself    → apply_plan_change_myself → coach gets plan_ai_edit
+```
+
+- **Fail-closed.** No active link, or no assigning coach, means no Send button. `propose_plan_change` refuses with `42501` all the same. A coach whose link has ended cannot decide.
+- **What an approval writes is what the card shows.** "Before" is read when the card renders, and the RPC re-checks every line against the rows as they stand when the coach acts. A plan that has moved on since the suggestion (a workout now in the past or done) refuses the whole approval rather than half-applying it.
+- **Nothing new goes to Anthropic.** The request holds plan ids and numbers. The only free text is the coach's own note to their athlete.

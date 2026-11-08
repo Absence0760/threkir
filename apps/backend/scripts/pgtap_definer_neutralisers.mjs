@@ -620,6 +620,74 @@ $neutralised$;`,
       },
     },
   ],
+  [
+    'global_segments_in_bbox',
+    {
+      why: 'the server and web candidate lookup (decisions § 2392): drops `gs.is_active`, the one rule that hides a pulled catalogue segment; keeps the bounds validation, the padded-extent overlap and the limit, which are the query the caller asked for',
+      sql: `create or replace function public.global_segments_in_bbox(
+   p_min_lat double precision, p_min_lng double precision,
+   p_max_lat double precision, p_max_lng double precision,
+   p_pad_m double precision default 50, p_limit integer default 1000)
+ returns setof public.global_segments
+ language sql stable security definer set search_path to 'public', 'private', 'pg_temp'
+as $neutralised$
+  select gs.*
+    from public.global_segments gs
+   where private.waypoints_box(gs.waypoints)
+         && private.pad_box(box(point(p_min_lng, p_min_lat), point(p_max_lng, p_max_lat)), p_pad_m)
+     and ${mine('gs')}
+   order by gs.id
+   limit least(greatest(coalesce(p_limit, 1000), 1), 2000);
+$neutralised$;`,
+      subject: 'global_segments gs',
+      witness: {
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+                 values ('00000000-0000-0000-0000-0000000f0004', 'guard witness',
+                         '[{"lat":-60.0,"lng":-140.0},{"lat":-60.002,"lng":-140.0}]', 400, false);`,
+        probe: `select count(*) from global_segments_in_bbox(-60.003, -140.001, -59.999, -139.999)
+                 where id = '00000000-0000-0000-0000-0000000f0004';`,
+      },
+    },
+  ],
+  [
+    'segment_backfill_runs',
+    {
+      why: 'the launch-backfill batch (decisions § 2392): drops `gs.is_active`, which hides a pulled segment from any backfill; keeps the cursor, the stored-track and half-length prefilters, the extent overlap and the limit, which say which runs the batch is asking about',
+      sql: `create or replace function public.segment_backfill_runs(
+   p_segment_id uuid, p_after_run_id uuid default null::uuid, p_limit integer default 25)
+ returns table(run_id uuid)
+ language sql stable security definer set search_path to 'public', 'private', 'pg_temp'
+as $neutralised$
+  select r.id
+    from public.global_segments gs
+    join public.runs r on true
+    left join public.run_track_extents x on x.run_id = r.id
+   where gs.id = p_segment_id
+     and r.track_url is not null
+     and r.track_url <> ''
+     and r.id > coalesce(p_after_run_id, '00000000-0000-0000-0000-000000000000'::uuid)
+     and r.distance_m >= gs.distance_m * 0.5
+     and (x.run_id is null
+          or box(point(x.min_lng, x.min_lat), point(x.max_lng, x.max_lat))
+             && private.pad_box(private.waypoints_box(gs.waypoints), 50))
+     and ${mine('r')}
+   order by r.id
+   limit least(greatest(coalesce(p_limit, 25), 1), 100);
+$neutralised$;`,
+      subject: 'runs r',
+      witness: {
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+                 values ('00000000-0000-0000-0000-0000000f0005', 'guard witness',
+                         '[{"lat":-61.0,"lng":-141.0},{"lat":-61.002,"lng":-141.0}]', 400, false);
+                update runs
+                   set track_url = user_id::text || '/' || id::text || '.json.gz',
+                       distance_m = greatest(distance_m, 1000)
+                 where id = (select id from runs order by id limit 1);`,
+        probe: `select count(*) from segment_backfill_runs(
+                  '00000000-0000-0000-0000-0000000f0005'::uuid, null, 100);`,
+      },
+    },
+  ],
   // ── Relations Postgres calls SECURITY INVOKER that still filter for
   // themselves ──
   //

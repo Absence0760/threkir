@@ -14611,6 +14611,60 @@ class AppLocalizationsFr extends AppLocalizations {
   String get challengeInviteSharePage => 'Partager la page du défi';
 
   @override
+  String get clubInviteLinkTitle => 'Lien d\'invitation';
+
+  @override
+  String get clubInviteBodyInvite =>
+      'Seules les personnes disposant de ce lien peuvent rejoindre le club.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Toute personne disposant de ce lien rejoint le club immédiatement, sans attendre d\'approbation.';
+
+  @override
+  String get clubInviteBodyOpen =>
+      'Toute personne disposant de ce lien peut rejoindre le club.';
+
+  @override
+  String get clubInviteGenerate => 'Créer un lien d\'invitation';
+
+  @override
+  String get clubInviteShare => 'Partager le lien';
+
+  @override
+  String get clubInviteCopy => 'Copier le lien';
+
+  @override
+  String get clubInviteCopied => 'Lien d\'invitation copié';
+
+  @override
+  String get clubInviteCopyFailed => 'Impossible de copier le lien.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'Impossible de charger le lien d\'invitation.';
+
+  @override
+  String get clubInviteRotate => 'Réinitialiser le lien';
+
+  @override
+  String get clubInviteRotateTitle => 'Réinitialiser le lien d\'invitation ?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'Le lien actuel cesse de fonctionner immédiatement. Les personnes déjà membres restent dans le club.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Impossible de mettre à jour le lien d\'invitation. Réessayez.';
+
+  @override
+  String get clubShareClub => 'Partager le club';
+
+  @override
+  String get clubShareLinkCopied => 'Lien du club copié';
+
+  @override
   String get challengesLeaderboardEmpty => 'Aucune progression enregistrée.';
 
   @override

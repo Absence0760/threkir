@@ -14598,6 +14598,58 @@ class AppLocalizationsDe extends AppLocalizations {
   String get challengeInviteSharePage => 'Challenge-Seite teilen';
 
   @override
+  String get clubInviteLinkTitle => 'Einladungslink';
+
+  @override
+  String get clubInviteBodyInvite => 'Nur wer diesen Link hat, kann beitreten.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Wer diesen Link hat, tritt sofort bei, ohne auf eine Freigabe zu warten.';
+
+  @override
+  String get clubInviteBodyOpen => 'Jeder mit diesem Link kann beitreten.';
+
+  @override
+  String get clubInviteGenerate => 'Einladungslink erstellen';
+
+  @override
+  String get clubInviteShare => 'Link teilen';
+
+  @override
+  String get clubInviteCopy => 'Link kopieren';
+
+  @override
+  String get clubInviteCopied => 'Einladungslink kopiert';
+
+  @override
+  String get clubInviteCopyFailed => 'Der Link konnte nicht kopiert werden.';
+
+  @override
+  String get clubInviteLoadFailed =>
+      'Der Einladungslink konnte nicht geladen werden.';
+
+  @override
+  String get clubInviteRotate => 'Link zurücksetzen';
+
+  @override
+  String get clubInviteRotateTitle => 'Einladungslink zurücksetzen?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'Der aktuelle Link funktioniert sofort nicht mehr. Wer schon beigetreten ist, bleibt dabei.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Der Einladungslink konnte nicht aktualisiert werden. Versuche es erneut.';
+
+  @override
+  String get clubShareClub => 'Club teilen';
+
+  @override
+  String get clubShareLinkCopied => 'Club-Link kopiert';
+
+  @override
   String get challengesLeaderboardEmpty => 'Noch kein Fortschritt erfasst.';
 
   @override

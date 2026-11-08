@@ -28,6 +28,7 @@ import '../training_service.dart';
 import '../backend_timeout.dart';
 import '../widgets/activity_waiver_dialog.dart';
 import '../widgets/club_form_sheet.dart';
+import '../widgets/club_invite_card.dart';
 import '../widgets/club_photos.dart';
 import '../widgets/collapsing_tab_host.dart';
 import '../widgets/confirm_destructive.dart';
@@ -524,6 +525,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
           ],
         ),
         actions: [
+          if (c.isAdmin)
+            ClubInviteButton(social: widget.social, club: c)
+          else if (canShareClub(c))
+            ClubShareButton(club: c),
           if (c.isAdmin)
             IconButton(
               tooltip: AppLocalizations.of(context).clubDetailEditClub,

@@ -13885,6 +13885,54 @@ class AppLocalizationsJa extends AppLocalizations {
   String get challengeInviteSharePage => 'チャレンジのページを共有';
 
   @override
+  String get clubInviteLinkTitle => '招待リンク';
+
+  @override
+  String get clubInviteBodyInvite => 'このリンクを持っている人だけが参加できます。';
+
+  @override
+  String get clubInviteBodyRequest => 'このリンクを持っている人は、承認を待たずにすぐに参加できます。';
+
+  @override
+  String get clubInviteBodyOpen => 'このリンクを持っている人は誰でも参加できます。';
+
+  @override
+  String get clubInviteGenerate => '招待リンクを作成';
+
+  @override
+  String get clubInviteShare => 'リンクを共有';
+
+  @override
+  String get clubInviteCopy => 'リンクをコピー';
+
+  @override
+  String get clubInviteCopied => '招待リンクをコピーしました';
+
+  @override
+  String get clubInviteCopyFailed => 'リンクをコピーできませんでした。';
+
+  @override
+  String get clubInviteLoadFailed => '招待リンクを読み込めませんでした。';
+
+  @override
+  String get clubInviteRotate => 'リンクをリセット';
+
+  @override
+  String get clubInviteRotateTitle => '招待リンクをリセットしますか？';
+
+  @override
+  String get clubInviteRotateBody => '現在のリンクはすぐに使えなくなります。すでに参加している人はそのまま残ります。';
+
+  @override
+  String get clubInviteRotateFailed => '招待リンクを更新できませんでした。もう一度お試しください。';
+
+  @override
+  String get clubShareClub => 'クラブを共有';
+
+  @override
+  String get clubShareLinkCopied => 'クラブのリンクをコピーしました';
+
+  @override
   String get challengesLeaderboardEmpty => 'まだ記録がありません。';
 
   @override

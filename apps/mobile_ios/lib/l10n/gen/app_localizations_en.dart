@@ -14436,6 +14436,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get challengeInviteSharePage => 'Share the challenge page';
 
   @override
+  String get clubInviteLinkTitle => 'Invite link';
+
+  @override
+  String get clubInviteBodyInvite => 'Only people with this link can join.';
+
+  @override
+  String get clubInviteBodyRequest =>
+      'Anyone with this link joins straight away, without waiting for approval.';
+
+  @override
+  String get clubInviteBodyOpen => 'Anyone with this link can join.';
+
+  @override
+  String get clubInviteGenerate => 'Create invite link';
+
+  @override
+  String get clubInviteShare => 'Share link';
+
+  @override
+  String get clubInviteCopy => 'Copy link';
+
+  @override
+  String get clubInviteCopied => 'Invite link copied';
+
+  @override
+  String get clubInviteCopyFailed => 'Couldn\'t copy the link.';
+
+  @override
+  String get clubInviteLoadFailed => 'Couldn\'t load the invite link.';
+
+  @override
+  String get clubInviteRotate => 'Reset link';
+
+  @override
+  String get clubInviteRotateTitle => 'Reset the invite link?';
+
+  @override
+  String get clubInviteRotateBody =>
+      'The current link stops working straight away. Anyone who already joined stays in.';
+
+  @override
+  String get clubInviteRotateFailed =>
+      'Couldn\'t update the invite link. Try again.';
+
+  @override
+  String get clubShareClub => 'Share club';
+
+  @override
+  String get clubShareLinkCopied => 'Club link copied';
+
+  @override
   String get challengesLeaderboardEmpty => 'No progress logged yet.';
 
   @override

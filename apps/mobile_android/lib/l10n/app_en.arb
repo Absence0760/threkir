@@ -19226,6 +19226,70 @@
   "@challengeInviteSharePage": {
     "description": "Opens the share sheet with the public share page link"
   },
+  "clubInviteLinkTitle": "Invite link",
+  "@clubInviteLinkTitle": {
+    "description": "Heading of the invite-link card a club admin sees on the club screen"
+  },
+  "clubInviteBodyInvite": "Only people with this link can join.",
+  "@clubInviteBodyInvite": {
+    "description": "Invite card body on an invite-only club"
+  },
+  "clubInviteBodyRequest": "Anyone with this link joins straight away, without waiting for approval.",
+  "@clubInviteBodyRequest": {
+    "description": "Invite card body on a request-to-join club: the link skips the admin's approval"
+  },
+  "clubInviteBodyOpen": "Anyone with this link can join.",
+  "@clubInviteBodyOpen": {
+    "description": "Invite card body on an open club"
+  },
+  "clubInviteGenerate": "Create invite link",
+  "@clubInviteGenerate": {
+    "description": "Button making a club's first invite link"
+  },
+  "clubInviteShare": "Share link",
+  "@clubInviteShare": {
+    "description": "Opens the share sheet with the club invite link"
+  },
+  "clubInviteCopy": "Copy link",
+  "@clubInviteCopy": {
+    "description": "Copies the club invite link"
+  },
+  "clubInviteCopied": "Invite link copied",
+  "@clubInviteCopied": {
+    "description": "Banner after copying a club invite link"
+  },
+  "clubInviteCopyFailed": "Couldn't copy the link.",
+  "@clubInviteCopyFailed": {
+    "description": "Banner when copying a club link fails"
+  },
+  "clubInviteLoadFailed": "Couldn't load the invite link.",
+  "@clubInviteLoadFailed": {
+    "description": "Club invite card error"
+  },
+  "clubInviteRotate": "Reset link",
+  "@clubInviteRotate": {
+    "description": "Replaces the club invite link with a new one"
+  },
+  "clubInviteRotateTitle": "Reset the invite link?",
+  "@clubInviteRotateTitle": {
+    "description": "Confirm dialog title for resetting a club invite link"
+  },
+  "clubInviteRotateBody": "The current link stops working straight away. Anyone who already joined stays in.",
+  "@clubInviteRotateBody": {
+    "description": "Confirm dialog body for resetting a club invite link"
+  },
+  "clubInviteRotateFailed": "Couldn't update the invite link. Try again.",
+  "@clubInviteRotateFailed": {
+    "description": "Banner when creating or resetting a club invite link fails"
+  },
+  "clubShareClub": "Share club",
+  "@clubShareClub": {
+    "description": "Tooltip of the app-bar action sharing a public club's page"
+  },
+  "clubShareLinkCopied": "Club link copied",
+  "@clubShareLinkCopied": {
+    "description": "Banner when the club page link was copied because the share sheet could not open"
+  },
   "challengesLeaderboardEmpty": "No progress logged yet.",
   "@challengesLeaderboardEmpty": {
     "description": "Empty leaderboard state"

@@ -69,6 +69,8 @@ export const TABLES = {
 	segment_efforts: 'segment_efforts',
 	global_segments: 'global_segments',
 	global_segment_efforts: 'global_segment_efforts',
+	parks: 'parks',
+	park_courses: 'park_courses',
 	gear: 'gear',
 	gear_wear_logs: 'gear_wear_logs',
 	gear_rotations: 'gear_rotations',

@@ -361,6 +361,12 @@
 		// nested page above; gating it tighter than its destination would
 		// bounce an anon visitor who could have read the event.
 		path.startsWith('/events/') ||
+		// Park courses (decisions § 2383): the catalogue tables grant select
+		// to anon, and a signed-out visitor sees the course and its safety
+		// notice. The boards name runners, so the page asks for a sign-in
+		// before it reads them.
+		path === '/parks' ||
+		path.startsWith('/parks/') ||
 		// A fundraiser page is a share target a logged-out stranger follows in
 		// order to donate — the anchor-visibility RLS and the donations
 		// checkout both admit anon (fundraising.md). Without the prefix the

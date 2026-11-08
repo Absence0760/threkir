@@ -1255,10 +1255,9 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
     if (api == null) return;
     try {
       final profile = await api.fetchMyProfile();
-      final name = profile?.displayName?.trim();
       if (!mounted) return;
-      setState(() =>
-          _viewerUnnamed = profile != null && (name == null || name.isEmpty));
+      setState(() => _viewerUnnamed =
+          profile != null && _namedOrNull(profile.displayName) == null);
     } catch (e) {
       debugPrint('ClubDetailScreen._checkViewerName failed: $e');
     }
@@ -2063,8 +2062,16 @@ class _ClubDescription extends StatelessWidget {
 /// A member with no display name is shown as their runner handle rather than
 /// an indistinguishable "Member" (decisions § 2365). Twin of the web club
 /// pages' `shownName`.
-String _shownName(AppLocalizations l10n, String? name, String userId) =>
-    name ??
+/// A display name others can read, or null when it is absent or blank: the one
+/// rule the roster and the viewer's own name hint share, so a whitespace name
+/// is never shown as a blank row while the hint promises the runner handle.
+String? _namedOrNull(String? displayName) {
+  final trimmed = displayName?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+String _shownName(AppLocalizations l10n, String? displayName, String userId) =>
+    _namedOrNull(displayName) ??
     runnerHandle(
       userId,
       handle: (slug) => l10n.liveRunnerHandle(slug),

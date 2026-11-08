@@ -463,6 +463,12 @@ class _RosterSocial extends SocialService {
         status: 'active',
         displayName: 'Late Joiner',
       ),
+      ClubMemberView(
+        userId: 'b1a2-blank',
+        role: 'member',
+        status: 'active',
+        displayName: '   ',
+      ),
     ], null);
   }
 
@@ -890,6 +896,20 @@ void main() {
       expect(social.afters, [null, ['2026-01-03T00:00:00Z', 'u-noname']]);
       expect(find.text('Late Joiner'), findsOneWidget);
       expect(find.widgetWithText(OutlinedButton, 'Load more'), findsNothing);
+    });
+
+    realtimeWidgetTest(
+        'a whitespace display name reads as the runner handle, as the name hint promises', (
+      tester,
+    ) async {
+      await openMembers(tester);
+      final more = find.widgetWithText(OutlinedButton, 'Load more');
+      await tester.ensureVisible(more);
+      await tester.pump();
+      await tester.tap(more);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.text('Runner #B1A2'), findsOneWidget);
     });
 
     realtimeWidgetTest(

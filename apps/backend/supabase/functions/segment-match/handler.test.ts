@@ -235,3 +235,21 @@ Deno.test('a short batch ends the walk, and a failed run reruns the batch', asyn
   );
   assertEquals(failing.status, 500);
 });
+
+Deno.test('the checkpoint read is chunked at the in-filter bound', async () => {
+  const many = Array.from({ length: 250 }, (_, i) => ({
+    id: `5a5a0000-0000-4000-8000-${String(i).padStart(12, '0')}`,
+    waypoints: [{ lat: 10, lng: 10 }, { lat: 10.001, lng: 10 }],
+    distance_m: 111,
+  }));
+  const fake = fakeClient({
+    rpcs: {
+      segment_match_run_source: SOURCE,
+      global_segments_in_bbox: { data: many, error: null },
+      record_segment_match: { data: 'recorded', error: null },
+    },
+    objects: { [TRACK_URL]: await gzip(track()) },
+  });
+  await scoreRun(fake.client, RUN);
+  assertEquals(fake.inLists.map((l) => (l as string[]).length), [100, 100, 50]);
+});

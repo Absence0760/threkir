@@ -38,6 +38,9 @@ export const CANDIDATE_PAD_M = 50;
 /// read is the same set every time.
 export const CANDIDATE_LIMIT = 1000;
 
+/// Ids per `in` filter, the web's FEED_FOLLOWEE_CHUNK (decisions § 653).
+export const IN_FILTER_CHUNK = 100;
+
 /// The same compressed-size bound clip-public-track holds a track to.
 export const MAX_TRACK_GZ_BYTES = 5 * 1024 * 1024;
 
@@ -286,16 +289,21 @@ export async function scoreRun(client: DbClient, runId: string): Promise<RunResu
   if (candErr) throw new Error(`candidate read failed (${candErr.code ?? 'unknown'})`);
   const rows = (candidates ?? []) as CandidateRow[];
 
-  let checkpointRows: CheckpointRow[] = [];
+  const checkpointRows: CheckpointRow[] = [];
   if (rows.length > 0) {
-    const { data: cps, error: cpErr } = await client
-      .from('park_courses')
-      .select('global_segment_id, checkpoints')
-      .in('global_segment_id', rows.map((r) => r.id));
-    // Fail closed, as the web scorer does: without the checkpoints a course
-    // would time a run that cut it.
-    if (cpErr) throw new Error(`checkpoint read failed (${cpErr.code ?? 'unknown'})`);
-    checkpointRows = (cps ?? []) as CheckpointRow[];
+    // Chunked like the web read (queryChunked): up to CANDIDATE_LIMIT ids is
+    // past the in-filter bound, where a gateway can answer an empty match.
+    const ids = rows.map((r) => r.id);
+    for (let i = 0; i < ids.length; i += IN_FILTER_CHUNK) {
+      const { data: cps, error: cpErr } = await client
+        .from('park_courses')
+        .select('global_segment_id, checkpoints')
+        .in('global_segment_id', ids.slice(i, i + IN_FILTER_CHUNK));
+      // Fail closed, as the web scorer does: without the checkpoints a course
+      // would time a run that cut it.
+      if (cpErr) throw new Error(`checkpoint read failed (${cpErr.code ?? 'unknown'})`);
+      checkpointRows.push(...((cps ?? []) as CheckpointRow[]));
+    }
   }
 
   const { ids, geometries } = scorableGeometries(rows, checkpointRows);

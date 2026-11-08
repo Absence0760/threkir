@@ -10929,7 +10929,7 @@ export async function fetchGlobalSegmentsInBbox(
 		p_max_lng: extent.maxLng,
 		p_pad_m: GLOBAL_SEGMENT_CANDIDATE_PAD_M,
 		p_limit: GLOBAL_SEGMENT_CANDIDATE_LIMIT,
-	});
+	}, { get: true });
 	if (error) {
 		console.warn('fetchGlobalSegmentsInBbox failed', error);
 		return { segments: [], error: dbError(error) };
@@ -11157,10 +11157,14 @@ async function fetchParkCourseCheckpoints(segmentIds: readonly string[]): Promis
 	string,
 	CourseCheckpoint[] | null
 > | null> {
-	const { data, error } = await supabase
-		.from(TABLES.park_courses)
-		.select('global_segment_id, checkpoints')
-		.in('global_segment_id', [...segmentIds]);
+	// Up to GLOBAL_SEGMENT_CANDIDATE_LIMIT ids, past the in-filter bound, so
+	// chunked: an over-long list can come back empty rather than failing.
+	const { data, error } = await queryChunked(segmentIds, (part) =>
+		supabase
+			.from(TABLES.park_courses)
+			.select('global_segment_id, checkpoints')
+			.in('global_segment_id', part),
+	);
 	if (error) {
 		console.warn('park course checkpoints read failed', error);
 		return null;

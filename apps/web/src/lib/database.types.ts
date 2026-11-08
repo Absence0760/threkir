@@ -757,6 +757,96 @@ export type Database = {
         }
         Relationships: []
       }
+      course_alerts: {
+        Row: {
+          author_id: string | null
+          club_id: string
+          created_at: string
+          id: string
+          kind: string
+          listing_id: string | null
+          message: string
+          route_id: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          club_id: string
+          created_at?: string
+          id?: string
+          kind: string
+          listing_id?: string | null
+          message: string
+          route_id?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          club_id?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          listing_id?: string | null
+          message?: string
+          route_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_alerts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_alerts_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
+          {
+            foreignKeyName: "course_alerts_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_alerts_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "race_listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_alerts_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["course_route_id"]
+          },
+          {
+            foreignKeyName: "course_alerts_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "public_routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_alerts_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "routes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "course_alerts_route_id_fkey"
+            columns: ["route_id"]
+            isOneToOne: false
+            referencedRelation: "shared_routes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_export_jobs: {
         Row: {
           complete: boolean | null
@@ -2885,6 +2975,7 @@ export type Database = {
           challenge_id: string | null
           club_id: string | null
           comment_id: string | null
+          course_alert_id: string | null
           created_at: string
           email_sent_at: string | null
           event_id: string | null
@@ -2908,6 +2999,7 @@ export type Database = {
           challenge_id?: string | null
           club_id?: string | null
           comment_id?: string | null
+          course_alert_id?: string | null
           created_at?: string
           email_sent_at?: string | null
           event_id?: string | null
@@ -2931,6 +3023,7 @@ export type Database = {
           challenge_id?: string | null
           club_id?: string | null
           comment_id?: string | null
+          course_alert_id?: string | null
           created_at?: string
           email_sent_at?: string | null
           event_id?: string | null
@@ -2980,6 +3073,13 @@ export type Database = {
             columns: ["comment_id"]
             isOneToOne: false
             referencedRelation: "run_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_course_alert_id_fkey"
+            columns: ["course_alert_id"]
+            isOneToOne: false
+            referencedRelation: "course_alerts"
             referencedColumns: ["id"]
           },
           {
@@ -6454,6 +6554,7 @@ export type Database = {
           organiser_club_id: string | null
           organiser_club_name: string | null
           organiser_club_slug: string | null
+          organiser_is_official: boolean | null
           provider: string | null
           provider_race_id: string | null
           race_date: string | null
@@ -7236,6 +7337,7 @@ export type Database = {
         Args: { delay_seconds: number; err?: string; job_id: number }
         Returns: string
       }
+      delete_course_alert: { Args: { p_alert_id: string }; Returns: undefined }
       delete_notifications: { Args: { p_ids: string[] }; Returns: number }
       delete_user_integration_secrets: {
         Args: { p_user_id: string }
@@ -8072,6 +8174,15 @@ export type Database = {
           route_count: number
           tag: string
         }[]
+      }
+      post_course_alert: {
+        Args: {
+          p_kind: string
+          p_listing_id: string
+          p_message: string
+          p_route_id: string
+        }
+        Returns: string
       }
       privacy_aware_route_geom: {
         Args: { p_user_id: string; p_waypoints: Json }

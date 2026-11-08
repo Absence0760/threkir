@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 
 import { expect, test } from '../fixtures/test';
 import { deleteRun, insertRun } from '../fixtures/simulate';
+import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 import type { TrackPoint } from '../../src/lib/types';
 
@@ -333,8 +334,8 @@ test.describe('run share-image editor', () => {
 		await dialog.getByTestId('share-style-sticker').click();
 		await expect(dialog.getByTestId('share-kind-stats')).toHaveAttribute('aria-checked', 'true');
 		await expect(dialog.getByTestId('share-kind-route')).toBeVisible();
-		// No record, no race link, no badge: none of those stickers is offered.
-		for (const hidden of ['pr', 'race', 'badge']) {
+		// No record, no race link, no park course, no badge: none of those stickers is offered.
+		for (const hidden of ['pr', 'race', 'course', 'badge']) {
 			await expect(dialog.getByTestId(`share-kind-${hidden}`)).toHaveCount(0);
 		}
 
@@ -375,6 +376,66 @@ test.describe('run share-image editor', () => {
 			await expect(plain.getByTestId('share-kind-stats')).toHaveAttribute('aria-checked', 'true');
 		} finally {
 			await deleteRun(raceRunId);
+		}
+	});
+
+	test('a run that completed a park course offers the course sticker', async ({ page }) => {
+		const admin = getAdminClient();
+		const tag = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+		const { data: seg, error: segErr } = await admin
+			.from('global_segments')
+			.insert({
+				name: `E2E Sticker Loop ${tag}`,
+				waypoints: [TRACK[0], TRACK[TRACK.length - 1]].map((p) => ({ lat: p.lat, lng: p.lng })),
+				distance_m: 1000,
+				surface: 'trail',
+				country_code: 'US',
+			})
+			.select('id')
+			.single();
+		if (segErr) throw segErr;
+		const { data: park, error: parkErr } = await admin
+			.from('parks')
+			.insert({
+				slug: `e2e-sticker-${tag}`,
+				name: `E2E Sticker Park ${tag}`,
+				agency: 'state',
+				region_code: 'US-VA',
+				country_code: 'US',
+				timezone: 'America/New_York',
+			})
+			.select('id')
+			.single();
+		if (parkErr) throw parkErr;
+		try {
+			const { error: courseErr } = await admin.from('park_courses').insert({
+				park_id: park.id,
+				global_segment_id: seg.id,
+				slug: 'loop',
+				course_shape: 'loop',
+				geometry_source: 'osm',
+			});
+			if (courseErr) throw courseErr;
+			const { error: effortErr } = await admin.from('global_segment_efforts').insert({
+				global_segment_id: seg.id,
+				run_id: runId,
+				user_id: USER_A.id,
+				time_seconds: 1_400,
+				started_at: '2026-05-10T08:00:00Z',
+			});
+			if (effortErr) throw effortErr;
+
+			const dialog = await openEditor(page, runId);
+			await dialog.getByTestId('share-style-sticker').click();
+			await dialog.getByTestId('share-kind-course').click();
+			await expect(dialog.getByTestId('share-kind-course')).toHaveAttribute('aria-checked', 'true');
+			await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+			const png = await readPng(await download(page));
+			expect(png.width).toBe(1080);
+			expect(await cornerAlpha(page, png)).toBe(0);
+		} finally {
+			await admin.from('parks').delete().eq('id', park.id).then(() => {}, () => {});
+			await admin.from('global_segments').delete().eq('id', seg.id).then(() => {}, () => {});
 		}
 	});
 

@@ -11015,6 +11015,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucun effort pour l\'instant — soyez le premier à courir ce segment.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Certains efforts plus anciens ont été mesurés à l\'ancienne, en passant près du départ et de l\'arrivée plutôt qu\'en franchissant les lignes. Chacun est remesuré la prochaine fois que son coureur ouvre la sortie.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'Vous détenez cette couronne — $label.';
   }

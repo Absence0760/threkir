@@ -947,7 +947,11 @@ test('computeGlobalSegmentEffortsForRun reads candidates by extent and stamps th
 	const body = source.slice(start, next > start ? next : undefined);
 	assert.match(body, /await fetchGlobalSegmentsInBbox\(extent\)/, 'candidates must come from the bbox lookup');
 	assert.doesNotMatch(body, /fetchGlobalSegmentsWithError\(/, 'no whole-catalogue fetch in the scorer');
-	assert.match(body, /stampGlobalSegmentsScored\([\s\S]*?scoredCount,\s*\)/, 'the stamp is the gated count');
+	assert.match(
+		body,
+		/stampGlobalSegmentsScored\([\s\S]*?scoredCount,\s*GLOBAL_SEGMENT_MATCHER_VERSION,\s*\)/,
+		'the stamp is the gated count and the matcher that scored it',
+	);
 	assert.doesNotMatch(body, /segments\.length,\s*\)/, 'never stamp the candidate count');
 
 	const lookup = source.slice(
@@ -1022,9 +1026,31 @@ test('computeGlobalSegmentEffortsForRun scores park courses with their checkpoin
 	);
 	assert.match(
 		body.slice(scoreAt),
-		/checkpoints: checkpointsBySegment\.get\(seg\.id\)/,
+		/globalSegmentGeometry\(seg, checkpointsBySegment\.get\(seg\.id\)\)/,
 		'each geometry handed to the matcher must carry its checkpoints',
 	);
+});
+
+test('computeGlobalSegmentEffortsForRun re-matches by delete then insert, and gates on the matcher version', () => {
+	// Reason (issue #1308): an effort the circles-only matcher wrote must be
+	// re-matched by the line matcher on its next owner view, or one
+	// leaderboard mixes two rules. There is no client UPDATE policy on
+	// global_segment_efforts, so a changed effort is deleted then inserted; an
+	// insert-only pass (ignoreDuplicates alone) would keep the old row forever.
+	const source = read('src/lib/core/data.ts');
+	const start = source.indexOf('export async function computeGlobalSegmentEffortsForRun');
+	const next = source.indexOf('\nexport ', start + 1);
+	const body = source.slice(start, next > start ? next : undefined);
+	assert.match(
+		body,
+		/shouldRescoreGlobalSegments\(runMetadata, activeCount, GLOBAL_SEGMENT_MATCHER_VERSION\)/,
+		'the gate must compare the run\'s matcher version with the current one',
+	);
+	const deleteAt = body.indexOf('.delete().in(\'id\', part)');
+	const insertAt = body.indexOf('.upsert(rows');
+	assert.ok(deleteAt >= 0 && insertAt > deleteAt, 'stale efforts are deleted before the re-matched ones are inserted');
+	assert.match(body, /matched_by: eff\.matched_by/, 'the insert records how the effort was matched');
+	assert.doesNotMatch(body, /\.update\(\{ time_seconds/, 'no client UPDATE of an effort');
 });
 
 test('saveRun writes elevation_gain_m alongside the metadata key', () => {

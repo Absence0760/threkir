@@ -67,6 +67,7 @@ GlobalSegmentEffortWithSegment _catalogueEffort({int? rank = 4}) =>
         timeSeconds: 305,
         startedAt: DateTime.parse('2026-02-01T00:00:00Z'),
         createdAt: DateTime.parse('2026-02-01T00:00:00Z'),
+        matchedBy: 'zone',
       ),
       segment: GlobalSegmentRow(
         id: 'gs-1',

@@ -2954,6 +2954,7 @@
   "segmentsPanelLeaderboardLoading": "A carregar…",
   "segmentsPanelLeaderboardEmptyFiltered": "Nenhum esforço corresponde a este filtro — tente ampliá-lo.",
   "segmentsPanelLeaderboardEmpty": "Ainda não há esforços — seja o primeiro a correr este segmento.",
+  "segmentOldMatchNote": "Algumas tentativas mais antigas foram medidas da forma antiga, passando perto da partida e da chegada em vez de atravessar as linhas. Cada uma é medida de novo da próxima vez que o corredor abrir a corrida.",
   "segmentsPanelCrownBanner": "Detém esta coroa — {label}.",
   "segmentsPanelRunnerFallback": "Corredor",
   "goalEditorTitleNew": "Nova meta",

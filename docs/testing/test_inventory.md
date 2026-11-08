@@ -469,9 +469,9 @@ Dart mirror of `apps/web/src/lib/training/training.test.ts`. The Dart engine (`l
 
 Dart mirror of `apps/web/src/lib/training_load.test.ts`. The Dart engine (`lib/training_load.dart`) must produce the same Fitness / Fatigue / Form curves as the TypeScript engine for the same inputs. Covers `computeStress` (distance fallback ~50 for an easy 5k, TRIMP path lights up with `avg_bpm` + resting + max, zero-input → 0), `aggregateDailyStress` (sums same-day runs), `computeTrainingLoadSeries` (emits exactly `windowDays` entries, TSB rises during a 14-day taper, all-zero with no runs), and `hasTrimpSignal` (no `avg_bpm` / has `avg_bpm` + prefs / prefs missing).
 
-### `apps/mobile_android/test/segments_test.dart` — 28 tests
+### `apps/mobile_android/test/segments_test.dart` — 31 tests
 
-Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-effort walker in `lib/segments.dart#computeEffortFromTrack`. Same `straightTrack` synthetic helper (meridian-aligned, constant pace) so haversine cumulative distance is predictable. Covers a clean segment, run shorter than segment end, sub-2-point tracks, zero / negative segment windows, sparse-sampling guard (median step > segLen / 5), missing timestamps in the interpolation bracket, mid-segment interpolation, and sample-aligned endpoints.
+Dart mirror of `apps/web/src/lib/segments.test.ts`. Pure tests for the segment-effort walker in `lib/segments.dart#computeEffortFromTrack`. Same `straightTrack` synthetic helper (meridian-aligned, constant pace) so haversine cumulative distance is predictable. Covers a clean segment, run shorter than segment end, sub-2-point tracks, zero / negative segment windows, sparse-sampling guard (median step > segLen / 5), missing timestamps in the interpolation bracket, mid-segment interpolation, and sample-aligned endpoints. Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone.
 
 ### `apps/mobile_android/test/privacy_test.dart` — 18 tests
  Three more pin that a coordinate-less (NaN) fix at either end is dropped without ending the trim, that a fix placed only by its smoothed pair ends it when out, and that an all-coordinate-less track returns empty.
@@ -707,9 +707,9 @@ TypeScript unit tests for the training plan engine, written against Node's `node
 - True when manually marked
 - True when both set
 
-### `apps/web/src/lib/segments/segments.test.ts` — 51 tests
+### `apps/web/src/lib/segments/segments.test.ts` — 55 tests
 
-TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, decisions §37). Run with `npx tsx --test src/lib/segments.test.ts` from `apps/web`. Covers `computeEffortFromTrack`:
+TypeScript unit tests for the pure segment-effort compute (`lib/segments.ts`, decisions §37). Run with `npx tsx --test src/lib/segments.test.ts` from `apps/web`. Covers `computeEffortFromTrack`: Since #1308 (decisions § 2402) it also reads the shared line cases `fixtures/segments_gate_cases.json`, one test per case (counted once here, as the loop declares one), plus a coverage check that the table holds every case the issue lists and a circle match reporting `matched_by` zone.
 
 - Computes elapsed time over a clean segment (5 m/s straight-line track, 500m segment ≈ 100s).
 - Returns null when the run is shorter than the segment end.
@@ -1363,7 +1363,7 @@ Pins migration `20271111000001` (decisions § 2353, issue #1300 BUG-015). An org
 
 Pins migration `20271112000001` (decisions § 2356, issue #1300 BUG-005). `private.is_event_visible_to` agrees with the events SELECT policy, evaluated as each of five viewers (owner, active member, pending, stranger, private-club member) over public / private / shadow-hidden clubs and public / members-only events, the matrix holds both outcomes, and a shadow-hidden club's public event is seen by its owner and members only. Rejecting a pending request leaves its RSVPs. The owner removing an active member from their own session drops the member's upcoming members-only RSVP and waitlist entry and promotes the next waitlister into the capped seat, while a past occurrence's RSVP and a public event in a public club stay. A member holding a paid seat keeps it and the order is untouched, and a member with a checkout still in flight keeps their waitlist row. A member leaving a private club on their own loses the RSVP to its public event; a status change out of `active` is an exit too, and a role change is not. Neither function is executable by clients, and a club delete cascading through its members still succeeds. Removing the two triggers fails five of the assertions.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1535 deno tests across 117 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1537 deno tests across 117 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-clubs`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
@@ -1415,7 +1415,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,521 declared tests across 662 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,523 declared tests across 663 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 

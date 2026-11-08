@@ -10418,6 +10418,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get segmentsPanelLeaderboardEmpty => 'まだ記録がありません。このセグメントを最初に走りましょう。';
 
   @override
+  String get segmentOldMatchNote =>
+      '一部の古い記録は、ラインを横切るのではなくスタートとフィニッシュの近くを通過したかどうかで測る従来の方法で計測されています。各記録は、そのランナーが次にランを開いたときに計測し直されます。';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'あなたがこの王冠を保持しています — $label。';
   }

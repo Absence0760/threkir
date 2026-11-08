@@ -4186,6 +4186,7 @@ export const messages = {
 	"segmentDetail.statSurface": "Surface",
 	"segmentDetail.leaderboard": "Classement",
 	"segmentDetail.noEfforts": "Aucun effort pour l'instant — courez ce segment pour ouvrir le classement.",
+	"segmentDetail.oldMatchNote": "Certains efforts plus anciens ont été mesurés à l'ancienne, en passant près du départ et de l'arrivée plutôt qu'en franchissant les lignes. Chacun est remesuré la prochaine fois que son coureur ouvre la sortie.",
 	"settingsGear.title": "Équipement",
 	"settingsGear.tagline": "Suivez vos chaussures et vélos. Associez vos sorties à l'équipement utilisé depuis la page de détail; les objectifs de remplacement vous préviennent quand une paire dépasse son kilométrage prévu.",
 	"settingsGear.tabShoes": "Chaussures",

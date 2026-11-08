@@ -2954,6 +2954,7 @@
   "segmentsPanelLeaderboardLoading": "Wird geladen…",
   "segmentsPanelLeaderboardEmptyFiltered": "Keine Versuche entsprechen diesem Filter — versuche ihn zu erweitern.",
   "segmentsPanelLeaderboardEmpty": "Noch keine Versuche — sei der Erste auf diesem Segment.",
+  "segmentOldMatchNote": "Einige ältere Versuche wurden noch auf die alte Art gemessen: durch Vorbeilaufen nahe Start und Ziel statt durch Überqueren der Linien. Jeder wird neu gemessen, sobald die Person den Lauf das nächste Mal öffnet.",
   "segmentsPanelCrownBanner": "Du hältst diese Krone — {label}.",
   "segmentsPanelRunnerFallback": "Läufer",
   "goalEditorTitleNew": "Neues Ziel",

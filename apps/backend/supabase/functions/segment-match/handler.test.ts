@@ -125,12 +125,52 @@ Deno.test('a full pass times the run with the matcher and records it for the byt
   const rec = fake.calls.find((c) => c.name === 'record_segment_match')!.args;
   assertEquals(rec.p_track_version, 'v1');
   assertEquals(rec.p_candidates, [SEG, COURSE]);
-  const efforts = rec.p_efforts as { global_segment_id: string; time_seconds: number; started_at: string }[];
+  const efforts = rec.p_efforts as {
+    global_segment_id: string;
+    time_seconds: number;
+    started_at: string;
+    matched_by: string;
+  }[];
   assertEquals(efforts.length, 1);
   assertEquals(efforts[0].global_segment_id, SEG);
+  assertEquals(efforts[0].matched_by, 'zone');
   // 445 m at 11.1 m per 5 s, from the 37.501 crossing at 09:00:50.
   assert(Math.abs(efforts[0].time_seconds - 200) < 1, `time ${efforts[0].time_seconds}`);
   assert(efforts[0].started_at.startsWith('2026-09-01T09:00:5'), efforts[0].started_at);
+});
+
+Deno.test('a segment with lines is timed by its crossings, off-track fixes excluded (decisions § 2402)', async () => {
+  const gated = {
+    id: SEG,
+    waypoints: [{ lat: 37.501, lng: -77.5 }, { lat: 37.505, lng: -77.5 }],
+    distance_m: 445,
+    start_gate_lat: 37.501,
+    start_gate_lng: -77.5,
+    start_gate_bearing_deg: 0,
+    start_gate_half_width_m: 15,
+    end_gate_lat: 37.505,
+    end_gate_lng: -77.5,
+    end_gate_bearing_deg: 0,
+    end_gate_half_width_m: 15,
+  };
+  // An off-track fix 300 m east mid-segment: read, it would add ~600 m and
+  // break the length guard.
+  const points = track() as Record<string, unknown>[];
+  points.splice(30, 0, { lat: 37.503, lng: -77.4966, ts: '2026-09-01T09:02:27Z', offTrack: true });
+  const fake = fakeClient({
+    rpcs: {
+      segment_match_run_source: SOURCE,
+      global_segments_in_bbox: { data: [gated], error: null },
+      record_segment_match: { data: 'recorded', error: null },
+    },
+    objects: { [TRACK_URL]: await gzip(points) },
+  });
+  assertEquals(await scoreRun(fake.client, RUN), { outcome: 'recorded', matched: 1 });
+  const rec = fake.calls.find((c) => c.name === 'record_segment_match')!.args;
+  const [effort] = rec.p_efforts as { time_seconds: number; matched_by: string }[];
+  assertEquals(effort.matched_by, 'gate');
+  // Lines at 37.501 and 37.505, crossed 40 fixes (200 s) apart.
+  assert(Math.abs(effort.time_seconds - 200) < 0.01, `time ${effort.time_seconds}`);
 });
 
 Deno.test('a failed checkpoint read scores nothing and fails the pass', async () => {

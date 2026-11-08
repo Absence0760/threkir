@@ -11004,6 +11004,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Noch keine Versuche — sei der Erste auf diesem Segment.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Einige ältere Versuche wurden noch auf die alte Art gemessen: durch Vorbeilaufen nahe Start und Ziel statt durch Überqueren der Linien. Jeder wird neu gemessen, sobald die Person den Lauf das nächste Mal öffnet.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'Du hältst diese Krone — $label.';
   }

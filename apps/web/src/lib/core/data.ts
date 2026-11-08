@@ -11,7 +11,13 @@ import type { Database, Json } from '../database.types';
 import { asProjectedRun, asRun, type ProjectedRun, type RunRow } from './run_narrow';
 import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
-import type { JsonObject, OfficialFlag, TrackPoint } from '../types';
+import type {
+	GlobalSegmentMatchedBy,
+	JsonObject,
+	OfficialFlag,
+	SegmentGateSource,
+	TrackPoint,
+} from '../types';
 import { isEntityId } from './entity_id';
 import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
@@ -277,6 +283,7 @@ import {
 import { deleteRunsBounded } from './bulk_delete';
 import {
 	assignCompetitionRanks,
+	GLOBAL_SEGMENT_MATCHER_VERSION,
 	type SegmentAgeBand,
 	type SegmentGenderFilter,
 } from '../segments/segments';
@@ -11015,6 +11022,21 @@ export interface GlobalSegment {
 	country_code: string | null;
 	is_active: boolean;
 	created_at: string;
+	/** The start and end lines (decisions § 2402); null where a segment has none. */
+	start_gate_lat: number | null;
+	start_gate_lng: number | null;
+	start_gate_bearing_deg: number | null;
+	start_gate_half_width_m: number | null;
+	start_gate_source: SegmentGateSource | null;
+	end_gate_lat: number | null;
+	end_gate_lng: number | null;
+	end_gate_bearing_deg: number | null;
+	end_gate_half_width_m: number | null;
+	end_gate_source: SegmentGateSource | null;
+}
+
+function segmentGateSource(v: string | null): SegmentGateSource | null {
+	return v === 'derived' || v === 'curator' ? v : null;
 }
 
 /// One `global_segments` row as the client's `GlobalSegment`. `waypoints` is a
@@ -11029,7 +11051,14 @@ function asGlobalSegment(
 		waypoints: Array.isArray(row.waypoints)
 			? (row.waypoints as unknown as GlobalSegment['waypoints'])
 			: [],
+		start_gate_source: segmentGateSource(row.start_gate_source),
+		end_gate_source: segmentGateSource(row.end_gate_source),
 	};
+}
+
+/// Whether a catalogue segment is timed by its lines: both ends have one.
+export function globalSegmentHasLines(segment: GlobalSegment): boolean {
+	return segment.start_gate_source !== null && segment.end_gate_source !== null;
 }
 
 export interface GlobalSegmentEffort {
@@ -11040,6 +11069,8 @@ export interface GlobalSegmentEffort {
 	time_seconds: number;
 	started_at: string;
 	created_at: string;
+	/** Absent on a leaderboard row: the board RPC does not return it. */
+	matched_by?: GlobalSegmentMatchedBy;
 }
 
 export interface GlobalSegmentLeaderboardEntry {
@@ -11179,6 +11210,24 @@ export async function fetchGlobalSegmentLeaderboard(
 	}));
 }
 
+/// Whether any effort the viewer can see on a catalogue segment was matched by
+/// the circles. On a segment timed by its lines that means an effort written
+/// before the line matcher, still waiting for its runner's next view to be
+/// re-matched (issue #1308), so the board says so. A failed read answers
+/// false: the note is advisory, and the board itself is unaffected.
+export async function globalSegmentHasZoneEfforts(segmentId: string): Promise<boolean> {
+	const { count, error } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('id', { count: 'exact', head: true })
+		.eq('global_segment_id', segmentId)
+		.eq('matched_by', 'zone');
+	if (error) {
+		console.warn('globalSegmentHasZoneEfforts failed', error);
+		return false;
+	}
+	return (count ?? 0) > 0;
+}
+
 /// The active catalogue segments that could be timed on a track with this
 /// extent (`global_segments_in_bbox`, decisions § 2392): those whose own
 /// extent overlaps it padded by `GLOBAL_SEGMENT_CANDIDATE_PAD_M`. The same
@@ -11201,20 +11250,26 @@ export async function fetchGlobalSegmentsInBbox(
 	return { segments: (data ?? []).map(asGlobalSegment), error: null };
 }
 
-/// Backfill catalogue-segment efforts a run earned, from the run-detail page
-/// on mount (owner only). The FALLBACK path: the `segment-match` job scores
-/// every run server-side when its track lands (decisions § 2392), and this
-/// stays until that job has run in production, then goes (issue #1313). It
-/// scores the run's track against the catalogue segments near it (the bbox
-/// lookup, not the whole catalogue) via the pure `computeGlobalSegmentEfforts`
-/// and batch-upserts matches. Idempotent via unique(global_segment_id, run_id)
-/// + ignoreDuplicates. Returns new count.
+/// Score a run's catalogue-segment efforts from the run-detail page on mount
+/// (owner only). The FALLBACK path: the `segment-match` job scores every run
+/// server-side when its track lands (decisions § 2392), and this stays until
+/// that job has run in production, then goes (issue #1313). It scores the
+/// run's track against the catalogue segments near it (the bbox lookup, not
+/// the whole catalogue) via the pure `computeGlobalSegmentEfforts`, then makes
+/// the run's stored effort on every segment it scored say what the matcher
+/// said, as the server's `record_segment_match` does: a new match is
+/// inserted, an effort the run no longer earns is deleted, and one whose time
+/// or rule changed is deleted then re-inserted (there is no client UPDATE
+/// path). A segment it did not score is never touched. Returns the number of
+/// efforts inserted.
 ///
-/// A `runs.metadata.global_segments_scored_count` stamp records the size of
-/// the active catalogue the run was last scored against (issue #333); a cheap
-/// `count` query gates the pass so a scored run only recomputes when the
-/// catalogue grows. The stamp is that count itself, not the number of rows a
-/// fetch returned, so it can always reach the count the gate compares.
+/// Two `runs.metadata` stamps gate the pass so a scored run does not
+/// re-match on every view: `global_segments_scored_count`, the size of the
+/// active catalogue it was last scored against (issue #333), and
+/// `global_segments_matcher_version`, the matcher that scored it. The pass
+/// runs when the catalogue has grown or the run was scored by an older
+/// matcher, which is how efforts the circles-only matcher wrote are
+/// re-matched by the line matcher on their next owner view (issue #1308).
 export async function computeGlobalSegmentEffortsForRun(input: {
 	run_id: string;
 	user_id: string;
@@ -11232,7 +11287,7 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 			.eq('is_active', true),
 	]);
 	const runMetadata = (runRow?.metadata ?? null) as JsonObject | null;
-	if (!shouldRescoreGlobalSegments(runMetadata, activeCount)) return 0;
+	if (!shouldRescoreGlobalSegments(runMetadata, activeCount, GLOBAL_SEGMENT_MATCHER_VERSION)) return 0;
 	// An unknown count cannot be stamped; the pass still runs, and the next
 	// view tries again.
 	const scoredCount = typeof activeCount === 'number' ? activeCount : null;
@@ -11253,26 +11308,39 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	if (checkpointsBySegment === null) return 0;
 	const scorable = segments.filter((seg) => checkpointsBySegment.get(seg.id) !== null);
 
-	const { computeGlobalSegmentEfforts } = await import('../segments/segments');
-	const rows: {
-		global_segment_id: string;
-		run_id: string;
-		user_id: string;
-		time_seconds: number;
-		started_at: string;
-	}[] = [];
+	const { computeGlobalSegmentEfforts, globalSegmentGeometry } = await import('../segments/segments');
 	// One sweep over the candidates rather than a call per segment: the
 	// track's extent is then measured once.
 	const efforts = computeGlobalSegmentEfforts(
 		input.track,
-		scorable.map((seg) => ({
-			points: (seg.waypoints ?? []).map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })),
-			distance_m: Number(seg.distance_m),
-			checkpoints: checkpointsBySegment.get(seg.id) ?? undefined,
-		})),
+		scorable.map((seg) => globalSegmentGeometry(seg, checkpointsBySegment.get(seg.id))),
 	);
+
+	const { data: storedRows, error: storedErr } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('id, global_segment_id, time_seconds, started_at, matched_by')
+		.eq('run_id', input.run_id);
+	if (storedErr) {
+		console.warn('global segment efforts read failed', input.run_id, storedErr);
+		return 0;
+	}
+	const stored = new Map((storedRows ?? []).map((row) => [row.global_segment_id, row]));
+
+	const staleIds: string[] = [];
+	const rows: Insertable<'global_segment_efforts'>[] = [];
 	for (let i = 0; i < scorable.length; i++) {
 		const eff = efforts[i];
+		const have = stored.get(scorable[i].id);
+		if (
+			have &&
+			eff &&
+			have.matched_by === eff.matched_by &&
+			Math.abs(Number(have.time_seconds) - eff.time_seconds) < 0.001 &&
+			Date.parse(have.started_at) === Date.parse(eff.started_at)
+		) {
+			continue;
+		}
+		if (have) staleIds.push(have.id);
 		if (!eff) continue;
 		rows.push({
 			global_segment_id: scorable[i].id,
@@ -11280,7 +11348,19 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 			user_id: userId,
 			time_seconds: eff.time_seconds,
 			started_at: eff.started_at,
+			matched_by: eff.matched_by,
 		});
+	}
+
+	if (staleIds.length > 0) {
+		const { error } = await queryChunked(staleIds, (part) =>
+			supabase.from(TABLES.global_segment_efforts).delete().in('id', part).select('id'),
+		);
+		if (error) {
+			// Don't stamp: the next view retries the whole reconciliation.
+			console.warn('global segment effort re-match delete failed', input.run_id, error);
+			return 0;
+		}
 	}
 	let newCount = 0;
 	if (rows.length > 0) {
@@ -11314,6 +11394,7 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	const next = stampGlobalSegmentsScored(
 		(freshRow?.metadata ?? null) as JsonObject | null,
 		scoredCount,
+		GLOBAL_SEGMENT_MATCHER_VERSION,
 	);
 	const { error: stampErr } = await supabase
 		.from(TABLES.runs)

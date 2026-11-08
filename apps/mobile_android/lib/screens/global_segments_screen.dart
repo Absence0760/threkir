@@ -21,6 +21,7 @@ import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/track_preview.dart';
 import '../widgets/loading_skeletons.dart';
+import '../widgets/old_match_note.dart';
 
 /// Browse list for the curated famous-segment catalogue (decisions §233).
 /// Mobile mirror of web `/segments`: search with accent folding, region and
@@ -668,6 +669,8 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
           ],
         ),
         const SizedBox(height: 8),
+        if (_segment case final segment?)
+          OldMatchNote(api: api, segment: segment),
         if (_boardFailed)
           ErrorState(
             message: l10n.segmentsPanelLeaderboardError,

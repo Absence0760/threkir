@@ -3336,6 +3336,7 @@ class GlobalSegmentEffortRow {
   static const String colTimeSeconds = 'time_seconds';
   static const String colStartedAt = 'started_at';
   static const String colCreatedAt = 'created_at';
+  static const String colMatchedBy = 'matched_by';
 
   final String id;
   final String globalSegmentId;
@@ -3344,6 +3345,7 @@ class GlobalSegmentEffortRow {
   final double timeSeconds;
   final DateTime startedAt;
   final DateTime createdAt;
+  final String matchedBy;
 
   const GlobalSegmentEffortRow({
     required this.id,
@@ -3353,6 +3355,7 @@ class GlobalSegmentEffortRow {
     required this.timeSeconds,
     required this.startedAt,
     required this.createdAt,
+    required this.matchedBy,
   });
 
   factory GlobalSegmentEffortRow.fromJson(Map<String, dynamic> json) => GlobalSegmentEffortRow(
@@ -3363,6 +3366,7 @@ class GlobalSegmentEffortRow {
     timeSeconds: _toDouble(json['time_seconds']),
     startedAt: parseIsoStrictRequired(json['started_at'], 'started_at'),
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    matchedBy: json['matched_by'] as String,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -3373,6 +3377,7 @@ class GlobalSegmentEffortRow {
     colTimeSeconds: timeSeconds,
     colStartedAt: startedAt.toIso8601String(),
     colCreatedAt: createdAt.toIso8601String(),
+    colMatchedBy: matchedBy,
   };
 
   GlobalSegmentEffortRow copyWith({
@@ -3383,6 +3388,7 @@ class GlobalSegmentEffortRow {
     double? timeSeconds,
     DateTime? startedAt,
     DateTime? createdAt,
+    String? matchedBy,
   }) => GlobalSegmentEffortRow(
     id: id ?? this.id,
     globalSegmentId: globalSegmentId ?? this.globalSegmentId,
@@ -3391,6 +3397,7 @@ class GlobalSegmentEffortRow {
     timeSeconds: timeSeconds ?? this.timeSeconds,
     startedAt: startedAt ?? this.startedAt,
     createdAt: createdAt ?? this.createdAt,
+    matchedBy: matchedBy ?? this.matchedBy,
   );
 }
 
@@ -3410,6 +3417,16 @@ class GlobalSegmentRow {
   static const String colCreatedBy = 'created_by';
   static const String colIsActive = 'is_active';
   static const String colCreatedAt = 'created_at';
+  static const String colStartGateLat = 'start_gate_lat';
+  static const String colStartGateLng = 'start_gate_lng';
+  static const String colStartGateBearingDeg = 'start_gate_bearing_deg';
+  static const String colStartGateHalfWidthM = 'start_gate_half_width_m';
+  static const String colStartGateSource = 'start_gate_source';
+  static const String colEndGateLat = 'end_gate_lat';
+  static const String colEndGateLng = 'end_gate_lng';
+  static const String colEndGateBearingDeg = 'end_gate_bearing_deg';
+  static const String colEndGateHalfWidthM = 'end_gate_half_width_m';
+  static const String colEndGateSource = 'end_gate_source';
 
   final String id;
   final String name;
@@ -3423,6 +3440,16 @@ class GlobalSegmentRow {
   final String? createdBy;
   final bool isActive;
   final DateTime createdAt;
+  final double? startGateLat;
+  final double? startGateLng;
+  final double? startGateBearingDeg;
+  final double? startGateHalfWidthM;
+  final String? startGateSource;
+  final double? endGateLat;
+  final double? endGateLng;
+  final double? endGateBearingDeg;
+  final double? endGateHalfWidthM;
+  final String? endGateSource;
 
   const GlobalSegmentRow({
     required this.id,
@@ -3437,6 +3464,16 @@ class GlobalSegmentRow {
     this.createdBy,
     required this.isActive,
     required this.createdAt,
+    this.startGateLat,
+    this.startGateLng,
+    this.startGateBearingDeg,
+    this.startGateHalfWidthM,
+    this.startGateSource,
+    this.endGateLat,
+    this.endGateLng,
+    this.endGateBearingDeg,
+    this.endGateHalfWidthM,
+    this.endGateSource,
   });
 
   factory GlobalSegmentRow.fromJson(Map<String, dynamic> json) => GlobalSegmentRow(
@@ -3452,6 +3489,16 @@ class GlobalSegmentRow {
     createdBy: json['created_by'] as String?,
     isActive: (json['is_active'] as bool?) ?? false,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    startGateLat: _toDoubleOrNull(json['start_gate_lat']),
+    startGateLng: _toDoubleOrNull(json['start_gate_lng']),
+    startGateBearingDeg: _toDoubleOrNull(json['start_gate_bearing_deg']),
+    startGateHalfWidthM: _toDoubleOrNull(json['start_gate_half_width_m']),
+    startGateSource: json['start_gate_source'] as String?,
+    endGateLat: _toDoubleOrNull(json['end_gate_lat']),
+    endGateLng: _toDoubleOrNull(json['end_gate_lng']),
+    endGateBearingDeg: _toDoubleOrNull(json['end_gate_bearing_deg']),
+    endGateHalfWidthM: _toDoubleOrNull(json['end_gate_half_width_m']),
+    endGateSource: json['end_gate_source'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -3467,6 +3514,16 @@ class GlobalSegmentRow {
     colCreatedBy: createdBy,
     colIsActive: isActive,
     colCreatedAt: createdAt.toIso8601String(),
+    colStartGateLat: startGateLat,
+    colStartGateLng: startGateLng,
+    colStartGateBearingDeg: startGateBearingDeg,
+    colStartGateHalfWidthM: startGateHalfWidthM,
+    colStartGateSource: startGateSource,
+    colEndGateLat: endGateLat,
+    colEndGateLng: endGateLng,
+    colEndGateBearingDeg: endGateBearingDeg,
+    colEndGateHalfWidthM: endGateHalfWidthM,
+    colEndGateSource: endGateSource,
   };
 
   GlobalSegmentRow copyWith({
@@ -3482,6 +3539,16 @@ class GlobalSegmentRow {
     String? createdBy,
     bool? isActive,
     DateTime? createdAt,
+    double? startGateLat,
+    double? startGateLng,
+    double? startGateBearingDeg,
+    double? startGateHalfWidthM,
+    String? startGateSource,
+    double? endGateLat,
+    double? endGateLng,
+    double? endGateBearingDeg,
+    double? endGateHalfWidthM,
+    String? endGateSource,
   }) => GlobalSegmentRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -3495,6 +3562,16 @@ class GlobalSegmentRow {
     createdBy: createdBy ?? this.createdBy,
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
+    startGateLat: startGateLat ?? this.startGateLat,
+    startGateLng: startGateLng ?? this.startGateLng,
+    startGateBearingDeg: startGateBearingDeg ?? this.startGateBearingDeg,
+    startGateHalfWidthM: startGateHalfWidthM ?? this.startGateHalfWidthM,
+    startGateSource: startGateSource ?? this.startGateSource,
+    endGateLat: endGateLat ?? this.endGateLat,
+    endGateLng: endGateLng ?? this.endGateLng,
+    endGateBearingDeg: endGateBearingDeg ?? this.endGateBearingDeg,
+    endGateHalfWidthM: endGateHalfWidthM ?? this.endGateHalfWidthM,
+    endGateSource: endGateSource ?? this.endGateSource,
   );
 }
 

@@ -2954,6 +2954,7 @@
   "segmentsPanelLeaderboardLoading": "Chargement…",
   "segmentsPanelLeaderboardEmptyFiltered": "Aucun effort ne correspond à ce filtre — essayez de l'élargir.",
   "segmentsPanelLeaderboardEmpty": "Aucun effort pour l'instant — soyez le premier à courir ce segment.",
+  "segmentOldMatchNote": "Certains efforts plus anciens ont été mesurés à l'ancienne, en passant près du départ et de l'arrivée plutôt qu'en franchissant les lignes. Chacun est remesuré la prochaine fois que son coureur ouvre la sortie.",
   "segmentsPanelCrownBanner": "Vous détenez cette couronne — {label}.",
   "segmentsPanelRunnerFallback": "Coureur",
   "goalEditorTitleNew": "Nouvel objectif",

@@ -863,6 +863,21 @@ export const PAIRS = [
 		clients: [{ file: TS_TYPES, decl: 'GateSource', shape: 'union' }],
 	},
 	{
+		tableColumn: 'global_segments.start_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'SegmentGateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'global_segments.end_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'SegmentGateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'global_segment_efforts.matched_by',
+		clients: [
+			{ file: TS_TYPES, decl: 'GlobalSegmentMatchedBy', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/segments.dart', decl: 'GlobalSegmentMatchedBy', shape: 'enum' },
+		],
+	},
+	{
 		tableColumn: 'race_sessions.status',
 		clients: [
 			{ file: TS_TYPES, decl: 'RaceSessionStatus', shape: 'union' },

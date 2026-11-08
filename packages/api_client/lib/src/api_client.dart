@@ -5782,6 +5782,20 @@ class ApiClient {
     ];
   }
 
+  /// Whether any effort the viewer can see on [segmentId] was matched by the
+  /// circles (`global_segment_efforts.matched_by = 'zone'`). On a segment
+  /// timed by its lines that is an effort written before the line matcher,
+  /// waiting for its runner's next view to be re-matched (issue #1308).
+  /// Mirrors web `globalSegmentHasZoneEfforts`.
+  Future<bool> globalSegmentHasZoneEfforts(String segmentId) async {
+    final count = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .count(CountOption.exact)
+        .eq(GlobalSegmentEffortRow.colGlobalSegmentId, segmentId)
+        .eq(GlobalSegmentEffortRow.colMatchedBy, 'zone');
+    return count > 0;
+  }
+
   /// Block-guarded catalogue-segment leaderboard. Mirrors
   /// [fetchSegmentLeaderboardTiered] but calls `global_segment_leaderboard`
   /// (migration 20270411_001) — no per-route visibility branch, since the
@@ -5827,6 +5841,9 @@ class ApiClient {
             timeSeconds: (maps[i]['time_seconds'] as num).toDouble(),
             startedAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
             createdAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
+            // The board RPC does not return how an effort was matched; no
+            // mobile surface reads it.
+            matchedBy: (maps[i]['matched_by'] as String?) ?? 'zone',
           ),
           athlete: PublicProfile(
             id: maps[i]['user_id'] as String,

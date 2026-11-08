@@ -10990,6 +10990,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ainda não há esforços — seja o primeiro a correr este segmento.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Algumas tentativas mais antigas foram medidas da forma antiga, passando perto da partida e da chegada em vez de atravessar as linhas. Cada uma é medida de novo da próxima vez que o corredor abrir a corrida.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'Detém esta coroa — $label.';
   }
@@ -32346,6 +32350,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get segmentsPanelLeaderboardEmpty =>
       'Ainda não há esforços — seja o primeiro a correr este segmento.';
+
+  @override
+  String get segmentOldMatchNote =>
+      'Algumas tentativas mais antigas foram medidas do jeito antigo, passando perto da largada e da chegada em vez de cruzar as linhas. Cada uma é medida de novo na próxima vez que o corredor abrir a corrida.';
 
   @override
   String segmentsPanelCrownBanner(String label) {

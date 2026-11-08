@@ -10876,6 +10876,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No efforts yet — be the first to run this segment.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'You hold this crown — $label.';
   }

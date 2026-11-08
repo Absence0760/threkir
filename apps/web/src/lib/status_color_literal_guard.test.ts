@@ -567,14 +567,14 @@ const REGISTER: Record<string, Record<string, [number, LiteralRole]>> = {
 	// these are the twin of mobile's own two allowlist entries.
 	'lib/components/TrackPreview.svelte': { '22C55E': [1, 'cartographic'], EF4444: [1, 'cartographic'] },
 	'routes/routes/[id]/roadbook/+page.svelte': { '22C55E': [1, 'cartographic'], EF4444: [1, 'cartographic'] },
-	// Route + club pin FILLS, whose basemap-keyed ring carries the 3:1
+	// Route, club + race pin FILLS, whose basemap-keyed ring carries the 3:1
 	// (17.191:1 on dark ground, 13.930 on light). MapLibre paint cannot
 	// consume a CSS custom property, so a literal here is structural. The
 	// kept-route violet pair that used to sit beside them as a local
 	// `--kept-accent` is gone: § 536 minted --color-route-pinned in app.css,
 	// which is the token the old entry's own comment asked for.
 	'lib/components/RouteHeatmap.svelte': {
-		'7FB3C2': [1, 'cartographic'], F08A5D: [2, 'cartographic'],
+		'7FB3C2': [1, 'cartographic'], F08A5D: [2, 'cartographic'], '9C7FD6': [1, 'cartographic'],
 	},
 	// The closing-CTA ramp, the journey step-number disc and the on-hero
 	// button. The hero's four stops are not here: the hero paints

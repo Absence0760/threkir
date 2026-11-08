@@ -4827,6 +4827,15 @@ class AppLocalizationsPt extends AppLocalizations {
   String get heatmapHeatDensity => 'Densidade de calor';
 
   @override
+  String get heatmapUpcomingRaces => 'Próximas provas';
+
+  @override
+  String get heatmapViewRace => 'Ver prova';
+
+  @override
+  String get heatmapRaceFallbackName => 'Prova';
+
+  @override
   String get heatmapResetFilters => 'Redefinir filtros';
 
   @override
@@ -26053,6 +26062,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get heatmapHeatDensity => 'Densidade de calor';
+
+  @override
+  String get heatmapUpcomingRaces => 'Próximas corridas';
+
+  @override
+  String get heatmapViewRace => 'Ver corrida';
+
+  @override
+  String get heatmapRaceFallbackName => 'Corrida';
 
   @override
   String get heatmapResetFilters => 'Redefinir filtros';

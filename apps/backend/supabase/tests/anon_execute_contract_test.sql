@@ -122,7 +122,8 @@ insert into anon_callable (fn, why) values
   ('search_race_listings',            'logged-out search'),
   ('segment_effort_ranks',            'public segment board'),
   ('share_attribution_enabled',       'a /share page decides whether to count the view'),
-  ('signup_source_enabled',           'a sign-up, made with no session, decides whether to send its first-touch source');
+  ('signup_source_enabled',           'a sign-up, made with no session, decides whether to send its first-touch source'),
+  ('upcoming_races_in_bbox',          'logged-out map discovery');
 
 -- The routines this repo STATES are withheld from `authenticated` as well as
 -- anon — the cron and job-queue family (20270626000001, and

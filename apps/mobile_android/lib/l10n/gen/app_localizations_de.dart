@@ -4841,6 +4841,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get heatmapHeatDensity => 'Heat-Dichte';
 
   @override
+  String get heatmapUpcomingRaces => 'Anstehende Rennen';
+
+  @override
+  String get heatmapViewRace => 'Rennen ansehen';
+
+  @override
+  String get heatmapRaceFallbackName => 'Rennen';
+
+  @override
   String get heatmapResetFilters => 'Filter zurücksetzen';
 
   @override

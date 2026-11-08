@@ -2057,6 +2057,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runStatAvgPace => 'Allure moy.';
 
   @override
+  String get runStoppedChip => 'À l\'arrêt';
+
+  @override
   String get runStatAvgSpeed => 'Vitesse moy.';
 
   @override

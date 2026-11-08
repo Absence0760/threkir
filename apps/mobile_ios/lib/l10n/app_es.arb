@@ -555,6 +555,7 @@
   "runStatPace": "Ritmo",
   "runStatSpeed": "Velocidad",
   "runStatAvgPace": "Ritmo medio",
+  "runStoppedChip": "Detenido",
   "runStatAvgSpeed": "Velocidad media",
   "runStatCalories": "Calorías",
   "runStatElevation": "Desnivel",

@@ -285,6 +285,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   StreamSubscription<TreadmillSample>? _treadmillSub;
   StreamSubscription<BleTreadmillStatus>? _treadmillStatusSub;
   bool _treadmillMode = false;
+
+  // A belt fed distance at some point this run, so the GPS line no longer
+  // spans it and averages fall back to the clock.
+  bool _treadmillUsed = false;
   bool _treadmillPaired = false;
   BleTreadmillStatus _treadmillStatus = BleTreadmillStatus.disconnected;
   double? _treadmillSpeedKmh;
@@ -559,6 +563,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   final RunElevationGainAccumulator _elevationGain =
       RunElevationGainAccumulator();
   int _elevationProcessedCount = 0;
+
+  // Same rule the finished summary applies ([movingTimeOf]), so the live
+  // Avg pace cannot disagree with it.
+  final MovingTimeAccumulator _moving = MovingTimeAccumulator();
+
+  // Wall-clock time recording last started or resumed; null while paused or
+  // idle. The first fix accepted after it sets [_stillSince], the fix-clock
+  // anchor of the "Stopped" chip, so the chip cannot open on a resume.
+  DateTime? _activeSince;
+  DateTime? _stillSince;
+  DateTime? _latestFixAt;
 
   // Reentrancy guard on start — prevents rapid taps from spawning
   // multiple recorders.
@@ -2713,6 +2728,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         }
         setState(() {
           _treadmillMode = true;
+          _treadmillUsed = true;
           _treadmillSpeedKmh = null;
         });
         // A belt that was off / out of range at launch reports connectFailed
@@ -2808,6 +2824,20 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         _elevationGain.add(track[i]);
       }
       _elevationProcessedCount = track.length;
+      // The stored track, not the line: off-line canopy fixes still carry
+      // the distance they credited.
+      _moving.extend(snapshot.storedTrack);
+      if (!_manualPaused) {
+        final activeSince = _activeSince ??= DateTime.now();
+        final fixAt = snapshot.currentPosition?.timestamp;
+        _latestFixAt = fixAt;
+        if (_stillSince == null &&
+            fixAt != null &&
+            fixedAt != null &&
+            !fixedAt.isBefore(activeSince)) {
+          _stillSince = fixAt;
+        }
+      }
 
       // Update the mirror fields so internal consumers (_saveInProgress,
       // _refreshLockScreenNotification, the _formattedX getters) see the
@@ -3266,8 +3296,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
           );
           if (widget.preferences.audioCues &&
               widget.preferences.voiceCueEnabled(VoiceCue.splits)) {
-            final avgPace =
-                averagePaceSecPerKm(tickDistance, _elapsed.inSeconds);
+            final avgPace = averagePaceSecPerKm(tickDistance,
+                _averagingTime(_moving.movingTime).inSeconds);
             _ttsCue('announceSplit', () => widget.audioCues.announceSplit(
                   distanceTicks: currentTick,
                   paceSecondsPerKm: _pace,
@@ -3680,11 +3710,18 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     if (_recorder == null) return;
     if (_manualPaused) {
       _recorder!.resume();
-      setState(() => _manualPaused = false);
+      setState(() {
+        _manualPaused = false;
+        _activeSince = DateTime.now();
+        _stillSince = null;
+      });
       _announceA11yState(_l10n.runA11yResumed);
     } else {
       _recorder!.pause();
-      setState(() => _manualPaused = true);
+      setState(() {
+        _manualPaused = true;
+        _activeSince = null;
+      });
       _announceA11yState(_l10n.runA11yPaused);
     }
   }
@@ -4183,6 +4220,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _everHadGpsFix = false;
     _elevationGain.reset();
     _elevationProcessedCount = 0;
+    _moving.reset();
+    _treadmillUsed = false;
+    _activeSince = null;
+    _stillSince = null;
+    _latestFixAt = null;
     _statsNotifier.value = _LiveStats.empty;
     // Fire-and-forget — if we discarded mid-run, drop the in-progress file.
     widget.runStore.clearInProgress();
@@ -4675,26 +4717,38 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   String get _formattedPaceValue => UnitFormat.pace(_pace, _unit);
 
+  Duration _averagingTime(Duration movingTime) => averagingTime(
+      gpsMeasured: _everHadGpsFix && !_treadmillUsed,
+      movingTime: movingTime,
+      elapsed: _elapsed);
+
   /// Gated by [paceIsReady], the rule the live Pace tile and the workout
   /// band share, so Avg pace cannot show a standing start's 20:49 /mi while
-  /// Pace still reads blank (issue #1300).
-  String get _formattedAvgPaceValue => UnitFormat.pace(
-      readyAveragePaceSecPerKm(_displayDistanceMetres, _elapsed.inSeconds),
+  /// Pace still reads blank (issue #1300). Live and finished pass their
+  /// moving time through the one formula.
+  String _formattedAvgPaceValue(Duration movingTime) => UnitFormat.pace(
+      readyAveragePaceSecPerKm(
+          _displayDistanceMetres, _averagingTime(movingTime).inSeconds),
       _unit);
 
-  /// Average pace computed against a supplied moving time rather than the
-  /// full elapsed time. Used on the finished-run screen so the headline
-  /// pace excludes stops.
-  String _formattedAvgPaceValueFromMoving(Duration movingTime) {
-    final d = _displayDistanceMetres;
-    if (d < 10 || movingTime.inSeconds < 1) return '--:--';
-    final secPerKm = movingTime.inSeconds / (d / 1000);
-    return UnitFormat.pace(secPerKm, _unit);
+  String _formattedAvgSpeedValue(Duration movingTime) => UnitFormat.speed(
+      readyAveragePaceSecPerKm(
+          _displayDistanceMetres, _averagingTime(movingTime).inSeconds),
+      _unit);
+
+  /// Display only: the clock keeps running (decisions § 4).
+  bool get _standingStill {
+    if (_state != _ScreenState.recording || _manualPaused) return false;
+    final last = _lastSnapshotAt;
+    if (last == null || DateTime.now().difference(last) > _gpsLostThreshold) {
+      return false;
+    }
+    return isStandingStill(
+      latestFixAt: _latestFixAt,
+      lastMovingAt: _moving.lastMovingAt,
+      since: _stillSince,
+    );
   }
-
-  String get _formattedAvgSpeedValue => UnitFormat.speed(
-      readyAveragePaceSecPerKm(_displayDistanceMetres, _elapsed.inSeconds),
-      _unit);
 
   String get _formattedCalories {
     // Assume 70 kg body weight; multiplier varies by activity. Uses the
@@ -5409,8 +5463,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                       ? l10n.runStatSpeed
                       : l10n.runStatPace,
                   secondaryValue: _activityType.usesSpeed
-                      ? _formattedAvgSpeedValue
-                      : _formattedAvgPaceValue,
+                      ? _formattedAvgSpeedValue(_moving.movingTime)
+                      : _formattedAvgPaceValue(_moving.movingTime),
                   secondaryLabel: _activityType.usesSpeed
                       ? l10n.runStatAvgSpeed
                       : l10n.runStatAvgPace,
@@ -5422,6 +5476,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                   bpm: _currentBpm,
                   lapCount: _lapCount,
                   paused: _manualPaused,
+                  stopped: _standingStill,
                   onHoldComplete: dockedStop ? null : _requestStop,
                   onDiscard: _confirmDiscardMidRun,
                   onPauseToggle: _toggleManualPause,
@@ -5504,9 +5559,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // The line, exactly what the live map drew; off-track fixes are stored
     // for the server's distance replay only.
     final track = cm.trackLine(_finishedRun?.track ?? <cm.Waypoint>[]);
-    // Derived metric: "moving time" — elapsed with stops excluded, computed
-    // from the GPS track. Replaces the old live auto-pause.
-    final movingTime = movingTimeOf(track);
+    // Over every stored fix, as the live tile, run detail and web fold it.
+    final movingTime = movingTimeOf(_finishedRun?.track ?? <cm.Waypoint>[]);
 
     return Column(
       children: [
@@ -5525,8 +5579,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 ? l10n.runStatAvgSpeed
                 : l10n.runStatPace,
             primaryValue: _activityType.usesSpeed
-                ? _formattedAvgSpeedValue
-                : _formattedAvgPaceValueFromMoving(movingTime),
+                ? _formattedAvgSpeedValue(movingTime)
+                : _formattedAvgPaceValue(movingTime),
             primaryUnit: _activityType.usesSpeed
                 ? UnitFormat.speedLabel(_unit)
                 : UnitFormat.paceLabel(_unit),
@@ -5655,6 +5709,38 @@ class FinishedSummary extends StatelessWidget {
   }
 }
 
+class _StoppedChip extends StatelessWidget {
+  final String label;
+
+  const _StoppedChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      label: label,
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: scheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Frosted glass stats bar overlaid on the map during recording.
 class _StatsOverlay extends StatelessWidget {
   final String time;
@@ -5673,6 +5759,10 @@ class _StatsOverlay extends StatelessWidget {
   final int? bpm;
   final int lapCount;
   final bool paused;
+
+  /// Moving slower than [kMovingMinSpeedMps] for [kStoppedAfter] while
+  /// recording. Shows a chip beside the clock; changes nothing else.
+  final bool stopped;
 
   /// Null when the shell's docked centre button is the Stop ([RunStopDock]),
   /// which leaves the row Discard · Pause · Lap.
@@ -5705,6 +5795,7 @@ class _StatsOverlay extends StatelessWidget {
     required this.bpm,
     required this.lapCount,
     required this.paused,
+    this.stopped = false,
     required this.onHoldComplete,
     required this.onDiscard,
     required this.onPauseToggle,
@@ -5724,12 +5815,33 @@ class _StatsOverlay extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            time,
-            style: theme.textTheme.displayMedium?.copyWith(
-              fontFeatures: [const FontFeature.tabularFigures()],
-              fontWeight: FontWeight.w700,
-            ),
+          // Equal flex either side keeps the clock centred whether or not
+          // the chip is showing.
+          Row(
+            children: [
+              const Spacer(),
+              Text(
+                time,
+                style: theme.textTheme.displayMedium?.copyWith(
+                  fontFeatures: [const FontFeature.tabularFigures()],
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: stopped
+                      ? Padding(
+                          padding: const EdgeInsetsDirectional.only(start: 8),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: _StoppedChip(label: l10n.runStoppedChip),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(

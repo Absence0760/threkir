@@ -555,6 +555,7 @@
   "runStatPace": "ペース",
   "runStatSpeed": "速度",
   "runStatAvgPace": "平均ペース",
+  "runStoppedChip": "停止中",
   "runStatAvgSpeed": "平均速度",
   "runStatCalories": "カロリー",
   "runStatElevation": "獲得標高",

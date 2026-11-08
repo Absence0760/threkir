@@ -12,7 +12,7 @@ The coverage is uneven per tree, and that is the selection showing rather than a
 
 **The per-file counts in the census above the round log were re-measured on 2026-09-05** and are the DECLARATION count each recompute command reports — 49 of the 111 measurable ones were wrong when they were checked, several by a factor of four ([decisions § 1217](../architecture/decisions.md)). They no longer drift silently: `scripts/check_test_inventory_counts.mjs` (`npm run check:test-inventory`, in the `workflow-lint` job) re-derives every one of them from the file it names and fails the PR on a disagreement, on a heading that names a file it cannot find, and on a heading that names no file at all. A count written against a PARAMETERISED declaration — `l10n_generated_parity_test.dart`'s `1 + 3 per catalogue`, `catalogues.test.ts`'s one per locale — is the runtime count, not the declaration count, and says so. **The per-round sections below the `Suite totals` divider are historical records of what one round added; their counts are deliberately NOT refreshed** (the note under the `security_guards.test.ts` headings says the same).
 
-### `apps/mobile_android/test/run_stats_test.dart` — 40 tests
+### `apps/mobile_android/test/run_stats_test.dart` — 49 tests
 
 Pure-function tests for two helpers in `lib/run_stats.dart`:
 
@@ -26,6 +26,8 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 - Waypoints without timestamps skipped
 - Same-timestamp pairs (`dt == 0`) skipped
 - Multi-segment summation
+
+**Live moving time** (issue #1300) — `MovingTimeAccumulator.extend` over a growing stop-and-go line equals `movingTimeOf` on the whole, stamped or measured on positions; a stop adds no moving time; a shorter line starts over; `averagingTime` picks moving time on GPS and the clock indoors; `isStandingStill` at 9 s / 10 s past the last movement, from the first fix on a standing start, from its own first fix after a resume, and never without a fix or an anchor.
 
 **`fastestWindowOf(track, windowMetres)`** — rolling-window scan behind the dashboard "Fastest 5k" PB. Regression-tests the scaled-average-pace bug it replaced (see `decisions.md`). Covers:
 
@@ -287,7 +289,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 55 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 58 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 
@@ -304,6 +306,8 @@ Tests: tapping START transitions the screen into countdown state (text "3" appea
 Live race (decisions § 1843), three more: Stop during a hosted race pauses and opens the Resume race / Finish race sheet without saving, and Resume race closes it with the race still hosted; Finish race stops, saves the run and submits a `manual` finish (no course resolved, so the 90% gate passes); after the host ends the race, Stop stops outright, still saves the run, and submits nothing.
 
 Precise location (decisions § 1985), one more: an approximate-only grant still starts the run past the countdown and shows the `runPreciseLocationOff` banner with its Settings action. Decisions § 2151 adds one: an approximate grant that never delivers a fix shows the approximate strip and the map's precise-location-off state from the first second, its "Turn on precise location" action opens app settings, and a precise fix clears the strip.
+
+Standing still (issue #1300, decisions § 2370), three more: 60 s at 3 m/s then 20 s on one spot shows the **Stopped** chip and leaves the live Avg pace exactly where the running left it (it divides by moving time, so it is ready even though the widget-test wall clock has barely moved), and moving again clears the chip; the spoken split average at a 100 m interval divides by the same moving time (~333 s/km at 3 m/s, null before the fix); and 30 s of 30 m canopy fixes kept off the line still count as moving time (333 s/km, not the 167 the line alone gives).
 
 ### `apps/mobile_android/test/run_screen_idle_setup_test.dart` — 14 tests
 

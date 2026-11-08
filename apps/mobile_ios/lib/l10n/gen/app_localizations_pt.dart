@@ -2052,6 +2052,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runStatAvgPace => 'Ritmo médio';
 
   @override
+  String get runStoppedChip => 'Parado';
+
+  @override
   String get runStatAvgSpeed => 'Veloc. média';
 
   @override
@@ -22286,6 +22289,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runStatAvgPace => 'Ritmo médio';
+
+  @override
+  String get runStoppedChip => 'Parado';
 
   @override
   String get runStatAvgSpeed => 'Veloc. média';

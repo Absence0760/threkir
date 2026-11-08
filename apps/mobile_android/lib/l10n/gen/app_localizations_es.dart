@@ -2050,6 +2050,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runStatAvgPace => 'Ritmo medio';
 
   @override
+  String get runStoppedChip => 'Detenido';
+
+  @override
   String get runStatAvgSpeed => 'Velocidad media';
 
   @override

@@ -3479,6 +3479,12 @@ abstract class AppLocalizations {
   /// **'Avg Pace'**
   String get runStatAvgPace;
 
+  /// Chip beside the clock on the recording overlay after about 10 s without moving. Display only: the clock keeps running, so this must not read as Paused.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get runStoppedChip;
+
   /// Stat label for average speed (cycling activities)
   ///
   /// In en, this message translates to:

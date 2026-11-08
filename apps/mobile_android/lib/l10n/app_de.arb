@@ -555,6 +555,7 @@
   "runStatPace": "Tempo",
   "runStatSpeed": "Geschwindigkeit",
   "runStatAvgPace": "Ø Tempo",
+  "runStoppedChip": "Angehalten",
   "runStatAvgSpeed": "Ø Geschwindigkeit",
   "runStatCalories": "Kalorien",
   "runStatElevation": "Höhenmeter",

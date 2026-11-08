@@ -2662,6 +2662,10 @@
   "@runStatAvgPace": {
     "description": "Stat label for average pace on the recording overlay"
   },
+  "runStoppedChip": "Stopped",
+  "@runStoppedChip": {
+    "description": "Chip beside the clock on the recording overlay after about 10 s without moving. Display only: the clock keeps running, so this must not read as Paused."
+  },
   "runStatAvgSpeed": "Avg Speed",
   "@runStatAvgSpeed": {
     "description": "Stat label for average speed (cycling activities)"

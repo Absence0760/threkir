@@ -1962,6 +1962,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runStatAvgPace => '平均ペース';
 
   @override
+  String get runStoppedChip => '停止中';
+
+  @override
   String get runStatAvgSpeed => '平均速度';
 
   @override

@@ -9,6 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ui_kit/ui_kit.dart' show StatTile;
 import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interface.dart';
 
 import '../lib/audio_cues.dart';
@@ -184,6 +185,20 @@ class _SpyRaceController extends RaceController {
 /// Captures the spoken turn cues without touching the TTS engine.
 class _SpyAudioCues extends AudioCues {
   final List<String?> turnDistances = [];
+  final List<double?> splitAverages = [];
+
+  @override
+  Future<void> announceSplit({
+    required int distanceTicks,
+    required double? paceSecondsPerKm,
+    required cm.DistanceUnit unit,
+    bool useSpeed = false,
+    double tickIntervalMetres = 1000,
+    double? averagePaceSecondsPerKm,
+    String paceMode = SplitPaceMode.split,
+  }) async {
+    splitAverages.add(averagePaceSecondsPerKm);
+  }
 
   @override
   Future<void> announceTurn(TurnDirection direction, {String? distance}) async {
@@ -748,6 +763,162 @@ void main() {
       tester.takeException();
       expect(find.byType(MaterialApp), findsOneWidget,
           reason: 'widget tree must still be alive after GPS feed');
+    });
+
+    testWidgets(
+        'standing still shows Stopped and holds Avg pace on moving time (#1300)',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      String avgPace() => tester
+          .widget<StatTile>(find.byWidgetPredicate(
+              (w) => w is StatTile && w.label == 'Avg Pace'))
+          .value;
+
+      // 60 s at 3 m/s by the fix clock. The wall clock barely moves in a
+      // widget test, so an average over elapsed time is still unready here;
+      // one over moving time is not.
+      for (var i = 0; i <= 60; i++) {
+        geolocator.emit(
+            _pos(metresEast: i * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      final running = avgPace();
+      expect(running, isNot('--:--'));
+      expect(find.text('Stopped'), findsNothing);
+
+      // Then 20 s standing on the same spot.
+      for (var i = 61; i <= 80; i++) {
+        geolocator.emit(
+            _pos(metresEast: 180, secondsFromStart: i, speed: 0));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      expect(avgPace(), running,
+          reason: 'a stop adds no moving time, so Avg pace must not worsen');
+      expect(find.text('Stopped'), findsOneWidget);
+
+      // Moving again clears it.
+      for (var i = 81; i <= 84; i++) {
+        geolocator.emit(_pos(
+            metresEast: 180 + (i - 80) * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+      expect(find.text('Stopped'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
+
+    testWidgets(
+        'canopy fixes off the line still count as moving time (#1300)',
+        (tester) async {
+      await pumpRunScreen(tester);
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      // 30 s in the open, then 30 s under trees at the same 3 m/s: 30 m
+      // fixes the estimator keeps but the line does not.
+      for (var i = 0; i <= 60; i++) {
+        geolocator.emit(_pos(
+            metresEast: i * 3.0,
+            secondsFromStart: i,
+            speed: 3,
+            accuracy: i <= 30 ? 5 : 30));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+
+      final text = tester
+          .widget<StatTile>(find.byWidgetPredicate(
+              (w) => w is StatTile && w.label == 'Avg Pace'))
+          .value;
+      final parts = text.split(':').map(int.parse).toList();
+      final secPerKm = parts[0] * 60 + parts[1];
+      // 3 m/s is 333 s/km; dividing by the line's 30 s alone reads ~167.
+      expect(secPerKm, inInclusiveRange(290, 380), reason: text);
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    });
+
+    testWidgets('the spoken split average divides by moving time too (#1300)',
+        (tester) async {
+      final s = await makeStores();
+      await s.prefs.setAudioCues(true);
+      await s.prefs.setSplitIntervalMetres(100);
+      final cues = _SpyAudioCues();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: s.runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: cues,
+            social: s.social,
+            raceController: s.raceController,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+
+      for (var i = 0; i <= 50; i++) {
+        geolocator.emit(
+            _pos(metresEast: i * 3.0, secondsFromStart: i, speed: 3));
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      tester.takeException();
+
+      // 3 m/s is 333 s/km. The wall clock barely moves in a widget test, so
+      // an average over elapsed time would be null here.
+      expect(cues.splitAverages, isNotEmpty);
+      expect(cues.splitAverages.first, isNotNull);
+      expect(cues.splitAverages.first!, closeTo(333, 60));
+
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
     });
 
     testWidgets('holding Finish saves the run through runStore.save',

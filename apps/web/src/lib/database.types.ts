@@ -8834,6 +8834,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      upcoming_races_in_bbox: {
+        Args: {
+          p_days?: number
+          p_limit?: number
+          p_max_lat: number
+          p_max_lng: number
+          p_min_lat: number
+          p_min_lng: number
+          p_official_only?: boolean
+        }
+        Returns: {
+          distance_m: number
+          has_course: boolean
+          id: string
+          is_official: boolean
+          lat: number
+          lng: number
+          location_label: string
+          name: string
+          race_date: string
+        }[]
+      }
       update_live_overlay_settings: {
         Args: {
           p_delay_s: number

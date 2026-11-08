@@ -13,7 +13,7 @@
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
-	import { runnerHandle } from '#lib/social/runner_handle.ts';
+	import { namedOrNull, runnerHandle } from '#lib/social/runner_handle.ts';
 	import { page } from '$app/state';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { PUBLIC_SITE_URL } from '$app/env/public';
@@ -189,7 +189,7 @@
 	// (decisions § 2365).
 	function shownName(name: string | null | undefined, userId: string): string {
 		return (
-			name ??
+			namedOrNull(name) ??
 			runnerHandle(userId, {
 				handle: (slug) => tr('live.runnerHandle', { slug }),
 				anonymous: tr('live.runnerAnonymous'),
@@ -1190,7 +1190,7 @@
 			</section>
 		{/if}
 
-		{#if isMember && auth.user && !auth.user.display_name}
+		{#if isMember && auth.user && !namedOrNull(auth.user.display_name)}
 			<aside class="name-hint" data-testid="club-name-hint">
 				<span class="material-symbols" aria-hidden="true">info</span>
 				<p>
@@ -1894,7 +1894,7 @@
 	open={removingMemberId !== null}
 	title={tr('clubHome.removeMemberTitle')}
 	message={tr('clubHome.removeMemberMessage', {
-		name: members.find((m) => m.user_id === removingMemberId)?.display_name ?? tr('clubHome.thisMember'),
+		name: namedOrNull(members.find((m) => m.user_id === removingMemberId)?.display_name) ?? tr('clubHome.thisMember'),
 		club: club?.name ?? tr('clubHome.theClub')
 	})}
 	confirmLabel={tr('clubHome.remove')}
@@ -1907,7 +1907,7 @@
 	open={rejectingMemberId !== null}
 	title={tr('clubHome.rejectRequestTitle')}
 	message={tr('clubHome.rejectRequestMessage', {
-		name: pending.find((p) => p.user_id === rejectingMemberId)?.display_name ?? tr('clubHome.thisMember'),
+		name: namedOrNull(pending.find((p) => p.user_id === rejectingMemberId)?.display_name) ?? tr('clubHome.thisMember'),
 		club: club?.name ?? tr('clubHome.theClub')
 	})}
 	confirmLabel={tr('clubHome.reject')}

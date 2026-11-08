@@ -116,4 +116,16 @@ void main() {
       );
     });
   });
+
+  test('namedOrNull: returns the trimmed name', () {
+    expect(namedOrNull('  Ada  '), 'Ada');
+    expect(namedOrNull('Ada Lovelace'), 'Ada Lovelace');
+  });
+
+  test('namedOrNull: null / empty / whitespace-only is unnamed', () {
+    expect(namedOrNull(null), isNull);
+    expect(namedOrNull(''), isNull);
+    expect(namedOrNull('   '), isNull);
+    expect(namedOrNull('\t\n\u00a0'), isNull);
+  });
 }

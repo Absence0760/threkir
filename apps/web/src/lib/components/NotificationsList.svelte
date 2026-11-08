@@ -220,6 +220,10 @@
 				return item.club_name
 					? m('notificationsList.verbClubJoinApprovedNamed', { club: item.club_name })
 					: m('notificationsList.verbClubJoinApproved');
+			case 'club_verification':
+				return item.club_name
+					? m('notificationsList.verbClubVerificationNamed', { club: item.club_name })
+					: m('notificationsList.verbClubVerification');
 			case 'event_waitlist_slot': {
 				const msg = waitlistSlotMessage('notificationsList', item.event_title);
 				return m(msg.key, msg.params);

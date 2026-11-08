@@ -1,0 +1,48 @@
+{
+  "park": {
+    "slug": "pocahontas",
+    "name": "Pocahontas State Park",
+    "agency": "state",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://www.dcr.virginia.gov/state-parks/pocahontas",
+    "osm_boundary": "relation/3144509"
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-08",
+  "courses": [
+    {
+      "slug": "beaver-lake-trail",
+      "name": "Beaver Lake Trail",
+      "course_shape": "loop",
+      "direction": "clockwise",
+      "surface": "trail",
+      "difficulty": "moderate",
+      "geometry_source": "osm",
+      "source_ref": "way/303463878,way/303485217,way/303485220,way/1066130682,way/1066130683",
+      "source_checked_at": "2026-11-08",
+      "geojson": "beaver-lake-trail.geojson",
+      "distance_m": 3595,
+      "elevation_m": 61,
+      "published_distance_m": 3701,
+      "published_deviation_pct": -2.9,
+      "published_source": "https://www.dcr.virginia.gov/state-parks/hiking-central",
+      "checkpoints": [
+        {
+          "lat": 37.384173,
+          "lng": -77.585804
+        },
+        {
+          "lat": 37.38116,
+          "lng": -77.591165
+        },
+        {
+          "lat": 37.383646,
+          "lng": -77.590445
+        }
+      ],
+      "waypoint_count": 172
+    }
+  ]
+}

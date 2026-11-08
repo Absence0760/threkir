@@ -1,4 +1,4 @@
--- Pins 20271124002406: a race listing's organiser badge follows the club's
+-- Pins 20271124002406 and 20271124002410: a race listing's organiser badge follows the club's
 -- verification at read time (issue #1190, decisions § 2406).
 --
 -- organiser_is_official is true only while the claiming club is verified,
@@ -7,7 +7,7 @@
 -- own write can never make a listing read as organiser-backed.
 
 begin;
-select plan(16);
+select plan(17);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -48,6 +48,14 @@ select results_eq(
        ('a1d33333-0000-0000-0000-000000000002'::uuid, true, true),
        ('a1d33333-0000-0000-0000-000000000003'::uuid, false, false) $$,
   'a claimed listing reads as organiser-backed; an unclaimed one does not'
+);
+select results_eq(
+  $$ select id, organiser_is_official from search_race_listings(p_query => 'RLP') order by id $$,
+  $$ values
+       ('a1d33333-0000-0000-0000-000000000001'::uuid, true),
+       ('a1d33333-0000-0000-0000-000000000002'::uuid, true),
+       ('a1d33333-0000-0000-0000-000000000003'::uuid, false) $$,
+  'the calendar search carries the organiser badge (20271124002410)'
 );
 reset role;
 

@@ -8706,6 +8706,7 @@ export type Database = {
           is_verified: boolean
           location_label: string
           name: string
+          organiser_is_official: boolean
           provider: string
           provider_race_id: string
           race_date: string

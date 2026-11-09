@@ -1108,6 +1108,7 @@ device_swoosh_star
 device_thermostat
 device_unknown
 devices
+devices_2
 devices_fold
 devices_fold_2
 devices_off
@@ -2372,6 +2373,7 @@ mindfulness
 minimize
 minor_crash
 mintmark
+mirror_stack
 missed_video_call
 missed_video_call_filled
 missing_controller
@@ -3024,6 +3026,7 @@ public
 public_off
 publish
 published_with_changes
+pull_request
 pulmonology
 pulse_alert
 punch_clock

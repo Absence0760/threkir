@@ -43,7 +43,7 @@
 ///
 /// TEST MODE ONLY in P1. Fails closed (503) if the secret is unset.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { Database, DbClient } from '../_shared/database.ts';
 import { readTextWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';

@@ -312,7 +312,7 @@ dependencies {
     // 1.1.0 stable when it ships.
     implementation("androidx.health:health-services-client:1.1.0")
     implementation("androidx.concurrent:concurrent-futures-ktx:1.3.0")
-    implementation("com.google.guava:guava:33.7.2-android")
+    implementation("com.google.guava:guava:33.8.0-android")
 
     // Location
     implementation("com.google.android.gms:play-services-location:21.4.0")
@@ -342,5 +342,5 @@ dependencies {
     // BuildConfig.SENTRY_DSN so a build without one is a no-op. The Android SDK auto-captures unhandled JVM exceptions;
     // we additionally wire breadcrumbs in long-running paths via
     // Sentry.captureException calls from coroutine catch blocks.
-    implementation("io.sentry:sentry-android:8.62.0")
+    implementation("io.sentry:sentry-android:8.63.0")
 }

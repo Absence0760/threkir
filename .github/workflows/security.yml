@@ -122,7 +122,9 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: javascript-typescript
           # Interpreted language — no compile step. Skips the autobuild
@@ -133,7 +135,7 @@ jobs:
           # small codebase the extra noise is manageable and the
           # maintainability/correctness queries are useful.
           queries: security-and-quality
-      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:javascript-typescript'
 
@@ -147,6 +149,8 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           # Both modules declare the same patch-level Go floor, so one
@@ -156,7 +160,7 @@ jobs:
           cache-dependency-path: |
             apps/job_worker/go.sum
             apps/graph_cycle/go.sum
-      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: go
       - name: Build every Go module for CodeQL
@@ -212,7 +216,7 @@ jobs:
             fi
             echo "::endgroup::"
           done
-      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:go'
 
@@ -231,7 +235,9 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           # 21 rather than 17 since the Flutter host joined this job: ci.yml's
@@ -243,7 +249,7 @@ jobs:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
-      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: java-kotlin
       # Every Gradle project in the tree, enumerated rather than named. This
@@ -340,7 +346,7 @@ jobs:
             echo "::error::every Gradle project in the tree is listed in CODEQL_KOTLIN_UNBUILT, so this job extracted no Kotlin and the java-kotlin analysis will report clean over nothing. Build at least one, or delete the language from the init step rather than leaving an empty analysis in place."
             exit 1
           fi
-      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:java-kotlin'
 
@@ -354,7 +360,9 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: github/codeql-action/init@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: actions
           build-mode: none
@@ -388,7 +396,7 @@ jobs:
               # alerts by hand every time an init step moves.
               - exclude:
                   id: actions/unnecessary-use-of-advanced-config
-      - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           category: '/language:actions'
           # Kept on disk as well as uploaded, so the step below can read what
@@ -459,6 +467,8 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Build job_worker image
         run: docker build -t job-worker:scan ./apps/job_worker
@@ -492,7 +502,7 @@ jobs:
           exit-code: '0'
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         # Only once the scan has written its SARIF. `exit-code: '0'` means the
         # scan step fails on nothing it finds, only on not running at all, and
         # uploading after that cannot succeed: it fails again on "Path does not
@@ -514,6 +524,8 @@ jobs:
       actions: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Build graph_cycle image
         run: docker build -t graph-cycle:scan ./apps/graph_cycle
@@ -533,10 +545,62 @@ jobs:
           exit-code: '0'
 
       - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
         with:
           sarif_file: trivy-graph-cycle.sarif
           # Distinct category — two uploads sharing one category make the
           # alert set flip-flop between whichever scan ran last.
           category: trivy-graph-cycle
+
+  trivy-iac:
+    name: Trivy IaC scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Here rather than behind ci.yml's infra-only gate: the `trivy-iac`
+    # category has to be uploaded on every ref, or each PR that did not
+    # touch infra/ reports "1 configuration present on refs/heads/main was
+    # not found" and code scanning cannot say what the PR introduced.
+    # It costs 24 s (run 42572319317) and builds no image.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Same install as the image scans above: see the header of
+      # .github/actions/setup-trivy/action.yml.
+      - uses: ./.github/actions/setup-trivy
+
+      - name: Trivy config scan
+        id: scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          skip-setup-trivy: true
+          # `scan-type: config` runs the IaC ruleset across HCL / yaml
+          # / json (so it picks up the workflows too, harmlessly).
+          # Trivy bundles tfsec-derived checks so we get the same
+          # coverage without standing up tfsec separately.
+          scan-type: config
+          scan-ref: infra
+          # Centralised suppressions with rationale. Inline
+          # `# trivy:ignore:` comments don't accept trailing text on
+          # the same line; the .trivyignore file at the repo root
+          # keeps the rule IDs + per-rule rationale in one place.
+          trivyignores: .trivyignore
+          format: sarif
+          output: trivy-iac.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload Trivy IaC SARIF
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        # Only once the scan has written its SARIF; the job_worker image scan
+        # above carries the reason.
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
+        with:
+          sarif_file: trivy-iac.sarif
+          category: trivy-iac

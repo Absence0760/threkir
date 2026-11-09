@@ -37,6 +37,10 @@ inputs:
     required: false
     default: '0.70.0'
 
+# The verified binary is installed into /usr/local/bin, which every runner
+# already has on PATH, rather than its directory appended to GITHUB_PATH: an
+# environment-file write changes PATH for every later step of the caller's
+# job, and this action cannot see what those steps are or what triggered them.
 runs:
   using: composite
   steps:
@@ -58,8 +62,8 @@ runs:
         dest="$HOME/.cache/trivy-bin"
         if [ -x "$dest/trivy" ] \
           && [ -f "$dest/trivy.sha256" ] \
-          && (cd "$dest" && sha256sum -c trivy.sha256 >/dev/null 2>&1); then
-          echo "$dest" >> "$GITHUB_PATH"
+          && (cd "$dest" && sha256sum -c trivy.sha256 >/dev/null 2>&1) \
+          && sudo install -m 0755 "$dest/trivy" /usr/local/bin/trivy; then
           echo "ok=true" >> "$GITHUB_OUTPUT"
           echo "Trivy ${TRIVY_VERSION} restored from cache; digest verified."
         else
@@ -91,7 +95,7 @@ runs:
             && tar -xzf "$dest/$tarball" -C "$dest" trivy; then
             rm -f "$dest/$tarball" "$dest/$sums"
             (cd "$dest" && sha256sum trivy > trivy.sha256)
-            echo "$dest" >> "$GITHUB_PATH"
+            sudo install -m 0755 "$dest/trivy" /usr/local/bin/trivy
             echo "Trivy ${ver} installed on attempt ${attempt}; checksum verified."
             exit 0
           fi

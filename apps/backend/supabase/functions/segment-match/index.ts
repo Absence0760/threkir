@@ -5,7 +5,7 @@
 /// `record_segment_match`. `verify_jwt = false` because an `sb_secret_` key is
 /// not a JWT; the server-key gate in handler.ts is the only way in.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { Database } from '../_shared/database.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { secretKey } from '../_shared/api_keys.ts';

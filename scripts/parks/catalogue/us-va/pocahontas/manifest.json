@@ -48,7 +48,7 @@
   "race_courses": [
     {
       "slug": "swift-creek-5k",
-      "name": "Swift Creek 5K",
+      "name": "Swift Creek Loop, 5 km",
       "race_distance": "5k",
       "distance_m": 5000,
       "laps": 1,
@@ -83,7 +83,7 @@
     },
     {
       "slug": "swift-creek-10k",
-      "name": "Swift Creek 10K",
+      "name": "Swift Creek Loop, 10 km (2 laps)",
       "race_distance": "10k",
       "distance_m": 10000,
       "laps": 2,
@@ -130,7 +130,7 @@
     },
     {
       "slug": "swift-creek-half",
-      "name": "Swift Creek Half Marathon",
+      "name": "Swift Creek Forest Loop, half-marathon distance",
       "race_distance": "half",
       "distance_m": 21097.5,
       "laps": 1,
@@ -177,7 +177,7 @@
     },
     {
       "slug": "swift-creek-marathon",
-      "name": "Swift Creek Marathon",
+      "name": "Swift Creek Forest Loop, marathon distance (2 laps)",
       "race_distance": "marathon",
       "distance_m": 42195,
       "laps": 2,
@@ -248,74 +248,74 @@
     },
     {
       "slug": "swift-creek-50k",
-      "name": "Swift Creek 50K",
+      "name": "Swift Creek Forest Loop, 50 km (2 laps)",
       "race_distance": "50k",
       "distance_m": 50000,
       "laps": 2,
-      "lap_m": 24976.2,
+      "lap_m": 24967.2,
       "lead_in_m": 102,
-      "start_line_from_lead_in_start_m": 78.2,
+      "start_line_from_lead_in_start_m": 69.2,
       "start_finish": {
-        "lat": 37.389302,
-        "lng": -77.576448
+        "lat": 37.389272,
+        "lng": -77.576543
       },
       "surface": "trail",
       "geometry_source": "osm",
-      "source_ref": "way/19937462,way/19939160,way/19939192,way/19942098,way/19942121,way/19948131,way/19949582,way/19952353,way/19952895,way/287546057,way/287546059,way/287546060,way/287546061,way/303463877,way/303463878,way/303463882,way/303471214,way/303485217,way/303485220,way/305588774,way/368877176,way/368938365,way/368938370,way/378250054,way/378250057,way/378250058,way/378250059,way/399140112,way/399140119,way/399140120,way/560376580,way/576398804,way/578855999,way/658276220,way/773642259,way/773642260,way/773642266,way/773642267,way/898536700,way/898536707,way/898536710,way/898536711,way/898536714,way/898536715,way/898536717,way/898536718,way/898536720,way/898536722,way/1066130680,way/1066130681,way/1066130682,way/1066130691,way/1457097799,way/1457102137,way/1533115535,way/1539809529",
+      "source_ref": "way/19937462,way/19939160,way/19939192,way/19942098,way/19942121,way/19944982,way/19948131,way/19949582,way/19952353,way/287546057,way/287546059,way/287546060,way/287546061,way/303463877,way/303463878,way/303463882,way/303471214,way/303485217,way/303485220,way/305588774,way/368877176,way/368938365,way/368938370,way/378250054,way/378250057,way/378250058,way/399140112,way/399140119,way/399140120,way/576398804,way/578855999,way/658276220,way/773642259,way/773642260,way/773642266,way/773642267,way/898536700,way/898536707,way/898536710,way/898536711,way/898536714,way/898536715,way/898536717,way/898536722,way/1066130680,way/1066130681,way/1066130682,way/1066130691,way/1457097799,way/1533115532,way/1533115533,way/1533115534,way/1533115535",
       "source_checked_at": "2026-11-09",
       "geojson": "swift-creek-50k.geojson",
-      "elevation_m": 618,
+      "elevation_m": 614,
       "checkpoints": [
         {
-          "lat": 37.393694,
-          "lng": -77.565338
+          "lat": 37.388334,
+          "lng": -77.565075
         },
         {
-          "lat": 37.395824,
-          "lng": -77.537325
+          "lat": 37.398902,
+          "lng": -77.541245
         },
         {
-          "lat": 37.37377,
-          "lng": -77.541334
+          "lat": 37.376262,
+          "lng": -77.540887
         },
         {
-          "lat": 37.362489,
-          "lng": -77.575466
+          "lat": 37.364719,
+          "lng": -77.573813
         },
         {
-          "lat": 37.380092,
-          "lng": -77.593011
+          "lat": 37.378503,
+          "lng": -77.593481
         },
         {
           "lat": 37.38142,
           "lng": -77.585013
         },
         {
-          "lat": 37.387226,
-          "lng": -77.573168
+          "lat": 37.39186,
+          "lng": -77.571474
         },
         {
-          "lat": 37.398477,
-          "lng": -77.550991
+          "lat": 37.396047,
+          "lng": -77.556284
         },
         {
-          "lat": 37.383186,
-          "lng": -77.542903
+          "lat": 37.388254,
+          "lng": -77.538446
         },
         {
-          "lat": 37.372199,
-          "lng": -77.560579
+          "lat": 37.372163,
+          "lng": -77.557492
         },
         {
-          "lat": 37.368765,
-          "lng": -77.584543
+          "lat": 37.366841,
+          "lng": -77.585696
         },
         {
-          "lat": 37.387794,
-          "lng": -77.584427
+          "lat": 37.38729,
+          "lng": -77.584249
         }
       ],
-      "waypoint_count": 1553
+      "waypoint_count": 1647
     }
   ]
 }

@@ -6,8 +6,10 @@ import test from 'node:test';
 
 import {
 	RACE_DISTANCES_M,
+	assertFootAccess,
 	distanceDeviation,
 	elevationGainM,
+	footAccessRefusal,
 	haversineM,
 	lapCourse,
 	pathLengthM,
@@ -196,4 +198,56 @@ test('race distances are the standard ones', () => {
 test('distanceDeviation is signed and relative', () => {
 	assert.equal(distanceDeviation(95, 100), -0.05);
 	assert.equal(distanceDeviation(110, 100), 0.1);
+});
+
+test('footAccessRefusal passes ordinary trails and fire roads', () => {
+	assert.equal(footAccessRefusal({ highway: 'path' }), null);
+	assert.equal(footAccessRefusal({ highway: 'track', foot: 'yes', bicycle: 'yes' }), null);
+	assert.equal(footAccessRefusal({ highway: 'cycleway', foot: 'designated' }), null);
+	assert.equal(footAccessRefusal({ highway: 'path', mtb: 'designated', foot: 'yes' }), null);
+});
+
+test('footAccessRefusal lets foot=yes or foot=designated override access=no', () => {
+	// The Co-Op Trail at Pocahontas is tagged exactly this way.
+	assert.equal(footAccessRefusal({ highway: 'footway', access: 'no', foot: 'designated' }), null);
+	assert.equal(footAccessRefusal({ highway: 'path', access: 'private', foot: 'yes' }), null);
+});
+
+test('footAccessRefusal refuses a social trail', () => {
+	assert.equal(footAccessRefusal({ highway: 'path', informal: 'yes' }), 'informal=yes');
+});
+
+test('footAccessRefusal refuses foot=no and foot=private', () => {
+	assert.equal(footAccessRefusal({ highway: 'path', foot: 'no' }), 'foot=no');
+	assert.equal(footAccessRefusal({ highway: 'path', foot: 'private' }), 'foot=private');
+});
+
+test('footAccessRefusal refuses access=no and access=private with no foot override', () => {
+	assert.equal(footAccessRefusal({ highway: 'track', access: 'no' }), 'access=no');
+	assert.equal(footAccessRefusal({ highway: 'track', access: 'private', foot: 'permissive' }), 'access=private');
+});
+
+test('footAccessRefusal refuses a cycleway without foot access', () => {
+	assert.equal(footAccessRefusal({ highway: 'cycleway' }), 'highway=cycleway');
+});
+
+test('footAccessRefusal refuses mountain-bike-only trails', () => {
+	assert.equal(footAccessRefusal({ highway: 'path', bicycle: 'designated', foot: 'no' }), 'foot=no, bicycle=designated');
+	assert.equal(footAccessRefusal({ highway: 'path', mtb: 'designated' }), 'mtb=designated');
+});
+
+test('assertFootAccess names the refused way and its tags', () => {
+	/** @type {import('./course_geometry.mjs').SnapshotWay[]} */
+	const ways = [
+		{ id: 10, nodes: [1, 2, 3], tags: { highway: 'path' } },
+		{ id: 11, nodes: [3, 4], tags: { highway: 'path', informal: 'yes' } },
+		{ id: 12, nodes: [1, 4], tags: { highway: 'footway', access: 'no', foot: 'designated' } },
+	];
+	assert.throws(() => assertFootAccess([1, 2, 3, 4, 1], ways), /way 11 \(informal=yes\)/);
+	assert.doesNotThrow(() => assertFootAccess([1, 4], ways));
+});
+
+test('assertFootAccess ignores a listed way the line never walks', () => {
+	const ways = [...loopWays.map((w) => ({ ...w, tags: { highway: 'path' } })), { ...pier, tags: { highway: 'path', informal: 'yes' } }];
+	assert.doesNotThrow(() => assertFootAccess(traceLoop({ ways, nodes, start: 1, direction: 'clockwise' }), ways));
 });

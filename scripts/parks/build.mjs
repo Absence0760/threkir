@@ -9,7 +9,9 @@
 // A course is refused (non-zero exit, nothing written) when its traced
 // distance is more than 5 % off the park's published figure: either the spec
 // names the wrong ways or the published figure means a different route, and
-// both need a person to look before anything is loaded.
+// both need a person to look before anything is loaded. A course whose line
+// uses a way not open to people on foot (a social trail, a bike-only trail,
+// `access=no` without a foot override) is refused the same way.
 //
 // Run:   node scripts/parks/build.mjs scripts/parks/catalogue/us-va/pocahontas
 // Check: node scripts/parks/build.mjs --check scripts/parks/catalogue/us-va/pocahontas
@@ -20,6 +22,7 @@ import path from 'node:path';
 import {
 	PUBLISHED_DISTANCE_TOLERANCE,
 	RACE_DISTANCES_M,
+	assertFootAccess,
 	distanceDeviation,
 	elevationGainM,
 	lapCourse,
@@ -65,6 +68,7 @@ export function buildPark(dir) {
 			start: course.start_node,
 			direction: course.direction,
 		});
+		footAccessOrThrow(course.slug, sequence, ways);
 		const raw = toPoints(sequence, snapshot.nodes);
 		const distanceM = pathLengthM(raw);
 		const publishedM = course.published.distance_mi * METERS_PER_MILE;
@@ -139,7 +143,9 @@ export function buildPark(dir) {
 		});
 		const leadIn = traceVia({ ways, nodes: snapshot.nodes, via: race.lead_in_via });
 		const loop = traceVia({ ways, nodes: snapshot.nodes, via: race.loop_via });
-		const full = toPoints(lapCourse({ leadIn, loop, laps: race.laps }), snapshot.nodes);
+		const sequence = lapCourse({ leadIn, loop, laps: race.laps });
+		footAccessOrThrow(race.slug, sequence, ways);
+		const full = toPoints(sequence, snapshot.nodes);
 		const leadInM = pathLengthM(toPoints(leadIn, snapshot.nodes));
 		const lapM = pathLengthM(toPoints(loop, snapshot.nodes));
 		const { points: raw, trimEachEndM } = trimToDistance(full, targetM, leadInM);
@@ -214,6 +220,19 @@ export function buildPark(dir) {
 	};
 	outputs.set(path.join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 	return outputs;
+}
+
+/**
+ * @param {string} slug
+ * @param {number[]} sequence
+ * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
+ */
+function footAccessOrThrow(slug, sequence, ways) {
+	try {
+		assertFootAccess(sequence, ways);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
 }
 
 function main() {

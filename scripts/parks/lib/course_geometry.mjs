@@ -5,7 +5,7 @@
 // rule is unit-tested in `course_geometry.test.mjs`.
 
 /** @typedef {{ lat: number, lon: number, ele?: number | null }} SnapshotNode */
-/** @typedef {{ id: number, nodes: number[] }} SnapshotWay */
+/** @typedef {{ id: number, nodes: number[], tags?: Record<string, string> }} SnapshotWay */
 /** @typedef {{ lat: number, lng: number, ele?: number | null }} LatLng */
 
 const EARTH_RADIUS_M = 6371008.8;
@@ -163,6 +163,74 @@ export function traceLoop({ ways, nodes, start, direction }) {
 	}
 
 	return [...spur.slice(0, -1), ...ring, junction, ...spur.slice(0, -1).reverse()];
+}
+
+/**
+ * Why a way is not open to people on foot, as the tags that say so, or null
+ * when it is. A course over a social trail or a bike-only trail sends runners
+ * where the land manager forbids them (Virginia state parks: 4VAC5-30-274).
+ * `foot=yes` or `foot=designated` overrides a general `access=no`, which is
+ * how OSM marks a foot-only trail.
+ *
+ * @param {Record<string, string>} tags
+ * @returns {string | null}
+ */
+export function footAccessRefusal(tags) {
+	const footOpen = tags.foot === 'yes' || tags.foot === 'designated';
+	/** @type {string[]} */
+	const reasons = [];
+	if (tags.informal === 'yes') reasons.push('informal=yes');
+	if (tags.foot === 'no' || tags.foot === 'private') reasons.push(`foot=${tags.foot}`);
+	if (!footOpen && (tags.access === 'no' || tags.access === 'private')) reasons.push(`access=${tags.access}`);
+	if (!footOpen && tags.highway === 'cycleway') reasons.push('highway=cycleway');
+	if (!footOpen && tags.mtb === 'designated') reasons.push('mtb=designated');
+	if (tags.bicycle === 'designated' && tags.foot === 'no') reasons.push('bicycle=designated');
+	return reasons.length > 0 ? reasons.join(', ') : null;
+}
+
+/**
+ * Refuse a traced course whose line runs along any way that is not open on
+ * foot. Only the ways the sequence actually walks are checked, so a listed
+ * way the trace never uses (a pruned spur) does not block the course.
+ *
+ * @param {number[]} sequence
+ * @param {SnapshotWay[]} ways
+ */
+export function assertFootAccess(sequence, ways) {
+	/** @type {Map<string, SnapshotWay[]>} */
+	const byEdge = new Map();
+	for (const way of ways) {
+		for (let i = 1; i < way.nodes.length; i++) {
+			const key = edgeKey(way.nodes[i - 1], way.nodes[i]);
+			const list = byEdge.get(key);
+			if (list) list.push(way);
+			else byEdge.set(key, [way]);
+		}
+	}
+	/** @type {Set<SnapshotWay>} */
+	const walked = new Set();
+	for (let i = 1; i < sequence.length; i++) {
+		for (const way of byEdge.get(edgeKey(sequence[i - 1], sequence[i])) ?? []) walked.add(way);
+	}
+	const refused = [...walked]
+		.map((way) => ({ way, reason: footAccessRefusal(way.tags ?? {}) }))
+		.filter((r) => r.reason !== null)
+		.sort((a, b) => a.way.id - b.way.id);
+	if (refused.length > 0) {
+		throw new Error(
+			`the course runs on way(s) not open to people on foot: ${refused
+				.map(({ way, reason }) => `way ${way.id} (${reason})`)
+				.join('; ')}; reroute it onto designated trails`,
+		);
+	}
+}
+
+/**
+ * @param {number} a
+ * @param {number} b
+ */
+function edgeKey(a, b) {
+	return a < b ? `${a}-${b}` : `${b}-${a}`;
 }
 
 /** Race distances in metres, by the slug a race course spec names. */

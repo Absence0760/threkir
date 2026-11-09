@@ -17,7 +17,7 @@
 
 begin;
 
-select plan(34);
+select plan(36);
 
 -- The seed user is the notification recipient; actor is left null
 -- (actor_id is nullable / on delete set null).
@@ -42,6 +42,7 @@ from unnest(array[
   'club_join_request', 'club_join_approved', 'event_updated',
   'plan_change_request', 'plan_change_decision',
   'club_verification',
+  'race_starting_soon', 'race_start_moved',
   'course_alert'
 ]) as k;
 

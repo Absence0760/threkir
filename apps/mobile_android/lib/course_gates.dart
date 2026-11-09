@@ -201,9 +201,9 @@ GateRouteRelation? gateRouteRelation(Gate gate, List<GatePoint> route) {
   );
 }
 
-/// How a race session starts its clock (#1303; Scheduled GO and Self-timed
-/// arrive with #1306).
-enum SessionStartMode { hostGo, scheduledGo, selfTimed }
+/// How a race session starts its clock (#1306): the values of
+/// `events.race_start_mode` and `race_sessions.start_mode`, snake_cased.
+enum SessionStartMode { hostGo, scheduled, selfTimed }
 
 enum CourseGateWarning { farFromRoute, againstRoute, selfCross, startRequired }
 

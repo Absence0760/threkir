@@ -904,6 +904,30 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'events.race_start_mode',
+		clients: [
+			{ file: 'apps/web/src/lib/races/course_gates.ts', decl: 'SessionStartMode', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/course_gates.dart', decl: 'SessionStartMode', shape: 'enum' },
+		],
+	},
+	{
+		tableColumn: 'race_sessions.start_mode',
+		clients: [
+			{ file: 'apps/web/src/lib/races/course_gates.ts', decl: 'SessionStartMode', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/course_gates.dart', decl: 'SessionStartMode', shape: 'enum' },
+		],
+	},
+	{
+		tableColumn: 'event_results.start_detection',
+		clients: [],
+		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+	},
+	{
+		tableColumn: 'event_results.finish_detection',
+		clients: [],
+		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+	},
+	{
 		tableColumn: 'recipes.meal_slot',
 		clients: [
 			{ file: DATA_TS, decl: 'MealSlot', shape: 'union' },

@@ -20,7 +20,7 @@
 --   25.    GO stamps started_at with server time, not the client's value.
 
 begin;
-select plan(25);
+select plan(26);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -210,6 +210,14 @@ select lives_ok(
      values ('e7270000-0000-0000-0000-0000000000e1', '2026-08-01 08:00+00',
              'e7270000-0000-0000-0000-000000000002', 0, 0, 'dns') $$,
   'an armed race does not lock a racer out of filing their own result'
+);
+
+select is(
+  (select duration_s from event_results
+    where event_id = 'e7270000-0000-0000-0000-0000000000e1'
+      and user_id = 'e7270000-0000-0000-0000-000000000002'),
+  0,
+  'the racer''s own DNS on an armed race is stored with the duration it sent'
 );
 
 set local role service_role;

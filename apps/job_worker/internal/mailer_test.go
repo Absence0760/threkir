@@ -228,6 +228,10 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"plan_change_decision", NotificationRow{Kind: "plan_change_decision", PlanID: &plan}, base + "/plans/plan-1"},
 		// The stable-id resolver opens the race or route (decisions § 2407).
 		{"course_alert", NotificationRow{Kind: "course_alert", CourseAlertID: &courseAlert}, base + "/course-alerts/ca-1"},
+		// The occurrence's event page, where the race panel counts down
+		// (decisions § 2400).
+		{"race_starting_soon", NotificationRow{Kind: "race_starting_soon", EventID: &ev}, base + "/events/evt-1"},
+		{"race_start_moved", NotificationRow{Kind: "race_start_moved", EventID: &ev}, base + "/events/evt-1"},
 		{"message", NotificationRow{Kind: "message"}, base + "/messages"},
 		{"club_post", NotificationRow{Kind: "club_post", ClubID: &club}, base + "/clubs/club-1"},
 		{"run_completed", NotificationRow{Kind: "run_completed", UserID: "usr-1", RunID: &run}, base + "/share/run/run-1"},

@@ -530,7 +530,7 @@
     }
    ],
    "selfCross": false,
-   "mode": "scheduled_go",
+   "mode": "scheduled",
    "expected": []
   },
   {
@@ -652,7 +652,7 @@
   },
   {
    "note": "the same under Scheduled GO: a warning",
-   "mode": "scheduled_go",
+   "mode": "scheduled",
    "courses": [
     {
      "id": "c2",

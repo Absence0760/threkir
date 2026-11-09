@@ -27978,6 +27978,196 @@
       }
     }
   },
+  "runRaceScheduled": "Scheduled start",
+  "@runRaceScheduled": {
+    "description": "Run screen race banner heading: a scheduled race the runner is going to, before GO"
+  },
+  "runRaceStartsIn": "{label} starts in {time}",
+  "@runRaceStartsIn": {
+    "description": "Run screen race banner: a scheduled race counting down to its server-fired GO",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceSelfTimed": "Self-timed",
+  "@runRaceSelfTimed": {
+    "description": "Run screen race banner heading: a self-timed race window is open"
+  },
+  "runRaceSelfTimedSoon": "Self-timed window",
+  "@runRaceSelfTimedSoon": {
+    "description": "Run screen race banner heading: a self-timed race window has not opened yet"
+  },
+  "runRaceSelfTimedHow": "{label}: tap This run is my attempt, then Start, and cross the start line. Open until {time}.",
+  "@runRaceSelfTimedHow": {
+    "description": "Run screen race banner: how to time a self-timed attempt, and when the window closes",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceSelfTimedOpens": "{label} opens at {time}",
+  "@runRaceSelfTimedOpens": {
+    "description": "Run screen race banner: a self-timed window that opens later today or soon",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceToStartLine": "{distance} to the start line",
+  "@runRaceToStartLine": {
+    "description": "Run screen race banner: how far the runner is from a self-timed race's start line",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceThisIsMyAttempt": "This run is my attempt",
+  "@runRaceThisIsMyAttempt": {
+    "description": "Run screen race banner button: bind the next recording to a self-timed race as the runner's attempt"
+  },
+  "runRaceAttemptReady": "Attempt ready: tap Start",
+  "@runRaceAttemptReady": {
+    "description": "Run screen race banner button once the attempt is armed; tapping it takes the attempt back"
+  },
+  "eventRaceArmEarly": "Arm early",
+  "@eventRaceArmEarly": {
+    "description": "Event race control button: create a scheduled or self-timed race's session before the server does, to check its lines"
+  },
+  "eventRaceScheduledNotYet": "Starts by itself at its scheduled time. Arm early to check the lines now.",
+  "@eventRaceScheduledNotYet": {
+    "description": "Event race control: a scheduled race whose session the server has not created yet"
+  },
+  "eventRaceSelfTimedNotYet": "Opens by itself. Arm early to check the lines now.",
+  "@eventRaceSelfTimedNotYet": {
+    "description": "Event race control: a self-timed window whose session the server has not created yet"
+  },
+  "eventRaceGoAt": "GO at {time}",
+  "@eventRaceGoAt": {
+    "description": "Event race control: when the server fires a scheduled race's GO",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceOpensAt": "Opens at {time}",
+  "@eventRaceOpensAt": {
+    "description": "Event race control: when a self-timed window opens",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceOpenUntil": "Open until {time}",
+  "@eventRaceOpenUntil": {
+    "description": "Event race control: a self-timed window is open until this time",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceAutoEnds": "Ends by itself at {time}",
+  "@eventRaceAutoEnds": {
+    "description": "Event race control: when a scheduled race ends by itself",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceDelay": "Delay start",
+  "@eventRaceDelay": {
+    "description": "Event race control button: move a scheduled start (or a window's opening) later"
+  },
+  "eventRaceDelayBy": "+{minutes} min",
+  "@eventRaceDelayBy": {
+    "description": "Delay dialog option: delay the start by this many minutes",
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceExtend": "Extend window",
+  "@eventRaceExtend": {
+    "description": "Event race control button: keep a self-timed window open longer"
+  },
+  "eventRaceExtendBy": "+{hours} h",
+  "@eventRaceExtendBy": {
+    "description": "Extend dialog option: extend the window by this many hours",
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceEndEarly": "End window now",
+  "@eventRaceEndEarly": {
+    "description": "Event race control button: close an open self-timed window now"
+  },
+  "eventRaceJoinAttempt": "Join and attempt",
+  "@eventRaceJoinAttempt": {
+    "description": "Event detail button for a runner not going: RSVP to an open self-timed race so they can attempt it"
+  },
+  "eventRaceSelfTimedParticipant": "Self-timed race open until {time}. Join, then time your attempt from the run screen.",
+  "@eventRaceSelfTimedParticipant": {
+    "description": "Event detail card for a runner: a self-timed race is open now",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifRaceStartingSoon": "A race you're going to starts in about 10 minutes",
+  "@profileNotifRaceStartingSoon": {
+    "description": "Notification text: a scheduled race the recipient is going to starts in about 10 minutes"
+  },
+  "profileNotifRaceStartingSoonTitled": "\"{title}\" starts in about 10 minutes",
+  "@profileNotifRaceStartingSoonTitled": {
+    "description": "Notification text: the titled scheduled race starts in about 10 minutes",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifRaceStartMoved": "The start of a race you're going to has moved",
+  "@profileNotifRaceStartMoved": {
+    "description": "Notification text: the organiser moved the start of a race the recipient is going to"
+  },
+  "profileNotifRaceStartMovedTitled": "The start of \"{title}\" has moved",
+  "@profileNotifRaceStartMovedTitled": {
+    "description": "Notification text: the organiser moved the titled race's start",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "prefsNotifyRaceStartingSoon": "Race starting soon",
+  "@prefsNotifyRaceStartingSoon": {
+    "description": "Settings switch: push about 10 minutes before a scheduled race and when its start moves"
+  },
+  "prefsNotifyRaceStartingSoonHint": "A push about 10 minutes before a scheduled race you're going to starts, and when its start moves. Never emailed.",
+  "@prefsNotifyRaceStartingSoonHint": {
+    "description": "Settings switch subtitle for the race-starting-soon push"
+  },
   "clubVerificationStatusTitle": "Official verification",
   "@clubVerificationStatusTitle": {
     "description": "Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins"

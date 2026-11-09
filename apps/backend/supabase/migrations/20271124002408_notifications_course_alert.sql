@@ -8,7 +8,8 @@
 --     web resolver /course-alerts/{id}, which opens the race or route, the
 --     way /events/{id} resolves an event.
 --   * notifications_kind_check gains 'course_alert'. The list is the full one
---     from 20271120000001 (which added 'club_verification') plus that value.
+--     from 20271121002400 (which added the two race-start kinds after
+--     20271120000001 added 'club_verification') plus that value.
 --
 -- Locks: ADD COLUMN of a nullable column with no default is catalogue-only.
 -- The FK and the CHECK are added NOT VALID (brief ACCESS EXCLUSIVE, no scan)
@@ -46,6 +47,7 @@ alter table notifications
       'club_join_request', 'club_join_approved', 'event_updated',
       'plan_change_request', 'plan_change_decision',
       'club_verification',
+      'race_starting_soon', 'race_start_moved',
       'course_alert'
     )
   )

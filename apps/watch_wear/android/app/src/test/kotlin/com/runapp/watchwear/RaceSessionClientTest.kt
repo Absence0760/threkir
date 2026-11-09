@@ -141,7 +141,7 @@ class RaceSessionClientTest {
     // ───────────── source-level fix guard ─────────────
 
     @Test
-    fun `fetchActive interpolations route through enc helper`() {
+    fun `instance interpolations route through enc helper`() {
         // Source-level guard: the bug was raw `$instance` /
         // `$eventId` / `$userId` interpolation. The fix wraps every
         // value with `enc(...)`. Pin that the listener can't quietly
@@ -152,12 +152,16 @@ class RaceSessionClientTest {
         val src = File(
             "src/main/kotlin/com/runapp/watchwear/RaceSessionClient.kt"
         ).readText()
-        // The fix uses `enc(instance)` — assert the encoded form is
-        // present AND no `=eq.$instance` raw form sneaked back in.
+        // Discovery is one RPC now (#1306), so the instance a query
+        // interpolates is the course and status reads' `instanceStart`:
+        // assert the encoded form is present AND no raw form sneaked back.
         assertTrue(
-            "fetchActive must interpolate `instance` via enc(...) — " +
-                "got source with no `enc(instance)` call",
-            src.contains("enc(instance)"),
+            "instance reads must interpolate `instanceStart` via enc(...)",
+            src.contains("enc(instanceStart)"),
+        )
+        assertFalse(
+            "raw `=eq.\$instanceStart` interpolation regressed the fix",
+            src.contains("=eq.\$instanceStart"),
         )
         assertFalse(
             "raw `=eq.\$instance` interpolation regressed the fix",
@@ -308,5 +312,41 @@ class RaceSessionClientTest {
         assertNull(ping(pingClient("[]", seen)))
         assertNull(ping(pingClient("""[{"at":"not a time"}]""", seen)))
         assertNull(RaceSessionClient.parsePingAtMs("""[{"at":null}]"""))
+    }
+
+    @Test
+    fun `discovery reads my_race_sessions by window, preferring a live race`() {
+        val body = """[
+          {"event_id":"e1","instance_start":"2026-11-08T09:00:00+00:00","status":"armed",
+           "effective_status":"armed","start_mode":"scheduled","started_at":null,
+           "scheduled_start_at":"2026-11-08T09:30:00+00:00","window_opens_at":null,
+           "window_closes_at":"2026-11-08T12:30:00+00:00","event_title":"Saturday 5K"},
+          {"event_id":"e2","instance_start":"2026-11-01T09:00:00+00:00","status":"running",
+           "effective_status":"running","start_mode":"self_timed","started_at":"2026-11-02T06:00:00+00:00",
+           "scheduled_start_at":null,"window_opens_at":"2026-11-02T06:00:00+00:00",
+           "window_closes_at":"2026-11-09T06:00:00+00:00","event_title":"Park trial"},
+          {"instance_start":"broken row"}
+        ]"""
+        val races = RaceSessionClient.parseMyRaceSessions(body)
+        assertEquals(2, races.size)
+        assertEquals("scheduled", races[0].startMode)
+        assertEquals("2026-11-08T09:30:00+00:00", races[0].startInstantIso)
+        val pick = RaceSessionClient.pickActiveRace(races)
+        assertEquals("e2", pick?.eventId)
+        assertEquals("self_timed", pick?.startMode)
+        assertEquals(
+            "a self-timed window starts at its opening, days after the occurrence",
+            "2026-11-02T06:00:00+00:00",
+            pick?.startInstantIso,
+        )
+    }
+
+    @Test
+    fun `the effective status wins over the stored one`() {
+        val body = """[{"event_id":"e1","instance_start":"2026-11-08T09:00:00+00:00",
+          "status":"armed","effective_status":"running","start_mode":"scheduled",
+          "scheduled_start_at":"2026-11-08T09:00:00+00:00"}]"""
+        assertEquals("running", RaceSessionClient.parseMyRaceSessions(body).single().status)
+        assertTrue(RaceSessionClient.parseMyRaceSessions("not json").isEmpty())
     }
 }

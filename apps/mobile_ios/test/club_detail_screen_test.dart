@@ -1591,6 +1591,7 @@ class _EventSocial extends _FakeSocial {
   Future<List<EventView>> fetchUpcomingEvents(String clubId) async => [
         EventView(
           row: EventRow(
+            raceStartMode: 'host_go',
             id: 'event-1',
             clubId: 'club-1',
             title: 'Long run',

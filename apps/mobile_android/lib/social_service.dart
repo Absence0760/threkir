@@ -49,7 +49,9 @@ const String _eventSelectCols =
     'meet_label, route_id, distance_m, pace_target_sec, capacity, '
     'author_id, created_at, updated_at, recurrence_freq, '
     'recurrence_byday, recurrence_until, recurrence_count, '
-    'category, discipline, gym_template, session_plan_id, gym_routine_id';
+    'category, discipline, gym_template, session_plan_id, gym_routine_id, '
+    'race_start_mode, race_scheduled_offset_s, race_window_open_offset_s, '
+    'race_window_length_s, race_auto_approve';
 
 /// Parse the `events.recurrence_byday` jsonb array (a list of weekday
 /// short-codes like `['MO','WE']`) into a list of `Weekday`s. Returns
@@ -2503,6 +2505,91 @@ class SocialService extends ChangeNotifier {
     final row = await _c
         .from(RaceSessionRow.table)
         .update(raceEndPatch(status, DateTime.now()))
+        .eq(RaceSessionRow.colEventId, eventId)
+        .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
+        .select()
+        .single();
+    notifyListeners();
+    return RaceSessionRow.fromJson(row);
+  }
+
+  /// Create the session of a scheduled or self-timed occurrence that is due
+  /// within a day (`ensure_race_session`, #1306), so the event screen's first
+  /// read finds it. False for a Host GO event, a cancelled or not-yet-due
+  /// occurrence, or a failed call: the screen then shows the race as not yet
+  /// open, which the next read fixes.
+  Future<bool> ensureRaceSession(String eventId, DateTime instance) async {
+    try {
+      final ok = await _c.rpc('ensure_race_session', params: {
+        'p_event_id': eventId,
+        'p_instance_start': instanceStartKey(instance),
+      });
+      return ok == true;
+    } catch (e) {
+      debugPrint('[SocialService.ensureRaceSession] ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  /// The server clock minus this device's (`server_now`), halving the round
+  /// trip; null when the call fails, so a countdown falls back to the device
+  /// clock rather than to a wrong offset (m3).
+  Future<Duration?> fetchServerClockOffset() async {
+    try {
+      final sent = DateTime.now();
+      final raw = await _c.rpc('server_now', params: const {}, get: true);
+      final received = DateTime.now();
+      final server = parseIsoStrictValue(raw);
+      if (server == null) return null;
+      final mid = sent.add(received.difference(sent) ~/ 2);
+      return server.difference(mid);
+    } catch (e) {
+      debugPrint('[SocialService.fetchServerClockOffset] ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
+
+  /// Delay a scheduled GO, or a self-timed window's opening, to [start]
+  /// (organiser only). The server refuses once the start has passed and moves
+  /// the window's close by the same amount.
+  Future<RaceSessionRow> delayRaceStart({
+    required String eventId,
+    required DateTime instance,
+    required bool selfTimed,
+    required DateTime start,
+  }) async {
+    if (_uid == null) throw Exception('Not authenticated');
+    final row = await _c
+        .from(RaceSessionRow.table)
+        .update({
+          selfTimed
+                  ? RaceSessionRow.colWindowOpensAt
+                  : RaceSessionRow.colScheduledStartAt:
+              start.toUtc().toIso8601String(),
+          RaceSessionRow.colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq(RaceSessionRow.colEventId, eventId)
+        .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
+        .select()
+        .single();
+    notifyListeners();
+    return RaceSessionRow.fromJson(row);
+  }
+
+  /// Move a window's close (Extend). The server refuses a close in the past,
+  /// before the opening or more than 7 days after it.
+  Future<RaceSessionRow> setRaceWindowClose({
+    required String eventId,
+    required DateTime instance,
+    required DateTime closes,
+  }) async {
+    if (_uid == null) throw Exception('Not authenticated');
+    final row = await _c
+        .from(RaceSessionRow.table)
+        .update({
+          RaceSessionRow.colWindowClosesAt: closes.toUtc().toIso8601String(),
+          RaceSessionRow.colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
+        })
         .eq(RaceSessionRow.colEventId, eventId)
         .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
         .select()

@@ -50,6 +50,8 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'event_reminder':
 		case 'event_waitlist_slot':
 		case 'event_updated':
+		case 'race_starting_soon':
+		case 'race_start_moved':
 			return r.event_id && item.event_club_slug
 				? `/clubs/${item.event_club_slug}/events/${r.event_id}`
 				: null;

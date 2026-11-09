@@ -35,6 +35,7 @@
 		removeEventResult,
 		fetchRecentRunsForPicker,
 		fetchRaceSession,
+		ensureRaceSession,
 		armRace,
 		fetchCourseLinesForOccurrence,
 		fetchEventCourseLines,
@@ -92,6 +93,8 @@
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import CourseLinesMap from '#lib/components/CourseLinesMap.svelte';
+	import RaceStartModePanel from '#lib/components/RaceStartModePanel.svelte';
+	import type { SessionStartMode } from '#lib/races/course_gates.ts';
 	import {
 		courseGate,
 		preflightBlocks,
@@ -301,6 +304,11 @@
 	// claim decision / "this is me"), so a double-tap can't fire the write twice.
 	let resultActionBusy = $state<string | null>(null);
 	let raceSession = $state<RaceSessionRow | null>(null);
+	// How this occurrence's race starts (#1306): the session's copy once it
+	// exists, the event's setting before.
+	let raceMode = $derived<SessionStartMode>(
+		raceSession?.start_mode ?? (event?.race_start_mode as SessionStartMode | undefined) ?? 'host_go'
+	);
 	let linesFrozen = $derived(!!raceSession?.courses_frozen_at);
 	let raceBusy = $state(false);
 	let nowTick = $state(Date.now());
@@ -803,6 +811,11 @@
 
 	async function readInstance() {
 		if (!event || !club || !activeInstance) return;
+		// A scheduled or self-timed session is created lazily; the page's first
+		// read creates it when it is due (ensure_race_session).
+		if (event.race_start_mode && event.race_start_mode !== 'host_go') {
+			await ensureRaceSession(event.id, activeInstance);
+		}
 		const res = await Promise.all([
 			fetchEventAttendees(event.id, activeInstance, { limit: ROSTER_PAGE_SIZE }),
 			event.route_id ? fetchRouteById(event.route_id) : Promise.resolve(null),
@@ -1163,7 +1176,7 @@
 					};
 				})
 			);
-			return racePreflight(input, 'host_go');
+			return racePreflight(input, raceMode);
 		} catch (e) {
 			console.warn('race preflight skipped', e);
 			return [];
@@ -2927,7 +2940,28 @@
 		{/if}
 
 		{#if isAthletic}
-		{#if isRaceDirector}
+		{#if raceMode !== 'host_go' && activeInstance}
+			<RaceStartModePanel
+				eventId={event.id}
+				instanceStart={activeInstance}
+				mode={raceMode}
+				timezone={event.timezone ?? null}
+				session={raceSession}
+				isDirector={isRaceDirector}
+				going={viewerRsvpForActive === 'going'}
+				courseCount={courses.length}
+				courseChosen={!!courseChoice}
+				busy={raceBusy || busy}
+				onsession={(row) => {
+					raceSession = row;
+					broadcastRaceStateChanged();
+				}}
+				onarm={() => handleArm()}
+				oncancel={() => handleEnd('cancelled')}
+				onend={() => handleEnd('finished')}
+				onjoin={() => rsvp('going')}
+			/>
+		{:else if isRaceDirector}
 			<section class="card race-panel">
 				<div class="results-head">
 					<h3>{m('clubEvent.raceControlTitle')}</h3>

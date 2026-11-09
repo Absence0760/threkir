@@ -66,6 +66,7 @@ class _CancelSocial extends SocialService {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
         row: EventRow(
+          raceStartMode: 'host_go',
           id: 'e1',
           clubId: 'club-1',
           title: 'Reformer',

@@ -433,6 +433,7 @@ void main() {
 
   group('EventView.toRecurrence / freq', () {
     EventRow eventRow({String? freq}) => EventRow(
+          raceStartMode: 'host_go',
           id: 'e1',
           clubId: 'c1',
           title: 'T',

@@ -123,6 +123,10 @@
     <string name="race_live">RACE LIVE</string>
     <string name="event">Event</string>
     <string name="race_wait_for_go">%1$s · wait for GO</string>
+    <string name="race_self_timed">SELF-TIMED</string>
+    <string name="race_self_timed_how">%1$s · tap Attempt, then Start, and cross the start line</string>
+    <string name="race_attempt">This run is my attempt</string>
+    <string name="race_attempt_ready">Attempt ready · tap Start</string>
     <string name="race_tap_start">%1$s · tap Start</string>
     <string name="race_finish_short">Finish</string>
     <string name="cd_finish_race">Finish race</string>

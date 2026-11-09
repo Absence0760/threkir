@@ -58,6 +58,7 @@ import '../off_route_alert.dart';
 import '../orphaned_recording.dart';
 import '../race_controller.dart';
 import '../race_finish.dart';
+import '../widgets/race_banner.dart';
 import '../reactive_ble_watch_transport.dart';
 import '../race_phases.dart';
 import '../roadbook.dart';
@@ -1186,6 +1187,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// Fire-and-forget TTS announcement. Wraps both synchronous and
   /// asynchronous failures so a TTS-engine fault never escapes as an
   /// unhandled error.
+  /// A scheduled GO's countdown, spoken at 10, 5, 3, 2, 1 seconds while the
+  /// run screen is open (#1306 m4). Voice cues off means silence.
+  void _speakRaceCountdown(int secondsLeft) {
+    if (!widget.preferences.audioCues) return;
+    _ttsCue('raceCountdown',
+        () => widget.audioCues.announceGuidedCue('$secondsLeft'));
+  }
+
   void _ttsCue(String label, Future<void> Function() invoke) {
     try {
       unawaited(invoke().catchError((Object e) {
@@ -5093,7 +5102,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                           if (race == null) return const SizedBox.shrink();
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: _RaceBanner(race: race),
+                            child: RaceBanner(
+                              race: race,
+                              controller: widget.raceController!,
+                              onCountdownCue: _speakRaceCountdown,
+                            ),
                           );
                         },
                       ),
@@ -7314,113 +7327,6 @@ class _LastRunCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// Idle-state banner that surfaces a live race. Armed → tells the user
-/// to get ready; running → shows elapsed since the server's start and a
-/// prompt to tap Start.
-class _RaceBanner extends StatefulWidget {
-  final ActiveRace race;
-  const _RaceBanner({required this.race});
-
-  @override
-  State<_RaceBanner> createState() => _RaceBannerState();
-}
-
-class _RaceBannerState extends State<_RaceBanner> {
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.race.isRunning) {
-      _tick = Timer.periodic(
-        const Duration(milliseconds: 500),
-        (_) { if (mounted) setState(() {}); },
-      );
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _RaceBanner old) {
-    super.didUpdateWidget(old);
-    if (!old.race.isRunning && widget.race.isRunning) {
-      _tick = Timer.periodic(
-        const Duration(milliseconds: 500),
-        (_) { if (mounted) setState(() {}); },
-      );
-    } else if (old.race.isRunning && !widget.race.isRunning) {
-      _tick?.cancel();
-      _tick = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final race = widget.race;
-    final isRunning = race.isRunning && race.startedAt != null;
-    final elapsed = isRunning
-        ? DateTime.now().difference(race.startedAt!).inSeconds
-        : 0;
-    final label = race.eventTitle ?? l10n.runRaceFallbackTitle;
-    final primary = theme.colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: primary.withValues(alpha: 0.08),
-        border: Border.all(color: primary, width: 1.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            race.isArmed ? Icons.sports_score : Icons.directions_run,
-            color: primary,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  race.isArmed ? l10n.runRaceArmed : l10n.runRaceLive,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: primary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                Text(
-                  race.isArmed
-                      ? l10n.runRaceWaitingForGo(label)
-                      : l10n.runRaceElapsedTapStart(label, _fmt(elapsed)),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _fmt(int s) {
-    final h = s ~/ 3600;
-    final m = (s % 3600) ~/ 60;
-    final sec = s % 60;
-    if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
-    return '$m:${sec.toString().padLeft(2, '0')}';
   }
 }
 

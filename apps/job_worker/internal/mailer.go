@@ -370,6 +370,20 @@ var pushImportantKinds = map[string]bool{
 	// busy event raises one per RSVP, so the default is the push only; the
 	// email is opt-in through email_notifications = all.
 	"event_rsvp": true,
+	// A scheduled race about to fire, and an organiser moving its start
+	// (decisions § 2400). Both matter only in the minutes before a start, so
+	// they are pushed by default and never emailed (pushOnlyKinds).
+	"race_starting_soon": true,
+	"race_start_moved":   true,
+}
+
+// pushOnlyKinds are never emailed, whatever the email mode. A warning about a
+// race starting in ten minutes, or that its start just moved, is stale by the
+// time a mailbox is read, so "all" must not turn it into mail either. Both
+// still land in the inbox and on the push channels.
+var pushOnlyKinds = map[string]bool{
+	"race_starting_soon": true,
+	"race_start_moved":   true,
 }
 
 // kindMutePrefKey maps a notification kind to the user_settings.prefs key
@@ -419,6 +433,11 @@ var kindMutePrefKey = map[string]string{
 	// Raised by the race organiser and in the default set, so it gets a
 	// control narrower than the channel (decisions § 2407).
 	"course_alert": "notify_course_alert",
+	// One key for both race notices: a runner who does not want to be told
+	// about a start wants neither the countdown warning nor the move. The
+	// per-minute job also reads it and raises no starting-soon row at all.
+	"race_starting_soon": "notify_race_starting_soon",
+	"race_start_moved":   "notify_race_starting_soon",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the
@@ -487,7 +506,7 @@ func emailMode(prefs map[string]interface{}) string {
 // check the per-kind mute separately would eventually be a channel that
 // forgot to — and the miss is invisible, because the mail still sends.
 func shouldEmail(kind string, prefs map[string]interface{}) bool {
-	if inAppOnlyKinds[kind] || kindMuted(kind, prefs) {
+	if inAppOnlyKinds[kind] || pushOnlyKinds[kind] || kindMuted(kind, prefs) {
 		return false
 	}
 	switch emailMode(prefs) {
@@ -548,6 +567,10 @@ const notificationPrefsPath = "/settings/notifications"
 func pathForKind(kind, base string, n NotificationRow) string {
 	switch kind {
 	case "event_reminder", "event_rsvp", "event_waitlist_slot", "event_updated":
+		return eventPath(base, n)
+	case "race_starting_soon", "race_start_moved":
+		// The occurrence's event page, which carries the race panel and its
+		// countdown (decisions § 2400).
 		return eventPath(base, n)
 	case "event_cancel":
 		// A deleted event's notice links no event, because the delete's cascade

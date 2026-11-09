@@ -21081,6 +21081,124 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get runRaceScheduled => 'Scheduled start';
+
+  @override
+  String runRaceStartsIn(String label, String time) {
+    return '$label starts in $time';
+  }
+
+  @override
+  String get runRaceSelfTimed => 'Self-timed';
+
+  @override
+  String get runRaceSelfTimedSoon => 'Self-timed window';
+
+  @override
+  String runRaceSelfTimedHow(String label, String time) {
+    return '$label: tap This run is my attempt, then Start, and cross the start line. Open until $time.';
+  }
+
+  @override
+  String runRaceSelfTimedOpens(String label, String time) {
+    return '$label opens at $time';
+  }
+
+  @override
+  String runRaceToStartLine(String distance) {
+    return '$distance to the start line';
+  }
+
+  @override
+  String get runRaceThisIsMyAttempt => 'This run is my attempt';
+
+  @override
+  String get runRaceAttemptReady => 'Attempt ready: tap Start';
+
+  @override
+  String get eventRaceArmEarly => 'Arm early';
+
+  @override
+  String get eventRaceScheduledNotYet =>
+      'Starts by itself at its scheduled time. Arm early to check the lines now.';
+
+  @override
+  String get eventRaceSelfTimedNotYet =>
+      'Opens by itself. Arm early to check the lines now.';
+
+  @override
+  String eventRaceGoAt(String time) {
+    return 'GO at $time';
+  }
+
+  @override
+  String eventRaceOpensAt(String time) {
+    return 'Opens at $time';
+  }
+
+  @override
+  String eventRaceOpenUntil(String time) {
+    return 'Open until $time';
+  }
+
+  @override
+  String eventRaceAutoEnds(String time) {
+    return 'Ends by itself at $time';
+  }
+
+  @override
+  String get eventRaceDelay => 'Delay start';
+
+  @override
+  String eventRaceDelayBy(String minutes) {
+    return '+$minutes min';
+  }
+
+  @override
+  String get eventRaceExtend => 'Extend window';
+
+  @override
+  String eventRaceExtendBy(String hours) {
+    return '+$hours h';
+  }
+
+  @override
+  String get eventRaceEndEarly => 'End window now';
+
+  @override
+  String get eventRaceJoinAttempt => 'Join and attempt';
+
+  @override
+  String eventRaceSelfTimedParticipant(String time) {
+    return 'Self-timed race open until $time. Join, then time your attempt from the run screen.';
+  }
+
+  @override
+  String get profileNotifRaceStartingSoon =>
+      'A race you\'re going to starts in about 10 minutes';
+
+  @override
+  String profileNotifRaceStartingSoonTitled(String title) {
+    return '\"$title\" starts in about 10 minutes';
+  }
+
+  @override
+  String get profileNotifRaceStartMoved =>
+      'The start of a race you\'re going to has moved';
+
+  @override
+  String profileNotifRaceStartMovedTitled(String title) {
+    return 'The start of \"$title\" has moved';
+  }
+
+  @override
+  String get prefsNotifyRaceStartingSoon => 'Race starting soon';
+
+  @override
+  String get prefsNotifyRaceStartingSoonHint =>
+      'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.';
+
+  @override
   String get clubVerificationStatusTitle => 'Official verification';
 
   @override

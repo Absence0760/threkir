@@ -100,6 +100,10 @@
     <string name="race_live">RENNEN LÄUFT</string>
     <string name="event">Event</string>
     <string name="race_wait_for_go">%1$s · auf GO warten</string>
+    <string name="race_self_timed">SELBSTGESTOPPT</string>
+    <string name="race_self_timed_how">%1$s · tippe auf Versuch, dann Start, und überquere die Startlinie</string>
+    <string name="race_attempt">Dieser Lauf ist mein Versuch</string>
+    <string name="race_attempt_ready">Versuch bereit · Start tippen</string>
     <string name="race_tap_start">%1$s · Start tippen</string>
     <string name="race_finish_short">Ziel</string>
     <string name="cd_finish_race">Rennen beenden</string>

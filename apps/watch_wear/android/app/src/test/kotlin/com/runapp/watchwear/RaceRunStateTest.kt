@@ -165,6 +165,35 @@ class RaceRunStateTest {
     }
 
     @Test
+    fun `a self-timed window binds only the attempt the runner asked for`() {
+        val open = running.copy(startMode = "self_timed", startInstantMs = System.currentTimeMillis() - 60_000L)
+        assertNull(
+            "owner decision 4a: nothing binds automatically in a self-timed window",
+            raceToBind(alreadyBound = false, runId = "run1", endedRunId = null, active = open),
+        )
+        val armed = open.copy(attemptArmed = true)
+        assertSame(armed, raceToBind(alreadyBound = false, runId = "run1", endedRunId = null, active = armed))
+    }
+
+    @Test
+    fun `a scheduled race is live at its instant before the poll says so`() {
+        val due = running.copy(
+            status = "armed",
+            startMode = "scheduled",
+            startedAtMs = null,
+            startInstantMs = System.currentTimeMillis() - 1_000L,
+        )
+        assertTrue(due.isRunning)
+        assertFalse(due.isArmed)
+        assertEquals(due.startInstantMs, due.goAtMs)
+        assertSame(due, raceToBind(alreadyBound = false, runId = "run1", endedRunId = null, active = due))
+
+        val ahead = due.copy(startInstantMs = System.currentTimeMillis() + 600_000L)
+        assertTrue(ahead.isArmed)
+        assertNull(raceToBind(alreadyBound = false, runId = "run1", endedRunId = null, active = ahead))
+    }
+
+    @Test
     fun `the run a race ended under is never re-bound`() {
         assertNull(raceToBind(alreadyBound = false, runId = "run1", endedRunId = "run1", active = running))
         assertSame(running, raceToBind(alreadyBound = false, runId = "run2", endedRunId = "run1", active = running))

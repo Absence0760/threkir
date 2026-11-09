@@ -81,7 +81,8 @@ import {
 	type CourseDraft,
 	type EventCourse,
 } from '../social/event_courses';
-import type { CourseGateColumns, GateWhich } from '../races/course_gates';
+import type { CourseGateColumns, GateWhich, SessionStartMode } from '../races/course_gates';
+import { parseStartMode } from '../races/race_start_modes';
 import type { Gate } from '../geo/gate_crossing';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
@@ -2855,7 +2856,7 @@ const CLUB_SELECT_COLS =
 // enumerates these safe columns; the two coords are write-only
 // today (no UI consumer).
 const EVENT_SELECT_COLS =
-	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, gym_routine_id, is_public' as const;
+	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, gym_routine_id, is_public, race_start_mode, race_scheduled_offset_s, race_window_open_offset_s, race_window_length_s, race_auto_approve' as const;
 
 /** Browse public clubs. Most recently created first. */
 export async function browseClubsWithError(
@@ -4737,7 +4738,8 @@ function normaliseEvent(e: Event): Event {
 		// Legacy rows predate the category column; treat them as athletic runs.
 		category: (e.category ?? 'run') as EventCategory,
 		// Raw jsonb on the row -> the typed seam shape (null for empty/malformed).
-		gym_template: parseGymTemplate(e.gym_template as unknown)
+		gym_template: parseGymTemplate(e.gym_template as unknown),
+		race_start_mode: parseStartMode(e.race_start_mode)
 	};
 }
 
@@ -4779,6 +4781,13 @@ export async function createEvent(input: {
 	// Defaults to public. Only meaningful in a public club (a private club's
 	// events are already members-only via the club gate).
 	is_public?: boolean;
+	// How the event's races start and when, as offsets from each occurrence
+	// (#1306). Omitted: Host GO.
+	race_start_mode?: SessionStartMode;
+	race_scheduled_offset_s?: number | null;
+	race_window_open_offset_s?: number | null;
+	race_window_length_s?: number | null;
+	race_auto_approve?: boolean | null;
 }): Promise<Event> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
@@ -4808,6 +4817,11 @@ export async function createEvent(input: {
 			recurrence_byday: input.recurrence_byday ?? null,
 			recurrence_until: input.recurrence_until ?? null,
 			recurrence_count: input.recurrence_count ?? null,
+			race_start_mode: input.race_start_mode ?? 'host_go',
+			race_scheduled_offset_s: input.race_scheduled_offset_s ?? null,
+			race_window_open_offset_s: input.race_window_open_offset_s ?? null,
+			race_window_length_s: input.race_window_length_s ?? null,
+			race_auto_approve: input.race_auto_approve ?? null,
 			author_id: userId
 		})
 		.select(EVENT_SELECT_COLS)
@@ -4832,6 +4846,11 @@ export async function updateEvent(
 		pace_target_sec: number | null;
 		capacity: number | null;
 		is_public: boolean;
+		race_start_mode: SessionStartMode;
+		race_scheduled_offset_s: number | null;
+		race_window_open_offset_s: number | null;
+		race_window_length_s: number | null;
+		race_auto_approve: boolean | null;
 	}>
 ): Promise<void> {
 	// RLS `is_event_organiser` gates the UPDATE; owner/admin/event_organiser
@@ -5799,6 +5818,88 @@ export interface RaceSessionRow {
 	/// When the race froze its courses' lines (`race_session_courses`); null
 	/// for a race armed before the frozen copy existed.
 	courses_frozen_at?: string | null;
+	/// How the race starts (#1306) and its instants, copied from the event's
+	/// offsets when the session was created and moved by Delay / Extend.
+	start_mode?: SessionStartMode;
+	scheduled_start_at?: string | null;
+	window_opens_at?: string | null;
+	window_closes_at?: string | null;
+	/// The status on the server clock (`race_sessions_redacted`); a scheduled
+	/// race whose GO passed reads running before the per-minute job moves it.
+	effective_status?: RaceSessionStatus;
+}
+
+/// Create the session of a scheduled or self-timed occurrence that is due
+/// within a day (`ensure_race_session`), so the event page's first read finds
+/// it. False for a Host GO event, a cancelled occurrence, one not yet due or
+/// an event the caller cannot see. A failure is logged and reads as false:
+/// the page then shows the race as not yet open, which the next poll fixes.
+export async function ensureRaceSession(eventId: string, instanceStart: string): Promise<boolean> {
+	const { data, error } = await supabase.rpc('ensure_race_session', {
+		p_event_id: eventId,
+		p_instance_start: instanceStart,
+	});
+	if (error) {
+		console.warn('ensureRaceSession failed', error);
+		return false;
+	}
+	return data === true;
+}
+
+/// The server clock minus this device's, in ms (`server_now`), halving the
+/// round trip. Null when the call fails: callers then count down on the
+/// device clock and say nothing more precise than it.
+export async function fetchServerClockOffsetMs(): Promise<number | null> {
+	const sent = Date.now();
+	const { data, error } = await supabase.rpc('server_now', undefined, { get: true });
+	const received = Date.now();
+	if (error || typeof data !== 'string') {
+		if (error) console.warn('fetchServerClockOffsetMs failed', error);
+		return null;
+	}
+	const server = Date.parse(data);
+	if (!Number.isFinite(server)) return null;
+	return Math.round(server - (sent + received) / 2);
+}
+
+/// Delay a scheduled GO, or a self-timed window's opening, to `startIso`
+/// (organiser only). The server refuses once the start has passed and moves
+/// the window's close by the same amount.
+export async function delayRaceStart(
+	eventId: string,
+	instanceStart: string,
+	mode: SessionStartMode,
+	startIso: string
+): Promise<RaceSessionRow> {
+	const patch: Updatable<'race_sessions'> =
+		mode === 'scheduled' ? { scheduled_start_at: startIso } : { window_opens_at: startIso };
+	const { data, error } = await supabase
+		.from('race_sessions')
+		.update({ ...patch, updated_at: new Date().toISOString() })
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.select()
+		.single();
+	if (error) throw dbError(error);
+	return data as RaceSessionRow;
+}
+
+/// Move a window's close (Extend, or close sooner). The server refuses a
+/// close in the past, before the opening or more than 7 days after it.
+export async function setRaceWindowClose(
+	eventId: string,
+	instanceStart: string,
+	closesIso: string
+): Promise<RaceSessionRow> {
+	const { data, error } = await supabase
+		.from('race_sessions')
+		.update({ window_closes_at: closesIso, updated_at: new Date().toISOString() })
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.select()
+		.single();
+	if (error) throw dbError(error);
+	return data as RaceSessionRow;
 }
 
 export async function fetchRaceSession(
@@ -6159,6 +6260,9 @@ export interface RacePingRow {
 	elapsed_s: number | null;
 	bpm: number | null;
 	coarse: boolean;
+	/// Seconds since this runner crossed the start line (#1306 M13). Null
+	/// from an Apple Watch relay, an older app, or before the crossing.
+	since_start_line_s?: number | null;
 }
 
 /// Recent pings for a race instance, newest first. The spectator page

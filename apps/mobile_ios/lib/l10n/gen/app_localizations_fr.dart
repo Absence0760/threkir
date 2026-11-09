@@ -21354,6 +21354,124 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get runRaceScheduled => 'Départ programmé';
+
+  @override
+  String runRaceStartsIn(String label, String time) {
+    return '$label commence dans $time';
+  }
+
+  @override
+  String get runRaceSelfTimed => 'Chrono libre';
+
+  @override
+  String get runRaceSelfTimedSoon => 'Fenêtre en chrono libre';
+
+  @override
+  String runRaceSelfTimedHow(String label, String time) {
+    return '$label : touchez « Cette course est ma tentative », puis Démarrer, et franchissez la ligne de départ. Ouverte jusqu\'à $time.';
+  }
+
+  @override
+  String runRaceSelfTimedOpens(String label, String time) {
+    return '$label ouvre à $time';
+  }
+
+  @override
+  String runRaceToStartLine(String distance) {
+    return '$distance jusqu\'à la ligne de départ';
+  }
+
+  @override
+  String get runRaceThisIsMyAttempt => 'Cette course est ma tentative';
+
+  @override
+  String get runRaceAttemptReady => 'Tentative prête : touchez Démarrer';
+
+  @override
+  String get eventRaceArmEarly => 'Armer plus tôt';
+
+  @override
+  String get eventRaceScheduledNotYet =>
+      'Démarre seule à l\'heure prévue. Armez plus tôt pour vérifier les lignes dès maintenant.';
+
+  @override
+  String get eventRaceSelfTimedNotYet =>
+      'S\'ouvre seule. Armez plus tôt pour vérifier les lignes dès maintenant.';
+
+  @override
+  String eventRaceGoAt(String time) {
+    return 'Départ à $time';
+  }
+
+  @override
+  String eventRaceOpensAt(String time) {
+    return 'Ouvre à $time';
+  }
+
+  @override
+  String eventRaceOpenUntil(String time) {
+    return 'Ouverte jusqu\'à $time';
+  }
+
+  @override
+  String eventRaceAutoEnds(String time) {
+    return 'Se termine seule à $time';
+  }
+
+  @override
+  String get eventRaceDelay => 'Retarder le départ';
+
+  @override
+  String eventRaceDelayBy(String minutes) {
+    return '+$minutes min';
+  }
+
+  @override
+  String get eventRaceExtend => 'Prolonger la fenêtre';
+
+  @override
+  String eventRaceExtendBy(String hours) {
+    return '+$hours h';
+  }
+
+  @override
+  String get eventRaceEndEarly => 'Fermer la fenêtre maintenant';
+
+  @override
+  String get eventRaceJoinAttempt => 'Participer et tenter';
+
+  @override
+  String eventRaceSelfTimedParticipant(String time) {
+    return 'Course en chrono libre ouverte jusqu\'à $time. Participez, puis chronométrez votre tentative depuis l\'écran de course.';
+  }
+
+  @override
+  String get profileNotifRaceStartingSoon =>
+      'Une course à laquelle vous participez commence dans environ 10 minutes';
+
+  @override
+  String profileNotifRaceStartingSoonTitled(String title) {
+    return '« $title » commence dans environ 10 minutes';
+  }
+
+  @override
+  String get profileNotifRaceStartMoved =>
+      'Le départ d\'une course à laquelle vous participez a été déplacé';
+
+  @override
+  String profileNotifRaceStartMovedTitled(String title) {
+    return 'Le départ de « $title » a été déplacé';
+  }
+
+  @override
+  String get prefsNotifyRaceStartingSoon => 'Course bientôt au départ';
+
+  @override
+  String get prefsNotifyRaceStartingSoonHint =>
+      'Une notification push environ 10 minutes avant le départ d\'une course programmée à laquelle vous participez, et quand son départ est déplacé. Jamais par e-mail.';
+
+  @override
   String get clubVerificationStatusTitle => 'Vérification officielle';
 
   @override

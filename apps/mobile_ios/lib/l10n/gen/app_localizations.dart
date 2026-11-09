@@ -34349,6 +34349,180 @@ abstract class AppLocalizations {
   /// **'{course}: the finish line is more than 100 m from the route.'**
   String eventRacePreflightFarFinish(String course);
 
+  /// Run screen race banner heading: a scheduled race the runner is going to, before GO
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled start'**
+  String get runRaceScheduled;
+
+  /// Run screen race banner: a scheduled race counting down to its server-fired GO
+  ///
+  /// In en, this message translates to:
+  /// **'{label} starts in {time}'**
+  String runRaceStartsIn(String label, String time);
+
+  /// Run screen race banner heading: a self-timed race window is open
+  ///
+  /// In en, this message translates to:
+  /// **'Self-timed'**
+  String get runRaceSelfTimed;
+
+  /// Run screen race banner heading: a self-timed race window has not opened yet
+  ///
+  /// In en, this message translates to:
+  /// **'Self-timed window'**
+  String get runRaceSelfTimedSoon;
+
+  /// Run screen race banner: how to time a self-timed attempt, and when the window closes
+  ///
+  /// In en, this message translates to:
+  /// **'{label}: tap This run is my attempt, then Start, and cross the start line. Open until {time}.'**
+  String runRaceSelfTimedHow(String label, String time);
+
+  /// Run screen race banner: a self-timed window that opens later today or soon
+  ///
+  /// In en, this message translates to:
+  /// **'{label} opens at {time}'**
+  String runRaceSelfTimedOpens(String label, String time);
+
+  /// Run screen race banner: how far the runner is from a self-timed race's start line
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} to the start line'**
+  String runRaceToStartLine(String distance);
+
+  /// Run screen race banner button: bind the next recording to a self-timed race as the runner's attempt
+  ///
+  /// In en, this message translates to:
+  /// **'This run is my attempt'**
+  String get runRaceThisIsMyAttempt;
+
+  /// Run screen race banner button once the attempt is armed; tapping it takes the attempt back
+  ///
+  /// In en, this message translates to:
+  /// **'Attempt ready: tap Start'**
+  String get runRaceAttemptReady;
+
+  /// Event race control button: create a scheduled or self-timed race's session before the server does, to check its lines
+  ///
+  /// In en, this message translates to:
+  /// **'Arm early'**
+  String get eventRaceArmEarly;
+
+  /// Event race control: a scheduled race whose session the server has not created yet
+  ///
+  /// In en, this message translates to:
+  /// **'Starts by itself at its scheduled time. Arm early to check the lines now.'**
+  String get eventRaceScheduledNotYet;
+
+  /// Event race control: a self-timed window whose session the server has not created yet
+  ///
+  /// In en, this message translates to:
+  /// **'Opens by itself. Arm early to check the lines now.'**
+  String get eventRaceSelfTimedNotYet;
+
+  /// Event race control: when the server fires a scheduled race's GO
+  ///
+  /// In en, this message translates to:
+  /// **'GO at {time}'**
+  String eventRaceGoAt(String time);
+
+  /// Event race control: when a self-timed window opens
+  ///
+  /// In en, this message translates to:
+  /// **'Opens at {time}'**
+  String eventRaceOpensAt(String time);
+
+  /// Event race control: a self-timed window is open until this time
+  ///
+  /// In en, this message translates to:
+  /// **'Open until {time}'**
+  String eventRaceOpenUntil(String time);
+
+  /// Event race control: when a scheduled race ends by itself
+  ///
+  /// In en, this message translates to:
+  /// **'Ends by itself at {time}'**
+  String eventRaceAutoEnds(String time);
+
+  /// Event race control button: move a scheduled start (or a window's opening) later
+  ///
+  /// In en, this message translates to:
+  /// **'Delay start'**
+  String get eventRaceDelay;
+
+  /// Delay dialog option: delay the start by this many minutes
+  ///
+  /// In en, this message translates to:
+  /// **'+{minutes} min'**
+  String eventRaceDelayBy(String minutes);
+
+  /// Event race control button: keep a self-timed window open longer
+  ///
+  /// In en, this message translates to:
+  /// **'Extend window'**
+  String get eventRaceExtend;
+
+  /// Extend dialog option: extend the window by this many hours
+  ///
+  /// In en, this message translates to:
+  /// **'+{hours} h'**
+  String eventRaceExtendBy(String hours);
+
+  /// Event race control button: close an open self-timed window now
+  ///
+  /// In en, this message translates to:
+  /// **'End window now'**
+  String get eventRaceEndEarly;
+
+  /// Event detail button for a runner not going: RSVP to an open self-timed race so they can attempt it
+  ///
+  /// In en, this message translates to:
+  /// **'Join and attempt'**
+  String get eventRaceJoinAttempt;
+
+  /// Event detail card for a runner: a self-timed race is open now
+  ///
+  /// In en, this message translates to:
+  /// **'Self-timed race open until {time}. Join, then time your attempt from the run screen.'**
+  String eventRaceSelfTimedParticipant(String time);
+
+  /// Notification text: a scheduled race the recipient is going to starts in about 10 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'A race you\'re going to starts in about 10 minutes'**
+  String get profileNotifRaceStartingSoon;
+
+  /// Notification text: the titled scheduled race starts in about 10 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" starts in about 10 minutes'**
+  String profileNotifRaceStartingSoonTitled(String title);
+
+  /// Notification text: the organiser moved the start of a race the recipient is going to
+  ///
+  /// In en, this message translates to:
+  /// **'The start of a race you\'re going to has moved'**
+  String get profileNotifRaceStartMoved;
+
+  /// Notification text: the organiser moved the titled race's start
+  ///
+  /// In en, this message translates to:
+  /// **'The start of \"{title}\" has moved'**
+  String profileNotifRaceStartMovedTitled(String title);
+
+  /// Settings switch: push about 10 minutes before a scheduled race and when its start moves
+  ///
+  /// In en, this message translates to:
+  /// **'Race starting soon'**
+  String get prefsNotifyRaceStartingSoon;
+
+  /// Settings switch subtitle for the race-starting-soon push
+  ///
+  /// In en, this message translates to:
+  /// **'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.'**
+  String get prefsNotifyRaceStartingSoonHint;
+
   /// Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins
   ///
   /// In en, this message translates to:

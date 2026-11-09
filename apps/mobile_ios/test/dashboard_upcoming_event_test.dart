@@ -38,6 +38,7 @@ class _FakeSocial extends SocialService {
 
 EventView _event(DateTime startsAt) => EventView(
       row: EventRow(
+        raceStartMode: 'host_go',
         id: 'e1',
         clubId: 'club-1',
         title: 'Saturday Long Run',

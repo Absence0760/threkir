@@ -2186,6 +2186,11 @@ class EventResultRow {
   static const String colGunTimeS = 'gun_time_s';
   static const String colChipTimeS = 'chip_time_s';
   static const String colFinishMethod = 'finish_method';
+  static const String colStartAt = 'start_at';
+  static const String colFinishAt = 'finish_at';
+  static const String colStartDetection = 'start_detection';
+  static const String colFinishDetection = 'finish_detection';
+  static const String colNeedsReview = 'needs_review';
 
   final String eventId;
   final DateTime instanceStart;
@@ -2209,6 +2214,11 @@ class EventResultRow {
   final int? gunTimeS;
   final int? chipTimeS;
   final String? finishMethod;
+  final DateTime? startAt;
+  final DateTime? finishAt;
+  final String? startDetection;
+  final String? finishDetection;
+  final bool needsReview;
 
   const EventResultRow({
     required this.eventId,
@@ -2233,6 +2243,11 @@ class EventResultRow {
     this.gunTimeS,
     this.chipTimeS,
     this.finishMethod,
+    this.startAt,
+    this.finishAt,
+    this.startDetection,
+    this.finishDetection,
+    required this.needsReview,
   });
 
   factory EventResultRow.fromJson(Map<String, dynamic> json) => EventResultRow(
@@ -2258,6 +2273,11 @@ class EventResultRow {
     gunTimeS: (json['gun_time_s'] as num?)?.toInt(),
     chipTimeS: (json['chip_time_s'] as num?)?.toInt(),
     finishMethod: json['finish_method'] as String?,
+    startAt: parseIsoStrictValue(json['start_at']),
+    finishAt: parseIsoStrictValue(json['finish_at']),
+    startDetection: json['start_detection'] as String?,
+    finishDetection: json['finish_detection'] as String?,
+    needsReview: (json['needs_review'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -2283,6 +2303,11 @@ class EventResultRow {
     colGunTimeS: gunTimeS,
     colChipTimeS: chipTimeS,
     colFinishMethod: finishMethod,
+    colStartAt: startAt?.toIso8601String(),
+    colFinishAt: finishAt?.toIso8601String(),
+    colStartDetection: startDetection,
+    colFinishDetection: finishDetection,
+    colNeedsReview: needsReview,
   };
 
   EventResultRow copyWith({
@@ -2308,6 +2333,11 @@ class EventResultRow {
     int? gunTimeS,
     int? chipTimeS,
     String? finishMethod,
+    DateTime? startAt,
+    DateTime? finishAt,
+    String? startDetection,
+    String? finishDetection,
+    bool? needsReview,
   }) => EventResultRow(
     eventId: eventId ?? this.eventId,
     instanceStart: instanceStart ?? this.instanceStart,
@@ -2331,6 +2361,11 @@ class EventResultRow {
     gunTimeS: gunTimeS ?? this.gunTimeS,
     chipTimeS: chipTimeS ?? this.chipTimeS,
     finishMethod: finishMethod ?? this.finishMethod,
+    startAt: startAt ?? this.startAt,
+    finishAt: finishAt ?? this.finishAt,
+    startDetection: startDetection ?? this.startDetection,
+    finishDetection: finishDetection ?? this.finishDetection,
+    needsReview: needsReview ?? this.needsReview,
   );
 }
 
@@ -2366,6 +2401,11 @@ class EventRow {
   static const String colTimezone = 'timezone';
   static const String colIsPublic = 'is_public';
   static const String colGymRoutineId = 'gym_routine_id';
+  static const String colRaceStartMode = 'race_start_mode';
+  static const String colRaceScheduledOffsetS = 'race_scheduled_offset_s';
+  static const String colRaceWindowOpenOffsetS = 'race_window_open_offset_s';
+  static const String colRaceWindowLengthS = 'race_window_length_s';
+  static const String colRaceAutoApprove = 'race_auto_approve';
 
   final String id;
   final String clubId;
@@ -2395,6 +2435,11 @@ class EventRow {
   final String? timezone;
   final bool isPublic;
   final String? gymRoutineId;
+  final String raceStartMode;
+  final int? raceScheduledOffsetS;
+  final int? raceWindowOpenOffsetS;
+  final int? raceWindowLengthS;
+  final bool? raceAutoApprove;
 
   const EventRow({
     required this.id,
@@ -2425,6 +2470,11 @@ class EventRow {
     this.timezone,
     required this.isPublic,
     this.gymRoutineId,
+    required this.raceStartMode,
+    this.raceScheduledOffsetS,
+    this.raceWindowOpenOffsetS,
+    this.raceWindowLengthS,
+    this.raceAutoApprove,
   });
 
   factory EventRow.fromJson(Map<String, dynamic> json) => EventRow(
@@ -2456,6 +2506,11 @@ class EventRow {
     timezone: json['timezone'] as String?,
     isPublic: (json['is_public'] as bool?) ?? false,
     gymRoutineId: json['gym_routine_id'] as String?,
+    raceStartMode: json['race_start_mode'] as String,
+    raceScheduledOffsetS: (json['race_scheduled_offset_s'] as num?)?.toInt(),
+    raceWindowOpenOffsetS: (json['race_window_open_offset_s'] as num?)?.toInt(),
+    raceWindowLengthS: (json['race_window_length_s'] as num?)?.toInt(),
+    raceAutoApprove: json['race_auto_approve'] as bool?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -2487,6 +2542,11 @@ class EventRow {
     colTimezone: timezone,
     colIsPublic: isPublic,
     colGymRoutineId: gymRoutineId,
+    colRaceStartMode: raceStartMode,
+    colRaceScheduledOffsetS: raceScheduledOffsetS,
+    colRaceWindowOpenOffsetS: raceWindowOpenOffsetS,
+    colRaceWindowLengthS: raceWindowLengthS,
+    colRaceAutoApprove: raceAutoApprove,
   };
 
   EventRow copyWith({
@@ -2518,6 +2578,11 @@ class EventRow {
     String? timezone,
     bool? isPublic,
     String? gymRoutineId,
+    String? raceStartMode,
+    int? raceScheduledOffsetS,
+    int? raceWindowOpenOffsetS,
+    int? raceWindowLengthS,
+    bool? raceAutoApprove,
   }) => EventRow(
     id: id ?? this.id,
     clubId: clubId ?? this.clubId,
@@ -2547,6 +2612,11 @@ class EventRow {
     timezone: timezone ?? this.timezone,
     isPublic: isPublic ?? this.isPublic,
     gymRoutineId: gymRoutineId ?? this.gymRoutineId,
+    raceStartMode: raceStartMode ?? this.raceStartMode,
+    raceScheduledOffsetS: raceScheduledOffsetS ?? this.raceScheduledOffsetS,
+    raceWindowOpenOffsetS: raceWindowOpenOffsetS ?? this.raceWindowOpenOffsetS,
+    raceWindowLengthS: raceWindowLengthS ?? this.raceWindowLengthS,
+    raceAutoApprove: raceAutoApprove ?? this.raceAutoApprove,
   );
 }
 
@@ -5851,6 +5921,7 @@ class RacePingRow {
   static const String colElapsedS = 'elapsed_s';
   static const String colBpm = 'bpm';
   static const String colCoarse = 'coarse';
+  static const String colSinceStartLineS = 'since_start_line_s';
 
   final dynamic id;
   final String eventId;
@@ -5863,6 +5934,7 @@ class RacePingRow {
   final int? elapsedS;
   final int? bpm;
   final bool coarse;
+  final int? sinceStartLineS;
 
   const RacePingRow({
     required this.id,
@@ -5876,6 +5948,7 @@ class RacePingRow {
     this.elapsedS,
     this.bpm,
     required this.coarse,
+    this.sinceStartLineS,
   });
 
   factory RacePingRow.fromJson(Map<String, dynamic> json) => RacePingRow(
@@ -5890,6 +5963,7 @@ class RacePingRow {
     elapsedS: (json['elapsed_s'] as num?)?.toInt(),
     bpm: (json['bpm'] as num?)?.toInt(),
     coarse: (json['coarse'] as bool?) ?? false,
+    sinceStartLineS: (json['since_start_line_s'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5904,6 +5978,7 @@ class RacePingRow {
     colElapsedS: elapsedS,
     colBpm: bpm,
     colCoarse: coarse,
+    colSinceStartLineS: sinceStartLineS,
   };
 
   RacePingRow copyWith({
@@ -5918,6 +5993,7 @@ class RacePingRow {
     int? elapsedS,
     int? bpm,
     bool? coarse,
+    int? sinceStartLineS,
   }) => RacePingRow(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
@@ -5930,6 +6006,7 @@ class RacePingRow {
     elapsedS: elapsedS ?? this.elapsedS,
     bpm: bpm ?? this.bpm,
     coarse: coarse ?? this.coarse,
+    sinceStartLineS: sinceStartLineS ?? this.sinceStartLineS,
   );
 }
 
@@ -5947,6 +6024,10 @@ class RaceSessionRow {
   static const String colUpdatedAt = 'updated_at';
   static const String colIsAutoApprove = 'is_auto_approve';
   static const String colCoursesFrozenAt = 'courses_frozen_at';
+  static const String colStartMode = 'start_mode';
+  static const String colScheduledStartAt = 'scheduled_start_at';
+  static const String colWindowOpensAt = 'window_opens_at';
+  static const String colWindowClosesAt = 'window_closes_at';
 
   final String eventId;
   final DateTime instanceStart;
@@ -5958,6 +6039,10 @@ class RaceSessionRow {
   final DateTime updatedAt;
   final bool isAutoApprove;
   final DateTime? coursesFrozenAt;
+  final String startMode;
+  final DateTime? scheduledStartAt;
+  final DateTime? windowOpensAt;
+  final DateTime? windowClosesAt;
 
   const RaceSessionRow({
     required this.eventId,
@@ -5970,6 +6055,10 @@ class RaceSessionRow {
     required this.updatedAt,
     required this.isAutoApprove,
     this.coursesFrozenAt,
+    required this.startMode,
+    this.scheduledStartAt,
+    this.windowOpensAt,
+    this.windowClosesAt,
   });
 
   factory RaceSessionRow.fromJson(Map<String, dynamic> json) => RaceSessionRow(
@@ -5983,6 +6072,10 @@ class RaceSessionRow {
     updatedAt: parseIsoStrictRequired(json['updated_at'], 'updated_at'),
     isAutoApprove: (json['is_auto_approve'] as bool?) ?? false,
     coursesFrozenAt: parseIsoStrictValue(json['courses_frozen_at']),
+    startMode: json['start_mode'] as String,
+    scheduledStartAt: parseIsoStrictValue(json['scheduled_start_at']),
+    windowOpensAt: parseIsoStrictValue(json['window_opens_at']),
+    windowClosesAt: parseIsoStrictValue(json['window_closes_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5996,6 +6089,10 @@ class RaceSessionRow {
     colUpdatedAt: updatedAt.toIso8601String(),
     colIsAutoApprove: isAutoApprove,
     colCoursesFrozenAt: coursesFrozenAt?.toIso8601String(),
+    colStartMode: startMode,
+    colScheduledStartAt: scheduledStartAt?.toIso8601String(),
+    colWindowOpensAt: windowOpensAt?.toIso8601String(),
+    colWindowClosesAt: windowClosesAt?.toIso8601String(),
   };
 
   RaceSessionRow copyWith({
@@ -6009,6 +6106,10 @@ class RaceSessionRow {
     DateTime? updatedAt,
     bool? isAutoApprove,
     DateTime? coursesFrozenAt,
+    String? startMode,
+    DateTime? scheduledStartAt,
+    DateTime? windowOpensAt,
+    DateTime? windowClosesAt,
   }) => RaceSessionRow(
     eventId: eventId ?? this.eventId,
     instanceStart: instanceStart ?? this.instanceStart,
@@ -6020,6 +6121,10 @@ class RaceSessionRow {
     updatedAt: updatedAt ?? this.updatedAt,
     isAutoApprove: isAutoApprove ?? this.isAutoApprove,
     coursesFrozenAt: coursesFrozenAt ?? this.coursesFrozenAt,
+    startMode: startMode ?? this.startMode,
+    scheduledStartAt: scheduledStartAt ?? this.scheduledStartAt,
+    windowOpensAt: windowOpensAt ?? this.windowOpensAt,
+    windowClosesAt: windowClosesAt ?? this.windowClosesAt,
   );
 }
 

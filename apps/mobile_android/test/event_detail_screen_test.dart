@@ -57,6 +57,7 @@ class _RsvpFailSocial extends SocialService {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
     row: EventRow(
+      raceStartMode: 'host_go',
       id: 'e1',
       clubId: 'club-1',
       title: 'Saturday Long Run',
@@ -124,7 +125,11 @@ class _EventSocial extends SocialService {
     this.raceStatus,
     this.dnfCount,
     this.frozen = const {},
+    this.startMode = 'host_go',
   });
+  /// The event's race start mode (#1306), copied onto its session.
+  String startMode;
+  int delayCalls = 0;
   List<EventCourseView> courses;
   /// The occurrence's frozen courses; a non-empty map also stamps the race
   /// session's courses_frozen_at.
@@ -151,6 +156,7 @@ class _EventSocial extends SocialService {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
     row: EventRow(
+      raceStartMode: startMode,
       id: 'e1',
       clubId: 'club-1',
       title: 'Saturday Long Run',
@@ -188,7 +194,18 @@ class _EventSocial extends SocialService {
     final status = raceStatus;
     if (status == null) return null;
     final at = DateTime.utc(2026, 6, 20, 8);
+    // A scheduled or self-timed start an hour ahead while armed, an hour
+    // behind while running, on the real clock the panel reads.
+    final start = status == 'armed'
+        ? DateTime.now().toUtc().add(const Duration(hours: 1))
+        : DateTime.now().toUtc().subtract(const Duration(hours: 1));
     return RaceSessionRow(
+      startMode: startMode,
+      scheduledStartAt: startMode == 'scheduled' ? start : null,
+      windowOpensAt: startMode == 'self_timed' ? start : null,
+      windowClosesAt: startMode == 'host_go'
+          ? null
+          : start.add(const Duration(hours: 3)),
       eventId: eventId,
       instanceStart: instance,
       status: status,
@@ -215,12 +232,43 @@ class _EventSocial extends SocialService {
     armCalls++;
     final at = DateTime.utc(2026, 6, 20, 8);
     return RaceSessionRow(
+      startMode: 'host_go',
       eventId: eventId,
       instanceStart: instance,
       status: 'armed',
       createdAt: at,
       updatedAt: at,
       isAutoApprove: isAutoApprove,
+    );
+  }
+
+  @override
+  Future<bool> ensureRaceSession(String eventId, DateTime instance) async =>
+      true;
+
+  @override
+  Future<Duration?> fetchServerClockOffset() async => Duration.zero;
+
+  @override
+  Future<RaceSessionRow> delayRaceStart({
+    required String eventId,
+    required DateTime instance,
+    required bool selfTimed,
+    required DateTime start,
+  }) async {
+    delayCalls++;
+    final at = DateTime.utc(2026, 6, 20, 8);
+    return RaceSessionRow(
+      startMode: startMode,
+      scheduledStartAt: selfTimed ? null : start,
+      windowOpensAt: selfTimed ? start : null,
+      windowClosesAt: start.add(const Duration(hours: 3)),
+      eventId: eventId,
+      instanceStart: instance,
+      status: 'armed',
+      createdAt: at,
+      updatedAt: at,
+      isAutoApprove: true,
     );
   }
 
@@ -339,6 +387,7 @@ class _ClassRoutineSocial extends _EventSocial {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
     row: EventRow(
+      raceStartMode: 'host_go',
       id: 'e1',
       clubId: 'club-1',
       title: 'Strength Class',
@@ -819,6 +868,59 @@ void main() {
       final social = _EventSocial(club: _club('owner'), raceStatus: 'armed');
       await pumpEvent(tester, social);
       expect(find.text('Cancel'), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a scheduled race offers Delay and Cancel, never GO (#1306)', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('owner'),
+        raceStatus: 'armed',
+        startMode: 'scheduled',
+      );
+      await pumpEvent(tester, social);
+      expect(find.byKey(const ValueKey('race-mode-control')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-delay')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-cancel')), findsOneWidget);
+      expect(find.text('Fire Go'), findsNothing);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('race-delay')));
+      await tester.tap(find.byKey(const ValueKey('race-delay')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('+15 min'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.delayCalls, 1);
+    });
+
+    realtimeWidgetTest('an open self-timed window offers Extend and End, and a runner Join and attempt', (
+      tester,
+    ) async {
+      final director = _EventSocial(
+        club: _club('owner'),
+        raceStatus: 'running',
+        startMode: 'self_timed',
+      );
+      await pumpEvent(tester, director);
+      expect(find.byKey(const ValueKey('race-extend')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-end')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-live')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a member not going sees Join and attempt on an open self-timed race', (
+      tester,
+    ) async {
+      final runner = _EventSocial(
+        club: _club('member'),
+        raceStatus: 'running',
+        startMode: 'self_timed',
+      );
+      await pumpEvent(tester, runner);
+      expect(find.byKey(const ValueKey('self-timed-participant')), findsOneWidget);
+      expect(find.byKey(const ValueKey('self-timed-join')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-control')), findsNothing);
     });
 
     realtimeWidgetTest('End states how many racers it will mark DNF', (

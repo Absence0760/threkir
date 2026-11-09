@@ -21,9 +21,18 @@
 --
 -- The route is official because its author must be an active owner or admin
 -- of the verified, public club (`private.is_official_publisher`, § 2228); the
--- function refuses otherwise, before writing anything. The segment's lines
--- are derived from the new polyline by `global_segments_set_gates_trg`
--- (§ 2402); a curator's line is kept, as that trigger always does.
+-- function refuses otherwise, before writing anything.
+--
+-- The segment's start and end lines (§ 2402): an end the course names a
+-- `start_gate` / `end_gate` for (`{lat, lng, bearing_deg, half_width_m}`, which
+-- the build emits where the derived line would face off the course) is written
+-- as a curator line, on insert and on every re-load, so a redrawn course takes
+-- the line the new manifest carries. An end the course names none for is
+-- written source `derived`, which `global_segments_set_gates_trg` fills from
+-- the new polyline; that is the trigger's reset, so a curated line the
+-- manifest has dropped goes back to the derived one. The manifest is the
+-- record for a loaded course: a line placed by hand on one is replaced by the
+-- next load.
 --
 -- `p_enqueue_backfill` also queues `enqueue_segment_backfill` for every
 -- course. It defaults off: the launch backfill is a separate operator step.
@@ -76,6 +85,8 @@ declare
   v_action text;
   v_job bigint;
   v_box record;
+  v_start jsonb;
+  v_end jsonb;
 begin
   if not private.is_official_publisher(p_club_id, p_author_id) then
     raise exception 'load_park_catalogue: % is not an active owner or admin of the verified public club %',
@@ -103,6 +114,12 @@ begin
        or jsonb_array_length(v_waypoints) < 2
        or jsonb_array_length(private.global_segment_line(v_waypoints)) <> jsonb_array_length(v_waypoints) then
       raise exception 'load_park_catalogue: course % needs at least two waypoints, each a lat and lng in range',
+        v_course ->> 'slug'
+        using errcode = '22023';
+    end if;
+    if jsonb_typeof(coalesce(v_course -> 'start_gate', 'null')) not in ('object', 'null')
+       or jsonb_typeof(coalesce(v_course -> 'end_gate', 'null')) not in ('object', 'null') then
+      raise exception 'load_park_catalogue: course % has a start_gate or end_gate that is not an object',
         v_course ->> 'slug'
         using errcode = '22023';
     end if;
@@ -140,6 +157,8 @@ begin
 
   for v_course in select * from jsonb_array_elements(v_courses) loop
     v_description := concat_ws(E'\n\n', nullif(btrim(v_course ->> 'description'), ''), v_attribution);
+    v_start := nullif(v_course -> 'start_gate', 'null'::jsonb);
+    v_end := nullif(v_course -> 'end_gate', 'null'::jsonb);
 
     select pc.id, pc.global_segment_id, pc.route_id into v_existing
       from park_courses pc
@@ -158,18 +177,36 @@ begin
         elevation_m = (v_course ->> 'elevation_m')::numeric,
         surface = v_course ->> 'surface',
         region = p_manifest ->> 'region',
-        country_code = v_park ->> 'country_code'
+        country_code = v_park ->> 'country_code',
+        start_gate_lat = (v_start ->> 'lat')::float8,
+        start_gate_lng = (v_start ->> 'lng')::float8,
+        start_gate_bearing_deg = (v_start ->> 'bearing_deg')::float8,
+        start_gate_half_width_m = (v_start ->> 'half_width_m')::float8,
+        start_gate_source = case when v_start is null then 'derived' else 'curator' end,
+        end_gate_lat = (v_end ->> 'lat')::float8,
+        end_gate_lng = (v_end ->> 'lng')::float8,
+        end_gate_bearing_deg = (v_end ->> 'bearing_deg')::float8,
+        end_gate_half_width_m = (v_end ->> 'half_width_m')::float8,
+        end_gate_source = case when v_end is null then 'derived' else 'curator' end
        where gs.id = v_segment_id;
       v_route_id := v_existing.route_id;
     else
       v_action := 'created';
       v_course_id := null;
       insert into global_segments (name, description, waypoints, distance_m, elevation_m, surface, region,
-                                   country_code, created_by)
+                                   country_code, created_by,
+                                   start_gate_lat, start_gate_lng, start_gate_bearing_deg,
+                                   start_gate_half_width_m, start_gate_source,
+                                   end_gate_lat, end_gate_lng, end_gate_bearing_deg,
+                                   end_gate_half_width_m, end_gate_source)
       values (
         v_course ->> 'name', v_description, v_course -> 'waypoints', (v_course ->> 'distance_m')::numeric,
         (v_course ->> 'elevation_m')::numeric, v_course ->> 'surface', p_manifest ->> 'region',
-        v_park ->> 'country_code', p_author_id
+        v_park ->> 'country_code', p_author_id,
+        (v_start ->> 'lat')::float8, (v_start ->> 'lng')::float8, (v_start ->> 'bearing_deg')::float8,
+        (v_start ->> 'half_width_m')::float8, case when v_start is null then 'derived' else 'curator' end,
+        (v_end ->> 'lat')::float8, (v_end ->> 'lng')::float8, (v_end ->> 'bearing_deg')::float8,
+        (v_end ->> 'half_width_m')::float8, case when v_end is null then 'derived' else 'curator' end
       )
       returning id into v_segment_id;
       v_route_id := null;
@@ -238,6 +275,7 @@ $$;
 comment on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) is
   'Upserts one park and its courses (catalogue segment, park_courses row, public official route) from the '
   'payload scripts/parks/load.mjs prints, updating existing rows in place so ids and efforts survive. '
+  'A course''s start_gate / end_gate is written as a curator line, an end without one is reset to derived. '
   'Service role only; refuses an author who is not an official publisher of the club (decisions § 2425).';
 
 revoke execute on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) from public, anon, authenticated;

@@ -1,12 +1,14 @@
 -- The operator load of a park catalogue (migration 20271126002425, issue
 -- #1342, decisions § 2425): private.load_park_catalogue creates a park, its
 -- courses' catalogue segments, park_courses rows and official routes; a
--- re-run updates them in place, so ids and efforts survive; it refuses an
+-- re-run updates them in place, so ids and efforts survive; a course's curated
+-- start_gate / end_gate is written as a curator line and survives a re-load,
+-- and an end the manifest drops it for goes back to derived; it refuses an
 -- author who is not an official publisher, and no client role can call it.
 
 begin;
 
-select plan(32);
+select plan(39);
 
 -- ── Fixture ──
 -- O owns the verified public club; X belongs to no club; U owns a public club
@@ -254,6 +256,97 @@ select is(
   (select array_agg(global_segment_id::text order by global_segment_id::text) from load4),
   'the backfill flag queues one segment_match backfill per course');
 
+-- ── Curated lines ──
+-- v3: the 5K carries a curated start and end line, and a new course is created
+-- with them. v4: the 5K's lead-in is redrawn and the rebuilt end line turns.
+insert into manifests (k, j)
+select 'v3', jsonb_set(
+  jsonb_set(
+    jsonb_set(j, '{courses,1,start_gate}', '{"lat": 10.01, "lng": 20.0, "bearing_deg": 80, "half_width_m": 20}'),
+    '{courses,1,end_gate}', '{"lat": 10.01, "lng": 20.0, "bearing_deg": 260, "half_width_m": 20}'),
+  '{courses,2}',
+  jsonb_set(jsonb_set(j -> 'courses' -> 1, '{slug}', '"pcl-gated"'),
+            '{start_gate}', '{"lat": 10.01, "lng": 20.0, "bearing_deg": 75.5, "half_width_m": 15}'))
+from manifests where k = 'v1';
+insert into manifests (k, j)
+select 'v4', jsonb_set(
+  jsonb_set(j, '{courses,1,waypoints,1}', '{"lat": 10.0101, "lng": 20.0012}'),
+  '{courses,1,end_gate,bearing_deg}', '265')
+from manifests where k = 'v3';
+
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
+create temp table load5 as
+  select * from private.load_park_catalogue(
+    (select j from manifests where k = 'v3'),
+    '00000000-0000-0000-0000-0000000c1b01', '00000000-0000-0000-0000-0000000c1a01');
+reset role;
+set local "request.jwt.claims" = '{}';
+
+select is(
+  (select array[l.action, gs.start_gate_source, gs.end_gate_source]
+     from load5 l join global_segments gs on gs.id = l.global_segment_id where l.course_slug = 'pcl-gated'),
+  array['created', 'curator', 'derived'],
+  'a course created with a curated start line stores it as a curator line, and derives the end it names none for');
+select is(
+  (select array[gs.start_gate_lat, gs.start_gate_lng, gs.start_gate_bearing_deg, gs.start_gate_half_width_m]
+     from load5 l join global_segments gs on gs.id = l.global_segment_id where l.course_slug = 'pcl-gated'),
+  array[10.01, 20.0, 75.5, 15]::float8[],
+  'the created course''s curator line is the manifest''s, not the derived 90 degrees');
+select is(
+  (select array[gs.start_gate_source, gs.start_gate_bearing_deg::text, gs.start_gate_half_width_m::text,
+                gs.end_gate_source, gs.end_gate_bearing_deg::text, gs.end_gate_half_width_m::text]
+     from load5 l join global_segments gs on gs.id = l.global_segment_id where l.course_slug = 'pcl-5k'),
+  array['curator', '80', '20', 'curator', '260', '20'],
+  'an existing course given curated lines takes them as curator lines on update');
+
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
+create temp table load6 as
+  select * from private.load_park_catalogue(
+    (select j from manifests where k = 'v3'),
+    '00000000-0000-0000-0000-0000000c1b01', '00000000-0000-0000-0000-0000000c1a01');
+reset role;
+set local "request.jwt.claims" = '{}';
+
+select is(
+  (select array[gs.start_gate_source, gs.start_gate_bearing_deg::text, gs.end_gate_source, gs.end_gate_bearing_deg::text]
+     from load6 l join global_segments gs on gs.id = l.global_segment_id where l.course_slug = 'pcl-5k'),
+  array['curator', '80', 'curator', '260'],
+  'a curated line survives a re-load');
+
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
+create temp table load7 as
+  select * from private.load_park_catalogue(
+    (select j from manifests where k = 'v4'),
+    '00000000-0000-0000-0000-0000000c1b01', '00000000-0000-0000-0000-0000000c1a01');
+reset role;
+set local "request.jwt.claims" = '{}';
+
+select is(
+  (select array[gs.waypoints -> 1 ->> 'lng', gs.start_gate_source, gs.start_gate_bearing_deg::text,
+                gs.end_gate_source, gs.end_gate_bearing_deg::text]
+     from load7 l join global_segments gs on gs.id = l.global_segment_id where l.course_slug = 'pcl-5k'),
+  array['20.0012', 'curator', '80', 'curator', '265'],
+  'redrawn geometry keeps the curator lines, re-applied from the manifest rather than re-derived');
+
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
+create temp table load8 as
+  select * from private.load_park_catalogue(
+    (select j from manifests where k = 'v1'),
+    '00000000-0000-0000-0000-0000000c1b01', '00000000-0000-0000-0000-0000000c1a01');
+reset role;
+set local "request.jwt.claims" = '{}';
+
+select is(
+  (select array[gs.start_gate_source, round(gs.start_gate_bearing_deg)::text, gs.start_gate_half_width_m::text,
+                gs.end_gate_source, round(gs.end_gate_bearing_deg)::text, gs.end_gate_half_width_m::text]
+     from load8 l join global_segments gs on gs.id = l.global_segment_id where l.course_slug = 'pcl-5k'),
+  array['derived', '90', '15', 'derived', '270', '15'],
+  'a manifest that drops the curated lines resets both ends to the derived lines');
+
 -- ── Refusals ──
 select throws_ok(
   $$ select * from private.load_park_catalogue(
@@ -276,6 +369,13 @@ select throws_ok(
   '22023',
   'load_park_catalogue: course pcl-5k needs at least two waypoints, each a lat and lng in range',
   'a waypoint out of range is refused');
+select throws_ok(
+  $$ select * from private.load_park_catalogue(
+       jsonb_set((select j from manifests where k = 'v1'), '{courses,0,end_gate}', '"north"'),
+       '00000000-0000-0000-0000-0000000c1b01', '00000000-0000-0000-0000-0000000c1a01') $$,
+  '22023',
+  'load_park_catalogue: course pcl-loop has a start_gate or end_gate that is not an object',
+  'a curated line that is not an object is refused');
 
 set local role anon;
 select throws_ok(
@@ -295,7 +395,7 @@ set local "request.jwt.claims" = '{}';
 
 select is(
   (select count(*) from park_courses pc join parks p on p.id = pc.park_id where p.slug = 'pcl-test-park'),
-  2::bigint,
+  3::bigint,
   'the refused calls wrote nothing');
 
 select * from finish();

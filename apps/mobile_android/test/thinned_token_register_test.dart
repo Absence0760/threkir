@@ -57,6 +57,11 @@ const _register = <String, int>{
   // entry's derivation already used. Not the cue: the row carries a `navYou`
   // label beside the name and the name goes w700.
   'lib/screens/global_segments_screen.dart': 1,
+  // The park course board's viewer row: `primaryContainer@0.5` over the
+  // SCAFFOLD, not a card, so it has its own case in
+  // thinned_token_contrast_test.dart ("the park course board viewer row").
+  // Not the cue: the row carries a `navYou` label and the name goes w700.
+  'lib/screens/park_courses_screen.dart': 1,
   // A privacy-zone disc drawn on basemap TILES, so no ratio is computable at
   // all. The same call sets `borderColor` to full `primary` at 2 px, and a
   // full-strength cancel glyph sits at the centre — the boundary is carried by

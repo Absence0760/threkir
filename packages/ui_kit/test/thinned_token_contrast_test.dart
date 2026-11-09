@@ -177,6 +177,19 @@ void main() {
         }
       });
 
+      test('the park course board viewer row keeps its type over the page', () {
+        // Drawn straight on the scaffold, not on a card like the catalogue
+        // leaderboard's, so it is measured over the page colour itself.
+        // The tint is not the cue in either theme (the row says You and the
+        // name goes w700); what it owes is the floor of the type drawn on it.
+        final tint = _thin(s.primaryContainer, 0.5, scaffold);
+        expect(_contrast(s.onSurfaceVariant, tint),
+            greaterThanOrEqualTo(_aaText),
+            reason: 'the "You" label and the rank');
+        expect(_contrast(s.onSurface, tint), greaterThanOrEqualTo(_aaText),
+            reason: 'the athlete name and the time');
+      });
+
       test('the leaderboard viewer row is invisible against its neighbour', () {
         // The tint composites over the CARD here, not over the neighbouring
         // row's own opaque fill, which is why the two rows differ by so little.

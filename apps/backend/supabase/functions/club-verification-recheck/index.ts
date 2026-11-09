@@ -2,7 +2,7 @@
 /// handler.ts behind injected deps, so handler.test.ts drives it without a
 /// stack.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { Database } from '../_shared/database.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { secretKey } from '../_shared/api_keys.ts';

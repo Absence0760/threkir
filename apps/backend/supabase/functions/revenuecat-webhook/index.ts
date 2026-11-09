@@ -11,7 +11,7 @@
 /// signing is switched on (the REVENUECAT_WEBHOOK_SECRET env var). The function runs with the
 /// Supabase service role so it can update any user's tier.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { Database, DbClient, TablesUpdate } from '../_shared/database.ts';
 import { readTextWithLimit } from '../_shared/body_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';

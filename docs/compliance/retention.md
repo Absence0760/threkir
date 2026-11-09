@@ -91,9 +91,11 @@ checkpoint health job (scrubs columns), the export reap and the route-photo
 orphan sweep (each enqueues the job that erases Storage bytes), and the
 reports purge. The reports purge and the route-photo orphan sweep each read a
 `private.feature_flags` gate; the reports one is on (`20271022000001`), and the
-route-photo sweep does nothing until its gate is. The other fifteen live schedules are not retention
+route-photo sweep does nothing until its gate is. The other sixteen live schedules are not retention
 jobs and are excluded: `enqueue-token-refresh`, `enqueue-event-reminders`,
-`enqueue-workout-reminders`, `enqueue-weekly-digest`, `enqueue-lifecycle-drip`,
+`enqueue-workout-reminders`, `race-sessions-tick` (which creates, fires and
+closes scheduled and self-timed race sessions and raises the starting-soon
+notice; it deletes nothing), `enqueue-weekly-digest`, `enqueue-lifecycle-drip`,
 `enqueue-safety-overdue-emails`, `sweep-challenge-completions`,
 `jobs-stuck-alert`, `jobs-failed-alert`, `jobs-backlog-alert`,
 `export-retention-overrun-alert`, `expire-event-waitlist-offers` (which

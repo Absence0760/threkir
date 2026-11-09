@@ -88,7 +88,7 @@
 		position: relative;
 	}
 	.has-hide .disclosure-summary {
-		padding-inline-end: 2.75rem;
+		padding-inline-end: var(--tap-target-min);
 	}
 	.disclosure-hide {
 		position: absolute;
@@ -97,8 +97,8 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 2.75rem;
-		height: 2.75rem;
+		width: var(--tap-target-min);
+		height: var(--tap-target-min);
 		border: 0;
 		border-radius: var(--radius-sm);
 		background: transparent;

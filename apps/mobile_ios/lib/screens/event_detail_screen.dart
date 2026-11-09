@@ -2516,7 +2516,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               FilledButton.icon(
                 key: const ValueKey('self-timed-join'),
                 onPressed: _busy ? null : () => _rsvp('going'),
-                icon: const Icon(Icons.flag),
+                icon: const Icon(Icons.flag_outlined),
                 label: Text(l10n.eventRaceJoinAttempt),
               ),
             ],

@@ -322,7 +322,7 @@ class ActiveRace {
 
   Map<String, dynamic> toJson() => {
         'event_id': eventId,
-        'instance_start': instanceStart.toUtc().toIso8601String(),
+        'instance_start': instanceStartKey(instanceStart),
         'status': status,
         'started_at': startedAt?.toUtc().toIso8601String(),
         'event_title': eventTitle,

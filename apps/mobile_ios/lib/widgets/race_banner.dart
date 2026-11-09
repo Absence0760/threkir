@@ -250,7 +250,7 @@ class _RaceBannerState extends State<RaceBanner> {
                             : FilledButton.icon(
                                 key: const ValueKey('race-attempt'),
                                 onPressed: widget.controller.armAttempt,
-                                icon: const Icon(Icons.flag),
+                                icon: const Icon(Icons.flag_outlined),
                                 label: Text(l10n.runRaceThisIsMyAttempt),
                               );
                       },

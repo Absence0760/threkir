@@ -1,0 +1,19 @@
+# zizmor configuration, read by supply-chain-scan.yml (zizmor-action) and by
+# a local `zizmor --persona regular .github/`. Every entry names the rule, the
+# files it is waived in, and why; see decisions.md § 2421.
+rules:
+  # self-repository asks for GitHub's `$/` same-repository `uses:` syntax
+  # (github.com, July 2026, runner >= 2.336.0) in place of `./`. Not adopted
+  # yet: actionlint v1.7.12, the newest release and the one ci.yml's
+  # workflow-lint job pins, rejects `$/…` as an action reference missing its
+  # `@ref` and as a malformed reusable-workflow path, so the switch would fail
+  # the required CI gate, and actionlint would stop reading these local
+  # actions' `inputs:` to check each `with:`. Waived per file, not disabled,
+  # so a `./` reference in any other workflow is still reported. Re-measure
+  # when actionlint ships `$/` support, then switch and delete this entry.
+  self-repository:
+    ignore:
+      - ci.yml
+      - security.yml
+      - gitleaks-sweep.yml
+      - release-backend.yml

@@ -267,7 +267,7 @@ Some per-device prefs are **never** synced to `user_settings` / `user_device_set
   sign-out), so a subsequent sign-in as a different user on the same
   browser can't read or replay against another account. A settings call
   still awaiting the network at that point writes through a fenced
-  handle and cannot put the bag back (decisions § 2418).
+  handle and cannot put the bag back (decisions § 2420).
   This lifts the dashboard's Fitness / Intensity / weekly-goal /
   unit-preference reads off the critical network path on every visit
   after the first.

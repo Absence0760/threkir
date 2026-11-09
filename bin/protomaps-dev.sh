@@ -157,6 +157,13 @@ cmd_fetch() {
 	ok "downloaded ($(du -h "$PMTILES_FILE" | cut -f1))"
 }
 
+# The source carries its credits itself, as the mobile maps do over the same
+# tiles (basemap_credits.dart): the PMTiles are built from OpenStreetMap, whose
+# ODbL wants the credit whoever serves them. The map's attribution control and
+# the flyover video's credit line (`videoAttribution`) both read it from the
+# style, not from the TileJSON tileserver-gl serves.
+BASEMAP_ATTRIBUTION='<a href=\"https://protomaps.com/\" target=\"_blank\" rel=\"noopener noreferrer\">&copy; Protomaps</a> <a href=\"https://www.openstreetmap.org/copyright\" target=\"_blank\" rel=\"noopener noreferrer\">&copy; OpenStreetMap contributors</a>'
+
 write_style() {
 	local file="$1" name="$2" ground="$3" water="$4" road="$5"
 	cat > "$file" <<EOF
@@ -166,7 +173,8 @@ write_style() {
 	"sources": {
 		"v3": {
 			"type": "vector",
-			"url": "mbtiles://v3"
+			"url": "mbtiles://v3",
+			"attribution": "${BASEMAP_ATTRIBUTION}"
 		}
 	},
 	"layers": [

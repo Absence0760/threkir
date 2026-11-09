@@ -1,5 +1,6 @@
 /// Browser glue for the flyover video export (decisions § 2259): an offscreen
-/// MapLibre map at the video's own size, stepped frame by frame by the pure
+/// MapLibre map framed like the phone preview and drawn at the video's size
+/// (`videoMapViewport`), stepped frame by frame by the pure
 /// clock in `video_timeline.ts`, composited with the overlays
 /// `video_overlay.ts` places, and encoded through the shared sink in
 /// `#lib/video/encode_video.ts`. Everything that can be decided without a
@@ -25,7 +26,6 @@ import { createFrameSink, videoAbortError, type FrameSink } from '#lib/video/enc
 import { VIDEO_FINALE, videoFrame, videoTimeline, type VideoFrame } from './video_timeline.ts';
 import {
 	finaleCamera,
-	OVERVIEW_PADDING_PX,
 	OVERVIEW_PITCH,
 	overviewPose,
 	pathBounds,
@@ -39,6 +39,7 @@ import {
 	type TextSlot,
 	type VideoOverlayLayout,
 } from './video_overlay.ts';
+import { videoMapViewport, videoOverviewPadding, type VideoMapViewport } from './video_viewport.ts';
 
 const FLIGHT_ZOOM = 14;
 const SETTLE_TIMEOUT_MS = 4000;
@@ -183,6 +184,7 @@ interface Scene {
 	input: FlyoverVideoInput;
 	darkBasemap: boolean;
 	layout: VideoOverlayLayout;
+	viewport: VideoMapViewport;
 	attribution: string;
 	mark: HTMLImageElement | null;
 	strip: { line: Path2D | null; area: Path2D | null; climbs: { x0: number; x1: number }[] };
@@ -213,9 +215,11 @@ function composeFrame(
 	ctx.fillRect(0, H - L.bottomScrim, W, L.bottomScrim);
 
 	const here = pointAtDistance(input.path, frame.dM);
+	// `project` answers in the map's CSS pixels; the frame is video pixels.
 	const at = map.project([here.lng, here.lat]);
+	const k = scene.viewport.pixelRatio;
 	ctx.beginPath();
-	ctx.arc(at.x, at.y, 14, 0, Math.PI * 2);
+	ctx.arc(at.x * k, at.y * k, 14, 0, Math.PI * 2);
 	ctx.fillStyle = mapAccentColour(scene.darkBasemap);
 	ctx.fill();
 	ctx.lineWidth = 5;
@@ -285,18 +289,18 @@ function composeFrame(
 	}
 }
 
-/// The whole-course overview at the video's own size, or null when the map
-/// cannot fit the bounds (the video then holds the finish, as it used to).
-function overviewTarget(map: maplibregl.Map, path: FlyoverPath, layout: VideoOverlayLayout): CameraPose | null {
+/// The whole-course overview in the video's map, or null when the map cannot
+/// fit the bounds (the video then holds the finish, as it used to).
+function overviewTarget(
+	map: maplibregl.Map,
+	path: FlyoverPath,
+	layout: VideoOverlayLayout,
+	viewport: VideoMapViewport,
+): CameraPose | null {
 	try {
 		// Clear of the title and the counter, strip and credits under the scrims.
 		const fit = map.cameraForBounds(pathBounds(path), {
-			padding: {
-				top: layout.topScrim,
-				bottom: layout.bottomScrim,
-				left: OVERVIEW_PADDING_PX,
-				right: OVERVIEW_PADDING_PX,
-			},
+			padding: videoOverviewPadding(layout, viewport.pixelRatio),
 			bearing: 0,
 			pitch: OVERVIEW_PITCH,
 		});
@@ -314,12 +318,13 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 	if (signal.aborted) throw videoAbortError();
 	const t = videoTimeline(path.totalM);
 	const layout = videoOverlayLayout(VIDEO_WIDTH, VIDEO_HEIGHT);
+	const viewport = videoMapViewport(VIDEO_WIDTH, VIDEO_HEIGHT);
 	const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 	const darkBasemap = basemapIsDarkFromEnv(input.maptilerKey, prefersDark);
 
 	const host = document.createElement('div');
 	host.setAttribute('aria-hidden', 'true');
-	host.style.cssText = `position:fixed;left:0;top:0;width:${VIDEO_WIDTH}px;height:${VIDEO_HEIGHT}px;transform:translateX(-300vw);pointer-events:none;`;
+	host.style.cssText = `position:fixed;left:0;top:0;width:${viewport.cssWidth}px;height:${viewport.cssHeight}px;transform:translateX(-300vw);pointer-events:none;`;
 	document.body.appendChild(host);
 
 	const out = document.createElement('canvas');
@@ -338,7 +343,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			bearing: first.bearing,
 			pitch: FLYOVER_PITCH,
 			zoom: FLIGHT_ZOOM,
-			pixelRatio: 1,
+			pixelRatio: viewport.pixelRatio,
 			interactive: false,
 			attributionControl: false,
 			fadeDuration: 0,
@@ -369,6 +374,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			input,
 			darkBasemap,
 			layout,
+			viewport,
 			attribution: videoAttribution([...styleCredits, input.terrain?.attribution]),
 			mark,
 			strip: {
@@ -380,7 +386,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 
 		const finish = cameraAt(path, path.totalM);
 		const from: CameraPose = { center: finish.center, bearing: finish.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM };
-		const overview = overviewTarget(m, path, layout);
+		const overview = overviewTarget(m, path, layout, viewport);
 
 		sink = createFrameSink(input.plan, out, t.fps);
 		const mapCanvas = m.getCanvas();

@@ -13,16 +13,22 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
+# Read-only by default. Only `report`, which runs no repository code and
+# installs nothing, may write issues: the audit job runs `pnpm install`, and
+# a token that can edit issues has no business beside third-party packages.
 permissions:
   contents: read
-  issues: write
 
 jobs:
   audit:
     runs-on: ubuntu-latest
+    outputs:
+      exit_code: ${{ steps.audit.outputs.exit_code }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up pnpm
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -84,8 +90,27 @@ jobs:
           } > audit-summary.md
           cat audit-summary.md
 
+      - name: Keep the findings for the report job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: audit-summary
+          path: audit-summary.md
+          retention-days: 7
+
+  report:
+    needs: audit
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write # open, update or close the dependency-audit issue
+    steps:
+      - name: Fetch the findings
+        if: needs.audit.outputs.exit_code != '0'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: audit-summary
+
       - name: Open or update tracking issue on findings
-        if: steps.audit.outputs.exit_code != '0'
+        if: needs.audit.outputs.exit_code != '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -116,7 +141,7 @@ jobs:
           fi
 
       - name: Close tracking issue on clean run
-        if: steps.audit.outputs.exit_code == '0'
+        if: needs.audit.outputs.exit_code == '0'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -140,6 +165,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

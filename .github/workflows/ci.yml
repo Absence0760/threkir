@@ -1908,7 +1908,7 @@ jobs:
             echo "Reproduce with: node --test scripts/check_conflict_markers.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.21.0
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         id: flutter
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         with:

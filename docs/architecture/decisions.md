@@ -32634,7 +32634,7 @@ A timing line (#1303) needs one crossing rule on every client that can time a ra
 
 ---
 
-## 2398. Park course geometry is built offline from a committed OSM + USGS snapshot; Pocahontas gets the Beaver Lake park course and exact-distance Swift Creek race courses
+## 2409. Park course geometry is built offline from a committed OSM + USGS snapshot; Pocahontas gets the Beaver Lake park course and exact-distance Swift Creek race courses
 
 **Decided:** 2026-11-08 (issue #1313, phase 3).
 

@@ -13,7 +13,9 @@
 // uses a way not open to people on foot (a social trail, a bike-only trail,
 // `access=no` without a foot override) is refused the same way, and so is one
 // whose line uses a way the park's `trail_review` has not marked designated
-// after checking it against the land manager's own trail map.
+// after checking it against the land manager's own trail map. So is a course
+// whose start or end line, as the database's gate trigger will derive it from
+// the built points, faces more than 10 degrees off the course at that end.
 //
 // Run:   node scripts/parks/build.mjs scripts/parks/catalogue/us-va/pocahontas
 // Check: node scripts/parks/build.mjs --check scripts/parks/catalogue/us-va/pocahontas
@@ -25,6 +27,7 @@ import {
 	PUBLISHED_DISTANCE_TOLERANCE,
 	RACE_DISTANCES_M,
 	assertFootAccess,
+	assertGateBearings,
 	assertTrailReview,
 	distanceDeviation,
 	elevationGainM,
@@ -89,6 +92,7 @@ export function buildPark(dir) {
 			lng: round6(p.lng),
 			ele: p.ele ?? null,
 		}));
+		gateBearingsOrThrow(course.slug, waypoints);
 
 		const geojson = {
 			type: 'FeatureCollection',
@@ -162,6 +166,7 @@ export function buildPark(dir) {
 			lng: round6(p.lng),
 			ele: p.ele == null ? null : Math.round(p.ele * 10) / 10,
 		}));
+		gateBearingsOrThrow(race.slug, waypoints);
 		const startFinish = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 
 		const geojson = {
@@ -251,6 +256,18 @@ function footAccessOrThrow(slug, sequence, ways) {
 function trailReviewOrThrow(slug, sequence, ways, review) {
 	try {
 		return assertTrailReview(sequence, ways, review);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
+}
+
+/**
+ * @param {string} slug
+ * @param {import('./lib/course_geometry.mjs').LatLng[]} waypoints
+ */
+function gateBearingsOrThrow(slug, waypoints) {
+	try {
+		assertGateBearings(waypoints);
 	} catch (err) {
 		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
 	}

@@ -396,12 +396,142 @@ export function lapCourse({ leadIn, loop, laps }) {
  */
 export const GATE_BEARING_LOOK_AHEAD_M = 25;
 
+/** Mirrors `c_min` in `private.course_end_bearing`: under this much line, an end gets no line. */
+export const GATE_BEARING_MIN_LINE_M = 10;
+
+/** The stretch at each end whose direction the derived line must face. */
+export const COURSE_END_DIRECTION_SPAN_M = 5;
+
+/** How far a derived line may face off the course's own direction at it. */
+export const GATE_BEARING_TOLERANCE_DEG = 10;
+
 /**
- * How close a race course's start line may sit to the loop. Any closer and the
- * trigger's look-ahead point lands on the loop, so the line is skewed off the
- * lead-in (the half's came out 56 degrees off at 9 m).
+ * `private.gate_plane_xy`: metres east and north of the origin.
+ *
+ * @param {{ lat: number, lng: number }} o
+ * @param {{ lat: number, lng: number }} p
  */
-export const START_LINE_MIN_FROM_LOOP_M = GATE_BEARING_LOOK_AHEAD_M + 5;
+function gatePlaneXY(o, p) {
+	let dl = p.lng - o.lng;
+	if (dl >= 180) dl -= 360;
+	else if (dl < -180) dl += 360;
+	const toRad = Math.PI / 180;
+	return { x: dl * toRad * EARTH_RADIUS_M * Math.cos(o.lat * toRad), y: (p.lat - o.lat) * toRad * EARTH_RADIUS_M };
+}
+
+/**
+ * `private.gate_bearing_of`: compass degrees in [0, 360).
+ *
+ * @param {number} x
+ * @param {number} y
+ */
+function gateBearingOf(x, y) {
+	const b = (((Math.atan2(x, y) * 180) / Math.PI) % 360 + 360) % 360;
+	return b >= 360 ? b - 360 : b;
+}
+
+/**
+ * The bearing the gate trigger derives for a course's start line (or, with
+ * `finish`, its end line), step for step as `private.course_end_bearing`
+ * does: the direction from the end point to the point
+ * `GATE_BEARING_LOOK_AHEAD_M` along the line, in a plane centred on the end
+ * point. Null when under `GATE_BEARING_MIN_LINE_M` of line is readable.
+ *
+ * @param {Array<{ lat: number, lng: number }>} points
+ * @param {boolean} finish
+ * @returns {number | null}
+ */
+export function derivedGateBearing(points, finish) {
+	const n = points.length;
+	if (n < 2) return null;
+	const o = points[finish ? n - 1 : 0];
+	let px = 0;
+	let py = 0;
+	let tx = 0;
+	let ty = 0;
+	let acc = 0;
+	for (let i = 1; i <= n - 1; i++) {
+		const { x: cx, y: cy } = gatePlaneXY(o, points[finish ? n - 1 - i : i]);
+		const d = Math.hypot(cx - px, cy - py);
+		if (d > 0) {
+			if (acc + d >= GATE_BEARING_LOOK_AHEAD_M) {
+				const f = (GATE_BEARING_LOOK_AHEAD_M - acc) / d;
+				tx = px + f * (cx - px);
+				ty = py + f * (cy - py);
+				acc = GATE_BEARING_LOOK_AHEAD_M;
+				break;
+			}
+			acc += d;
+			tx = cx;
+			ty = cy;
+		}
+		px = cx;
+		py = cy;
+	}
+	if (acc < GATE_BEARING_MIN_LINE_M) return null;
+	return finish ? gateBearingOf(-tx, -ty) : gateBearingOf(tx, ty);
+}
+
+/**
+ * The direction of travel over the course's first (or, with `finish`, last)
+ * `COURSE_END_DIRECTION_SPAN_M`.
+ *
+ * @param {LatLng[]} points
+ * @param {boolean} finish
+ */
+export function courseEndDirection(points, finish) {
+	const total = pathLengthM(points);
+	const span = finish
+		? slice(points, total - COURSE_END_DIRECTION_SPAN_M, total)
+		: slice(points, 0, COURSE_END_DIRECTION_SPAN_M);
+	const { x, y } = gatePlaneXY(span[0], span[span.length - 1]);
+	return gateBearingOf(x, y);
+}
+
+/**
+ * @param {number} a
+ * @param {number} b
+ */
+function angleApartDeg(a, b) {
+	const d = Math.abs(a - b) % 360;
+	return d > 180 ? 360 - d : d;
+}
+
+/**
+ * Refuse a course whose start or end line, as the gate trigger will derive it
+ * from these exact points, faces more than `GATE_BEARING_TOLERANCE_DEG` off
+ * the course's own direction at that end. A bend within the look-ahead skews
+ * the line (the 10K's lay 14 m before an 83 degree turn and came out 36
+ * degrees off), and a skewed line misses or double-counts crossings.
+ *
+ * @param {LatLng[]} points
+ */
+export function assertGateBearings(points) {
+	/** @type {string[]} */
+	const problems = [];
+	for (const [finish, name] of /** @type {const} */ ([
+		[false, 'start'],
+		[true, 'end'],
+	])) {
+		const derived = derivedGateBearing(points, finish);
+		const course = courseEndDirection(points, finish);
+		if (derived === null) {
+			problems.push(`the ${name} line gets no bearing (under ${GATE_BEARING_MIN_LINE_M} m of line)`);
+			continue;
+		}
+		const off = angleApartDeg(derived, course);
+		if (off > GATE_BEARING_TOLERANCE_DEG) {
+			problems.push(
+				`the ${name} line's derived bearing ${derived.toFixed(1)} degrees is ${off.toFixed(1)} degrees off the course's ${course.toFixed(1)} degrees over its ${finish ? 'last' : 'first'} ${COURSE_END_DIRECTION_SPAN_M} m`,
+			);
+		}
+	}
+	if (problems.length > 0) {
+		throw new Error(
+			`${problems.join('; ')}, over the ${GATE_BEARING_TOLERANCE_DEG} degrees allowed; the gate trigger aims each line ${GATE_BEARING_LOOK_AHEAD_M} m along the course, so move the line off the bend`,
+		);
+	}
+}
 
 /**
  * The polyline between `fromM` and `toM` metres along `points`, with the cut
@@ -440,9 +570,7 @@ export function slice(points, fromM, toM) {
  * Cut the same length off both ends of an out-and-back lead-in course so it
  * measures exactly `targetM`, which puts the shared start/finish line on the
  * lead-in. Refused when the course is already short, when the cut would
- * reach past the lead-in onto the loop (the start would then sit mid-lap), or
- * when it would leave the start line closer to the loop than
- * `START_LINE_MIN_FROM_LOOP_M`.
+ * reach past the lead-in onto the loop (the start would then sit mid-lap).
  *
  * @param {LatLng[]} points
  * @param {number} targetM
@@ -458,12 +586,6 @@ export function trimToDistance(points, targetM, leadInM) {
 	if (trim > leadInM) {
 		throw new Error(
 			`course is ${(total - targetM).toFixed(1)} m too long; the start line would sit ${trim.toFixed(1)} m in, past the ${leadInM.toFixed(1)} m lead-in`,
-		);
-	}
-	const fromLoopM = leadInM - trim;
-	if (fromLoopM < START_LINE_MIN_FROM_LOOP_M) {
-		throw new Error(
-			`the start line would sit ${fromLoopM.toFixed(1)} m from the loop, under the ${START_LINE_MIN_FROM_LOOP_M} m the gate trigger needs to take its bearing on the lead-in; shorten the loop`,
 		);
 	}
 	return { points: slice(points, trim, total - trim), trimEachEndM: trim };

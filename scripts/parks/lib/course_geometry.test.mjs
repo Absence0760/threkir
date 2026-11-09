@@ -24,7 +24,10 @@ import {
 	traceLoop,
 	traceVia,
 	GATE_BEARING_LOOK_AHEAD_M,
-	START_LINE_MIN_FROM_LOOP_M,
+	GATE_BEARING_MIN_LINE_M,
+	assertGateBearings,
+	courseEndDirection,
+	derivedGateBearing,
 	trimToDistance,
 } from './course_geometry.mjs';
 
@@ -186,15 +189,79 @@ test('trimToDistance refuses a short course and a start line off the lead-in', (
 	assert.throws(() => trimToDistance(pts, total - 200, 50), /past the/);
 });
 
-test('trimToDistance refuses a start line closer to the loop than the gate look-ahead allows', () => {
-	const pts = toPoints([5, 1, 2, 3, 4, 1, 5], nodes);
-	const leadInM = haversineM({ lat: -0.0005, lng: 0 }, { lat: 0, lng: 0 });
-	const total = pathLengthM(pts);
-	const closest = leadInM - START_LINE_MIN_FROM_LOOP_M;
-	assert.doesNotThrow(() => trimToDistance(pts, total - 2 * closest + 0.01, leadInM));
+const M_PER_DEG = (6371008.8 * Math.PI) / 180;
+
+/** Points from metre offsets [east, north] of 0,0, where a degree is the same length both ways. */
+const metres = (/** @type {Array<[number, number]>} */ xy) => xy.map(([x, y]) => ({ lat: y / M_PER_DEG, lng: x / M_PER_DEG }));
+
+/** Out east `bendAtM`, then north, then back the same way, as a lead-in run out and back. */
+const bentOutAndBack = (/** @type {number} */ bendAtM) =>
+	metres([
+		[0, 0],
+		[bendAtM, 0],
+		[bendAtM, 60],
+		[bendAtM + 1, 60],
+		[bendAtM, 0],
+		[0, 0],
+	]);
+
+test('derivedGateBearing aims each end at the point 25 m along, as the trigger does', () => {
+	const straight = metres([
+		[0, 0],
+		[10, 10],
+		[100, 100],
+	]);
+	assert.ok(Math.abs(/** @type {number} */ (derivedGateBearing(straight, false)) - 45) < 1e-6);
+	assert.ok(Math.abs(/** @type {number} */ (derivedGateBearing(straight, true)) - 45) < 1e-6);
+	const bent = metres([
+		[0, 0],
+		[15, 0],
+		[15, 100],
+	]);
+	const expected = (Math.atan2(15, 10) * 180) / Math.PI;
+	assert.ok(Math.abs(/** @type {number} */ (derivedGateBearing(bent, false)) - expected) < 1e-6);
+	assert.ok(Math.abs(/** @type {number} */ (derivedGateBearing(bent, true))) < 1e-6);
+});
+
+test('derivedGateBearing gives no line under the trigger minimum, and skips repeated points', () => {
+	const short = metres([
+		[0, 0],
+		[GATE_BEARING_MIN_LINE_M - 0.5, 0],
+	]);
+	assert.equal(derivedGateBearing(short, false), null);
+	assert.equal(derivedGateBearing(short.slice(0, 1), false), null);
+	const repeated = metres([
+		[0, 0],
+		[0, 0],
+		[0, 30],
+	]);
+	assert.ok(Math.abs(/** @type {number} */ (derivedGateBearing(repeated, false))) < 1e-6);
+});
+
+test('courseEndDirection reads the first and last 5 m only', () => {
+	const pts = bentOutAndBack(15);
+	assert.ok(Math.abs(courseEndDirection(pts, false) - 90) < 1e-6);
+	assert.ok(Math.abs(courseEndDirection(pts, true) - 270) < 1e-6);
+});
+
+test('assertGateBearings passes a line clear of the bend and refuses one within the look-ahead, with both angles', () => {
+	assert.doesNotThrow(() => assertGateBearings(bentOutAndBack(GATE_BEARING_LOOK_AHEAD_M + 1)));
 	assert.throws(
-		() => trimToDistance(pts, total - 2 * (closest + 1), leadInM),
-		/the start line would sit 29\.0 m from the loop, under the 30 m/,
+		() => assertGateBearings(bentOutAndBack(15)),
+		/the start line's derived bearing 56\.3 degrees is 33\.7 degrees off the course's 90\.0 degrees over its first 5 m; the end line's derived bearing 23\d\.\d degrees is 3\d\.\d degrees off the course's 27\d\.\d degrees over its last 5 m, over the 10 degrees allowed/,
+	);
+});
+
+test('assertGateBearings refuses an end too short to get a line', () => {
+	assert.throws(
+		() =>
+			assertGateBearings(
+				metres([
+					[0, 0],
+					[5, 0],
+				]),
+			),
+		/the start line gets no bearing .* the end line gets no bearing/,
 	);
 });
 
@@ -213,7 +280,9 @@ test('the gate look-ahead mirrors the trigger it is named for', () => {
 	const along = /c_along constant double precision := (\d+(?:\.\d+)?);/.exec(body);
 	assert.ok(along, `${defining.at(-1)}: c_along not found`);
 	assert.equal(Number(along[1]), GATE_BEARING_LOOK_AHEAD_M);
-	assert.ok(START_LINE_MIN_FROM_LOOP_M >= GATE_BEARING_LOOK_AHEAD_M + 5);
+	const min = /c_min constant double precision := (\d+(?:\.\d+)?);/.exec(body);
+	assert.ok(min, `${defining.at(-1)}: c_min not found`);
+	assert.equal(Number(min[1]), GATE_BEARING_MIN_LINE_M);
 });
 
 test('slice interpolates elevation at the cut', () => {

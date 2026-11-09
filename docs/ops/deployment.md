@@ -354,7 +354,7 @@ it.
 
 ### What runs on a pull request and does not block it
 
-Six workflows trigger on a pull request and reach nothing the gate waits for.
+Seven workflows trigger on a pull request and reach nothing the gate waits for.
 Each is a decision rather than a backlog item, and the decisions live in code:
 `PR_ADVISORY` in
 [`scripts/check_ci_diagnostics.mjs`](../../scripts/check_ci_diagnostics.mjs)
@@ -388,6 +388,13 @@ dropped, or an entry there this list never mentions, fails `workflow-lint`.
   terms too -- `CI gate` is already absent on such a PR, so branch protection
   already blocks the merge; this adds a signal to a reader, not a second lock
   ([§ 1686](../architecture/decisions.md)).
+- `supply-chain-scan.yml` -- zizmor (workflow security) and osv-scanner
+  (every lockfile) report to code scanning and the job summary and exit clean
+  on a finding, so a fold would gate on the scanners completing, which an OSV
+  database or GitHub API outage can stop, rather than on what they found.
+  Blocking on a finding is a later policy change, after the baseline is fixed
+  and the CISO / Security Analyst sign off, made through the code-scanning
+  ruleset ([§ 2412](../architecture/decisions.md)).
 
 The register carries each reason in full; the list above is the operator's
 index into it. All six go red on a finding and the PR merges anyway, so a red

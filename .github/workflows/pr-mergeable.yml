@@ -7,7 +7,7 @@ name: pr-mergeable
 # with conflicts, so no run is created — not a queued job, not a skipped one,
 # not a failed one. Nothing. What the reader sees is the three checks that
 # survive, because they are `pull_request_target` and build the head ref
-# instead: this workflow, `labeler` and `dependabot-auto-merge`. Two of them
+# instead: this workflow, `labeler` and `pr-title-lint`. Two of them
 # go green and nothing says CI was absent.
 #
 # Measured on 2026-09-20: four open PRs each showed 3 green checks while
@@ -43,12 +43,14 @@ name: pr-mergeable
 # API calls.
 
 on:
+  # zizmor: ignore[dangerous-triggers] -- needed: a conflicting PR has no merge ref, so `pull_request` never runs; no checkout, reads only the PR number, read-only token.
   pull_request_target:
     types: [opened, reopened, synchronize]
   push:
     branches: [main]
 
-permissions: read-all
+# Each job names its own scopes; the workflow grants none.
+permissions: {}
 
 concurrency:
   group: pr-mergeable-${{ github.event.pull_request.number || github.sha }}

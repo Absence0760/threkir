@@ -18,7 +18,7 @@
 /// registry.npmjs.org before the worker boots, and every stack-using CI job's
 /// setup probes that function (decisions § 699). The probe path takes its row
 /// types from `./database_types.ts` instead.
-import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.118.0';
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { Database, Json, TablesInsert, TablesUpdate } from './database_types.ts';
 
 export type { Database, Json, TablesInsert, TablesUpdate };

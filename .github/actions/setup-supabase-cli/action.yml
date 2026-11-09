@@ -51,6 +51,10 @@ inputs:
     description: Supabase CLI version to install, without a leading "v".
     required: true
 
+# The verified binary is installed into /usr/local/bin, which every runner
+# already has on PATH, rather than its directory appended to GITHUB_PATH: an
+# environment-file write changes PATH for every later step of the caller's
+# job, and this action cannot see what those steps are or what triggered them.
 runs:
   using: composite
   steps:
@@ -76,8 +80,8 @@ runs:
         # is a miss rather than a failure -- fall through to the download.
         if [ -x "$dest/supabase" ] \
           && [ -f "$dest/supabase.sha256" ] \
-          && (cd "$dest" && sha256sum -c supabase.sha256 >/dev/null 2>&1); then
-          echo "$dest" >> "$GITHUB_PATH"
+          && (cd "$dest" && sha256sum -c supabase.sha256 >/dev/null 2>&1) \
+          && sudo install -m 0755 "$dest/supabase" /usr/local/bin/supabase; then
           echo "ok=true" >> "$GITHUB_OUTPUT"
           echo "Supabase CLI ${SUPABASE_CLI_VERSION} restored from cache; digest verified."
         else
@@ -124,7 +128,7 @@ runs:
             # of the entry and nothing reads it again.
             rm -f "$dest/$tarball"
             (cd "$dest" && sha256sum supabase > supabase.sha256)
-            echo "$dest" >> "$GITHUB_PATH"
+            sudo install -m 0755 "$dest/supabase" /usr/local/bin/supabase
             echo "Supabase CLI ${ver} installed on attempt ${attempt}; checksum verified."
             exit 0
           fi

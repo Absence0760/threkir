@@ -126,7 +126,7 @@
   "devDependencies": {
     "@supabase/supabase-js": "2.118.0",
     "@types/node": "^26.6.6",
-    "stripe": "17.5.0",
+    "stripe": "23.1.0",
     "svelte": "5.57.3"
   },
   "overrides": {

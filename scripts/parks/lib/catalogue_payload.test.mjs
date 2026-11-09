@@ -144,8 +144,36 @@ test('a valid manifest maps every field the load writes', () => {
 		description: 'Run it clockwise.',
 		checkpoints: [{ lat: 0.001, lng: 0.001 }],
 		waypoints: SQUARE.map(([lng, lat, ele]) => ({ lat, lng, ele })),
+		start_gate: null,
+		end_gate: null,
 	});
 	assert.equal(payload.attribution, '© OpenStreetMap contributors (ODbL)');
+});
+
+test('a curated start or end line passes through as the gate the load writes', () => {
+	const gate = { lat: 0, lng: 0, bearing_deg: 90, half_width_m: 15 };
+	const payload = cataloguePayload(manifest({ courses: [{ ...manifest().courses[0], start_gate: gate }] }), squareOnly);
+	assert.deepEqual(payload.courses[0].start_gate, gate);
+	assert.equal(payload.courses[0].end_gate, null);
+	const both = cataloguePayload(
+		manifest({ courses: [{ ...manifest().courses[0], start_gate: gate, end_gate: { ...gate, bearing_deg: 180 } }] }),
+		squareOnly,
+	);
+	assert.deepEqual(both.courses[0].end_gate, { ...gate, bearing_deg: 180 });
+});
+
+test('a curated line is refused where the gate columns would refuse it, or off its end of the line', () => {
+	const gate = { lat: 0, lng: 0, bearing_deg: 90, half_width_m: 15 };
+	/** @param {any} g @param {'start_gate' | 'end_gate'} [end] */
+	const withGate = (g, end = 'start_gate') => refused((m) => (m.courses[0][end] = g));
+	assert.throws(withGate({ ...gate, bearing_deg: 360 }), /square: start_gate bearing_deg must be in \[0, 360\)/);
+	assert.throws(withGate({ ...gate, bearing_deg: -1 }), /bearing_deg must be in/);
+	assert.throws(withGate({ ...gate, half_width_m: 4 }), /half_width_m must be 5-100/);
+	assert.throws(withGate({ ...gate, half_width_m: 101 }), /half_width_m must be 5-100/);
+	assert.throws(withGate({ ...gate, lat: 91 }), /not a lat and lng in range/);
+	assert.throws(withGate({ ...gate, source: 'curator' }), /exactly lat, lng, bearing_deg and half_width_m/);
+	assert.throws(withGate([gate]), /must be an object/);
+	assert.throws(withGate({ ...gate, lat: 0.0001 }, 'end_gate'), /square: end_gate sits 11\.1 m from its end of the course line/);
 });
 
 test('a region outside the US is labelled by the park alone', () => {

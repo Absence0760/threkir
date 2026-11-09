@@ -26,6 +26,9 @@ export const LOOP_CLOSE_M = 25;
 /** The line in the GeoJSON must measure within this of the manifest's distance. */
 export const LINE_DISTANCE_TOLERANCE = 0.01;
 
+/** A curated line sits on its end of the course line; the build places it there exactly. */
+export const CURATED_GATE_FROM_END_M = 5;
+
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -59,7 +62,9 @@ const RACE_DISTANCE_WORDS = Object.freeze({
  *   geometry_source: string, source_ref: string | null, source_checked_at: string | null,
  *   distance_m: number, elevation_m: number | null, official_distance_m: number | null,
  *   description: string | null, checkpoints: { lat: number, lng: number }[], waypoints: LatLng[],
+ *   start_gate: PayloadGate | null, end_gate: PayloadGate | null,
  * }} PayloadCourse
+ * @typedef {{ lat: number, lng: number, bearing_deg: number, half_width_m: number }} PayloadGate
  * @typedef {{
  *   park: Record<string, string | null>, region: string, attribution: string, courses: PayloadCourse[],
  * }} CataloguePayload
@@ -102,6 +107,28 @@ export function courseLine(geojson, slug) {
 		check(c[2] == null || isFiniteNumber(c[2]), `${slug}: point ${i} has an elevation that is not a number`);
 		return c[2] == null ? { lat: c[1], lng: c[0] } : { lat: c[1], lng: c[0], ele: c[2] };
 	});
+}
+
+/**
+ * A curated start or end line from the manifest, in the shape the segment's
+ * `*_gate_*` columns take, or null when the course has none at that end.
+ *
+ * @param {any} gate
+ * @param {LatLng} end the course line's point at that end
+ * @param {string} where e.g. `swift-creek-10k: start_gate`
+ * @returns {PayloadGate | null}
+ */
+function curatedGate(gate, end, where) {
+	if (gate == null) return null;
+	check(typeof gate === 'object' && !Array.isArray(gate), `${where} must be an object`);
+	const keys = Object.keys(gate).sort().join(',');
+	check(keys === 'bearing_deg,half_width_m,lat,lng', `${where} must hold exactly lat, lng, bearing_deg and half_width_m, got ${keys}`);
+	check(inRange(gate.lat, gate.lng), `${where} is not a lat and lng in range`);
+	check(isFiniteNumber(gate.bearing_deg) && gate.bearing_deg >= 0 && gate.bearing_deg < 360, `${where} bearing_deg must be in [0, 360)`);
+	check(isFiniteNumber(gate.half_width_m) && gate.half_width_m >= 5 && gate.half_width_m <= 100, `${where} half_width_m must be 5-100`);
+	const off = haversineM(gate, end);
+	check(off <= CURATED_GATE_FROM_END_M, `${where} sits ${off.toFixed(1)} m from its end of the course line, over ${CURATED_GATE_FROM_END_M} m; rebuild it`);
+	return { lat: gate.lat, lng: gate.lng, bearing_deg: gate.bearing_deg, half_width_m: gate.half_width_m };
 }
 
 /**
@@ -162,6 +189,8 @@ function payloadCourse(entry, line, shape) {
 		description: shape.description,
 		checkpoints: checkpoints.map((/** @type {{ lat: number, lng: number }} */ c) => ({ lat: c.lat, lng: c.lng })),
 		waypoints: line,
+		start_gate: curatedGate(entry.start_gate, line[0], `${slug}: start_gate`),
+		end_gate: curatedGate(entry.end_gate, line[line.length - 1], `${slug}: end_gate`),
 	};
 }
 

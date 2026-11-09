@@ -6,7 +6,7 @@
 
 begin;
 
-select plan(31);
+select plan(32);
 
 -- ── Fixture ──
 -- O owns the verified public club; X belongs to no club; U owns a public club
@@ -48,7 +48,7 @@ insert into manifests (k, j) values
                    {"lat": 10.0045, "lng": 20.0045, "ele": 14}, {"lat": 10.0, "lng": 20.0045, "ele": 12},
                    {"lat": 10.0, "lng": 20.0, "ele": 10}]},
     {"slug": "pcl-5k", "name": "PCL 5K", "course_shape": "loop", "surface": "trail", "difficulty": null,
-     "geometry_source": "osm", "source_ref": "way/3", "source_checked_at": "2026-11-09",
+     "geometry_source": "osm", "source_ref": "", "source_checked_at": "2026-11-09",
      "distance_m": 2200, "elevation_m": 0, "official_distance_m": 2200, "description": null,
      "checkpoints": [{"lat": 10.0145, "lng": 20.001}, {"lat": 10.0145, "lng": 20.0055}],
      "waypoints": [{"lat": 10.01, "lng": 20.0}, {"lat": 10.01, "lng": 20.001}, {"lat": 10.0145, "lng": 20.001},
@@ -63,6 +63,10 @@ select 'v2', jsonb_set(
       {"lat": 10.0045, "lng": 20.0}, {"lat": 10.0, "lng": 20.0}, {"lat": 10.0, "lng": 20.002}]'::jsonb),
   '{courses,0,distance_m}', '2000'::jsonb)
 from manifests where k = 'v1';
+update manifests
+   set j = jsonb_set(j, '{courses,1,source_ref}',
+                     to_jsonb((select string_agg('way/' || (1000000000 + n), ',') from generate_series(1, 60) n)))
+ where k in ('v1', 'v2');
 grant select on manifests to service_role;
 
 -- ── First load ──
@@ -144,6 +148,12 @@ select is(
     where l.course_slug = 'pcl-loop'),
   '{"lat": 10.0045, "lng": 20.0, "ele": 12}'::jsonb,
   'the line keeps the payload''s order and elevation');
+
+select is(
+  (select length(pc.source_ref) from load1 l join park_courses pc on pc.id = l.park_course_id
+    where l.course_slug = 'pcl-5k'),
+  899,
+  'a source_ref naming 60 ways fits the widened column');
 
 -- An effort on the loop, and a curator-closed race course: neither may be
 -- touched by a re-run.

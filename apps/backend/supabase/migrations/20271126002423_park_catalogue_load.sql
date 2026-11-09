@@ -28,8 +28,19 @@
 -- `p_enqueue_backfill` also queues `enqueue_segment_backfill` for every
 -- course. It defaults off: the launch backfill is a separate operator step.
 --
--- Locks (docs/backend/migration_locks.md): one new function and its grants.
--- No table is altered.
+-- `park_courses.source_ref` lists every OSM way a course follows. A
+-- race-distance course over a trail network names 40 to 60 of them (the Swift
+-- Creek 50K's list is 782 characters), past the 500 the column was created
+-- with, so its length CHECK is widened to 8000.
+--
+-- Locks (docs/backend/migration_locks.md): the CHECK is replaced in one step,
+-- a brief ACCESS EXCLUSIVE and a scan of `park_courses`, a small curated table
+-- outside the guarded set. Otherwise one new function and its grants.
+
+alter table public.park_courses
+  drop constraint park_courses_source_ref_len_chk,
+  add constraint park_courses_source_ref_len_chk
+    check (source_ref is null or length(source_ref) <= 8000);
 
 create or replace function private.load_park_catalogue(
   p_manifest jsonb,

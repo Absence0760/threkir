@@ -347,22 +347,10 @@ function angleApart(a: number, b: number): number {
 	return d > 180 ? 360 - d : d;
 }
 
-/**
- * The 10K's start/finish line sits 14 m before an 83 degree bend on its
- * lead-in, so the 25 m look-ahead aims across the bend at both ends. Its
- * lead-in is out of scope for the designated-trail reroute (#1342); the entry
- * fails once it is fixed.
- */
-const KNOWN_SKEWED_LINES = new Set(['swift-creek-10k']);
-
 for (const b of BUILT) {
 	test(`${b.course.slug}: each derived line faces the course's own direction at it, within 10 degrees`, () => {
 		const start = angleApart(b.gates.start.bearingDeg, courseDirectionAt(b, false));
 		const end = angleApart(b.gates.end.bearingDeg, courseDirectionAt(b, true));
-		if (KNOWN_SKEWED_LINES.has(b.course.slug)) {
-			assert.ok(start > 10 && end > 10, `${b.course.slug}: its lines are now within 10 degrees; drop it from KNOWN_SKEWED_LINES`);
-			return;
-		}
 		assert.ok(start <= 10, `${b.course.slug}: start line ${start.toFixed(1)} degrees off the course`);
 		assert.ok(end <= 10, `${b.course.slug}: end line ${end.toFixed(1)} degrees off the course`);
 	});

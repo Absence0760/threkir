@@ -383,20 +383,6 @@ function timestampAtDistance(track, cum, target) {
   return null;
 }
 
-// apps/web/src/lib/routes/route_markers.ts
-var ROUTE_MARKER_KINDS = [
-  { kind: "aid_station", labelKey: "routeMarker.kind.aid_station", color: "#0e9f6e", hasServices: true, hasCutoff: false },
-  { kind: "cutoff", labelKey: "routeMarker.kind.cutoff", color: "#e02424", hasServices: false, hasCutoff: true },
-  { kind: "crew_access", labelKey: "routeMarker.kind.crew_access", color: "#3f83f8", hasServices: false, hasCutoff: false },
-  { kind: "hazard", labelKey: "routeMarker.kind.hazard", color: "#ff5a1f", hasServices: false, hasCutoff: false },
-  { kind: "note", labelKey: "routeMarker.kind.note", color: "#9061f9", hasServices: false, hasCutoff: false },
-  { kind: "climb", labelKey: "routeMarker.kind.climb", color: "#c27803", hasServices: false, hasCutoff: false },
-  { kind: "custom", labelKey: "routeMarker.kind.custom", color: "#6b7280", hasServices: false, hasCutoff: false }
-];
-var KIND_BY_KEY = new Map(
-  ROUTE_MARKER_KINDS.map((k) => [k.kind, k])
-);
-
 // apps/web/src/lib/parks/park_courses.ts
 var MAX_COURSE_CHECKPOINTS = 50;
 function parseCourseCheckpoints(raw) {

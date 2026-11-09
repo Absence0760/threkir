@@ -1,6 +1,6 @@
 name: Terraform
 
-# Guards the Terraform stacks under `infra/` against three classes
+# Guards the Terraform stacks under `infra/` against two classes
 # of regression:
 #   1. `terraform fmt` drift — keeps the formatter idempotent so the
 #      PR diff is the real change, not whitespace churn. ONE recursive
@@ -12,12 +12,14 @@ name: Terraform
 #   2. `terraform validate` — syntax + provider-version + ref-shape
 #      checks. Doesn't touch state (we pass `-backend=false`), so the
 #      check can run without AWS credentials.
-#   3. Trivy IaC mode — known-bad patterns (public S3 buckets, IAM
-#      `Action: *`, security-group 0.0.0.0/0 ingress, etc.). Cheaper
-#      to surface in CI than discover after `terraform apply`. Trivy
-#      is reused from the security workflow so we don't introduce a
-#      second IaC scanner; the same SARIF flows to the Security tab.
-#      `scan-ref: infra` walks the tree, so it is not per-stack either.
+#
+# The Trivy IaC scan that used to be the third check lives in
+# security.yml now. It uploads SARIF under the `trivy-iac` category, and
+# a category that main carries and a PR does not makes code scanning
+# warn "1 configuration present on refs/heads/main was not found" on
+# that PR. Behind this file's infra-only gate that was every PR that
+# did not touch infra/. security.yml runs on every PR, push and
+# schedule, like the image scans beside it.
 #
 # Called by ci.yml's `terraform` job, and by nothing else. It ran on
 # its own path-filtered `push` + `pull_request` triggers until
@@ -47,9 +49,9 @@ name: Terraform
 # true under `configuration_aliases`, re-measured 2026-09-03. The
 # module IS validated transitively, also measured: an undeclared-
 # variable reference added to waf.tf fails `validate` in envs/prod.
-# The matrix is therefore the validate list only. fmt and Trivy both
-# walk the whole tree above, so nothing under infra/ is exempt from
-# either (decisions § 1111).
+# The matrix is therefore the validate list only. fmt (and the Trivy
+# IaC scan in security.yml) walk the whole tree above, so nothing under
+# infra/ is exempt from either (decisions § 1111).
 #
 # When adding a new stack: append it to the `stack` matrix below
 # AND add a `terraform` ecosystem entry to `.github/dependabot.yml`.
@@ -67,12 +69,6 @@ on:
 # `pull-requests: write` used to sit here for a `terraform validate` PR
 # comment nobody ever wired up; no step in this file posts anything, and
 # a write scope granted to no caller of it is standing privilege.
-#
-# `security-events: write` is the same argument one level down: only
-# `trivy-iac` uploads SARIF, so declaring it here handed the scope to
-# `fmt` and `validate` as well, neither of which writes anything. It sits
-# on the one job that spends it instead — which is what Scorecard's
-# Token-Permissions check reads this file for.
 permissions:
   contents: read
 
@@ -131,49 +127,3 @@ jobs:
       - name: terraform validate
         working-directory: ${{ matrix.stack }}
         run: terraform validate -no-color
-
-  trivy-iac:
-    name: Trivy IaC scan
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    # The only job here that writes: the upload step below posts SARIF to the
-    # Security tab. The caller's grant in ci.yml is still the ceiling over it.
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      # Same install as security.yml's image scans, for the same reason: see
-      # the header of .github/actions/setup-trivy/action.yml.
-      - uses: ./.github/actions/setup-trivy
-
-      - name: Trivy config scan
-        id: scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          skip-setup-trivy: true
-          # `scan-type: config` runs the IaC ruleset across HCL / yaml
-          # / json (so it picks up the workflows too, harmlessly).
-          # Trivy bundles tfsec-derived checks so we get the same
-          # coverage without standing up tfsec separately.
-          scan-type: config
-          scan-ref: infra
-          # Centralised suppressions with rationale. Inline
-          # `# trivy:ignore:` comments don't accept trailing text on
-          # the same line; the .trivyignore file at the repo root
-          # keeps the rule IDs + per-rule rationale in one place.
-          trivyignores: .trivyignore
-          format: sarif
-          output: trivy-iac.sarif
-          severity: CRITICAL,HIGH
-          exit-code: '0'
-
-      - name: Upload Trivy IaC SARIF
-        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
-        # Only once the scan has written its SARIF; security.yml's image scans
-        # carry the reason.
-        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
-        with:
-          sarif_file: trivy-iac.sarif
-          category: trivy-iac

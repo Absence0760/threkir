@@ -41,7 +41,7 @@ filter that used to sit on the triggers.
 |---|---|
 | `fmt (whole tree)` (`terraform.yml`, called by `ci.yml`) | `terraform fmt -check -recursive infra`. One pass over every directory, including ones outside the validate matrix — a per-stack `working-directory` reads that stack's own `.tf` files and nothing below them, which left `modules/web-stack` unformatted-checked (decisions § 1111). |
 | `validate` (`terraform.yml`, called by `ci.yml`, one per stack) | `terraform validate` with `-backend=false`. Syntax, provider constraints, reference shapes. **Not** anything about applied state. `modules/web-stack` is not in the matrix — a module taking an aliased provider from its caller cannot be validated standalone — and is validated transitively by both env roots instead (measured: an undeclared-variable reference in the module fails `validate` in `envs/prod`). |
-| `Trivy IaC scan` (`terraform.yml`, called by `ci.yml`) | Known-bad IaC patterns across the whole tree. Suppressions with rationale live in `.trivyignore` at the repo root. |
+| `Trivy IaC scan` (`security.yml`, every PR, push and weekly) | Known-bad IaC patterns across the whole tree. Suppressions with rationale live in `.trivyignore` at the repo root. |
 | `infra-guards` (`ci.yml`) | `scripts/check_infra_iam.mjs` + `scripts/check_infra_error_responses.mjs` + `scripts/check_infra_coverage.mjs` + `scripts/check_terraform_lock_platforms.mjs` — see below. |
 
 **`check_infra_iam.mjs`** reads `github-oidc/main.tf` + its `variables.tf`,

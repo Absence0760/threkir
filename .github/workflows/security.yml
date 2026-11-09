@@ -540,3 +540,53 @@ jobs:
           # Distinct category — two uploads sharing one category make the
           # alert set flip-flop between whichever scan ran last.
           category: trivy-graph-cycle
+
+  trivy-iac:
+    name: Trivy IaC scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Here rather than behind ci.yml's infra-only gate: the `trivy-iac`
+    # category has to be uploaded on every ref, or each PR that did not
+    # touch infra/ reports "1 configuration present on refs/heads/main was
+    # not found" and code scanning cannot say what the PR introduced.
+    # It costs 24 s (run 42572319317) and builds no image.
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Same install as the image scans above: see the header of
+      # .github/actions/setup-trivy/action.yml.
+      - uses: ./.github/actions/setup-trivy
+
+      - name: Trivy config scan
+        id: scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          skip-setup-trivy: true
+          # `scan-type: config` runs the IaC ruleset across HCL / yaml
+          # / json (so it picks up the workflows too, harmlessly).
+          # Trivy bundles tfsec-derived checks so we get the same
+          # coverage without standing up tfsec separately.
+          scan-type: config
+          scan-ref: infra
+          # Centralised suppressions with rationale. Inline
+          # `# trivy:ignore:` comments don't accept trailing text on
+          # the same line; the .trivyignore file at the repo root
+          # keeps the rule IDs + per-rule rationale in one place.
+          trivyignores: .trivyignore
+          format: sarif
+          output: trivy-iac.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '0'
+
+      - name: Upload Trivy IaC SARIF
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+        # Only once the scan has written its SARIF; the job_worker image scan
+        # above carries the reason.
+        if: ${{ !cancelled() && steps.scan.outcome == 'success' }}
+        with:
+          sarif_file: trivy-iac.sarif
+          category: trivy-iac

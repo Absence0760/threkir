@@ -119,8 +119,14 @@ const NOT_SPENT_BY_SPECS: Record<string, string> = {
 		'bucket it spends is its own; pgtap covers the cap itself.',
 	send_direct_message:
 		'The messaging specs send as saga users, and the burst budget below is the same rail.',
+	open_message_request:
+		'messages/dm-requests.spec.ts opens its requests as ephemeral saga users minted per test, ' +
+		'so the 20-a-day bucket it spends is its own and cannot reach another spec.',
 	send_direct_message_burst:
 		'The per-minute companion to send_direct_message, spent by the same saga-user sends.',
+	edit_direct_message:
+		'messages/dm-edit.spec.ts edits only as ephemeral saga users minted per test, so the ' +
+		'bucket it spends is its own; dm_edit_test.sql covers the RPC.',
 	clone_plan_template:
 		'Plan and routine cloning is exercised in pgtap (clone_plan_template_test.sql and ' +
 		'siblings), where each file runs in its own rolled-back transaction.',

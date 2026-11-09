@@ -81,7 +81,7 @@ func loadVectors(t *testing.T) vectorFile {
 
 func TestConstantsMatchTheVectorFile(t *testing.T) {
 	vf := loadVectors(t)
-	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.4" {
+	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.5" {
 		t.Fatalf("vectors are for %q; this port implements v%s", vf.Spec, SpecVersion)
 	}
 	ours := map[string]float64{
@@ -129,6 +129,9 @@ func TestConstantsMatchTheVectorFile(t *testing.T) {
 		"ZUPT_VEL_SIGMA_MPS":            ZuptVelSigmaMps,
 		"ZUPT_DOPPLER_OVERRIDE_MPS":     ZuptDopplerOverrideMps,
 		"ZUPT_RELEASE_M":                ZuptReleaseM,
+		"ZUPT_BATCH_MIN_CADENCE_SPS":    ZuptBatchMinCadenceSps,
+		"ZUPT_BATCH_MARGIN":             ZuptBatchMargin,
+		"ZUPT_MAX_NO_STEP_S":            ZuptMaxNoStepS,
 		"STOP_HALF_WINDOW_S":            StopHalfWindowS,
 		"STOP_MIN_HALF_FIXES":           StopMinHalfFixes,
 		"STOP_SPEED_MPS":                StopSpeedMps,
@@ -288,6 +291,7 @@ func TestSmoothedGoldenVectors(t *testing.T) {
 var forwardWithStopHintsM = map[string]float64{
 	"stationary_position_only": 0.9846665773325164,
 	"legacy_stop_clustering":   323.16068012777157,
+	"zupt_batched_steps_stop":  291.6757193103465,
 }
 
 func TestSmoothDistanceReportsItsForwardPass(t *testing.T) {

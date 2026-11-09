@@ -127,6 +127,11 @@
 <UnsavedChangesGuard isDirty={dirty.isDirty} />
 
 <form onsubmit={submit} class="editor-form">
+	{#if existing?.is_verified}
+		<p class="field-hint verified-lock" role="note" data-testid="club-editor-verified-lock">
+			{m('clubEditor.verifiedLockWarning')}
+		</p>
+	{/if}
 	<div class="field">
 		<label>
 			<span>{m('clubEditor.name')}</span>

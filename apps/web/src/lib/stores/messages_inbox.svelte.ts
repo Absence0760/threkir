@@ -20,6 +20,8 @@ import {
 	checkAiDisclosure,
 } from '#lib/core/ai_disclosure.ts';
 import {
+	acceptDmRequest,
+	declineDmRequest,
 	fetchDmThreads,
 	fetchLatestCoachMessage,
 	hideDmConversation,
@@ -77,6 +79,9 @@ class MessagesInboxStore {
 	coach = $state<CoachInboxState | null>(null);
 	/// The inbox is showing its Archived list.
 	showingArchived = $state(false);
+	/// The inbox is showing its Requests list (message requests the runner
+	/// has not answered, migration 20271115002384).
+	showingRequests = $state(false);
 
 	#userId: string | null = null;
 	#polling = false;
@@ -105,6 +110,7 @@ class MessagesInboxStore {
 		this.threadsError = false;
 		this.coach = null;
 		this.showingArchived = false;
+		this.showingRequests = false;
 		this.#markedReadAt.clear();
 		this.#hiddenAt.clear();
 		dmPendingHides.clear();
@@ -288,6 +294,32 @@ class MessagesInboxStore {
 			},
 			onCommitError: (e) => opts.onCommitError(e),
 		});
+	}
+
+	/// Accepts a message request. The row moves to the inbox at once; a
+	/// refusal puts it back and rethrows for the caller to report.
+	async acceptRequest(conversationId: string) {
+		this.#patch(conversationId, { request: false });
+		try {
+			await acceptDmRequest(conversationId);
+		} catch (e) {
+			this.#patch(conversationId, { request: true });
+			throw e;
+		}
+		void this.refreshThreads();
+		void dmUnreadStore.refresh();
+	}
+
+	/// Declines a message request, and blocks the requester when `block`. Not
+	/// undoable from the app (the conversation leaves every list), so the
+	/// caller confirms first rather than holding it behind an undo window
+	/// (conventions.md § Destructive actions). The row leaves only once the
+	/// server has agreed; a refusal rethrows for the caller to report.
+	async declineRequest(conversationId: string, throughMessageId: string, block = false) {
+		await declineDmRequest(conversationId, throughMessageId, block);
+		this.threads = this.threads.filter((t) => t.conversationId !== conversationId);
+		void this.refreshThreads();
+		void dmUnreadStore.refresh();
 	}
 
 	markRead(routeId: string) {

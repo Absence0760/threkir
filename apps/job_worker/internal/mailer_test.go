@@ -37,7 +37,7 @@ func pushPrefs(mode string) map[string]interface{} {
 }
 
 func TestShouldEmail_Matrix(t *testing.T) {
-	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request", "club_join_request", "club_join_approved", "event_updated"}
+	important := []string{"event_reminder", "event_cancel", "plan_update", "message", "data_export_ready", "refund_failed", "event_waitlist_slot", "mention", "follow_request", "club_join_request", "club_join_approved", "event_updated", "course_alert"}
 	social := []string{"kudos", "comment", "comment_reply", "follow", "club_post", "run_completed", "event_rsvp", "reaction", "comment_like", "workout_reminder"}
 
 	for _, k := range important {
@@ -199,6 +199,7 @@ func TestRenderNotificationEmail_RunDeepLinkAndFallback(t *testing.T) {
 func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 	const base = "https://threkir.test"
 	ev, run, club, plan := "evt-1", "run-1", "club-1", "plan-1"
+	courseAlert := "ca-1"
 
 	cases := []struct {
 		kind     string
@@ -214,12 +215,23 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"event_cancel for a deleted event", NotificationRow{Kind: "event_cancel", ClubID: &club}, base + "/clubs/club-1"},
 		{"club_join_request", NotificationRow{Kind: "club_join_request", ClubID: &club}, base + "/clubs/club-1"},
 		{"club_join_approved", NotificationRow{Kind: "club_join_approved", ClubID: &club}, base + "/clubs/club-1"},
+		{"club_verification", NotificationRow{Kind: "club_verification", ClubID: &club}, base + "/clubs/club-1"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},
 		// Sent to the assigning coach, whose view of the athlete's plan is the
 		// same /plans/{id} page (decisions § 2230).
 		{"plan_ai_edit", NotificationRow{Kind: "plan_ai_edit", PlanID: &plan}, base + "/plans/plan-1"},
 		{"workout_reminder", NotificationRow{Kind: "workout_reminder"}, base + "/plans"},
+		// The athlete's plan page, where both sides see the request
+		// (decisions § 2382).
+		{"plan_change_request", NotificationRow{Kind: "plan_change_request", PlanID: &plan}, base + "/plans/plan-1"},
+		{"plan_change_decision", NotificationRow{Kind: "plan_change_decision", PlanID: &plan}, base + "/plans/plan-1"},
+		// The stable-id resolver opens the race or route (decisions § 2407).
+		{"course_alert", NotificationRow{Kind: "course_alert", CourseAlertID: &courseAlert}, base + "/course-alerts/ca-1"},
+		// The occurrence's event page, where the race panel counts down
+		// (decisions § 2400).
+		{"race_starting_soon", NotificationRow{Kind: "race_starting_soon", EventID: &ev}, base + "/events/evt-1"},
+		{"race_start_moved", NotificationRow{Kind: "race_start_moved", EventID: &ev}, base + "/events/evt-1"},
 		{"message", NotificationRow{Kind: "message"}, base + "/messages"},
 		{"club_post", NotificationRow{Kind: "club_post", ClubID: &club}, base + "/clubs/club-1"},
 		{"run_completed", NotificationRow{Kind: "run_completed", UserID: "usr-1", RunID: &run}, base + "/share/run/run-1"},
@@ -340,6 +352,7 @@ func TestPathForKind(t *testing.T) {
 		{"club nil id → /clubs", "club_post", NotificationRow{}, base + "/clubs"},
 		{"club_join_request", "club_join_request", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
 		{"club_join_approved", "club_join_approved", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
+		{"club_verification", "club_verification", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
 		// Engagement on the recipient's OWN run → the owner-scoped detail page.
 		// comment_reply folds to run.
 		{"kudos", "kudos", NotificationRow{RunID: &run}, base + "/runs/r1"},

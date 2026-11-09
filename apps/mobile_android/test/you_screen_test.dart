@@ -36,7 +36,7 @@ class _FakeApi extends ApiClient {
   int badgeReads = 0;
 
   /// When set, the badge read answers with these instead of [unread].
-  List<({String conversationId, int unread, bool muted, bool archived})>?
+  List<({String conversationId, int unread, bool muted, bool archived, bool request})>?
       states;
 
   /// Each badge read takes the first gate, while any is queued.
@@ -47,7 +47,8 @@ class _FakeApi extends ApiClient {
                     String conversationId,
                     int unread,
                     bool muted,
-                    bool archived
+                    bool archived,
+                    bool request
                   })>>> badgeGates = [];
 
   @override
@@ -66,15 +67,15 @@ class _FakeApi extends ApiClient {
   @override
   Future<
           List<
-              ({String conversationId, int unread, bool muted, bool archived})>>
+              ({String conversationId, int unread, bool muted, bool archived, bool request})>>
       fetchDmBadgeStates() async {
     badgeReads++;
     if (badgeGates.isNotEmpty) return badgeGates.removeAt(0).future;
     final set = states;
     if (set != null) return set;
     return [
-      (conversationId: 'c-1', unread: unread, muted: false, archived: false),
-      (conversationId: 'c-2', unread: 0, muted: false, archived: false),
+      (conversationId: 'c-1', unread: unread, muted: false, archived: false, request: false),
+      (conversationId: 'c-2', unread: 0, muted: false, archived: false, request: false),
     ];
   }
 }
@@ -100,15 +101,15 @@ class _SwitchableApi extends ApiClient {
 
   /// The next badge read waits on this (then it clears).
   Completer<
-          List<({String conversationId, int unread, bool muted, bool archived})>>?
+          List<({String conversationId, int unread, bool muted, bool archived, bool request})>>?
       badgeGate;
-  List<({String conversationId, int unread, bool muted, bool archived})>
+  List<({String conversationId, int unread, bool muted, bool archived, bool request})>
       badgeStates = const [];
 
   @override
   Future<
           List<
-              ({String conversationId, int unread, bool muted, bool archived})>>
+              ({String conversationId, int unread, bool muted, bool archived, bool request})>>
       fetchDmBadgeStates() async {
     final gate = badgeGate;
     badgeGate = null;
@@ -307,8 +308,8 @@ void main() {
     addTearDown(DmPendingHides.instance.debugClear);
     final api = _FakeApi()
       ..states = [
-        (conversationId: 'c-1', unread: 3, muted: false, archived: false),
-        (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+        (conversationId: 'c-1', unread: 3, muted: false, archived: false, request: false),
+        (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
       ];
     await pump(tester, api: api);
     final icon = find.byKey(const ValueKey('you-messages'));
@@ -325,7 +326,7 @@ void main() {
     // Any removal asks for a read; this one stands in for a poll or a
     // sub-screen return that is still in flight when the delete commits.
     final stale = Completer<
-        List<({String conversationId, int unread, bool muted, bool archived})>>();
+        List<({String conversationId, int unread, bool muted, bool archived, bool request})>>();
     api.badgeGates.add(stale);
     DmPendingHides.instance
       ..add('c-9')
@@ -333,7 +334,7 @@ void main() {
     await tester.pump();
 
     api.states = [
-      (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+      (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
     ];
     DmPendingHides.instance.landed('c-1');
     await tester.pump();
@@ -341,8 +342,8 @@ void main() {
     expect(badge('2'), isTrue);
 
     stale.complete([
-      (conversationId: 'c-1', unread: 3, muted: false, archived: false),
-      (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+      (conversationId: 'c-1', unread: 3, muted: false, archived: false, request: false),
+      (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
     ]);
     await tester.pump();
     await tester.pump();
@@ -354,7 +355,7 @@ void main() {
       (tester) async {
     final api = _SwitchableApi();
     final stale = Completer<
-        List<({String conversationId, int unread, bool muted, bool archived})>>();
+        List<({String conversationId, int unread, bool muted, bool archived, bool request})>>();
     api.badgeGate = stale;
     await pump(tester, api: api);
     final icon = find.byKey(const ValueKey('you-messages'));
@@ -366,13 +367,13 @@ void main() {
     api
       ..uid = 'u2'
       ..badgeStates = [
-        (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+        (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
       ];
     api.emit();
     await pumpUntil(tester, () => badge('2'), describe: 'the new badge');
 
     stale.complete([
-      (conversationId: 'c-1', unread: 7, muted: false, archived: false),
+      (conversationId: 'c-1', unread: 7, muted: false, archived: false, request: false),
     ]);
     await tester.pump();
     await tester.pump();
@@ -386,8 +387,8 @@ void main() {
     addTearDown(DmPendingHides.instance.debugClear);
     final api = _FakeApi()
       ..states = [
-        (conversationId: 'c-1', unread: 3, muted: false, archived: false),
-        (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+        (conversationId: 'c-1', unread: 3, muted: false, archived: false, request: false),
+        (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
       ];
     await pump(tester, api: api);
     final icon = find.byKey(const ValueKey('you-messages'));
@@ -402,7 +403,7 @@ void main() {
     expect(badge('2'), isTrue);
 
     final fresh = Completer<
-        List<({String conversationId, int unread, bool muted, bool archived})>>();
+        List<({String conversationId, int unread, bool muted, bool archived, bool request})>>();
     api.badgeGates.add(fresh);
     DmPendingHides.instance.landed('c-1');
     await tester.pump();
@@ -411,7 +412,7 @@ void main() {
     expect(DmPendingHides.instance.debugHasMarker('c-1'), isTrue);
 
     fresh.complete([
-      (conversationId: 'c-2', unread: 2, muted: false, archived: false),
+      (conversationId: 'c-2', unread: 2, muted: false, archived: false, request: false),
     ]);
     await tester.pump();
     await tester.pump();
@@ -427,7 +428,7 @@ void main() {
     await tester.pump();
 
     final pending = Completer<
-        List<({String conversationId, int unread, bool muted, bool archived})>>();
+        List<({String conversationId, int unread, bool muted, bool archived, bool request})>>();
     addTearDown(() {
       if (!pending.isCompleted) pending.complete(const []);
     });

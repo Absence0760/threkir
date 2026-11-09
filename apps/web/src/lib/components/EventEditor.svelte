@@ -16,7 +16,9 @@
 		setEventGymRoutine,
 		type GymRoutineSummary,
 		fetchEventCourses,
+		fetchEventCourseLines,
 		saveEventCourses,
+		type CourseLinesRow,
 		type SessionPlan
 	} from '#lib/core/data.ts';
 	import {
@@ -27,6 +29,16 @@
 		type EventCourse
 	} from '#lib/social/event_courses.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import CourseGateEditor from '#lib/components/CourseGateEditor.svelte';
+	import RaceStartModeFields from '#lib/components/RaceStartModeFields.svelte';
+	import {
+		courseGate,
+		preflightBlocks,
+		racePreflight,
+		type PreflightIssue,
+		type SessionStartMode
+	} from '#lib/races/course_gates.ts';
+	import { validateStartSettings } from '#lib/races/race_start_modes.ts';
 	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
 	import { toMinorUnits } from '#lib/format/minor_units.ts';
@@ -125,6 +137,14 @@
 	let paceUnitLabel = $derived(getUnit() === 'mi' ? 'per mi' : 'per km');
 	let metresPerUnit = $derived(getUnit() === 'mi' ? METRES_PER_MILE : 1000);
 	let capacity = $state<number | null>(untrack(() => existing?.capacity ?? null));
+	// How the race starts (#1306). The times are offsets from each occurrence.
+	let raceStartMode = $state<SessionStartMode>(
+		untrack(() => (existing?.race_start_mode as SessionStartMode | undefined) ?? 'host_go')
+	);
+	let raceScheduledOffsetS = $state<number | null>(untrack(() => existing?.race_scheduled_offset_s ?? null));
+	let raceWindowOpenOffsetS = $state<number | null>(untrack(() => existing?.race_window_open_offset_s ?? null));
+	let raceWindowLengthS = $state<number | null>(untrack(() => existing?.race_window_length_s ?? null));
+	let raceAutoApprove = $state<boolean | null>(untrack(() => existing?.race_auto_approve ?? null));
 	// Race courses (decisions § 1842). The route + distance fields above
 	// describe the MAIN course; `extraCourses` are the alternatives a racer can
 	// pick instead. `storedCourses` is what the database held when the editor
@@ -138,6 +158,10 @@
 		storedDistanceM: number | null;
 	}
 	let storedCourses = $state<EventCourse[]>([]);
+	// Each stored course's timing lines (#1305), keyed by course id. They save
+	// on their own through the gate RPCs, outside the event form.
+	let courseLines = $state<Map<string, CourseLinesRow>>(new Map());
+	let courseLinesFailed = $state(false);
 	let coursesLoadFailed = $state(false);
 	let mainCourseName = $state('');
 	let extraCourses = $state<ExtraCourse[]>([]);
@@ -189,6 +213,11 @@
 		paceMin,
 		paceSec,
 		capacity,
+		raceStartMode,
+		raceScheduledOffsetS,
+		raceWindowOpenOffsetS,
+		raceWindowLengthS,
+		raceAutoApprove,
 		mainCourseName,
 		extraCourses: extraCourses.map((c) => ({
 			id: c.id,
@@ -320,9 +349,21 @@
 				console.error('fetchEventCourses failed', e);
 				coursesLoadFailed = true;
 			}
+			await loadCourseLines(existing.id);
 			athleticDataAtRisk = await eventHasAthleticData(existing.id);
 		}
 	});
+
+	async function loadCourseLines(eventId: string) {
+		try {
+			const rows = await fetchEventCourseLines(eventId);
+			courseLines = new Map(rows.map((r) => [r.course_id, r]));
+			courseLinesFailed = false;
+		} catch (e) {
+			console.warn('fetchEventCourseLines failed', e);
+			courseLinesFailed = true;
+		}
+	}
 
 	function routeById(id: string): { name: string; distance_m: number } | undefined {
 		if (!id) return undefined;
@@ -425,6 +466,7 @@
 			const fresh = await fetchEventCourses(eventId);
 			const main = fresh.find((c) => c.id === mainId);
 			storedCourses = main ? [main, ...fresh.filter((c) => c !== main)] : fresh;
+			await loadCourseLines(eventId);
 		} catch (fe: unknown) {
 			// Without the stored list the next save could not tell an existing
 			// course from a new one, so the section locks as it does on load.
@@ -459,7 +501,86 @@
 			showCategoryWarn = true;
 			return;
 		}
+		if (isAthleticCategory(category)) {
+			if (validateStartSettings(raceSettings()).length > 0) {
+				error = m('raceStart.fixSettings');
+				return;
+			}
+			const issues = selfTimedPreflight();
+			if (preflightBlocks(issues)) {
+				error = m('raceStart.selfTimedBlocked', { issues: issues.map(preflightLine).join(' ') });
+				return;
+			}
+		}
 		void persist();
+	}
+
+	function raceSettings() {
+		return {
+			mode: raceStartMode,
+			scheduledOffsetS: raceStartMode === 'scheduled' ? raceScheduledOffsetS : null,
+			windowOpenOffsetS: raceStartMode === 'self_timed' ? raceWindowOpenOffsetS : null,
+			windowLengthS: raceStartMode === 'host_go' ? null : raceWindowLengthS
+		};
+	}
+
+	// The race columns a save writes. A non-athletic event is Host GO with no
+	// times, so a category switch cannot leave a timer firing on a class.
+	function raceColumns(athletic: boolean) {
+		const r = raceSettings();
+		return athletic
+			? {
+					race_start_mode: r.mode,
+					race_scheduled_offset_s: r.scheduledOffsetS,
+					race_window_open_offset_s: r.windowOpenOffsetS,
+					race_window_length_s: r.windowLengthS,
+					race_auto_approve: r.mode === 'host_go' ? null : raceAutoApprove
+				}
+			: {
+					race_start_mode: 'host_go' as const,
+					race_scheduled_offset_s: null,
+					race_window_open_offset_s: null,
+					race_window_length_s: null,
+					race_auto_approve: null
+				};
+	}
+
+	/// The Arm preflight's Self-timed rows over the saved courses' lines
+	/// (decisions § 2391): a Self-timed race needs a start and a finish line on
+	/// every course, and a self-crossing course cannot finish on its line. Only
+	/// saved courses have lines, so a new event is checked after its first save.
+	function selfTimedPreflight(): PreflightIssue[] {
+		if (raceStartMode !== 'self_timed' || storedCourses.length === 0 || courseLinesFailed) return [];
+		return racePreflight(
+			storedCourses.map((c) => {
+				const row = courseLines.get(c.id);
+				return {
+					id: c.id,
+					startGate: row ? courseGate(row, 'start') : null,
+					finishGate: row ? courseGate(row, 'finish') : null,
+					hasFinishPoint: row?.finish_lat != null && row?.finish_lng != null,
+					selfCross: row?.finish_line_self_cross ?? false,
+					route: null
+				};
+			}),
+			'self_timed'
+		);
+	}
+
+	function preflightLine(i: PreflightIssue): string {
+		const name = storedCourses.find((c) => c.id === i.courseId)?.name ?? '';
+		switch (i.code) {
+			case 'no_finish':
+				return m('courseLines.preflightNoFinish', { name });
+			case 'no_start':
+				return m('courseLines.preflightNoStart', { name });
+			case 'self_cross':
+				return m('courseLines.preflightSelfCross', { name });
+			case 'gate_far_from_route':
+				return i.which === 'start'
+					? m('courseLines.preflightStartFar', { name })
+					: m('courseLines.preflightFinishFar', { name });
+		}
 	}
 
 	async function persist() {
@@ -498,7 +619,8 @@
 						athletic && distanceInUnit != null ? distanceInUnit * metresPerUnit : null,
 					pace_target_sec: athletic ? paceSecPerKm : null,
 					capacity: capacity ?? null,
-					is_public: showVisibilityToggle ? isPublic : true
+					is_public: showVisibilityToggle ? isPublic : true,
+					...raceColumns(athletic)
 				});
 				const courseFailure = await persistCourses(existing.id);
 				if (courseFailure) {
@@ -541,7 +663,8 @@
 				// In a private club every event is members-only regardless, so the
 				// toggle is hidden and we leave this public (the column is moot —
 				// the club gate already restricts read + discovery skips the club).
-				is_public: showVisibilityToggle ? isPublic : true
+				is_public: showVisibilityToggle ? isPublic : true,
+				...raceColumns(athletic)
 			});
 			// Pricing is a separate, charges_enabled-gated write (its own RLS
 			// surface + trigger). Only attempt it when the host turned charging
@@ -587,6 +710,15 @@
 			// returning here would invite a second submit and a duplicate event.
 			const courseFailure = await persistCourses(event.id);
 			if (courseFailure) showToast(courseFailure, 'error');
+			// A new Self-timed race gets its derived lines with its courses; say
+			// now if a course still lacks one, rather than at window open.
+			const selfTimedIssues = selfTimedPreflight();
+			if (preflightBlocks(selfTimedIssues)) {
+				showToast(
+					m('raceStart.selfTimedBlocked', { issues: selfTimedIssues.map(preflightLine).join(' ') }),
+					'error'
+				);
+			}
 			dirty.rebaseline();
 			oncreated?.(event);
 		} catch (e: unknown) {
@@ -896,6 +1028,38 @@
 				{m('eventEditor.addCourse')}
 			</button>
 		</fieldset>
+
+		{#if existing && !coursesLoadFailed && storedCourses.length > 0}
+			<section class="timing-lines" data-testid="event-timing-lines" aria-labelledby="timing-lines-title">
+				<h3 id="timing-lines-title">{m('courseLines.title')}</h3>
+				<p class="hint">{m('courseLines.hint')}</p>
+				{#if courseLinesFailed}
+					<p class="hint" role="alert">{m('courseLines.loadFailed')}</p>
+				{:else}
+					{#each storedCourses as c (c.id + ':' + (c.route_id ?? ''))}
+						<CourseGateEditor
+							courseId={c.id}
+							courseName={c.name}
+							routeId={c.route_id}
+							lines={courseLines.get(c.id) ?? null}
+							mode={raceStartMode}
+							onchanged={() => loadCourseLines(existing.id)}
+						/>
+					{/each}
+				{/if}
+			</section>
+		{/if}
+	{/if}
+
+	{#if isAthleticCategory(category)}
+		<RaceStartModeFields
+			startTime={time}
+			bind:mode={raceStartMode}
+			bind:scheduledOffsetS={raceScheduledOffsetS}
+			bind:windowOpenOffsetS={raceWindowOpenOffsetS}
+			bind:windowLengthS={raceWindowLengthS}
+			bind:autoApprove={raceAutoApprove}
+		/>
 	{/if}
 
 	{#if !existing}
@@ -1304,6 +1468,15 @@
 	.course-icon:disabled {
 		opacity: 0.4;
 		cursor: default;
+	}
+	.timing-lines {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+	}
+	.timing-lines h3 {
+		margin: 0;
+		font-size: 1rem;
 	}
 	.add-course {
 		display: inline-flex;

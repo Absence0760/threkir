@@ -551,6 +551,10 @@ export async function insertEvent(opts: {
 	discipline?: string | null;
 	gym_template?: { discipline: string | null; duration_min: number | null } | null;
 	timezone?: string | null;
+	race_start_mode?: 'host_go' | 'scheduled' | 'self_timed';
+	race_scheduled_offset_s?: number | null;
+	race_window_open_offset_s?: number | null;
+	race_window_length_s?: number | null;
 }): Promise<string> {
 	const { data, error } = await getAdminClient()
 		.from('events')
@@ -572,7 +576,11 @@ export async function insertEvent(opts: {
 			distance_m: opts.distance_m ?? null,
 			pace_target_sec: opts.pace_target_sec ?? null,
 			gym_template: opts.gym_template ?? null,
-			timezone: opts.timezone ?? null
+			timezone: opts.timezone ?? null,
+			race_start_mode: opts.race_start_mode ?? 'host_go',
+			race_scheduled_offset_s: opts.race_scheduled_offset_s ?? null,
+			race_window_open_offset_s: opts.race_window_open_offset_s ?? null,
+			race_window_length_s: opts.race_window_length_s ?? null
 		})
 		.select('id')
 		.single();

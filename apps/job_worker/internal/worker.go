@@ -193,6 +193,11 @@ type Backend interface {
 	// ErrRunMetadataChanged on a miss.
 	ReadRunForRoadDistance(ctx context.Context, runID string) (*RoadDistanceRun, error)
 	UpdateRunMetadata(ctx context.Context, read *RoadDistanceRun, trackURL string, metadata json.RawMessage) error
+	// Segment-match path — kind='segment_match' (migration 20271117002392).
+	// Hands the job's payload to the `segment-match` Edge Function, which
+	// runs the canonical TS matcher and writes the efforts; an *HTTPError
+	// carries its status so the classifier retries a 5xx and fails a 4xx.
+	InvokeSegmentMatch(ctx context.Context, payload json.RawMessage) error
 }
 
 // WebPushSender is the transport for kind='web_push' jobs. Production wires
@@ -523,6 +528,8 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleSafetySms(ctx, job)
 	case "security_email":
 		return w.handleSecurityEmail(ctx, job)
+	case "club_verification_email":
+		return w.handleClubVerificationEmail(ctx, job)
 	case "web_push":
 		return w.handleWebPush(ctx, job)
 	case "native_push":
@@ -539,6 +546,8 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleRoutePhotoOrphanSweep(ctx, job)
 	case "distance_recompute":
 		return w.handleDistanceRecompute(ctx, job)
+	case "segment_match":
+		return w.handleSegmentMatch(ctx, job)
 	default:
 		return fmt.Errorf("unknown job kind %q", job.Kind)
 	}

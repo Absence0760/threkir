@@ -6,12 +6,22 @@
 	import { racePlanHref } from '#lib/training/race_plan_prefill.ts';
 	import { todayISO } from '#lib/training/training.ts';
 	import type { RaceListingResult } from '#lib/core/data.ts';
+	import ProvenanceBadge from '#lib/components/ProvenanceBadge.svelte';
+	import { provenanceShowsBadge, raceListingProvenance } from '#lib/social/provenance.ts';
 
 	interface Props {
 		race: RaceListingResult;
 		onimport?: (race: RaceListingResult) => void;
 	}
 	let { race, onimport }: Props = $props();
+
+	let provenance = $derived(
+		raceListingProvenance({
+			organiserIsOfficial: race.organiser_is_official,
+			provider: race.provider,
+			isVerified: race.is_verified
+		})
+	);
 
 	let awayLabel = $derived(
 		race.distance_m_away == null
@@ -42,7 +52,10 @@
 
 <li class="card-elevated race" data-testid="race-card">
 	<div class="race-main">
-		<a class="race-title" href="/races/{race.id}" data-testid="race-detail-link">{race.name}</a>
+		<span class="race-title-row">
+			<a class="race-title" href="/races/{race.id}" data-testid="race-detail-link">{race.name}</a>
+			{#if provenanceShowsBadge(provenance)}<ProvenanceBadge kind={provenance} />{/if}
+		</span>
 		<span class="race-meta">
 			{formatDate(race.race_date)}
 			{#if race.distance_m}· {formatDistance(race.distance_m)}{/if}
@@ -161,6 +174,12 @@
 	.race-away {
 		font-weight: 600;
 		color: var(--color-text);
+	}
+	.race-title-row {
+		display: inline-flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-xs);
 	}
 	.race-unverified {
 		align-self: flex-start;

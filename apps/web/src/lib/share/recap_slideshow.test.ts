@@ -55,6 +55,8 @@ function recap(over: Partial<YearInRunningRecap> = {}): YearInRunningRecap {
 		mostUsedActivity: 'run',
 		photoCount: 0,
 		personalRecordCount: 0,
+		parkCourseCount: 0,
+		parkCount: 0,
 		badges: [],
 		...over,
 	};

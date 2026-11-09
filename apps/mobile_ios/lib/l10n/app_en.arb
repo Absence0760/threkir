@@ -216,6 +216,32 @@
   "@recapLatestStartLabel": {
     "description": "Stat card label for the latest run start time"
   },
+  "recapParkCoursesLabel": "Park courses",
+  "@recapParkCoursesLabel": {
+    "description": "Park courses phase 5 (recap.parkCourses)"
+  },
+  "recapParkCoursesSub": "{n, plural, one {in {n} park} other {in {n} parks}}",
+  "@recapParkCoursesSub": {
+    "description": "Park courses phase 5 (recap.parkCoursesSub)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "recapParksHeading": "Parks you ran",
+  "@recapParksHeading": {
+    "description": "Park courses phase 5 (recap.parksHeading)"
+  },
+  "recapParkCourseCount": "{n, plural, one {{n} course} other {{n} courses}}",
+  "@recapParkCourseCount": {
+    "description": "Park courses phase 5 (recap.parkCourseCount)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "routePickerTitle": "Choose route",
   "@routePickerTitle": {
     "description": "App bar title for the full-screen route picker"
@@ -1075,6 +1101,44 @@
   "dashboardTrendGroupRecentHint": "Your latest sessions",
   "@dashboardTrendGroupRecentHint": {
     "description": "One-line description under the Recent trend group heading"
+  },
+  "dashboardHeroNothingPlanned": "Nothing planned today",
+  "@dashboardHeroNothingPlanned": {
+    "description": "Title of the Today hero on Home when nothing is planned and nothing was run today"
+  },
+  "dashboardHeroRestDay": "Rest day",
+  "@dashboardHeroRestDay": {
+    "description": "Title of the Today hero on a training-plan rest day"
+  },
+  "dashboardHeroRestDayBody": "Nothing on the plan today.",
+  "@dashboardHeroRestDayBody": {
+    "description": "Line under the rest-day title in the Today hero"
+  },
+  "dashboardHeroReadiness": "Readiness {score}",
+  "@dashboardHeroReadiness": {
+    "description": "One-line readiness score in the Today hero; {score} is 0-100",
+    "placeholders": {
+      "score": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardHideFromHome": "Hide from Home",
+  "@dashboardHideFromHome": {
+    "description": "Long-press action on a Home trend group that hides it from Home"
+  },
+  "dashboardCardHidden": "{name} is hidden. You can bring it back in Settings.",
+  "@dashboardCardHidden": {
+    "description": "Banner after hiding a Home trend group; {name} is the group title",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardHideCardFailed": "Couldn't hide that card. Try again.",
+  "@dashboardHideCardFailed": {
+    "description": "Banner when hiding a Home trend group could not be saved"
   },
   "readinessFromLoadOnly": "Scored from your training load only. Sleep and resting heart rate are not part of it yet.",
   "@readinessFromLoadOnly": {
@@ -2786,6 +2850,22 @@
   "runExpandStatsPanel": "Expand stats panel",
   "@runExpandStatsPanel": {
     "description": "Screen-reader label for the drag handle when the stats panel is collapsed"
+  },
+  "runStatsPageA11yLabel": "Stats page {page} of {total}",
+  "@runStatsPageA11yLabel": {
+    "description": "Screen-reader label for the paged row of live stat tiles on the recording panel; tapping or swiping it shows the next page",
+    "placeholders": {
+      "page": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "runStatsNextPageA11yHint": "Shows the next stats",
+  "@runStatsNextPageA11yHint": {
+    "description": "Screen-reader hint for the paged row of live stat tiles on the recording panel"
   },
   "runRouteRemaining": "{distance} to go",
   "@runRouteRemaining": {
@@ -5836,6 +5916,10 @@
       }
     }
   },
+  "routeDetailExportCreditFailed": "Couldn't check this route's map credits, so nothing was exported. Try again.",
+  "@routeDetailExportCreditFailed": {
+    "description": "Banner when the check for a park course route's geometry credit fails, so the GPX/KML export is refused rather than written uncredited. Web key routeDetail.exportCreditFailed."
+  },
   "routeDetailClubsLoadTimeout": "Couldn't load your clubs — check your network.",
   "@routeDetailClubsLoadTimeout": {
     "description": "Banner shown when the transfer-to-club club fetch times out"
@@ -6303,6 +6387,18 @@
   "heatmapHeatDensity": "Heat density",
   "@heatmapHeatDensity": {
     "description": "Filter chip toggling the heat-density layer in the heatmap filter sheet"
+  },
+  "heatmapUpcomingRaces": "Upcoming races",
+  "@heatmapUpcomingRaces": {
+    "description": "Filter chip toggling the upcoming verified race pins (races in the next six months) in the heatmap filter sheet"
+  },
+  "heatmapViewRace": "View race",
+  "@heatmapViewRace": {
+    "description": "Button on a race pin's card on the heatmap that opens the race page"
+  },
+  "heatmapRaceFallbackName": "Race",
+  "@heatmapRaceFallbackName": {
+    "description": "Title shown on a heatmap race pin card when the race has no name"
   },
   "heatmapResetFilters": "Reset filters",
   "@heatmapResetFilters": {
@@ -7036,6 +7132,192 @@
         "type": "String"
       }
     }
+  },
+  "profileNotifPlanChangeRequest": "{name} suggested a change to a plan you assigned",
+  "@profileNotifPlanChangeRequest": {
+    "description": "Notification text for a coach whose athlete suggested a change to a plan the coach assigned",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifPlanChangeDecision": "{name} answered your suggested plan change",
+  "@profileNotifPlanChangeDecision": {
+    "description": "Notification text for an athlete whose coach approved or declined a plan change they suggested",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeTitle": "Suggested plan change",
+  "@planChangeTitle": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): title"
+  },
+  "planChangeWaitingForCoach": "Waiting for your coach to answer",
+  "@planChangeWaitingForCoach": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): waitingForCoach"
+  },
+  "planChangeWaitingForYou": "Your athlete is waiting for your answer",
+  "@planChangeWaitingForYou": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): waitingForYou"
+  },
+  "planChangeApprovedByCoach": "Approved by the coach and applied",
+  "@planChangeApprovedByCoach": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approvedByCoach"
+  },
+  "planChangeApprovedInPartByCoach": "Approved in part by the coach; the lines shown were applied",
+  "@planChangeApprovedInPartByCoach": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approvedInPartByCoach"
+  },
+  "planChangeDeclinedByCoach": "Declined by the coach",
+  "@planChangeDeclinedByCoach": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): declinedByCoach"
+  },
+  "planChangeWithdrawnByAthlete": "Withdrawn by the athlete",
+  "@planChangeWithdrawnByAthlete": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdrawnByAthlete"
+  },
+  "planChangeAppliedByAthlete": "Applied by the athlete without the coach",
+  "@planChangeAppliedByAthlete": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): appliedByAthlete"
+  },
+  "planChangeMinutes": "{n} min",
+  "@planChangeMinutes": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): minutes",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planChangeIncludeLine": "Include this change: {line}",
+  "@planChangeIncludeLine": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): includeLine",
+    "placeholders": {
+      "line": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeWeekLabel": "Week {n} target",
+  "@planChangeWeekLabel": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): weekLabel",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "planChangeSkipped": "Skipped",
+  "@planChangeSkipped": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): skipped"
+  },
+  "planChangeWeekTarget": "Week {n} target: {from} → {to}",
+  "@planChangeWeekTarget": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): weekTarget",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeUnreadable": "Some of these changes can no longer be shown.",
+  "@planChangeUnreadable": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): unreadable"
+  },
+  "planChangeCoachNote": "Coach's note: {note}",
+  "@planChangeCoachNote": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): coachNote",
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeNoteLabel": "Note to your athlete (optional)",
+  "@planChangeNoteLabel": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): noteLabel"
+  },
+  "planChangeNotePlaceholder": "Why you approved or declined",
+  "@planChangeNotePlaceholder": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): notePlaceholder"
+  },
+  "planChangeDecline": "Decline",
+  "@planChangeDecline": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): decline"
+  },
+  "planChangeApprove": "Approve",
+  "@planChangeApprove": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approve"
+  },
+  "planChangeApproveSelected": "Approve selected",
+  "@planChangeApproveSelected": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approveSelected"
+  },
+  "planChangeApplyMyselfHint": "You own this plan, so you can apply the change yourself. Your coach will be told.",
+  "@planChangeApplyMyselfHint": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): applyMyselfHint"
+  },
+  "planChangeWithdraw": "Withdraw",
+  "@planChangeWithdraw": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdraw"
+  },
+  "planChangeApplyMyself": "Apply it myself",
+  "@planChangeApplyMyself": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): applyMyself"
+  },
+  "planChangeWithdrawConfirmTitle": "Withdraw this suggested change?",
+  "@planChangeWithdrawConfirmTitle": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdrawConfirmTitle"
+  },
+  "planChangeWithdrawConfirmMessage": "Your coach will no longer be asked to approve it. To suggest it again, ask the Coach to adjust your plan again.",
+  "@planChangeWithdrawConfirmMessage": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdrawConfirmMessage"
+  },
+  "planChangeKeep": "Keep it",
+  "@planChangeKeep": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): keep"
+  },
+  "planChangeFailed": "Couldn't update the suggested change: {error}",
+  "@planChangeFailed": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): failed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "planChangeApprovedToast": "Change approved and applied to the plan",
+  "@planChangeApprovedToast": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): approvedToast"
+  },
+  "planChangeDeclinedToast": "Change declined",
+  "@planChangeDeclinedToast": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): declinedToast"
+  },
+  "planChangeWithdrawnToast": "Suggestion withdrawn",
+  "@planChangeWithdrawnToast": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): withdrawnToast"
+  },
+  "planChangeAppliedToast": "Change applied to your plan; your coach has been told",
+  "@planChangeAppliedToast": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): appliedToast"
+  },
+  "planChangeLoadFailed": "Couldn't load suggested plan changes.",
+  "@planChangeLoadFailed": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): loadFailed"
+  },
+  "planChangeRetry": "Try again",
+  "@planChangeRetry": {
+    "description": "Suggested change to a coach-assigned plan (decisions § 2382): retry"
   },
   "profileNotifWorkoutReminder": "Today's workout is waiting in your plan",
   "@profileNotifWorkoutReminder": {
@@ -14461,6 +14743,10 @@
   "@segmentsPanelLeaderboardEmpty": {
     "description": "Empty leaderboard with no filter"
   },
+  "segmentOldMatchNote": "Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.",
+  "@segmentOldMatchNote": {
+    "description": "Note above a catalogue segment leaderboard timed by start and end lines, shown while some efforts on it were still measured by the old near-the-start-and-finish rule"
+  },
   "segmentsPanelCrownBanner": "You hold this crown — {label}.",
   "@segmentsPanelCrownBanner": {
     "description": "Banner shown when the viewer holds the segment crown",
@@ -19435,6 +19721,32 @@
       }
     }
   },
+  "challengesMetricParkCourses": "Park courses",
+  "@challengesMetricParkCourses": {
+    "description": "Park courses phase 5 (challenges.metricParkCourses)"
+  },
+  "challengesUnitParkCourses": "{n, plural, one {{n} course} other {{n} courses}}",
+  "@challengesUnitParkCourses": {
+    "description": "Park courses phase 5 (challenges.unitParkCourses)",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "challengesGoalSuffixCourses": "courses",
+  "@challengesGoalSuffixCourses": {
+    "description": "Park courses phase 5 (challenges.goalSuffixCourses)"
+  },
+  "challengesParkRegion": "Counts park courses in {region}",
+  "@challengesParkRegion": {
+    "description": "Park courses phase 5 (challenges.parkRegion)",
+    "placeholders": {
+      "region": {
+        "type": "String"
+      }
+    }
+  },
   "challengesLeaveConfirmTitle": "Leave challenge?",
   "@challengesLeaveConfirmTitle": {
     "description": "Leave-confirm dialog title"
@@ -19697,6 +20009,224 @@
   "racesSourceManual": "Added by a runner",
   "@racesSourceManual": {
     "description": "Race detail screen: the race was submitted by a runner, not a provider"
+  },
+  "racesSourceClub": "Added by {club}",
+  "@racesSourceClub": {
+    "description": "Race detail: a hand-added race credited to the verified club that claimed it.",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "raceCourseSourceOfficial": "Official course from {club}",
+  "@raceCourseSourceOfficial": {
+    "description": "Race detail: the course is the organiser club's official course.",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "raceCourseSourceTraced": "Course drawn by {club} from the race's published map",
+  "@raceCourseSourceTraced": {
+    "description": "Race detail: the club traced the course from the race's published map.",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "raceCourseChecked": "last checked {date}",
+  "@raceCourseChecked": {
+    "description": "Race detail: appended after the course source; when the club last checked the course.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "raceCourseUpdated": "Course updated {date}",
+  "@raceCourseUpdated": {
+    "description": "Race detail: the course route's line changed after the club last checked it.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "raceCourseToolsHeading": "Race course",
+  "@raceCourseToolsHeading": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseClaim": "Claim this race",
+  "@raceCourseClaim": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseClaimTitle": "Claim this race for your club",
+  "@raceCourseClaimTitle": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseClaimBody": "Claiming marks the race as verified and lets your club link its course. Claim only a race your club organises or draws courses for.",
+  "@raceCourseClaimBody": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseClaimClub": "Club",
+  "@raceCourseClaimClub": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseClaimConfirm": "Claim race",
+  "@raceCourseClaimConfirm": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseClaimed": "Race claimed.",
+  "@raceCourseClaimed": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseClaimFailed": "Couldn't claim this race.",
+  "@raceCourseClaimFailed": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseLinkCourse": "Link course",
+  "@raceCourseLinkCourse": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseChangeCourse": "Change course",
+  "@raceCourseChangeCourse": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseLinkTitle": "Link the course",
+  "@raceCourseLinkTitle": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseLinkRoute": "Course route",
+  "@raceCourseLinkRoute": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseLinkNoRoutes": "Your club has no public routes yet. Create one from the club's Routes tab, make it public, then link it here.",
+  "@raceCourseLinkNoRoutes": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseLinkSourceLabel": "Where the course comes from",
+  "@raceCourseLinkSourceLabel": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSourceOptionOfficial": "The organiser's official course",
+  "@raceCourseSourceOptionOfficial": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSourceOptionTraced": "Traced from the race's published map",
+  "@raceCourseSourceOptionTraced": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseLinkConfirm": "Link course",
+  "@raceCourseLinkConfirm": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseLinked": "Course linked.",
+  "@raceCourseLinked": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseLinkFailed": "Couldn't update the course.",
+  "@raceCourseLinkFailed": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseMarkChecked": "Mark course checked",
+  "@raceCourseMarkChecked": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseCheckedDone": "Course marked as checked.",
+  "@raceCourseCheckedDone": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggest": "Suggest a course",
+  "@raceCourseSuggest": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggestTitle": "Suggest a course for this race",
+  "@raceCourseSuggestTitle": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggestBody": "Pick one of your public routes. The race's organiser reviews it, or a verified club if nobody has claimed the race yet.",
+  "@raceCourseSuggestBody": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggestRoute": "Your route",
+  "@raceCourseSuggestRoute": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggestNoRoutes": "You have no public routes yet. Make a route public to suggest it.",
+  "@raceCourseSuggestNoRoutes": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggestNote": "Note (optional)",
+  "@raceCourseSuggestNote": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggestConfirm": "Send suggestion",
+  "@raceCourseSuggestConfirm": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggested": "Suggestion sent.",
+  "@raceCourseSuggested": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggestFailed": "Couldn't send your suggestion.",
+  "@raceCourseSuggestFailed": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseSuggestPending": "You suggested a course. It's waiting for review.",
+  "@raceCourseSuggestPending": {
+    "description": "Race detail race-course tools (claim, link, suggest a course; decisions § 2381)."
+  },
+  "raceCourseUnlink": "Remove course",
+  "@raceCourseUnlink": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseUnlinked": "Course removed.",
+  "@raceCourseUnlinked": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewHeading": "Course suggestions",
+  "@raceCourseReviewHeading": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewClaimFirst": "Claim this race to approve or reject a suggestion.",
+  "@raceCourseReviewClaimFirst": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewApprove": "Approve",
+  "@raceCourseReviewApprove": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewReject": "Reject",
+  "@raceCourseReviewReject": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewApproveTitle": "Approve this course",
+  "@raceCourseReviewApproveTitle": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewApproveBody": "The course must be a public route your club owns. Pick the club's copy of {route}.",
+  "@raceCourseReviewApproveBody": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396).",
+    "placeholders": {
+      "route": {
+        "type": "String"
+      }
+    }
+  },
+  "raceCourseReviewApproved": "Suggestion approved and course linked.",
+  "@raceCourseReviewApproved": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewRejected": "Suggestion rejected.",
+  "@raceCourseReviewRejected": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
+  },
+  "raceCourseReviewFailed": "Couldn't review the suggestion.",
+  "@raceCourseReviewFailed": {
+    "description": "Race detail race-course tools, review and remove (decisions § 2381, § 2396)."
   },
   "racesDetailShare": "Share",
   "@racesDetailShare": {
@@ -20485,6 +21015,86 @@
   "badgesPlan10Desc": "Completed 10 training plans",
   "@badgesPlan10Desc": {
     "description": "Badge description"
+  },
+  "badgesParkCourses1Label": "First park course",
+  "@badgesParkCourses1Label": {
+    "description": "Park courses phase 5 (badges.parkCourses1.label)"
+  },
+  "badgesParkCourses1Desc": "Completed a park course",
+  "@badgesParkCourses1Desc": {
+    "description": "Park courses phase 5 (badges.parkCourses1.desc)"
+  },
+  "badgesParkCourses5Label": "Park regular",
+  "@badgesParkCourses5Label": {
+    "description": "Park courses phase 5 (badges.parkCourses5.label)"
+  },
+  "badgesParkCourses5Desc": "Completed 5 different park courses",
+  "@badgesParkCourses5Desc": {
+    "description": "Park courses phase 5 (badges.parkCourses5.desc)"
+  },
+  "badgesParkCourses10Label": "Trail collector",
+  "@badgesParkCourses10Label": {
+    "description": "Park courses phase 5 (badges.parkCourses10.label)"
+  },
+  "badgesParkCourses10Desc": "Completed 10 different park courses",
+  "@badgesParkCourses10Desc": {
+    "description": "Park courses phase 5 (badges.parkCourses10.desc)"
+  },
+  "badgesParkCourses25Label": "Park explorer",
+  "@badgesParkCourses25Label": {
+    "description": "Park courses phase 5 (badges.parkCourses25.label)"
+  },
+  "badgesParkCourses25Desc": "Completed 25 different park courses",
+  "@badgesParkCourses25Desc": {
+    "description": "Park courses phase 5 (badges.parkCourses25.desc)"
+  },
+  "badgesParkComplete1Label": "Park finisher",
+  "@badgesParkComplete1Label": {
+    "description": "Park courses phase 5 (badges.parkComplete1.label)"
+  },
+  "badgesParkComplete1Desc": "Completed every course in a park",
+  "@badgesParkComplete1Desc": {
+    "description": "Park courses phase 5 (badges.parkComplete1.desc)"
+  },
+  "badgesParkComplete3Label": "Three parks finished",
+  "@badgesParkComplete3Label": {
+    "description": "Park courses phase 5 (badges.parkComplete3.label)"
+  },
+  "badgesParkComplete3Desc": "Completed every course in 3 parks",
+  "@badgesParkComplete3Desc": {
+    "description": "Park courses phase 5 (badges.parkComplete3.desc)"
+  },
+  "badgesParkComplete10Label": "Park completionist",
+  "@badgesParkComplete10Label": {
+    "description": "Park courses phase 5 (badges.parkComplete10.label)"
+  },
+  "badgesParkComplete10Desc": "Completed every course in 10 parks",
+  "@badgesParkComplete10Desc": {
+    "description": "Park courses phase 5 (badges.parkComplete10.desc)"
+  },
+  "badgesParkPassport1Label": "Park passport",
+  "@badgesParkPassport1Label": {
+    "description": "Park courses phase 5 (badges.parkPassport1.label)"
+  },
+  "badgesParkPassport1Desc": "Completed a course in every park of a state",
+  "@badgesParkPassport1Desc": {
+    "description": "Park courses phase 5 (badges.parkPassport1.desc)"
+  },
+  "badgesParkPassport3Label": "Passport stamped",
+  "@badgesParkPassport3Label": {
+    "description": "Park courses phase 5 (badges.parkPassport3.label)"
+  },
+  "badgesParkPassport3Desc": "Completed a park passport in 3 states",
+  "@badgesParkPassport3Desc": {
+    "description": "Park courses phase 5 (badges.parkPassport3.desc)"
+  },
+  "badgesParkPassport10Label": "Passport collector",
+  "@badgesParkPassport10Label": {
+    "description": "Park courses phase 5 (badges.parkPassport10.label)"
+  },
+  "badgesParkPassport10Desc": "Completed a park passport in 10 states",
+  "@badgesParkPassport10Desc": {
+    "description": "Park courses phase 5 (badges.parkPassport10.desc)"
   },
   "racePredictorTitle": "Race-time predictor",
   "@racePredictorTitle": {
@@ -21739,6 +22349,24 @@
   "rateLimitSendMessage": "You're sending messages too quickly — please wait {wait} and try again.",
   "@rateLimitSendMessage": {
     "description": "Rate-limit refusal when either direct-message send bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitEditMessage": "You're editing messages too quickly — please wait {wait} and try again.",
+  "@rateLimitEditMessage": {
+    "description": "Rate-limit refusal when the direct-message edit bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitOpenMessageRequest": "You've started a lot of message requests today — please wait {wait} and try again.",
+  "@rateLimitOpenMessageRequest": {
+    "description": "Rate-limit refusal when the open-a-message-request bucket is spent",
     "placeholders": {
       "wait": {
         "type": "String"
@@ -23197,7 +23825,7 @@
   "@messagesSendFailed": {
     "description": "A send failed for a reason the app cannot name"
   },
-  "messagesSendNotAllowed": "You can only message people you follow or who follow you, and who haven't blocked you.",
+  "messagesSendNotAllowed": "You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other.",
   "@messagesSendNotAllowed": {
     "description": "The server refused the send: no follow either way, or a block either way (deliberately not told apart)"
   },
@@ -23265,6 +23893,30 @@
   "messagesUnsendFailed": "Couldn't unsend the message.",
   "@messagesUnsendFailed": {
     "description": "Banner when unsending a direct message failed"
+  },
+  "messagesEdit": "Edit",
+  "@messagesEdit": {
+    "description": "Action in the message options sheet that opens the editor for one of your own messages, offered for 15 minutes after sending"
+  },
+  "messagesEdited": "Edited",
+  "@messagesEdited": {
+    "description": "Small mark beside the time on a message its sender edited"
+  },
+  "messagesEditTitle": "Edit message",
+  "@messagesEditTitle": {
+    "description": "Title of the dialog that edits one of your own direct messages; also the text field label"
+  },
+  "messagesEditSave": "Save",
+  "@messagesEditSave": {
+    "description": "Button that saves an edited direct message"
+  },
+  "messagesEditFailed": "Couldn't edit the message.",
+  "@messagesEditFailed": {
+    "description": "Shown in the edit dialog when saving the edit failed for a reason other than the window closing"
+  },
+  "messagesEditClosed": "This message can no longer be edited.",
+  "@messagesEditClosed": {
+    "description": "Shown in the edit dialog when the server refuses the edit: the 15-minute window passed, the message was unsent, or a block stands"
   },
   "messagesReport": "Report",
   "@messagesReport": {
@@ -23348,6 +24000,61 @@
   "messagesBackToInbox": "Back to inbox",
   "@messagesBackToInbox": {
     "description": "Control in the Archived list that returns to the main inbox"
+  },
+  "messagesRequestCapReached": "You can send up to 3 messages until they accept your request.",
+  "@messagesRequestCapReached": {
+    "description": "Shown when a send into a pending message request is refused: the requester may send three messages until it is accepted"
+  },
+  "messagesRequestsCount": "Requests ({count})",
+  "@messagesRequestsCount": {
+    "description": "Inbox control that opens the message Requests list; count is how many",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesRequestNotice": "{name} wants to message you. They won't know you've read this unless you accept.",
+  "@messagesRequestNotice": {
+    "description": "Shown in place of the composer on a message request; name is the requester",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "messagesRequestAccept": "Accept",
+  "@messagesRequestAccept": {
+    "description": "Accepts a message request"
+  },
+  "messagesRequestDecline": "Decline",
+  "@messagesRequestDecline": {
+    "description": "Declines a message request"
+  },
+  "messagesRequestDeclineConfirmTitle": "Decline this request?",
+  "@messagesRequestDeclineConfirmTitle": {
+    "description": "Title of the confirm dialog before declining a message request"
+  },
+  "messagesRequestDeclineConfirmMessage": "Their messages leave your Requests, and they can't message you again unless you message them first. They won't be told.",
+  "@messagesRequestDeclineConfirmMessage": {
+    "description": "Body of the confirm dialog before declining a message request"
+  },
+  "messagesRequestAcceptedToast": "Request accepted",
+  "@messagesRequestAcceptedToast": {
+    "description": "Confirmation after accepting a message request"
+  },
+  "messagesRequestDeclinedToast": "Request declined",
+  "@messagesRequestDeclinedToast": {
+    "description": "Confirmation after declining a message request"
+  },
+  "messagesRequestActionFailed": "Couldn't update the request: {error}",
+  "@messagesRequestActionFailed": {
+    "description": "A message-request accept, decline or block failed; error is the reason",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
   },
   "messagesMutedMark": "Muted",
   "@messagesMutedMark": {
@@ -26001,6 +26708,14 @@
   "@prefsDisclosureLevel": {
     "description": "Settings > Preferences tile title for the progressive-disclosure level (universal disclosure_level key)"
   },
+  "prefsHomeCards": "Home cards",
+  "@prefsHomeCards": {
+    "description": "Settings row and sheet title listing the Home trend groups to show or hide"
+  },
+  "prefsHomeCardsHint": "Untick a group to take it off Home. The choice follows you to every device.",
+  "@prefsHomeCardsHint": {
+    "description": "Explanation under the Home cards setting"
+  },
   "prefsDisclosureAuto": "Automatic",
   "@prefsDisclosureAuto": {
     "description": "Disclosure-level option: no stored level, derived from the onboarding goal and run count"
@@ -26408,8 +27123,12 @@
   "@shareCardSplitsHeading": {
     "description": "Heading of the splits sticker, printed uppercase: how many splits and the average pace with its unit",
     "placeholders": {
-      "count": {"type": "int"},
-      "pace": {"type": "String"}
+      "count": {
+        "type": "int"
+      },
+      "pace": {
+        "type": "String"
+      }
     }
   },
   "shareCardStreakCaption": "days in a row",
@@ -26423,6 +27142,26 @@
   "shareCardBadgeKicker": "Badge earned",
   "@shareCardBadgeKicker": {
     "description": "Kicker over the badge name on the badge sticker"
+  },
+  "shareCardKindCourse": "Park course",
+  "@shareCardKindCourse": {
+    "description": "Park courses phase 5 (runShare.kindCourse)"
+  },
+  "shareCardCourseKicker": "Park course time",
+  "@shareCardCourseKicker": {
+    "description": "Park courses phase 5 (runShare.courseKicker)"
+  },
+  "shareCardCourseRank": "#{rank} in {season}",
+  "@shareCardCourseRank": {
+    "description": "Park courses phase 5 (runShare.courseRank)",
+    "placeholders": {
+      "rank": {
+        "type": "String"
+      },
+      "season": {
+        "type": "String"
+      }
+    }
   },
   "runDetailSharePr": "Share PR card",
   "@runDetailSharePr": {
@@ -26631,7 +27370,1013 @@
   "@runDetailBlockedDurationTooLong": {
     "description": "Body of the blocked-upload card when a run is longer than the ten-day maximum the server accepts; {hours} is that maximum in hours (240)",
     "placeholders": {
-      "hours": {"type": "int"}
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "ttsDriveAhead": "In {distance}: {kind}, {label}.",
+  "@ttsDriveAhead": {
+    "description": "Spoken drive note ahead: distance, marker type, marker name",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "kind": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveAheadKind": "In {distance}: {kind}.",
+  "@ttsDriveAheadKind": {
+    "description": "Spoken drive note ahead for a marker with no name",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveAt": "Now: {kind}, {label}.",
+  "@ttsDriveAt": {
+    "description": "Spoken drive note on arriving at a marker",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveAtKind": "Now: {kind}.",
+  "@ttsDriveAtKind": {
+    "description": "Spoken drive note on arriving at a marker with no name",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDrivePassed": "Just passed: {kind}, {label}.",
+  "@ttsDrivePassed": {
+    "description": "Spoken drive note for a marker passed between two GPS fixes",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDrivePassedKind": "Just passed: {kind}.",
+  "@ttsDrivePassedKind": {
+    "description": "Spoken drive note for a passed marker with no name",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveServices": "Services: {services}.",
+  "@ttsDriveServices": {
+    "description": "Spoken list of an aid station services",
+    "placeholders": {
+      "services": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveClimb": "{distance} at about {grade} percent.",
+  "@ttsDriveClimb": {
+    "description": "Spoken climb length and grade",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "grade": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveCutoffClock": "Cut-off at {clock}.",
+  "@ttsDriveCutoffClock": {
+    "description": "Spoken cut-off wall-clock time",
+    "placeholders": {
+      "clock": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveCutoffElapsed": "Cut-off {time} after the start.",
+  "@ttsDriveCutoffElapsed": {
+    "description": "Spoken cut-off as time after the start",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveStarted": "Drive notes on.",
+  "@ttsDriveStarted": {
+    "description": "Spoken when drive notes start"
+  },
+  "ttsDriveLegDone": "Leg {done} done. Leg {next} is ready.",
+  "@ttsDriveLegDone": {
+    "description": "Spoken when a Maps leg ends and the next is ready",
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "next": {
+        "type": "String"
+      }
+    }
+  },
+  "ttsDriveFinished": "You've reached the finish. Drive notes stopped.",
+  "@ttsDriveFinished": {
+    "description": "Spoken when the drive reaches the end of the course"
+  },
+  "ttsDriveAbandoned": "You've been off the course for a while, so drive notes have stopped.",
+  "@ttsDriveAbandoned": {
+    "description": "Spoken when the drive stops after a long time off the course"
+  },
+  "courseDriveTitle": "Drive this course",
+  "@courseDriveTitle": {
+    "description": "Drive this course: screen title and entry button"
+  },
+  "courseDriveNoticeTitle": "Before you drive",
+  "@courseDriveNoticeTitle": {
+    "description": "One-time driver safety notice title"
+  },
+  "courseDriveNoticeBody": "Use this with a passenger or a mounted phone, and don't touch it while driving. Follow road rules and signs. Course roads may be closed on race day, and the Maps route may not match the course.",
+  "@courseDriveNoticeBody": {
+    "description": "One-time driver safety notice text (pending counsel review)"
+  },
+  "courseDriveNoticeAccept": "I understand",
+  "@courseDriveNoticeAccept": {
+    "description": "Acknowledge the driver safety notice"
+  },
+  "courseDriveMapsApp": "Open in",
+  "@courseDriveMapsApp": {
+    "description": "Label above the Maps app choice"
+  },
+  "courseDriveAppGoogle": "Google Maps",
+  "@courseDriveAppGoogle": {
+    "description": "Google Maps app name"
+  },
+  "courseDriveAppApple": "Apple Maps",
+  "@courseDriveAppApple": {
+    "description": "Apple Maps app name"
+  },
+  "courseDriveAppWaze": "Waze",
+  "@courseDriveAppWaze": {
+    "description": "Waze app name"
+  },
+  "courseDriveToStart": "Drive to the start",
+  "@courseDriveToStart": {
+    "description": "Open the Maps app to drive to the start of the course"
+  },
+  "courseDriveLegsHeading": "Legs",
+  "@courseDriveLegsHeading": {
+    "description": "Heading over the list of Maps legs"
+  },
+  "courseDriveLeg": "Leg {n}: {from} to {to}",
+  "@courseDriveLeg": {
+    "description": "One Maps leg: its number and distance range",
+    "placeholders": {
+      "n": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveGuidanceOnly": "The Maps route is guidance only. The notes follow the real course.",
+  "@courseDriveGuidanceOnly": {
+    "description": "The Maps route is not the exact course"
+  },
+  "courseDriveChecking": "Checking which stretches Maps can follow…",
+  "@courseDriveChecking": {
+    "description": "Checking which stretches a Maps app can follow"
+  },
+  "courseDriveAllDrivable": "Maps can follow the whole course.",
+  "@courseDriveAllDrivable": {
+    "description": "Every stretch of the course can be followed by Maps"
+  },
+  "courseDriveCheckFailed": "We couldn't check which stretches Maps can follow.",
+  "@courseDriveCheckFailed": {
+    "description": "The drivable-stretch check could not run"
+  },
+  "courseDriveUndrivableHeading": "Maps can't follow these stretches",
+  "@courseDriveUndrivableHeading": {
+    "description": "Heading over stretches Maps cannot follow"
+  },
+  "courseDriveStretch": "{from} to {to}",
+  "@courseDriveStretch": {
+    "description": "A distance range on the course",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveNotesHeading": "Course notes",
+  "@courseDriveNotesHeading": {
+    "description": "Heading over the course notes"
+  },
+  "courseDriveNoNotes": "This course has no markers to read out.",
+  "@courseDriveNoNotes": {
+    "description": "The course has no markers to speak"
+  },
+  "courseDriveStart": "Start spoken notes",
+  "@courseDriveStart": {
+    "description": "Start the spoken notes"
+  },
+  "courseDriveStop": "Stop",
+  "@courseDriveStop": {
+    "description": "Stop the spoken notes"
+  },
+  "courseDriveWaiting": "Head to the course. Notes start when you reach it.",
+  "@courseDriveWaiting": {
+    "description": "Shown until the driver reaches the course"
+  },
+  "courseDriveNextIn": "Next note in {distance}",
+  "@courseDriveNextIn": {
+    "description": "Distance to the next course note",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveNoMoreNotes": "No more notes ahead.",
+  "@courseDriveNoMoreNotes": {
+    "description": "Every note has been spoken"
+  },
+  "courseDriveFinished": "You reached the finish.",
+  "@courseDriveFinished": {
+    "description": "The drive reached the end of the course"
+  },
+  "courseDriveAbandoned": "Stopped: you were off the course for 10 minutes.",
+  "@courseDriveAbandoned": {
+    "description": "The drive stopped after 10 minutes off the course"
+  },
+  "courseDriveLocationDenied": "Location is off, so the notes can't follow you.",
+  "@courseDriveLocationDenied": {
+    "description": "Location access is off"
+  },
+  "courseDriveLoadFailed": "Couldn't load this course.",
+  "@courseDriveLoadFailed": {
+    "description": "The course could not be loaded"
+  },
+  "courseDriveOpenFailed": "Couldn't open the Maps app.",
+  "@courseDriveOpenFailed": {
+    "description": "The Maps app could not be opened"
+  },
+  "courseDriveCutoffClock": "Cut-off at {clock}",
+  "@courseDriveCutoffClock": {
+    "description": "Cut-off time shown on a note",
+    "placeholders": {
+      "clock": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveCutoffElapsed": "Cut-off {time} after the start",
+  "@courseDriveCutoffElapsed": {
+    "description": "Cut-off shown as time after the start",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "courseDriveClimb": "{distance} at about {grade}%",
+  "@courseDriveClimb": {
+    "description": "Climb length and grade shown on a note",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      },
+      "grade": {
+        "type": "String"
+      }
+    }
+  },
+  "parksTitle": "Park courses",
+  "@parksTitle": {
+    "description": "Park courses (#1313): web key parks.title."
+  },
+  "parksIntro": "Standing time-trial courses in state and national parks. Run one on any day and your time lands on this year's board.",
+  "@parksIntro": {
+    "description": "Park courses (#1313): web key parks.intro."
+  },
+  "parksLoading": "Loading park courses…",
+  "@parksLoading": {
+    "description": "Park courses (#1313): web key parks.loading."
+  },
+  "parksLoadFailed": "Couldn't load park courses.",
+  "@parksLoadFailed": {
+    "description": "Park courses (#1313): web key parks.loadFailed."
+  },
+  "parksRetry": "Retry",
+  "@parksRetry": {
+    "description": "Park courses (#1313): web key parks.retry."
+  },
+  "parksEmpty": "No park courses yet. The first ones are on their way.",
+  "@parksEmpty": {
+    "description": "Park courses (#1313): web key parks.empty."
+  },
+  "parksCourseCount": "{n, plural, one {{n} course} other {{n} courses}}",
+  "@parksCourseCount": {
+    "description": "Park courses (#1313): web key parks.courseCount.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksBackToParks": "All park courses",
+  "@parksBackToParks": {
+    "description": "Park courses (#1313): web key parks.backToParks."
+  },
+  "parksParkNotFoundTitle": "Park not found",
+  "@parksParkNotFoundTitle": {
+    "description": "Park courses (#1313): web key parks.parkNotFoundTitle."
+  },
+  "parksParkNotFoundBody": "This park isn't listed, or isn't listed any more.",
+  "@parksParkNotFoundBody": {
+    "description": "Park courses (#1313): web key parks.parkNotFoundBody."
+  },
+  "parksCourseNotFoundTitle": "Course not found",
+  "@parksCourseNotFoundTitle": {
+    "description": "Park courses (#1313): web key parks.courseNotFoundTitle."
+  },
+  "parksCourseNotFoundBody": "This course isn't listed, or isn't listed any more.",
+  "@parksCourseNotFoundBody": {
+    "description": "Park courses (#1313): web key parks.courseNotFoundBody."
+  },
+  "parksWebsite": "Park website",
+  "@parksWebsite": {
+    "description": "Park courses (#1313): web key parks.website."
+  },
+  "parksNoCourses": "No courses listed in this park yet.",
+  "@parksNoCourses": {
+    "description": "Park courses (#1313): web key parks.noCourses."
+  },
+  "parksAgencyNps": "National Park Service",
+  "@parksAgencyNps": {
+    "description": "Park courses (#1313): web key parks.agencyNps."
+  },
+  "parksAgencyState": "State park",
+  "@parksAgencyState": {
+    "description": "Park courses (#1313): web key parks.agencyState."
+  },
+  "parksAgencyCounty": "County park",
+  "@parksAgencyCounty": {
+    "description": "Park courses (#1313): web key parks.agencyCounty."
+  },
+  "parksAgencyOther": "Park",
+  "@parksAgencyOther": {
+    "description": "Park courses (#1313): web key parks.agencyOther."
+  },
+  "parksShapeLoop": "Loop",
+  "@parksShapeLoop": {
+    "description": "Park courses (#1313): web key parks.shapeLoop."
+  },
+  "parksShapeOutAndBack": "Out and back",
+  "@parksShapeOutAndBack": {
+    "description": "Park courses (#1313): web key parks.shapeOutAndBack."
+  },
+  "parksShapePointToPoint": "Point to point",
+  "@parksShapePointToPoint": {
+    "description": "Park courses (#1313): web key parks.shapePointToPoint."
+  },
+  "parksStatusOpen": "Open",
+  "@parksStatusOpen": {
+    "description": "Park courses (#1313): web key parks.statusOpen."
+  },
+  "parksStatusClosed": "Closed",
+  "@parksStatusClosed": {
+    "description": "Park courses (#1313): web key parks.statusClosed."
+  },
+  "parksStatusSeasonal": "Seasonal",
+  "@parksStatusSeasonal": {
+    "description": "Park courses (#1313): web key parks.statusSeasonal."
+  },
+  "parksClosedBanner": "This course is closed. Its times and boards stay, but please don't run it until it reopens.",
+  "@parksClosedBanner": {
+    "description": "Park courses (#1313): web key parks.closedBanner."
+  },
+  "parksStatusChecked": "Status checked {date}",
+  "@parksStatusChecked": {
+    "description": "Park courses (#1313): web key parks.statusChecked.",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "parksDifficultyEasy": "Easy",
+  "@parksDifficultyEasy": {
+    "description": "Park courses (#1313): web key parks.difficultyEasy."
+  },
+  "parksDifficultyModerate": "Moderate",
+  "@parksDifficultyModerate": {
+    "description": "Park courses (#1313): web key parks.difficultyModerate."
+  },
+  "parksDifficultyHard": "Hard",
+  "@parksDifficultyHard": {
+    "description": "Park courses (#1313): web key parks.difficultyHard."
+  },
+  "parksStatDistance": "Distance",
+  "@parksStatDistance": {
+    "description": "Park courses (#1313): web key parks.statDistance."
+  },
+  "parksStatElevation": "Elevation gain",
+  "@parksStatElevation": {
+    "description": "Park courses (#1313): web key parks.statElevation."
+  },
+  "parksStatShape": "Shape",
+  "@parksStatShape": {
+    "description": "Park courses (#1313): web key parks.statShape."
+  },
+  "parksStatSurface": "Surface",
+  "@parksStatSurface": {
+    "description": "Park courses (#1313): web key parks.statSurface."
+  },
+  "parksStatDifficulty": "Difficulty",
+  "@parksStatDifficulty": {
+    "description": "Park courses (#1313): web key parks.statDifficulty."
+  },
+  "parksBoardFastest": "Fastest",
+  "@parksBoardFastest": {
+    "description": "Park courses (#1313): web key parks.boardFastest."
+  },
+  "parksBoardCompletions": "Most completions",
+  "@parksBoardCompletions": {
+    "description": "Park courses (#1313): web key parks.boardCompletions."
+  },
+  "parksSeasonThisYear": "This year ({year})",
+  "@parksSeasonThisYear": {
+    "description": "Park courses (#1313): web key parks.seasonThisYear.",
+    "placeholders": {
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "parksSeasonAllTime": "All time",
+  "@parksSeasonAllTime": {
+    "description": "Park courses (#1313): web key parks.seasonAllTime."
+  },
+  "parksCompletionDays": "{n, plural, one {{n} day} other {{n} days}}",
+  "@parksCompletionDays": {
+    "description": "Park courses (#1313): web key parks.completionDays.",
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "parksNoEfforts": "No times on this board yet. Run the course and yours is the first.",
+  "@parksNoEfforts": {
+    "description": "Park courses (#1313): web key parks.noEfforts."
+  },
+  "parksSignInForBoards": "Sign in to see this course's boards.",
+  "@parksSignInForBoards": {
+    "description": "Park courses (#1313): web key parks.signInForBoards."
+  },
+  "parksSignIn": "Sign in",
+  "@parksSignIn": {
+    "description": "Park courses (#1313): web key parks.signIn."
+  },
+  "parksBoardFailed": "Couldn't load this board.",
+  "@parksBoardFailed": {
+    "description": "Park courses (#1313): web key parks.boardFailed."
+  },
+  "parksSafetyNotice": "Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.",
+  "@parksSafetyNotice": {
+    "description": "Park courses (#1313): web key parks.safetyNotice."
+  },
+  "parksAttributionOsm": "Course line © OpenStreetMap contributors",
+  "@parksAttributionOsm": {
+    "description": "Park courses (#1313): web key parks.attributionOsm."
+  },
+  "parksAttributionNps": "Course line from National Park Service trail data",
+  "@parksAttributionNps": {
+    "description": "Park courses (#1313): web key parks.attributionNps."
+  },
+  "parksAttributionAgency": "Course line from the park's own trail data",
+  "@parksAttributionAgency": {
+    "description": "Park courses (#1313): web key parks.attributionAgency."
+  },
+  "parksAttributionTraced": "Course line traced against the park's published map",
+  "@parksAttributionTraced": {
+    "description": "Park courses (#1313): web key parks.attributionTraced."
+  },
+  "parksNavigate": "Navigate this course",
+  "@parksNavigate": {
+    "description": "Park courses (#1313): web key parks.navigate."
+  },
+  "parksShareGpx": "Share GPX",
+  "@parksShareGpx": {
+    "description": "Park courses (#1313): shares the course line as a GPX file with its checkpoints and geometry credit. Web key parks.downloadGpx."
+  },
+  "parksBrowseLink": "Park courses",
+  "@parksBrowseLink": {
+    "description": "Park courses (#1313): web key parks.browseLink."
+  },
+  "eventCourseLinesMapBoth": "Map of the course's start and finish lines",
+  "@eventCourseLinesMapBoth": {
+    "description": "Accessible label of the event course map showing start and finish timing lines (#1305)"
+  },
+  "eventCourseLinesMapStart": "Map of the course's start line",
+  "@eventCourseLinesMapStart": {
+    "description": "Accessible label of the event course map showing only the start line (#1305)"
+  },
+  "eventCourseLinesMapFinish": "Map of the course's finish line",
+  "@eventCourseLinesMapFinish": {
+    "description": "Accessible label of the event course map showing only the finish line (#1305)"
+  },
+  "eventRacePreflightTitle": "Check the courses before arming",
+  "@eventRacePreflightTitle": {
+    "description": "Title of the dialog listing course warnings before a race is armed (#1305)"
+  },
+  "eventRacePreflightBlockedTitle": "This race can't be armed yet",
+  "@eventRacePreflightBlockedTitle": {
+    "description": "Title of the dialog when course errors stop a race from being armed (#1305)"
+  },
+  "eventRacePreflightFixOnWeb": "Course lines are edited in the event editor on the web.",
+  "@eventRacePreflightFixOnWeb": {
+    "description": "Closing line of the Arm preflight dialog: course lines are edited on the web (#1305)"
+  },
+  "eventRaceArmAnyway": "Arm anyway",
+  "@eventRaceArmAnyway": {
+    "description": "Button in the Arm preflight dialog that arms the race despite warnings (#1305)"
+  },
+  "eventRacePreflightOk": "OK",
+  "@eventRacePreflightOk": {
+    "description": "Button closing the dialog when course errors stop arming (#1305)"
+  },
+  "eventRacePreflightNoFinish": "{course}: no finish line or finish point, so runners finish by hand.",
+  "@eventRacePreflightNoFinish": {
+    "description": "Arm preflight issue: a course with no finish line and no finish point (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightNoStart": "{course}: no start line. A self-timed race needs one.",
+  "@eventRacePreflightNoStart": {
+    "description": "Arm preflight issue: a self-timed course with no start line (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightSelfCross": "{course}: the route crosses its own finish line before the end, so a finish by the line could come early.",
+  "@eventRacePreflightSelfCross": {
+    "description": "Arm preflight issue: the course route crosses its own finish line before its end (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightFarStart": "{course}: the start line is more than 100 m from the route.",
+  "@eventRacePreflightFarStart": {
+    "description": "Arm preflight issue: an organiser-placed start line more than 100 m from the route (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRacePreflightFarFinish": "{course}: the finish line is more than 100 m from the route.",
+  "@eventRacePreflightFarFinish": {
+    "description": "Arm preflight issue: an organiser-placed finish line more than 100 m from the route (#1305)",
+    "placeholders": {
+      "course": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceScheduled": "Scheduled start",
+  "@runRaceScheduled": {
+    "description": "Run screen race banner heading: a scheduled race the runner is going to, before GO"
+  },
+  "runRaceStartsIn": "{label} starts in {time}",
+  "@runRaceStartsIn": {
+    "description": "Run screen race banner: a scheduled race counting down to its server-fired GO",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceSelfTimed": "Self-timed",
+  "@runRaceSelfTimed": {
+    "description": "Run screen race banner heading: a self-timed race window is open"
+  },
+  "runRaceSelfTimedSoon": "Self-timed window",
+  "@runRaceSelfTimedSoon": {
+    "description": "Run screen race banner heading: a self-timed race window has not opened yet"
+  },
+  "runRaceSelfTimedHow": "{label}: tap This run is my attempt, then Start, and cross the start line. Open until {time}.",
+  "@runRaceSelfTimedHow": {
+    "description": "Run screen race banner: how to time a self-timed attempt, and when the window closes",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceSelfTimedOpens": "{label} opens at {time}",
+  "@runRaceSelfTimedOpens": {
+    "description": "Run screen race banner: a self-timed window that opens later today or soon",
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceToStartLine": "{distance} to the start line",
+  "@runRaceToStartLine": {
+    "description": "Run screen race banner: how far the runner is from a self-timed race's start line",
+    "placeholders": {
+      "distance": {
+        "type": "String"
+      }
+    }
+  },
+  "runRaceThisIsMyAttempt": "This run is my attempt",
+  "@runRaceThisIsMyAttempt": {
+    "description": "Run screen race banner button: bind the next recording to a self-timed race as the runner's attempt"
+  },
+  "runRaceAttemptReady": "Attempt ready: tap Start",
+  "@runRaceAttemptReady": {
+    "description": "Run screen race banner button once the attempt is armed; tapping it takes the attempt back"
+  },
+  "eventRaceArmEarly": "Arm early",
+  "@eventRaceArmEarly": {
+    "description": "Event race control button: create a scheduled or self-timed race's session before the server does, to check its lines"
+  },
+  "eventRaceScheduledNotYet": "Starts by itself at its scheduled time. Arm early to check the lines now.",
+  "@eventRaceScheduledNotYet": {
+    "description": "Event race control: a scheduled race whose session the server has not created yet"
+  },
+  "eventRaceSelfTimedNotYet": "Opens by itself. Arm early to check the lines now.",
+  "@eventRaceSelfTimedNotYet": {
+    "description": "Event race control: a self-timed window whose session the server has not created yet"
+  },
+  "eventRaceGoAt": "GO at {time}",
+  "@eventRaceGoAt": {
+    "description": "Event race control: when the server fires a scheduled race's GO",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceOpensAt": "Opens at {time}",
+  "@eventRaceOpensAt": {
+    "description": "Event race control: when a self-timed window opens",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceOpenUntil": "Open until {time}",
+  "@eventRaceOpenUntil": {
+    "description": "Event race control: a self-timed window is open until this time",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceAutoEnds": "Ends by itself at {time}",
+  "@eventRaceAutoEnds": {
+    "description": "Event race control: when a scheduled race ends by itself",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceDelay": "Delay start",
+  "@eventRaceDelay": {
+    "description": "Event race control button: move a scheduled start (or a window's opening) later"
+  },
+  "eventRaceDelayBy": "+{minutes} min",
+  "@eventRaceDelayBy": {
+    "description": "Delay dialog option: delay the start by this many minutes",
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceExtend": "Extend window",
+  "@eventRaceExtend": {
+    "description": "Event race control button: keep a self-timed window open longer"
+  },
+  "eventRaceExtendBy": "+{hours} h",
+  "@eventRaceExtendBy": {
+    "description": "Extend dialog option: extend the window by this many hours",
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "eventRaceEndEarly": "End window now",
+  "@eventRaceEndEarly": {
+    "description": "Event race control button: close an open self-timed window now"
+  },
+  "eventRaceJoinAttempt": "Join and attempt",
+  "@eventRaceJoinAttempt": {
+    "description": "Event detail button for a runner not going: RSVP to an open self-timed race so they can attempt it"
+  },
+  "eventRaceSelfTimedParticipant": "Self-timed race open until {time}. Join, then time your attempt from the run screen.",
+  "@eventRaceSelfTimedParticipant": {
+    "description": "Event detail card for a runner: a self-timed race is open now",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifRaceStartingSoon": "A race you're going to starts in about 10 minutes",
+  "@profileNotifRaceStartingSoon": {
+    "description": "Notification text: a scheduled race the recipient is going to starts in about 10 minutes"
+  },
+  "profileNotifRaceStartingSoonTitled": "\"{title}\" starts in about 10 minutes",
+  "@profileNotifRaceStartingSoonTitled": {
+    "description": "Notification text: the titled scheduled race starts in about 10 minutes",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifRaceStartMoved": "The start of a race you're going to has moved",
+  "@profileNotifRaceStartMoved": {
+    "description": "Notification text: the organiser moved the start of a race the recipient is going to"
+  },
+  "profileNotifRaceStartMovedTitled": "The start of \"{title}\" has moved",
+  "@profileNotifRaceStartMovedTitled": {
+    "description": "Notification text: the organiser moved the titled race's start",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "prefsNotifyRaceStartingSoon": "Race starting soon",
+  "@prefsNotifyRaceStartingSoon": {
+    "description": "Settings switch: push about 10 minutes before a scheduled race and when its start moves"
+  },
+  "prefsNotifyRaceStartingSoonHint": "A push about 10 minutes before a scheduled race you're going to starts, and when its start moves. Never emailed.",
+  "@prefsNotifyRaceStartingSoonHint": {
+    "description": "Settings switch subtitle for the race-starting-soon push"
+  },
+  "clubVerificationStatusTitle": "Official verification",
+  "@clubVerificationStatusTitle": {
+    "description": "Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins"
+  },
+  "clubVerificationStatusVerified": "Verified as the official presence of {org} ({domain}).",
+  "@clubVerificationStatusVerified": {
+    "description": "The club is verified; org is the organisation it officially represents and domain the website domain that was verified",
+    "placeholders": {
+      "org": {
+        "type": "String"
+      },
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusVerifiedLegacy": "Verified as an official organisation.",
+  "@clubVerificationStatusVerifiedLegacy": {
+    "description": "The club is verified but no request with a domain is on record"
+  },
+  "clubVerificationStatusPending": "The request for {org} is waiting for review. No domain proof found yet.",
+  "@clubVerificationStatusPending": {
+    "description": "A verification request for the named organisation is waiting for review and the domain proof has not been found yet",
+    "placeholders": {
+      "org": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusPendingProof": "The request for {org} is waiting for review. Domain proof found.",
+  "@clubVerificationStatusPendingProof": {
+    "description": "A verification request for the named organisation is waiting for review and the domain proof was found",
+    "placeholders": {
+      "org": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusRejected": "The last request was not approved: {reason}",
+  "@clubVerificationStatusRejected": {
+    "description": "The last verification request was rejected; reason is the reviewer's own text",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusRevoked": "The badge was removed: {reason}",
+  "@clubVerificationStatusRevoked": {
+    "description": "A reviewer removed the club's verified badge; reason is their own text",
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "clubVerificationStatusLapsed": "The badge was removed after a change to the club or its domain, and needs a new review.",
+  "@clubVerificationStatusLapsed": {
+    "description": "The badge dropped on its own: the club was renamed or moved domain, or the domain proof disappeared"
+  },
+  "clubVerificationStatusWithdrawn": "The last request was withdrawn.",
+  "@clubVerificationStatusWithdrawn": {
+    "description": "The club owner withdrew the last verification request"
+  },
+  "clubVerificationStatusNone": "Not verified.",
+  "@clubVerificationStatusNone": {
+    "description": "The club has never asked for verification"
+  },
+  "clubVerificationStatusWebHint": "Requests and domain proof are managed on the web.",
+  "@clubVerificationStatusWebHint": {
+    "description": "Tells the club admin that requesting verification happens on the web app"
+  },
+  "clubVerificationStatusLoadFailed": "Couldn't load the verification status.",
+  "@clubVerificationStatusLoadFailed": {
+    "description": "The verification status could not be loaded"
+  },
+  "clubVerificationStatusRetry": "Retry",
+  "@clubVerificationStatusRetry": {
+    "description": "Retry button tooltip for loading the verification status"
+  },
+  "profileNotifClubVerification": "There's a verification update for your club",
+  "@profileNotifClubVerification": {
+    "description": "Notification text: a club the recipient owns or administers had its verification approved, rejected, removed or dropped; club name unknown"
+  },
+  "profileNotifClubVerificationNamed": "There's a verification update for {club}",
+  "@profileNotifClubVerificationNamed": {
+    "description": "Notification text: the named club the recipient owns or administers had its verification approved, rejected, removed or dropped",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "provenanceVerifiedSource": "Verified source",
+  "@provenanceVerifiedSource": {
+    "description": "Short visible label on a race listing that came from a race data partner or provider sync"
+  },
+  "provenanceVerifiedSourceTooltip": "Verified source: listed by a race data partner",
+  "@provenanceVerifiedSourceTooltip": {
+    "description": "Screen-reader label and tooltip on the Verified source badge"
+  },
+  "provenanceTraced": "Traced",
+  "@provenanceTraced": {
+    "description": "Short visible label on a race course a verified club drew from the race's published map"
+  },
+  "provenanceTracedTooltip": "Traced: drawn by a verified club from the race's published map",
+  "@provenanceTracedTooltip": {
+    "description": "Screen-reader label and tooltip on the Traced badge"
+  },
+  "provenanceCommunity": "Community",
+  "@provenanceCommunity": {
+    "description": "Short visible label on a race listing or course nobody official vouches for"
+  },
+  "provenanceCommunityTooltip": "Community: added by a runner, not checked by the organiser",
+  "@provenanceCommunityTooltip": {
+    "description": "Screen-reader label and tooltip on the Community badge"
+  },
+  "courseAlertsHeading": "Course alerts",
+  "@courseAlertsHeading": {
+    "description": "Heading of the organiser course alerts section on a race or route"
+  },
+  "courseAlertsEmpty": "No alerts. Post one when the course changes, and runners training for it are told.",
+  "@courseAlertsEmpty": {
+    "description": "Shown to the organiser when a race has no course alerts yet"
+  },
+  "courseAlertsLoadFailed": "Couldn't load the course alerts.",
+  "@courseAlertsLoadFailed": {
+    "description": "Shown when the course alerts could not be read"
+  },
+  "courseAlertsRetry": "Try again",
+  "@courseAlertsRetry": {
+    "description": "Button that reloads the course alerts after a failed read"
+  },
+  "courseAlertsKindReroute": "Reroute",
+  "@courseAlertsKindReroute": {
+    "description": "Course alert type: the course was rerouted"
+  },
+  "courseAlertsKindClosure": "Closure",
+  "@courseAlertsKindClosure": {
+    "description": "Course alert type: part of the course is closed"
+  },
+  "courseAlertsKindDirection": "Course direction",
+  "@courseAlertsKindDirection": {
+    "description": "Course alert type: the direction the course runs this year (for example an up or down year)"
+  },
+  "courseAlertsKindNotice": "Notice",
+  "@courseAlertsKindNotice": {
+    "description": "Course alert type: a general notice from the organiser"
+  },
+  "courseAlertsKindLabel": "Type",
+  "@courseAlertsKindLabel": {
+    "description": "Label of the course alert type picker"
+  },
+  "courseAlertsMessageLabel": "What changed",
+  "@courseAlertsMessageLabel": {
+    "description": "Label of the course alert message field"
+  },
+  "courseAlertsPostHint": "Runners training for this race and runners who saved its course are notified once.",
+  "@courseAlertsPostHint": {
+    "description": "Says who is notified when the organiser posts a course alert"
+  },
+  "courseAlertsPost": "Post alert",
+  "@courseAlertsPost": {
+    "description": "Button that posts a course alert"
+  },
+  "courseAlertsPosted": "Course alert posted.",
+  "@courseAlertsPosted": {
+    "description": "Confirmation after a course alert was posted"
+  },
+  "courseAlertsPostFailed": "Couldn't post the alert. Try again.",
+  "@courseAlertsPostFailed": {
+    "description": "Error when a course alert could not be posted"
+  },
+  "courseAlertsRemove": "Remove",
+  "@courseAlertsRemove": {
+    "description": "Button that removes a course alert"
+  },
+  "courseAlertsRemoveLabel": "Remove the {kind} alert",
+  "@courseAlertsRemoveLabel": {
+    "description": "Screen-reader label of the remove button on one course alert, naming its type",
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "courseAlertsRemoved": "Course alert removed.",
+  "@courseAlertsRemoved": {
+    "description": "Undo bar message after a course alert was removed"
+  },
+  "courseAlertsRemoveFailed": "Couldn't remove the alert.",
+  "@courseAlertsRemoveFailed": {
+    "description": "Error when a course alert could not be removed"
+  },
+  "courseAlertsNotFound": "This alert is no longer available",
+  "@courseAlertsNotFound": {
+    "description": "Shown when a course alert notification points at an alert that is gone"
+  },
+  "profileNotifCourseAlert": "The organiser posted a course alert",
+  "@profileNotifCourseAlert": {
+    "description": "Notification inbox line: a race organiser posted a course alert on a race the runner trains for or a course they saved"
+  },
+  "profileNotifCourseAlertNamed": "{club} posted a course alert",
+  "@profileNotifCourseAlertNamed": {
+    "description": "Notification inbox line naming the organiser club that posted a course alert",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
     }
   }
 }

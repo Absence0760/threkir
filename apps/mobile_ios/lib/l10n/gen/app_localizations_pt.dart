@@ -150,6 +150,34 @@ class AppLocalizationsPt extends AppLocalizations {
   String get recapLatestStartLabel => 'Início mais tarde';
 
   @override
+  String get recapParkCoursesLabel => 'Percursos de parque';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'em $n parques',
+      one: 'em $n parque',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Parques onde correu';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n percursos',
+      one: '$n percurso',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'Escolher rota';
 
   @override
@@ -789,6 +817,32 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get dashboardTrendGroupRecentHint => 'As suas sessões mais recentes';
+
+  @override
+  String get dashboardHeroNothingPlanned => 'Nada planeado para hoje';
+
+  @override
+  String get dashboardHeroRestDay => 'Dia de descanso';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Nada no plano para hoje.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Prontidão $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Ocultar do Início';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name está oculto. Pode voltar a mostrá-lo nas Definições.';
+  }
+
+  @override
+  String get dashboardHideCardFailed =>
+      'Não foi possível ocultar o cartão. Tente novamente.';
 
   @override
   String get readinessFromLoadOnly =>
@@ -2143,6 +2197,14 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runExpandStatsPanel => 'Expandir painel de estatísticas';
+
+  @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return 'Página de estatísticas $page de $total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => 'Mostra as estatísticas seguintes';
 
   @override
   String runRouteRemaining(String distance) {
@@ -4375,6 +4437,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Não foi possível verificar os créditos do mapa desta rota, por isso nada foi exportado. Tente novamente.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Não foi possível carregar os seus clubes — verifique a sua rede.';
 
@@ -4787,6 +4853,15 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get heatmapHeatDensity => 'Densidade de calor';
+
+  @override
+  String get heatmapUpcomingRaces => 'Próximas provas';
+
+  @override
+  String get heatmapViewRace => 'Ver prova';
+
+  @override
+  String get heatmapRaceFallbackName => 'Prova';
 
   @override
   String get heatmapResetFilters => 'Redefinir filtros';
@@ -5282,6 +5357,138 @@ class AppLocalizationsPt extends AppLocalizations {
   String profileNotifPlanAiEdit(String name) {
     return '$name aplicou alterações sugeridas pela IA a um plano atribuído por si';
   }
+
+  @override
+  String profileNotifPlanChangeRequest(String name) {
+    return '$name sugeriu uma alteração a um plano que atribuiu';
+  }
+
+  @override
+  String profileNotifPlanChangeDecision(String name) {
+    return '$name respondeu à alteração de plano que sugeriu';
+  }
+
+  @override
+  String get planChangeTitle => 'Alteração de plano sugerida';
+
+  @override
+  String get planChangeWaitingForCoach =>
+      'À espera da resposta do seu treinador';
+
+  @override
+  String get planChangeWaitingForYou =>
+      'O seu atleta está à espera da sua resposta';
+
+  @override
+  String get planChangeApprovedByCoach => 'Aprovada pelo treinador e aplicada';
+
+  @override
+  String get planChangeApprovedInPartByCoach =>
+      'Aprovada em parte pelo treinador; as linhas mostradas foram aplicadas';
+
+  @override
+  String get planChangeDeclinedByCoach => 'Recusada pelo treinador';
+
+  @override
+  String get planChangeWithdrawnByAthlete => 'Retirada pelo atleta';
+
+  @override
+  String get planChangeAppliedByAthlete =>
+      'Aplicada pelo atleta sem o treinador';
+
+  @override
+  String planChangeMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String planChangeIncludeLine(String line) {
+    return 'Incluir esta alteração: $line';
+  }
+
+  @override
+  String planChangeWeekLabel(int n) {
+    return 'Objetivo da semana $n';
+  }
+
+  @override
+  String get planChangeSkipped => 'Saltado';
+
+  @override
+  String planChangeWeekTarget(int n, String from, String to) {
+    return 'Objetivo da semana $n: $from → $to';
+  }
+
+  @override
+  String get planChangeUnreadable =>
+      'Algumas destas alterações já não podem ser mostradas.';
+
+  @override
+  String planChangeCoachNote(String note) {
+    return 'Nota do treinador: $note';
+  }
+
+  @override
+  String get planChangeNoteLabel => 'Nota para o seu atleta (opcional)';
+
+  @override
+  String get planChangeNotePlaceholder => 'Porque aprovou ou recusou';
+
+  @override
+  String get planChangeDecline => 'Recusar';
+
+  @override
+  String get planChangeApprove => 'Aprovar';
+
+  @override
+  String get planChangeApproveSelected => 'Aprovar selecionadas';
+
+  @override
+  String get planChangeApplyMyselfHint =>
+      'O plano é seu, por isso pode aplicar a alteração. O seu treinador será avisado.';
+
+  @override
+  String get planChangeWithdraw => 'Retirar';
+
+  @override
+  String get planChangeApplyMyself => 'Aplicar eu mesmo';
+
+  @override
+  String get planChangeWithdrawConfirmTitle =>
+      'Retirar esta alteração sugerida?';
+
+  @override
+  String get planChangeWithdrawConfirmMessage =>
+      'O seu treinador deixará de ser chamado a aprovar. Para a sugerir de novo, peça novamente ao Coach para ajustar o seu plano.';
+
+  @override
+  String get planChangeKeep => 'Manter';
+
+  @override
+  String planChangeFailed(String error) {
+    return 'Não foi possível atualizar a alteração sugerida: $error';
+  }
+
+  @override
+  String get planChangeApprovedToast =>
+      'Alteração aprovada e aplicada ao plano';
+
+  @override
+  String get planChangeDeclinedToast => 'Alteração recusada';
+
+  @override
+  String get planChangeWithdrawnToast => 'Sugestão retirada';
+
+  @override
+  String get planChangeAppliedToast =>
+      'Alteração aplicada ao seu plano; o seu treinador foi avisado';
+
+  @override
+  String get planChangeLoadFailed =>
+      'Não foi possível carregar as alterações de plano sugeridas.';
+
+  @override
+  String get planChangeRetry => 'Tentar novamente';
 
   @override
   String get profileNotifWorkoutReminder =>
@@ -10783,6 +10990,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Ainda não há esforços — seja o primeiro a correr este segmento.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Algumas tentativas mais antigas foram medidas da forma antiga, passando perto da partida e da chegada em vez de atravessar as linhas. Cada uma é medida de novo da próxima vez que o corredor abrir a corrida.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'Detém esta coroa — $label.';
   }
@@ -14727,6 +14938,28 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get challengesMetricParkCourses => 'Percursos de parque';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n percursos',
+      one: '$n percurso',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'percursos';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Conta percursos de parque em $region';
+  }
+
+  @override
   String get challengesLeaveConfirmTitle => 'Sair do desafio?';
 
   @override
@@ -14908,6 +15141,171 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get racesSourceManual => 'Adicionada por um corredor';
+
+  @override
+  String racesSourceClub(String club) {
+    return 'Adicionada por $club';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return 'Percurso oficial de $club';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return 'Percurso desenhado por $club a partir do mapa publicado da corrida';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return 'verificado a $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'Percurso atualizado a $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => 'Percurso da corrida';
+
+  @override
+  String get raceCourseClaim => 'Reivindicar esta corrida';
+
+  @override
+  String get raceCourseClaimTitle =>
+      'Reivindicar esta corrida para o seu clube';
+
+  @override
+  String get raceCourseClaimBody =>
+      'Reivindicar marca a corrida como verificada e permite que o seu clube associe o percurso. Reivindique apenas uma corrida que o seu clube organiza ou cujos percursos desenha.';
+
+  @override
+  String get raceCourseClaimClub => 'Clube';
+
+  @override
+  String get raceCourseClaimConfirm => 'Reivindicar corrida';
+
+  @override
+  String get raceCourseClaimed => 'Corrida reivindicada.';
+
+  @override
+  String get raceCourseClaimFailed =>
+      'Não foi possível reivindicar esta corrida.';
+
+  @override
+  String get raceCourseLinkCourse => 'Associar percurso';
+
+  @override
+  String get raceCourseChangeCourse => 'Alterar percurso';
+
+  @override
+  String get raceCourseLinkTitle => 'Associar o percurso';
+
+  @override
+  String get raceCourseLinkRoute => 'Rota do percurso';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'O seu clube ainda não tem rotas públicas. Crie uma no separador Rotas do clube, torne-a pública e associe-a aqui.';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'Origem do percurso';
+
+  @override
+  String get raceCourseSourceOptionOfficial =>
+      'O percurso oficial do organizador';
+
+  @override
+  String get raceCourseSourceOptionTraced =>
+      'Traçado a partir do mapa publicado da corrida';
+
+  @override
+  String get raceCourseLinkConfirm => 'Associar percurso';
+
+  @override
+  String get raceCourseLinked => 'Percurso associado.';
+
+  @override
+  String get raceCourseLinkFailed => 'Não foi possível atualizar o percurso.';
+
+  @override
+  String get raceCourseMarkChecked => 'Marcar percurso como verificado';
+
+  @override
+  String get raceCourseCheckedDone => 'Percurso marcado como verificado.';
+
+  @override
+  String get raceCourseSuggest => 'Sugerir um percurso';
+
+  @override
+  String get raceCourseSuggestTitle => 'Sugerir um percurso para esta corrida';
+
+  @override
+  String get raceCourseSuggestBody =>
+      'Escolha uma das suas rotas públicas. O organizador da corrida vai analisá-la, ou um clube verificado se ninguém tiver reivindicado a corrida.';
+
+  @override
+  String get raceCourseSuggestRoute => 'A sua rota';
+
+  @override
+  String get raceCourseSuggestNoRoutes =>
+      'Ainda não tem rotas públicas. Torne uma rota pública para a sugerir.';
+
+  @override
+  String get raceCourseSuggestNote => 'Nota (opcional)';
+
+  @override
+  String get raceCourseSuggestConfirm => 'Enviar sugestão';
+
+  @override
+  String get raceCourseSuggested => 'Sugestão enviada.';
+
+  @override
+  String get raceCourseSuggestFailed =>
+      'Não foi possível enviar a sua sugestão.';
+
+  @override
+  String get raceCourseSuggestPending =>
+      'Sugeriu um percurso. Está a aguardar análise.';
+
+  @override
+  String get raceCourseUnlink => 'Remover percurso';
+
+  @override
+  String get raceCourseUnlinked => 'Percurso removido.';
+
+  @override
+  String get raceCourseReviewHeading => 'Sugestões de percurso';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Reivindique esta corrida para aprovar ou recusar uma sugestão.';
+
+  @override
+  String get raceCourseReviewApprove => 'Aprovar';
+
+  @override
+  String get raceCourseReviewReject => 'Recusar';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Aprovar este percurso';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'O percurso tem de ser uma rota pública do seu clube. Escolha a cópia do clube de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Sugestão aprovada e percurso associado.';
+
+  @override
+  String get raceCourseReviewRejected => 'Sugestão recusada.';
+
+  @override
+  String get raceCourseReviewFailed => 'Não foi possível analisar a sugestão.';
 
   @override
   String get racesDetailShare => 'Partilhar';
@@ -15504,6 +15902,75 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => 'Concluiu 10 planos de treino';
+
+  @override
+  String get badgesParkCourses1Label => 'Primeiro percurso de parque';
+
+  @override
+  String get badgesParkCourses1Desc => 'Concluiu um percurso de parque';
+
+  @override
+  String get badgesParkCourses5Label => 'Frequentador de parques';
+
+  @override
+  String get badgesParkCourses5Desc =>
+      'Concluiu 5 percursos de parque diferentes';
+
+  @override
+  String get badgesParkCourses10Label => 'Colecionador de trilhos';
+
+  @override
+  String get badgesParkCourses10Desc =>
+      'Concluiu 10 percursos de parque diferentes';
+
+  @override
+  String get badgesParkCourses25Label => 'Explorador de parques';
+
+  @override
+  String get badgesParkCourses25Desc =>
+      'Concluiu 25 percursos de parque diferentes';
+
+  @override
+  String get badgesParkComplete1Label => 'Parque completo';
+
+  @override
+  String get badgesParkComplete1Desc =>
+      'Concluiu todos os percursos de um parque';
+
+  @override
+  String get badgesParkComplete3Label => 'Três parques completos';
+
+  @override
+  String get badgesParkComplete3Desc =>
+      'Concluiu todos os percursos de 3 parques';
+
+  @override
+  String get badgesParkComplete10Label => 'Completista de parques';
+
+  @override
+  String get badgesParkComplete10Desc =>
+      'Concluiu todos os percursos de 10 parques';
+
+  @override
+  String get badgesParkPassport1Label => 'Passaporte de parques';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Concluiu um percurso em cada parque de um estado';
+
+  @override
+  String get badgesParkPassport3Label => 'Passaporte carimbado';
+
+  @override
+  String get badgesParkPassport3Desc =>
+      'Concluiu um passaporte de parques em 3 estados';
+
+  @override
+  String get badgesParkPassport10Label => 'Colecionador de passaportes';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Concluiu um passaporte de parques em 10 estados';
 
   @override
   String get racePredictorTitle => 'Previsão de tempo de prova';
@@ -16648,6 +17115,16 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String rateLimitEditMessage(String wait) {
+    return 'Está a editar mensagens demasiado depressa — aguarde $wait e tente novamente.';
+  }
+
+  @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'Iniciou muitos pedidos de mensagem hoje — aguarde $wait e tente novamente.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'Está a fazer isto demasiado depressa — aguarde $wait e tente novamente.';
   }
@@ -17781,7 +18258,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesSendNotAllowed =>
-      'Só pode enviar mensagens a pessoas que segue ou que o seguem, e que não o bloquearam.';
+      'Pode enviar mensagens a quem segue ou a quem o segue, ou a alguém com quem partilha um clube ou um evento, a menos que um dos dois tenha bloqueado o outro.';
 
   @override
   String get messagesLoadEarlier => 'Carregar mensagens anteriores';
@@ -17834,6 +18311,24 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get messagesUnsendFailed =>
       'Não foi possível anular o envio da mensagem.';
+
+  @override
+  String get messagesEdit => 'Editar';
+
+  @override
+  String get messagesEdited => 'Editada';
+
+  @override
+  String get messagesEditTitle => 'Editar mensagem';
+
+  @override
+  String get messagesEditSave => 'Guardar';
+
+  @override
+  String get messagesEditFailed => 'Não foi possível editar a mensagem.';
+
+  @override
+  String get messagesEditClosed => 'Esta mensagem já não pode ser editada.';
 
   @override
   String get messagesReport => 'Denunciar';
@@ -17894,6 +18389,44 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get messagesBackToInbox => 'Voltar à caixa de entrada';
+
+  @override
+  String get messagesRequestCapReached =>
+      'Pode enviar até 3 mensagens até que aceitem o seu pedido.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Pedidos ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name quer enviar-lhe mensagens. Esta pessoa não saberá que leu, a menos que aceite.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Aceitar';
+
+  @override
+  String get messagesRequestDecline => 'Recusar';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'Recusar este pedido?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'As mensagens saem dos seus pedidos, e esta pessoa não poderá voltar a enviar-lhe mensagens, a menos que lhe escreva primeiro. Não será avisada.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Pedido aceite';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Pedido recusado';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'Não foi possível atualizar o pedido: $error';
+  }
 
   @override
   String get messagesMutedMark => 'Silenciada';
@@ -19839,6 +20372,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prefsDisclosureLevel => 'Quanto detalhe';
 
   @override
+  String get prefsHomeCards => 'Cartões do Início';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Desmarque um grupo para o retirar do Início. A escolha aplica-se a todos os seus dispositivos.';
+
+  @override
   String get prefsDisclosureAuto => 'Automático';
 
   @override
@@ -20165,6 +20705,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get shareCardBadgeKicker => 'Medalha conquistada';
 
   @override
+  String get shareCardKindCourse => 'Percurso de parque';
+
+  @override
+  String get shareCardCourseKicker => 'Tempo no percurso de parque';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return 'N.º $rank em $season';
+  }
+
+  @override
   String get runDetailSharePr => 'Partilhar cartão de recorde';
 
   @override
@@ -20338,6 +20889,701 @@ class AppLocalizationsPt extends AppLocalizations {
   String runDetailBlockedDurationTooLong(int hours) {
     return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, por isso a nuvem recusa-a e tentar novamente nunca vai funcionar. Corrija a duração para a enviar.';
   }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'Daqui a $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'Daqui a $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Agora: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Agora: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Acabou de passar: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Acabou de passar: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Serviços: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance a cerca de $grade por cento.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Tempo limite às $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Tempo limite $time após a partida.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Notas do percurso ativadas.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Troço $done concluído. O troço $next está pronto.';
+  }
+
+  @override
+  String get ttsDriveFinished => 'Chegou à meta. Notas do percurso paradas.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'Está fora do percurso há algum tempo, por isso as notas do percurso pararam.';
+
+  @override
+  String get courseDriveTitle => 'Percorrer o percurso de carro';
+
+  @override
+  String get courseDriveNoticeTitle => 'Antes de conduzir';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Use isto com um passageiro ou com o telemóvel num suporte e não lhe toque enquanto conduz. Cumpra as regras e a sinalização de trânsito. As estradas do percurso podem estar fechadas no dia da prova e a rota da app de mapas pode não coincidir com o percurso.';
+
+  @override
+  String get courseDriveNoticeAccept => 'Compreendo';
+
+  @override
+  String get courseDriveMapsApp => 'Abrir em';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Mapas da Apple';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Ir para a partida';
+
+  @override
+  String get courseDriveLegsHeading => 'Troços';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Troço $n: de $from a $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'A rota da app de mapas serve apenas de orientação. As notas seguem o percurso real.';
+
+  @override
+  String get courseDriveChecking =>
+      'A verificar que troços a app de mapas consegue seguir…';
+
+  @override
+  String get courseDriveAllDrivable =>
+      'A app de mapas consegue seguir todo o percurso.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'Não foi possível verificar que troços a app de mapas consegue seguir.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'A app de mapas não consegue seguir estes troços';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return 'De $from a $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Notas do percurso';
+
+  @override
+  String get courseDriveNoNotes => 'Este percurso não tem marcadores para ler.';
+
+  @override
+  String get courseDriveStart => 'Iniciar notas faladas';
+
+  @override
+  String get courseDriveStop => 'Parar';
+
+  @override
+  String get courseDriveWaiting =>
+      'Dirija-se ao percurso. As notas começam quando lá chegar.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Próxima nota daqui a $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'Não há mais notas pela frente.';
+
+  @override
+  String get courseDriveFinished => 'Chegou à meta.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Parado: esteve fora do percurso durante 10 minutos.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'A localização está desativada, por isso as notas não o conseguem seguir.';
+
+  @override
+  String get courseDriveLoadFailed =>
+      'Não foi possível carregar este percurso.';
+
+  @override
+  String get courseDriveOpenFailed => 'Não foi possível abrir a app de mapas.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Tempo limite às $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Tempo limite $time após a partida';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance a cerca de $grade%';
+  }
+
+  @override
+  String get parksTitle => 'Percursos de parques';
+
+  @override
+  String get parksIntro =>
+      'Percursos de contrarrelógio permanentes em parques estaduais e nacionais. Corra um em qualquer dia e o seu tempo entra na classificação deste ano.';
+
+  @override
+  String get parksLoading => 'A carregar percursos…';
+
+  @override
+  String get parksLoadFailed => 'Não foi possível carregar os percursos.';
+
+  @override
+  String get parksRetry => 'Tentar novamente';
+
+  @override
+  String get parksEmpty =>
+      'Ainda não há percursos. Os primeiros estão a caminho.';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n percursos',
+      one: '$n percurso',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'Todos os percursos';
+
+  @override
+  String get parksParkNotFoundTitle => 'Parque não encontrado';
+
+  @override
+  String get parksParkNotFoundBody =>
+      'Este parque não está listado, ou já não está.';
+
+  @override
+  String get parksCourseNotFoundTitle => 'Percurso não encontrado';
+
+  @override
+  String get parksCourseNotFoundBody =>
+      'Este percurso não está listado, ou já não está.';
+
+  @override
+  String get parksWebsite => 'Site do parque';
+
+  @override
+  String get parksNoCourses => 'Ainda não há percursos listados neste parque.';
+
+  @override
+  String get parksAgencyNps => 'National Park Service';
+
+  @override
+  String get parksAgencyState => 'Parque estadual';
+
+  @override
+  String get parksAgencyCounty => 'Parque do condado';
+
+  @override
+  String get parksAgencyOther => 'Parque';
+
+  @override
+  String get parksShapeLoop => 'Circular';
+
+  @override
+  String get parksShapeOutAndBack => 'Ida e volta';
+
+  @override
+  String get parksShapePointToPoint => 'Ponto a ponto';
+
+  @override
+  String get parksStatusOpen => 'Aberto';
+
+  @override
+  String get parksStatusClosed => 'Fechado';
+
+  @override
+  String get parksStatusSeasonal => 'Sazonal';
+
+  @override
+  String get parksClosedBanner =>
+      'Este percurso está fechado. Os tempos e as classificações mantêm-se, mas não o corra até reabrir.';
+
+  @override
+  String parksStatusChecked(String date) {
+    return 'Estado verificado em $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => 'Fácil';
+
+  @override
+  String get parksDifficultyModerate => 'Moderado';
+
+  @override
+  String get parksDifficultyHard => 'Difícil';
+
+  @override
+  String get parksStatDistance => 'Distância';
+
+  @override
+  String get parksStatElevation => 'Desnível positivo';
+
+  @override
+  String get parksStatShape => 'Formato';
+
+  @override
+  String get parksStatSurface => 'Piso';
+
+  @override
+  String get parksStatDifficulty => 'Dificuldade';
+
+  @override
+  String get parksBoardFastest => 'Mais rápidos';
+
+  @override
+  String get parksBoardCompletions => 'Mais conclusões';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return 'Este ano ($year)';
+  }
+
+  @override
+  String get parksSeasonAllTime => 'Desde sempre';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n dias',
+      one: '$n dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts =>
+      'Ainda não há tempos nesta classificação. Corra o percurso e o seu será o primeiro.';
+
+  @override
+  String get parksSignInForBoards =>
+      'Inicie sessão para ver as classificações deste percurso.';
+
+  @override
+  String get parksSignIn => 'Iniciar sessão';
+
+  @override
+  String get parksBoardFailed =>
+      'Não foi possível carregar esta classificação.';
+
+  @override
+  String get parksSafetyNotice =>
+      'Mantenha-se no trilho marcado. A cronometragem exige todos os pontos de controlo, por isso um atalho nunca conta. É um contrarrelógio, não uma corrida: o trilho continua aberto a todos e ninguém o vigia.';
+
+  @override
+  String get parksAttributionOsm =>
+      'Traçado do percurso © colaboradores do OpenStreetMap';
+
+  @override
+  String get parksAttributionNps =>
+      'Traçado do percurso a partir dos dados de trilhos do National Park Service';
+
+  @override
+  String get parksAttributionAgency =>
+      'Traçado do percurso a partir dos dados de trilhos do próprio parque';
+
+  @override
+  String get parksAttributionTraced =>
+      'Traçado do percurso desenhado sobre o mapa publicado do parque';
+
+  @override
+  String get parksNavigate => 'Navegar neste percurso';
+
+  @override
+  String get parksShareGpx => 'Partilhar GPX';
+
+  @override
+  String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Mapa das linhas de partida e de chegada do percurso';
+
+  @override
+  String get eventCourseLinesMapStart => 'Mapa da linha de partida do percurso';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Mapa da linha de chegada do percurso';
+
+  @override
+  String get eventRacePreflightTitle => 'Verifique os percursos antes de armar';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Esta corrida ainda não pode ser armada';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'As linhas do percurso editam-se no editor de eventos na web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armar mesmo assim';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: sem linha nem ponto de chegada, por isso os corredores terminam manualmente.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: sem linha de partida. Uma corrida cronometrada por cada um precisa de uma.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: o trajeto cruza a sua própria linha de chegada antes do fim, por isso uma chegada pela linha pode ser antecipada.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: a linha de partida está a mais de 100 m do trajeto.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: a linha de chegada está a mais de 100 m do trajeto.';
+  }
+
+  @override
+  String get runRaceScheduled => 'Partida agendada';
+
+  @override
+  String runRaceStartsIn(String label, String time) {
+    return '$label começa dentro de $time';
+  }
+
+  @override
+  String get runRaceSelfTimed => 'Tempo próprio';
+
+  @override
+  String get runRaceSelfTimedSoon => 'Janela de tempo próprio';
+
+  @override
+  String runRaceSelfTimedHow(String label, String time) {
+    return '$label: toque em “Esta corrida é a minha tentativa”, depois em Iniciar, e atravesse a linha de partida. Aberta até às $time.';
+  }
+
+  @override
+  String runRaceSelfTimedOpens(String label, String time) {
+    return '$label abre às $time';
+  }
+
+  @override
+  String runRaceToStartLine(String distance) {
+    return '$distance até à linha de partida';
+  }
+
+  @override
+  String get runRaceThisIsMyAttempt => 'Esta corrida é a minha tentativa';
+
+  @override
+  String get runRaceAttemptReady => 'Tentativa pronta: toque em Iniciar';
+
+  @override
+  String get eventRaceArmEarly => 'Armar antes';
+
+  @override
+  String get eventRaceScheduledNotYet =>
+      'Começa sozinha à hora agendada. Arme antes para verificar as linhas agora.';
+
+  @override
+  String get eventRaceSelfTimedNotYet =>
+      'Abre sozinha. Arme antes para verificar as linhas agora.';
+
+  @override
+  String eventRaceGoAt(String time) {
+    return 'Partida às $time';
+  }
+
+  @override
+  String eventRaceOpensAt(String time) {
+    return 'Abre às $time';
+  }
+
+  @override
+  String eventRaceOpenUntil(String time) {
+    return 'Aberta até às $time';
+  }
+
+  @override
+  String eventRaceAutoEnds(String time) {
+    return 'Termina sozinha às $time';
+  }
+
+  @override
+  String get eventRaceDelay => 'Atrasar partida';
+
+  @override
+  String eventRaceDelayBy(String minutes) {
+    return '+$minutes min';
+  }
+
+  @override
+  String get eventRaceExtend => 'Prolongar janela';
+
+  @override
+  String eventRaceExtendBy(String hours) {
+    return '+$hours h';
+  }
+
+  @override
+  String get eventRaceEndEarly => 'Encerrar a janela agora';
+
+  @override
+  String get eventRaceJoinAttempt => 'Participar e tentar';
+
+  @override
+  String eventRaceSelfTimedParticipant(String time) {
+    return 'Corrida de tempo próprio aberta até às $time. Participe e cronometre a tentativa no ecrã de corrida.';
+  }
+
+  @override
+  String get profileNotifRaceStartingSoon =>
+      'Uma corrida a que vai começa dentro de cerca de 10 minutos';
+
+  @override
+  String profileNotifRaceStartingSoonTitled(String title) {
+    return '“$title” começa dentro de cerca de 10 minutos';
+  }
+
+  @override
+  String get profileNotifRaceStartMoved =>
+      'A partida de uma corrida a que vai mudou';
+
+  @override
+  String profileNotifRaceStartMovedTitled(String title) {
+    return 'A partida de “$title” mudou';
+  }
+
+  @override
+  String get prefsNotifyRaceStartingSoon => 'Corrida prestes a começar';
+
+  @override
+  String get prefsNotifyRaceStartingSoonHint =>
+      'Uma notificação push cerca de 10 minutos antes da partida de uma corrida agendada a que vai, e quando a partida mudar. Nunca por e-mail.';
+
+  @override
+  String get clubVerificationStatusTitle => 'Verificação oficial';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verificado como a presença oficial de $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verificado como organização oficial.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'O pedido para $org aguarda análise. Ainda não foi encontrada prova do domínio.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'O pedido para $org aguarda análise. Prova do domínio encontrada.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'O último pedido não foi aprovado: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'O selo foi removido: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'O selo foi removido após uma alteração no clube ou no seu domínio e precisa de uma nova análise.';
+
+  @override
+  String get clubVerificationStatusWithdrawn => 'O último pedido foi retirado.';
+
+  @override
+  String get clubVerificationStatusNone => 'Não verificado.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Os pedidos e as provas de domínio são geridos na web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Não foi possível carregar o estado da verificação.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Tentar novamente';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Há uma novidade sobre a verificação do seu clube';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Há uma novidade sobre a verificação de $club';
+  }
+
+  @override
+  String get provenanceVerifiedSource => 'Fonte verificada';
+
+  @override
+  String get provenanceVerifiedSourceTooltip =>
+      'Fonte verificada: listada por um parceiro de dados de provas';
+
+  @override
+  String get provenanceTraced => 'Traçado';
+
+  @override
+  String get provenanceTracedTooltip =>
+      'Traçado: desenhado por um clube verificado a partir do mapa publicado da prova';
+
+  @override
+  String get provenanceCommunity => 'Comunidade';
+
+  @override
+  String get provenanceCommunityTooltip =>
+      'Comunidade: adicionado por um corredor, sem verificação da organização';
+
+  @override
+  String get courseAlertsHeading => 'Alertas do percurso';
+
+  @override
+  String get courseAlertsEmpty =>
+      'Sem alertas. Publique um quando o percurso mudar e quem treina para a prova será avisado.';
+
+  @override
+  String get courseAlertsLoadFailed =>
+      'Não foi possível carregar os alertas do percurso.';
+
+  @override
+  String get courseAlertsRetry => 'Tentar novamente';
+
+  @override
+  String get courseAlertsKindReroute => 'Desvio';
+
+  @override
+  String get courseAlertsKindClosure => 'Corte';
+
+  @override
+  String get courseAlertsKindDirection => 'Sentido do percurso';
+
+  @override
+  String get courseAlertsKindNotice => 'Aviso';
+
+  @override
+  String get courseAlertsKindLabel => 'Tipo';
+
+  @override
+  String get courseAlertsMessageLabel => 'O que mudou';
+
+  @override
+  String get courseAlertsPostHint =>
+      'Quem treina para esta prova e quem guardou o percurso recebe um aviso uma vez.';
+
+  @override
+  String get courseAlertsPost => 'Publicar alerta';
+
+  @override
+  String get courseAlertsPosted => 'Alerta do percurso publicado.';
+
+  @override
+  String get courseAlertsPostFailed =>
+      'Não foi possível publicar o alerta. Tente novamente.';
+
+  @override
+  String get courseAlertsRemove => 'Remover';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return 'Remover o alerta “$kind”';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'Alerta do percurso removido.';
+
+  @override
+  String get courseAlertsRemoveFailed => 'Não foi possível remover o alerta.';
+
+  @override
+  String get courseAlertsNotFound => 'Este alerta já não está disponível';
+
+  @override
+  String get profileNotifCourseAlert =>
+      'A organização publicou um alerta do percurso';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$club publicou um alerta do percurso';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -20484,6 +21730,34 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get recapLatestStartLabel => 'Início mais tarde';
+
+  @override
+  String get recapParkCoursesLabel => 'Percursos de parque';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'em $n parques',
+      one: 'em $n parque',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Parques onde você correu';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n percursos',
+      one: '$n percurso',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get routePickerTitle => 'Escolher rota';
@@ -21126,6 +22400,32 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashboardTrendGroupRecentHint => 'Suas sessões mais recentes';
+
+  @override
+  String get dashboardHeroNothingPlanned => 'Nada planejado para hoje';
+
+  @override
+  String get dashboardHeroRestDay => 'Dia de descanso';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Nada no plano para hoje.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Prontidão $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Ocultar do Início';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name está oculto. Você pode trazê-lo de volta nas Configurações.';
+  }
+
+  @override
+  String get dashboardHideCardFailed =>
+      'Não foi possível ocultar o cartão. Tente novamente.';
 
   @override
   String get readinessFromLoadOnly =>
@@ -22481,6 +23781,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runExpandStatsPanel => 'Expandir painel de estatísticas';
+
+  @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return 'Página de estatísticas $page de $total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => 'Mostra as próximas estatísticas';
 
   @override
   String runRouteRemaining(String distance) {
@@ -24711,6 +26019,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Não foi possível verificar os créditos do mapa desta rota, então nada foi exportado. Tente novamente.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Não foi possível carregar seus clubes — verifique sua rede.';
 
@@ -25123,6 +26435,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get heatmapHeatDensity => 'Densidade de calor';
+
+  @override
+  String get heatmapUpcomingRaces => 'Próximas corridas';
+
+  @override
+  String get heatmapViewRace => 'Ver corrida';
+
+  @override
+  String get heatmapRaceFallbackName => 'Corrida';
 
   @override
   String get heatmapResetFilters => 'Redefinir filtros';
@@ -25619,6 +26940,136 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String profileNotifPlanAiEdit(String name) {
     return '$name aplicou mudanças sugeridas pela IA a um plano que você atribuiu';
   }
+
+  @override
+  String profileNotifPlanChangeRequest(String name) {
+    return '$name sugeriu uma mudança em um plano que você atribuiu';
+  }
+
+  @override
+  String profileNotifPlanChangeDecision(String name) {
+    return '$name respondeu à mudança de plano que você sugeriu';
+  }
+
+  @override
+  String get planChangeTitle => 'Mudança de plano sugerida';
+
+  @override
+  String get planChangeWaitingForCoach =>
+      'Aguardando a resposta do seu treinador';
+
+  @override
+  String get planChangeWaitingForYou =>
+      'Seu atleta está aguardando sua resposta';
+
+  @override
+  String get planChangeApprovedByCoach => 'Aprovada pelo treinador e aplicada';
+
+  @override
+  String get planChangeApprovedInPartByCoach =>
+      'Aprovada em parte pelo treinador; as linhas mostradas foram aplicadas';
+
+  @override
+  String get planChangeDeclinedByCoach => 'Recusada pelo treinador';
+
+  @override
+  String get planChangeWithdrawnByAthlete => 'Retirada pelo atleta';
+
+  @override
+  String get planChangeAppliedByAthlete =>
+      'Aplicada pelo atleta sem o treinador';
+
+  @override
+  String planChangeMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String planChangeIncludeLine(String line) {
+    return 'Incluir esta mudança: $line';
+  }
+
+  @override
+  String planChangeWeekLabel(int n) {
+    return 'Meta da semana $n';
+  }
+
+  @override
+  String get planChangeSkipped => 'Pulado';
+
+  @override
+  String planChangeWeekTarget(int n, String from, String to) {
+    return 'Meta da semana $n: $from → $to';
+  }
+
+  @override
+  String get planChangeUnreadable =>
+      'Algumas dessas mudanças não podem mais ser exibidas.';
+
+  @override
+  String planChangeCoachNote(String note) {
+    return 'Observação do treinador: $note';
+  }
+
+  @override
+  String get planChangeNoteLabel => 'Observação para seu atleta (opcional)';
+
+  @override
+  String get planChangeNotePlaceholder => 'Por que você aprovou ou recusou';
+
+  @override
+  String get planChangeDecline => 'Recusar';
+
+  @override
+  String get planChangeApprove => 'Aprovar';
+
+  @override
+  String get planChangeApproveSelected => 'Aprovar selecionadas';
+
+  @override
+  String get planChangeApplyMyselfHint =>
+      'O plano é seu, então você pode aplicar a mudança. Seu treinador será avisado.';
+
+  @override
+  String get planChangeWithdraw => 'Retirar';
+
+  @override
+  String get planChangeApplyMyself => 'Aplicar eu mesmo';
+
+  @override
+  String get planChangeWithdrawConfirmTitle => 'Retirar esta mudança sugerida?';
+
+  @override
+  String get planChangeWithdrawConfirmMessage =>
+      'Seu treinador não será mais solicitado a aprovar. Para sugerir de novo, peça novamente ao Coach para ajustar seu plano.';
+
+  @override
+  String get planChangeKeep => 'Manter';
+
+  @override
+  String planChangeFailed(String error) {
+    return 'Não foi possível atualizar a mudança sugerida: $error';
+  }
+
+  @override
+  String get planChangeApprovedToast => 'Mudança aprovada e aplicada ao plano';
+
+  @override
+  String get planChangeDeclinedToast => 'Mudança recusada';
+
+  @override
+  String get planChangeWithdrawnToast => 'Sugestão retirada';
+
+  @override
+  String get planChangeAppliedToast =>
+      'Mudança aplicada ao seu plano; seu treinador foi avisado';
+
+  @override
+  String get planChangeLoadFailed =>
+      'Não foi possível carregar as mudanças de plano sugeridas.';
+
+  @override
+  String get planChangeRetry => 'Tentar novamente';
 
   @override
   String get profileNotifWorkoutReminder =>
@@ -31112,6 +32563,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Ainda não há esforços — seja o primeiro a correr este segmento.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Algumas tentativas mais antigas foram medidas do jeito antigo, passando perto da largada e da chegada em vez de cruzar as linhas. Cada uma é medida de novo na próxima vez que o corredor abrir a corrida.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'Você detém esta coroa — $label.';
   }
@@ -35054,6 +36509,28 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String get challengesMetricParkCourses => 'Percursos de parque';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n percursos',
+      one: '$n percurso',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'percursos';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Conta percursos de parque em $region';
+  }
+
+  @override
   String get challengesLeaveConfirmTitle => 'Sair do desafio?';
 
   @override
@@ -35235,6 +36712,170 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get racesSourceManual => 'Adicionada por um corredor';
+
+  @override
+  String racesSourceClub(String club) {
+    return 'Adicionada por $club';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return 'Percurso oficial de $club';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return 'Percurso desenhado por $club a partir do mapa publicado da corrida';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return 'verificado em $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'Percurso atualizado em $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => 'Percurso da corrida';
+
+  @override
+  String get raceCourseClaim => 'Reivindicar esta corrida';
+
+  @override
+  String get raceCourseClaimTitle =>
+      'Reivindicar esta corrida para o seu clube';
+
+  @override
+  String get raceCourseClaimBody =>
+      'Reivindicar marca a corrida como verificada e permite que seu clube vincule o percurso. Reivindique só uma corrida que seu clube organiza ou cujos percursos desenha.';
+
+  @override
+  String get raceCourseClaimClub => 'Clube';
+
+  @override
+  String get raceCourseClaimConfirm => 'Reivindicar corrida';
+
+  @override
+  String get raceCourseClaimed => 'Corrida reivindicada.';
+
+  @override
+  String get raceCourseClaimFailed =>
+      'Não foi possível reivindicar esta corrida.';
+
+  @override
+  String get raceCourseLinkCourse => 'Vincular percurso';
+
+  @override
+  String get raceCourseChangeCourse => 'Trocar percurso';
+
+  @override
+  String get raceCourseLinkTitle => 'Vincular o percurso';
+
+  @override
+  String get raceCourseLinkRoute => 'Rota do percurso';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'Seu clube ainda não tem rotas públicas. Crie uma na aba Rotas do clube, deixe-a pública e vincule aqui.';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'Origem do percurso';
+
+  @override
+  String get raceCourseSourceOptionOfficial =>
+      'O percurso oficial do organizador';
+
+  @override
+  String get raceCourseSourceOptionTraced =>
+      'Traçado a partir do mapa publicado da corrida';
+
+  @override
+  String get raceCourseLinkConfirm => 'Vincular percurso';
+
+  @override
+  String get raceCourseLinked => 'Percurso vinculado.';
+
+  @override
+  String get raceCourseLinkFailed => 'Não foi possível atualizar o percurso.';
+
+  @override
+  String get raceCourseMarkChecked => 'Marcar percurso como verificado';
+
+  @override
+  String get raceCourseCheckedDone => 'Percurso marcado como verificado.';
+
+  @override
+  String get raceCourseSuggest => 'Sugerir um percurso';
+
+  @override
+  String get raceCourseSuggestTitle => 'Sugerir um percurso para esta corrida';
+
+  @override
+  String get raceCourseSuggestBody =>
+      'Escolha uma das suas rotas públicas. O organizador da corrida vai analisá-la, ou um clube verificado se ninguém reivindicou a corrida ainda.';
+
+  @override
+  String get raceCourseSuggestRoute => 'Sua rota';
+
+  @override
+  String get raceCourseSuggestNoRoutes =>
+      'Você ainda não tem rotas públicas. Deixe uma rota pública para sugeri-la.';
+
+  @override
+  String get raceCourseSuggestNote => 'Observação (opcional)';
+
+  @override
+  String get raceCourseSuggestConfirm => 'Enviar sugestão';
+
+  @override
+  String get raceCourseSuggested => 'Sugestão enviada.';
+
+  @override
+  String get raceCourseSuggestFailed => 'Não foi possível enviar sua sugestão.';
+
+  @override
+  String get raceCourseSuggestPending =>
+      'Você sugeriu um percurso. Ele está aguardando análise.';
+
+  @override
+  String get raceCourseUnlink => 'Remover percurso';
+
+  @override
+  String get raceCourseUnlinked => 'Percurso removido.';
+
+  @override
+  String get raceCourseReviewHeading => 'Sugestões de percurso';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Reivindique esta corrida para aprovar ou recusar uma sugestão.';
+
+  @override
+  String get raceCourseReviewApprove => 'Aprovar';
+
+  @override
+  String get raceCourseReviewReject => 'Recusar';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Aprovar este percurso';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'O percurso precisa ser uma rota pública do seu clube. Escolha a cópia do clube de $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Sugestão aprovada e percurso vinculado.';
+
+  @override
+  String get raceCourseReviewRejected => 'Sugestão recusada.';
+
+  @override
+  String get raceCourseReviewFailed => 'Não foi possível analisar a sugestão.';
 
   @override
   String get racesDetailShare => 'Compartilhar';
@@ -35831,6 +37472,75 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get badgesPlan10Desc => 'Concluiu 10 planos de treino';
+
+  @override
+  String get badgesParkCourses1Label => 'Primeiro percurso de parque';
+
+  @override
+  String get badgesParkCourses1Desc => 'Concluiu um percurso de parque';
+
+  @override
+  String get badgesParkCourses5Label => 'Frequentador de parques';
+
+  @override
+  String get badgesParkCourses5Desc =>
+      'Concluiu 5 percursos de parque diferentes';
+
+  @override
+  String get badgesParkCourses10Label => 'Colecionador de trilhas';
+
+  @override
+  String get badgesParkCourses10Desc =>
+      'Concluiu 10 percursos de parque diferentes';
+
+  @override
+  String get badgesParkCourses25Label => 'Explorador de parques';
+
+  @override
+  String get badgesParkCourses25Desc =>
+      'Concluiu 25 percursos de parque diferentes';
+
+  @override
+  String get badgesParkComplete1Label => 'Parque completo';
+
+  @override
+  String get badgesParkComplete1Desc =>
+      'Concluiu todos os percursos de um parque';
+
+  @override
+  String get badgesParkComplete3Label => 'Três parques completos';
+
+  @override
+  String get badgesParkComplete3Desc =>
+      'Concluiu todos os percursos de 3 parques';
+
+  @override
+  String get badgesParkComplete10Label => 'Completista de parques';
+
+  @override
+  String get badgesParkComplete10Desc =>
+      'Concluiu todos os percursos de 10 parques';
+
+  @override
+  String get badgesParkPassport1Label => 'Passaporte de parques';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Concluiu um percurso em cada parque de um estado';
+
+  @override
+  String get badgesParkPassport3Label => 'Passaporte carimbado';
+
+  @override
+  String get badgesParkPassport3Desc =>
+      'Concluiu um passaporte de parques em 3 estados';
+
+  @override
+  String get badgesParkPassport10Label => 'Colecionador de passaportes';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Concluiu um passaporte de parques em 10 estados';
 
   @override
   String get racePredictorTitle => 'Previsão de tempo de prova';
@@ -36973,6 +38683,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
+  String rateLimitEditMessage(String wait) {
+    return 'Você está editando mensagens rápido demais — espere $wait e tente de novo.';
+  }
+
+  @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'Você iniciou muitas solicitações de mensagem hoje — aguarde $wait e tente novamente.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'Você está fazendo isso rápido demais — espere $wait e tente de novo.';
   }
@@ -38106,7 +39826,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesSendNotAllowed =>
-      'Você só pode enviar mensagens para pessoas que você segue ou que seguem você, e que não bloquearam você.';
+      'Você pode enviar mensagens a quem você segue ou quem segue você, ou a alguém com quem compartilha um clube ou um evento, a menos que um de vocês tenha bloqueado o outro.';
 
   @override
   String get messagesLoadEarlier => 'Carregar mensagens anteriores';
@@ -38159,6 +39879,24 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get messagesUnsendFailed =>
       'Não foi possível desfazer o envio da mensagem.';
+
+  @override
+  String get messagesEdit => 'Editar';
+
+  @override
+  String get messagesEdited => 'Editada';
+
+  @override
+  String get messagesEditTitle => 'Editar mensagem';
+
+  @override
+  String get messagesEditSave => 'Salvar';
+
+  @override
+  String get messagesEditFailed => 'Não foi possível editar a mensagem.';
+
+  @override
+  String get messagesEditClosed => 'Esta mensagem não pode mais ser editada.';
 
   @override
   String get messagesReport => 'Denunciar';
@@ -38219,6 +39957,44 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get messagesBackToInbox => 'Voltar para a caixa de entrada';
+
+  @override
+  String get messagesRequestCapReached =>
+      'Você pode enviar até 3 mensagens até que aceitem sua solicitação.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Solicitações ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name quer enviar mensagens a você. Essa pessoa não saberá que você leu, a menos que aceite.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Aceitar';
+
+  @override
+  String get messagesRequestDecline => 'Recusar';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'Recusar esta solicitação?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'As mensagens saem das suas solicitações, e essa pessoa não poderá enviar mensagens a você de novo, a menos que você escreva primeiro. Ela não será avisada.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Solicitação aceita';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Solicitação recusada';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'Não foi possível atualizar a solicitação: $error';
+  }
 
   @override
   String get messagesMutedMark => 'Silenciada';
@@ -40160,6 +41936,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get prefsDisclosureLevel => 'Quanto detalhe';
 
   @override
+  String get prefsHomeCards => 'Cartões do Início';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Desmarque um grupo para tirá-lo do Início. A escolha vale em todos os seus dispositivos.';
+
+  @override
   String get prefsDisclosureAuto => 'Automático';
 
   @override
@@ -40485,6 +42268,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get shareCardBadgeKicker => 'Medalha conquistada';
 
   @override
+  String get shareCardKindCourse => 'Percurso de parque';
+
+  @override
+  String get shareCardCourseKicker => 'Tempo no percurso de parque';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return 'N.º $rank em $season';
+  }
+
+  @override
   String get runDetailSharePr => 'Compartilhar card de recorde';
 
   @override
@@ -40659,5 +42453,701 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String runDetailBlockedDurationTooLong(int hours) {
     return 'Esta corrida dura mais de $hours horas, o que nenhuma corrida dura, então a nuvem a recusa e tentar de novo nunca vai funcionar. Corrija a duração para enviá-la.';
+  }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'Em $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'Em $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Agora: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Agora: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Você acabou de passar: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Você acabou de passar: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Serviços: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance a cerca de $grade por cento.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Tempo limite às $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Tempo limite $time após a largada.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Notas do percurso ativadas.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Trecho $done concluído. O trecho $next está pronto.';
+  }
+
+  @override
+  String get ttsDriveFinished =>
+      'Você chegou ao fim do percurso. Notas do percurso encerradas.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'Você está fora do percurso há um tempo, por isso as notas do percurso pararam.';
+
+  @override
+  String get courseDriveTitle => 'Percorrer o percurso de carro';
+
+  @override
+  String get courseDriveNoticeTitle => 'Antes de dirigir';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Use isto com um passageiro ou com o celular em um suporte e não toque nele enquanto dirige. Siga as regras e a sinalização de trânsito. As ruas do percurso podem estar fechadas no dia da prova e a rota do app de mapas pode não coincidir com o percurso.';
+
+  @override
+  String get courseDriveNoticeAccept => 'Entendi';
+
+  @override
+  String get courseDriveMapsApp => 'Abrir no';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Mapas da Apple';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Ir até a largada';
+
+  @override
+  String get courseDriveLegsHeading => 'Trechos';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Trecho $n: de $from a $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'A rota do app de mapas serve só de orientação. As notas seguem o percurso real.';
+
+  @override
+  String get courseDriveChecking =>
+      'Verificando quais trechos o app de mapas consegue seguir…';
+
+  @override
+  String get courseDriveAllDrivable =>
+      'O app de mapas consegue seguir todo o percurso.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'Não foi possível verificar quais trechos o app de mapas consegue seguir.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'O app de mapas não consegue seguir estes trechos';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return 'De $from a $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Notas do percurso';
+
+  @override
+  String get courseDriveNoNotes => 'Este percurso não tem marcadores para ler.';
+
+  @override
+  String get courseDriveStart => 'Iniciar notas faladas';
+
+  @override
+  String get courseDriveStop => 'Parar';
+
+  @override
+  String get courseDriveWaiting =>
+      'Vá até o percurso. As notas começam quando você chegar.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Próxima nota em $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'Não há mais notas pela frente.';
+
+  @override
+  String get courseDriveFinished => 'Você chegou ao fim do percurso.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Parado: você ficou fora do percurso por 10 minutos.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'A localização está desativada, por isso as notas não conseguem acompanhar você.';
+
+  @override
+  String get courseDriveLoadFailed =>
+      'Não foi possível carregar este percurso.';
+
+  @override
+  String get courseDriveOpenFailed => 'Não foi possível abrir o app de mapas.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Tempo limite às $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Tempo limite $time após a largada';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance a cerca de $grade%';
+  }
+
+  @override
+  String get parksTitle => 'Percursos de parques';
+
+  @override
+  String get parksIntro =>
+      'Percursos de contrarrelógio permanentes em parques estaduais e nacionais. Corra um em qualquer dia e o seu tempo entra na classificação deste ano.';
+
+  @override
+  String get parksLoading => 'Carregando percursos…';
+
+  @override
+  String get parksLoadFailed => 'Não foi possível carregar os percursos.';
+
+  @override
+  String get parksRetry => 'Tentar novamente';
+
+  @override
+  String get parksEmpty =>
+      'Ainda não há percursos. Os primeiros estão a caminho.';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n percursos',
+      one: '$n percurso',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'Todos os percursos';
+
+  @override
+  String get parksParkNotFoundTitle => 'Parque não encontrado';
+
+  @override
+  String get parksParkNotFoundBody =>
+      'Este parque não está listado, ou não está mais.';
+
+  @override
+  String get parksCourseNotFoundTitle => 'Percurso não encontrado';
+
+  @override
+  String get parksCourseNotFoundBody =>
+      'Este percurso não está listado, ou não está mais.';
+
+  @override
+  String get parksWebsite => 'Site do parque';
+
+  @override
+  String get parksNoCourses => 'Ainda não há percursos listados neste parque.';
+
+  @override
+  String get parksAgencyNps => 'National Park Service';
+
+  @override
+  String get parksAgencyState => 'Parque estadual';
+
+  @override
+  String get parksAgencyCounty => 'Parque do condado';
+
+  @override
+  String get parksAgencyOther => 'Parque';
+
+  @override
+  String get parksShapeLoop => 'Circular';
+
+  @override
+  String get parksShapeOutAndBack => 'Ida e volta';
+
+  @override
+  String get parksShapePointToPoint => 'Ponto a ponto';
+
+  @override
+  String get parksStatusOpen => 'Aberto';
+
+  @override
+  String get parksStatusClosed => 'Fechado';
+
+  @override
+  String get parksStatusSeasonal => 'Sazonal';
+
+  @override
+  String get parksClosedBanner =>
+      'Este percurso está fechado. Os tempos e as classificações continuam, mas não corra nele até reabrir.';
+
+  @override
+  String parksStatusChecked(String date) {
+    return 'Status verificado em $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => 'Fácil';
+
+  @override
+  String get parksDifficultyModerate => 'Moderado';
+
+  @override
+  String get parksDifficultyHard => 'Difícil';
+
+  @override
+  String get parksStatDistance => 'Distância';
+
+  @override
+  String get parksStatElevation => 'Ganho de elevação';
+
+  @override
+  String get parksStatShape => 'Formato';
+
+  @override
+  String get parksStatSurface => 'Piso';
+
+  @override
+  String get parksStatDifficulty => 'Dificuldade';
+
+  @override
+  String get parksBoardFastest => 'Mais rápidos';
+
+  @override
+  String get parksBoardCompletions => 'Mais conclusões';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return 'Este ano ($year)';
+  }
+
+  @override
+  String get parksSeasonAllTime => 'Todos os tempos';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n dias',
+      one: '$n dia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts =>
+      'Ainda não há tempos nesta classificação. Corra o percurso e o seu será o primeiro.';
+
+  @override
+  String get parksSignInForBoards =>
+      'Entre na sua conta para ver as classificações deste percurso.';
+
+  @override
+  String get parksSignIn => 'Entrar';
+
+  @override
+  String get parksBoardFailed =>
+      'Não foi possível carregar esta classificação.';
+
+  @override
+  String get parksSafetyNotice =>
+      'Fique na trilha sinalizada. A cronometragem exige todos os pontos de controle, então um atalho nunca conta. É um contrarrelógio, não uma corrida: a trilha continua aberta a todos e ninguém a fiscaliza.';
+
+  @override
+  String get parksAttributionOsm =>
+      'Traçado do percurso © colaboradores do OpenStreetMap';
+
+  @override
+  String get parksAttributionNps =>
+      'Traçado do percurso a partir dos dados de trilhas do National Park Service';
+
+  @override
+  String get parksAttributionAgency =>
+      'Traçado do percurso a partir dos dados de trilhas do próprio parque';
+
+  @override
+  String get parksAttributionTraced =>
+      'Traçado do percurso desenhado sobre o mapa publicado do parque';
+
+  @override
+  String get parksNavigate => 'Navegar neste percurso';
+
+  @override
+  String get parksShareGpx => 'Compartilhar GPX';
+
+  @override
+  String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Mapa das linhas de largada e chegada do percurso';
+
+  @override
+  String get eventCourseLinesMapStart => 'Mapa da linha de largada do percurso';
+
+  @override
+  String get eventCourseLinesMapFinish =>
+      'Mapa da linha de chegada do percurso';
+
+  @override
+  String get eventRacePreflightTitle => 'Confira os percursos antes de armar';
+
+  @override
+  String get eventRacePreflightBlockedTitle =>
+      'Esta corrida ainda não pode ser armada';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'As linhas do percurso são editadas no editor de eventos na web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Armar mesmo assim';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: sem linha nem ponto de chegada, então os corredores terminam manualmente.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: sem linha de largada. Uma corrida cronometrada por cada um precisa de uma.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: o trajeto cruza a própria linha de chegada antes do fim, então uma chegada pela linha pode vir cedo demais.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: a linha de largada está a mais de 100 m do trajeto.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: a linha de chegada está a mais de 100 m do trajeto.';
+  }
+
+  @override
+  String get runRaceScheduled => 'Largada agendada';
+
+  @override
+  String runRaceStartsIn(String label, String time) {
+    return '$label começa em $time';
+  }
+
+  @override
+  String get runRaceSelfTimed => 'Tempo próprio';
+
+  @override
+  String get runRaceSelfTimedSoon => 'Janela de tempo próprio';
+
+  @override
+  String runRaceSelfTimedHow(String label, String time) {
+    return '$label: toque em “Esta corrida é a minha tentativa”, depois em Iniciar, e cruze a linha de largada. Aberta até $time.';
+  }
+
+  @override
+  String runRaceSelfTimedOpens(String label, String time) {
+    return '$label abre às $time';
+  }
+
+  @override
+  String runRaceToStartLine(String distance) {
+    return '$distance até a linha de largada';
+  }
+
+  @override
+  String get runRaceThisIsMyAttempt => 'Esta corrida é a minha tentativa';
+
+  @override
+  String get runRaceAttemptReady => 'Tentativa pronta: toque em Iniciar';
+
+  @override
+  String get eventRaceArmEarly => 'Armar antes';
+
+  @override
+  String get eventRaceScheduledNotYet =>
+      'Começa sozinha no horário agendado. Arme antes para conferir as linhas agora.';
+
+  @override
+  String get eventRaceSelfTimedNotYet =>
+      'Abre sozinha. Arme antes para conferir as linhas agora.';
+
+  @override
+  String eventRaceGoAt(String time) {
+    return 'Largada às $time';
+  }
+
+  @override
+  String eventRaceOpensAt(String time) {
+    return 'Abre às $time';
+  }
+
+  @override
+  String eventRaceOpenUntil(String time) {
+    return 'Aberta até $time';
+  }
+
+  @override
+  String eventRaceAutoEnds(String time) {
+    return 'Termina sozinha às $time';
+  }
+
+  @override
+  String get eventRaceDelay => 'Atrasar largada';
+
+  @override
+  String eventRaceDelayBy(String minutes) {
+    return '+$minutes min';
+  }
+
+  @override
+  String get eventRaceExtend => 'Estender janela';
+
+  @override
+  String eventRaceExtendBy(String hours) {
+    return '+$hours h';
+  }
+
+  @override
+  String get eventRaceEndEarly => 'Encerrar a janela agora';
+
+  @override
+  String get eventRaceJoinAttempt => 'Participar e tentar';
+
+  @override
+  String eventRaceSelfTimedParticipant(String time) {
+    return 'Corrida de tempo próprio aberta até $time. Participe e cronometre sua tentativa na tela de corrida.';
+  }
+
+  @override
+  String get profileNotifRaceStartingSoon =>
+      'Uma corrida que você vai começa em cerca de 10 minutos';
+
+  @override
+  String profileNotifRaceStartingSoonTitled(String title) {
+    return '“$title” começa em cerca de 10 minutos';
+  }
+
+  @override
+  String get profileNotifRaceStartMoved =>
+      'A largada de uma corrida que você vai mudou';
+
+  @override
+  String profileNotifRaceStartMovedTitled(String title) {
+    return 'A largada de “$title” mudou';
+  }
+
+  @override
+  String get prefsNotifyRaceStartingSoon => 'Corrida prestes a começar';
+
+  @override
+  String get prefsNotifyRaceStartingSoonHint =>
+      'Uma notificação push cerca de 10 minutos antes da largada de uma corrida agendada que você vai, e quando a largada mudar. Nunca por e-mail.';
+
+  @override
+  String get clubVerificationStatusTitle => 'Verificação oficial';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verificado como a presença oficial de $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verificado como organização oficial.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'O pedido para $org aguarda análise. Nenhuma prova do domínio encontrada ainda.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'O pedido para $org aguarda análise. Prova do domínio encontrada.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'O último pedido não foi aprovado: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'O selo foi removido: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'O selo foi removido após uma mudança no clube ou no domínio e precisa de uma nova análise.';
+
+  @override
+  String get clubVerificationStatusWithdrawn => 'O último pedido foi retirado.';
+
+  @override
+  String get clubVerificationStatusNone => 'Não verificado.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Os pedidos e as provas de domínio são gerenciados na web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Não foi possível carregar o status da verificação.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Tentar de novo';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Há uma novidade sobre a verificação do seu clube';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Há uma novidade sobre a verificação de $club';
+  }
+
+  @override
+  String get provenanceVerifiedSource => 'Fonte verificada';
+
+  @override
+  String get provenanceVerifiedSourceTooltip =>
+      'Fonte verificada: listada por um parceiro de dados de corridas';
+
+  @override
+  String get provenanceTraced => 'Traçado';
+
+  @override
+  String get provenanceTracedTooltip =>
+      'Traçado: desenhado por um clube verificado a partir do mapa publicado da corrida';
+
+  @override
+  String get provenanceCommunity => 'Comunidade';
+
+  @override
+  String get provenanceCommunityTooltip =>
+      'Comunidade: adicionado por um corredor, sem verificação do organizador';
+
+  @override
+  String get courseAlertsHeading => 'Alertas do percurso';
+
+  @override
+  String get courseAlertsEmpty =>
+      'Nenhum alerta. Publique um quando o percurso mudar e quem treina para a corrida será avisado.';
+
+  @override
+  String get courseAlertsLoadFailed =>
+      'Não foi possível carregar os alertas do percurso.';
+
+  @override
+  String get courseAlertsRetry => 'Tentar de novo';
+
+  @override
+  String get courseAlertsKindReroute => 'Desvio';
+
+  @override
+  String get courseAlertsKindClosure => 'Interdição';
+
+  @override
+  String get courseAlertsKindDirection => 'Sentido do percurso';
+
+  @override
+  String get courseAlertsKindNotice => 'Aviso';
+
+  @override
+  String get courseAlertsKindLabel => 'Tipo';
+
+  @override
+  String get courseAlertsMessageLabel => 'O que mudou';
+
+  @override
+  String get courseAlertsPostHint =>
+      'Quem treina para esta corrida e quem salvou o percurso recebe um aviso uma vez.';
+
+  @override
+  String get courseAlertsPost => 'Publicar alerta';
+
+  @override
+  String get courseAlertsPosted => 'Alerta do percurso publicado.';
+
+  @override
+  String get courseAlertsPostFailed =>
+      'Não foi possível publicar o alerta. Tente de novo.';
+
+  @override
+  String get courseAlertsRemove => 'Remover';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return 'Remover o alerta “$kind”';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'Alerta do percurso removido.';
+
+  @override
+  String get courseAlertsRemoveFailed => 'Não foi possível remover o alerta.';
+
+  @override
+  String get courseAlertsNotFound => 'Este alerta não está mais disponível';
+
+  @override
+  String get profileNotifCourseAlert =>
+      'O organizador publicou um alerta do percurso';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$club publicou um alerta do percurso';
   }
 }

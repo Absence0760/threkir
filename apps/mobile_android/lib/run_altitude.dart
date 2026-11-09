@@ -1,7 +1,5 @@
 import 'package:core_models/core_models.dart';
 
-import 'route_simplify.dart';
-
 /// The band phone GPS altitude is gated on when no barometer recorded the run.
 /// GPS vertical error runs at roughly 1.5x the horizontal and wanders over
 /// minutes rather than flickering per fix, and under tree cover the low

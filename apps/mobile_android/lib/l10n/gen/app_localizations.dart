@@ -335,6 +335,30 @@ abstract class AppLocalizations {
   /// **'Latest start'**
   String get recapLatestStartLabel;
 
+  /// Park courses phase 5 (recap.parkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get recapParkCoursesLabel;
+
+  /// Park courses phase 5 (recap.parkCoursesSub)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {in {n} park} other {in {n} parks}}'**
+  String recapParkCoursesSub(int n);
+
+  /// Park courses phase 5 (recap.parksHeading)
+  ///
+  /// In en, this message translates to:
+  /// **'Parks you ran'**
+  String get recapParksHeading;
+
+  /// Park courses phase 5 (recap.parkCourseCount)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} course} other {{n} courses}}'**
+  String recapParkCourseCount(int n);
+
   /// App bar title for the full-screen route picker
   ///
   /// In en, this message translates to:
@@ -1282,6 +1306,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your latest sessions'**
   String get dashboardTrendGroupRecentHint;
+
+  /// Title of the Today hero on Home when nothing is planned and nothing was run today
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing planned today'**
+  String get dashboardHeroNothingPlanned;
+
+  /// Title of the Today hero on a training-plan rest day
+  ///
+  /// In en, this message translates to:
+  /// **'Rest day'**
+  String get dashboardHeroRestDay;
+
+  /// Line under the rest-day title in the Today hero
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on the plan today.'**
+  String get dashboardHeroRestDayBody;
+
+  /// One-line readiness score in the Today hero; {score} is 0-100
+  ///
+  /// In en, this message translates to:
+  /// **'Readiness {score}'**
+  String dashboardHeroReadiness(int score);
+
+  /// Long-press action on a Home trend group that hides it from Home
+  ///
+  /// In en, this message translates to:
+  /// **'Hide from Home'**
+  String get dashboardHideFromHome;
+
+  /// Banner after hiding a Home trend group; {name} is the group title
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is hidden. You can bring it back in Settings.'**
+  String dashboardCardHidden(String name);
+
+  /// Banner when hiding a Home trend group could not be saved
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t hide that card. Try again.'**
+  String get dashboardHideCardFailed;
 
   /// Footnote on the readiness card: the score is computed from training balance (TSB) alone, because no sleep or resting heart rate is read yet. Shown only while neither of those contributes.
   ///
@@ -3658,6 +3724,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Expand stats panel'**
   String get runExpandStatsPanel;
+
+  /// Screen-reader label for the paged row of live stat tiles on the recording panel; tapping or swiping it shows the next page
+  ///
+  /// In en, this message translates to:
+  /// **'Stats page {page} of {total}'**
+  String runStatsPageA11yLabel(int page, int total);
+
+  /// Screen-reader hint for the paged row of live stat tiles on the recording panel
+  ///
+  /// In en, this message translates to:
+  /// **'Shows the next stats'**
+  String get runStatsNextPageA11yHint;
 
   /// Badge showing remaining distance to the end of the selected route
   ///
@@ -7168,6 +7246,12 @@ abstract class AppLocalizations {
   /// **'Could not share {format}: {error}'**
   String routeDetailShareFailed(String format, String error);
 
+  /// Banner when the check for a park course route's geometry credit fails, so the GPX/KML export is refused rather than written uncredited. Web key routeDetail.exportCreditFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check this route\'s map credits, so nothing was exported. Try again.'**
+  String get routeDetailExportCreditFailed;
+
   /// Banner shown when the transfer-to-club club fetch times out
   ///
   /// In en, this message translates to:
@@ -7707,6 +7791,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Heat density'**
   String get heatmapHeatDensity;
+
+  /// Filter chip toggling the upcoming verified race pins (races in the next six months) in the heatmap filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming races'**
+  String get heatmapUpcomingRaces;
+
+  /// Button on a race pin's card on the heatmap that opens the race page
+  ///
+  /// In en, this message translates to:
+  /// **'View race'**
+  String get heatmapViewRace;
+
+  /// Title shown on a heatmap race pin card when the race has no name
+  ///
+  /// In en, this message translates to:
+  /// **'Race'**
+  String get heatmapRaceFallbackName;
 
   /// Button to reset all heatmap filters
   ///
@@ -8475,6 +8577,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} applied AI-suggested changes to a plan you assigned'**
   String profileNotifPlanAiEdit(String name);
+
+  /// Notification text for a coach whose athlete suggested a change to a plan the coach assigned
+  ///
+  /// In en, this message translates to:
+  /// **'{name} suggested a change to a plan you assigned'**
+  String profileNotifPlanChangeRequest(String name);
+
+  /// Notification text for an athlete whose coach approved or declined a plan change they suggested
+  ///
+  /// In en, this message translates to:
+  /// **'{name} answered your suggested plan change'**
+  String profileNotifPlanChangeDecision(String name);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): title
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested plan change'**
+  String get planChangeTitle;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): waitingForCoach
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for your coach to answer'**
+  String get planChangeWaitingForCoach;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): waitingForYou
+  ///
+  /// In en, this message translates to:
+  /// **'Your athlete is waiting for your answer'**
+  String get planChangeWaitingForYou;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approvedByCoach
+  ///
+  /// In en, this message translates to:
+  /// **'Approved by the coach and applied'**
+  String get planChangeApprovedByCoach;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approvedInPartByCoach
+  ///
+  /// In en, this message translates to:
+  /// **'Approved in part by the coach; the lines shown were applied'**
+  String get planChangeApprovedInPartByCoach;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): declinedByCoach
+  ///
+  /// In en, this message translates to:
+  /// **'Declined by the coach'**
+  String get planChangeDeclinedByCoach;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdrawnByAthlete
+  ///
+  /// In en, this message translates to:
+  /// **'Withdrawn by the athlete'**
+  String get planChangeWithdrawnByAthlete;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): appliedByAthlete
+  ///
+  /// In en, this message translates to:
+  /// **'Applied by the athlete without the coach'**
+  String get planChangeAppliedByAthlete;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String planChangeMinutes(int n);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): includeLine
+  ///
+  /// In en, this message translates to:
+  /// **'Include this change: {line}'**
+  String planChangeIncludeLine(String line);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): weekLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} target'**
+  String planChangeWeekLabel(int n);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): skipped
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get planChangeSkipped;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): weekTarget
+  ///
+  /// In en, this message translates to:
+  /// **'Week {n} target: {from} → {to}'**
+  String planChangeWeekTarget(int n, String from, String to);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): unreadable
+  ///
+  /// In en, this message translates to:
+  /// **'Some of these changes can no longer be shown.'**
+  String get planChangeUnreadable;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): coachNote
+  ///
+  /// In en, this message translates to:
+  /// **'Coach\'s note: {note}'**
+  String planChangeCoachNote(String note);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): noteLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Note to your athlete (optional)'**
+  String get planChangeNoteLabel;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): notePlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Why you approved or declined'**
+  String get planChangeNotePlaceholder;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): decline
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get planChangeDecline;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approve
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get planChangeApprove;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approveSelected
+  ///
+  /// In en, this message translates to:
+  /// **'Approve selected'**
+  String get planChangeApproveSelected;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): applyMyselfHint
+  ///
+  /// In en, this message translates to:
+  /// **'You own this plan, so you can apply the change yourself. Your coach will be told.'**
+  String get planChangeApplyMyselfHint;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdraw
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw'**
+  String get planChangeWithdraw;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): applyMyself
+  ///
+  /// In en, this message translates to:
+  /// **'Apply it myself'**
+  String get planChangeApplyMyself;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdrawConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw this suggested change?'**
+  String get planChangeWithdrawConfirmTitle;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdrawConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'Your coach will no longer be asked to approve it. To suggest it again, ask the Coach to adjust your plan again.'**
+  String get planChangeWithdrawConfirmMessage;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): keep
+  ///
+  /// In en, this message translates to:
+  /// **'Keep it'**
+  String get planChangeKeep;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the suggested change: {error}'**
+  String planChangeFailed(String error);
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): approvedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Change approved and applied to the plan'**
+  String get planChangeApprovedToast;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): declinedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Change declined'**
+  String get planChangeDeclinedToast;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): withdrawnToast
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion withdrawn'**
+  String get planChangeWithdrawnToast;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): appliedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Change applied to your plan; your coach has been told'**
+  String get planChangeAppliedToast;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): loadFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load suggested plan changes.'**
+  String get planChangeLoadFailed;
+
+  /// Suggested change to a coach-assigned plan (decisions § 2382): retry
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get planChangeRetry;
 
   /// Notification inbox line for the morning reminder that today has a workout on the runner's active training plan
   ///
@@ -17235,6 +17547,12 @@ abstract class AppLocalizations {
   /// **'No efforts yet — be the first to run this segment.'**
   String get segmentsPanelLeaderboardEmpty;
 
+  /// Note above a catalogue segment leaderboard timed by start and end lines, shown while some efforts on it were still measured by the old near-the-start-and-finish rule
+  ///
+  /// In en, this message translates to:
+  /// **'Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.'**
+  String get segmentOldMatchNote;
+
   /// Banner shown when the viewer holds the segment crown
   ///
   /// In en, this message translates to:
@@ -23858,6 +24176,30 @@ abstract class AppLocalizations {
   /// **'{n}'**
   String challengesUnitActivities(int n);
 
+  /// Park courses phase 5 (challenges.metricParkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get challengesMetricParkCourses;
+
+  /// Park courses phase 5 (challenges.unitParkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} course} other {{n} courses}}'**
+  String challengesUnitParkCourses(int n);
+
+  /// Park courses phase 5 (challenges.goalSuffixCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'courses'**
+  String get challengesGoalSuffixCourses;
+
+  /// Park courses phase 5 (challenges.parkRegion)
+  ///
+  /// In en, this message translates to:
+  /// **'Counts park courses in {region}'**
+  String challengesParkRegion(String region);
+
   /// Leave-confirm dialog title
   ///
   /// In en, this message translates to:
@@ -24163,6 +24505,288 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Added by a runner'**
   String get racesSourceManual;
+
+  /// Race detail: a hand-added race credited to the verified club that claimed it.
+  ///
+  /// In en, this message translates to:
+  /// **'Added by {club}'**
+  String racesSourceClub(String club);
+
+  /// Race detail: the course is the organiser club's official course.
+  ///
+  /// In en, this message translates to:
+  /// **'Official course from {club}'**
+  String raceCourseSourceOfficial(String club);
+
+  /// Race detail: the club traced the course from the race's published map.
+  ///
+  /// In en, this message translates to:
+  /// **'Course drawn by {club} from the race\'s published map'**
+  String raceCourseSourceTraced(String club);
+
+  /// Race detail: appended after the course source; when the club last checked the course.
+  ///
+  /// In en, this message translates to:
+  /// **'last checked {date}'**
+  String raceCourseChecked(String date);
+
+  /// Race detail: the course route's line changed after the club last checked it.
+  ///
+  /// In en, this message translates to:
+  /// **'Course updated {date}'**
+  String raceCourseUpdated(String date);
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Race course'**
+  String get raceCourseToolsHeading;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim this race'**
+  String get raceCourseClaim;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim this race for your club'**
+  String get raceCourseClaimTitle;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Claiming marks the race as verified and lets your club link its course. Claim only a race your club organises or draws courses for.'**
+  String get raceCourseClaimBody;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Club'**
+  String get raceCourseClaimClub;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim race'**
+  String get raceCourseClaimConfirm;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Race claimed.'**
+  String get raceCourseClaimed;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t claim this race.'**
+  String get raceCourseClaimFailed;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Link course'**
+  String get raceCourseLinkCourse;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Change course'**
+  String get raceCourseChangeCourse;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Link the course'**
+  String get raceCourseLinkTitle;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Course route'**
+  String get raceCourseLinkRoute;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Your club has no public routes yet. Create one from the club\'s Routes tab, make it public, then link it here.'**
+  String get raceCourseLinkNoRoutes;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Where the course comes from'**
+  String get raceCourseLinkSourceLabel;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'The organiser\'s official course'**
+  String get raceCourseSourceOptionOfficial;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Traced from the race\'s published map'**
+  String get raceCourseSourceOptionTraced;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Link course'**
+  String get raceCourseLinkConfirm;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Course linked.'**
+  String get raceCourseLinked;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the course.'**
+  String get raceCourseLinkFailed;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Mark course checked'**
+  String get raceCourseMarkChecked;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Course marked as checked.'**
+  String get raceCourseCheckedDone;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a course'**
+  String get raceCourseSuggest;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a course for this race'**
+  String get raceCourseSuggestTitle;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Pick one of your public routes. The race\'s organiser reviews it, or a verified club if nobody has claimed the race yet.'**
+  String get raceCourseSuggestBody;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Your route'**
+  String get raceCourseSuggestRoute;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'You have no public routes yet. Make a route public to suggest it.'**
+  String get raceCourseSuggestNoRoutes;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get raceCourseSuggestNote;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Send suggestion'**
+  String get raceCourseSuggestConfirm;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion sent.'**
+  String get raceCourseSuggested;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send your suggestion.'**
+  String get raceCourseSuggestFailed;
+
+  /// Race detail race-course tools (claim, link, suggest a course; decisions § 2381).
+  ///
+  /// In en, this message translates to:
+  /// **'You suggested a course. It\'s waiting for review.'**
+  String get raceCourseSuggestPending;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Remove course'**
+  String get raceCourseUnlink;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Course removed.'**
+  String get raceCourseUnlinked;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Course suggestions'**
+  String get raceCourseReviewHeading;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Claim this race to approve or reject a suggestion.'**
+  String get raceCourseReviewClaimFirst;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get raceCourseReviewApprove;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get raceCourseReviewReject;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Approve this course'**
+  String get raceCourseReviewApproveTitle;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'The course must be a public route your club owns. Pick the club\'s copy of {route}.'**
+  String raceCourseReviewApproveBody(String route);
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion approved and course linked.'**
+  String get raceCourseReviewApproved;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion rejected.'**
+  String get raceCourseReviewRejected;
+
+  /// Race detail race-course tools, review and remove (decisions § 2381, § 2396).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t review the suggestion.'**
+  String get raceCourseReviewFailed;
 
   /// Race detail screen: share the race link
   ///
@@ -25195,6 +25819,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Completed 10 training plans'**
   String get badgesPlan10Desc;
+
+  /// Park courses phase 5 (badges.parkCourses1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'First park course'**
+  String get badgesParkCourses1Label;
+
+  /// Park courses phase 5 (badges.parkCourses1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course'**
+  String get badgesParkCourses1Desc;
+
+  /// Park courses phase 5 (badges.parkCourses5.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park regular'**
+  String get badgesParkCourses5Label;
+
+  /// Park courses phase 5 (badges.parkCourses5.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 5 different park courses'**
+  String get badgesParkCourses5Desc;
+
+  /// Park courses phase 5 (badges.parkCourses10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Trail collector'**
+  String get badgesParkCourses10Label;
+
+  /// Park courses phase 5 (badges.parkCourses10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 10 different park courses'**
+  String get badgesParkCourses10Desc;
+
+  /// Park courses phase 5 (badges.parkCourses25.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park explorer'**
+  String get badgesParkCourses25Label;
+
+  /// Park courses phase 5 (badges.parkCourses25.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 25 different park courses'**
+  String get badgesParkCourses25Desc;
+
+  /// Park courses phase 5 (badges.parkComplete1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park finisher'**
+  String get badgesParkComplete1Label;
+
+  /// Park courses phase 5 (badges.parkComplete1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in a park'**
+  String get badgesParkComplete1Desc;
+
+  /// Park courses phase 5 (badges.parkComplete3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Three parks finished'**
+  String get badgesParkComplete3Label;
+
+  /// Park courses phase 5 (badges.parkComplete3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in 3 parks'**
+  String get badgesParkComplete3Desc;
+
+  /// Park courses phase 5 (badges.parkComplete10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park completionist'**
+  String get badgesParkComplete10Label;
+
+  /// Park courses phase 5 (badges.parkComplete10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in 10 parks'**
+  String get badgesParkComplete10Desc;
+
+  /// Park courses phase 5 (badges.parkPassport1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park passport'**
+  String get badgesParkPassport1Label;
+
+  /// Park courses phase 5 (badges.parkPassport1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a course in every park of a state'**
+  String get badgesParkPassport1Desc;
+
+  /// Park courses phase 5 (badges.parkPassport3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Passport stamped'**
+  String get badgesParkPassport3Label;
+
+  /// Park courses phase 5 (badges.parkPassport3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park passport in 3 states'**
+  String get badgesParkPassport3Desc;
+
+  /// Park courses phase 5 (badges.parkPassport10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Passport collector'**
+  String get badgesParkPassport10Label;
+
+  /// Park courses phase 5 (badges.parkPassport10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park passport in 10 states'**
+  String get badgesParkPassport10Desc;
 
   /// Title of the dashboard race-time predictor card
   ///
@@ -27092,6 +27836,18 @@ abstract class AppLocalizations {
   /// **'You\'re sending messages too quickly — please wait {wait} and try again.'**
   String rateLimitSendMessage(String wait);
 
+  /// Rate-limit refusal when the direct-message edit bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re editing messages too quickly — please wait {wait} and try again.'**
+  String rateLimitEditMessage(String wait);
+
+  /// Rate-limit refusal when the open-a-message-request bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve started a lot of message requests today — please wait {wait} and try again.'**
+  String rateLimitOpenMessageRequest(String wait);
+
   /// Rate-limit refusal for a bucket this build does not recognise
   ///
   /// In en, this message translates to:
@@ -28919,7 +29675,7 @@ abstract class AppLocalizations {
   /// The server refused the send: no follow either way, or a block either way (deliberately not told apart)
   ///
   /// In en, this message translates to:
-  /// **'You can only message people you follow or who follow you, and who haven\'t blocked you.'**
+  /// **'You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other.'**
   String get messagesSendNotAllowed;
 
   /// Button at the top of a conversation that loads older messages
@@ -29011,6 +29767,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t unsend the message.'**
   String get messagesUnsendFailed;
+
+  /// Action in the message options sheet that opens the editor for one of your own messages, offered for 15 minutes after sending
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get messagesEdit;
+
+  /// Small mark beside the time on a message its sender edited
+  ///
+  /// In en, this message translates to:
+  /// **'Edited'**
+  String get messagesEdited;
+
+  /// Title of the dialog that edits one of your own direct messages; also the text field label
+  ///
+  /// In en, this message translates to:
+  /// **'Edit message'**
+  String get messagesEditTitle;
+
+  /// Button that saves an edited direct message
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get messagesEditSave;
+
+  /// Shown in the edit dialog when saving the edit failed for a reason other than the window closing
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t edit the message.'**
+  String get messagesEditFailed;
+
+  /// Shown in the edit dialog when the server refuses the edit: the 15-minute window passed, the message was unsent, or a block stands
+  ///
+  /// In en, this message translates to:
+  /// **'This message can no longer be edited.'**
+  String get messagesEditClosed;
 
   /// Action in the message options sheet that opens the report sheet for the other person's message
   ///
@@ -29113,6 +29905,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to inbox'**
   String get messagesBackToInbox;
+
+  /// Shown when a send into a pending message request is refused: the requester may send three messages until it is accepted
+  ///
+  /// In en, this message translates to:
+  /// **'You can send up to 3 messages until they accept your request.'**
+  String get messagesRequestCapReached;
+
+  /// Inbox control that opens the message Requests list; count is how many
+  ///
+  /// In en, this message translates to:
+  /// **'Requests ({count})'**
+  String messagesRequestsCount(int count);
+
+  /// Shown in place of the composer on a message request; name is the requester
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wants to message you. They won\'t know you\'ve read this unless you accept.'**
+  String messagesRequestNotice(String name);
+
+  /// Accepts a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get messagesRequestAccept;
+
+  /// Declines a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get messagesRequestDecline;
+
+  /// Title of the confirm dialog before declining a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Decline this request?'**
+  String get messagesRequestDeclineConfirmTitle;
+
+  /// Body of the confirm dialog before declining a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Their messages leave your Requests, and they can\'t message you again unless you message them first. They won\'t be told.'**
+  String get messagesRequestDeclineConfirmMessage;
+
+  /// Confirmation after accepting a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Request accepted'**
+  String get messagesRequestAcceptedToast;
+
+  /// Confirmation after declining a message request
+  ///
+  /// In en, this message translates to:
+  /// **'Request declined'**
+  String get messagesRequestDeclinedToast;
+
+  /// A message-request accept, decline or block failed; error is the reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the request: {error}'**
+  String messagesRequestActionFailed(String error);
 
   /// Marker on an inbox row for a muted conversation (read by screen readers)
   ///
@@ -31991,6 +32843,18 @@ abstract class AppLocalizations {
   /// **'How much detail'**
   String get prefsDisclosureLevel;
 
+  /// Settings row and sheet title listing the Home trend groups to show or hide
+  ///
+  /// In en, this message translates to:
+  /// **'Home cards'**
+  String get prefsHomeCards;
+
+  /// Explanation under the Home cards setting
+  ///
+  /// In en, this message translates to:
+  /// **'Untick a group to take it off Home. The choice follows you to every device.'**
+  String get prefsHomeCardsHint;
+
   /// Disclosure-level option: no stored level, derived from the onboarding goal and run count
   ///
   /// In en, this message translates to:
@@ -32531,6 +33395,24 @@ abstract class AppLocalizations {
   /// **'Badge earned'**
   String get shareCardBadgeKicker;
 
+  /// Park courses phase 5 (runShare.kindCourse)
+  ///
+  /// In en, this message translates to:
+  /// **'Park course'**
+  String get shareCardKindCourse;
+
+  /// Park courses phase 5 (runShare.courseKicker)
+  ///
+  /// In en, this message translates to:
+  /// **'Park course time'**
+  String get shareCardCourseKicker;
+
+  /// Park courses phase 5 (runShare.courseRank)
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank} in {season}'**
+  String shareCardCourseRank(String rank, String season);
+
   /// Run detail action that opens the share sheet on the PR card
   ///
   /// In en, this message translates to:
@@ -32806,6 +33688,1092 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This run lasts longer than {hours} hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.'**
   String runDetailBlockedDurationTooLong(int hours);
+
+  /// Spoken drive note ahead: distance, marker type, marker name
+  ///
+  /// In en, this message translates to:
+  /// **'In {distance}: {kind}, {label}.'**
+  String ttsDriveAhead(String distance, String kind, String label);
+
+  /// Spoken drive note ahead for a marker with no name
+  ///
+  /// In en, this message translates to:
+  /// **'In {distance}: {kind}.'**
+  String ttsDriveAheadKind(String distance, String kind);
+
+  /// Spoken drive note on arriving at a marker
+  ///
+  /// In en, this message translates to:
+  /// **'Now: {kind}, {label}.'**
+  String ttsDriveAt(String kind, String label);
+
+  /// Spoken drive note on arriving at a marker with no name
+  ///
+  /// In en, this message translates to:
+  /// **'Now: {kind}.'**
+  String ttsDriveAtKind(String kind);
+
+  /// Spoken drive note for a marker passed between two GPS fixes
+  ///
+  /// In en, this message translates to:
+  /// **'Just passed: {kind}, {label}.'**
+  String ttsDrivePassed(String kind, String label);
+
+  /// Spoken drive note for a passed marker with no name
+  ///
+  /// In en, this message translates to:
+  /// **'Just passed: {kind}.'**
+  String ttsDrivePassedKind(String kind);
+
+  /// Spoken list of an aid station services
+  ///
+  /// In en, this message translates to:
+  /// **'Services: {services}.'**
+  String ttsDriveServices(String services);
+
+  /// Spoken climb length and grade
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} at about {grade} percent.'**
+  String ttsDriveClimb(String distance, String grade);
+
+  /// Spoken cut-off wall-clock time
+  ///
+  /// In en, this message translates to:
+  /// **'Cut-off at {clock}.'**
+  String ttsDriveCutoffClock(String clock);
+
+  /// Spoken cut-off as time after the start
+  ///
+  /// In en, this message translates to:
+  /// **'Cut-off {time} after the start.'**
+  String ttsDriveCutoffElapsed(String time);
+
+  /// Spoken when drive notes start
+  ///
+  /// In en, this message translates to:
+  /// **'Drive notes on.'**
+  String get ttsDriveStarted;
+
+  /// Spoken when a Maps leg ends and the next is ready
+  ///
+  /// In en, this message translates to:
+  /// **'Leg {done} done. Leg {next} is ready.'**
+  String ttsDriveLegDone(String done, String next);
+
+  /// Spoken when the drive reaches the end of the course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve reached the finish. Drive notes stopped.'**
+  String get ttsDriveFinished;
+
+  /// Spoken when the drive stops after a long time off the course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve been off the course for a while, so drive notes have stopped.'**
+  String get ttsDriveAbandoned;
+
+  /// Drive this course: screen title and entry button
+  ///
+  /// In en, this message translates to:
+  /// **'Drive this course'**
+  String get courseDriveTitle;
+
+  /// One-time driver safety notice title
+  ///
+  /// In en, this message translates to:
+  /// **'Before you drive'**
+  String get courseDriveNoticeTitle;
+
+  /// One-time driver safety notice text (pending counsel review)
+  ///
+  /// In en, this message translates to:
+  /// **'Use this with a passenger or a mounted phone, and don\'t touch it while driving. Follow road rules and signs. Course roads may be closed on race day, and the Maps route may not match the course.'**
+  String get courseDriveNoticeBody;
+
+  /// Acknowledge the driver safety notice
+  ///
+  /// In en, this message translates to:
+  /// **'I understand'**
+  String get courseDriveNoticeAccept;
+
+  /// Label above the Maps app choice
+  ///
+  /// In en, this message translates to:
+  /// **'Open in'**
+  String get courseDriveMapsApp;
+
+  /// Google Maps app name
+  ///
+  /// In en, this message translates to:
+  /// **'Google Maps'**
+  String get courseDriveAppGoogle;
+
+  /// Apple Maps app name
+  ///
+  /// In en, this message translates to:
+  /// **'Apple Maps'**
+  String get courseDriveAppApple;
+
+  /// Waze app name
+  ///
+  /// In en, this message translates to:
+  /// **'Waze'**
+  String get courseDriveAppWaze;
+
+  /// Open the Maps app to drive to the start of the course
+  ///
+  /// In en, this message translates to:
+  /// **'Drive to the start'**
+  String get courseDriveToStart;
+
+  /// Heading over the list of Maps legs
+  ///
+  /// In en, this message translates to:
+  /// **'Legs'**
+  String get courseDriveLegsHeading;
+
+  /// One Maps leg: its number and distance range
+  ///
+  /// In en, this message translates to:
+  /// **'Leg {n}: {from} to {to}'**
+  String courseDriveLeg(String n, String from, String to);
+
+  /// The Maps route is not the exact course
+  ///
+  /// In en, this message translates to:
+  /// **'The Maps route is guidance only. The notes follow the real course.'**
+  String get courseDriveGuidanceOnly;
+
+  /// Checking which stretches a Maps app can follow
+  ///
+  /// In en, this message translates to:
+  /// **'Checking which stretches Maps can follow…'**
+  String get courseDriveChecking;
+
+  /// Every stretch of the course can be followed by Maps
+  ///
+  /// In en, this message translates to:
+  /// **'Maps can follow the whole course.'**
+  String get courseDriveAllDrivable;
+
+  /// The drivable-stretch check could not run
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t check which stretches Maps can follow.'**
+  String get courseDriveCheckFailed;
+
+  /// Heading over stretches Maps cannot follow
+  ///
+  /// In en, this message translates to:
+  /// **'Maps can\'t follow these stretches'**
+  String get courseDriveUndrivableHeading;
+
+  /// A distance range on the course
+  ///
+  /// In en, this message translates to:
+  /// **'{from} to {to}'**
+  String courseDriveStretch(String from, String to);
+
+  /// Heading over the course notes
+  ///
+  /// In en, this message translates to:
+  /// **'Course notes'**
+  String get courseDriveNotesHeading;
+
+  /// The course has no markers to speak
+  ///
+  /// In en, this message translates to:
+  /// **'This course has no markers to read out.'**
+  String get courseDriveNoNotes;
+
+  /// Start the spoken notes
+  ///
+  /// In en, this message translates to:
+  /// **'Start spoken notes'**
+  String get courseDriveStart;
+
+  /// Stop the spoken notes
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get courseDriveStop;
+
+  /// Shown until the driver reaches the course
+  ///
+  /// In en, this message translates to:
+  /// **'Head to the course. Notes start when you reach it.'**
+  String get courseDriveWaiting;
+
+  /// Distance to the next course note
+  ///
+  /// In en, this message translates to:
+  /// **'Next note in {distance}'**
+  String courseDriveNextIn(String distance);
+
+  /// Every note has been spoken
+  ///
+  /// In en, this message translates to:
+  /// **'No more notes ahead.'**
+  String get courseDriveNoMoreNotes;
+
+  /// The drive reached the end of the course
+  ///
+  /// In en, this message translates to:
+  /// **'You reached the finish.'**
+  String get courseDriveFinished;
+
+  /// The drive stopped after 10 minutes off the course
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped: you were off the course for 10 minutes.'**
+  String get courseDriveAbandoned;
+
+  /// Location access is off
+  ///
+  /// In en, this message translates to:
+  /// **'Location is off, so the notes can\'t follow you.'**
+  String get courseDriveLocationDenied;
+
+  /// The course could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this course.'**
+  String get courseDriveLoadFailed;
+
+  /// The Maps app could not be opened
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the Maps app.'**
+  String get courseDriveOpenFailed;
+
+  /// Cut-off time shown on a note
+  ///
+  /// In en, this message translates to:
+  /// **'Cut-off at {clock}'**
+  String courseDriveCutoffClock(String clock);
+
+  /// Cut-off shown as time after the start
+  ///
+  /// In en, this message translates to:
+  /// **'Cut-off {time} after the start'**
+  String courseDriveCutoffElapsed(String time);
+
+  /// Climb length and grade shown on a note
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} at about {grade}%'**
+  String courseDriveClimb(String distance, String grade);
+
+  /// Park courses (#1313): web key parks.title.
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get parksTitle;
+
+  /// Park courses (#1313): web key parks.intro.
+  ///
+  /// In en, this message translates to:
+  /// **'Standing time-trial courses in state and national parks. Run one on any day and your time lands on this year\'s board.'**
+  String get parksIntro;
+
+  /// Park courses (#1313): web key parks.loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading park courses…'**
+  String get parksLoading;
+
+  /// Park courses (#1313): web key parks.loadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load park courses.'**
+  String get parksLoadFailed;
+
+  /// Park courses (#1313): web key parks.retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get parksRetry;
+
+  /// Park courses (#1313): web key parks.empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No park courses yet. The first ones are on their way.'**
+  String get parksEmpty;
+
+  /// Park courses (#1313): web key parks.courseCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} course} other {{n} courses}}'**
+  String parksCourseCount(int n);
+
+  /// Park courses (#1313): web key parks.backToParks.
+  ///
+  /// In en, this message translates to:
+  /// **'All park courses'**
+  String get parksBackToParks;
+
+  /// Park courses (#1313): web key parks.parkNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Park not found'**
+  String get parksParkNotFoundTitle;
+
+  /// Park courses (#1313): web key parks.parkNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This park isn\'t listed, or isn\'t listed any more.'**
+  String get parksParkNotFoundBody;
+
+  /// Park courses (#1313): web key parks.courseNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Course not found'**
+  String get parksCourseNotFoundTitle;
+
+  /// Park courses (#1313): web key parks.courseNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This course isn\'t listed, or isn\'t listed any more.'**
+  String get parksCourseNotFoundBody;
+
+  /// Park courses (#1313): web key parks.website.
+  ///
+  /// In en, this message translates to:
+  /// **'Park website'**
+  String get parksWebsite;
+
+  /// Park courses (#1313): web key parks.noCourses.
+  ///
+  /// In en, this message translates to:
+  /// **'No courses listed in this park yet.'**
+  String get parksNoCourses;
+
+  /// Park courses (#1313): web key parks.agencyNps.
+  ///
+  /// In en, this message translates to:
+  /// **'National Park Service'**
+  String get parksAgencyNps;
+
+  /// Park courses (#1313): web key parks.agencyState.
+  ///
+  /// In en, this message translates to:
+  /// **'State park'**
+  String get parksAgencyState;
+
+  /// Park courses (#1313): web key parks.agencyCounty.
+  ///
+  /// In en, this message translates to:
+  /// **'County park'**
+  String get parksAgencyCounty;
+
+  /// Park courses (#1313): web key parks.agencyOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Park'**
+  String get parksAgencyOther;
+
+  /// Park courses (#1313): web key parks.shapeLoop.
+  ///
+  /// In en, this message translates to:
+  /// **'Loop'**
+  String get parksShapeLoop;
+
+  /// Park courses (#1313): web key parks.shapeOutAndBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Out and back'**
+  String get parksShapeOutAndBack;
+
+  /// Park courses (#1313): web key parks.shapePointToPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Point to point'**
+  String get parksShapePointToPoint;
+
+  /// Park courses (#1313): web key parks.statusOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get parksStatusOpen;
+
+  /// Park courses (#1313): web key parks.statusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get parksStatusClosed;
+
+  /// Park courses (#1313): web key parks.statusSeasonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Seasonal'**
+  String get parksStatusSeasonal;
+
+  /// Park courses (#1313): web key parks.closedBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This course is closed. Its times and boards stay, but please don\'t run it until it reopens.'**
+  String get parksClosedBanner;
+
+  /// Park courses (#1313): web key parks.statusChecked.
+  ///
+  /// In en, this message translates to:
+  /// **'Status checked {date}'**
+  String parksStatusChecked(String date);
+
+  /// Park courses (#1313): web key parks.difficultyEasy.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy'**
+  String get parksDifficultyEasy;
+
+  /// Park courses (#1313): web key parks.difficultyModerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get parksDifficultyModerate;
+
+  /// Park courses (#1313): web key parks.difficultyHard.
+  ///
+  /// In en, this message translates to:
+  /// **'Hard'**
+  String get parksDifficultyHard;
+
+  /// Park courses (#1313): web key parks.statDistance.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get parksStatDistance;
+
+  /// Park courses (#1313): web key parks.statElevation.
+  ///
+  /// In en, this message translates to:
+  /// **'Elevation gain'**
+  String get parksStatElevation;
+
+  /// Park courses (#1313): web key parks.statShape.
+  ///
+  /// In en, this message translates to:
+  /// **'Shape'**
+  String get parksStatShape;
+
+  /// Park courses (#1313): web key parks.statSurface.
+  ///
+  /// In en, this message translates to:
+  /// **'Surface'**
+  String get parksStatSurface;
+
+  /// Park courses (#1313): web key parks.statDifficulty.
+  ///
+  /// In en, this message translates to:
+  /// **'Difficulty'**
+  String get parksStatDifficulty;
+
+  /// Park courses (#1313): web key parks.boardFastest.
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest'**
+  String get parksBoardFastest;
+
+  /// Park courses (#1313): web key parks.boardCompletions.
+  ///
+  /// In en, this message translates to:
+  /// **'Most completions'**
+  String get parksBoardCompletions;
+
+  /// Park courses (#1313): web key parks.seasonThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'This year ({year})'**
+  String parksSeasonThisYear(int year);
+
+  /// Park courses (#1313): web key parks.seasonAllTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get parksSeasonAllTime;
+
+  /// Park courses (#1313): web key parks.completionDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} day} other {{n} days}}'**
+  String parksCompletionDays(int n);
+
+  /// Park courses (#1313): web key parks.noEfforts.
+  ///
+  /// In en, this message translates to:
+  /// **'No times on this board yet. Run the course and yours is the first.'**
+  String get parksNoEfforts;
+
+  /// Park courses (#1313): web key parks.signInForBoards.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to see this course\'s boards.'**
+  String get parksSignInForBoards;
+
+  /// Park courses (#1313): web key parks.signIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get parksSignIn;
+
+  /// Park courses (#1313): web key parks.boardFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this board.'**
+  String get parksBoardFailed;
+
+  /// Park courses (#1313): web key parks.safetyNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.'**
+  String get parksSafetyNotice;
+
+  /// Park courses (#1313): web key parks.attributionOsm.
+  ///
+  /// In en, this message translates to:
+  /// **'Course line © OpenStreetMap contributors'**
+  String get parksAttributionOsm;
+
+  /// Park courses (#1313): web key parks.attributionNps.
+  ///
+  /// In en, this message translates to:
+  /// **'Course line from National Park Service trail data'**
+  String get parksAttributionNps;
+
+  /// Park courses (#1313): web key parks.attributionAgency.
+  ///
+  /// In en, this message translates to:
+  /// **'Course line from the park\'s own trail data'**
+  String get parksAttributionAgency;
+
+  /// Park courses (#1313): web key parks.attributionTraced.
+  ///
+  /// In en, this message translates to:
+  /// **'Course line traced against the park\'s published map'**
+  String get parksAttributionTraced;
+
+  /// Park courses (#1313): web key parks.navigate.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigate this course'**
+  String get parksNavigate;
+
+  /// Park courses (#1313): shares the course line as a GPX file with its checkpoints and geometry credit. Web key parks.downloadGpx.
+  ///
+  /// In en, this message translates to:
+  /// **'Share GPX'**
+  String get parksShareGpx;
+
+  /// Park courses (#1313): web key parks.browseLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get parksBrowseLink;
+
+  /// Accessible label of the event course map showing start and finish timing lines (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s start and finish lines'**
+  String get eventCourseLinesMapBoth;
+
+  /// Accessible label of the event course map showing only the start line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s start line'**
+  String get eventCourseLinesMapStart;
+
+  /// Accessible label of the event course map showing only the finish line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Map of the course\'s finish line'**
+  String get eventCourseLinesMapFinish;
+
+  /// Title of the dialog listing course warnings before a race is armed (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Check the courses before arming'**
+  String get eventRacePreflightTitle;
+
+  /// Title of the dialog when course errors stop a race from being armed (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'This race can\'t be armed yet'**
+  String get eventRacePreflightBlockedTitle;
+
+  /// Closing line of the Arm preflight dialog: course lines are edited on the web (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Course lines are edited in the event editor on the web.'**
+  String get eventRacePreflightFixOnWeb;
+
+  /// Button in the Arm preflight dialog that arms the race despite warnings (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'Arm anyway'**
+  String get eventRaceArmAnyway;
+
+  /// Button closing the dialog when course errors stop arming (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get eventRacePreflightOk;
+
+  /// Arm preflight issue: a course with no finish line and no finish point (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no finish line or finish point, so runners finish by hand.'**
+  String eventRacePreflightNoFinish(String course);
+
+  /// Arm preflight issue: a self-timed course with no start line (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: no start line. A self-timed race needs one.'**
+  String eventRacePreflightNoStart(String course);
+
+  /// Arm preflight issue: the course route crosses its own finish line before its end (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the route crosses its own finish line before the end, so a finish by the line could come early.'**
+  String eventRacePreflightSelfCross(String course);
+
+  /// Arm preflight issue: an organiser-placed start line more than 100 m from the route (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the start line is more than 100 m from the route.'**
+  String eventRacePreflightFarStart(String course);
+
+  /// Arm preflight issue: an organiser-placed finish line more than 100 m from the route (#1305)
+  ///
+  /// In en, this message translates to:
+  /// **'{course}: the finish line is more than 100 m from the route.'**
+  String eventRacePreflightFarFinish(String course);
+
+  /// Run screen race banner heading: a scheduled race the runner is going to, before GO
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled start'**
+  String get runRaceScheduled;
+
+  /// Run screen race banner: a scheduled race counting down to its server-fired GO
+  ///
+  /// In en, this message translates to:
+  /// **'{label} starts in {time}'**
+  String runRaceStartsIn(String label, String time);
+
+  /// Run screen race banner heading: a self-timed race window is open
+  ///
+  /// In en, this message translates to:
+  /// **'Self-timed'**
+  String get runRaceSelfTimed;
+
+  /// Run screen race banner heading: a self-timed race window has not opened yet
+  ///
+  /// In en, this message translates to:
+  /// **'Self-timed window'**
+  String get runRaceSelfTimedSoon;
+
+  /// Run screen race banner: how to time a self-timed attempt, and when the window closes
+  ///
+  /// In en, this message translates to:
+  /// **'{label}: tap This run is my attempt, then Start, and cross the start line. Open until {time}.'**
+  String runRaceSelfTimedHow(String label, String time);
+
+  /// Run screen race banner: a self-timed window that opens later today or soon
+  ///
+  /// In en, this message translates to:
+  /// **'{label} opens at {time}'**
+  String runRaceSelfTimedOpens(String label, String time);
+
+  /// Run screen race banner: how far the runner is from a self-timed race's start line
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} to the start line'**
+  String runRaceToStartLine(String distance);
+
+  /// Run screen race banner button: bind the next recording to a self-timed race as the runner's attempt
+  ///
+  /// In en, this message translates to:
+  /// **'This run is my attempt'**
+  String get runRaceThisIsMyAttempt;
+
+  /// Run screen race banner button once the attempt is armed; tapping it takes the attempt back
+  ///
+  /// In en, this message translates to:
+  /// **'Attempt ready: tap Start'**
+  String get runRaceAttemptReady;
+
+  /// Event race control button: create a scheduled or self-timed race's session before the server does, to check its lines
+  ///
+  /// In en, this message translates to:
+  /// **'Arm early'**
+  String get eventRaceArmEarly;
+
+  /// Event race control: a scheduled race whose session the server has not created yet
+  ///
+  /// In en, this message translates to:
+  /// **'Starts by itself at its scheduled time. Arm early to check the lines now.'**
+  String get eventRaceScheduledNotYet;
+
+  /// Event race control: a self-timed window whose session the server has not created yet
+  ///
+  /// In en, this message translates to:
+  /// **'Opens by itself. Arm early to check the lines now.'**
+  String get eventRaceSelfTimedNotYet;
+
+  /// Event race control: when the server fires a scheduled race's GO
+  ///
+  /// In en, this message translates to:
+  /// **'GO at {time}'**
+  String eventRaceGoAt(String time);
+
+  /// Event race control: when a self-timed window opens
+  ///
+  /// In en, this message translates to:
+  /// **'Opens at {time}'**
+  String eventRaceOpensAt(String time);
+
+  /// Event race control: a self-timed window is open until this time
+  ///
+  /// In en, this message translates to:
+  /// **'Open until {time}'**
+  String eventRaceOpenUntil(String time);
+
+  /// Event race control: when a scheduled race ends by itself
+  ///
+  /// In en, this message translates to:
+  /// **'Ends by itself at {time}'**
+  String eventRaceAutoEnds(String time);
+
+  /// Event race control button: move a scheduled start (or a window's opening) later
+  ///
+  /// In en, this message translates to:
+  /// **'Delay start'**
+  String get eventRaceDelay;
+
+  /// Delay dialog option: delay the start by this many minutes
+  ///
+  /// In en, this message translates to:
+  /// **'+{minutes} min'**
+  String eventRaceDelayBy(String minutes);
+
+  /// Event race control button: keep a self-timed window open longer
+  ///
+  /// In en, this message translates to:
+  /// **'Extend window'**
+  String get eventRaceExtend;
+
+  /// Extend dialog option: extend the window by this many hours
+  ///
+  /// In en, this message translates to:
+  /// **'+{hours} h'**
+  String eventRaceExtendBy(String hours);
+
+  /// Event race control button: close an open self-timed window now
+  ///
+  /// In en, this message translates to:
+  /// **'End window now'**
+  String get eventRaceEndEarly;
+
+  /// Event detail button for a runner not going: RSVP to an open self-timed race so they can attempt it
+  ///
+  /// In en, this message translates to:
+  /// **'Join and attempt'**
+  String get eventRaceJoinAttempt;
+
+  /// Event detail card for a runner: a self-timed race is open now
+  ///
+  /// In en, this message translates to:
+  /// **'Self-timed race open until {time}. Join, then time your attempt from the run screen.'**
+  String eventRaceSelfTimedParticipant(String time);
+
+  /// Notification text: a scheduled race the recipient is going to starts in about 10 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'A race you\'re going to starts in about 10 minutes'**
+  String get profileNotifRaceStartingSoon;
+
+  /// Notification text: the titled scheduled race starts in about 10 minutes
+  ///
+  /// In en, this message translates to:
+  /// **'\"{title}\" starts in about 10 minutes'**
+  String profileNotifRaceStartingSoonTitled(String title);
+
+  /// Notification text: the organiser moved the start of a race the recipient is going to
+  ///
+  /// In en, this message translates to:
+  /// **'The start of a race you\'re going to has moved'**
+  String get profileNotifRaceStartMoved;
+
+  /// Notification text: the organiser moved the titled race's start
+  ///
+  /// In en, this message translates to:
+  /// **'The start of \"{title}\" has moved'**
+  String profileNotifRaceStartMovedTitled(String title);
+
+  /// Settings switch: push about 10 minutes before a scheduled race and when its start moves
+  ///
+  /// In en, this message translates to:
+  /// **'Race starting soon'**
+  String get prefsNotifyRaceStartingSoon;
+
+  /// Settings switch subtitle for the race-starting-soon push
+  ///
+  /// In en, this message translates to:
+  /// **'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.'**
+  String get prefsNotifyRaceStartingSoonHint;
+
+  /// Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins
+  ///
+  /// In en, this message translates to:
+  /// **'Official verification'**
+  String get clubVerificationStatusTitle;
+
+  /// The club is verified; org is the organisation it officially represents and domain the website domain that was verified
+  ///
+  /// In en, this message translates to:
+  /// **'Verified as the official presence of {org} ({domain}).'**
+  String clubVerificationStatusVerified(String org, String domain);
+
+  /// The club is verified but no request with a domain is on record
+  ///
+  /// In en, this message translates to:
+  /// **'Verified as an official organisation.'**
+  String get clubVerificationStatusVerifiedLegacy;
+
+  /// A verification request for the named organisation is waiting for review and the domain proof has not been found yet
+  ///
+  /// In en, this message translates to:
+  /// **'The request for {org} is waiting for review. No domain proof found yet.'**
+  String clubVerificationStatusPending(String org);
+
+  /// A verification request for the named organisation is waiting for review and the domain proof was found
+  ///
+  /// In en, this message translates to:
+  /// **'The request for {org} is waiting for review. Domain proof found.'**
+  String clubVerificationStatusPendingProof(String org);
+
+  /// The last verification request was rejected; reason is the reviewer's own text
+  ///
+  /// In en, this message translates to:
+  /// **'The last request was not approved: {reason}'**
+  String clubVerificationStatusRejected(String reason);
+
+  /// A reviewer removed the club's verified badge; reason is their own text
+  ///
+  /// In en, this message translates to:
+  /// **'The badge was removed: {reason}'**
+  String clubVerificationStatusRevoked(String reason);
+
+  /// The badge dropped on its own: the club was renamed or moved domain, or the domain proof disappeared
+  ///
+  /// In en, this message translates to:
+  /// **'The badge was removed after a change to the club or its domain, and needs a new review.'**
+  String get clubVerificationStatusLapsed;
+
+  /// The club owner withdrew the last verification request
+  ///
+  /// In en, this message translates to:
+  /// **'The last request was withdrawn.'**
+  String get clubVerificationStatusWithdrawn;
+
+  /// The club has never asked for verification
+  ///
+  /// In en, this message translates to:
+  /// **'Not verified.'**
+  String get clubVerificationStatusNone;
+
+  /// Tells the club admin that requesting verification happens on the web app
+  ///
+  /// In en, this message translates to:
+  /// **'Requests and domain proof are managed on the web.'**
+  String get clubVerificationStatusWebHint;
+
+  /// The verification status could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the verification status.'**
+  String get clubVerificationStatusLoadFailed;
+
+  /// Retry button tooltip for loading the verification status
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get clubVerificationStatusRetry;
+
+  /// Notification text: a club the recipient owns or administers had its verification approved, rejected, removed or dropped; club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s a verification update for your club'**
+  String get profileNotifClubVerification;
+
+  /// Notification text: the named club the recipient owns or administers had its verification approved, rejected, removed or dropped
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s a verification update for {club}'**
+  String profileNotifClubVerificationNamed(String club);
+
+  /// Short visible label on a race listing that came from a race data partner or provider sync
+  ///
+  /// In en, this message translates to:
+  /// **'Verified source'**
+  String get provenanceVerifiedSource;
+
+  /// Screen-reader label and tooltip on the Verified source badge
+  ///
+  /// In en, this message translates to:
+  /// **'Verified source: listed by a race data partner'**
+  String get provenanceVerifiedSourceTooltip;
+
+  /// Short visible label on a race course a verified club drew from the race's published map
+  ///
+  /// In en, this message translates to:
+  /// **'Traced'**
+  String get provenanceTraced;
+
+  /// Screen-reader label and tooltip on the Traced badge
+  ///
+  /// In en, this message translates to:
+  /// **'Traced: drawn by a verified club from the race\'s published map'**
+  String get provenanceTracedTooltip;
+
+  /// Short visible label on a race listing or course nobody official vouches for
+  ///
+  /// In en, this message translates to:
+  /// **'Community'**
+  String get provenanceCommunity;
+
+  /// Screen-reader label and tooltip on the Community badge
+  ///
+  /// In en, this message translates to:
+  /// **'Community: added by a runner, not checked by the organiser'**
+  String get provenanceCommunityTooltip;
+
+  /// Heading of the organiser course alerts section on a race or route
+  ///
+  /// In en, this message translates to:
+  /// **'Course alerts'**
+  String get courseAlertsHeading;
+
+  /// Shown to the organiser when a race has no course alerts yet
+  ///
+  /// In en, this message translates to:
+  /// **'No alerts. Post one when the course changes, and runners training for it are told.'**
+  String get courseAlertsEmpty;
+
+  /// Shown when the course alerts could not be read
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the course alerts.'**
+  String get courseAlertsLoadFailed;
+
+  /// Button that reloads the course alerts after a failed read
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get courseAlertsRetry;
+
+  /// Course alert type: the course was rerouted
+  ///
+  /// In en, this message translates to:
+  /// **'Reroute'**
+  String get courseAlertsKindReroute;
+
+  /// Course alert type: part of the course is closed
+  ///
+  /// In en, this message translates to:
+  /// **'Closure'**
+  String get courseAlertsKindClosure;
+
+  /// Course alert type: the direction the course runs this year (for example an up or down year)
+  ///
+  /// In en, this message translates to:
+  /// **'Course direction'**
+  String get courseAlertsKindDirection;
+
+  /// Course alert type: a general notice from the organiser
+  ///
+  /// In en, this message translates to:
+  /// **'Notice'**
+  String get courseAlertsKindNotice;
+
+  /// Label of the course alert type picker
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get courseAlertsKindLabel;
+
+  /// Label of the course alert message field
+  ///
+  /// In en, this message translates to:
+  /// **'What changed'**
+  String get courseAlertsMessageLabel;
+
+  /// Says who is notified when the organiser posts a course alert
+  ///
+  /// In en, this message translates to:
+  /// **'Runners training for this race and runners who saved its course are notified once.'**
+  String get courseAlertsPostHint;
+
+  /// Button that posts a course alert
+  ///
+  /// In en, this message translates to:
+  /// **'Post alert'**
+  String get courseAlertsPost;
+
+  /// Confirmation after a course alert was posted
+  ///
+  /// In en, this message translates to:
+  /// **'Course alert posted.'**
+  String get courseAlertsPosted;
+
+  /// Error when a course alert could not be posted
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t post the alert. Try again.'**
+  String get courseAlertsPostFailed;
+
+  /// Button that removes a course alert
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get courseAlertsRemove;
+
+  /// Screen-reader label of the remove button on one course alert, naming its type
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the {kind} alert'**
+  String courseAlertsRemoveLabel(String kind);
+
+  /// Undo bar message after a course alert was removed
+  ///
+  /// In en, this message translates to:
+  /// **'Course alert removed.'**
+  String get courseAlertsRemoved;
+
+  /// Error when a course alert could not be removed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t remove the alert.'**
+  String get courseAlertsRemoveFailed;
+
+  /// Shown when a course alert notification points at an alert that is gone
+  ///
+  /// In en, this message translates to:
+  /// **'This alert is no longer available'**
+  String get courseAlertsNotFound;
+
+  /// Notification inbox line: a race organiser posted a course alert on a race the runner trains for or a course they saved
+  ///
+  /// In en, this message translates to:
+  /// **'The organiser posted a course alert'**
+  String get profileNotifCourseAlert;
+
+  /// Notification inbox line naming the organiser club that posted a course alert
+  ///
+  /// In en, this message translates to:
+  /// **'{club} posted a course alert'**
+  String profileNotifCourseAlertNamed(String club);
 }
 
 class _AppLocalizationsDelegate

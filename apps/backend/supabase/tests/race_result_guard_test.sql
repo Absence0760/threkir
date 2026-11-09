@@ -19,7 +19,7 @@
 --   22.    The NOT VALID constraints were validated by 20270727000002.
 
 begin;
-select plan(22);
+select plan(24);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -103,12 +103,28 @@ select lives_ok(
   'a racer submits their own time on an armed race'
 );
 
+select is(
+  (select duration_s from event_results
+    where event_id = 'e7281000-0000-0000-0000-0000000000e1'
+      and user_id = 'e7281000-0000-0000-0000-000000000002'),
+  2500,
+  'the racer''s own time on an armed race is stored as sent'
+);
+
 select lives_ok(
   $$ insert into event_results (event_id, instance_start, user_id, duration_s, distance_m,
                                finisher_status)
      values ('e7281000-0000-0000-0000-0000000000e2', '2026-09-02 08:00+00',
              'e7281000-0000-0000-0000-000000000002', 0, 0, 'dns') $$,
   'a racer files their own DNS on a cancelled race'
+);
+
+select is(
+  (select duration_s from event_results
+    where event_id = 'e7281000-0000-0000-0000-0000000000e2'
+      and user_id = 'e7281000-0000-0000-0000-000000000002'),
+  0,
+  'the racer''s own DNS on a cancelled race is stored with the duration it sent'
 );
 
 -- ── 3-4: a repeated going upsert keeps the stored course ────────────────────

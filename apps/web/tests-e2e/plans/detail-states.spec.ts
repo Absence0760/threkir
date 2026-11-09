@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/test';
 
-import { showAllPlanWeeks } from '../fixtures/helpers';
+import { showAllPlanWeeks, planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
 import { readMaybeRow, readRows } from '../fixtures/db-read';
@@ -15,6 +15,10 @@ import { browserDate } from '../fixtures/dates';
 
 test.describe('/plans/[id] — workout and plan states', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('a past workout that was neither done nor skipped reads as missed', async ({ page }) => {
 		const admin = getAdminClient();

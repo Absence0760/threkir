@@ -155,6 +155,18 @@
 				return item.event_title
 					? m('notificationBell.eventUpdatedTitled', { title: item.event_title })
 					: m('notificationBell.eventUpdated');
+			case 'course_alert':
+				return item.club_name
+					? m('notificationBell.courseAlertNamed', { club: item.club_name })
+					: m('notificationBell.courseAlert');
+			case 'race_starting_soon':
+				return item.event_title
+					? m('notificationBell.raceStartingSoonTitled', { title: item.event_title })
+					: m('notificationBell.raceStartingSoon');
+			case 'race_start_moved':
+				return item.event_title
+					? m('notificationBell.raceStartMovedTitled', { title: item.event_title })
+					: m('notificationBell.raceStartMoved');
 			case 'club_join_request':
 				return item.club_name
 					? m('notificationBell.clubJoinRequestNamed', { name, club: item.club_name })
@@ -163,6 +175,10 @@
 				return item.club_name
 					? m('notificationBell.clubJoinApprovedNamed', { club: item.club_name })
 					: m('notificationBell.clubJoinApproved');
+			case 'club_verification':
+				return item.club_name
+					? m('notificationBell.clubVerificationNamed', { club: item.club_name })
+					: m('notificationBell.clubVerification');
 			case 'event_waitlist_slot': {
 				const msg = waitlistSlotMessage('notificationBell', item.event_title);
 				return m(msg.key, msg.params);
@@ -177,6 +193,10 @@
 				return m('notificationBell.planAssigned', { name });
 			case 'plan_ai_edit':
 				return m('notificationBell.planAiEdit', { name });
+			case 'plan_change_request':
+				return m('notificationBell.planChangeRequest', { name });
+			case 'plan_change_decision':
+				return m('notificationBell.planChangeDecision', { name });
 			case 'workout_reminder':
 				return m('notificationBell.workoutReminder');
 			case 'message':

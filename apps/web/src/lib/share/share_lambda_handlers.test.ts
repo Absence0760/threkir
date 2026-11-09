@@ -119,10 +119,11 @@ test('every share behaviour CloudFront declares is one its Lambda actually route
 	for (const { pattern, origin } of behaviours) {
 		const target = BY_ORIGIN[origin];
 		assert.ok(target, `${origin} has no handler in this test — add it`);
-		// The two shapes a `*` stands for on these behaviours: a bare entity id
-		// and an og:image filename. Requiring one of them to route means the
-		// test states no naming rule of its own.
-		const candidates = ['5f1c7e2a', '5f1c7e2a.png'].map((leaf) =>
+		// The three shapes a `*` stands for on these behaviours: a bare entity
+		// id, an og:image filename, and a park course's three slugs
+		// (`/share/course/<region>/<park>/<course>`). Requiring one of them to
+		// route means the test states no naming rule of its own.
+		const candidates = ['5f1c7e2a', '5f1c7e2a.png', 'us-va/fixture-park/lake-loop'].map((leaf) =>
 			pattern.replace(/\*$/, leaf),
 		);
 		const results = await Promise.all(candidates.map((p) => invoke(target.handler, p)));

@@ -22,6 +22,7 @@ import { AppError } from '../core/app_error';
 const BUCKETS = [
 	'create_club',
 	'create_route',
+	'edit_direct_message',
 	'create_report',
 	'create_challenge',
 	'join_challenge_by_token',
@@ -36,6 +37,7 @@ const BUCKETS = [
 	'repeat_plan_week',
 	'send_direct_message',
 	'send_direct_message_burst',
+	'open_message_request',
 ] as const;
 
 async function translatorFor(loc: Locale): Promise<Translate> {

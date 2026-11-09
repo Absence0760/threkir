@@ -1177,6 +1177,22 @@ jobs:
             echo "Reproduce with: node --test scripts/check_catalogue_fold_table.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      # The `segment-match` Edge Function runs the web matcher from a bundle
+      # generated out of apps/web/src/lib (decisions § 2393). esbuild comes
+      # from apps/web, so this runs after the install.
+      - name: Verify the Edge segment-matcher bundle matches the web matcher
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: |
+          if ! node scripts/gen_edge_segment_matcher.mjs --check; then
+            echo "::error::apps/backend/supabase/functions/_shared/segment_matcher.generated.js is stale against apps/web/src/lib/segments (or parks/park_courses.ts). The server would time segment efforts with a different matcher from the web. Nothing here is about the migrations or the generated row types."
+            echo "Fix with: pnpm gen:edge-segment-matcher (node scripts/gen_edge_segment_matcher.mjs) and commit the file."
+            exit 1
+          fi
+          if ! node --test scripts/gen_edge_segment_matcher.test.mjs; then
+            echo "::error::The Edge segment-matcher generator's own unit tests failed, so the freshness check above cannot be trusted to fire. The bundle itself matched; this is a defect in scripts/gen_edge_segment_matcher.mjs."
+            echo "Reproduce with: npm ci && node --test scripts/gen_edge_segment_matcher.test.mjs."
+            exit 1
+          fi
       # `src/**`, not `src/lib/**`: the route-level source guards under
       # src/routes (e.g. the preferences i18n guard) were silently never run.
       # Invokes the package's own `test:unit` script rather than restating its

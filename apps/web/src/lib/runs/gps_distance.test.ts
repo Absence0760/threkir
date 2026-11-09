@@ -82,9 +82,9 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-test('fixture is spec v1.4 with a non-trivial scenario set', () => {
-	assert.equal(fixture.spec, 'gps-distance-estimator v1.4');
-	assert.equal(SPEC_VERSION, '1.4');
+test('fixture is spec v1.5 with a non-trivial scenario set', () => {
+	assert.equal(fixture.spec, 'gps-distance-estimator v1.5');
+	assert.equal(SPEC_VERSION, '1.5');
 	assert.ok(fixture.scenarios.length >= 35, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);
@@ -240,4 +240,35 @@ test('learnStride false never learns a stride, and keeps a seeded one', () => {
 		}
 		assert.equal(est.strideM, seed);
 	}
+});
+
+test('the ZUPT window stretches to the step batches walking delivers (v1.5)', () => {
+	const est = new GpsDistanceEstimator();
+	est.addSteps(0, 0);
+	est.addSteps(1, 2);
+	est.addSteps(16, 29);
+	assert.equal(est.stepBatchS, 15);
+	assert.equal(est.zuptWindowS, 22.5);
+	est.addSteps(41, 72);
+	assert.equal(est.zuptWindowS, gps.ZUPT_MAX_NO_STEP_S);
+});
+
+test('a stop then a few steps is not a batch, so the window stays put (v1.5)', () => {
+	const est = new GpsDistanceEstimator();
+	est.addSteps(0, 0);
+	est.addSteps(1, 2);
+	est.addSteps(2, 4);
+	est.addSteps(62, 8);
+	assert.equal(est.stepBatchS, 1);
+	assert.equal(est.zuptWindowS, gps.ZUPT_NO_STEP_S);
+});
+
+test('a fused pocket walk with 15 s step batches is not read as stopped (v1.5)', () => {
+	const est = new GpsDistanceEstimator(5, 1, 0.72, false, false);
+	for (let i = 0; i < 300; i++) {
+		est.addFix(i, 40 + (i * 1.3) / 111195, -75, 4);
+		if ((i + 1) % 15 === 0) est.addSteps(i + 0.5, Math.floor((i + 1) * 1.8));
+	}
+	assert.ok(est.zuptFixes <= 9, `zuptFixes ${est.zuptFixes}`);
+	assert.ok(Math.abs(est.distanceM - 390) <= 390 * 0.05, `distance ${est.distanceM}`);
 });

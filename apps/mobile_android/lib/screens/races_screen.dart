@@ -9,11 +9,13 @@ import '../fab_clearance.dart';
 import '../preferences.dart' show formatDistanceForPref;
 import '../race_plan_preset.dart';
 import '../race_provider_labels.dart';
+import '../provenance.dart';
 import '../race_service.dart';
 import '../training.dart' show toIsoDate;
 import '../training_service.dart';
 import '../widgets/error_state.dart';
 import '../widgets/help_button.dart';
+import '../widgets/provenance_badge.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/ultrasignup_link.dart';
 import 'plan_new_screen.dart';
@@ -470,6 +472,11 @@ class _RaceCard extends StatelessWidget {
     // A result exists only from race day on; before that the import can only
     // come back empty, so the action is not offered.
     final canImport = race.raceDate.compareTo(today) <= 0;
+    final provenance = raceListingProvenance(
+      organiserIsOfficial: race.organiserIsOfficial,
+      provider: race.provider,
+      isVerified: race.isVerified,
+    );
     final meta = <String>[
       _formatRaceDate(race.raceDate),
       if (race.distanceM != null)
@@ -507,6 +514,10 @@ class _RaceCard extends StatelessWidget {
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(decoration: TextDecoration.underline),
                       ),
+                      if (provenanceShowsBadge(provenance)) ...[
+                        const SizedBox(height: 4),
+                        ProvenanceBadge(provenance: provenance),
+                      ],
                       const SizedBox(height: 4),
                       Text(
                         meta.join(' · '),

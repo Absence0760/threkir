@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 73272,
-		"sha256": "f92eca6ccd3c2025149ab37193d4b675c671028687b02fe78441eb0d3fdcc9ec",
-		"glyphs": 329,
-		"ligatures": 444
+		"bytes": 73856,
+		"sha256": "3982331840d5e09c42b2838ca173744d9077df649f952715fba8a7cdc3a3d753",
+		"glyphs": 332,
+		"ligatures": 449
 	},
 	"icons": [
 		"10k",
@@ -181,6 +181,7 @@
 		"ios",
 		"ios_share",
 		"iso",
+		"join",
 		"key",
 		"keyboard",
 		"label",
@@ -226,10 +227,12 @@
 		"notifications_off",
 		"nutrition",
 		"opacity",
+		"open_in_new",
 		"open_with",
 		"overview",
 		"pace",
 		"paid",
+		"park",
 		"password",
 		"pause",
 		"pause_circle",

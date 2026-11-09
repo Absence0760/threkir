@@ -11,6 +11,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { messagesInbox } from '#lib/stores/messages_inbox.svelte.ts';
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
+	import PlanChangeRequests from '#lib/components/PlanChangeRequests.svelte';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
 	import {
 		DM_THREAD_POLL_MS,
@@ -20,12 +21,14 @@
 		parseDmThreadRouteId
 	} from '#lib/social/dm_thread.ts';
 	import { dmMarkReadThrough, seenReceipt } from '#lib/social/dm_read_receipt.ts';
+	import { canEditDm } from '#lib/social/dm_edit.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import {
 		fetchDmThread,
 		sendDm,
 		unsendDm,
+		editDm,
 		markDmThreadRead,
 		blockUser,
 		unblockUser,
@@ -73,6 +76,19 @@
 	let reportTarget = $state<DirectMessage | null>(null);
 	let actionError = $state<string | null>(null);
 
+	// Inline edit of one of the viewer's own messages (migration
+	// 20271114000210). `now` ticks so Edit disappears once the window closes;
+	// the server's clock is the one that decides, and a late save says so.
+	let editingId = $state<string | null>(null);
+	let editDraft = $state('');
+	let editBusy = $state(false);
+	let editError = $state<string | null>(null);
+	let now = $state(Date.now());
+	$effect(() => {
+		const timer = setInterval(() => (now = Date.now()), 15_000);
+		return () => clearInterval(timer);
+	});
+
 	// Block from inside the conversation, the same toggle the profile header
 	// carries (decisions § 1952): Block is confirmed because block_user drains
 	// the follow edge both ways, which unblocking does not put back; Unblock
@@ -104,6 +120,20 @@
 			false
 	);
 	let conversationBusy = $state(false);
+	// A message request to the viewer they have not answered (migration
+	// 20271115002384). The composer gives way to Accept / Decline / Block; the
+	// requester learns nothing until it is accepted, so the server withholds
+	// the read receipt while the request stands. Decline cannot be undone from
+	// the app (the conversation leaves every list), so it is confirmed rather
+	// than held behind an undo window (conventions.md § Destructive actions).
+	const isRequest = $derived(activeThread?.request === true);
+	let requestBusy = $state(false);
+	let showDeclineConfirm = $state(false);
+	// The newest message from the requester on screen: a decline stops there,
+	// so one that arrives after the viewer decided is not hidden unseen.
+	const requestThrough = $derived(
+		messages.findLast((m) => m.sender_id === activePartnerId && m.conversation_id === conversationId) ?? null
+	);
 	// Mark as unread leaves the conversation, so the mark is not cleared by the
 	// open pane on the way out; each conversation's mark is cleared at most
 	// once per open, so a refused clear is not retried in a loop.
@@ -122,6 +152,7 @@
 		// above the composer made it read as an error in the new conversation.
 		sendError = null;
 		actionError = null;
+		cancelEdit();
 		leavingUnread = null;
 		unreadClearTried.clear();
 		markedThrough = null;
@@ -261,8 +292,51 @@
 		}
 	}
 
+	async function acceptRequest() {
+		const id = conversationId;
+		if (!id || requestBusy) return;
+		requestBusy = true;
+		try {
+			await messagesInbox.acceptRequest(id);
+			showToast(tr('messages.requestAcceptedToast'), 'success');
+		} catch (e) {
+			showToast(tr('messages.requestActionFailed', { error: errorCopy(e, tr, 'messages.requestActionFailed') }), 'error');
+		} finally {
+			requestBusy = false;
+		}
+	}
+
+	// Decline, or decline and block in one server transaction. Either way the
+	// conversation leaves the viewer's lists, so the pane goes back to them.
+	async function declineRequest(block: boolean) {
+		const id = conversationId;
+		const through = requestThrough;
+		if (!id || !through || requestBusy) return;
+		const name = partnerName;
+		requestBusy = true;
+		try {
+			await messagesInbox.declineRequest(id, through.id, block);
+			if (block) blockVersion++;
+			showToast(block ? tr('profile.blockedToast', { name }) : tr('messages.requestDeclinedToast'), 'success');
+			await goto('/messages');
+		} catch (e) {
+			showToast(tr('messages.requestActionFailed', { error: errorCopy(e, tr, 'messages.requestActionFailed') }), 'error');
+		} finally {
+			requestBusy = false;
+		}
+	}
+
+	async function confirmDecline() {
+		showDeclineConfirm = false;
+		await declineRequest(false);
+	}
+
 	async function confirmBlock() {
 		showBlockConfirm = false;
+		if (isRequest && requestThrough) {
+			await declineRequest(true);
+			return;
+		}
 		const partner = activePartnerId;
 		if (!partner || blockBusy) return;
 		const name = partnerName;
@@ -457,6 +531,47 @@
 		await messagesInbox.refreshThreads();
 	}
 
+	function startEdit(m: DirectMessage) {
+		editingId = m.id;
+		editDraft = m.body ?? '';
+		editError = null;
+	}
+
+	function cancelEdit() {
+		editingId = null;
+		editDraft = '';
+		editError = null;
+	}
+
+	async function saveEdit() {
+		const targetId = editingId;
+		const id = activeId;
+		if (!targetId || !id || editBusy || !editDraft.trim()) return;
+		editBusy = true;
+		editError = null;
+		try {
+			const updated = await editDm(targetId, editDraft);
+			localWrites++;
+			if (id === activeId) messages = mergeDmMessages(messages, [updated]);
+			if (editingId === targetId) cancelEdit();
+		} catch (e) {
+			editError = errorCopy(e, tr, 'messages.editFailed', 'messages.editFailed');
+		} finally {
+			editBusy = false;
+		}
+		await messagesInbox.refreshThreads();
+	}
+
+	function onEditKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && !e.shiftKey) {
+			e.preventDefault();
+			void saveEdit();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			cancelEdit();
+		}
+	}
+
 	function onKeydown(e: KeyboardEvent) {
 		if (e.key === 'Enter' && !e.shiftKey) {
 			e.preventDefault();
@@ -554,6 +669,9 @@
 		{/if}
 	</header>
 	<div class="messages" bind:this={scroller}>
+		{#if activePartnerId && !deleted}
+			<PlanChangeRequests scope={{ partnerId: activePartnerId }} />
+		{/if}
 		{#if deleted}
 			<p class="muted center" data-testid="dm-conversation-deleted">
 				{activeTarget?.kind === 'deleted'
@@ -597,6 +715,28 @@
 				<div class="bubble" class:mine class:unsent={m.unsent_at !== null} data-testid="dm-bubble">
 					{#if m.unsent_at !== null || m.body === null}
 						<span class="text placeholder">{tr('messages.unsentPlaceholder')}</span>
+					{:else if editingId === m.id}
+						<div class="edit" data-testid="dm-edit-form">
+							<textarea
+								bind:value={editDraft}
+								onkeydown={onEditKeydown}
+								aria-label={tr('messages.editLabel')}
+								rows="2"
+								maxlength="4000"
+								data-testid="dm-edit-input"
+							></textarea>
+							{#if editError}<p class="edit-error" role="alert" data-testid="dm-edit-error">{editError}</p>{/if}
+							<div class="edit-actions">
+								<button type="button" class="msg-action" onclick={cancelEdit}>{tr('messages.editCancel')}</button>
+								<button
+									type="button"
+									class="msg-action"
+									disabled={editBusy || !editDraft.trim()}
+									onclick={() => void saveEdit()}
+									data-testid="dm-edit-save"
+								>{tr('messages.editSave')}</button>
+							</div>
+						</div>
 					{:else if hasDmRouteAttachment(attached)}
 						<DmRouteAttachment routeId={attached} />
 						{#if !bodyRestatesAttachment(m.body, attached)}
@@ -607,8 +747,19 @@
 					{/if}
 					<span class="meta">
 						<span class="when">{fmtTime(m.created_at)}</span>
-						{#if m.unsent_at === null}
+						{#if m.edited_at !== null && m.unsent_at === null}
+							<span class="edited" data-testid="dm-edited">{tr('messages.edited')}</span>
+						{/if}
+						{#if m.unsent_at === null && editingId !== m.id}
 							{#if mine}
+								{#if canEditDm(m, me, now)}
+									<button
+										type="button"
+										class="msg-action"
+										onclick={() => startEdit(m)}
+										data-testid="dm-edit"
+									>{tr('messages.edit')}</button>
+								{/if}
 								<button
 									type="button"
 									class="msg-action"
@@ -650,6 +801,39 @@
 				{tr('messages.unblock')}
 			</button>
 		</div>
+	{:else if isRequest}
+		<div class="closed request" data-testid="dm-request-bar">
+			<p class="muted">{tr('messages.requestNotice', { name: partnerName })}</p>
+			<div class="request-actions">
+				<button
+					type="button"
+					class="btn btn-primary btn-sm"
+					data-testid="dm-request-accept"
+					disabled={requestBusy}
+					onclick={() => void acceptRequest()}
+				>
+					{tr('messages.requestAccept')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					data-testid="dm-request-decline"
+					disabled={requestBusy || !requestThrough}
+					onclick={() => (showDeclineConfirm = true)}
+				>
+					{tr('messages.requestDecline')}
+				</button>
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					data-testid="dm-request-block"
+					disabled={requestBusy || !requestThrough}
+					onclick={() => (showBlockConfirm = true)}
+				>
+					{tr('messages.block')}
+				</button>
+			</div>
+		</div>
 	{:else}
 		<div class="composer">
 			<textarea
@@ -690,6 +874,18 @@
 	onconfirm={confirmBlock}
 	oncancel={() => (showBlockConfirm = false)}
 	data-testid="dm-block-confirm"
+/>
+
+<ConfirmDialog
+	open={showDeclineConfirm}
+	danger
+	title={tr('messages.requestDeclineConfirmTitle')}
+	message={tr('messages.requestDeclineConfirmMessage')}
+	confirmLabel={tr('messages.requestDecline')}
+	cancelLabel={tr('profile.cancel')}
+	onconfirm={confirmDecline}
+	oncancel={() => (showDeclineConfirm = false)}
+	data-testid="dm-request-decline-confirm"
 />
 
 {#if reportTarget}
@@ -843,10 +1039,48 @@
 	.placeholder {
 		font-style: italic;
 	}
+	.bubble .edited {
+		font-size: var(--font-size-section-label);
+		opacity: 0.7;
+	}
+	.edit {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+	.edit textarea {
+		resize: vertical;
+		min-width: 14rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		padding: 0.4rem 0.6rem;
+		font: inherit;
+		background: var(--color-bg);
+		color: var(--color-text);
+	}
+	.edit-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 0.75rem;
+	}
+	.edit-error {
+		margin: 0;
+		font-size: var(--font-size-section-label);
+		color: inherit;
+		font-weight: 600;
+	}
 	.closed {
 		padding: var(--space-md) var(--space-lg);
 		border-top: 1px solid var(--color-border);
 		margin: 0;
+	}
+	.closed.request p {
+		margin: 0 0 var(--space-sm);
+	}
+	.request-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
 	}
 	/* The attachment card carries its own surface + border, so it must not
 	   inherit the sent-bubble's inverted foreground. */

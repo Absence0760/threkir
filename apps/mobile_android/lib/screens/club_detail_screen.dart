@@ -29,7 +29,9 @@ import '../backend_timeout.dart';
 import '../widgets/activity_waiver_dialog.dart';
 import '../widgets/club_form_sheet.dart';
 import '../widgets/club_invite_card.dart';
+import '../widgets/club_verification_status_card.dart';
 import '../widgets/club_photos.dart';
+import '../widgets/official_badge.dart';
 import '../widgets/collapsing_tab_host.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
@@ -95,6 +97,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
   String? _adoptingSessionId;
   String? _adoptingPlanId;
   List<GymRoutineRow> _gymRoutineTemplates = const [];
+  Set<String> _officialGymRoutineIds = const {};
   String? _adoptingRoutineId;
   List<cm.Route> _routes = const [];
   bool _loading = true;
@@ -1257,7 +1260,7 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       final profile = await api.fetchMyProfile();
       if (!mounted) return;
       setState(() => _viewerUnnamed =
-          profile != null && _namedOrNull(profile.displayName) == null);
+          profile != null && namedOrNull(profile.displayName) == null);
     } catch (e) {
       debugPrint('ClubDetailScreen._checkViewerName failed: $e');
     }
@@ -1280,6 +1283,14 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                     l10n, null, widget.social.currentUserId ?? ''))),
                 subtitle: Text(l10n.clubDetailNameHintAction),
               ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          if (c.isAdmin) ...[
+            ClubVerificationStatusCard(
+              social: widget.social,
+              clubId: c.row.id,
+              isVerified: c.row.isVerified,
             ),
             const SizedBox(height: 12),
           ],
@@ -1530,11 +1541,15 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
       final routines =
           await widget.apiClient?.fetchClubGymRoutineTemplates(c.row.id) ??
               const <GymRoutineRow>[];
+      final officialRoutines = await widget.apiClient
+              ?.fetchOfficialGymRoutineIds([for (final r in routines) r.id]) ??
+          const <String>{};
       if (!mounted) return;
       setState(() {
         _templates = list;
         _sessionTemplates = sessions;
         _gymRoutineTemplates = routines;
+        _officialGymRoutineIds = officialRoutines;
         _templatesLoaded = true;
       });
     } catch (_) {
@@ -1919,6 +1934,10 @@ class _ClubDetailScreenState extends State<ClubDetailScreen>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(g.title, style: theme.textTheme.titleSmall),
+                            if (_officialGymRoutineIds.contains(g.id)) ...[
+                              const SizedBox(height: 2),
+                              const OfficialBadge(),
+                            ],
                             const SizedBox(height: 4),
                             Text(
                               l10n.clubDetailRoutineExerciseCount(
@@ -2062,16 +2081,8 @@ class _ClubDescription extends StatelessWidget {
 /// A member with no display name is shown as their runner handle rather than
 /// an indistinguishable "Member" (decisions § 2365). Twin of the web club
 /// pages' `shownName`.
-/// A display name others can read, or null when it is absent or blank: the one
-/// rule the roster and the viewer's own name hint share, so a whitespace name
-/// is never shown as a blank row while the hint promises the runner handle.
-String? _namedOrNull(String? displayName) {
-  final trimmed = displayName?.trim();
-  return trimmed == null || trimmed.isEmpty ? null : trimmed;
-}
-
 String _shownName(AppLocalizations l10n, String? displayName, String userId) =>
-    _namedOrNull(displayName) ??
+    namedOrNull(displayName) ??
     runnerHandle(
       userId,
       handle: (slug) => l10n.liveRunnerHandle(slug),

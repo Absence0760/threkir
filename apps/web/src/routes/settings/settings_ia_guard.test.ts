@@ -68,6 +68,8 @@ const HOMES: Record<string, Home> = {
 	notify_club_join_request: { page: 'notifications' },
 	notify_club_join_approved: { page: 'notifications' },
 	notify_event_updated: { page: 'notifications' },
+	notify_course_alert: { page: 'notifications' },
+	notify_race_starting_soon: { page: 'notifications' },
 	notify_workout_reminder: { page: 'notifications' },
 	email_new_device_alerts: { page: 'notifications' },
 	locale: {
@@ -83,6 +85,7 @@ const HOMES: Record<string, Home> = {
 	dashboard_training_load_expanded: {
 		none: "the /dashboard expander's own remembered state, not a control",
 	},
+	dashboard_hidden_cards: { page: 'display', via: 'DASHBOARD_HIDDEN_CARDS_KEY' },
 	coach_personality: { page: 'training' },
 	multi_modal_nav: { none: 'dormant: read by nothing since the § 63 amendment' },
 	voice_feedback_enabled: { page: 'recording', also: { devices: PER_DEVICE_OVERRIDE } },

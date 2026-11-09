@@ -66,6 +66,11 @@ enum PushTargetKind {
   /// URL names the partner (`/messages/<user id>`, web's own thread path).
   messages,
 
+  /// An organiser's course alert (`/course-alerts/<id>`, decisions § 2407).
+  /// Carries the alert UUID; the host resolves it to the race or the route
+  /// the alert is on, as web's resolver page does.
+  courseAlert,
+
   /// Settings → Account (`/settings/account`), where a finished Art 20
   /// export is collected. Carries no id: the export lives in
   /// `data_export_jobs` and the screen reads the subject's latest one.
@@ -210,6 +215,10 @@ PushTarget pushTargetFromUrl(String? url) {
           PushTarget(PushTargetKind.planLibrary, entityId.toLowerCase()),
         _ => PushTarget.inbox,
       };
+    case 'course-alerts':
+      return id != null && _uuid.hasMatch(id)
+          ? PushTarget(PushTargetKind.courseAlert, id.toLowerCase())
+          : PushTarget.inbox;
     case 'notifications':
       return PushTarget.inbox;
     default:

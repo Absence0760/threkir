@@ -116,12 +116,16 @@ export function indexMigrations(dir = MIGRATIONS_DIR) {
 	for (const file of files) {
 		for (const sql of splitSqlStatements(readFileSync(join(dir, file), 'utf-8'))) {
 			statements.push({ file, sql });
-			const created = /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?([a-z_][a-z0-9_]*)\s*\(/i.exec(sql);
+			// A `private.` routine is keyed with its schema, so it can neither
+			// shadow nor be shadowed by a public one of the same name; it is
+			// indexed at all because trigger bodies there call
+			// enforce_create_rate_limit too.
+			const created = /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?((?:private\.)?[a-z_][a-z0-9_]*)\s*\(/i.exec(sql);
 			if (created) {
 				live.set(created[1].toLowerCase(), { file, sql });
 				continue;
 			}
-			const dropped = /^\s*drop\s+function\s+(?:if\s+exists\s+)?(?:public\.)?([a-z_][a-z0-9_]*)/i.exec(sql);
+			const dropped = /^\s*drop\s+function\s+(?:if\s+exists\s+)?(?:public\.)?((?:private\.)?[a-z_][a-z0-9_]*)/i.exec(sql);
 			if (dropped) {
 				live.delete(dropped[1].toLowerCase());
 				continue;

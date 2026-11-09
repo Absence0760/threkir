@@ -278,6 +278,29 @@
 // formatter. The root layout node and the entry did not move, no web
 // dependency changed and the largest code chunk is 288 KB on both sides. Same
 // 6 KB of cover (decisions § 2372).
+// Raised to 2585 for the 2026-11-08 issue round (PR #1315, with the
+// official-badges and race-start-modes lanes merged in), measured in CI at
+// 2579 KB (577 files) and locally at 2578 against the 2474 the last ceiling
+// was set from. Route-level code again, by source diff: the event editor's
+// start-mode fields and the race panel's scheduled countdown and self-timed
+// attempt, park course pages and boards, club verification (the club card,
+// /admin/club-verification and /club-verification/confirm), course alerts and
+// the provenance badges, race-course claim, suggestions and the review queue,
+// Drive this course, the adaptive Home hero, plan change requests, message
+// requests and message edit. No web dependency changed, the largest code
+// chunk is 289 KB as on main, and the shell's static graph is held by
+// shell_import_graph_guard.test.ts, which passes. Same 6 KB of cover
+// (decisions § 2410).
+// MAX_CORE_CATALOGUE_KB is 15 since the same round: de, fr and ja cores read
+// 14 KB (de 13,593 bytes gzipped) from 48 new core keys, after the areas were
+// re-cut so that nothing a single area renders stays in core (`clubs` split
+// into clubDetail and clubEvents and given /club-verification, `races` given
+// /course-alerts, which took the largest area from 17 KB to 12). What is left
+// is core by the plugin's own rule: the root layout's notification bell lines
+// for the new kinds, the provenance badges every area draws, the rate-limit
+// messages, and the club-verification error copy the club page and the admin
+// review page share, a two-area set too small to be a group. ~10% over 14,
+// the per-catalogue convention (decisions § 2109, § 2410).
 // MAX_LARGEST_CHUNK_KB stays 350, unchanged: 245 KB * the 33% headroom that
 // number was always justified by is 326, so the existing figure still states
 // the rule. What changed is the population it measures, not the ceiling.
@@ -312,8 +335,8 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2480;
-export const MAX_CORE_CATALOGUE_KB = 13;
+export const MAX_CODE_KB = 2585;
+export const MAX_CORE_CATALOGUE_KB = 15;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;
 export const MAX_ASSET_KB = 100;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 
 /// A named section whose body the reader can collapse. Controlled: the host
 /// owns [open] so it can persist the choice (see `disclosure_state.dart`).
@@ -16,6 +17,12 @@ class DisclosureSection extends StatelessWidget {
   final ValueChanged<bool> onToggle;
   final Widget child;
 
+  /// When set, a long-press on the heading offers [hideLabel] in a sheet,
+  /// and screen readers get it as a custom action, since neither TalkBack
+  /// nor VoiceOver has a long-press. Web twin: the heading's Hide button.
+  final VoidCallback? onHide;
+  final String? hideLabel;
+
   const DisclosureSection({
     super.key,
     required this.title,
@@ -23,7 +30,27 @@ class DisclosureSection extends StatelessWidget {
     required this.open,
     required this.onToggle,
     required this.child,
+    this.onHide,
+    this.hideLabel,
   });
+
+  Future<void> _offerHide(BuildContext context) async {
+    final hide = onHide;
+    if (hide == null) return;
+    final picked = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: ListTile(
+          key: const Key('disclosureSectionHide'),
+          leading: const Icon(Icons.visibility_off),
+          title: Text(hideLabel ?? ''),
+          onTap: () => Navigator.of(sheet).pop(true),
+        ),
+      ),
+    );
+    if (picked == true) hide();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +62,13 @@ class DisclosureSection extends StatelessWidget {
           child: Semantics(
             button: true,
             expanded: open,
+            customSemanticsActions: onHide == null || hideLabel == null
+                ? null
+                : {CustomSemanticsAction(label: hideLabel!): onHide!},
             child: InkWell(
               borderRadius: BorderRadius.circular(8),
               onTap: () => onToggle(!open),
+              onLongPress: onHide == null ? null : () => _offerHide(context),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48),
                 child: Padding(

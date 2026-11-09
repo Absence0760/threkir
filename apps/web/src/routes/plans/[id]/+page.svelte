@@ -79,6 +79,7 @@
 	import { isPlanFinished } from '#lib/training/plan_current.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import PlanAiAdjust from '#lib/components/PlanAiAdjust.svelte';
+	import PlanChangeRequests from '#lib/components/PlanChangeRequests.svelte';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEditEnabled } from '#lib/training/ai_plan_edit_flag.ts';
 	import Modal from '#lib/components/Modal.svelte';
@@ -93,6 +94,10 @@
 		writeDisclosureState,
 		type DisclosureState
 	} from '#lib/util/disclosure_state.ts';
+	import {
+		PLAN_DETAIL_DISCLOSURE_DEFAULTS,
+		PLAN_DETAIL_DISCLOSURE_SCOPE
+	} from '#lib/training/plan_detail_sections.ts';
 	import { daysUntilRace } from '#lib/runs/race_day.ts';
 	import type { Run } from '#lib/types.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -176,20 +181,12 @@
 		}
 	}
 
-	// ─── Named disclosures (#905 workstream 3) ───
+	// ─── Named disclosures (#905 workstream 3, decisions § 2375) ───
 	// Today's session and this week lead the page; everything else sits behind
-	// a named expander whose open/closed state is remembered per account. Every
-	// default is open: a runner who uses one of these sections today must not
-	// find it gone on the first visit after this shipped. The memory is what
-	// makes a collapse stick, not the default.
-	const DISCLOSURE_SCOPE = 'plan_detail';
-	const DISCLOSURE_DEFAULTS: DisclosureState = {
-		progress: true,
-		rules: true,
-		calendar: true,
-		weeks: true,
-		share: true
-	};
+	// a named expander, shut until the runner opens it and remembered per
+	// account. The scope and defaults are shared with the mobile twin.
+	const DISCLOSURE_SCOPE = PLAN_DETAIL_DISCLOSURE_SCOPE;
+	const DISCLOSURE_DEFAULTS = PLAN_DETAIL_DISCLOSURE_DEFAULTS;
 	let disclosure = $state<DisclosureState>({ ...DISCLOSURE_DEFAULTS });
 
 	function setDisclosure(key: string, open: boolean): void {
@@ -2054,6 +2051,10 @@
 				</div>
 			</div>
 		</header>
+
+		{#if plan.assigned_by_coach_id}
+			<PlanChangeRequests scope={{ planId: plan.id }} onchanged={load} />
+		{/if}
 
 		{#if walkRunGraduation}
 			<WalkRunGraduationCard graduation={walkRunGraduation} />

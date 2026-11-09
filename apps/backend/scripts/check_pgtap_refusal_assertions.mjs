@@ -1808,6 +1808,71 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'segment_match_jobs_test.sql',
+    description: 'an admin can start a backfill',
+    columns: ['jobs.payload'],
+    readBack: "the admin's start is queued as one backfill job for that segment, from the first run",
+    reason:
+      'enqueue_segment_backfill builds the payload with jsonb_strip_nulls(jsonb_build_object(...)) ' +
+      'rather than storing the argument; the read-back compares the whole stored payload of the queued ' +
+      'job, so a server that wrote a different segment, kept the null cursor or wrote nothing fails there.',
+  },
+  {
+    file: 'club_verification_test.sql',
+    description: 'the owner submits',
+    columns: ['club_verification_requests.note', 'club_verification_requests.organisation'],
+    reason:
+      'the claim is that the owner may open a request; the organisation and note are trimmed on the way ' +
+      'in, and the stored organisation is read back on the later requests ("the third request stores ' +
+      'the organisation").',
+  },
+  {
+    file: 'club_verification_test.sql',
+    description: 'the owner resubmits after a lapse',
+    columns: ['club_verification_requests.organisation'],
+    reason:
+      'the claim is that a lapse frees the club to open a new request, which the manual approval that ' +
+      'follows depends on; the trimmed organisation is read back on the later requests.',
+  },
+  {
+    file: 'club_verification_test.sql',
+    description: 'a third request',
+    columns: ['club_verification_requests.organisation'],
+    readBack: 'the third request stores the organisation',
+    reason:
+      'submit_club_verification trims the organisation before storing it; the read-back reads the ' +
+      'stored value of the new pending row, so a server that stopped writing it would fail there.',
+  },
+  {
+    file: 'club_verification_test.sql',
+    description: 'the owner submits for a second club',
+    columns: ['club_verification_requests.organisation'],
+    readBack: "the second club's request stores the organisation",
+    reason:
+      'submit_club_verification trims the organisation before storing it; the read-back reads the ' +
+      'stored value of that club\'s only request.',
+  },
+  {
+    file: 'race_course_review_queue_test.sql',
+    description: 'the organiser rejects the only suggestion on its race',
+    columns: ['race_course_suggestions.status'],
+    readBack: 'the rejection marks the suggestion rejected',
+    reason:
+      'p_approve becomes the status text (approved / rejected) rather than landing as the boolean; ' +
+      'the read-back reads status from a row created pending, so a server that stopped writing it ' +
+      'would report pending.',
+  },
+  {
+    file: 'race_course_link_test.sql',
+    description: "the organiser approves, linking the club's own copy",
+    columns: ['race_course_suggestions.status'],
+    readBack: "approval marks the suggestion and links the club's course",
+    reason:
+      'p_approve becomes the status text (approved / rejected) rather than landing as the boolean; ' +
+      'the read-back reads status from a row created pending, so a server that stopped writing it ' +
+      'would report pending.',
+  },
+  {
     file: 'dm_conversations_test.sql',
     description: 'a participant can mute the conversation',
     columns: ['conversation_participants.muted_at'],
@@ -2389,6 +2454,76 @@ export const UNOBSERVED_RPC_WRITES = [
  * @type {{ file: string, description: string, columns: string[], readBack?: string, reason: string }[]}
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
+  {
+    file: 'race_start_modes_test.sql',
+    description: 'a scheduled race whose start passed takes pings before the job moves it',
+    columns: ['race_pings.lat', 'race_pings.lng'],
+    readBack: 'the early ping lands where it was sent',
+    reason:
+      '`race_pings_drop_in_zone` rewrites or drops a ping inside the runner\'s privacy zone. The ' +
+      'assertion is about the clock-live policy accepting the row at all, and the read-back proves ' +
+      'the row landed with the coordinates sent rather than relying on the fixture having no zone.',
+  },
+  {
+    file: 'race_courses_test.sql',
+    description: 'an armed race does not lock a racer out of filing their own result',
+    columns: ['event_results.duration_s'],
+    readBack: "the racer's own DNS on an armed race is stored with the duration it sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'race_result_guard_test.sql',
+    description: 'a racer submits their own time on an armed race',
+    columns: ['event_results.duration_s'],
+    readBack: "the racer's own time on an armed race is stored as sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'race_result_guard_test.sql',
+    description: 'a racer files their own DNS on a cancelled race',
+    columns: ['event_results.duration_s'],
+    readBack: "the racer's own DNS on a cancelled race is stored with the duration it sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'rls_event_results_bulk_import_test.sql',
+    description: 'a plain event_organiser can INSERT a bib-only result',
+    columns: ['event_results.duration_s'],
+    readBack: "the organiser's bib-only result is stored with the time it sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'rls_event_results_bulk_import_test.sql',
+    description: 'a plain event_organiser can UPDATE a bib-only result (re-import path)',
+    columns: ['event_results.duration_s'],
+    readBack: "the re-imported bib-only time replaces the old one",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
+  {
+    file: 'typed_events_guards_test.sql',
+    description: 'event_results insert on a cycle event succeeds',
+    columns: ['event_results.duration_s'],
+    readBack: "the cycle event's result is stored with the time it sent",
+    reason:
+      'A Self-timed session makes event_results_race_guard rank the chip time (20271121002400), so a ' +
+      'runner-written duration_s can be rewritten on that branch. This fixture is not Self-timed and ' +
+      'the value must stand; the read-back proves it rather than relying on the fixture staying that way.',
+  },
   {
     file: 'unbounded_numeric_column_bounds_test.sql',
     description: 'a real 15-minute embedded 5k still stores',

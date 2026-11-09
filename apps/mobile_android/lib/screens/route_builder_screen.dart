@@ -1882,7 +1882,7 @@ class _ModeToggle extends StatelessWidget {
             ChoiceChipOption(
               value: RouteBuilderMode.road,
               label: l10n.routeBuilderModeRoad,
-              icon: Icons.directions_car,
+              icon: Icons.directions_car_outlined,
             ),
             ChoiceChipOption(
               value: RouteBuilderMode.straight,

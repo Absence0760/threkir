@@ -243,7 +243,8 @@ deleter's own reads and erases nothing by itself, so both rails
 `sender_id` / `recipient_id` with the service role, not through the
 SELECT policy) still include every message the subject hid, alongside
 `conversation_settings.json`, whose `hidden_before` shows where each
-delete stops. That is the intended Art 15 answer: the data is still held,
+delete stops (and whose `request_state` shows a declined message request,
+whose messages are likewise still held for the requester). That is the intended Art 15 answer: the data is still held,
 because the other participant can still read it. A hidden message leaves
 the export only when it is erased: once no participant can see it (both
 sides deleted past it, or the remaining participant deleted a deleted

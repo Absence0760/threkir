@@ -63,22 +63,23 @@ export function applyRunMetadataPatch(
 	return next;
 }
 
-/// Row cap on the catalogue fetch the run-detail backfill scores a run
-/// against, and therefore the ceiling the `global_segments_scored_count`
-/// stamp can ever reach. It is also the DEFAULT of
-/// `fetchGlobalSegmentsWithError`, so it is the bound on every catalogue
-/// read in the app — including the `/segments` browse page, which must not
-/// be able to see less of the catalogue than the scoring sweep does.
-/// Owned here, next to the gate that consumes it,
-/// and imported by the `data.ts` fetch call site so the two numbers
-/// cannot drift — the same contract `DASHBOARD_RUNS_WINDOW_DAYS` holds
-/// for the dashboard window. Drift is not a rounding error: gating an
-/// UNCAPPED `count(*)` against a stamp a CAPPED fetch can never exceed
-/// saturates the stamp once the active catalogue passes this limit, so
-/// `activeCount > scored` stays permanently true and every run re-scores
-/// on every view forever — strictly worse than not gating at all (same
-/// heavy fetch, plus a count query and a metadata read + write per view).
+/// Row cap on a whole-catalogue read: the DEFAULT of `fetchGlobalSegments`
+/// and `fetchGlobalSegmentsWithError`, so the `/segments` browse page and
+/// every other caller that omits the argument agree on what "the catalogue"
+/// means. Scoring no longer reads the whole catalogue: it asks for the
+/// segments near a track (`GLOBAL_SEGMENT_CANDIDATE_LIMIT`, decisions § 2392).
 export const GLOBAL_SEGMENT_SCORING_LIMIT = 500;
+
+/// Cap on the candidates one track is scored against (`global_segments_in_bbox`).
+/// A track meets a handful of segments; this only bounds a pathological
+/// catalogue. The same figure as CANDIDATE_LIMIT in the `segment-match` Edge
+/// Function, so the fallback and the server score the same set.
+export const GLOBAL_SEGMENT_CANDIDATE_LIMIT = 1000;
+
+/// Metres the track's extent is padded by when asking for candidates, above
+/// the matcher's 35 m tolerance so no segment it could time is missed. The
+/// same figure as CANDIDATE_PAD_M in the `segment-match` Edge Function.
+export const GLOBAL_SEGMENT_CANDIDATE_PAD_M = 50;
 
 /// The `runs.metadata.global_segments_scored_count` stamp: the number
 /// of active `global_segments` a run's catalogue efforts were last
@@ -98,38 +99,59 @@ export function readGlobalSegmentsScoredCount(
 	return count;
 }
 
+/// The `runs.metadata.global_segments_matcher_version` stamp: the catalogue
+/// matcher version (`GLOBAL_SEGMENT_MATCHER_VERSION`) a run's efforts were
+/// last computed by. A run scored before the stamp existed carries only the
+/// count, and was scored by version 1 (the circles-only matcher); a run never
+/// scored reads null.
+export function readGlobalSegmentsMatcherVersion(
+	metadata: JsonObject | null | undefined,
+): number | null {
+	if (!metadata || typeof metadata !== 'object') return null;
+	const version = metadata[METADATA_KEYS.global_segments_matcher_version];
+	if (typeof version === 'number' && Number.isInteger(version) && version >= 1) return version;
+	return readGlobalSegmentsScoredCount(metadata) == null ? null : 1;
+}
+
 /// Decide whether a run needs its global-segment efforts (re)computed.
-/// True when the run was never scored, when the stamp is unreadable,
-/// or when the active catalogue has grown past the count the run was
-/// last scored against. `activeCount` null (an unknown / failed count
-/// query) fails open to true — better to re-score once than to never
-/// score a run whose catalogue size we couldn't read.
+/// True when the run was never scored, when the stamp is unreadable, when
+/// the run was scored by an older matcher than `matcherVersion` (its efforts
+/// are then re-matched, issue #1308), or when the active catalogue has grown
+/// past the count the run was last scored against. `activeCount` null (an
+/// unknown / failed count query) fails open to true — better to re-score once
+/// than to never score a run whose catalogue size we couldn't read.
 ///
-/// `activeCount` is an unbounded `count(*)` of the active catalogue but
-/// the stamp records a fetch capped at `scoringLimit`, so the comparison
-/// is made against the clamped count — an active catalogue of 520 was
-/// still only scored against 500 rows, and demanding a 520 stamp the
-/// fetch can never produce would re-score forever.
+/// The stamp is the active count the pass ran under, not the size of a
+/// capped fetch, so it can always reach the count it is compared with. A
+/// run stamped 500 by the old capped fetch under a larger catalogue is
+/// re-scored once, which is right: it was never scored against the tail.
 export function shouldRescoreGlobalSegments(
 	metadata: JsonObject | null | undefined,
 	activeCount: number | null | undefined,
-	scoringLimit: number = GLOBAL_SEGMENT_SCORING_LIMIT,
+	matcherVersion: number,
 ): boolean {
 	const scored = readGlobalSegmentsScoredCount(metadata);
 	if (scored == null) return true;
+	const version = readGlobalSegmentsMatcherVersion(metadata);
+	if (version == null || version < matcherVersion) return true;
 	if (typeof activeCount !== 'number' || !Number.isFinite(activeCount)) return true;
-	return Math.min(activeCount, scoringLimit) > scored;
+	return activeCount > scored;
 }
 
-/// Merge the `global_segments_scored_count` stamp into a run's metadata
-/// bag without clobbering the rest of it. Pure — the caller writes the
-/// result back.
+/// Merge the `global_segments_scored_count` and
+/// `global_segments_matcher_version` stamps into a run's metadata bag without
+/// clobbering the rest of it. Pure — the caller writes the result back.
 export function stampGlobalSegmentsScored(
 	metadata: JsonObject | null | undefined,
 	catalogueCount: number,
+	matcherVersion: number,
 ): JsonObject {
 	const base = metadata ?? {};
-	return { ...base, [METADATA_KEYS.global_segments_scored_count]: catalogueCount };
+	return {
+		...base,
+		[METADATA_KEYS.global_segments_scored_count]: catalogueCount,
+		[METADATA_KEYS.global_segments_matcher_version]: matcherVersion,
+	};
 }
 
 /// Normalise the `notes` field of a plan-workout update patch. Trims

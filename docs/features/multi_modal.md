@@ -421,9 +421,9 @@ becomes an **action button**, not a tab.
 Home is a vertical scroll of cards. The order is **driven by what the
 user logs**, not a fixed grid. The ordering algorithm:
 
-1. **Today's actionable card first** — if a training plan has a workout
-   scheduled today, the today's-workout card leads, under only the week
-   lead an account with runs opens on (#905 workstream 3).
+1. **Today's actionable card first** — the adaptive Today hero leads Home,
+   above the week lead (#1187, decisions § 2385); on a plan day it is
+   today's workout.
 2. **Today's logged modalities next**, most-recently-touched first
    (today's run summary, today's lift summary, today's nutrition rings).
 3. **Trend cards** the user has data for (training load, fitness,
@@ -461,20 +461,99 @@ user logs**, not a fixed grid. The ordering algorithm:
 > `test/dashboard_week_lead_test.dart`, `test/period_summary_screen_test.dart`,
 > `tests-e2e/dashboard/week-lead.spec.ts`, `tests-e2e/dashboard/week-strip.spec.ts`.
 >
-> **Next club event (web + mobile, 2026-11-03, [decisions § 2285](../architecture/decisions.md)):**
+> **Next club event (web + mobile, 2026-11-03, [decisions § 2285](../architecture/decisions.md);
+> kept by [§ 2388](../architecture/decisions.md)):**
 > Home's Today block shows the runner's next `going` club event when it
-> starts within seven days (web was 48 hours; mobile Home had no card), after
-> the next-race card. The Run tab keeps its own 48-hour card.
+> starts within seven days, after the next-race card (mobile Home had no card
+> before § 2285; the Run tab keeps its own 48-hour window).
 > `test/dashboard_upcoming_event_test.dart`,
 > `tests-e2e/dashboard/upcoming-event.spec.ts`.
 >
-> **Start, Coach and the week lead (mobile, 2026-11-03):** Home carries one
-> Start, on today's open plan workout or else on the week lead (§ 2282); the
-> Coach card closes the Today block (§ 2280); the lead is compact, with
-> **Add a run** and **Import runs** in the toolbar overflow (§ 2281; web's
-> are in its **Add or import** menu). The
-> **Last run** card is a deliberate mobile-only card: web's Today block has
-> none.
+> **Start, Coach and the week lead (mobile, 2026-11-03; amended
+> 2026-11-08):** Home carries one Start, on today's open plan workout or else
+> on the Today hero (§ 2282, § 2385; it used to sit on the week lead); the
+> Coach entry closes the Today block (§ 2280) as a compact row on both
+> platforms (§ 2387); the lead is compact, with **Add a run** and **Import
+> runs** in the toolbar overflow (§ 2281; web's are in its **Add or import**
+> menu). The **Last run** card is a deliberate mobile-only card: web's Today
+> block has none, though web's hero summarises a run logged today.
+>
+> **The adaptive Today hero (web + mobile, 2026-11-08, #1187,
+> [decisions § 2385](../architecture/decisions.md)):** the first card on
+> `/dashboard` and on mobile Home, above the week lead, in every state.
+> `todayHeroState` (`training/dashboard_layout.ts` ↔ `dashboard_layout.dart`)
+> picks it: on a plan, **race day**, else **plan today** (a non-rest workout),
+> else **rest day**; without one, a **new account**, else **ran today**, else
+> **nothing planned**. Each state is a card Home already had: on web the plan
+> hero, `DashboardFirstRun`, a one-line summary of today's run, or a "Nothing
+> planned today" card with **Add a run**; on mobile today's workout card
+> (with its Start), the next-race card, a rest-day card, the last-run tile, or
+> the welcome block. **Readiness lives in the hero** — the whole card when
+> nothing is planned, one line (score, band, advice) beside a plan session or
+> today's run — so the Fitness and form group no longer carries it, and the
+> group's remaining load views (the fitness snapshot, the load curve, the ramp
+> or comeback card) are **one "Training load" card**. Mobile's hero carries
+> Home's one Start in every state but a new account.
+> `tests-e2e/dashboard/today-hero.spec.ts`, `test/dashboard_today_hero_test.dart`
+> (each state, at 1.0x and 2.0x text).
+>
+> **Hiding a trend group (web + mobile, 2026-11-08,
+> [decisions § 2386](../architecture/decisions.md)):** each trend group can
+> be taken off Home — web's group headings carry a Hide button, mobile's
+> answer a long-press (and a screen-reader action) — and comes back from web
+> `/settings/display` → Home or mobile Settings → Preferences → Home cards.
+> The list is the universal `dashboard_hidden_cards` key
+> ([settings.md](../backend/settings.md)), universal where the folds are per
+> device. Drag-to-reorder is deferred. `test/settings_preferences_home_cards_test.dart`.
+>
+> **Measuring Home (the Coach placement's revisit trigger, decisions § 2387).**
+> There is no product analytics and this change adds none (§ 1922's
+> query-measured pattern; a client event stream would be a new personal-data
+> flow behind a CISO/counsel gate). Two numbers come from tables that already
+> exist, run read-only against prod by someone with access:
+>
+> ```sql
+> -- Coach engagement: of the runners active in each week, the share who sent
+> -- the Coach at least one message. Compare the weeks before 2026-11-08 with
+> -- the weeks after; a fall is the trigger to revisit the Coach placement.
+> with active as (
+>   select distinct user_id, date_trunc('week', started_at)::date as wk
+>   from runs
+>   where started_at >= now() - interval '16 weeks'
+> ), coached as (
+>   select distinct user_id, date_trunc('week', usage_date)::date as wk
+>   from user_coach_usage
+>   where usage_date >= current_date - 112 and message_count > 0
+> )
+> select a.wk,
+>        count(*) as active_runners,
+>        count(c.user_id) as coached_runners,
+>        round(100.0 * count(c.user_id) / count(*), 1) as coached_pct
+> from active a
+> left join coached c using (user_id, wk)
+> group by a.wk
+> order by a.wk;
+>
+> -- Plan-day completion: of the plan sessions scheduled in each week up to
+> -- yesterday (rest days excluded), the share completed by a run or marked
+> -- done. Read beside the hero's plan states.
+> select date_trunc('week', pw.scheduled_date)::date as wk,
+>        count(*) as scheduled,
+>        count(*) filter (where pw.completed_run_id is not null
+>                            or pw.manually_completed) as done,
+>        round(100.0 * count(*) filter (where pw.completed_run_id is not null
+>                            or pw.manually_completed) / count(*), 1) as done_pct
+> from plan_workouts pw
+> where pw.kind <> 'rest'
+>   and pw.scheduled_date between current_date - 112 and current_date - 1
+> group by 1
+> order by 1;
+> ```
+>
+> `user_coach_usage` records no entry point, so the first query measures
+> Coach use as a whole, not the Home row against the sidebar or Messages. No
+> prod figure was run for this change; the baseline is whatever the first run
+> of the query reports for the weeks before 2026-11-08.
 
 ```
   Home                                    (today)
@@ -518,8 +597,9 @@ Density rules so it never becomes a wall of cards:
 > a phone above Goals, and on a tablet above the period row. Below it the
 > trend cards fold in five named groups, in one order on both platforms:
 > **Volume** (mileage, plus consistency on web; the heatmap left mobile Home for the weekly summary, § 2284),
-> **Fitness and form** (readiness, the fitness snapshot, load ramp /
-> comeback, the training-load chart), **Performance** (race predictor,
+> **Fitness and form** (one Training load card holding the fitness
+> snapshot, load ramp / comeback and the training-load chart; readiness moved
+> to the Today hero in § 2385), **Performance** (race predictor,
 > personal bests), **Effort** (HR-zone intensity, plus the easy/hard balance
 > on web) and **Recent** (recent runs on web, recent lifts). Each group is a
 > `DisclosureSection` remembered per account on this device
@@ -531,9 +611,9 @@ Density rules so it never becomes a wall of cards:
 > into one closed **Training load** expander inside Fitness and form,
 > remembered in the universal `dashboard_training_load_expanded` key
 > ([decisions § 1658](../architecture/decisions.md),
-> [§ 2244](../architecture/decisions.md)). Not built: "one expanded at a
-> time" and hiding a card outright
-> ([decisions § 2080](../architecture/decisions.md)).
+> [§ 2244](../architecture/decisions.md)). A group can be hidden outright
+> since 2026-11-08 ([§ 2386](../architecture/decisions.md)). Not built: "one
+> expanded at a time" ([decisions § 2080](../architecture/decisions.md)).
 > `tests-e2e/dashboard/layout.spec.ts`, `tests-e2e/dashboard/disclosure.spec.ts`,
 > `test/dashboard_trend_groups_test.dart`, `test/dashboard_disclosure_level_test.dart`.
 
@@ -1315,7 +1395,7 @@ Bottom nav becomes `Home · Train · [+] Log · Social · You` (still five slots
 - **`Log` (+)** is unchanged — the capture sheet (Log run / lift / food → keep-alive capture page), long-press = open the fan. Capture stays separate from the Train *review/plan* surfaces (the verb-vs-modality split §63 established).
 - **`Social`** is unchanged (Feed / People / Clubs). **Routes leaves Social** — the mobile Social screen drops any routes entry.
 - **`You`** = profile + Settings + subscription + (future) payout account. `Settings` vacates its own slot; the `keepRunPrimary` toggle and all prefs live under `You → Settings`.
-- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach; since [decisions § 2280](../architecture/decisions.md) it closes the Today block instead, under today's workout and what was logged today) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
+- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach; since [decisions § 2280](../architecture/decisions.md) it closes the Today block instead, under today's workout and what was logged today, and since [§ 2387](../architecture/decisions.md) it is a compact row on web and mobile; the trigger below is measured by the `user_coach_usage` query in § Home) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
 - **Home** is unchanged — the prioritised, self-hiding card stack ("what's my day").
 - **Expanded widths (≥840dp — tablets / landscape foldables) swap the chrome, not the IA:** the same four destinations + the Log action render as a `NavigationRail` (Log rides the rail's leading slot and fans its speed-dial from the button's own anchor) instead of the `BottomAppBar` + docked centre FAB. Destinations, keep-alive pages, and the Log contract are identical — only the shell changes (`widthClassOf` gate, see [conventions.md § Mobile adaptive width](../architecture/conventions.md#mobile-adaptive-width--widthclass)).
 

@@ -7,6 +7,7 @@ import 'package:ui_kit/ui_kit.dart' show TextLane;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
+import '../lib/course_gates.dart' show CourseGate, GateSource;
 import '../lib/event_category.dart';
 import '../lib/event_gym_template.dart';
 import '../lib/gym_routine.dart' show PlannedExercise, PlannedRoutine, PlannedSet;
@@ -56,6 +57,7 @@ class _RsvpFailSocial extends SocialService {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
     row: EventRow(
+      raceStartMode: 'host_go',
       id: 'e1',
       clubId: 'club-1',
       title: 'Saturday Long Run',
@@ -122,8 +124,17 @@ class _EventSocial extends SocialService {
     this.courses = const [],
     this.raceStatus,
     this.dnfCount,
+    this.frozen = const {},
+    this.startMode = 'host_go',
   });
+  /// The event's race start mode (#1306), copied onto its session.
+  String startMode;
+  int delayCalls = 0;
   List<EventCourseView> courses;
+  /// The occurrence's frozen courses; a non-empty map also stamps the race
+  /// session's courses_frozen_at.
+  Map<String, FrozenRaceCourse> frozen;
+  int armCalls = 0;
   /// The occurrence's race session status, or null for none.
   String? raceStatus;
   /// What `race_pending_dnf_count` answers; null when it cannot be read.
@@ -145,6 +156,7 @@ class _EventSocial extends SocialService {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
     row: EventRow(
+      raceStartMode: startMode,
       id: 'e1',
       clubId: 'club-1',
       title: 'Saturday Long Run',
@@ -182,11 +194,78 @@ class _EventSocial extends SocialService {
     final status = raceStatus;
     if (status == null) return null;
     final at = DateTime.utc(2026, 6, 20, 8);
+    // A scheduled or self-timed start an hour ahead while armed, an hour
+    // behind while running, on the real clock the panel reads.
+    final start = status == 'armed'
+        ? DateTime.now().toUtc().add(const Duration(hours: 1))
+        : DateTime.now().toUtc().subtract(const Duration(hours: 1));
     return RaceSessionRow(
+      startMode: startMode,
+      scheduledStartAt: startMode == 'scheduled' ? start : null,
+      windowOpensAt: startMode == 'self_timed' ? start : null,
+      windowClosesAt: startMode == 'host_go'
+          ? null
+          : start.add(const Duration(hours: 3)),
       eventId: eventId,
       instanceStart: instance,
       status: status,
       startedAt: status == 'armed' ? null : at,
+      createdAt: at,
+      updatedAt: at,
+      isAutoApprove: true,
+      coursesFrozenAt: frozen.isEmpty ? null : at,
+    );
+  }
+
+  @override
+  Future<Map<String, FrozenRaceCourse>> fetchRaceSessionCourses(
+    String eventId,
+    DateTime instance,
+  ) async => frozen;
+
+  @override
+  Future<RaceSessionRow> armRace({
+    required String eventId,
+    required DateTime instance,
+    bool isAutoApprove = true,
+  }) async {
+    armCalls++;
+    final at = DateTime.utc(2026, 6, 20, 8);
+    return RaceSessionRow(
+      startMode: 'host_go',
+      eventId: eventId,
+      instanceStart: instance,
+      status: 'armed',
+      createdAt: at,
+      updatedAt: at,
+      isAutoApprove: isAutoApprove,
+    );
+  }
+
+  @override
+  Future<bool> ensureRaceSession(String eventId, DateTime instance) async =>
+      true;
+
+  @override
+  Future<Duration?> fetchServerClockOffset() async => Duration.zero;
+
+  @override
+  Future<RaceSessionRow> delayRaceStart({
+    required String eventId,
+    required DateTime instance,
+    required bool selfTimed,
+    required DateTime start,
+  }) async {
+    delayCalls++;
+    final at = DateTime.utc(2026, 6, 20, 8);
+    return RaceSessionRow(
+      startMode: startMode,
+      scheduledStartAt: selfTimed ? null : start,
+      windowOpensAt: selfTimed ? start : null,
+      windowClosesAt: start.add(const Duration(hours: 3)),
+      eventId: eventId,
+      instanceStart: instance,
+      status: 'armed',
       createdAt: at,
       updatedAt: at,
       isAutoApprove: true,
@@ -308,6 +387,7 @@ class _ClassRoutineSocial extends _EventSocial {
   @override
   Future<EventView?> fetchEventById(String eventId) async => EventView(
     row: EventRow(
+      raceStartMode: 'host_go',
       id: 'e1',
       clubId: 'club-1',
       title: 'Strength Class',
@@ -790,6 +870,59 @@ void main() {
       expect(find.text('Cancel'), findsOneWidget);
     });
 
+    realtimeWidgetTest('a scheduled race offers Delay and Cancel, never GO (#1306)', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('owner'),
+        raceStatus: 'armed',
+        startMode: 'scheduled',
+      );
+      await pumpEvent(tester, social);
+      expect(find.byKey(const ValueKey('race-mode-control')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-delay')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-cancel')), findsOneWidget);
+      expect(find.text('Fire Go'), findsNothing);
+
+      await tester.ensureVisible(find.byKey(const ValueKey('race-delay')));
+      await tester.tap(find.byKey(const ValueKey('race-delay')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('+15 min'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.delayCalls, 1);
+    });
+
+    realtimeWidgetTest('an open self-timed window offers Extend and End, and a runner Join and attempt', (
+      tester,
+    ) async {
+      final director = _EventSocial(
+        club: _club('owner'),
+        raceStatus: 'running',
+        startMode: 'self_timed',
+      );
+      await pumpEvent(tester, director);
+      expect(find.byKey(const ValueKey('race-extend')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-end')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-live')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('a member not going sees Join and attempt on an open self-timed race', (
+      tester,
+    ) async {
+      final runner = _EventSocial(
+        club: _club('member'),
+        raceStatus: 'running',
+        startMode: 'self_timed',
+      );
+      await pumpEvent(tester, runner);
+      expect(find.byKey(const ValueKey('self-timed-participant')), findsOneWidget);
+      expect(find.byKey(const ValueKey('self-timed-join')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-control')), findsNothing);
+    });
+
     realtimeWidgetTest('End states how many racers it will mark DNF', (
       tester,
     ) async {
@@ -1245,6 +1378,112 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
     }
+
+    const lineStart = CourseGate(
+      lat: 51.5,
+      lng: -0.1,
+      bearingDeg: 0,
+      halfWidthM: 15,
+      source: GateSource.derived,
+    );
+    const lineFinish = CourseGate(
+      lat: 51.501,
+      lng: -0.1,
+      bearingDeg: 0,
+      halfWidthM: 15,
+      source: GateSource.derived,
+    );
+    const lined = EventCourseView(
+      id: 'c-lined',
+      eventId: 'e1',
+      routeId: 'r-lined',
+      name: 'Lined 5K',
+      distanceM: 5000,
+      sortOrder: 0,
+      finishLat: 51.501,
+      finishLng: -0.1,
+      startGate: lineStart,
+      finishGate: lineFinish,
+    );
+
+    realtimeWidgetTest('a course with lines shows its course map (#1305)', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [lined, tenK],
+      );
+      await pumpCourses(tester, social);
+      expect(find.byKey(const Key('course-lines-map-c-lined')), findsOneWidget);
+      expect(find.byKey(const Key('course-lines-map-c-10k')), findsNothing);
+      expect(find.byKey(const ValueKey('course-gate-start')), findsOneWidget);
+      expect(find.byKey(const ValueKey('course-gate-finish')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('the course map reads the frozen copy once armed', (
+      tester,
+    ) async {
+      final social = _EventSocial(
+        club: _club('member'),
+        courses: const [lined],
+        raceStatus: 'armed',
+        frozen: const {
+          'c-lined': FrozenRaceCourse(courseId: 'c-lined', finishGate: lineFinish),
+        },
+      );
+      await pumpCourses(tester, social);
+      await tester.pump(const Duration(milliseconds: 50));
+      // The frozen copy has no start line, so the live row's is not drawn.
+      expect(find.byKey(const ValueKey('course-gate-start')), findsNothing);
+      expect(find.byKey(const ValueKey('course-gate-finish')), findsOneWidget);
+    });
+
+    realtimeWidgetTest('Arm warns about a hand-finish course; Cancel arms nothing', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [fiveK]);
+      await pumpCourses(tester, social);
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('race-preflight-dialog')), findsOneWidget);
+      expect(find.textContaining('5K loop: no finish line'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('race-preflight-cancel')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.armCalls, 0);
+    });
+
+    realtimeWidgetTest('Arm anyway arms through a warning', (tester) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [fiveK]);
+      await pumpCourses(tester, social);
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.byKey(const Key('race-preflight-arm')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(social.armCalls, 1);
+    });
+
+    realtimeWidgetTest('a course with a finish point arms with no dialog', (
+      tester,
+    ) async {
+      final social = _EventSocial(club: _club('owner'), courses: const [lined]);
+      await pumpCourses(tester, social);
+      // The course map lands after the first layout; settle it before
+      // scrolling the Arm button into view.
+      await tester.pump(const Duration(milliseconds: 50));
+      await tester.ensureVisible(find.text('Arm race'));
+      await tester.pump();
+      await tester.tap(find.text('Arm race'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const Key('race-preflight-dialog')), findsNothing);
+      expect(social.armCalls, 1);
+    });
 
     realtimeWidgetTest('the courses are listed under the RSVP row', (
       tester,

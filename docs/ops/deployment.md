@@ -759,6 +759,14 @@ A live share that runs on the runner's confirmed safety contacts only, with no p
 2. Counsel review of the same, plus the contact-facing copy in all seven locales (the `/live/[id]` notice and closed-link state, and the overdue / off-route email and SMS that now carry a personal link).
 3. Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('safety_audience', true) on conflict (name) do update set enabled = true, updated_at = now();`. The same statement with `false` is the rollback; the default reverts for everyone who never touched the switch, and every outstanding link stops admitting on its next poll.
 
+### Drive this course — after counsel signs off on the safety notice
+
+Drive this course ([course_drive.md](../features/course_drive.md), decisions § 2380) is built on web and mobile behind `PUBLIC_COURSE_DRIVE_ENABLED` (a `release-web.yml` secret) and `COURSE_DRIVE_ENABLED` (a mobile dart-define), both default off.
+
+1. **Counsel:** review the driver safety notice (`courseDrive.notice` on web, `courseDriveNoticeBody` in the mobile ARBs, every locale) and the help guide's caution (`drive-a-course`), per decisions § 150. Loop in the CISO / Security Analyst for the record.
+2. **Operator:** a real drive per [manual_testing.md](../testing/manual_testing.md) ("Drive this course (real drive)"), including that Google's app takes nine stops.
+3. Set both flags together (web secret, then the mobile define in the next store build).
+
 ### Sign-up consent from metadata — after the legal memo and owner approval
 
 An email sign-up's 16+ and Terms stamps are written to `user_profiles` from its sign-up metadata when the account is confirmed (`private.stamp_signup_consent()`, migration `20271023000001`, decisions § 2238, #1229). Until then such accounts meet the consent gate again on their first sign-in. The trigger ships closed: no migration writes its flag row, so prod behaves exactly as before.
@@ -803,6 +811,16 @@ The RunSignUp legs need no key ([decisions § 1903](../architecture/decisions.md
 2. Confirm the `cron_secret` Vault entry exists (name only): `select name from vault.secrets where name = 'cron_secret';`.
 3. Add the URL entry in the SQL editor: `select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/race-listings-sweep', 'race_listings_sweep_url');`.
 4. Verify one run by hand: `select public.invoke_race_listings_sweep();` returns a request id, and `select status_code, left(content::text, 200) from net._http_response order by id desc limit 1;` shows `200` with a `window` and `synced` / `unplaced` counts. A `complete: false` (and a `window filled the page` log) means a 14-day window held 500 races — narrow `SWEEP_WINDOW_DAYS`.
+
+### Club verification re-check — arm the schedule (one Vault entry)
+
+Migration `20271120000004` schedules `club-verification-recheck` hourly ([decisions § 2398](../architecture/decisions.md)); its invoker calls nothing until both Vault secrets exist, so verified clubs are simply not re-checked until this is done. The owner-facing `club-verification` function needs nothing beyond the deploy.
+
+1. Deploy both functions: `supabase functions deploy club-verification` and `supabase functions deploy club-verification-recheck` (the latter's `verify_jwt = false` comes from `config.toml`). `CRON_SECRET` is the same function secret the other sweeps use.
+2. Add the URL entry: `select vault.create_secret('https://<project-ref>.supabase.co/functions/v1/club-verification-recheck', 'club_verification_recheck_url');`.
+3. Verify one run: `select public.invoke_club_verification_recheck();` returns a request id, and the latest `net._http_response` shows `200` with `checked` / `verified` / `failed` / `lapsed` / `skipped` counts.
+
+The email proof needs no new credential: it rides the worker's existing SMTP transport and `APP_BASE_URL`.
 
 ### Lambda secrets — one apply, before the next web deploy
 

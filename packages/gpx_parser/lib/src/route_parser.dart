@@ -363,7 +363,6 @@ class RouteParser {
 
   static Route _buildRoute(String name, List<Waypoint> points) {
     double distance = 0;
-    double elevationGain = 0;
     for (int i = 1; i < points.length; i++) {
       distance += _haversine(
         points[i - 1].lat,
@@ -371,23 +370,13 @@ class RouteParser {
         points[i].lat,
         points[i].lng,
       );
-      final prev = points[i - 1].elevationMetres;
-      final curr = points[i].elevationMetres;
-      if (prev != null && curr != null && curr > prev) {
-        // Each elevation is finite on its own ([_finiteOrNull]) yet their
-        // difference need not be: `<ele>1e308</ele>` after `<ele>-1e308</ele>`
-        // overflows to infinity, and an infinite `elevationGainMetres` is the
-        // same unsaveable route a NaN distance is — `jsonEncode` refuses it.
-        final gain = curr - prev;
-        if (gain.isFinite) elevationGain += gain;
-      }
     }
     return Route(
       id: _id(),
       name: name,
       waypoints: points,
       distanceMetres: distance,
-      elevationGainMetres: elevationGain,
+      elevationGainMetres: importedElevationGain(points),
     );
   }
 
@@ -404,4 +393,17 @@ class RouteParser {
             math.sin(dLng / 2);
     return 2 * r * math.asin(math.sqrt(a));
   }
+}
+
+/// A file's climb, graded through the same noise band a recorded run is
+/// ([computeElevationGain]): a DEM-sampled course file (3DEP, SRTM) wobbles a
+/// metre or two between points, and summing every rise read Honolulu's course
+/// as 267 m of climb against 139 m (issue #1297). Each elevation is finite on
+/// its own, yet `<ele>1e308</ele>` after `<ele>-1e308</ele>` overflows the
+/// sum to infinity, which `jsonEncode` refuses as it would a NaN distance, so
+/// an infinite total reads as no climb known. Twin of web's `buildRoute` in
+/// `integrations/import.ts`.
+double importedElevationGain(List<Waypoint> points) {
+  final gain = computeElevationGain(points);
+  return gain.isFinite ? gain : 0;
 }

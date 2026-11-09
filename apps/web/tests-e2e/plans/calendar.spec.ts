@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { liveMonthLabel, seedDateToLive } from '../fixtures/plan-today';
 import { USER_A } from '../fixtures/users';
-import { acceptCookieConsent, showAllPlanWeeks } from '../fixtures/helpers';
+import { acceptCookieConsent, showAllPlanWeeks, planSectionsOpen } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — PlanCalendar.svelte (the month-view calendar mounted
@@ -92,8 +92,9 @@ test.describe('/plans/[id] — PlanCalendar (month view)', () => {
 		// intercept pointer events on the modal buttons we click below.
 		// The banner mounts on every cold page load when localStorage
 		// has no `cookie_consent` entry — Playwright contexts start
-		// without one even though the auth storage state is loaded.
-		await acceptCookieConsent(context);
+		// without one even though the auth storage state is loaded. The
+		// Calendar section starts shut (decisions § 2375); these read inside it.
+		await acceptCookieConsent(context, planSectionsOpen(USER_A.id));
 	});
 
 	// The narrowest type in the app used to live here: `.kind-pill` shrank to

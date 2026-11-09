@@ -1,7 +1,10 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import '../lib/gate_crossing.dart';
 import '../lib/segments.dart';
 
 /// Synthesises a straight-line track at constant pace. Each step adds
@@ -235,6 +238,64 @@ void main() {
     );
     expect(eff, isNotNull);
     expect((eff!.timeSeconds - 100).abs() < 2, isTrue);
+  });
+
+  test('checkpoints: a run passing every checkpoint in order matches', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        checkpoints: [coordAt(250), coordAt(450)],
+      ),
+    );
+    expect(eff, isNotNull);
+    expect((eff!.timeSeconds - 100).abs() < 1, isTrue);
+  });
+
+  test('checkpoints: a checkpoint the run never passes refuses the match', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        // ~1 km east of the track: the far side of a cut-through.
+        checkpoints: [
+          const Waypoint(lat: 37.0 + 350 / 111320, lng: -121.988),
+        ],
+      ),
+    );
+    expect(eff, isNull);
+  });
+
+  test('checkpoints: checkpoints passed out of order refuse the match', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        checkpoints: [coordAt(450), coordAt(250)],
+      ),
+    );
+    expect(eff, isNull);
+  });
+
+  test('checkpoints: a checkpoint outside the start-end window refuses the match',
+      () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(
+        points: [coordAt(100), coordAt(600)],
+        distanceM: 500,
+        // On the track, but after the end crossing.
+        checkpoints: [coordAt(800)],
+      ),
+    );
+    expect(eff, isNull);
   });
 
   // ─── computeGlobalSegmentEfforts (catalogue sweep) ───
@@ -517,5 +578,103 @@ void main() {
       expect(computeGlobalSegmentEffort(zigZagTrack(pair), segment), isNull,
           reason: pair);
     }
+  });
+
+  // ─── the shared gate-matching cases (#1308, decisions § 2402) ──────────
+  //
+  // The Dart reader of fixtures/segments_gate_cases.json, the case table the
+  // `segments` pair shares with apps/web/src/lib/segments/segments.test.ts.
+  final gateFixture = jsonDecode(
+          File('../../fixtures/segments_gate_cases.json').readAsStringSync())
+      as Map<String, dynamic>;
+  final gateBase = DateTime.parse(gateFixture['base_time'] as String);
+  final gateCases =
+      (gateFixture['cases'] as List).cast<Map<String, dynamic>>();
+
+  Gate? fixtureGate(Object? raw) {
+    if (raw == null) return null;
+    final g = raw as Map<String, dynamic>;
+    return Gate(
+      lat: (g['lat'] as num).toDouble(),
+      lng: (g['lng'] as num).toDouble(),
+      bearingDeg: (g['bearing_deg'] as num).toDouble(),
+      halfWidthM: (g['half_width_m'] as num).toDouble(),
+    );
+  }
+
+  List<Waypoint> fixturePoints(Object? raw) => [
+        for (final p in (raw as List? ?? const []).cast<Map<String, dynamic>>())
+          Waypoint(
+            lat: (p['lat'] as num).toDouble(),
+            lng: (p['lng'] as num).toDouble(),
+          ),
+      ];
+
+  for (final c in gateCases) {
+    test('gate fixture: ${c['name']}', () {
+      final segment = c['segment'] as Map<String, dynamic>;
+      final track = [
+        for (final p in (c['track'] as List).cast<Map<String, dynamic>>())
+          Waypoint(
+            lat: (p['lat'] as num).toDouble(),
+            lng: (p['lng'] as num).toDouble(),
+            timestamp: gateBase.add(Duration(
+                milliseconds: ((p['t'] as num) * 1000).round())),
+            offTrack: p['off_track'] == true,
+          ),
+      ];
+      final got = computeGlobalSegmentEffort(
+        track,
+        GlobalSegmentGeometry(
+          points: fixturePoints(segment['points']),
+          distanceM: (segment['distance_m'] as num).toDouble(),
+          checkpoints: fixturePoints(segment['checkpoints']),
+          startGate: fixtureGate(segment['start_gate']),
+          endGate: fixtureGate(segment['end_gate']),
+        ),
+      );
+      final expected = c['expect'] as Map<String, dynamic>?;
+      if (expected == null) {
+        expect(got, isNull);
+        return;
+      }
+      expect(got, isNotNull);
+      expect(got!.matchedBy.name, expected['matched_by']);
+      expect(
+        (got.timeSeconds - (expected['time_seconds'] as num)).abs() < 0.001,
+        isTrue,
+        reason: 'time ${got.timeSeconds} vs ${expected['time_seconds']}',
+      );
+      expect(got.startedAt.difference(gateBase).inMilliseconds,
+          expected['started_offset_ms']);
+    });
+  }
+
+  test('the gate fixture covers every case the issue lists', () {
+    final names = gateCases.map((c) => c['name'] as String).join('\n');
+    for (final needle in [
+      'parallel path 20 m',
+      'hairpin',
+      'wrong direction',
+      'two passes',
+      'loop',
+      'no lines falls back',
+      'interpolated time',
+      'off-track',
+    ]) {
+      expect(names.contains(needle), isTrue, reason: 'no case for "$needle"');
+    }
+  });
+
+  test(
+      'a circle match reports matched_by zone, and the matcher version is '
+      'past the circles-only 1', () {
+    final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
+    final eff = computeGlobalSegmentEffort(
+      track,
+      GlobalSegmentGeometry(points: [track[10], track[100]], distanceM: 450),
+    );
+    expect(eff?.matchedBy, GlobalSegmentMatchedBy.zone);
+    expect(kGlobalSegmentMatcherVersion, 2);
   });
 }

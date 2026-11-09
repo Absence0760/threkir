@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-/// GPS distance estimator, spec v1.4 — a port of
+/// GPS distance estimator, spec v1.5 — a port of
 /// `scripts/gps_distance/reference.py`, which is the spec. See
 /// `docs/features/gps_distance.md`. Every operation mirrors the reference so
 /// `fixtures/gps_distance_vectors.json` replays to 1e-3 m; do not tune a
@@ -39,7 +39,7 @@ class GpsDistanceEstimator {
            : null,
        _records = record ? <_FixRecord>[] : null;
 
-  static const String specVersion = '1.4';
+  static const String specVersion = '1.5';
 
   static const double earthRadiusM = 6371008.8;
   static const double qAccel = 0.6;
@@ -86,6 +86,9 @@ class GpsDistanceEstimator {
   static const double zuptVelSigmaMps = 0.1;
   static const double zuptDopplerOverrideMps = 1.0;
   static const double zuptReleaseM = 40.0;
+  static const double zuptBatchMinCadenceSps = 1.0;
+  static const double zuptBatchMargin = 1.5;
+  static const double zuptMaxNoStepS = 30.0;
   static const double stopHalfWindowS = 20.0;
   static const int stopMinHalfFixes = 3;
   static const double stopSpeedMps = 0.5;
@@ -142,6 +145,7 @@ class GpsDistanceEstimator {
   double? _zuptAnchorX;
   double? _zuptAnchorY;
   int _zuptFixes = 0;
+  double _stepBatchS = 0.0;
   final List<_FixRecord>? _records;
 
   double get distanceM => _gpsDistanceM + _stepDistanceM;
@@ -151,6 +155,17 @@ class GpsDistanceEstimator {
   double get rScale => _rScale;
   int get rejectedFixes => _rejectedFixes;
   int get zuptFixes => _zuptFixes;
+
+  /// The longest walking span between two step increases this run (v1.5).
+  double get stepBatchS => _stepBatchS;
+
+  /// How long without a step increase reads as stationary: Android delivers
+  /// the step counter in batches while the screen is off, so the window
+  /// stretches to the batches the pedometer has shown (v1.5).
+  double get zuptWindowS => math.min(
+    math.max(zuptNoStepS, zuptBatchMargin * _stepBatchS),
+    zuptMaxNoStepS,
+  );
   bool get dopplerTrusted => _dopplerTrusted;
   double get dopplerScale => _dopplerScale;
 
@@ -187,9 +202,9 @@ class GpsDistanceEstimator {
   }
 
   /// Pedometer says stationary: steps seen this run, none for
-  /// [zuptNoStepS], Doppler not contradicting.
+  /// [zuptWindowS], Doppler not contradicting.
   bool _zuptDue(double t, double? dop) {
-    if (!_stepsSeen || _zuptReleased || t - _lastStepIncT! <= zuptNoStepS) {
+    if (!_stepsSeen || _zuptReleased || t - _lastStepIncT! <= zuptWindowS) {
       return false;
     }
     return !(dop != null && _dopplerTrusted && dop >= zuptDopplerOverrideMps);
@@ -534,6 +549,13 @@ class GpsDistanceEstimator {
     }
     final d = cumulativeSteps - prev;
     if (d > 0) {
+      final lastInc = _lastStepIncT;
+      if (lastInc != null) {
+        final span = t - lastInc;
+        if (d >= zuptBatchMinCadenceSps * span) {
+          _stepBatchS = math.max(_stepBatchS, span);
+        }
+      }
       _stepsSeen = true;
       _lastStepIncT = t;
       _zuptReleased = false;

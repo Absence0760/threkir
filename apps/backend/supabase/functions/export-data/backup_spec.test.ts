@@ -59,8 +59,15 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// run_reactions + run_comment_likes, each on both legs (left by the subject
 	// + received on their runs / comments). Direct-message reports (migration
 	// 20271021000003) added reports_against_my_messages. Conversations
-	// (migration 20271105000010) added conversation_settings.
-	assertEquals(specs.length, 77, `expected 77 specs, got ${specs.length}`);
+	// (migration 20271105000010) added conversation_settings. Race courses
+	// (migration 20271114002381) added race_course_suggestions + race_listing_audit.
+	// Plan change requests (migration 20271115002382) added both legs of
+	// plan_change_requests. Club verification (migration 20271120000004)
+	// added club_verification_requests + club_verification_audit.
+	// global_segment_efforts was in the Go worker's list and missing here
+	// until park course times (issue #1313) made it load-bearing. Course alerts (migration 20271124002407) added
+	// course_alerts.
+	assertEquals(specs.length, 85, `expected 85 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -111,6 +118,11 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'event_results.json',
 		'checkpoint_crossings.json',
 		'event_result_claims.json',
+		'race_course_suggestions.json',
+		'race_listing_audit.json',
+		'club_verification_requests.json',
+		'club_verification_audit.json',
+		'course_alerts.json',
 		'user_blocks.json',
 		'club_posts.json',
 		'event_exceptions.json',
@@ -245,6 +257,7 @@ Deno.test('achievements / challenges / recaps exported owner-scoped (GDPR Art 20
 		'challenge_participants.json',
 		'challenge_badges.json',
 		'public_recaps.json',
+		'global_segment_efforts.json',
 	]) {
 		const spec = specs.find((s) => s.entry === entry);
 		assertExists(spec);
@@ -359,7 +372,7 @@ Deno.test('conversation_participants exports only the subject\'s own row (GDPR A
 	if (!own) throw new Error('conversation_settings.json missing');
 	assertEquals(own.table, 'conversation_participants');
 	assertEquals(own.filter, 'user_id=eq.user-A');
-	assertEquals(own.select, 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at');
+	assertEquals(own.select, 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at');
 });
 
 Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {
@@ -396,6 +409,21 @@ Deno.test('the sent-messages export leaves out the recipient\'s read_at', () => 
 	assertEquals(received.select, '*');
 });
 
+Deno.test('an edited message exports its edit time and the text as first sent', () => {
+	// 20271114000210: original_body is the sender's own words, withheld from
+	// clients only so a report can snapshot it. The sender's export carries it,
+	// and a report against their messages carries its snapshot.
+	const specs = buildBackupSpecs(TEST_UID);
+	const sent = specs.find((s) => s.entry === 'direct_messages_sent.json');
+	const reports = specs.find((s) => s.entry === 'reports_against_my_messages.json');
+	assertExists(sent);
+	assertExists(reports);
+	const cols = sent.select.split(',');
+	assertEquals(cols.includes('edited_at'), true);
+	assertEquals(cols.includes('original_body'), true);
+	assertEquals(reports.select.split(',').includes('snapshot_original_body'), true);
+});
+
 Deno.test('coach_athletes exported both ways without the invite_token credential', () => {
 	// audit/data-export-completeness (2026-05-30) Critical. The
 	// subject's coaching links (as coach and as athlete) are their own
@@ -419,6 +447,20 @@ Deno.test('coach_athletes exported both ways without the invite_token credential
 		assertEquals(spec.select.includes('status'), true);
 		assertEquals(spec.select.includes('accepted_at'), true);
 	}
+});
+
+Deno.test('plan_change_requests exported as athlete and as coach', () => {
+	// Issue #1215 Phase 2: a suggested plan change is the athlete's request
+	// and the coach's decision, so it ships to both.
+	const specs = buildBackupSpecs(TEST_UID);
+	const asAthlete = specs.find((s) => s.entry === 'plan_change_requests_as_athlete.json');
+	const asCoach = specs.find((s) => s.entry === 'plan_change_requests_as_coach.json');
+	assertExists(asAthlete);
+	assertExists(asCoach);
+	assertEquals(asAthlete.table, 'plan_change_requests');
+	assertEquals(asCoach.table, 'plan_change_requests');
+	assertEquals(asAthlete.filter, `athlete_id=eq.${TEST_UID}`);
+	assertEquals(asCoach.filter, `coach_id=eq.${TEST_UID}`);
 });
 
 Deno.test('event_results exported for the subject (GDPR Art 20)', () => {

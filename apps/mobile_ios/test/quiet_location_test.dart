@@ -256,11 +256,15 @@ void main() {
     // a settings or accuracy request is allowed only where the run screen
     // offers the runner a Location settings button, and where START checks,
     // as RunRecorder.prepare does, that a GPS run can get a fix at all.
+    // course_drive_location.dart is the third named intent, driving a
+    // course (docs/features/course_drive.md gotcha 7): a background stream
+    // with no recorder behind it.
     const allowed = {
       'lib/screens/run_screen.dart': {
         'openLocationSettings',
         'isLocationServiceEnabled',
       },
+      'lib/course_drive_location.dart': {'getPositionStream'},
     };
     final forbidden = RegExp(
         r'\b(isLocationServiceEnabled|openLocationSettings|getLocationAccuracy|'

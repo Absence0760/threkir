@@ -34,6 +34,13 @@
 	import type { Modality } from '#lib/settings/modality_visibility.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import {
+		DASHBOARD_HIDDEN_CARDS_KEY,
+		HIDEABLE_DASHBOARD_CARDS,
+		parseHiddenCards,
+		withCardHidden,
+		type HideableDashboardCard,
+	} from '#lib/training/dashboard_layout.ts';
+	import {
 		MESSAGES_COACH_ROW_KEY,
 		parseCoachInboxPlacement,
 		type CoachInboxPlacement,
@@ -52,6 +59,16 @@
 	// while the Coach is on for this deploy, as the inbox row is.
 	const coachOn = coachEnabled();
 	let coachRow = $state<CoachInboxPlacement>('pinned');
+	/// Trend groups hidden from /dashboard and mobile Home; this is where a
+	/// hidden one comes back (decisions § 2386).
+	let hiddenCards = $state<HideableDashboardCard[]>([]);
+	const HOME_CARD_LABELS: Record<HideableDashboardCard, MessageKey> = {
+		volume: 'dash.trendGroupVolume',
+		fitness: 'dash.trendGroupFitness',
+		performance: 'dash.trendGroupPerformance',
+		effort: 'dash.trendGroupEffort',
+		recent: 'dash.trendGroupRecent',
+	};
 
 	/// `auto` is the absence of the key, not a fourth level: picking it writes
 	/// null, which deletes it and hands the level back to the derivation.
@@ -98,6 +115,7 @@
 		setUndoWindowS(undoWindowS);
 		showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
 		coachRow = parseCoachInboxPlacement(effective(settings, MESSAGES_COACH_ROW_KEY));
+		hiddenCards = parseHiddenCards(effective<unknown>(settings, DASHBOARD_HIDDEN_CARDS_KEY));
 		const storedDisclosure = effective<string>(settings, DISCLOSURE_LEVEL_KEY);
 		disclosureChoice = isDisclosureLevel(storedDisclosure) ? storedDisclosure : 'auto';
 		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
@@ -167,6 +185,11 @@
 	function pickModality(modality: Modality, shown: boolean) {
 		setModalityChoice(modality, shown);
 		prefs.save(modality === 'gym' ? { show_gym: shown } : { show_nutrition: shown });
+	}
+
+	function pickHomeCard(id: HideableDashboardCard, shown: boolean) {
+		hiddenCards = withCardHidden(hiddenCards, id, !shown);
+		prefs.save({ [DASHBOARD_HIDDEN_CARDS_KEY]: hiddenCards });
 	}
 
 	// Weight unit is display + entry only; storage stays canonical kg.
@@ -369,5 +392,22 @@
 				<span class="hint">{m('prefs.showNutritionHint')}</span>
 			</span>
 		</label>
+	</section>
+
+	<section class="card" id="home-cards">
+		<h2>{m('prefs.homeCardsHeading')}</h2>
+		<p class="hint" id="home-cards-hint">{m('prefs.homeCardsHint')}</p>
+		{#each HIDEABLE_DASHBOARD_CARDS as id (id)}
+			<label class="checkbox-row">
+				<input
+					type="checkbox"
+					checked={!hiddenCards.includes(id)}
+					aria-describedby="home-cards-hint"
+					data-testid="home-card-{id}"
+					onchange={(e) => pickHomeCard(id, e.currentTarget.checked)}
+				/>
+				<span>{m(HOME_CARD_LABELS[id])}</span>
+			</label>
+		{/each}
 	</section>
 </PrefsPage>

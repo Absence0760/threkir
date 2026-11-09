@@ -5,7 +5,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A, USER_B } from '../fixtures/users';
 import { readMaybeRow, readRows } from '../fixtures/db-read';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, planSectionsOpen } from '../fixtures/helpers';
 import { createThrowawayPlan, deleteThrowawayPlan, type ThrowawayPlan } from '../fixtures/throwaway-plan';
 
 /**
@@ -68,7 +68,7 @@ test.describe('Public plan library — publish → browse → clone', () => {
 
 		// ── USER_A publishes ──
 		const ctxA = await browser.newContext({ storageState: USER_A.storageStatePath });
-		await acceptCookieConsent(ctxA);
+		await acceptCookieConsent(ctxA, planSectionsOpen(USER_A.id));
 		const pageA = await ctxA.newPage();
 		await pageA.goto(`/plans/${SOURCE_PLAN_ID}`);
 		const libraryRow = pageA
@@ -199,7 +199,7 @@ test.describe('Public plan library — publish → browse → clone', () => {
 	test('Unpublish asks first; Cancel keeps the library copy', async ({ browser }) => {
 		const admin = getAdminClient();
 		const ctx = await browser.newContext({ storageState: USER_A.storageStatePath });
-		await acceptCookieConsent(ctx);
+		await acceptCookieConsent(ctx, planSectionsOpen(USER_A.id));
 		const page = await ctx.newPage();
 		await page.goto(`/plans/${SOURCE_PLAN_ID}`);
 		const libraryRow = page.locator('.publish-row').filter({ hasText: 'Public plan library' });
@@ -283,7 +283,7 @@ test.describe('Public plan library — the copy follows its plan, not its name',
 	test('a renamed plan still offers Unpublish, and it removes that copy', async ({ browser }) => {
 		plan = await createThrowawayPlan(`Rename ${Date.now().toString(36)}`);
 		const ctx = await browser.newContext({ storageState: plan.user.storageStatePath });
-		await acceptCookieConsent(ctx);
+		await acceptCookieConsent(ctx, planSectionsOpen(plan.user.id));
 		const page = await ctx.newPage();
 		try {
 			await publish(page, plan.planId);
@@ -326,7 +326,7 @@ test.describe('Public plan library — the copy follows its plan, not its name',
 		if (weekError) throw new Error(`second plan week seed failed: ${weekError.message}`);
 
 		const ctx = await browser.newContext({ storageState: plan.user.storageStatePath });
-		await acceptCookieConsent(ctx);
+		await acceptCookieConsent(ctx, planSectionsOpen(plan.user.id));
 		const page = await ctx.newPage();
 		try {
 			await publish(page, plan.planId);

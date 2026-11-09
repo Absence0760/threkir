@@ -17,7 +17,7 @@
 
 begin;
 
-select plan(8);
+select plan(10);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -129,12 +129,26 @@ select lives_ok(
              '201', 'Cara Organiser', 2800, 10000) $$,
   'a plain event_organiser can INSERT a bib-only result');
 
+select is(
+  (select duration_s from event_results
+    where event_id = '43434343-4343-4343-4343-434343434311'
+      and instance_start = '2026-06-06 09:00+00' and bib = '201'),
+  2800,
+  'the organiser''s bib-only result is stored with the time it sent');
+
 -- 7. event_organiser can UPDATE an existing bib-only row (the re-import path).
 select lives_ok(
   $$ update event_results set duration_s = 2750, finisher_name = 'Cara O.'
      where event_id = '43434343-4343-4343-4343-434343434311'
        and instance_start = '2026-06-06 09:00+00' and bib = '201' $$,
   'a plain event_organiser can UPDATE a bib-only result (re-import path)');
+
+select is(
+  (select duration_s from event_results
+    where event_id = '43434343-4343-4343-4343-434343434311'
+      and instance_start = '2026-06-06 09:00+00' and bib = '201'),
+  2750,
+  'the re-imported bib-only time replaces the old one');
 
 -- 8. event_organiser CANNOT mutate an account-owned result via this path.
 -- Mark bib 101 as account-owned, then have the organiser try to overwrite its

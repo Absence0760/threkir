@@ -139,27 +139,49 @@ void main() {
   test('archived conversations leave the inbox for the Archived list, order kept',
       () {
     final threads = [('a', false), ('b', true), ('c', false), ('d', true)];
-    final split = partitionArchived(threads, archived: (t) => t.$2);
+    final split =
+        partitionArchived(threads, archived: (t) => t.$2, request: (_) => false);
     expect([for (final t in split.inbox) t.$1], ['a', 'c']);
     expect([for (final t in split.archived) t.$1], ['b', 'd']);
-    final empty = partitionArchived(<(String, bool)>[], archived: (t) => t.$2);
+    expect(split.requests, isEmpty);
+    final empty = partitionArchived(<(String, bool)>[],
+        archived: (t) => t.$2, request: (_) => false);
     expect(empty.inbox, isEmpty);
     expect(empty.archived, isEmpty);
+    expect(empty.requests, isEmpty);
+  });
+
+  test('a message request goes to Requests, even when it is also archived', () {
+    final threads = [
+      ('a', false, true),
+      ('b', false, false),
+      ('c', true, true),
+      ('d', true, false),
+    ];
+    final split =
+        partitionArchived(threads, archived: (t) => t.$2, request: (t) => t.$3);
+    expect([for (final t in split.requests) t.$1], ['a', 'c']);
+    expect([for (final t in split.inbox) t.$1], ['b']);
+    expect([for (final t in split.archived) t.$1], ['d']);
   });
 
   test(
-      'the badge counts unread only in conversations neither muted nor archived',
+      'the badge counts unread only in conversations neither muted, archived nor a request',
       () {
     expect(
       unreadDmBadgeCount([
-        (unread: 2, muted: false, archived: false),
-        (unread: 5, muted: true, archived: false),
-        (unread: 3, muted: false, archived: true),
-        (unread: 1, muted: false, archived: false),
+        (unread: 2, muted: false, archived: false, request: false),
+        (unread: 5, muted: true, archived: false, request: false),
+        (unread: 3, muted: false, archived: true, request: false),
+        (unread: 4, muted: false, archived: false, request: true),
+        (unread: 1, muted: false, archived: false, request: false),
       ]),
       3,
     );
-    expect(unreadDmBadgeCount([(unread: -4, muted: false, archived: false)]), 0);
+    expect(
+        unreadDmBadgeCount(
+            [(unread: -4, muted: false, archived: false, request: false)]),
+        0);
     expect(unreadDmBadgeCount(const []), 0);
   });
 }

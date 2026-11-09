@@ -516,10 +516,11 @@ $neutralised$;`,
   [
     'global_segment_leaderboard',
     {
-      why: "the catalogue twin of `segment_leaderboard_tiered`: drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check, the club-membership gate, the shadow-hidden name masking and the `health_data_consent_at` requirement on the age band; keeps the segment id, the gender filter and the age arithmetic itself, which are the query the caller asked for",
+      why: "the catalogue twin of `segment_leaderboard_tiered`: drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check, the club-membership gate, the shadow-hidden name masking and the `health_data_consent_at` requirement on the age band; keeps the segment id, the gender filter, the age arithmetic itself and the park-timezone season (decisions § 2383), which are the query the caller asked for",
       sql: `create or replace function public.global_segment_leaderboard(
    p_segment_id uuid, p_gender text default null::text, p_age_band text default null::text,
-   p_limit integer default 50, p_club_id uuid default null::uuid)
+   p_limit integer default 50, p_club_id uuid default null::uuid,
+   p_season integer default null::integer)
  returns table(effort_id uuid, user_id uuid, run_id uuid, time_seconds integer,
                started_at timestamptz, display_name text, avatar_url text,
                gender text, age integer)
@@ -547,6 +548,12 @@ as $neutralised$
                       then split_part(p_age_band, '-', 2)::integer end)
       )
     )
+    and (
+      p_season is null
+      or extract(year from (se.started_at at time zone coalesce(
+           (select p.timezone from public.park_courses pc join public.parks p on p.id = pc.park_id
+             where pc.global_segment_id = p_segment_id), 'UTC')))::integer = p_season
+    )
     and ${mine('se')}
   order by se.user_id, se.time_seconds asc, se.started_at asc;
 $neutralised$;`,
@@ -565,6 +572,119 @@ $neutralised$;`,
                          true);`,
         probe: `select count(*) from global_segment_leaderboard(
                   '00000000-0000-0000-0000-0000000f0002'::uuid);`,
+      },
+    },
+  ],
+  [
+    'global_segment_completions',
+    {
+      why: 'the most-completions board beside `global_segment_leaderboard` (decisions § 2383): drops `gs.is_active`, the per-effort `is_run_visible_to`, the block check and the shadow-hidden name masking; keeps the segment id, the park-timezone season and the distinct-local-day count, which are the query the caller asked for',
+      sql: `create or replace function public.global_segment_completions(
+   p_segment_id uuid, p_season integer default null::integer, p_limit integer default 50)
+ returns table(user_id uuid, completions integer, last_completed_at timestamptz,
+               display_name text, avatar_url text)
+ language sql stable security definer set search_path to 'public', 'private'
+as $neutralised$
+  with tz as (
+    select coalesce(
+      (select p.timezone from public.park_courses pc join public.parks p on p.id = pc.park_id
+        where pc.global_segment_id = p_segment_id), 'UTC') as v
+  )
+  select se.user_id,
+         count(distinct (se.started_at at time zone tz.v)::date)::integer,
+         max(se.started_at), max(up.display_name), max(up.avatar_url)
+  from public.global_segment_efforts se
+  cross join tz
+  join public.user_profiles up on up.id = se.user_id
+  where se.global_segment_id = p_segment_id
+    and (p_season is null
+         or extract(year from (se.started_at at time zone tz.v))::integer = p_season)
+    and ${mine('se')}
+  group by se.user_id;
+$neutralised$;`,
+      subject: 'global_segment_efforts se',
+      witness: {
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+                 values ('00000000-0000-0000-0000-0000000f0003', 'guard witness',
+                         '[{"lat":40.0,"lng":-73.0},{"lat":40.002,"lng":-73.0}]', 400, false);
+                insert into global_segment_efforts
+                       (global_segment_id, run_id, user_id, time_seconds, started_at)
+                 values ('00000000-0000-0000-0000-0000000f0003',
+                         (select id from runs order by id limit 1),
+                         (select user_id from runs order by id limit 1), 100, now());
+                select set_config('request.jwt.claims',
+                         json_build_object('sub', (select id from auth.users order by id desc limit 1))::text,
+                         true);`,
+        probe: `select count(*) from global_segment_completions(
+                  '00000000-0000-0000-0000-0000000f0003'::uuid);`,
+      },
+    },
+  ],
+  [
+    'global_segments_in_bbox',
+    {
+      why: 'the server and web candidate lookup (decisions § 2392): drops `gs.is_active`, the one rule that hides a pulled catalogue segment; keeps the bounds validation, the padded-extent overlap and the limit, which are the query the caller asked for',
+      sql: `create or replace function public.global_segments_in_bbox(
+   p_min_lat double precision, p_min_lng double precision,
+   p_max_lat double precision, p_max_lng double precision,
+   p_pad_m double precision default 50, p_limit integer default 1000)
+ returns setof public.global_segments
+ language sql stable security definer set search_path to 'public', 'private', 'pg_temp'
+as $neutralised$
+  select gs.*
+    from public.global_segments gs
+   where private.waypoints_box(gs.waypoints)
+         && private.pad_box(box(point(p_min_lng, p_min_lat), point(p_max_lng, p_max_lat)), p_pad_m)
+     and ${mine('gs')}
+   order by gs.id
+   limit least(greatest(coalesce(p_limit, 1000), 1), 2000);
+$neutralised$;`,
+      subject: 'global_segments gs',
+      witness: {
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+                 values ('00000000-0000-0000-0000-0000000f0004', 'guard witness',
+                         '[{"lat":-60.0,"lng":-140.0},{"lat":-60.002,"lng":-140.0}]', 400, false);`,
+        probe: `select count(*) from global_segments_in_bbox(-60.003, -140.001, -59.999, -139.999)
+                 where id = '00000000-0000-0000-0000-0000000f0004';`,
+      },
+    },
+  ],
+  [
+    'segment_backfill_runs',
+    {
+      why: 'the launch-backfill batch (decisions § 2392): drops `gs.is_active`, which hides a pulled segment from any backfill; keeps the cursor, the stored-track and half-length prefilters, the extent overlap and the limit, which say which runs the batch is asking about',
+      sql: `create or replace function public.segment_backfill_runs(
+   p_segment_id uuid, p_after_run_id uuid default null::uuid, p_limit integer default 25)
+ returns table(run_id uuid)
+ language sql stable security definer set search_path to 'public', 'private', 'pg_temp'
+as $neutralised$
+  select r.id
+    from public.global_segments gs
+    join public.runs r on true
+    left join public.run_track_extents x on x.run_id = r.id
+   where gs.id = p_segment_id
+     and r.track_url is not null
+     and r.track_url <> ''
+     and r.id > coalesce(p_after_run_id, '00000000-0000-0000-0000-000000000000'::uuid)
+     and r.distance_m >= gs.distance_m * 0.5
+     and (x.run_id is null
+          or box(point(x.min_lng, x.min_lat), point(x.max_lng, x.max_lat))
+             && private.pad_box(private.waypoints_box(gs.waypoints), 50))
+     and ${mine('r')}
+   order by r.id
+   limit least(greatest(coalesce(p_limit, 25), 1), 100);
+$neutralised$;`,
+      subject: 'runs r',
+      witness: {
+        setup: `insert into global_segments (id, name, waypoints, distance_m, is_active)
+                 values ('00000000-0000-0000-0000-0000000f0005', 'guard witness',
+                         '[{"lat":-61.0,"lng":-141.0},{"lat":-61.002,"lng":-141.0}]', 400, false);
+                update runs
+                   set track_url = user_id::text || '/' || id::text || '.json.gz',
+                       distance_m = greatest(distance_m, 1000)
+                 where id = (select id from runs order by id limit 1);`,
+        probe: `select count(*) from segment_backfill_runs(
+                  '00000000-0000-0000-0000-0000000f0005'::uuid, null, 100);`,
       },
     },
   ],
@@ -1590,11 +1710,11 @@ $neutralised$;`,
   [
     'dm_threads',
     {
-      why: "drops my_msgs' participant check and its delete-for-me `hidden_before` exclusion, the SELECT policy's two rules 20271113000001 wrote into the body when it made the function a definer; keeps the unread count's `recipient_id = auth.uid()` and the caller's own participant row for muted / archived / marked-unread, which say whose inbox the row is in",
+      why: "drops my_msgs' participant check, its delete-for-me `hidden_before` exclusion and the declined-request filter (20271115002384), the SELECT policy's two rules 20271113000001 wrote into the body when it made the function a definer; keeps the unread count's `recipient_id = auth.uid()` and the caller's own participant row for muted / archived / marked-unread, which say whose inbox the row is in",
       sql: `create or replace function public.dm_threads()
  returns table(conversation_id uuid, partner_id uuid, deleted_partner_key uuid, last_body text,
                last_unsent boolean, last_at timestamptz, last_from_me boolean, unread bigint,
-               muted boolean, archived boolean, marked_unread boolean)
+               muted boolean, archived boolean, marked_unread boolean, request boolean)
  language sql stable security definer set search_path to 'public', 'pg_temp'
 as $neutralised$
   with my_msgs as (
@@ -1626,7 +1746,8 @@ as $neutralised$
     greatest(coalesce(u.cnt, 0), case when p.marked_unread_at is not null then 1 else 0 end) as unread,
     coalesce(p.muted_at is not null, false) as muted,
     coalesce(p.archived_at is not null and p.archived_at >= l.last_at, false) as archived,
-    coalesce(p.marked_unread_at is not null, false) as marked_unread
+    coalesce(p.marked_unread_at is not null, false) as marked_unread,
+    coalesce(p.request_state = 'pending', false) as request
   from latest l
   left join unread u using (conversation_id)
   left join conversation_participants p
@@ -1656,6 +1777,86 @@ $neutralised$;`,
                 select set_config('request.jwt.claims',
                   '{"sub":"00000000-0000-0000-0000-00000000c0d1","role":"authenticated"}', true);`,
         probe: `select count(*) from dm_threads() where partner_id = '00000000-0000-0000-0000-00000000c0d2';`,
+      },
+    },
+  ],
+  [
+    'race_course_suggestions_for_review',
+    {
+      why: "drops the reviewer gate (signed in; an owner/admin of the listing's verified organiser club, or of any verified club while the race is unclaimed); keeps `listing_id = p_listing_id`, the pending status and the public-route join, which say which suggestions the queue is about",
+      sql: `create or replace function public.race_course_suggestions_for_review(p_listing_id uuid)
+ returns table(id uuid, route_id uuid, route_name text, route_club_id uuid, note text, created_at timestamptz)
+ language plpgsql stable security definer set search_path to 'public'
+as $neutralised$
+begin
+  return query
+    select s.id, s.route_id, r.name, r.club_id, s.note, s.created_at
+      from race_course_suggestions s
+      join routes r on r.id = s.route_id
+     where s.listing_id = p_listing_id
+       and s.status = 'pending'
+       and r.is_public = true
+       and r.shadow_hidden = false
+       and ${mine('s')}
+     order by s.created_at;
+end;
+$neutralised$;`,
+      subject: 'race_course_suggestions s — the queued suggestions whose reviewer gate was dropped',
+      witness: {
+        // Its own listing, route and suggester, and no claims set: the real
+        // function returns nothing to a caller who is not signed in.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0e1', 'authenticated', 'authenticated',
+                   'pgtap-guard-rcs@local', '', now(), now());
+                insert into routes (id, user_id, name, waypoints, distance_m, is_public)
+                  values ('00000000-0000-0000-0000-00000000c0e2', '00000000-0000-0000-0000-00000000c0e1',
+                          'guard witness course', '[]'::jsonb, 5000, true);
+                insert into race_listings (id, provider, name, race_date)
+                  values ('00000000-0000-0000-0000-00000000c0e3', 'manual', 'guard witness race', '2036-01-01');
+                insert into race_course_suggestions (listing_id, route_id, user_id)
+                  values ('00000000-0000-0000-0000-00000000c0e3', '00000000-0000-0000-0000-00000000c0e2',
+                          '00000000-0000-0000-0000-00000000c0e1');
+                select set_config('request.jwt.claims', '', true);`,
+        probe: `select count(*) from race_course_suggestions_for_review('00000000-0000-0000-0000-00000000c0e3');`,
+      },
+    },
+  ],
+  [
+    'race_course_review_queue',
+    {
+      why: "drops the reviewer gate (signed in; an owner/admin of some verified club; a claimed race only for its organiser club's owners/admins); keeps the pending status and the public-route join, which say which suggestions the queue counts",
+      sql: `create or replace function public.race_course_review_queue()
+ returns table(listing_id uuid, name text, race_date date, organiser_club_id uuid, pending_count integer)
+ language plpgsql stable security definer set search_path to 'public'
+as $neutralised$
+begin
+  return query
+    select l.id, l.name, l.race_date, l.organiser_club_id, count(*)::integer
+      from race_listings l
+      join race_course_suggestions s on s.listing_id = l.id and s.status = 'pending'
+      join routes r on r.id = s.route_id and r.is_public = true and r.shadow_hidden = false
+     where ${mine('l')}
+     group by l.id, l.name, l.race_date, l.organiser_club_id
+     order by l.race_date, l.name;
+end;
+$neutralised$;`,
+      subject: 'race_listings l — the queued races (each row is a listing, counted over its suggestions) whose reviewer gate was dropped',
+      witness: {
+        // Its own listing, route and suggester, and no claims set: the real
+        // function returns nothing to a caller who is not signed in.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0f1', 'authenticated', 'authenticated',
+                   'pgtap-guard-rcq@local', '', now(), now());
+                insert into routes (id, user_id, name, waypoints, distance_m, is_public)
+                  values ('00000000-0000-0000-0000-00000000c0f2', '00000000-0000-0000-0000-00000000c0f1',
+                          'guard witness queue course', '[]'::jsonb, 5000, true);
+                insert into race_listings (id, provider, name, race_date)
+                  values ('00000000-0000-0000-0000-00000000c0f3', 'manual', 'guard witness queue race', '2036-01-01');
+                insert into race_course_suggestions (listing_id, route_id, user_id)
+                  values ('00000000-0000-0000-0000-00000000c0f3', '00000000-0000-0000-0000-00000000c0f2',
+                          '00000000-0000-0000-0000-00000000c0f1');
+                select set_config('request.jwt.claims', '', true);`,
+        probe: `select count(*) from race_course_review_queue() where listing_id = '00000000-0000-0000-0000-00000000c0f3';`,
       },
     },
   ],

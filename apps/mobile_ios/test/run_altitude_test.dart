@@ -1,6 +1,5 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../lib/route_simplify.dart';
 import '../lib/run_altitude.dart';
 
 // Twin of apps/web/src/lib/runs/run_altitude.test.ts; keep the shared cases in

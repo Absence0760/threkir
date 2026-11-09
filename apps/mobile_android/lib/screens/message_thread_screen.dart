@@ -9,6 +9,7 @@ import 'package:ui_kit/ui_kit.dart';
 
 import '../auth_error.dart';
 import '../dm_attachment.dart';
+import '../dm_edit.dart';
 import '../dm_pending_hides.dart';
 import '../dm_read_receipt.dart';
 import '../dm_send_error.dart';
@@ -18,6 +19,7 @@ import '../l10n/locale_support.dart';
 import '../undo_queue.dart';
 import '../widgets/dm_route_attachment.dart';
 import '../widgets/error_state.dart';
+import '../widgets/plan_change_requests.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
@@ -42,8 +44,10 @@ const Duration kMessageThreadPollInterval = Duration(seconds: 10);
 /// shown — the follow / block gate, the send throttle, offline and anything
 /// else each read differently (`dm_send_error.dart`).
 ///
-/// Long-pressing a message opens its options: Unsend on your own (confirmed,
-/// since it cannot be undone) and Report on the other person's. A partner
+/// Long-pressing a message opens its options: Edit on your own for 15
+/// minutes after sending (migration 20271114000210), Unsend on your own
+/// (confirmed, since it cannot be undone) and Report on the other person's.
+/// An edited message is marked "Edited" on both sides. A partner
 /// who deleted their account opens through [MessageThreadScreen.deletedPartner]:
 /// the viewer's own messages under that partner's key, with no composer
 /// (migration 20271021000003).
@@ -68,6 +72,7 @@ class MessageThreadScreen extends StatefulWidget {
     this.initialMuted,
     this.initialArchived,
     this.initialMarkedUnread,
+    this.initialRequest,
   }) : deletedPartnerKey = null;
 
   const MessageThreadScreen.deletedPartner({
@@ -80,7 +85,8 @@ class MessageThreadScreen extends StatefulWidget {
     this.initialMuted,
     this.initialArchived,
     this.initialMarkedUnread,
-  })  : partnerId = null,
+  })  : initialRequest = null,
+        partnerId = null,
         partnerName = null,
         partnerAvatarUrl = null;
 
@@ -103,6 +109,10 @@ class MessageThreadScreen extends StatefulWidget {
 
   /// The viewer marked the conversation unread; opening it clears the mark.
   final bool? initialMarkedUnread;
+
+  /// The conversation is a message request to the viewer they have not
+  /// answered (migration 20271115002384).
+  final bool? initialRequest;
 
   @override
   State<MessageThreadScreen> createState() => _MessageThreadScreenState();
@@ -158,6 +168,13 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// The viewer deleted the conversation for themselves; the undo bar is up.
   bool _deleted = false;
 
+  /// A message request to the viewer they have not answered. The composer
+  /// gives way to Accept / Decline / Block; the server withholds the read
+  /// receipt while it stands, so the requester learns nothing until it is
+  /// accepted.
+  bool _request = false;
+  bool _requestBusy = false;
+
   /// Bumped whenever the list is written from something newer than a poll's
   /// read (a send, an unsend), so a poll already in flight is dropped rather
   /// than putting an unsent message's text back.
@@ -174,6 +191,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     _conversationId = widget.conversationId;
     _muted = widget.initialMuted ?? false;
     _archived = widget.initialArchived ?? false;
+    _request = widget.initialRequest ?? false;
     WidgetsBinding.instance.addObserver(this);
     _composer.addListener(_onComposerChanged);
     if (widget.api.userId == null) return;
@@ -230,6 +248,98 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   String _displayName(AppLocalizations l10n) =>
       _partnerName ?? l10n.profileRunnerFallback;
 
+  /// The newest message from the requester on screen: a decline stops there,
+  /// so one that arrives after the viewer decided is not hidden unseen.
+  DirectMessageRow? get _requestThrough {
+    for (final m in _messages.reversed) {
+      if (m.senderId == widget.partnerId) return m;
+    }
+    return null;
+  }
+
+  Future<void> _acceptRequest() async {
+    final id = _conversationId;
+    if (id == null || _requestBusy) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _requestBusy = true);
+    try {
+      await widget.api.acceptDmRequest(id);
+      if (!mounted) return;
+      setState(() => _request = false);
+      showTopBanner(context, l10n.messagesRequestAcceptedToast);
+    } catch (e) {
+      debugPrint('message request accept failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        showTopBanner(
+            context, l10n.messagesRequestActionFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _requestBusy = false);
+    }
+  }
+
+  /// Decline cannot be undone from the app (the conversation leaves every
+  /// list), so it is confirmed rather than held behind an undo window
+  /// (conventions.md § Destructive actions).
+  Future<void> _confirmDecline() async {
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.messagesRequestDeclineConfirmTitle),
+            content: Text(l10n.messagesRequestDeclineConfirmMessage),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(l10n.profileCancel),
+              ),
+              FilledButton.tonal(
+                key: const ValueKey('message-request-decline-confirm'),
+                style: FilledButton.styleFrom(
+                  foregroundColor: Theme.of(ctx).colorScheme.error,
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(l10n.messagesRequestDecline),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok || !mounted) return;
+    await _declineRequest(block: false);
+  }
+
+  /// Decline, or decline and block in one server transaction. Either way the
+  /// conversation leaves the viewer's lists, so the thread closes.
+  Future<void> _declineRequest({required bool block}) async {
+    final id = _conversationId;
+    final through = _requestThrough;
+    if (id == null || through == null || _requestBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final name = _displayName(l10n);
+    setState(() => _requestBusy = true);
+    try {
+      await widget.api
+          .declineDmRequest(id, throughMessageId: through.id, block: block);
+      if (!mounted) return;
+      if (block) _blockVersion++;
+      final messenger = Navigator.of(context);
+      showTopBanner(
+        context,
+        block ? l10n.profileBlocked(name) : l10n.messagesRequestDeclinedToast,
+      );
+      messenger.pop();
+    } catch (e) {
+      debugPrint('message request decline failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        showTopBanner(
+            context, l10n.messagesRequestActionFailed(friendlyError(l10n, e)));
+      }
+    } finally {
+      if (mounted) setState(() => _requestBusy = false);
+    }
+  }
+
   Future<void> _toggleBlock() async {
     if (_blockBusy || widget.partnerId == null) return;
     if (_blocked) return _unblock();
@@ -257,6 +367,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         ) ??
         false;
     if (!ok || !mounted) return;
+    if (_request && _requestThrough != null) {
+      return _declineRequest(block: true);
+    }
     setState(() => _blockBusy = true);
     try {
       await widget.api.blockUser(widget.partnerId!);
@@ -339,6 +452,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       final archivedAt = state.archivedAt;
       setState(() {
         _muted = state.muted;
+        _request = state.request;
         _archived = archivedAt != null &&
             (newest == null || !archivedAt.isBefore(newest));
       });
@@ -648,11 +762,13 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     );
   }
 
-  /// The long-press options for one stored message: Unsend on your own,
-  /// Report on the other person's. An unsent message has neither.
+  /// The long-press options for one stored message: Edit (inside the window)
+  /// and Unsend on your own, Report on the other person's. An unsent message
+  /// has none.
   Future<void> _showOptions(DirectMessageRow m) async {
     final l10n = AppLocalizations.of(context);
     final mine = m.senderId == widget.api.userId;
+    final editable = canEditDm(m, widget.api.userId, DateTime.now());
     final action = await showModalBottomSheet<String>(
       context: context,
       useSafeArea: true,
@@ -660,6 +776,13 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (editable)
+              ListTile(
+                key: const ValueKey('message-action-edit'),
+                leading: const Icon(Icons.edit_outlined),
+                title: Text(l10n.messagesEdit),
+                onTap: () => Navigator.pop(ctx, 'edit'),
+              ),
             if (mine)
               ListTile(
                 key: const ValueKey('message-action-unsend'),
@@ -682,6 +805,8 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     if (!mounted || action == null) return;
     if (action == 'unsend') {
       await _unsend(m);
+    } else if (action == 'edit') {
+      await _edit(m);
     } else {
       await showReportSheet(
         context,
@@ -690,6 +815,21 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         targetId: m.id,
       );
     }
+  }
+
+  /// The edit saves from inside its dialog, so a refused save is said there
+  /// with the text still in the field rather than lost behind a banner.
+  Future<void> _edit(DirectMessageRow m) async {
+    final row = await showDialog<DirectMessageRow>(
+      context: context,
+      builder: (ctx) => _EditMessageDialog(
+        initial: m.body ?? '',
+        save: (body) => widget.api.editDm(m.id, body),
+      ),
+    );
+    if (row == null || !mounted) return;
+    _localWrites++;
+    setState(() => _messages = _merge(_messages, [row]));
   }
 
   /// Unsend cannot be undone — the server clears the text for both people —
@@ -846,6 +986,21 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           ? SignInRequiredState(api: widget.api)
           : Column(
               children: [
+                // A suggested change to a coach-assigned plan is a system
+                // card above the conversation, merged in the UI only
+                // (decisions § 2382): it is not a direct message.
+                if (widget.partnerId != null && !_deleted)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.sizeOf(context).height * 0.45,
+                    ),
+                    child: SingleChildScrollView(
+                      child: PlanChangeRequestsSection(
+                        api: widget.api,
+                        partnerId: widget.partnerId,
+                      ),
+                    ),
+                  ),
                 Expanded(
                   child: _deleted
                       ? EmptyState(
@@ -870,7 +1025,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
                                 child: Text(l10n.messagesUnblock),
                               ),
                             )
-                          : _composerBar(l10n),
+                          : _request
+                              ? _requestBar(l10n)
+                              : _composerBar(l10n),
               ],
             ),
     );
@@ -924,6 +1081,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           time: _stamp(m.createdAt, tag),
           seenLabel: seen?.id == m.id
               ? l10n.messagesSeenAt(_stamp(seen!.seenAt!, tag))
+              : null,
+          editedLabel: m.editedAt != null && m.unsentAt == null
+              ? l10n.messagesEdited
               : null,
           onLongPress: m.unsentAt == null ? () => _showOptions(m) : null,
           longPressHint: l10n.messagesOptionsHint,
@@ -991,6 +1151,55 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     );
   }
 
+  Widget _requestBar(AppLocalizations l10n) {
+    final theme = Theme.of(context);
+    final canDecline = !_requestBusy && _requestThrough != null;
+    return SafeArea(
+      top: false,
+      child: Container(
+        key: const ValueKey('message-request-bar'),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          border: Border(top: BorderSide(color: theme.dividerColor)),
+        ),
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.messagesRequestNotice(_displayName(l10n)),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton(
+                  key: const ValueKey('message-request-accept'),
+                  onPressed: _requestBusy ? null : _acceptRequest,
+                  child: Text(l10n.messagesRequestAccept),
+                ),
+                OutlinedButton(
+                  key: const ValueKey('message-request-decline'),
+                  onPressed: canDecline ? _confirmDecline : null,
+                  child: Text(l10n.messagesRequestDecline),
+                ),
+                OutlinedButton(
+                  key: const ValueKey('message-request-block'),
+                  onPressed: canDecline ? _toggleBlock : null,
+                  child: Text(l10n.messagesBlock),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _composerBar(AppLocalizations l10n) {
     final theme = Theme.of(context);
     final canSend = !_sending && _composer.text.trim().isNotEmpty;
@@ -1046,6 +1255,7 @@ class _Bubble extends StatelessWidget {
     this.sendingLabel,
     this.unsentLabel,
     this.seenLabel,
+    this.editedLabel,
     this.onLongPress,
     this.longPressHint,
   });
@@ -1062,6 +1272,9 @@ class _Bubble extends StatelessWidget {
 
   /// "Seen" and the time, under the viewer's newest message the partner read.
   final String? seenLabel;
+
+  /// "Edited", beside the time, once the sender edited the message.
+  final String? editedLabel;
   final VoidCallback? onLongPress;
   final String? longPressHint;
 
@@ -1113,6 +1326,15 @@ class _Bubble extends StatelessWidget {
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: fg.withValues(alpha: 0.7)),
               ),
+              if (editedLabel != null) ...[
+                const SizedBox(width: 6),
+                Text(
+                  editedLabel!,
+                  key: const ValueKey('dm-edited'),
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: fg.withValues(alpha: 0.7)),
+                ),
+              ],
             ],
           ),
         ],
@@ -1150,6 +1372,89 @@ class _Bubble extends StatelessWidget {
             style: theme.textTheme.labelSmall
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Edits one message in place: Save calls [save], closes with the stored row
+/// on success, and on a refusal keeps the dialog and the typed text up with
+/// the reason under the field.
+class _EditMessageDialog extends StatefulWidget {
+  const _EditMessageDialog({required this.initial, required this.save});
+
+  final String initial;
+  final Future<DirectMessageRow> Function(String body) save;
+
+  @override
+  State<_EditMessageDialog> createState() => _EditMessageDialogState();
+}
+
+class _EditMessageDialogState extends State<_EditMessageDialog> {
+  late final TextEditingController _text =
+      TextEditingController(text: widget.initial);
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final body = _text.text.trim();
+    if (body.isEmpty || _saving) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final row = await widget.save(body);
+      if (mounted) Navigator.pop(context, row);
+    } catch (e) {
+      debugPrint('message edit failed: ${safeErrorLabel(e)}');
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = dmEditErrorMessage(l10n, e);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return AlertDialog(
+      title: Text(l10n.messagesEditTitle),
+      content: TextField(
+        key: const ValueKey('message-edit-field'),
+        controller: _text,
+        autofocus: true,
+        minLines: 1,
+        maxLines: 6,
+        inputFormatters: [
+          LengthLimitingTextInputFormatter(kDirectMessageMaxLength),
+        ],
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          labelText: l10n.messagesEditTitle,
+          errorText: _error,
+          errorMaxLines: 3,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: Text(l10n.commonCancel),
+        ),
+        TextButton(
+          key: const ValueKey('message-edit-save'),
+          onPressed: _saving || _text.text.trim().isEmpty ? null : _save,
+          child: Text(l10n.messagesEditSave),
         ),
       ],
     );

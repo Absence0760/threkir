@@ -306,9 +306,27 @@ data class ActiveRaceState(
     /// The course the runner picked at RSVP. Null when they picked none or it
     /// could not be read; the race then finishes only by "Finish race".
     val course: RaceSessionClient.RaceCourse? = null,
+    /// `host_go` | `scheduled` | `self_timed` (#1306).
+    val startMode: String = "host_go",
+    /// When the clock starts, server epoch ms: the scheduled GO or the
+    /// window's opening. Null for Host GO.
+    val startInstantMs: Long? = null,
+    /// A self-timed race binds a recording only after the runner taps
+    /// "This run is my attempt" on the watch (owner decision 4a).
+    val attemptArmed: Boolean = false,
 ) {
-    val isArmed: Boolean get() = status == "armed"
-    val isRunning: Boolean get() = status == "running"
+    val isSelfTimed: Boolean get() = startMode == "self_timed"
+    val isArmed: Boolean get() = status == "armed" && !startPassed()
+    val isRunning: Boolean get() = status == "running" || (status == "armed" && startPassed())
+
+    /// A scheduled or self-timed race whose instant has passed is live before
+    /// the next poll says so; the server judges it the same way.
+    private fun startPassed(): Boolean =
+        startMode != "host_go" && startInstantMs != null &&
+            startInstantMs <= System.currentTimeMillis()
+
+    /// GO on the server clock: the stamped start, or the instant itself.
+    val goAtMs: Long? get() = startedAtMs ?: startInstantMs.takeIf { startMode != "host_go" }
 }
 
 data class RaceRunState(
@@ -359,7 +377,7 @@ internal fun buildRaceResult(
     val timing = RaceFinish.resultTiming(
         finished = decision.outcome.finisherStatus == "finished",
         finishAtMs = decision.finishEpochMs,
-        gunMs = race.startedAtMs,
+        gunMs = race.goAtMs,
         serverOffsetMs = serverOffsetMs,
         recordingStartedMs = runStartedAtMs,
         elapsedS = elapsedS,
@@ -802,7 +820,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         serverClock.addSample(sample.sentAtMs, sample.receivedAtMs, sample.serverAtMs)
         val race = boundRace ?: return
         val run = _state.value.raceRun ?: return
-        val gun = gunStartDeviceMs(race.startedAtMs, serverClock.offsetMs)
+        val gun = gunStartDeviceMs(race.goAtMs, serverClock.offsetMs)
         if (gun != run.gunStartDeviceMs) {
             _state.value = _state.value.copy(raceRun = run.copy(gunStartDeviceMs = gun))
         }
@@ -887,6 +905,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     eventTitle = it.eventTitle,
                     course = previous?.course?.takeIf { sameRace }
                         ?: loadRaceCourse(token, uid, it.eventId, it.instanceStart),
+                    startMode = it.startMode,
+                    startInstantMs = it.startInstantIso?.let(::parseServerInstantMs),
+                    attemptArmed = sameRace && previous?.attemptArmed == true,
                 )
             }
             if (newState != _state.value.activeRace) {
@@ -968,6 +989,14 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    /// "This run is my attempt" on the watch, and its undo, for an open
+    /// self-timed window. Nothing binds in that mode without it.
+    fun toggleAttempt() {
+        val race = _state.value.activeRace ?: return
+        if (!race.isSelfTimed) return
+        _state.value = _state.value.copy(activeRace = race.copy(attemptArmed = !race.attemptArmed))
+    }
+
     private fun maybeBindRace(m: RecordingRepository.Metrics) {
         val race = raceToBind(
             alreadyBound = boundRace != null,
@@ -989,7 +1018,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         raceRecordingStartedMs = m.startedAtMs.takeIf { it > 0L }
         _state.value = _state.value.copy(
             raceRun = RaceRunState(
-                gunStartDeviceMs = gunStartDeviceMs(race.startedAtMs, serverClock.offsetMs),
+                gunStartDeviceMs = gunStartDeviceMs(race.goAtMs, serverClock.offsetMs),
             ),
         )
     }
@@ -1014,7 +1043,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         val run = _state.value.raceRun ?: return
         if (run.lateStart || run.ended || raceStopDecision != null) return
         val late = raceLateStart(
-            gunMs = race.startedAtMs,
+            gunMs = race.goAtMs,
             recordingStartedDeviceMs = raceRecordingStartedMs,
             serverOffsetMs = serverClock.offsetMs,
             firstFixLat = raceFirstFixLat,

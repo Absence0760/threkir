@@ -100,6 +100,10 @@
     <string name="race_live">PROVA EM DIRETO</string>
     <string name="event">Evento</string>
     <string name="race_wait_for_go">%1$s · aguarde o GO</string>
+    <string name="race_self_timed">TEMPO PRÓPRIO</string>
+    <string name="race_self_timed_how">%1$s · toque em Tentativa, depois Iniciar, e atravesse a linha de partida</string>
+    <string name="race_attempt">Esta corrida é a minha tentativa</string>
+    <string name="race_attempt_ready">Tentativa pronta · toque em Iniciar</string>
     <string name="race_tap_start">%1$s · toque em Iniciar</string>
     <string name="race_finish_short">Fim</string>
     <string name="cd_finish_race">Terminar corrida</string>

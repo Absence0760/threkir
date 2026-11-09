@@ -122,6 +122,11 @@ export const PAIRS = [
 		note: 'server-side quota bookkeeping; the two values are written by SQL and never named by a client.',
 	},
 	{
+		tableColumn: 'conversation_participants.request_state',
+		clients: [],
+		note: 'message requests (migration 20271115002384): written only by the direct_messages_request_state trigger and the accept/decline RPCs; clients read the derived dm_threads().request boolean and never name a state.',
+	},
+	{
 		tableColumn: 'conversations.kind',
 		clients: [],
 		note: 'only direct exists (migration 20271105000010); written by the direct_messages_set_conversation trigger and never named by a client.',
@@ -203,6 +208,25 @@ export const PAIRS = [
 	{
 		tableColumn: 'club_members.status',
 		clients: [{ file: TS_TYPES, decl: 'MembershipStatus', shape: 'union' }],
+	},
+	{
+		tableColumn: 'club_verification_requests.status',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/widgets/club_verification_status_card.dart', decl: '_statusLine', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'club_verification_requests.proof_method',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_PROOF_METHODS', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'club_verification_audit.action',
+		clients: [
+			{ file: 'apps/web/src/lib/social/club_verification.ts', decl: 'CLUB_VERIFICATION_AUDIT_ACTIONS', shape: 'strings' },
+		],
 	},
 	{
 		tableColumn: 'clubs.join_policy',
@@ -688,6 +712,65 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'plan_change_requests.status',
+		clients: [
+			{ file: 'apps/web/src/lib/training/plan_change.ts', decl: 'PLAN_CHANGE_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/plan_change.dart', decl: 'planChangeStatuses', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'park_courses.course_shape',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_SHAPES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseShapes', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'courseShapeLabel', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'park_courses.difficulty',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_DIFFICULTIES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseDifficulties', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'courseDifficultyLabel', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'park_courses.geometry_source',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'GEOMETRY_SOURCES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kGeometrySources', shape: 'strings' },
+			{
+				file: 'apps/mobile_android/lib/screens/park_courses_screen.dart',
+				decl: 'geometryAttribution',
+				shape: 'switch',
+				// The `_` branch is the traced-against-the-park-map credit.
+				allowMissing: ['traced'],
+			},
+		],
+	},
+	{
+		tableColumn: 'park_courses.status',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseStatuses', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'courseStatusLabel', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'parks.agency',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'PARK_AGENCIES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kParkAgencies', shape: 'strings' },
+			{
+				file: 'apps/mobile_android/lib/screens/park_courses_screen.dart',
+				decl: 'agencyLabel',
+				shape: 'switch',
+				// The `_` branch is the plain "Park" label `other` names.
+				allowMissing: ['other'],
+			},
+		],
+	},
+	{
 		tableColumn: 'payment_refunds.status',
 		clients: [
 			{ file: TS_TYPES, decl: 'PaymentRefundStatus', shape: 'union' },
@@ -755,6 +838,56 @@ export const PAIRS = [
 		clients: [{ file: TS_TYPES, decl: 'RaceProvider', shape: 'union' }],
 	},
 	{
+		tableColumn: 'race_listings.course_source',
+		clients: [
+			{ file: TS_TYPES, decl: 'RaceCourseSource', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/race_service.dart', decl: 'kRaceCourseSources', shape: 'strings' },
+		],
+	},
+	{
+		tableColumn: 'course_alerts.kind',
+		clients: [
+			{ file: TS_TYPES, decl: 'CourseAlertKind', shape: 'union' },
+			{ file: TS_TYPES, decl: 'COURSE_ALERT_KINDS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/race_service.dart', decl: 'kCourseAlertKinds', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/widgets/course_alerts_section.dart', decl: 'courseAlertKindLabel', shape: 'switch' },
+			{ file: 'apps/mobile_android/lib/widgets/course_alerts_section.dart', decl: 'courseAlertIcon', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'race_listing_audit.action',
+		clients: [],
+		note: 'written only by the race-course definer RPCs (migration 20271114002381) and never named by a client.',
+	},
+	{
+		tableColumn: 'race_course_suggestions.status',
+		clients: [],
+		note: 'written only by suggest_race_course / review_race_course_suggestion; clients read pending rows by the literal and never enumerate the set.',
+	},
+	{
+		tableColumn: 'event_courses.start_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'GateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'event_courses.finish_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'GateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'global_segments.start_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'SegmentGateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'global_segments.end_gate_source',
+		clients: [{ file: TS_TYPES, decl: 'SegmentGateSource', shape: 'union' }],
+	},
+	{
+		tableColumn: 'global_segment_efforts.matched_by',
+		clients: [
+			{ file: TS_TYPES, decl: 'GlobalSegmentMatchedBy', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/segments.dart', decl: 'GlobalSegmentMatchedBy', shape: 'enum' },
+		],
+	},
+	{
 		tableColumn: 'race_sessions.status',
 		clients: [
 			{ file: TS_TYPES, decl: 'RaceSessionStatus', shape: 'union' },
@@ -769,6 +902,30 @@ export const PAIRS = [
 				shape: 'switch',
 			},
 		],
+	},
+	{
+		tableColumn: 'events.race_start_mode',
+		clients: [
+			{ file: 'apps/web/src/lib/races/course_gates.ts', decl: 'SessionStartMode', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/course_gates.dart', decl: 'SessionStartMode', shape: 'enum' },
+		],
+	},
+	{
+		tableColumn: 'race_sessions.start_mode',
+		clients: [
+			{ file: 'apps/web/src/lib/races/course_gates.ts', decl: 'SessionStartMode', shape: 'union' },
+			{ file: 'apps/mobile_android/lib/course_gates.dart', decl: 'SessionStartMode', shape: 'enum' },
+		],
+	},
+	{
+		tableColumn: 'event_results.start_detection',
+		clients: [],
+		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+	},
+	{
+		tableColumn: 'event_results.finish_detection',
+		clients: [],
+		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
 	},
 	{
 		tableColumn: 'recipes.meal_slot',

@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import type { BrowserContext } from '@playwright/test';
 
-import { acceptCookieConsent, showAllPlanWeeks } from '../fixtures/helpers';
+import { acceptCookieConsent, showAllPlanWeeks, planSectionsOpen } from '../fixtures/helpers';
 import {
 	createThrowawayPlan,
 	deleteThrowawayPlan,
@@ -45,7 +45,7 @@ test.describe('plans journey', () => {
 		browser
 	}) => {
 		ctx = await browser.newContext({ storageState: plan!.user.storageStatePath });
-		await acceptCookieConsent(ctx);
+		await acceptCookieConsent(ctx, planSectionsOpen(plan!.user.id));
 		const page = await ctx.newPage();
 		await page.goto(`/plans/${plan!.planId}`);
 		await expect(page.getByRole('heading', { level: 1, name: plan!.name }))

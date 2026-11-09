@@ -6,7 +6,7 @@
 --     merely hidden in the UI.
 
 begin;
-select plan(6);
+select plan(7);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -81,6 +81,14 @@ select lives_ok(
      values ('cccc0000-0000-0000-0000-000000000003', '2026-06-04 08:00+00',
              'aaaa0000-0000-0000-0000-000000000002', 30000, 3600, 'finished') $$,
   'event_results insert on a cycle event succeeds'
+);
+
+select is(
+  (select duration_s from event_results
+    where event_id = 'cccc0000-0000-0000-0000-000000000003'
+      and user_id = 'aaaa0000-0000-0000-0000-000000000002'),
+  3600,
+  'the cycle event''s result is stored with the time it sent'
 );
 
 select * from finish();

@@ -5,6 +5,7 @@ import { readRow, readRows } from '../fixtures/db-read';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan } from '../fixtures/simulate';
 import { USER_B } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Plan chaining (decisions § 2008): several plans may be active as long as
@@ -199,6 +200,9 @@ test.describe('plan chaining', () => {
 	test.use({ storageState: USER_B.storageStatePath });
 
 	test.beforeEach(deleteUserBPlans);
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_B.id) });
+	});
 	test.afterEach(deleteUserBPlans);
 
 	test('a plan after the active one is created with no replace dialog and queues as upcoming', async ({

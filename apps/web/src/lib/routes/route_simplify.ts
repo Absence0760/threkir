@@ -108,7 +108,7 @@ export const ELEVATION_GAIN_MIN_DELTA_M = 3;
 /**
  * Total positive elevation change across the polyline, in metres, over the
  * RAW track — never a simplified one. Twin of the Dart `computeElevationGain`
- * in `apps/mobile_android/lib/route_simplify.dart`; keep in lockstep.
+ * in `packages/core_models/lib/src/elevation_gain.dart`; keep in lockstep.
  *
  * Two rules, both load-bearing:
  *

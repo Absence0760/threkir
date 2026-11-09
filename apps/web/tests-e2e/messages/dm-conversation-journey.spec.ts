@@ -275,7 +275,7 @@ test.describe('DM conversation journey', () => {
 				const alert = guestPage.locator('.send-error[role="alert"]');
 				await expect(alert).toBeVisible({ timeout: 10_000 });
 				await expect(alert).toContainText(
-					/can only message people you follow/i
+					/You can message people you follow or who follow you/i
 				);
 
 				// Fail-closed: nothing was written B→C.

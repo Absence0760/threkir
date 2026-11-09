@@ -1842,7 +1842,7 @@ func (c *SupabaseClient) FetchUserSettingsPrefs(ctx context.Context, userID stri
 func (c *SupabaseClient) FetchNotificationForEmail(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,email_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,email_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -1917,7 +1917,7 @@ func (c *SupabaseClient) MarkNotificationEmailed(ctx context.Context, notificati
 func (c *SupabaseClient) FetchNotificationForWebPush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,web_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,web_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -2027,7 +2027,7 @@ func (c *SupabaseClient) ClearPushSubscription(ctx context.Context, userID, devi
 func (c *SupabaseClient) FetchNotificationForNativePush(ctx context.Context, notificationID string) (*NotificationRow, error) {
 	q := url.Values{}
 	q.Set("id", "eq."+notificationID)
-	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,refunded,native_push_sent_at")
+	q.Set("select", "id,user_id,kind,run_id,event_id,club_id,comment_id,plan_id,achievement_id,challenge_id,course_alert_id,refunded,native_push_sent_at")
 	q.Set("limit", "1")
 	u := c.BaseURL + "/rest/v1/" + schema.TableNotifications + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
@@ -2427,7 +2427,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			name:   "reports_against_my_messages.json",
 			table:  "reports",
 			filter: "target_kind=eq.direct_message&snapshot_author_id=eq." + uid + "&status=neq.pending",
-			sel:    "id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at",
+			sel:    "id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at,snapshot_original_body",
 		},
 		// direct_messages — private 1:1 conversations, both directions
 		// (messages the user sent and messages they received). `body`
@@ -2435,10 +2435,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// audit/data-export-completeness (2026-05-30) Critical.
 		// The sent side leaves out read_at, the recipient's own read time
 		// (20271113000001); seen_at is what the recipient chose to share.
+		// edited_at and original_body (the text before an edit,
+		// 20271114000210) are the subject's own words.
 		{
 			name: "direct_messages_sent.json", table: schema.TableDirectMessages,
 			filter: "sender_id=eq." + uid,
-			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id",
+			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body",
 		},
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,
@@ -2446,11 +2448,11 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		},
 		// conversation_participants — the subject's own view of each
 		// conversation (joined, deleted-for-me, muted, archived, marked
-		// unread; migrations 20271105000010, 20271109000020). Only their own
-		// row.
+		// unread, message-request state; migrations 20271105000010,
+		// 20271109000020, 20271115002384). Only their own row.
 		{
 			name: "conversation_settings.json", table: schema.TableConversationParticipants,
-			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at",
+			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at",
 		},
 		// coach_athletes — the subject's coaching relationships, as coach
 		// and as athlete. `invite_token` is a redeemable credential
@@ -2466,6 +2468,16 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			name: "coaching_as_athlete.json", table: schema.TableCoachAthletes,
 			filter: "athlete_id=eq." + uid,
 			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at",
+		},
+		// plan_change_requests — changes to a coach-assigned plan the subject
+		// sent as athlete or decided as coach (issue #1215 Phase 2).
+		{
+			name: "plan_change_requests_as_athlete.json", table: schema.TablePlanChangeRequests,
+			filter: "athlete_id=eq." + uid, sel: "*",
+		},
+		{
+			name: "plan_change_requests_as_coach.json", table: schema.TablePlanChangeRequests,
+			filter: "coach_id=eq." + uid, sel: "*",
 		},
 		// event_results — the subject's own race finish records (time,
 		// rank, DNF/DNS, age-grade). Health-adjacent performance data.
@@ -2493,6 +2505,35 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "event_result_claims.json", table: schema.TableEventResultClaims,
 			filter: "claimant_id=eq." + uid, sel: "*",
+		},
+		// race_course_suggestions — the routes the subject suggested as a
+		// race's course, with their note and the review outcome (migration
+		// 20271114002381). reviewed_by is the organiser-club admin who ruled
+		// on it, kept as a recipient disclosure under Art 15(1)(c).
+		{name: "race_course_suggestions.json", table: schema.TableRaceCourseSuggestions, filter: uidEq, sel: "*"},
+		// race_listing_audit — the race claims, course links and reviews the
+		// subject made as a verified club's admin (migration 20271114002381).
+		{
+			name: "race_listing_audit.json", table: schema.TableRaceListingAudit,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// club_verification_requests — the verification requests the
+		// subject submitted as a club owner (migration 20271120000004). The
+		// reviewer is kept as an id only, as a recipient disclosure.
+		{
+			name: "club_verification_requests.json", table: schema.TableClubVerificationRequests,
+			filter: "submitted_by=eq." + uid, sel: "*",
+		},
+		// club_verification_audit — the verification actions the subject took.
+		{
+			name: "club_verification_audit.json", table: schema.TableClubVerificationAudit,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// course_alerts — the course alerts the subject posted as a verified
+		// organiser club's admin (migration 20271124002407).
+		{
+			name: "course_alerts.json", table: schema.TableCourseAlerts,
+			filter: "author_id=eq." + uid, sel: "*",
 		},
 		// user_blocks — the subject's own block list (who they blocked +
 		// why). audit-findings (2026-05-30) High.

@@ -6,6 +6,10 @@
 > - **`challenge_leaderboard` is SECURITY DEFINER, not invoker** (gated on `is_challenge_visible`). The "public runs readable by anyone" RLS policy on `runs` was retired (public access now flows through the `public_runs` view / `clip-public-track`), so a SECURITY INVOKER aggregate would see only the caller's own runs and zero every competitor. DEFINER + a visibility gate lets the board sum each opted-in participant's runs (incl. private ones — only the per-user SUM is exposed, never the rows, exactly like `event_results`). The completion RPC + sweep are likewise DEFINER and read base `runs` directly.
 > - **`vert` was added in a follow-on slice** (`20270302_001`, ADR §186): it first-classes total ascent as a real `runs.elevation_gain_m` column (backfilled from `metadata.elevation_m`), summed as `sum(coalesce(elevation_gain_m, 0))` and projected into `activities.summary` + `public_runs`. The metric set is now distance / duration / vert / activity_count / streak_days.
 
+## Park courses metric (2026-11-08, decisions § 2405)
+
+`park_courses` counts distinct park courses (not closed, in an active park) completed on in-window, non-DNF runs of the challenge's activity type; a team board counts distinct courses across the team. `challenges.park_region_code` (ISO 3166-2, refused on any other metric) narrows it to one region's parks, which is how the official yearly passport is set up; the create forms offer the metric without a region, and both detail pages say which region a regional challenge counts. Goals are a bare course count (`challengeGoalUnit` → `courses`). The clients cannot estimate it offline (`metricFromActivity` returns 0): efforts live in `global_segment_efforts`, so a new effort re-checks the runner's open park challenges and the daily sweep is the backstop. Migration `20271123002404`; pgTAP `park_course_badges_test.sql`; see [park_courses.md § Collections](park_courses.md#collections).
+
 ## On-pace projection (2026-07-01)
 
 A joined, time-boxed **goal** challenge shows an on-pace hint alongside the

@@ -269,6 +269,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                             preferredUnit = state.preferredUnit,
                             activityType = state.activityType,
                             activeRace = state.activeRace,
+                            onToggleAttempt = vm::toggleAttempt,
                             selectedRouteName = state.selectedRoute?.name,
                             selectedRouteWaypoints = state.selectedRoute?.toLatLngs() ?: emptyList(),
                             targetPaceSecPerKm = state.targetPaceSecPerKm,
@@ -697,6 +698,7 @@ private fun PreRunScreen(
     batteryOptimised: Boolean,
     batteryPercent: Int?,
     activeRace: com.runapp.watchwear.ActiveRaceState?,
+    onToggleAttempt: () -> Unit,
     pendingRecoveryDistance: Double?,
     preferredUnit: com.runapp.watchwear.recording.DistanceUnit,
     activityType: String,
@@ -1196,20 +1198,41 @@ private fun PreRunScreen(
             }
             if (activeRace != null) {
                 item(key = "race") {
+                    val selfTimedOpen = activeRace.isSelfTimed && activeRace.isRunning
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            if (activeRace.isArmed) stringResource(R.string.race_armed) else stringResource(R.string.race_live),
+                            when {
+                                selfTimedOpen -> stringResource(R.string.race_self_timed)
+                                activeRace.isArmed -> stringResource(R.string.race_armed)
+                                else -> stringResource(R.string.race_live)
+                            },
                             style = MaterialTheme.typography.caption1,
                             color = MaterialTheme.colors.primary,
                         )
                         val title = activeRace.eventTitle ?: stringResource(R.string.event)
                         Text(
-                            if (activeRace.isArmed) stringResource(R.string.race_wait_for_go, title)
-                            else stringResource(R.string.race_tap_start, title),
+                            when {
+                                selfTimedOpen -> stringResource(R.string.race_self_timed_how, title)
+                                activeRace.isArmed -> stringResource(R.string.race_wait_for_go, title)
+                                else -> stringResource(R.string.race_tap_start, title)
+                            },
                             style = MaterialTheme.typography.caption2,
                             color = MaterialTheme.colors.onBackground,
                             textAlign = TextAlign.Center,
                         )
+                        if (selfTimedOpen) {
+                            val label = if (activeRace.attemptArmed) {
+                                stringResource(R.string.race_attempt_ready)
+                            } else {
+                                stringResource(R.string.race_attempt)
+                            }
+                            PreRunSettingChip(
+                                label = stringResource(R.string.race_self_timed),
+                                value = label,
+                                contentDescription = label,
+                                onClick = onToggleAttempt,
+                            )
+                        }
                     }
                 }
             }

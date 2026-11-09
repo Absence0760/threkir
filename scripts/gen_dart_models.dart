@@ -74,6 +74,7 @@ const _tables = <String>{
   'clubs',
   'club_members',
   'club_photos',
+  'club_verification_requests',
   'events',
   'event_attendees',
   'event_courses',
@@ -107,6 +108,8 @@ const _tables = <String>{
   'segment_efforts',
   'global_segments',
   'global_segment_efforts',
+  'parks',
+  'park_courses',
   'notifications',
   'run_matched_tracks',
   'gear',
@@ -115,6 +118,7 @@ const _tables = <String>{
   'gear_rotation_members',
   'run_gear',
   'coach_athletes',
+  'plan_change_requests',
   'gym_workouts',
   'gym_sets',
   'exercises',
@@ -332,11 +336,10 @@ void _parseCreateTable(String stmt, Map<String, Map<String, _Column>> schema) {
     final line = part.trim();
     if (line.isEmpty) continue;
     final lower = line.toLowerCase();
-    if (lower.startsWith('primary key') ||
-        lower.startsWith('unique') ||
-        lower.startsWith('foreign key') ||
-        lower.startsWith('check') ||
-        lower.startsWith('constraint')) {
+    // Matched as whole keywords: a bare prefix test skipped a column NAMED
+    // `checkpoints` (park_courses) as if it were a table CHECK constraint.
+    if (RegExp(r'^(primary\s+key|unique|foreign\s+key|check|constraint)\b')
+        .hasMatch(lower)) {
       continue;
     }
     final col = _parseColumn(line);

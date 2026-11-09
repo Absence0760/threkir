@@ -886,7 +886,7 @@ func TestStreamExportPersonalDataTables_IncludesAuditCompletenessTables(t *testi
 // appear in the manifest when the subject has rows; coach_athletes
 // must NOT leak the redeemable invite_token credential.
 func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T) {
-	var dmSentQ, dmRecvQ, convQ, coachQ, athleteQ, eventResQ string
+	var dmSentQ, dmRecvQ, convQ, coachQ, athleteQ, eventResQ, pcrAthleteQ, pcrCoachQ string
 	client := newSupabaseTestServer(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		path := r.URL.Path
@@ -907,6 +907,12 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 		case strings.Contains(path, "/rest/v1/coach_athletes") && strings.Contains(query, "athlete_id="):
 			athleteQ = query
 			_, _ = w.Write([]byte(`[{"id":"ca2","status":"pending"}]`))
+		case strings.Contains(path, "/rest/v1/plan_change_requests") && strings.Contains(query, "athlete_id="):
+			pcrAthleteQ = query
+			_, _ = w.Write([]byte(`[{"id":"pcr1","status":"pending"}]`))
+		case strings.Contains(path, "/rest/v1/plan_change_requests") && strings.Contains(query, "coach_id="):
+			pcrCoachQ = query
+			_, _ = w.Write([]byte(`[{"id":"pcr2","status":"approved"}]`))
 		case strings.Contains(path, "/rest/v1/event_results"):
 			eventResQ = query
 			_, _ = w.Write([]byte(`[{"event_id":"e1","rank":3,"duration_s":1500}]`))
@@ -925,6 +931,8 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 		"conversation_settings.json",
 		"coaching_as_coach.json",
 		"coaching_as_athlete.json",
+		"plan_change_requests_as_athlete.json",
+		"plan_change_requests_as_coach.json",
 		"event_results.json",
 	} {
 		if rows, ok := out[key]; !ok || len(rows) == 0 {
@@ -944,6 +952,8 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 		{"conversation_participants", convQ, "user_id=eq.user-A"},
 		{"coach_athletes (as coach)", coachQ, "coach_id=eq.user-A"},
 		{"coach_athletes (as athlete)", athleteQ, "athlete_id=eq.user-A"},
+		{"plan_change_requests (as athlete)", pcrAthleteQ, "athlete_id=eq.user-A"},
+		{"plan_change_requests (as coach)", pcrCoachQ, "coach_id=eq.user-A"},
 		{"event_results", eventResQ, "user_id=eq.user-A"},
 	} {
 		if !strings.Contains(c.query, c.want) {
@@ -955,6 +965,16 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 	// hand it back. seen_at is what the recipient chose to share.
 	if strings.Contains(dmSentQ, "read_at") || !strings.Contains(dmSentQ, "seen_at") {
 		t.Errorf("direct_messages (sent) select must carry seen_at and omit the recipient's read_at; got %q", dmSentQ)
+	}
+	// An edited message's text as first sent is the sender's own words
+	// (20271114000210), so the sent export carries it beside edited_at.
+	if !strings.Contains(dmSentQ, "edited_at") || !strings.Contains(dmSentQ, "original_body") {
+		t.Errorf("direct_messages (sent) select must carry edited_at and original_body; got %q", dmSentQ)
+	}
+	// Where a message request to or from the subject stands is their own
+	// conversation state (20271115002384).
+	if !strings.Contains(convQ, "request_state") || !strings.Contains(convQ, "requested_at") {
+		t.Errorf("conversation_participants select must carry request_state and requested_at; got %q", convQ)
 	}
 	if !strings.Contains(dmRecvQ, "select=%2A") && !strings.Contains(dmRecvQ, "select=*") {
 		t.Errorf("direct_messages (received) select must keep every column, the subject's own read_at included; got %q", dmRecvQ)

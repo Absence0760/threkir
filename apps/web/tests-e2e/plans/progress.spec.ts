@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] progress header (roadmap Phase 3 — Dashboard + run-tab
@@ -15,6 +16,10 @@ import { USER_A } from '../fixtures/users';
 
 test.describe('/plans/[id] progress header', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('phase marker highlights the current phase + longest long run + distance banked show', async ({ page }) => {
 		const admin = getAdminClient();

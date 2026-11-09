@@ -100,6 +100,10 @@
     <string name="race_live">COURSE EN DIRECT</string>
     <string name="event">Événement</string>
     <string name="race_wait_for_go">%1$s · attendez le GO</string>
+    <string name="race_self_timed">CHRONO LIBRE</string>
+    <string name="race_self_timed_how">%1$s · touchez Tentative, puis Démarrer, et franchissez la ligne de départ</string>
+    <string name="race_attempt">Cette course est ma tentative</string>
+    <string name="race_attempt_ready">Tentative prête · touchez Démarrer</string>
     <string name="race_tap_start">%1$s · touchez Démarrer</string>
     <string name="race_finish_short">Fin</string>
     <string name="cd_finish_race">Terminer la course</string>

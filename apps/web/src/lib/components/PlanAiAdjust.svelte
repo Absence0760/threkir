@@ -6,10 +6,17 @@
 	// the ACWR bands, shows the before/after diff, and saves nothing until the
 	// runner presses "Apply AI-suggested changes" — twice, when the edit makes
 	// the plan harder. Every failure leaves the plan and the manual Adjust
-	// options exactly as they were.
+	// options exactly as they were. On a plan a coach assigned, with the link
+	// active, the runner can send the change to that coach for approval
+	// instead of applying it (decisions § 2382).
 	import { onMount, tick } from 'svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
-	import { applyAiPlanEdits, fetchPrecedingPlan } from '#lib/core/data.ts';
+	import {
+		applyAiPlanEdits,
+		fetchPlanReviewCoach,
+		fetchPrecedingPlan,
+		proposePlanChange,
+	} from '#lib/core/data.ts';
 	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -67,6 +74,9 @@
 	let basis: { ops: PlanEditOp[]; nearby: PlanRace[] } | null = null;
 	let gradedDay = '';
 	let dayChanged = $state(false);
+	/// The coach this change goes to for approval, when the plan has one.
+	let reviewer = $state<{ coachId: string; name: string | null } | null>(null);
+	let sent = $state(false);
 
 	function snapshot(): PlanEditSnapshot {
 		return {
@@ -167,6 +177,34 @@
 		else void persist();
 	}
 
+	function payload() {
+		if (!result) return null;
+		const { application, check } = result;
+		return aiPlanEditPayload({
+			scope: 'plan',
+			blocks: [{ planId: plan.id, name: plan.name, application, check }],
+			verdict: check.verdict,
+		});
+	}
+
+	async function sendToCoach(): Promise<void> {
+		if (dayTurned()) return;
+		if (!result || result.check.verdict === 'reject' || saving || !reviewer) return;
+		const body = payload();
+		if (!body) return;
+		saving = true;
+		try {
+			await proposePlanChange(plan.id, today, false, body);
+			showToast(m('planChange.sentToast'));
+			result = null;
+			sent = true;
+		} catch (e) {
+			showToast(m('planChange.failed', { error: errorCopy(e, m, 'plan change proposal') }), 'error');
+		} finally {
+			saving = false;
+		}
+	}
+
 	async function persist(): Promise<void> {
 		confirmHarder = false;
 		if (dayTurned()) return;
@@ -212,6 +250,9 @@
 	}
 
 	onMount(() => {
+		void fetchPlanReviewCoach(plan.id)
+			.then((c) => (reviewer = c))
+			.catch(() => (reviewer = null));
 		const handed = initialRequest?.trim().slice(0, MAX_PLAN_EDIT_REQUEST_CHARS) ?? '';
 		if (handed) {
 			request = handed;
@@ -267,6 +308,13 @@
 		<p class="note" role="status">{m('planDetail.aiAdjustNoChanges')}</p>
 	{/if}
 
+	{#if sent && reviewer && !result}
+		<p class="note" role="status" data-testid="ai-adjust-sent">
+			{m('planChange.sent')}
+			<a href="/messages/{reviewer.coachId}">{m('planChange.openConversation')}</a>
+		</p>
+	{/if}
+
 	{#if result}
 		<div class="preview" role="status">
 			<p class="preview-title">{m('planDetail.aiAdjustPreviewTitle')}</p>
@@ -314,16 +362,33 @@
 			{/if}
 			<p class="note">{m('planDetail.aiAdjustReview')}</p>
 			{#if result.check.verdict !== 'reject'}
+				{#if reviewer}
+					<p class="note" data-testid="ai-adjust-coach-hint">{m('planChange.coachAssignedHint')}</p>
+				{/if}
 				<div class="actions">
 					<button
 						type="button"
-						class="btn btn-primary btn-sm"
+						class="btn {reviewer ? 'btn-outline' : 'btn-primary'} btn-sm"
 						onclick={onApplyClick}
 						disabled={saving}
 						aria-busy={saving}
 					>
-						{m('planDetail.aiAdjustApply')}
+						{reviewer ? m('planChange.applyAnyway') : m('planDetail.aiAdjustApply')}
 					</button>
+					{#if reviewer}
+						<button
+							type="button"
+							class="btn btn-primary btn-sm"
+							onclick={sendToCoach}
+							disabled={saving}
+							aria-busy={saving}
+							data-testid="ai-adjust-send"
+						>
+							{reviewer.name
+								? m('planChange.sendToCoachNamed', { name: reviewer.name })
+								: m('planChange.sendToCoach')}
+						</button>
+					{/if}
 				</div>
 			{/if}
 		</div>

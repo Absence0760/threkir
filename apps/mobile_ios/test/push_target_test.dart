@@ -94,6 +94,16 @@ void main() {
           const PushTarget(PushTargetKind.settingsAccount));
     });
 
+    test('course_alert → /course-alerts/{id} carries the alert to resolve',
+        () {
+      const id = '0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d';
+      expect(pushTargetFromUrl('$_base/course-alerts/$id'),
+          const PushTarget(PushTargetKind.courseAlert, id));
+      expect(pushTargetFromUrl('$_base/course-alerts/not-a-uuid'),
+          PushTarget.inbox);
+      expect(pushTargetFromUrl('$_base/course-alerts'), PushTarget.inbox);
+    });
+
     test('any other /settings path degrades to the inbox', () {
       expect(pushTargetFromUrl('$_base/settings'), PushTarget.inbox);
       expect(pushTargetFromUrl('$_base/settings/preferences'), PushTarget.inbox);

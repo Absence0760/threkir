@@ -1799,6 +1799,89 @@
     ]
   },
   {
+    "id": "drive-a-course",
+    "lang": "pt-PT",
+    "title": "Percorrer o percurso de uma prova de carro antes do dia",
+    "summary": "Abra um percurso público na sua app de mapas, veja que troços ela não consegue seguir e deixe a app do telemóvel ler em voz alta as notas do percurso enquanto conduz.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/routes/[id]",
+      "/races/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "O que faz",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Numa rota pública ou numa prova com percurso público, **Percorrer o percurso de carro** divide o percurso em troços que o Google Maps, os Mapas da Apple ou o Waze conseguem seguir. A sua app de mapas faz a navegação, incluindo no CarPlay e no Android Auto."
+          },
+          {
+            "type": "list",
+            "items": [
+              "O Google Maps aceita várias paragens por troço. Os Mapas da Apple e o Waze aceitam um destino de cada vez, por isso abre cada troço à vez.",
+              "Os percursos de prova usam caminhos, pontes e estradas fechadas. A lista por baixo dos troços mostra os troços que a app de mapas não consegue seguir, para saber que partes não vai ver.",
+              "A rota da app de mapas serve apenas de orientação. As notas seguem o percurso real."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Esta funcionalidade está a ser ativada aos poucos. Se um percurso público não mostrar **Percorrer o percurso de carro**, ainda não está disponível para si."
+          }
+        ]
+      },
+      {
+        "heading": "Abrir um percurso na app de mapas",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra a rota ou a prova e selecione **Percorrer o percurso de carro**.",
+              "Escolha a sua app de mapas e selecione **Ir para a partida**.",
+              "Na partida, abra o troço 1. Quando um troço terminar, abra o seguinte."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "A página web também lista cada nota do percurso com a sua distância, e pode imprimir a lista para um passageiro."
+          }
+        ]
+      },
+      {
+        "heading": "Ouvir as notas do percurso no telemóvel",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Na app do telemóvel, abra a rota ou a prova e toque em **Percorrer o percurso de carro**.",
+              "Leia o aviso de segurança e toque em **Compreendo**. Só aparece uma vez em cada telemóvel.",
+              "Toque em **Iniciar notas faladas**, mude para a sua app de mapas e bloqueie o telemóvel."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Cada abastecimento, tempo limite, subida, perigo e nota é lido cerca de 15 segundos antes de lá chegar e outra vez quando lá está. Se se juntar a meio, as notas começam onde está. Param na meta ou após 10 minutos fora do percurso. Toque em **Parar** para as terminar mais cedo."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Use-a com um passageiro ou com o telemóvel num suporte e não toque no telemóvel enquanto conduz. Cumpra as regras e a sinalização de trânsito, e lembre-se de que as estradas do percurso podem estar fechadas no dia da prova."
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "follow-a-race-live",
     "lang": "pt-PT",
     "title": "Acompanhar uma prova em direto",
@@ -3166,6 +3249,121 @@
     "related": [
       "what-pro-includes",
       "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "park-courses",
+    "lang": "pt-PT",
+    "title": "Percursos de parques: pontos de controlo, épocas e classificações",
+    "summary": "Como um percurso de parque cronometra a sua corrida, porque conta cada ponto de controlo, quando começa uma época e como ordenam as classificações Mais rápidos e Mais conclusões.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/parks",
+      "/parks/[region]/[park]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "O que é um percurso de parque",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em [[route:/parks|Percursos de parques]]."
+          },
+          {
+            "type": "list",
+            "items": [
+              "É um contrarrelógio, não uma prova. O trilho continua aberto a todos e ninguém o controla, por isso cumpra as regras do parque e dê passagem às outras pessoas no trilho.",
+              "Cada página de percurso mostra a distância, o desnível positivo, o formato, o piso e a dificuldade, de onde vem a linha do percurso e se está aberto.",
+              "Selecione **Navegar neste percurso** para seguir o percurso como uma rota. A opção não aparece enquanto o percurso estiver fechado."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Um percurso fechado mantém os tempos e as classificações, mas não o corra até reabrir. A página mostra quando o estado foi verificado pela última vez."
+          }
+        ]
+      },
+      {
+        "heading": "Pontos de controlo: porque é que os atalhos nunca contam",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Além da partida e da chegada, um percurso pode ter pontos de controlo pelo caminho. A sua corrida só é cronometrada se passar por todos os pontos de controlo, pela ordem, entre a partida e a chegada. Uma corrida que corta uma curva, salta um ziguezague ou atravessa pelo meio falha um ponto de controlo e não obtém tempo."
+          },
+          {
+            "type": "p",
+            "text": "Mantenha-se no trilho marcado. Cortar caminho danifica o trilho, e os parques consideram-no uma infração às suas regras."
+          }
+        ]
+      },
+      {
+        "heading": "As épocas seguem o relógio do parque",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Uma época é um ano civil no fuso horário do parque, não no seu. As classificações recomeçam à meia-noite de 1 de janeiro onde o parque fica."
+          },
+          {
+            "type": "p",
+            "text": "Por exemplo, uma corrida que começa às 22:00 de 31 de dezembro num parque da Virgínia conta para esse ano, mesmo que o seu telemóvel esteja num fuso horário em que já é 1 de janeiro."
+          }
+        ]
+      },
+      {
+        "heading": "A classificação Mais rápidos",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Mais rápidos** ordena cada corredor pelo seu melhor tempo no percurso. Aparece uma vez, com a sua melhor corrida.",
+              "Por predefinição mostra este ano. Selecione **Desde sempre** para ver os melhores tempos de sempre.",
+              "Filtre por género ou escalão etário. O filtro de idade só inclui quem aceitou partilhar dados de saúde, por isso pode ser mais curto do que a classificação completa."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "A classificação Mais conclusões",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "**Mais conclusões** premeia os habituais. Conta os dias em que concluiu o percurso, no fuso horário do parque, por isso várias voltas no mesmo dia contam como uma."
+          }
+        ]
+      },
+      {
+        "heading": "Quem aparece nas classificações",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Tem de ter sessão iniciada para ver as classificações. Sem sessão iniciada, a página do percurso continua a mostrar o percurso e uma ligação **Iniciar sessão**.",
+              "O tempo de uma corrida que os outros não podem ver não lhes é mostrado.",
+              "Não vê as pessoas que bloqueou, e elas não o veem a si."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Uma corrida é comparada com os percursos de parque nos nossos servidores pouco depois de ser guardada ou importada, a partir de qualquer dispositivo. Um novo tempo pode demorar alguns minutos a aparecer numa classificação."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "import-your-history",
+      "record-your-first-run"
     ]
   },
   {

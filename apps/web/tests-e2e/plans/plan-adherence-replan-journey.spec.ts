@@ -5,6 +5,7 @@ import { deletePlan, deleteRun, insertRun, setPlanStatus } from '../fixtures/sim
 import { USER_A } from '../fixtures/users';
 import { browserDayAt } from '../fixtures/dates';
 import { readRow, readRows } from '../fixtures/db-read';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Starter-ADOPTION → RE-LINK → ADHERENCE-DRIFT → RE-PLAN journey.
@@ -68,6 +69,10 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 test.describe('plan adherence + re-plan journey', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	let plantedPlanId: string | null = null;
 	const seededRunIds: string[] = [];

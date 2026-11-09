@@ -11,7 +11,9 @@
 	// writes nothing. With blocks chained after the plan and a uniform scale to
 	// carry, the runner chooses This block only (the default) or the following
 	// blocks too. Everything here renders as text; no model output reaches
-	// {@html} (decisions § 110).
+	// {@html} (decisions § 110). On a plan a coach assigned, with the link
+	// active, the runner can send the change to that coach for approval
+	// instead (decisions § 2382): the request carries the change set only.
 	import { onMount } from 'svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import { AI_CONSENT_HREF } from '#lib/core/ai_disclosure.ts';
@@ -19,8 +21,10 @@
 		applyAiPlanEdits,
 		fetchMyPlansWithError,
 		fetchPlan,
+		fetchPlanReviewCoach,
 		fetchPrecedingPlan,
 		fetchRuns,
+		proposePlanChange,
 	} from '#lib/core/data.ts';
 	import { dbError, thrownMessage } from '#lib/core/supabase_error.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
@@ -54,7 +58,7 @@
 	}
 	let { planId, request, auto }: Props = $props();
 
-	type Phase = 'idle' | 'loading' | 'ready' | 'applied' | 'discarded' | 'error';
+	type Phase = 'idle' | 'loading' | 'ready' | 'applied' | 'sent' | 'discarded' | 'error';
 	let phase = $state<Phase>('idle');
 	let error = $state<{ text: string; consent: boolean } | null>(null);
 	let notes = $state<PlanEditNote[]>([]);
@@ -64,6 +68,8 @@
 	let scope = $state<PlanEditScope>('plan');
 	let saving = $state(false);
 	let confirmHarder = $state(false);
+	/// The coach this change goes to for approval, when the plan has one.
+	let reviewer = $state<{ coachId: string; name: string | null } | null>(null);
 	/// Set when Apply found the day had turned since the changes were worked
 	/// out: they were graded again against the new day and need a fresh look.
 	let dayChanged = $state(false);
@@ -132,11 +138,13 @@
 		scope = 'plan';
 		today = todayISO();
 		try {
-			const [proposal, blocks, runs] = await Promise.all([
+			const [proposal, blocks, runs, coach] = await Promise.all([
 				requestPlanEdits(planId, request, today),
 				loadBlocks(),
 				fetchRuns({ limit: 50 }),
+				fetchPlanReviewCoach(planId).catch(() => null),
 			]);
+			reviewer = coach;
 			notes = proposal.notes;
 			dropped = proposal.dropped;
 			basis = { ops: proposal.ops, blocks, runs };
@@ -220,6 +228,22 @@
 		}
 	}
 
+	async function sendToCoach(): Promise<void> {
+		if (dayTurned()) return;
+		const edit = shown;
+		if (!edit || edit.verdict === 'reject' || saving || !reviewer) return;
+		saving = true;
+		try {
+			await proposePlanChange(planId, today, edit.scope === 'season', aiPlanEditPayload(edit));
+			phase = 'sent';
+			showToast(m('planChange.sentToast'));
+		} catch (e) {
+			showToast(m('planChange.failed', { error: errorCopy(e, m, 'plan change proposal') }), 'error');
+		} finally {
+			saving = false;
+		}
+	}
+
 	function discard(): void {
 		edits = null;
 		phase = 'discarded';
@@ -271,6 +295,11 @@
 		</button>
 	{:else if phase === 'applied'}
 		<p class="note" role="status">{m('coachChat.planEditApplied')}</p>
+	{:else if phase === 'sent' && reviewer}
+		<p class="note" role="status" data-testid="coach-plan-edit-sent">
+			{m('planChange.sent')}
+			<a href="/messages/{reviewer.coachId}">{m('planChange.openConversation')}</a>
+		</p>
 	{:else if phase === 'discarded'}
 		<p class="note" role="status">{m('coachChat.planEditDiscarded')}</p>
 	{:else if notes.includes('unsupported')}
@@ -348,6 +377,9 @@
 			<p class="note">{m('coachChat.planEditRejectedSeason')}</p>
 		{/if}
 		<p class="note">{m('planDetail.aiAdjustReview')}</p>
+		{#if reviewer && shown.verdict !== 'reject'}
+			<p class="note" data-testid="coach-plan-edit-coach-hint">{m('planChange.coachAssignedHint')}</p>
+		{/if}
 		<div class="actions">
 			<button type="button" class="btn btn-secondary btn-sm" onclick={discard} disabled={saving}>
 				{m('coachChat.planEditDiscard')}
@@ -355,13 +387,27 @@
 			{#if shown.verdict !== 'reject'}
 				<button
 					type="button"
-					class="btn btn-primary btn-sm"
+					class="btn {reviewer ? 'btn-outline' : 'btn-primary'} btn-sm"
 					onclick={onApplyClick}
 					disabled={saving}
 					aria-busy={saving}
 				>
-					{m('coachChat.planEditApply')}
+					{reviewer ? m('planChange.applyAnyway') : m('coachChat.planEditApply')}
 				</button>
+				{#if reviewer}
+					<button
+						type="button"
+						class="btn btn-primary btn-sm"
+						onclick={sendToCoach}
+						disabled={saving}
+						aria-busy={saving}
+						data-testid="coach-plan-edit-send"
+					>
+						{reviewer.name
+							? m('planChange.sendToCoachNamed', { name: reviewer.name })
+							: m('planChange.sendToCoach')}
+					</button>
+				{/if}
 			{/if}
 		</div>
 	{/if}

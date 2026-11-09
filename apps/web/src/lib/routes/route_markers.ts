@@ -66,13 +66,12 @@ export function isOfficialMarker(
 	return routeOwnerId != null && marker.user_id === routeOwnerId;
 }
 
-const KIND_BY_KEY = new Map<RouteMarkerKind, RouteMarkerKindSpec>(
-	ROUTE_MARKER_KINDS.map((k) => [k.kind, k])
-);
-
 /** Spec for a kind, falling back to `custom` for an unknown value. */
 export function kindSpec(kind: string): RouteMarkerKindSpec {
-	return KIND_BY_KEY.get(kind as RouteMarkerKind) ?? KIND_BY_KEY.get('custom')!;
+	return (
+		ROUTE_MARKER_KINDS.find((k) => k.kind === kind) ??
+		ROUTE_MARKER_KINDS.find((k) => k.kind === 'custom')!
+	);
 }
 
 /** Aid-station service vocabulary (stored in `meta.services`). */

@@ -3,6 +3,7 @@
 // unions and lazy-loaded client-side fields that the schema alone can't express.
 import type { Database, Json } from './database.types';
 import type { EventGymTemplate } from './social/event_gym_template';
+import type { SessionStartMode } from './races/course_gates';
 
 /// A jsonb bag as the column actually holds it.
 ///
@@ -185,10 +186,33 @@ export type RaceProvider =
 	| 'raceresult'
 	| 'ultrasignup';
 
+// Where a linked race course came from (migration 20271114002381, decisions
+// § 2381): the organiser's official course, or one the club traced from the
+// race's published map. Narrow union enforced by the CHECK constraint +
+// check_constraint_unions.mjs.
+export type RaceCourseSource = 'official' | 'traced';
+
+export function parseRaceCourseSource(raw: string | null | undefined): RaceCourseSource | null {
+	return raw === 'official' || raw === 'traced' ? raw : null;
+}
+
+// What an organiser's course alert is about (migration 20271124002407,
+// decisions § 2407): a reroute, a closure, the course direction (Comrades'
+// up/down year) or a general notice. Narrow union enforced by the CHECK
+// constraint + check_constraint_unions.mjs.
+export type CourseAlertKind = 'reroute' | 'closure' | 'direction' | 'notice';
+
+export const COURSE_ALERT_KINDS: readonly CourseAlertKind[] = ['reroute', 'closure', 'direction', 'notice'];
+
+export function parseCourseAlertKind(raw: string | null | undefined): CourseAlertKind {
+	return raw === 'reroute' || raw === 'closure' || raw === 'direction' ? raw : 'notice';
+}
+
 // submitted_by is omitted: reads go through the redacted public_race_listings
 // view (migration 20270320_001), which never carries the submitter crosswalk.
-export type RaceListing = Omit<RaceListingRow, 'provider' | 'submitted_by'> & {
+export type RaceListing = Omit<RaceListingRow, 'provider' | 'submitted_by' | 'course_source'> & {
 	provider: RaceProvider;
+	course_source: RaceCourseSource | null;
 };
 
 // Community condition reports on a route (migration 20270212_001). `condition`
@@ -447,6 +471,20 @@ export type FinishMethod = 'auto' | 'manual' | 'host';
 // race_sessions CHECK (migration 20260425_001) — keep this union in lockstep
 // (check_constraint_unions.mjs PAIRS).
 export type RaceSessionStatus = 'armed' | 'running' | 'finished' | 'cancelled';
+// event_courses.start_gate_source / finish_gate_source — where a course's
+// timing line came from: `derived` from the course route's clipped ends, or
+// placed by an `organiser` through set_event_course_gate. Enforced by the
+// event_courses CHECKs (migration 20271116002390); keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type GateSource = 'derived' | 'organiser';
+// global_segments.start_gate_source / end_gate_source — where a catalogue
+// segment's timing line came from: `derived` from its own polyline, or placed
+// by a `curator`. global_segment_efforts.matched_by — whether an effort was
+// timed between the two lines (`gate`) or by the 35 m circles (`zone`).
+// Enforced by the CHECKs in migration 20271122002402; keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type SegmentGateSource = 'derived' | 'curator';
+export type GlobalSegmentMatchedBy = 'zone' | 'gate';
 // Charity fundraising (fundraising.md, migration 20270213_001). Two
 // narrow-union ↔ CHECK pairs; the Dart side treats both as raw String. Keep
 // each in lockstep with the migration (check_constraint_unions.mjs PAIRS).
@@ -618,7 +656,13 @@ export type NotificationKind =
 	| 'personal_record'
 	| 'club_join_request'
 	| 'club_join_approved'
-	| 'event_updated';
+	| 'event_updated'
+	| 'plan_change_request'
+	| 'plan_change_decision'
+	| 'club_verification'
+	| 'course_alert'
+	| 'race_starting_soon'
+	| 'race_start_moved';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)
@@ -672,8 +716,11 @@ export type Event = Omit<
 	| 'host_user_id'
 	| 'meet_lat'
 	| 'meet_lng'
+	| 'race_start_mode'
 > & {
 	recurrence_freq: RecurrenceFreq | null;
+	// How the event's races start (#1306), narrowed to the CHECK's set.
+	race_start_mode: SessionStartMode;
 	recurrence_byday: Weekday[] | null;
 	category: EventCategory;
 	// The class -> gym seam hint, parsed from the loose jsonb bag into the
@@ -788,7 +835,7 @@ export type ActivePlanOverview = {
 
 // ─────────────────────── Challenges & competitions ───────────────────────
 
-export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
+export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days' | 'park_courses';
 export type ChallengeScope = 'individual' | 'club_vs_club' | 'group_goal';
 
 export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & OfficialFlag & {

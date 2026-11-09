@@ -291,6 +291,7 @@ class ChallengeRow {
   static const String colIsPublic = 'is_public';
   static const String colCreatedAt = 'created_at';
   static const String colParticipantCount = 'participant_count';
+  static const String colParkRegionCode = 'park_region_code';
 
   final String id;
   final String? creatorId;
@@ -306,6 +307,7 @@ class ChallengeRow {
   final bool isPublic;
   final DateTime createdAt;
   final int participantCount;
+  final String? parkRegionCode;
 
   const ChallengeRow({
     required this.id,
@@ -322,6 +324,7 @@ class ChallengeRow {
     required this.isPublic,
     required this.createdAt,
     required this.participantCount,
+    this.parkRegionCode,
   });
 
   factory ChallengeRow.fromJson(Map<String, dynamic> json) => ChallengeRow(
@@ -339,6 +342,7 @@ class ChallengeRow {
     isPublic: (json['is_public'] as bool?) ?? false,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     participantCount: (json['participant_count'] as num).toInt(),
+    parkRegionCode: json['park_region_code'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -356,6 +360,7 @@ class ChallengeRow {
     colIsPublic: isPublic,
     colCreatedAt: createdAt.toIso8601String(),
     colParticipantCount: participantCount,
+    colParkRegionCode: parkRegionCode,
   };
 
   ChallengeRow copyWith({
@@ -373,6 +378,7 @@ class ChallengeRow {
     bool? isPublic,
     DateTime? createdAt,
     int? participantCount,
+    String? parkRegionCode,
   }) => ChallengeRow(
     id: id ?? this.id,
     creatorId: creatorId ?? this.creatorId,
@@ -388,6 +394,7 @@ class ChallengeRow {
     isPublic: isPublic ?? this.isPublic,
     createdAt: createdAt ?? this.createdAt,
     participantCount: participantCount ?? this.participantCount,
+    parkRegionCode: parkRegionCode ?? this.parkRegionCode,
   );
 }
 
@@ -397,6 +404,7 @@ class CheckpointCrossingRow {
   static const String table = 'checkpoint_crossings';
   static const String colId = 'id';
   static const String colEventId = 'event_id';
+  static const String colCheckpointId = 'checkpoint_id';
   static const String colInstanceStart = 'instance_start';
   static const String colUserId = 'user_id';
   static const String colBib = 'bib';
@@ -413,6 +421,7 @@ class CheckpointCrossingRow {
 
   final String id;
   final String eventId;
+  final String checkpointId;
   final DateTime instanceStart;
   final String? userId;
   final String? bib;
@@ -430,6 +439,7 @@ class CheckpointCrossingRow {
   const CheckpointCrossingRow({
     required this.id,
     required this.eventId,
+    required this.checkpointId,
     required this.instanceStart,
     this.userId,
     this.bib,
@@ -448,6 +458,7 @@ class CheckpointCrossingRow {
   factory CheckpointCrossingRow.fromJson(Map<String, dynamic> json) => CheckpointCrossingRow(
     id: json['id'] as String,
     eventId: json['event_id'] as String,
+    checkpointId: json['checkpoint_id'] as String,
     instanceStart: parseIsoStrictRequired(json['instance_start'], 'instance_start'),
     userId: json['user_id'] as String?,
     bib: json['bib'] as String?,
@@ -466,6 +477,7 @@ class CheckpointCrossingRow {
   Map<String, dynamic> toJson() => <String, dynamic>{
     colId: id,
     colEventId: eventId,
+    colCheckpointId: checkpointId,
     colInstanceStart: instanceStart.toIso8601String(),
     colUserId: userId,
     colBib: bib,
@@ -484,6 +496,7 @@ class CheckpointCrossingRow {
   CheckpointCrossingRow copyWith({
     String? id,
     String? eventId,
+    String? checkpointId,
     DateTime? instanceStart,
     String? userId,
     String? bib,
@@ -500,6 +513,7 @@ class CheckpointCrossingRow {
   }) => CheckpointCrossingRow(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
+    checkpointId: checkpointId ?? this.checkpointId,
     instanceStart: instanceStart ?? this.instanceStart,
     userId: userId ?? this.userId,
     bib: bib ?? this.bib,
@@ -727,6 +741,166 @@ class ClubPostRow {
     createdAt: createdAt ?? this.createdAt,
     eventInstanceStart: eventInstanceStart ?? this.eventInstanceStart,
     parentPostId: parentPostId ?? this.parentPostId,
+  );
+}
+
+/// Row shape for the `club_verification_requests` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class ClubVerificationRequestRow {
+  static const String table = 'club_verification_requests';
+  static const String colId = 'id';
+  static const String colClubId = 'club_id';
+  static const String colSubmittedBy = 'submitted_by';
+  static const String colOrganisation = 'organisation';
+  static const String colDomain = 'domain';
+  static const String colNote = 'note';
+  static const String colToken = 'token';
+  static const String colStatus = 'status';
+  static const String colProofMethod = 'proof_method';
+  static const String colProofVerifiedAt = 'proof_verified_at';
+  static const String colProofDetail = 'proof_detail';
+  static const String colLastCheckedAt = 'last_checked_at';
+  static const String colCheckFailures = 'check_failures';
+  static const String colDecidedBy = 'decided_by';
+  static const String colDecidedAt = 'decided_at';
+  static const String colDecisionReason = 'decision_reason';
+  static const String colClosedBy = 'closed_by';
+  static const String colClosedAt = 'closed_at';
+  static const String colCloseReason = 'close_reason';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String clubId;
+  final String? submittedBy;
+  final String organisation;
+  final String domain;
+  final String? note;
+  final String token;
+  final String status;
+  final String? proofMethod;
+  final DateTime? proofVerifiedAt;
+  final String? proofDetail;
+  final DateTime? lastCheckedAt;
+  final int checkFailures;
+  final String? decidedBy;
+  final DateTime? decidedAt;
+  final String? decisionReason;
+  final String? closedBy;
+  final DateTime? closedAt;
+  final String? closeReason;
+  final DateTime createdAt;
+
+  const ClubVerificationRequestRow({
+    required this.id,
+    required this.clubId,
+    this.submittedBy,
+    required this.organisation,
+    required this.domain,
+    this.note,
+    required this.token,
+    required this.status,
+    this.proofMethod,
+    this.proofVerifiedAt,
+    this.proofDetail,
+    this.lastCheckedAt,
+    required this.checkFailures,
+    this.decidedBy,
+    this.decidedAt,
+    this.decisionReason,
+    this.closedBy,
+    this.closedAt,
+    this.closeReason,
+    required this.createdAt,
+  });
+
+  factory ClubVerificationRequestRow.fromJson(Map<String, dynamic> json) => ClubVerificationRequestRow(
+    id: json['id'] as String,
+    clubId: json['club_id'] as String,
+    submittedBy: json['submitted_by'] as String?,
+    organisation: json['organisation'] as String,
+    domain: json['domain'] as String,
+    note: json['note'] as String?,
+    token: json['token'] as String,
+    status: json['status'] as String,
+    proofMethod: json['proof_method'] as String?,
+    proofVerifiedAt: parseIsoStrictValue(json['proof_verified_at']),
+    proofDetail: json['proof_detail'] as String?,
+    lastCheckedAt: parseIsoStrictValue(json['last_checked_at']),
+    checkFailures: (json['check_failures'] as num).toInt(),
+    decidedBy: json['decided_by'] as String?,
+    decidedAt: parseIsoStrictValue(json['decided_at']),
+    decisionReason: json['decision_reason'] as String?,
+    closedBy: json['closed_by'] as String?,
+    closedAt: parseIsoStrictValue(json['closed_at']),
+    closeReason: json['close_reason'] as String?,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colClubId: clubId,
+    colSubmittedBy: submittedBy,
+    colOrganisation: organisation,
+    colDomain: domain,
+    colNote: note,
+    colToken: token,
+    colStatus: status,
+    colProofMethod: proofMethod,
+    colProofVerifiedAt: proofVerifiedAt?.toIso8601String(),
+    colProofDetail: proofDetail,
+    colLastCheckedAt: lastCheckedAt?.toIso8601String(),
+    colCheckFailures: checkFailures,
+    colDecidedBy: decidedBy,
+    colDecidedAt: decidedAt?.toIso8601String(),
+    colDecisionReason: decisionReason,
+    colClosedBy: closedBy,
+    colClosedAt: closedAt?.toIso8601String(),
+    colCloseReason: closeReason,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  ClubVerificationRequestRow copyWith({
+    String? id,
+    String? clubId,
+    String? submittedBy,
+    String? organisation,
+    String? domain,
+    String? note,
+    String? token,
+    String? status,
+    String? proofMethod,
+    DateTime? proofVerifiedAt,
+    String? proofDetail,
+    DateTime? lastCheckedAt,
+    int? checkFailures,
+    String? decidedBy,
+    DateTime? decidedAt,
+    String? decisionReason,
+    String? closedBy,
+    DateTime? closedAt,
+    String? closeReason,
+    DateTime? createdAt,
+  }) => ClubVerificationRequestRow(
+    id: id ?? this.id,
+    clubId: clubId ?? this.clubId,
+    submittedBy: submittedBy ?? this.submittedBy,
+    organisation: organisation ?? this.organisation,
+    domain: domain ?? this.domain,
+    note: note ?? this.note,
+    token: token ?? this.token,
+    status: status ?? this.status,
+    proofMethod: proofMethod ?? this.proofMethod,
+    proofVerifiedAt: proofVerifiedAt ?? this.proofVerifiedAt,
+    proofDetail: proofDetail ?? this.proofDetail,
+    lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
+    checkFailures: checkFailures ?? this.checkFailures,
+    decidedBy: decidedBy ?? this.decidedBy,
+    decidedAt: decidedAt ?? this.decidedAt,
+    decisionReason: decisionReason ?? this.decisionReason,
+    closedBy: closedBy ?? this.closedBy,
+    closedAt: closedAt ?? this.closedAt,
+    closeReason: closeReason ?? this.closeReason,
+    createdAt: createdAt ?? this.createdAt,
   );
 }
 
@@ -1168,6 +1342,8 @@ class DirectMessageRow {
   static const String colDeletedPartnerKey = 'deleted_partner_key';
   static const String colConversationId = 'conversation_id';
   static const String colSeenAt = 'seen_at';
+  static const String colEditedAt = 'edited_at';
+  static const String colOriginalBody = 'original_body';
 
   final String id;
   final String senderId;
@@ -1180,6 +1356,8 @@ class DirectMessageRow {
   final String? deletedPartnerKey;
   final String conversationId;
   final DateTime? seenAt;
+  final DateTime? editedAt;
+  final String? originalBody;
 
   const DirectMessageRow({
     required this.id,
@@ -1193,6 +1371,8 @@ class DirectMessageRow {
     this.deletedPartnerKey,
     required this.conversationId,
     this.seenAt,
+    this.editedAt,
+    this.originalBody,
   });
 
   factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
@@ -1207,6 +1387,8 @@ class DirectMessageRow {
     deletedPartnerKey: json['deleted_partner_key'] as String?,
     conversationId: json['conversation_id'] as String,
     seenAt: parseIsoStrictValue(json['seen_at']),
+    editedAt: parseIsoStrictValue(json['edited_at']),
+    originalBody: json['original_body'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1221,6 +1403,8 @@ class DirectMessageRow {
     colDeletedPartnerKey: deletedPartnerKey,
     colConversationId: conversationId,
     colSeenAt: seenAt?.toIso8601String(),
+    colEditedAt: editedAt?.toIso8601String(),
+    colOriginalBody: originalBody,
   };
 
   DirectMessageRow copyWith({
@@ -1235,6 +1419,8 @@ class DirectMessageRow {
     String? deletedPartnerKey,
     String? conversationId,
     DateTime? seenAt,
+    DateTime? editedAt,
+    String? originalBody,
   }) => DirectMessageRow(
     id: id ?? this.id,
     senderId: senderId ?? this.senderId,
@@ -1247,6 +1433,8 @@ class DirectMessageRow {
     deletedPartnerKey: deletedPartnerKey ?? this.deletedPartnerKey,
     conversationId: conversationId ?? this.conversationId,
     seenAt: seenAt ?? this.seenAt,
+    editedAt: editedAt ?? this.editedAt,
+    originalBody: originalBody ?? this.originalBody,
   );
 }
 
@@ -1598,6 +1786,17 @@ class EventCourseRow {
   static const String colCreatedAt = 'created_at';
   static const String colStartLat = 'start_lat';
   static const String colStartLng = 'start_lng';
+  static const String colStartGateLat = 'start_gate_lat';
+  static const String colStartGateLng = 'start_gate_lng';
+  static const String colStartGateBearingDeg = 'start_gate_bearing_deg';
+  static const String colStartGateHalfWidthM = 'start_gate_half_width_m';
+  static const String colStartGateSource = 'start_gate_source';
+  static const String colFinishGateLat = 'finish_gate_lat';
+  static const String colFinishGateLng = 'finish_gate_lng';
+  static const String colFinishGateBearingDeg = 'finish_gate_bearing_deg';
+  static const String colFinishGateHalfWidthM = 'finish_gate_half_width_m';
+  static const String colFinishGateSource = 'finish_gate_source';
+  static const String colFinishLineSelfCross = 'finish_line_self_cross';
 
   final String id;
   final String eventId;
@@ -1610,6 +1809,17 @@ class EventCourseRow {
   final DateTime createdAt;
   final double? startLat;
   final double? startLng;
+  final double? startGateLat;
+  final double? startGateLng;
+  final double? startGateBearingDeg;
+  final double? startGateHalfWidthM;
+  final String? startGateSource;
+  final double? finishGateLat;
+  final double? finishGateLng;
+  final double? finishGateBearingDeg;
+  final double? finishGateHalfWidthM;
+  final String? finishGateSource;
+  final bool finishLineSelfCross;
 
   const EventCourseRow({
     required this.id,
@@ -1623,6 +1833,17 @@ class EventCourseRow {
     required this.createdAt,
     this.startLat,
     this.startLng,
+    this.startGateLat,
+    this.startGateLng,
+    this.startGateBearingDeg,
+    this.startGateHalfWidthM,
+    this.startGateSource,
+    this.finishGateLat,
+    this.finishGateLng,
+    this.finishGateBearingDeg,
+    this.finishGateHalfWidthM,
+    this.finishGateSource,
+    required this.finishLineSelfCross,
   });
 
   factory EventCourseRow.fromJson(Map<String, dynamic> json) => EventCourseRow(
@@ -1637,6 +1858,17 @@ class EventCourseRow {
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     startLat: _toDoubleOrNull(json['start_lat']),
     startLng: _toDoubleOrNull(json['start_lng']),
+    startGateLat: _toDoubleOrNull(json['start_gate_lat']),
+    startGateLng: _toDoubleOrNull(json['start_gate_lng']),
+    startGateBearingDeg: _toDoubleOrNull(json['start_gate_bearing_deg']),
+    startGateHalfWidthM: _toDoubleOrNull(json['start_gate_half_width_m']),
+    startGateSource: json['start_gate_source'] as String?,
+    finishGateLat: _toDoubleOrNull(json['finish_gate_lat']),
+    finishGateLng: _toDoubleOrNull(json['finish_gate_lng']),
+    finishGateBearingDeg: _toDoubleOrNull(json['finish_gate_bearing_deg']),
+    finishGateHalfWidthM: _toDoubleOrNull(json['finish_gate_half_width_m']),
+    finishGateSource: json['finish_gate_source'] as String?,
+    finishLineSelfCross: (json['finish_line_self_cross'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1651,6 +1883,17 @@ class EventCourseRow {
     colCreatedAt: createdAt.toIso8601String(),
     colStartLat: startLat,
     colStartLng: startLng,
+    colStartGateLat: startGateLat,
+    colStartGateLng: startGateLng,
+    colStartGateBearingDeg: startGateBearingDeg,
+    colStartGateHalfWidthM: startGateHalfWidthM,
+    colStartGateSource: startGateSource,
+    colFinishGateLat: finishGateLat,
+    colFinishGateLng: finishGateLng,
+    colFinishGateBearingDeg: finishGateBearingDeg,
+    colFinishGateHalfWidthM: finishGateHalfWidthM,
+    colFinishGateSource: finishGateSource,
+    colFinishLineSelfCross: finishLineSelfCross,
   };
 
   EventCourseRow copyWith({
@@ -1665,6 +1908,17 @@ class EventCourseRow {
     DateTime? createdAt,
     double? startLat,
     double? startLng,
+    double? startGateLat,
+    double? startGateLng,
+    double? startGateBearingDeg,
+    double? startGateHalfWidthM,
+    String? startGateSource,
+    double? finishGateLat,
+    double? finishGateLng,
+    double? finishGateBearingDeg,
+    double? finishGateHalfWidthM,
+    String? finishGateSource,
+    bool? finishLineSelfCross,
   }) => EventCourseRow(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
@@ -1677,6 +1931,17 @@ class EventCourseRow {
     createdAt: createdAt ?? this.createdAt,
     startLat: startLat ?? this.startLat,
     startLng: startLng ?? this.startLng,
+    startGateLat: startGateLat ?? this.startGateLat,
+    startGateLng: startGateLng ?? this.startGateLng,
+    startGateBearingDeg: startGateBearingDeg ?? this.startGateBearingDeg,
+    startGateHalfWidthM: startGateHalfWidthM ?? this.startGateHalfWidthM,
+    startGateSource: startGateSource ?? this.startGateSource,
+    finishGateLat: finishGateLat ?? this.finishGateLat,
+    finishGateLng: finishGateLng ?? this.finishGateLng,
+    finishGateBearingDeg: finishGateBearingDeg ?? this.finishGateBearingDeg,
+    finishGateHalfWidthM: finishGateHalfWidthM ?? this.finishGateHalfWidthM,
+    finishGateSource: finishGateSource ?? this.finishGateSource,
+    finishLineSelfCross: finishLineSelfCross ?? this.finishLineSelfCross,
   );
 }
 
@@ -1921,6 +2186,11 @@ class EventResultRow {
   static const String colGunTimeS = 'gun_time_s';
   static const String colChipTimeS = 'chip_time_s';
   static const String colFinishMethod = 'finish_method';
+  static const String colStartAt = 'start_at';
+  static const String colFinishAt = 'finish_at';
+  static const String colStartDetection = 'start_detection';
+  static const String colFinishDetection = 'finish_detection';
+  static const String colNeedsReview = 'needs_review';
 
   final String eventId;
   final DateTime instanceStart;
@@ -1944,6 +2214,11 @@ class EventResultRow {
   final int? gunTimeS;
   final int? chipTimeS;
   final String? finishMethod;
+  final DateTime? startAt;
+  final DateTime? finishAt;
+  final String? startDetection;
+  final String? finishDetection;
+  final bool needsReview;
 
   const EventResultRow({
     required this.eventId,
@@ -1968,6 +2243,11 @@ class EventResultRow {
     this.gunTimeS,
     this.chipTimeS,
     this.finishMethod,
+    this.startAt,
+    this.finishAt,
+    this.startDetection,
+    this.finishDetection,
+    required this.needsReview,
   });
 
   factory EventResultRow.fromJson(Map<String, dynamic> json) => EventResultRow(
@@ -1993,6 +2273,11 @@ class EventResultRow {
     gunTimeS: (json['gun_time_s'] as num?)?.toInt(),
     chipTimeS: (json['chip_time_s'] as num?)?.toInt(),
     finishMethod: json['finish_method'] as String?,
+    startAt: parseIsoStrictValue(json['start_at']),
+    finishAt: parseIsoStrictValue(json['finish_at']),
+    startDetection: json['start_detection'] as String?,
+    finishDetection: json['finish_detection'] as String?,
+    needsReview: (json['needs_review'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -2018,6 +2303,11 @@ class EventResultRow {
     colGunTimeS: gunTimeS,
     colChipTimeS: chipTimeS,
     colFinishMethod: finishMethod,
+    colStartAt: startAt?.toIso8601String(),
+    colFinishAt: finishAt?.toIso8601String(),
+    colStartDetection: startDetection,
+    colFinishDetection: finishDetection,
+    colNeedsReview: needsReview,
   };
 
   EventResultRow copyWith({
@@ -2043,6 +2333,11 @@ class EventResultRow {
     int? gunTimeS,
     int? chipTimeS,
     String? finishMethod,
+    DateTime? startAt,
+    DateTime? finishAt,
+    String? startDetection,
+    String? finishDetection,
+    bool? needsReview,
   }) => EventResultRow(
     eventId: eventId ?? this.eventId,
     instanceStart: instanceStart ?? this.instanceStart,
@@ -2066,6 +2361,11 @@ class EventResultRow {
     gunTimeS: gunTimeS ?? this.gunTimeS,
     chipTimeS: chipTimeS ?? this.chipTimeS,
     finishMethod: finishMethod ?? this.finishMethod,
+    startAt: startAt ?? this.startAt,
+    finishAt: finishAt ?? this.finishAt,
+    startDetection: startDetection ?? this.startDetection,
+    finishDetection: finishDetection ?? this.finishDetection,
+    needsReview: needsReview ?? this.needsReview,
   );
 }
 
@@ -2101,6 +2401,11 @@ class EventRow {
   static const String colTimezone = 'timezone';
   static const String colIsPublic = 'is_public';
   static const String colGymRoutineId = 'gym_routine_id';
+  static const String colRaceStartMode = 'race_start_mode';
+  static const String colRaceScheduledOffsetS = 'race_scheduled_offset_s';
+  static const String colRaceWindowOpenOffsetS = 'race_window_open_offset_s';
+  static const String colRaceWindowLengthS = 'race_window_length_s';
+  static const String colRaceAutoApprove = 'race_auto_approve';
 
   final String id;
   final String clubId;
@@ -2130,6 +2435,11 @@ class EventRow {
   final String? timezone;
   final bool isPublic;
   final String? gymRoutineId;
+  final String raceStartMode;
+  final int? raceScheduledOffsetS;
+  final int? raceWindowOpenOffsetS;
+  final int? raceWindowLengthS;
+  final bool? raceAutoApprove;
 
   const EventRow({
     required this.id,
@@ -2160,6 +2470,11 @@ class EventRow {
     this.timezone,
     required this.isPublic,
     this.gymRoutineId,
+    required this.raceStartMode,
+    this.raceScheduledOffsetS,
+    this.raceWindowOpenOffsetS,
+    this.raceWindowLengthS,
+    this.raceAutoApprove,
   });
 
   factory EventRow.fromJson(Map<String, dynamic> json) => EventRow(
@@ -2191,6 +2506,11 @@ class EventRow {
     timezone: json['timezone'] as String?,
     isPublic: (json['is_public'] as bool?) ?? false,
     gymRoutineId: json['gym_routine_id'] as String?,
+    raceStartMode: json['race_start_mode'] as String,
+    raceScheduledOffsetS: (json['race_scheduled_offset_s'] as num?)?.toInt(),
+    raceWindowOpenOffsetS: (json['race_window_open_offset_s'] as num?)?.toInt(),
+    raceWindowLengthS: (json['race_window_length_s'] as num?)?.toInt(),
+    raceAutoApprove: json['race_auto_approve'] as bool?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -2222,6 +2542,11 @@ class EventRow {
     colTimezone: timezone,
     colIsPublic: isPublic,
     colGymRoutineId: gymRoutineId,
+    colRaceStartMode: raceStartMode,
+    colRaceScheduledOffsetS: raceScheduledOffsetS,
+    colRaceWindowOpenOffsetS: raceWindowOpenOffsetS,
+    colRaceWindowLengthS: raceWindowLengthS,
+    colRaceAutoApprove: raceAutoApprove,
   };
 
   EventRow copyWith({
@@ -2253,6 +2578,11 @@ class EventRow {
     String? timezone,
     bool? isPublic,
     String? gymRoutineId,
+    String? raceStartMode,
+    int? raceScheduledOffsetS,
+    int? raceWindowOpenOffsetS,
+    int? raceWindowLengthS,
+    bool? raceAutoApprove,
   }) => EventRow(
     id: id ?? this.id,
     clubId: clubId ?? this.clubId,
@@ -2282,6 +2612,11 @@ class EventRow {
     timezone: timezone ?? this.timezone,
     isPublic: isPublic ?? this.isPublic,
     gymRoutineId: gymRoutineId ?? this.gymRoutineId,
+    raceStartMode: raceStartMode ?? this.raceStartMode,
+    raceScheduledOffsetS: raceScheduledOffsetS ?? this.raceScheduledOffsetS,
+    raceWindowOpenOffsetS: raceWindowOpenOffsetS ?? this.raceWindowOpenOffsetS,
+    raceWindowLengthS: raceWindowLengthS ?? this.raceWindowLengthS,
+    raceAutoApprove: raceAutoApprove ?? this.raceAutoApprove,
   );
 }
 
@@ -3071,6 +3406,7 @@ class GlobalSegmentEffortRow {
   static const String colTimeSeconds = 'time_seconds';
   static const String colStartedAt = 'started_at';
   static const String colCreatedAt = 'created_at';
+  static const String colMatchedBy = 'matched_by';
 
   final String id;
   final String globalSegmentId;
@@ -3079,6 +3415,7 @@ class GlobalSegmentEffortRow {
   final double timeSeconds;
   final DateTime startedAt;
   final DateTime createdAt;
+  final String matchedBy;
 
   const GlobalSegmentEffortRow({
     required this.id,
@@ -3088,6 +3425,7 @@ class GlobalSegmentEffortRow {
     required this.timeSeconds,
     required this.startedAt,
     required this.createdAt,
+    required this.matchedBy,
   });
 
   factory GlobalSegmentEffortRow.fromJson(Map<String, dynamic> json) => GlobalSegmentEffortRow(
@@ -3098,6 +3436,7 @@ class GlobalSegmentEffortRow {
     timeSeconds: _toDouble(json['time_seconds']),
     startedAt: parseIsoStrictRequired(json['started_at'], 'started_at'),
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    matchedBy: json['matched_by'] as String,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -3108,6 +3447,7 @@ class GlobalSegmentEffortRow {
     colTimeSeconds: timeSeconds,
     colStartedAt: startedAt.toIso8601String(),
     colCreatedAt: createdAt.toIso8601String(),
+    colMatchedBy: matchedBy,
   };
 
   GlobalSegmentEffortRow copyWith({
@@ -3118,6 +3458,7 @@ class GlobalSegmentEffortRow {
     double? timeSeconds,
     DateTime? startedAt,
     DateTime? createdAt,
+    String? matchedBy,
   }) => GlobalSegmentEffortRow(
     id: id ?? this.id,
     globalSegmentId: globalSegmentId ?? this.globalSegmentId,
@@ -3126,6 +3467,7 @@ class GlobalSegmentEffortRow {
     timeSeconds: timeSeconds ?? this.timeSeconds,
     startedAt: startedAt ?? this.startedAt,
     createdAt: createdAt ?? this.createdAt,
+    matchedBy: matchedBy ?? this.matchedBy,
   );
 }
 
@@ -3145,6 +3487,16 @@ class GlobalSegmentRow {
   static const String colCreatedBy = 'created_by';
   static const String colIsActive = 'is_active';
   static const String colCreatedAt = 'created_at';
+  static const String colStartGateLat = 'start_gate_lat';
+  static const String colStartGateLng = 'start_gate_lng';
+  static const String colStartGateBearingDeg = 'start_gate_bearing_deg';
+  static const String colStartGateHalfWidthM = 'start_gate_half_width_m';
+  static const String colStartGateSource = 'start_gate_source';
+  static const String colEndGateLat = 'end_gate_lat';
+  static const String colEndGateLng = 'end_gate_lng';
+  static const String colEndGateBearingDeg = 'end_gate_bearing_deg';
+  static const String colEndGateHalfWidthM = 'end_gate_half_width_m';
+  static const String colEndGateSource = 'end_gate_source';
 
   final String id;
   final String name;
@@ -3158,6 +3510,16 @@ class GlobalSegmentRow {
   final String? createdBy;
   final bool isActive;
   final DateTime createdAt;
+  final double? startGateLat;
+  final double? startGateLng;
+  final double? startGateBearingDeg;
+  final double? startGateHalfWidthM;
+  final String? startGateSource;
+  final double? endGateLat;
+  final double? endGateLng;
+  final double? endGateBearingDeg;
+  final double? endGateHalfWidthM;
+  final String? endGateSource;
 
   const GlobalSegmentRow({
     required this.id,
@@ -3172,6 +3534,16 @@ class GlobalSegmentRow {
     this.createdBy,
     required this.isActive,
     required this.createdAt,
+    this.startGateLat,
+    this.startGateLng,
+    this.startGateBearingDeg,
+    this.startGateHalfWidthM,
+    this.startGateSource,
+    this.endGateLat,
+    this.endGateLng,
+    this.endGateBearingDeg,
+    this.endGateHalfWidthM,
+    this.endGateSource,
   });
 
   factory GlobalSegmentRow.fromJson(Map<String, dynamic> json) => GlobalSegmentRow(
@@ -3187,6 +3559,16 @@ class GlobalSegmentRow {
     createdBy: json['created_by'] as String?,
     isActive: (json['is_active'] as bool?) ?? false,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    startGateLat: _toDoubleOrNull(json['start_gate_lat']),
+    startGateLng: _toDoubleOrNull(json['start_gate_lng']),
+    startGateBearingDeg: _toDoubleOrNull(json['start_gate_bearing_deg']),
+    startGateHalfWidthM: _toDoubleOrNull(json['start_gate_half_width_m']),
+    startGateSource: json['start_gate_source'] as String?,
+    endGateLat: _toDoubleOrNull(json['end_gate_lat']),
+    endGateLng: _toDoubleOrNull(json['end_gate_lng']),
+    endGateBearingDeg: _toDoubleOrNull(json['end_gate_bearing_deg']),
+    endGateHalfWidthM: _toDoubleOrNull(json['end_gate_half_width_m']),
+    endGateSource: json['end_gate_source'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -3202,6 +3584,16 @@ class GlobalSegmentRow {
     colCreatedBy: createdBy,
     colIsActive: isActive,
     colCreatedAt: createdAt.toIso8601String(),
+    colStartGateLat: startGateLat,
+    colStartGateLng: startGateLng,
+    colStartGateBearingDeg: startGateBearingDeg,
+    colStartGateHalfWidthM: startGateHalfWidthM,
+    colStartGateSource: startGateSource,
+    colEndGateLat: endGateLat,
+    colEndGateLng: endGateLng,
+    colEndGateBearingDeg: endGateBearingDeg,
+    colEndGateHalfWidthM: endGateHalfWidthM,
+    colEndGateSource: endGateSource,
   };
 
   GlobalSegmentRow copyWith({
@@ -3217,6 +3609,16 @@ class GlobalSegmentRow {
     String? createdBy,
     bool? isActive,
     DateTime? createdAt,
+    double? startGateLat,
+    double? startGateLng,
+    double? startGateBearingDeg,
+    double? startGateHalfWidthM,
+    String? startGateSource,
+    double? endGateLat,
+    double? endGateLng,
+    double? endGateBearingDeg,
+    double? endGateHalfWidthM,
+    String? endGateSource,
   }) => GlobalSegmentRow(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -3230,6 +3632,16 @@ class GlobalSegmentRow {
     createdBy: createdBy ?? this.createdBy,
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
+    startGateLat: startGateLat ?? this.startGateLat,
+    startGateLng: startGateLng ?? this.startGateLng,
+    startGateBearingDeg: startGateBearingDeg ?? this.startGateBearingDeg,
+    startGateHalfWidthM: startGateHalfWidthM ?? this.startGateHalfWidthM,
+    startGateSource: startGateSource ?? this.startGateSource,
+    endGateLat: endGateLat ?? this.endGateLat,
+    endGateLng: endGateLng ?? this.endGateLng,
+    endGateBearingDeg: endGateBearingDeg ?? this.endGateBearingDeg,
+    endGateHalfWidthM: endGateHalfWidthM ?? this.endGateHalfWidthM,
+    endGateSource: endGateSource ?? this.endGateSource,
   );
 }
 
@@ -4207,6 +4619,7 @@ class NotificationRow {
   static const String colNativePushSentAt = 'native_push_sent_at';
   static const String colRefunded = 'refunded';
   static const String colEventTitle = 'event_title';
+  static const String colCourseAlertId = 'course_alert_id';
 
   final String id;
   final String userId;
@@ -4229,6 +4642,7 @@ class NotificationRow {
   final DateTime? nativePushSentAt;
   final bool refunded;
   final String? eventTitle;
+  final String? courseAlertId;
 
   const NotificationRow({
     required this.id,
@@ -4252,6 +4666,7 @@ class NotificationRow {
     this.nativePushSentAt,
     required this.refunded,
     this.eventTitle,
+    this.courseAlertId,
   });
 
   factory NotificationRow.fromJson(Map<String, dynamic> json) => NotificationRow(
@@ -4276,6 +4691,7 @@ class NotificationRow {
     nativePushSentAt: parseIsoStrictValue(json['native_push_sent_at']),
     refunded: (json['refunded'] as bool?) ?? false,
     eventTitle: json['event_title'] as String?,
+    courseAlertId: json['course_alert_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4300,6 +4716,7 @@ class NotificationRow {
     colNativePushSentAt: nativePushSentAt?.toIso8601String(),
     colRefunded: refunded,
     colEventTitle: eventTitle,
+    colCourseAlertId: courseAlertId,
   };
 
   NotificationRow copyWith({
@@ -4324,6 +4741,7 @@ class NotificationRow {
     DateTime? nativePushSentAt,
     bool? refunded,
     String? eventTitle,
+    String? courseAlertId,
   }) => NotificationRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -4346,6 +4764,7 @@ class NotificationRow {
     nativePushSentAt: nativePushSentAt ?? this.nativePushSentAt,
     refunded: refunded ?? this.refunded,
     eventTitle: eventTitle ?? this.eventTitle,
+    courseAlertId: courseAlertId ?? this.courseAlertId,
   );
 }
 
@@ -4564,6 +4983,270 @@ class NutritionPlanRow {
   );
 }
 
+/// Row shape for the `park_courses` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class ParkCourseRow {
+  static const String table = 'park_courses';
+  static const String colId = 'id';
+  static const String colParkId = 'park_id';
+  static const String colGlobalSegmentId = 'global_segment_id';
+  static const String colRouteId = 'route_id';
+  static const String colSlug = 'slug';
+  static const String colCourseShape = 'course_shape';
+  static const String colStatus = 'status';
+  static const String colStatusNote = 'status_note';
+  static const String colStatusCheckedAt = 'status_checked_at';
+  static const String colGeometrySource = 'geometry_source';
+  static const String colSourceRef = 'source_ref';
+  static const String colSourceCheckedAt = 'source_checked_at';
+  static const String colDifficulty = 'difficulty';
+  static const String colCheckpoints = 'checkpoints';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String parkId;
+  final String globalSegmentId;
+  final String? routeId;
+  final String slug;
+  final String courseShape;
+  final String status;
+  final String? statusNote;
+  final DateTime? statusCheckedAt;
+  final String geometrySource;
+  final String? sourceRef;
+  final DateTime? sourceCheckedAt;
+  final String? difficulty;
+  final dynamic checkpoints;
+  final DateTime createdAt;
+
+  const ParkCourseRow({
+    required this.id,
+    required this.parkId,
+    required this.globalSegmentId,
+    this.routeId,
+    required this.slug,
+    required this.courseShape,
+    required this.status,
+    this.statusNote,
+    this.statusCheckedAt,
+    required this.geometrySource,
+    this.sourceRef,
+    this.sourceCheckedAt,
+    this.difficulty,
+    required this.checkpoints,
+    required this.createdAt,
+  });
+
+  factory ParkCourseRow.fromJson(Map<String, dynamic> json) => ParkCourseRow(
+    id: json['id'] as String,
+    parkId: json['park_id'] as String,
+    globalSegmentId: json['global_segment_id'] as String,
+    routeId: json['route_id'] as String?,
+    slug: json['slug'] as String,
+    courseShape: json['course_shape'] as String,
+    status: json['status'] as String,
+    statusNote: json['status_note'] as String?,
+    statusCheckedAt: parseIsoStrictValue(json['status_checked_at']),
+    geometrySource: json['geometry_source'] as String,
+    sourceRef: json['source_ref'] as String?,
+    sourceCheckedAt: parseIsoStrictValue(json['source_checked_at']),
+    difficulty: json['difficulty'] as String?,
+    checkpoints: json['checkpoints'],
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colParkId: parkId,
+    colGlobalSegmentId: globalSegmentId,
+    colRouteId: routeId,
+    colSlug: slug,
+    colCourseShape: courseShape,
+    colStatus: status,
+    colStatusNote: statusNote,
+    colStatusCheckedAt: statusCheckedAt?.toIso8601String(),
+    colGeometrySource: geometrySource,
+    colSourceRef: sourceRef,
+    colSourceCheckedAt: sourceCheckedAt?.toIso8601String(),
+    colDifficulty: difficulty,
+    colCheckpoints: checkpoints,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  ParkCourseRow copyWith({
+    String? id,
+    String? parkId,
+    String? globalSegmentId,
+    String? routeId,
+    String? slug,
+    String? courseShape,
+    String? status,
+    String? statusNote,
+    DateTime? statusCheckedAt,
+    String? geometrySource,
+    String? sourceRef,
+    DateTime? sourceCheckedAt,
+    String? difficulty,
+    dynamic checkpoints,
+    DateTime? createdAt,
+  }) => ParkCourseRow(
+    id: id ?? this.id,
+    parkId: parkId ?? this.parkId,
+    globalSegmentId: globalSegmentId ?? this.globalSegmentId,
+    routeId: routeId ?? this.routeId,
+    slug: slug ?? this.slug,
+    courseShape: courseShape ?? this.courseShape,
+    status: status ?? this.status,
+    statusNote: statusNote ?? this.statusNote,
+    statusCheckedAt: statusCheckedAt ?? this.statusCheckedAt,
+    geometrySource: geometrySource ?? this.geometrySource,
+    sourceRef: sourceRef ?? this.sourceRef,
+    sourceCheckedAt: sourceCheckedAt ?? this.sourceCheckedAt,
+    difficulty: difficulty ?? this.difficulty,
+    checkpoints: checkpoints ?? this.checkpoints,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
+/// Row shape for the `parks` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class ParkRow {
+  static const String table = 'parks';
+  static const String colId = 'id';
+  static const String colSlug = 'slug';
+  static const String colName = 'name';
+  static const String colDescription = 'description';
+  static const String colAgency = 'agency';
+  static const String colRegionCode = 'region_code';
+  static const String colCountryCode = 'country_code';
+  static const String colTimezone = 'timezone';
+  static const String colWebsiteUrl = 'website_url';
+  static const String colCentroidLat = 'centroid_lat';
+  static const String colCentroidLng = 'centroid_lng';
+  static const String colBboxMinLat = 'bbox_min_lat';
+  static const String colBboxMinLng = 'bbox_min_lng';
+  static const String colBboxMaxLat = 'bbox_max_lat';
+  static const String colBboxMaxLng = 'bbox_max_lng';
+  static const String colIsActive = 'is_active';
+  static const String colCreatedAt = 'created_at';
+
+  final String id;
+  final String slug;
+  final String name;
+  final String? description;
+  final String agency;
+  final String regionCode;
+  final String countryCode;
+  final String timezone;
+  final String? websiteUrl;
+  final double? centroidLat;
+  final double? centroidLng;
+  final double? bboxMinLat;
+  final double? bboxMinLng;
+  final double? bboxMaxLat;
+  final double? bboxMaxLng;
+  final bool isActive;
+  final DateTime createdAt;
+
+  const ParkRow({
+    required this.id,
+    required this.slug,
+    required this.name,
+    this.description,
+    required this.agency,
+    required this.regionCode,
+    required this.countryCode,
+    required this.timezone,
+    this.websiteUrl,
+    this.centroidLat,
+    this.centroidLng,
+    this.bboxMinLat,
+    this.bboxMinLng,
+    this.bboxMaxLat,
+    this.bboxMaxLng,
+    required this.isActive,
+    required this.createdAt,
+  });
+
+  factory ParkRow.fromJson(Map<String, dynamic> json) => ParkRow(
+    id: json['id'] as String,
+    slug: json['slug'] as String,
+    name: json['name'] as String,
+    description: json['description'] as String?,
+    agency: json['agency'] as String,
+    regionCode: json['region_code'] as String,
+    countryCode: json['country_code'] as String,
+    timezone: json['timezone'] as String,
+    websiteUrl: json['website_url'] as String?,
+    centroidLat: _toDoubleOrNull(json['centroid_lat']),
+    centroidLng: _toDoubleOrNull(json['centroid_lng']),
+    bboxMinLat: _toDoubleOrNull(json['bbox_min_lat']),
+    bboxMinLng: _toDoubleOrNull(json['bbox_min_lng']),
+    bboxMaxLat: _toDoubleOrNull(json['bbox_max_lat']),
+    bboxMaxLng: _toDoubleOrNull(json['bbox_max_lng']),
+    isActive: (json['is_active'] as bool?) ?? false,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colSlug: slug,
+    colName: name,
+    colDescription: description,
+    colAgency: agency,
+    colRegionCode: regionCode,
+    colCountryCode: countryCode,
+    colTimezone: timezone,
+    colWebsiteUrl: websiteUrl,
+    colCentroidLat: centroidLat,
+    colCentroidLng: centroidLng,
+    colBboxMinLat: bboxMinLat,
+    colBboxMinLng: bboxMinLng,
+    colBboxMaxLat: bboxMaxLat,
+    colBboxMaxLng: bboxMaxLng,
+    colIsActive: isActive,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  ParkRow copyWith({
+    String? id,
+    String? slug,
+    String? name,
+    String? description,
+    String? agency,
+    String? regionCode,
+    String? countryCode,
+    String? timezone,
+    String? websiteUrl,
+    double? centroidLat,
+    double? centroidLng,
+    double? bboxMinLat,
+    double? bboxMinLng,
+    double? bboxMaxLat,
+    double? bboxMaxLng,
+    bool? isActive,
+    DateTime? createdAt,
+  }) => ParkRow(
+    id: id ?? this.id,
+    slug: slug ?? this.slug,
+    name: name ?? this.name,
+    description: description ?? this.description,
+    agency: agency ?? this.agency,
+    regionCode: regionCode ?? this.regionCode,
+    countryCode: countryCode ?? this.countryCode,
+    timezone: timezone ?? this.timezone,
+    websiteUrl: websiteUrl ?? this.websiteUrl,
+    centroidLat: centroidLat ?? this.centroidLat,
+    centroidLng: centroidLng ?? this.centroidLng,
+    bboxMinLat: bboxMinLat ?? this.bboxMinLat,
+    bboxMinLng: bboxMinLng ?? this.bboxMinLng,
+    bboxMaxLat: bboxMaxLat ?? this.bboxMaxLat,
+    bboxMaxLng: bboxMaxLng ?? this.bboxMaxLng,
+    isActive: isActive ?? this.isActive,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
 /// Row shape for the `personal_record_improvements` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class PersonalRecordImprovementRow {
@@ -4699,6 +5382,110 @@ class PersonalRecordRow {
     runId: runId ?? this.runId,
     achievedAt: achievedAt ?? this.achievedAt,
     updatedAt: updatedAt ?? this.updatedAt,
+  );
+}
+
+/// Row shape for the `plan_change_requests` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class PlanChangeRequestRow {
+  static const String table = 'plan_change_requests';
+  static const String colId = 'id';
+  static const String colPlanId = 'plan_id';
+  static const String colAthleteId = 'athlete_id';
+  static const String colCoachId = 'coach_id';
+  static const String colStatus = 'status';
+  static const String colIncludeFollowing = 'include_following';
+  static const String colWorkouts = 'workouts';
+  static const String colWeeks = 'weeks';
+  static const String colEditedByCoach = 'edited_by_coach';
+  static const String colCoachNote = 'coach_note';
+  static const String colCreatedAt = 'created_at';
+  static const String colDecidedAt = 'decided_at';
+
+  final String id;
+  final String planId;
+  final String athleteId;
+  final String coachId;
+  final String status;
+  final bool includeFollowing;
+  final List<dynamic> workouts;
+  final List<dynamic> weeks;
+  final bool editedByCoach;
+  final String? coachNote;
+  final DateTime createdAt;
+  final DateTime? decidedAt;
+
+  const PlanChangeRequestRow({
+    required this.id,
+    required this.planId,
+    required this.athleteId,
+    required this.coachId,
+    required this.status,
+    required this.includeFollowing,
+    required this.workouts,
+    required this.weeks,
+    required this.editedByCoach,
+    this.coachNote,
+    required this.createdAt,
+    this.decidedAt,
+  });
+
+  factory PlanChangeRequestRow.fromJson(Map<String, dynamic> json) => PlanChangeRequestRow(
+    id: json['id'] as String,
+    planId: json['plan_id'] as String,
+    athleteId: json['athlete_id'] as String,
+    coachId: json['coach_id'] as String,
+    status: json['status'] as String,
+    includeFollowing: (json['include_following'] as bool?) ?? false,
+    workouts: (json['workouts'] as List<dynamic>).cast<dynamic>(),
+    weeks: (json['weeks'] as List<dynamic>).cast<dynamic>(),
+    editedByCoach: (json['edited_by_coach'] as bool?) ?? false,
+    coachNote: json['coach_note'] as String?,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    decidedAt: parseIsoStrictValue(json['decided_at']),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colPlanId: planId,
+    colAthleteId: athleteId,
+    colCoachId: coachId,
+    colStatus: status,
+    colIncludeFollowing: includeFollowing,
+    colWorkouts: workouts,
+    colWeeks: weeks,
+    colEditedByCoach: editedByCoach,
+    colCoachNote: coachNote,
+    colCreatedAt: createdAt.toIso8601String(),
+    colDecidedAt: decidedAt?.toIso8601String(),
+  };
+
+  PlanChangeRequestRow copyWith({
+    String? id,
+    String? planId,
+    String? athleteId,
+    String? coachId,
+    String? status,
+    bool? includeFollowing,
+    List<dynamic>? workouts,
+    List<dynamic>? weeks,
+    bool? editedByCoach,
+    String? coachNote,
+    DateTime? createdAt,
+    DateTime? decidedAt,
+  }) => PlanChangeRequestRow(
+    id: id ?? this.id,
+    planId: planId ?? this.planId,
+    athleteId: athleteId ?? this.athleteId,
+    coachId: coachId ?? this.coachId,
+    status: status ?? this.status,
+    includeFollowing: includeFollowing ?? this.includeFollowing,
+    workouts: workouts ?? this.workouts,
+    weeks: weeks ?? this.weeks,
+    editedByCoach: editedByCoach ?? this.editedByCoach,
+    coachNote: coachNote ?? this.coachNote,
+    createdAt: createdAt ?? this.createdAt,
+    decidedAt: decidedAt ?? this.decidedAt,
   );
 }
 
@@ -4985,6 +5772,10 @@ class RaceListingRow {
   static const String colCreatedAt = 'created_at';
   static const String colUpdatedAt = 'updated_at';
   static const String colRouteId = 'route_id';
+  static const String colOrganiserClubId = 'organiser_club_id';
+  static const String colCourseSource = 'course_source';
+  static const String colCourseCheckedAt = 'course_checked_at';
+  static const String colCourseUpdatedAt = 'course_updated_at';
 
   final String id;
   final String provider;
@@ -5001,6 +5792,10 @@ class RaceListingRow {
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? routeId;
+  final String? organiserClubId;
+  final String? courseSource;
+  final DateTime? courseCheckedAt;
+  final DateTime? courseUpdatedAt;
 
   const RaceListingRow({
     required this.id,
@@ -5018,6 +5813,10 @@ class RaceListingRow {
     required this.createdAt,
     required this.updatedAt,
     this.routeId,
+    this.organiserClubId,
+    this.courseSource,
+    this.courseCheckedAt,
+    this.courseUpdatedAt,
   });
 
   factory RaceListingRow.fromJson(Map<String, dynamic> json) => RaceListingRow(
@@ -5036,6 +5835,10 @@ class RaceListingRow {
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     updatedAt: parseIsoStrictRequired(json['updated_at'], 'updated_at'),
     routeId: json['route_id'] as String?,
+    organiserClubId: json['organiser_club_id'] as String?,
+    courseSource: json['course_source'] as String?,
+    courseCheckedAt: parseIsoStrictValue(json['course_checked_at']),
+    courseUpdatedAt: parseIsoStrictValue(json['course_updated_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5054,6 +5857,10 @@ class RaceListingRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
     colRouteId: routeId,
+    colOrganiserClubId: organiserClubId,
+    colCourseSource: courseSource,
+    colCourseCheckedAt: courseCheckedAt?.toIso8601String(),
+    colCourseUpdatedAt: courseUpdatedAt?.toIso8601String(),
   };
 
   RaceListingRow copyWith({
@@ -5072,6 +5879,10 @@ class RaceListingRow {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? routeId,
+    String? organiserClubId,
+    String? courseSource,
+    DateTime? courseCheckedAt,
+    DateTime? courseUpdatedAt,
   }) => RaceListingRow(
     id: id ?? this.id,
     provider: provider ?? this.provider,
@@ -5088,6 +5899,10 @@ class RaceListingRow {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     routeId: routeId ?? this.routeId,
+    organiserClubId: organiserClubId ?? this.organiserClubId,
+    courseSource: courseSource ?? this.courseSource,
+    courseCheckedAt: courseCheckedAt ?? this.courseCheckedAt,
+    courseUpdatedAt: courseUpdatedAt ?? this.courseUpdatedAt,
   );
 }
 
@@ -5106,6 +5921,7 @@ class RacePingRow {
   static const String colElapsedS = 'elapsed_s';
   static const String colBpm = 'bpm';
   static const String colCoarse = 'coarse';
+  static const String colSinceStartLineS = 'since_start_line_s';
 
   final dynamic id;
   final String eventId;
@@ -5118,6 +5934,7 @@ class RacePingRow {
   final int? elapsedS;
   final int? bpm;
   final bool coarse;
+  final int? sinceStartLineS;
 
   const RacePingRow({
     required this.id,
@@ -5131,6 +5948,7 @@ class RacePingRow {
     this.elapsedS,
     this.bpm,
     required this.coarse,
+    this.sinceStartLineS,
   });
 
   factory RacePingRow.fromJson(Map<String, dynamic> json) => RacePingRow(
@@ -5145,6 +5963,7 @@ class RacePingRow {
     elapsedS: (json['elapsed_s'] as num?)?.toInt(),
     bpm: (json['bpm'] as num?)?.toInt(),
     coarse: (json['coarse'] as bool?) ?? false,
+    sinceStartLineS: (json['since_start_line_s'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5159,6 +5978,7 @@ class RacePingRow {
     colElapsedS: elapsedS,
     colBpm: bpm,
     colCoarse: coarse,
+    colSinceStartLineS: sinceStartLineS,
   };
 
   RacePingRow copyWith({
@@ -5173,6 +5993,7 @@ class RacePingRow {
     int? elapsedS,
     int? bpm,
     bool? coarse,
+    int? sinceStartLineS,
   }) => RacePingRow(
     id: id ?? this.id,
     eventId: eventId ?? this.eventId,
@@ -5185,6 +6006,7 @@ class RacePingRow {
     elapsedS: elapsedS ?? this.elapsedS,
     bpm: bpm ?? this.bpm,
     coarse: coarse ?? this.coarse,
+    sinceStartLineS: sinceStartLineS ?? this.sinceStartLineS,
   );
 }
 
@@ -5201,6 +6023,11 @@ class RaceSessionRow {
   static const String colCreatedAt = 'created_at';
   static const String colUpdatedAt = 'updated_at';
   static const String colIsAutoApprove = 'is_auto_approve';
+  static const String colCoursesFrozenAt = 'courses_frozen_at';
+  static const String colStartMode = 'start_mode';
+  static const String colScheduledStartAt = 'scheduled_start_at';
+  static const String colWindowOpensAt = 'window_opens_at';
+  static const String colWindowClosesAt = 'window_closes_at';
 
   final String eventId;
   final DateTime instanceStart;
@@ -5211,6 +6038,11 @@ class RaceSessionRow {
   final DateTime createdAt;
   final DateTime updatedAt;
   final bool isAutoApprove;
+  final DateTime? coursesFrozenAt;
+  final String startMode;
+  final DateTime? scheduledStartAt;
+  final DateTime? windowOpensAt;
+  final DateTime? windowClosesAt;
 
   const RaceSessionRow({
     required this.eventId,
@@ -5222,6 +6054,11 @@ class RaceSessionRow {
     required this.createdAt,
     required this.updatedAt,
     required this.isAutoApprove,
+    this.coursesFrozenAt,
+    required this.startMode,
+    this.scheduledStartAt,
+    this.windowOpensAt,
+    this.windowClosesAt,
   });
 
   factory RaceSessionRow.fromJson(Map<String, dynamic> json) => RaceSessionRow(
@@ -5234,6 +6071,11 @@ class RaceSessionRow {
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     updatedAt: parseIsoStrictRequired(json['updated_at'], 'updated_at'),
     isAutoApprove: (json['is_auto_approve'] as bool?) ?? false,
+    coursesFrozenAt: parseIsoStrictValue(json['courses_frozen_at']),
+    startMode: json['start_mode'] as String,
+    scheduledStartAt: parseIsoStrictValue(json['scheduled_start_at']),
+    windowOpensAt: parseIsoStrictValue(json['window_opens_at']),
+    windowClosesAt: parseIsoStrictValue(json['window_closes_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5246,6 +6088,11 @@ class RaceSessionRow {
     colCreatedAt: createdAt.toIso8601String(),
     colUpdatedAt: updatedAt.toIso8601String(),
     colIsAutoApprove: isAutoApprove,
+    colCoursesFrozenAt: coursesFrozenAt?.toIso8601String(),
+    colStartMode: startMode,
+    colScheduledStartAt: scheduledStartAt?.toIso8601String(),
+    colWindowOpensAt: windowOpensAt?.toIso8601String(),
+    colWindowClosesAt: windowClosesAt?.toIso8601String(),
   };
 
   RaceSessionRow copyWith({
@@ -5258,6 +6105,11 @@ class RaceSessionRow {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isAutoApprove,
+    DateTime? coursesFrozenAt,
+    String? startMode,
+    DateTime? scheduledStartAt,
+    DateTime? windowOpensAt,
+    DateTime? windowClosesAt,
   }) => RaceSessionRow(
     eventId: eventId ?? this.eventId,
     instanceStart: instanceStart ?? this.instanceStart,
@@ -5268,6 +6120,11 @@ class RaceSessionRow {
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     isAutoApprove: isAutoApprove ?? this.isAutoApprove,
+    coursesFrozenAt: coursesFrozenAt ?? this.coursesFrozenAt,
+    startMode: startMode ?? this.startMode,
+    scheduledStartAt: scheduledStartAt ?? this.scheduledStartAt,
+    windowOpensAt: windowOpensAt ?? this.windowOpensAt,
+    windowClosesAt: windowClosesAt ?? this.windowClosesAt,
   );
 }
 

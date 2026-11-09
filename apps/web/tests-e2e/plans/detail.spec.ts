@@ -3,6 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
 import { readCount, readRows } from '../fixtures/db-read';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — plan-detail surface. Split out from plans/list.spec.ts
@@ -19,6 +20,11 @@ import { readCount, readRows } from '../fixtures/db-read';
 
 test.describe('/plans/[id]', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	// The week grid and Share & publish start shut (decisions § 2375).
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('Edit-plan meta dialog: rename → Save persists across reload, restore', async ({
 		page

@@ -174,6 +174,7 @@ void main() async {
   const cyclePlansDef = String.fromEnvironment('CYCLE_PLANS_ENABLED');
   const flyoverVideoDef =
       String.fromEnvironment('FLYOVER_VIDEO_MAPTILER_ENABLED');
+  const courseDriveDef = String.fromEnvironment('COURSE_DRIVE_ENABLED');
   const tileUrlTemplateDef = String.fromEnvironment('TILE_URL_TEMPLATE');
   const usdaFdcApiKeyDef = String.fromEnvironment('USDA_FDC_API_KEY');
   dotenv.loadFromString(
@@ -206,6 +207,7 @@ void main() async {
       if (cyclePlansDef.isNotEmpty) 'CYCLE_PLANS_ENABLED=$cyclePlansDef',
       if (flyoverVideoDef.isNotEmpty)
         'FLYOVER_VIDEO_MAPTILER_ENABLED=$flyoverVideoDef',
+      if (courseDriveDef.isNotEmpty) 'COURSE_DRIVE_ENABLED=$courseDriveDef',
       if (tileUrlTemplateDef.isNotEmpty) 'TILE_URL_TEMPLATE=$tileUrlTemplateDef',
       if (usdaFdcApiKeyDef.isNotEmpty) 'USDA_FDC_API_KEY=$usdaFdcApiKeyDef',
     ].join('\n'),

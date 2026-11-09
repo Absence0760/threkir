@@ -748,15 +748,16 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
-      // The mute affordance is offered (not yet muted).
-      expect(find.text('Mute pace cues'), findsOneWidget);
-      expect(find.text('Pace cues muted'), findsNothing);
+      // The mute affordance is offered (not yet muted). It is an icon toggle
+      // in the clock row, named by its tooltip.
+      expect(find.byTooltip('Mute pace cues'), findsOneWidget);
+      expect(find.byTooltip('Pace cues muted'), findsNothing);
 
       // Tapping it flips to the muted state for this session.
-      await tester.tap(find.text('Mute pace cues'));
+      await tester.tap(find.byTooltip('Mute pace cues'));
       await tester.pump();
-      expect(find.text('Pace cues muted'), findsOneWidget);
-      expect(find.text('Mute pace cues'), findsNothing);
+      expect(find.byTooltip('Pace cues muted'), findsOneWidget);
+      expect(find.byTooltip('Mute pace cues'), findsNothing);
     });
 
     testWidgets('positions emitted after recording begins flow into the recorder',

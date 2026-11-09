@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { selfTimedBoard } from '#lib/races/race_start_modes.ts';
 	import type * as GeoJSON from 'geojson';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount, onDestroy } from 'svelte';
@@ -30,6 +31,8 @@
 		fetchEventResults,
 		fetchEventCourses,
 		fetchAttendeeCourses,
+		fetchCourseLinesForOccurrence,
+		type CourseLinesRow,
 		type RacePingRow,
 		type RaceSessionRow,
 		type EventResultWithUser
@@ -49,17 +52,35 @@
 		groupRunnersByCourse,
 		type EventCourse
 	} from '#lib/social/event_courses.ts';
+	import { courseGate } from '#lib/races/course_gates.ts';
+	import { addCourseGateLayers, type DrawnGate } from '#lib/races/course_gate_layers.ts';
 
 	let eventId = $derived(page.params.id as string);
 	let instance = $derived(decodeURIComponent(page.params.instance as string));
 
 	let event = $state<EventWithMeta | null>(null);
 	let race = $state<RaceSessionRow | null>(null);
+	// The status the race is in on the server clock (race_sessions_redacted):
+	// a scheduled race whose GO has passed is live before the job moves it.
+	let raceStatus = $derived(race?.effective_status ?? race?.status ?? null);
 	let recentPings = $state<RacePingRow[]>([]);
 	let leaderPings = $state<RacePingRow[]>([]);
 	let results = $state<EventResultWithUser[]>([]);
 	// Courses of a multi-course race: one finisher board per course.
 	let courses = $state<EventCourse[]>([]);
+	// Every course's start and finish lines (#1305), from the race's frozen
+	// copy once it has one: the lines the runners are crossing.
+	let courseLines = $state<CourseLinesRow[]>([]);
+	let liveGates = $derived.by<DrawnGate[]>(() => {
+		const out: DrawnGate[] = [];
+		for (const row of courseLines) {
+			const s = courseGate(row, 'start');
+			const f = courseGate(row, 'finish');
+			if (s) out.push({ which: 'start', gate: s, courseId: row.course_id });
+			if (f) out.push({ which: 'finish', gate: f, courseId: row.course_id });
+		}
+		return out;
+	});
 	// Each runner's RSVP'd course, which splits the on-course board the way
 	// the finisher boards are split. Read only for a multi-course race.
 	let courseByUser = $state<Map<string, string>>(new Map());
@@ -184,6 +205,14 @@
 				courses = [];
 			}
 			courseByUser = await readCourseByUser();
+			try {
+				courseLines =
+					courses.length > 0
+						? await fetchCourseLinesForOccurrence(eventId, instance, !!race?.courses_frozen_at)
+						: [];
+			} catch (le) {
+				console.warn('live/event: course lines read failed', le);
+			}
 		} catch (e) {
 			// Public spectator page — a rejected fetch would otherwise hang on
 			// "Loading…" forever with no recourse. Surface it with a retry.
@@ -412,7 +441,7 @@
 		// course, so each row's freshness ("updated N ago" / stale badge)
 		// keeps recomputing — a runner who lost signal must transition to
 		// stale even if the organiser hasn't formally flipped the race state.
-		if (race?.status === 'running' || pings.length > 0) {
+		if (raceStatus === 'running' || raceStatus === 'armed' || pings.length > 0) {
 			tickTimer = setInterval(() => (nowTick = Date.now()), 1000);
 			return () => {
 				if (tickTimer) clearInterval(tickTimer);
@@ -422,7 +451,7 @@
 	});
 
 	let raceElapsedS = $derived(
-		race?.status === 'running' && race.started_at
+		raceStatus === 'running' && race?.started_at
 			? Math.max(0, Math.floor((nowTick - new Date(race.started_at).getTime()) / 1000))
 			: race?.status === 'finished' && race.started_at && race.finished_at
 			? Math.max(
@@ -488,6 +517,21 @@
 		groupResultsByCourse(finishedResults, courses).filter((b) => b.results.length > 0)
 	);
 	let onCourseBoards = $derived(groupRunnersByCourse(pings, courses, courseByUser));
+	// A Self-timed race has no common gun: each course board orders by time
+	// since the runner's own start-line crossing, and runners without one (an
+	// Apple Watch relay, an older app) follow in their own block (M13).
+	let selfTimed = $derived(race?.start_mode === 'self_timed');
+	let onCourseBlocks = $derived(
+		onCourseBoards.map((b) => {
+			if (!selfTimed) return { course: b.course, timed: b.results, untimed: [] as RacePingRow[] };
+			const split = selfTimedBoard(b.results.map((p) => ({ ...p, userId: p.user_id, sinceStartLineS: p.since_start_line_s ?? null })));
+			return { course: b.course, timed: split.timed, untimed: split.untimed };
+		})
+	);
+	function clockTime(iso: string | null | undefined): string {
+		if (!iso) return '';
+		return new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+	}
 
 	function courseTitle(c: EventCourse | null): string {
 		if (!c) return m('liveEvent.noCourse');
@@ -503,7 +547,15 @@
 
 	let statusCopy = $derived.by(() => {
 		if (!race) return { label: m('liveEvent.statusPreRaceLabel'), sub: m('liveEvent.statusPreRaceSub') };
-		switch (race.status) {
+		if (race.start_mode === 'scheduled' && raceStatus === 'armed') {
+			return { label: m('liveEvent.statusArmedLabel'), sub: m('liveEvent.statusScheduledSub', { time: clockTime(race.scheduled_start_at) }) };
+		}
+		if (race.start_mode === 'self_timed' && (raceStatus === 'armed' || raceStatus === 'running')) {
+			return raceStatus === 'armed'
+				? { label: m('liveEvent.statusSelfTimedSoonLabel'), sub: m('liveEvent.statusSelfTimedSoonSub', { time: clockTime(race.window_opens_at) }) }
+				: { label: m('liveEvent.statusSelfTimedLabel'), sub: m('liveEvent.statusSelfTimedSub', { time: clockTime(race.window_closes_at) }) };
+		}
+		switch (raceStatus) {
 			case 'armed':
 				return { label: m('liveEvent.statusArmedLabel'), sub: m('liveEvent.statusArmedSub') };
 			case 'running':
@@ -513,7 +565,7 @@
 			case 'cancelled':
 				return { label: m('liveEvent.statusCancelledLabel'), sub: m('liveEvent.statusCancelledSub') };
 			default:
-				return { label: race.status, sub: '' };
+				return { label: raceStatus ?? '', sub: '' };
 		}
 	});
 
@@ -568,6 +620,8 @@
 
 	function addOverlays() {
 		if (!map) return;
+		// Under the runners, so a runner on the line stays visible.
+		addCourseGateLayers(map, 'course-gates', liveGates, darkBasemap);
 		map.addSource('runner-trails', { type: 'geojson', data: buildTrailsGeoJSON() });
 		map.addSource('runner-positions', { type: 'geojson', data: buildPositionsGeoJSON() });
 
@@ -678,6 +732,12 @@
 		refreshMapData();
 	});
 
+	$effect(() => {
+		const gates = liveGates;
+		if (!map || !mapReady) return;
+		addCourseGateLayers(map, 'course-gates', gates, darkBasemap);
+	});
+
 	let currentStyle: ReturnType<typeof getMapStyle> = getMapStyle();
 	$effect(() => {
 		const next = getMapStyle();
@@ -692,6 +752,36 @@
 		});
 	});
 </script>
+
+	{#snippet runnerRow(p: RacePingRow, i: number, sinceStart: boolean)}
+							{@const fresh = freshnessFor_(p)}
+							<li class="runner" class:stale={fresh.stale} class:coarse={p.coarse}>
+								<span class="pos">{i + 1}</span>
+								<span class="avatar" style="background: {tintFor(p.user_id)}; color: {colorFor(p.user_id)};">
+									{initialsFor(p.user_id)}
+								</span>
+								<span class="name">
+									{nameFor(p.user_id)}
+									{#if p.coarse}
+										<span class="approx-tag" data-testid="coarse-badge">
+											<span class="material-symbols" aria-hidden="true">location_searching</span>
+											{m('live.approximateBadge')}
+										</span>
+									{/if}
+									<span class="freshness" class:stale={fresh.stale} class:coarse={p.coarse}>
+										{#if p.coarse}
+											{m('live.approximateSub')}
+										{:else}
+											{#if fresh.stale}<span class="stale-badge">{m('live.badgeStale')}</span>{/if}
+											{freshnessText(fresh)}
+										{/if}
+									</span>
+								</span>
+								<span class="dist">{formatDistance(p.distance_m ?? 0)}</span>
+								<span class="pace">{fmtPace(paceSecPerKm(p))}</span>
+								<span class="elapsed">{formatDuration(sinceStart ? (p.since_start_line_s ?? 0) : (p.elapsed_s ?? 0))}</span>
+							</li>
+	{/snippet}
 
 <svelte:head>
 	<title>{m('liveEvent.pageTitle', { title: event?.title ?? m('liveEvent.eventFallback') })}</title>
@@ -737,41 +827,23 @@
 						<p>{m('liveEvent.noLiveData')}</p>
 					</div>
 				{:else}
-					{#each onCourseBoards as board (board.course?.id ?? 'none')}
+					{#each onCourseBlocks as board (board.course?.id ?? 'none')}
 					{#if courses.length > 1}
 						<h3 class="course-title" data-testid="live-oncourse-title">{courseTitle(board.course)}</h3>
 					{/if}
 					<ol class="runners" data-testid="live-oncourse-board">
-						{#each board.results as p, i (p.user_id)}
-							{@const fresh = freshnessFor_(p)}
-							<li class="runner" class:stale={fresh.stale} class:coarse={p.coarse}>
-								<span class="pos">{i + 1}</span>
-								<span class="avatar" style="background: {tintFor(p.user_id)}; color: {colorFor(p.user_id)};">
-									{initialsFor(p.user_id)}
-								</span>
-								<span class="name">
-									{nameFor(p.user_id)}
-									{#if p.coarse}
-										<span class="approx-tag" data-testid="coarse-badge">
-											<span class="material-symbols" aria-hidden="true">location_searching</span>
-											{m('live.approximateBadge')}
-										</span>
-									{/if}
-									<span class="freshness" class:stale={fresh.stale} class:coarse={p.coarse}>
-										{#if p.coarse}
-											{m('live.approximateSub')}
-										{:else}
-											{#if fresh.stale}<span class="stale-badge">{m('live.badgeStale')}</span>{/if}
-											{freshnessText(fresh)}
-										{/if}
-									</span>
-								</span>
-								<span class="dist">{formatDistance(p.distance_m ?? 0)}</span>
-								<span class="pace">{fmtPace(paceSecPerKm(p))}</span>
-								<span class="elapsed">{formatDuration(p.elapsed_s ?? 0)}</span>
-							</li>
+						{#each board.timed as p, i (p.user_id)}
+							{@render runnerRow(p, i, selfTimed)}
 						{/each}
 					</ol>
+					{#if board.untimed.length > 0}
+						<h4 class="course-title" data-testid="live-untimed-title">{m('liveEvent.noStartLineTime')}</h4>
+						<ol class="runners" data-testid="live-untimed-board">
+							{#each board.untimed as p, i (p.user_id)}
+								{@render runnerRow(p, board.timed.length + i, false)}
+							{/each}
+						</ol>
+					{/if}
 					{/each}
 				{/if}
 			</section>

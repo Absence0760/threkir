@@ -33,12 +33,13 @@
 	}
 	let { existing, oncreated, onsaved, oncancel }: Props = $props();
 
-	const METRICS: { id: ChallengeMetric; labelKey: 'challenges.metricDistance' | 'challenges.metricDuration' | 'challenges.metricVert' | 'challenges.metricActivityCount' | 'challenges.metricStreak' }[] = [
+	const METRICS: { id: ChallengeMetric; labelKey: 'challenges.metricDistance' | 'challenges.metricDuration' | 'challenges.metricVert' | 'challenges.metricActivityCount' | 'challenges.metricStreak' | 'challenges.metricParkCourses' }[] = [
 		{ id: 'distance', labelKey: 'challenges.metricDistance' },
 		{ id: 'duration', labelKey: 'challenges.metricDuration' },
 		{ id: 'vert', labelKey: 'challenges.metricVert' },
 		{ id: 'activity_count', labelKey: 'challenges.metricActivityCount' },
-		{ id: 'streak_days', labelKey: 'challenges.metricStreak' }
+		{ id: 'streak_days', labelKey: 'challenges.metricStreak' },
+		{ id: 'park_courses', labelKey: 'challenges.metricParkCourses' }
 	];
 	const SCOPES: { id: ChallengeScope; labelKey: 'challenges.scopeIndividual' | 'challenges.scopeClubVsClub' | 'challenges.scopeGroupGoal' }[] = [
 		{ id: 'individual', labelKey: 'challenges.scopeIndividual' },
@@ -122,6 +123,8 @@
 				return m('challenges.goalSuffixActivities');
 			case 'days':
 				return m('challenges.goalSuffixDays');
+			case 'courses':
+				return m('challenges.goalSuffixCourses');
 		}
 	});
 

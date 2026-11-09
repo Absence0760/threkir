@@ -126,7 +126,8 @@ RaceListingView _listing(String id, String name,
         bool verified = true,
         String provider = 'manual',
         String? providerRaceId,
-        String? raceDate}) =>
+        String? raceDate,
+        bool organiserIsOfficial = false}) =>
     RaceListingView(
       id: id,
       provider: provider,
@@ -141,6 +142,7 @@ RaceListingView _listing(String id, String name,
       resultsUrl: null,
       isVerified: verified,
       distanceMAway: distanceMAway,
+      organiserIsOfficial: organiserIsOfficial,
     );
 
 /// A race date [days] out from today. The plan action is gated on a live
@@ -320,6 +322,30 @@ void main() {
     final import = tester.getSemantics(
         find.widgetWithText(FilledButton, 'Import my result'));
     expect(import.label, 'Import my result');
+    handle.dispose();
+  });
+
+  testWidgets('a card says where the race came from, and a screen reader hears it',
+      (tester) async {
+    final handle = tester.ensureSemantics();
+    final service = _FakeRaceService(
+      results: [
+        _listing('r-off', 'Organiser Marathon', organiserIsOfficial: true),
+        _listing('r-syn', 'Synced Half', provider: 'runsignup'),
+        _listing('r-fan', 'Fan 10K', verified: false),
+      ],
+    );
+    await tester.pumpWidget(_app(service));
+    await tester.pump();
+    expect(find.byKey(const Key('provenance-badge-official')), findsOneWidget);
+    expect(
+        find.byKey(const Key('provenance-badge-verified_source')), findsOneWidget);
+    expect(find.byKey(const Key('provenance-badge-community')), findsNothing,
+        reason: 'community is the default and gets no badge on a card');
+    expect(tester.getSemantics(find.text('Organiser Marathon')).label,
+        contains('Official: published by a verified organiser'));
+    expect(tester.getSemantics(find.text('Synced Half')).label,
+        contains('Verified source: listed by a race data partner'));
     handle.dispose();
   });
 

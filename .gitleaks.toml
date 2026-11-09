@@ -134,4 +134,9 @@ regexes = [
   '''Ab3_dEf-Gh1jKl2mNo3pQr4s''',
   '''Ab3_-xYz0123456789abcdEF''',
   '''tok-abc12345''',
+  # club-verification/handler.test.ts: the domain-proof token fixture, 32 hex
+  # characters in the shape the request flow mints server-side, so the TXT and
+  # .well-known checks accept it. A real token is per request and never
+  # committed.
+  '''abcdef0123456789abcdef0123456789''',
 ]

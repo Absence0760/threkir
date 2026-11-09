@@ -203,7 +203,7 @@ test('cameraAt treats non-finite and negative options as defaults or zero', () =
 
 test('cameraAt on a single point is a still camera facing north', () => {
 	const pose = cameraAt(buildFlyoverPath([p(10, 20)]), 0);
-	assert.deepEqual(pose, { center: [20, 10], bearing: 0, lookAt: [20, 10] });
+	assert.deepEqual(pose, { center: [20, 10], position: [20, 10], bearing: 0, lookAt: [20, 10] });
 });
 
 test('cameraAt on an exact out-and-back reversal still yields a finite bearing', () => {

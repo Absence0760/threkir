@@ -8,7 +8,6 @@
 import maplibregl from '#lib/routes/maplibre.ts';
 import type { Climb, StripSample } from '#lib/routes/course_climbs.ts';
 import {
-	cameraAt,
 	distanceMarkers,
 	pointAtDistance,
 	type FlyoverPath,
@@ -20,6 +19,7 @@ import { OG_CARD_DARK } from '#lib/share/og_card_palette.ts';
 import { addCourseLayers } from './course_layers.ts';
 import { addCourseTerrain } from './course_terrain.ts';
 import { stripGeometry, stripX } from './strip_geometry.ts';
+import { flightCamera } from './flight_frame.ts';
 import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 import { VIDEO_HEIGHT, VIDEO_WIDTH } from '#lib/video/frame_clock.ts';
 import { createFrameSink, videoAbortError, type FrameSink } from '#lib/video/encode_video.ts';
@@ -336,7 +336,8 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 	try {
 		if (!ctx) throw new Error('no 2D canvas');
 		const speedMps = videoFlightSpeedMps(t, path.totalM);
-		const first = cameraAt(path, 0, { speedMps });
+		const flightView = { pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM };
+		const first = flightCamera(path, 0, flightView, speedMps);
 		map = new maplibregl.Map({
 			container: host,
 			style: mapStyleUrlFromEnv(input.maptilerKey, prefersDark),
@@ -385,7 +386,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			},
 		};
 
-		const finish = cameraAt(path, path.totalM, { speedMps });
+		const finish = flightCamera(path, path.totalM, flightView, speedMps);
 		const from: CameraPose = { center: finish.center, bearing: finish.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM };
 		const overview = overviewTarget(m, path, layout, viewport);
 
@@ -395,10 +396,8 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			if (signal.aborted) throw videoAbortError();
 			const frame = videoFrame(t, i, path.totalM);
 			if (frame.phase === 'flight') {
-				const pose = cameraAt(path, frame.dM, { speedMps });
-				await settle(m, () =>
-					m.jumpTo({ center: pose.center, bearing: pose.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM }),
-				);
+				const cam = flightCamera(path, frame.dM, flightView, speedMps);
+				await settle(m, () => m.jumpTo(cam));
 			} else if (frame.phase === 'overview' && overview) {
 				const cam = finaleCamera(from, overview, frame.tMs, VIDEO_FINALE);
 				await settle(m, () => m.jumpTo(cam));

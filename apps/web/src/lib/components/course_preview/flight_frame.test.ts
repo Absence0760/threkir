@@ -1,8 +1,15 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { buildFlyoverPath, cameraAt, MAX_TURN_DEG_PER_S } from '#lib/routes/flyover_path.ts';
-import { drawFlightFrame, flightCamera, type FlightCamera } from './flight_frame.ts';
+import {
+	buildFlyoverPath,
+	cameraAt,
+	MAX_DOT_OFFSET_PX,
+	MAX_TURN_DEG_PER_S,
+	maxDotOffsetM,
+	pointAtDistance,
+} from '#lib/routes/flyover_path.ts';
+import { drawFlightFrame, flightCamera, flightPose, type FlightCamera } from './flight_frame.ts';
 
 const VIEW = { pitch: 60, zoom: 14 };
 const path = buildFlyoverPath([
@@ -43,17 +50,19 @@ function fakeMap() {
 	};
 }
 
-test('in an animation frame the canvas draws the camera the dot was placed on', () => {
+test('in an animation frame the canvas draws the camera the dot was placed for', () => {
 	const map = fakeMap();
 	let dot: [number, number] | null = null;
 	for (const dM of [0, 120, 260, 900, 1400]) {
 		map.startFrame();
 		drawFlightFrame(map, { setLngLat: (at) => (dot = at) }, path, dM, VIEW, 250, true);
-		assert.deepEqual(map.drawn?.center, dot, `frame at ${dM} m paints the dot off its spot`);
+		const want = flightPose(path, dM, VIEW, 250);
+		assert.deepEqual(map.drawn, want.camera, `frame at ${dM} m draws a stale camera`);
+		assert.deepEqual(dot, want.dot);
 	}
 });
 
-test('the dot is placed after the camera moves, on the camera centre', () => {
+test('the dot is placed after the camera moves, on the course', () => {
 	const map = fakeMap();
 	let dot: [number, number] | null = null;
 	const marker = {
@@ -64,7 +73,8 @@ test('the dot is placed after the camera moves, on the camera centre', () => {
 	};
 	drawFlightFrame(map, marker, path, 500, VIEW, 250, true);
 	assert.deepEqual(map.calls, ['jumpTo', 'setLngLat', 'redraw']);
-	assert.deepEqual(dot, map.drawn?.center);
+	const here = pointAtDistance(path, 500);
+	assert.deepEqual(dot, [here.lng, here.lat]);
 });
 
 test('outside an animation frame no extra render is forced', () => {
@@ -118,14 +128,91 @@ test('the flight camera at 250 m/s is the camera cameraAt gives for 250 m/s', ()
 	}
 });
 
-test('the flight speed turns the camera but never moves or zooms it', () => {
+test('the flight speed never zooms or tilts the camera, nor moves the dot', () => {
 	for (const dM of [0, 900, 12_345, switchbacks.totalM]) {
-		const at250 = flightCamera(switchbacks, dM, VIEW, 250);
+		const at250 = flightPose(switchbacks, dM, VIEW, 250);
 		for (const speedMps of [100, 1000, 2500]) {
-			const cam = flightCamera(switchbacks, dM, VIEW, speedMps);
-			assert.deepEqual([cam.center, cam.pitch, cam.zoom], [at250.center, at250.pitch, at250.zoom]);
-			const pose = cameraAt(switchbacks, dM, { speedMps });
-			assert.deepEqual([pose.center, pose.lookAt], [cameraAt(switchbacks, dM).center, cameraAt(switchbacks, dM).lookAt]);
+			const { camera, dot } = flightPose(switchbacks, dM, VIEW, speedMps);
+			assert.deepEqual([camera.pitch, camera.zoom], [at250.camera.pitch, at250.camera.zoom]);
+			assert.deepEqual(dot, at250.dot);
 		}
 	}
+	// At the start and the finish the camera is on the dot, as before the centre smoothing.
+	for (const dM of [0, switchbacks.totalM]) {
+		const { camera, dot } = flightPose(switchbacks, dM, VIEW, 2500);
+		assert.deepEqual(camera.center, dot);
+	}
+});
+
+const M_PER_DEG = 111320;
+
+/** Ground metres from the frame centre to the dot. */
+function dotOffsetM(camera: FlightCamera, dot: [number, number]): number {
+	const cosLat = Math.cos((dot[1] * Math.PI) / 180);
+	return Math.hypot((camera.center[0] - dot[0]) * cosLat * M_PER_DEG, (camera.center[1] - dot[1]) * M_PER_DEG);
+}
+
+test('the dot stays inside the middle of the frame at every export speed', () => {
+	// 72 CSS px at zoom 14: never more than 20% of a 360 px wide view off centre.
+	assert.equal(MAX_DOT_OFFSET_PX, 72);
+	for (const speedMps of [250, 1054, 2500]) {
+		let worst = 0;
+		for (let d = 0; d <= switchbacks.totalM; d += speedMps / 30) {
+			const { camera, dot } = flightPose(switchbacks, d, VIEW, speedMps);
+			const bound = maxDotOffsetM(VIEW.zoom, dot[1]);
+			const off = dotOffsetM(camera, dot);
+			assert.ok(off < bound, `at ${d.toFixed(0)} m, ${speedMps} m/s the dot is ${off.toFixed(0)} m off centre, bound ${bound.toFixed(0)}`);
+			worst = Math.max(worst, off);
+		}
+		assert.ok(worst > 0, 'the centre is smoothed at all');
+	}
+});
+
+/** A northbound line with a pseudo-random sideways wiggle of up to ±12 m every 30 m: a traced trail. */
+const wiggly = (() => {
+	const pts = [];
+	let seed = 7;
+	for (let m = 0; m <= 50_000; m += 30) {
+		seed = (seed * 16807) % 2147483647;
+		const side = ((seed / 2147483647) * 2 - 1) * 12;
+		pts.push({ lat: 37.4 + m / M_PER_DEG, lng: -77.6 + side / (M_PER_DEG * Math.cos((37.4 * Math.PI) / 180)), ele: null });
+	}
+	return buildFlyoverPath(pts);
+})();
+
+/** Worst |second difference| of the frame centre, metres per frame, over the flight. */
+function centreJitterM(speedMps: number, centreOf: (d: number) => [number, number]): number {
+	const fps = 30;
+	const cosLat = Math.cos((37.4 * Math.PI) / 180);
+	const xy = (d: number) => {
+		const [lng, lat] = centreOf(d);
+		return [lng * cosLat * M_PER_DEG, lat * M_PER_DEG];
+	};
+	let worst = 0;
+	const step = speedMps / fps;
+	for (let d = 2 * step + 3000; d <= wiggly.totalM - 3000; d += step) {
+		const [a, b, c] = [xy(d - 2 * step), xy(d - step), xy(d)];
+		worst = Math.max(worst, Math.hypot(c[0] - 2 * b[0] + a[0], c[1] - 2 * b[1] + a[1]));
+	}
+	return worst;
+}
+
+test('a wiggly trace no longer jolts the frame centre at a 50K export speed', () => {
+	const raw = centreJitterM(2500, (d) => {
+		const p = pointAtDistance(wiggly, d);
+		return [p.lng, p.lat];
+	});
+	const smoothed = centreJitterM(2500, (d) => flightCamera(wiggly, d, VIEW, 2500).center);
+	assert.ok(raw > 10, `the fixture jolts the dot ${raw.toFixed(1)} m a frame`);
+	assert.ok(smoothed < 0.5, `the frame centre still jolts ${smoothed.toFixed(2)} m a frame (dot: ${raw.toFixed(1)})`);
+});
+
+test('at 250 m/s the dot moves no more than the trace wiggles, a few px at zoom 14', () => {
+	let worst = 0;
+	for (let d = 0; d <= 5000; d += 250 / 30) {
+		const { camera, dot } = flightPose(wiggly, d, VIEW, 250);
+		worst = Math.max(worst, dotOffsetM(camera, dot));
+	}
+	// The ±12 m wiggle is all the dot moves in the frame: 20 m is ~5 CSS px here.
+	assert.ok(worst < 20, `the frame centre sits ${worst.toFixed(1)} m off the dot`);
 });

@@ -11658,6 +11658,12 @@ class AppLocalizationsJa extends AppLocalizations {
   String get officialBadgeTooltip => '公式: 認証済みの主催者が公開';
 
   @override
+  String get officialBadgeParkCourseLabel => 'Threkir公式コース';
+
+  @override
+  String get officialBadgeParkCourseTooltip => 'Threkir公式コース: 公園ではなくThrekirが公開';
+
+  @override
   String get raceDistance5k => '5km';
 
   @override
@@ -20058,7 +20064,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parksIntro =>
-      '州立公園や国立公園にある常設のタイムトライアルコースです。いつ走ってもタイムが今年のランキングに載ります。';
+      '州立公園や国立公園にある常設のタイムトライアルコースです。公園の開園中ならいつ走ってもタイムが今年のランキングに載ります。';
 
   @override
   String get parksLoading => '公園コースを読み込み中…';
@@ -20201,6 +20207,14 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get parksSafetyNotice =>
       '標識のあるトレイルから外れないでください。計測にはすべてのチェックポイントが必要なので、近道は記録になりません。これはレースではなくタイムトライアルです。トレイルは誰にでも開かれており、係員はいません。';
+
+  @override
+  String get parksNotAffiliated =>
+      'これらのコースはThrekirが公開しています。公園やその管理機関が主催・後援・推奨するものではありません。公園の規則、開園時間、料金、閉鎖情報に従ってください。';
+
+  @override
+  String get parksLongCourseNotice =>
+      '長いコースです。閉園時間までに走り終えられるよう、早めにスタートしてください。自転車や馬と共用のトレイルや、雨の後は渡れなくなることがある渡渉箇所があります。';
 
   @override
   String get parksAttributionOsm => 'コースライン © OpenStreetMap contributors';

@@ -29,7 +29,7 @@ import '../widgets/live_run_map.dart'
         solidMapLine;
 import '../last_map_view.dart';
 import '../widgets/map_attribution.dart';
-import '../widgets/official_badge.dart';
+import '../park_course_routes.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/place_search_panel.dart';
 import '../race_service.dart';
@@ -102,6 +102,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
 
   List<cm.HeatmapPoint> _points = const [];
   List<cm.DiscoverableRoutePin> _pins = const [];
+  late final ParkCourseRouteLookup _parkCourses = ParkCourseRouteLookup(
+    (ids) => widget.api.fetchParkCourseRouteIds(ids),
+  );
   List<cm.ClubPin> _clubs = const [];
   List<cm.UpcomingRacePin> _races = const [];
 
@@ -238,6 +241,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
     }
     _debounce?.cancel();
     _searchDebounce?.cancel();
+    _parkCourses.dispose();
     _searchCtl.dispose();
     super.dispose();
   }
@@ -288,6 +292,9 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
         _clubs = clubs;
         _races = races;
       });
+      unawaited(
+        _parkCourses.check(pins.where((p) => p.official).map((p) => p.id)),
+      );
       // If geolocation has already bowed out, frame the view on this
       // freshly-loaded data (no-op once the view has been framed).
       _fitToPins();
@@ -368,7 +375,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
                 title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Row(
                   children: [
-                    if (p.official) const _OfficialMark(),
+                    if (p.official) _OfficialMark(routeId: p.id, lookup: _parkCourses),
                     if (bandForDistance(p.distanceM) != null)
                       _bandBadge(bandForDistance(p.distanceM)!.label),
                     Flexible(
@@ -1202,7 +1209,7 @@ class _RoutesHeatmapScreenState extends State<RoutesHeatmapScreen> {
       title: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Row(
         children: [
-          if (p.official) const _OfficialMark(),
+          if (p.official) _OfficialMark(routeId: p.id, lookup: _parkCourses),
           if (band != null) _bandBadge(band.label),
           Flexible(
             child: Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -1480,13 +1487,16 @@ class _RacePinDot extends StatelessWidget {
 
 /// The Official badge in a result row, spaced like the band badge.
 class _OfficialMark extends StatelessWidget {
-  const _OfficialMark();
+  final String routeId;
+  final ParkCourseRouteLookup lookup;
+
+  const _OfficialMark({required this.routeId, required this.lookup});
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(right: 6),
-      child: OfficialBadge(size: 12),
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: OfficialRouteBadge(routeId: routeId, lookup: lookup, size: 12),
     );
   }
 }

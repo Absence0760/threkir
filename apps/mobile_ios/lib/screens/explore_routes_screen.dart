@@ -16,7 +16,7 @@ import '../route_surface_label.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../widgets/error_state.dart';
-import '../widgets/official_badge.dart';
+import '../park_course_routes.dart';
 import '../widgets/route_track_preview.dart';
 import 'route_detail_screen.dart';
 import '../widgets/top_banner.dart';
@@ -53,6 +53,13 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   final _scrollController = ScrollController();
 
   List<cm.Route> _results = [];
+  late final ParkCourseRouteLookup _parkCourses = ParkCourseRouteLookup((
+    ids,
+  ) async {
+    final api = widget.apiClient;
+    if (api == null) return <String>{};
+    return api.fetchParkCourseRouteIds(ids);
+  });
   bool _loading = false;
   bool _hasMore = true;
   // The search the shown results came from, and the cursor for its next
@@ -117,8 +124,13 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _parkCourses.dispose();
     super.dispose();
   }
+
+  void _checkParkCourses() => unawaited(
+    _parkCourses.check(_results.where((r) => r.official).map((r) => r.id)),
+  );
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
@@ -177,6 +189,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         _hasMore = page.next != null;
         _loading = false;
       });
+      _checkParkCourses();
     } on TimeoutException catch (e) {
       debugPrint('ExploreRoutesScreen._search timed out: $e');
       if (!mounted) return;
@@ -209,6 +222,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         _hasMore = page.next != null;
         _loading = false;
       });
+      _checkParkCourses();
     } catch (e, s) {
       debugPrint('ExploreRoutesScreen._loadMore failed: $e\n$s');
       if (mounted) {
@@ -279,6 +293,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         _results = results;
         _loading = false;
       });
+      _checkParkCourses();
     } on TimeoutException catch (e) {
       debugPrint('ExploreRoutesScreen._searchNearby timed out: $e');
       if (!mounted) return;
@@ -669,6 +684,7 @@ class _ExploreRoutesScreenState extends State<ExploreRoutesScreen> {
         final route = _results[index];
 
         return _RouteCard(
+          parkCourses: _parkCourses,
           route: route,
           unit: unit,
           theme: theme,
@@ -702,9 +718,11 @@ class _RouteCard extends StatelessWidget {
   final bool saved;
   final VoidCallback onTap;
   final VoidCallback onToggleBookmark;
+  final ParkCourseRouteLookup parkCourses;
 
   const _RouteCard({
     required this.route,
+    required this.parkCourses,
     required this.unit,
     required this.theme,
     required this.saved,
@@ -766,7 +784,11 @@ class _RouteCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (route.official) const OfficialBadge(),
+                        if (route.official)
+                          OfficialRouteBadge(
+                            routeId: route.id,
+                            lookup: parkCourses,
+                          ),
                         if (route.featured)
                           Padding(
                             padding: const EdgeInsets.only(left: 6),

@@ -2,6 +2,7 @@
 	import { routeDisplayDistanceM } from '#lib/routes/official_distance.ts';
 	import { appendPage, type KeysetCursor } from '#lib/core/keyset_page.ts';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import { ParkCourseRouteLookup } from '#lib/parks/park_course_routes.svelte.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import { onMount } from 'svelte';
 	import { formatDistance } from '#lib/core/mock-data.ts';
@@ -24,6 +25,10 @@
 	import RouteTrackPreview from './RouteTrackPreview.svelte';
 
 	let routes = $state<PublicRouteSummary[]>([]);
+	const parkCourseRoutes = new ParkCourseRouteLookup();
+	$effect(() => {
+		void parkCourseRoutes.check(routes.filter((r) => r.is_official).map((r) => r.id));
+	});
 	let loading = $state(true);
 	let hasMore = $state(true);
 	let searchError = $state(false);
@@ -380,7 +385,9 @@
 						</div>
 						<div class="route-info">
 							<h3>{route.name}</h3>
-							{#if route.is_official}<OfficialBadge />{/if}
+							{#if route.is_official && parkCourseRoutes.known(route.id)}<OfficialBadge
+									parkCourse={parkCourseRoutes.isParkCourse(route.id)}
+								/>{/if}
 							<div class="route-meta">
 								<span class="meta-item">
 									<span class="material-symbols meta-icon">straighten</span>

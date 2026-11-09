@@ -19743,6 +19743,18 @@ abstract class AppLocalizations {
   /// **'Official: published by a verified organiser'**
   String get officialBadgeTooltip;
 
+  /// The Official badge on a park course route: never just "Official", so it cannot read as the park's own; web key officialBadge.parkCourseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Official Threkir course'**
+  String get officialBadgeParkCourseLabel;
+
+  /// Tooltip and screen-reader label on the park course Official badge; web key officialBadge.parkCourseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Official Threkir course: published by Threkir, not by the park'**
+  String get officialBadgeParkCourseTooltip;
+
   /// Best-effort race distance label: 5 kilometres
   ///
   /// In en, this message translates to:
@@ -33974,7 +33986,7 @@ abstract class AppLocalizations {
   /// Park courses (#1313): web key parks.intro.
   ///
   /// In en, this message translates to:
-  /// **'Standing time-trial courses in state and national parks. Run one on any day and your time lands on this year\'s board.'**
+  /// **'Standing time-trial courses in state and national parks. Run one whenever the park is open and your time lands on this year\'s board.'**
   String get parksIntro;
 
   /// Park courses (#1313): web key parks.loading.
@@ -34228,6 +34240,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.'**
   String get parksSafetyNotice;
+
+  /// Park courses: non-affiliation notice under the attribution on the park and course screens; web key parks.notAffiliated.
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.'**
+  String get parksNotAffiliated;
+
+  /// Park courses: shown on a course over 15 km (isLongCourse); web key parks.longCourseNotice. Names no park hours on purpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.'**
+  String get parksLongCourseNotice;
 
   /// Park courses (#1313): web key parks.attributionOsm.
   ///

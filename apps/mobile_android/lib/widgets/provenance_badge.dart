@@ -17,14 +17,27 @@ class ProvenanceBadge extends StatelessWidget {
   final Provenance provenance;
   final double size;
 
-  const ProvenanceBadge({super.key, required this.provenance, this.size = 14});
+  /// An official park course route: the label names Threkir, never the park.
+  final bool parkCourse;
+
+  const ProvenanceBadge({
+    super.key,
+    required this.provenance,
+    this.size = 14,
+    this.parkCourse = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final (label, description) = switch (provenance) {
-      Provenance.official => (l10n.officialBadgeLabel, l10n.officialBadgeTooltip),
+      Provenance.official => parkCourse
+          ? (
+              l10n.officialBadgeParkCourseLabel,
+              l10n.officialBadgeParkCourseTooltip
+            )
+          : (l10n.officialBadgeLabel, l10n.officialBadgeTooltip),
       Provenance.verifiedSource => (
           l10n.provenanceVerifiedSource,
           l10n.provenanceVerifiedSourceTooltip

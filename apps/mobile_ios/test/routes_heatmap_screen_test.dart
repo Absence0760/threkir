@@ -49,6 +49,12 @@ class _FakeApiClient extends ApiClient {
   bool? lastOfficialOnly;
   List<cm.UpcomingRacePin> nextRaces = const [];
 
+  Set<String> parkCourseRouteIds = const {};
+
+  @override
+  Future<Set<String>> fetchParkCourseRouteIds(List<String> routeIds) async =>
+      routeIds.where(parkCourseRouteIds.contains).toSet();
+
   @override
   Future<List<HeatmapPoint>> fetchHeatmapPoints({
     required double minLng,
@@ -658,6 +664,36 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+
+    testWidgets(
+        'a park course pin reads "Official Threkir course", not just "Official"',
+        (tester) async {
+      final api = _FakeApiClient()
+        ..nextPins = [
+          _pin(id: 'park', name: 'Lake Loop', official: true),
+          _pin(id: 'o', name: 'Organiser Course', official: true, lat: 39.75),
+        ]
+        ..parkCourseRouteIds = {'park'};
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.text('2 routes'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.byType(OfficialBadge), findsNWidgets(2));
+      expect(find.text('Official Threkir course'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Official Threkir course'),
+            matching: find.byType(ListTile),
+          ),
+          matching: find.text('Lake Loop'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Official'), findsOneWidget);
     });
 
     testWidgets('picking a distance band threads the bounds to the RPC',

@@ -135,6 +135,14 @@ export function courseIsCountable(status: string): boolean {
 	return status === 'open' || status === 'seasonal';
 }
 
+/** Courses longer than this carry the long-course notice. */
+export const LONG_COURSE_THRESHOLD_M = 15000;
+
+/** Whether a course is long enough to show the long-course notice. */
+export function isLongCourse(distanceM: number): boolean {
+	return Number.isFinite(distanceM) && distanceM > LONG_COURSE_THRESHOLD_M;
+}
+
 /**
  * Groups parks by region code, regions in code order and parks by name within
  * each, for the `/parks` index.

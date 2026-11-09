@@ -10,6 +10,7 @@
 	import { goto } from '$app/navigation';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import { ParkCourseRouteLookup } from '#lib/parks/park_course_routes.svelte.ts';
 	import CourseAlerts from '#lib/components/CourseAlerts.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
 	import type { RouteMarker } from '#lib/types.ts';
@@ -109,6 +110,11 @@
 			? (reviews.reduce((a: number, r: any) => a + r.rating, 0) / reviews.length).toFixed(1)
 			: null,
 	);
+
+	const parkCourseRoutes = new ParkCourseRouteLookup();
+	$effect(() => {
+		if (route?.is_official) void parkCourseRoutes.check([route.id]);
+	});
 
 	async function loadRoute() {
 		loading = true;
@@ -820,7 +826,10 @@
 				<div>
 					<div class="title-row">
 						<h1>{route.name}</h1>
-						{#if route.is_official}<OfficialBadge size={18} />{/if}
+						{#if route.is_official && parkCourseRoutes.known(route.id)}<OfficialBadge
+								size={18}
+								parkCourse={parkCourseRoutes.isParkCourse(route.id)}
+							/>{/if}
 						{#if isOwner}
 							<button
 								type="button"

@@ -17,12 +17,14 @@
 	interface Props {
 		kind: Provenance;
 		size?: number;
+		/** An official park course route: the label names Threkir, never the park. */
+		parkCourse?: boolean;
 	}
-	let { kind, size = 14 }: Props = $props();
+	let { kind, size = 14, parkCourse = false }: Props = $props();
 
 	const label = $derived(
 		kind === 'official'
-			? m('officialBadge.label')
+			? m(parkCourse ? 'officialBadge.parkCourseLabel' : 'officialBadge.label')
 			: kind === 'verified_source'
 				? m('provenance.verifiedSource')
 				: kind === 'traced'
@@ -31,7 +33,7 @@
 	);
 	const description = $derived(
 		kind === 'official'
-			? m('officialBadge.tooltip')
+			? m(parkCourse ? 'officialBadge.parkCourseTooltip' : 'officialBadge.tooltip')
 			: kind === 'verified_source'
 				? m('provenance.verifiedSourceTooltip')
 				: kind === 'traced'

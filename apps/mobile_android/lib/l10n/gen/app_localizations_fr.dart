@@ -12305,6 +12305,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Officiel : publié par un organisateur vérifié';
 
   @override
+  String get officialBadgeParkCourseLabel => 'Parcours officiel Threkir';
+
+  @override
+  String get officialBadgeParkCourseTooltip =>
+      'Parcours officiel Threkir : publié par Threkir, pas par le parc';
+
+  @override
   String get raceDistance5k => '5 km';
 
   @override
@@ -21118,7 +21125,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get parksIntro =>
-      'Des parcours chronométrés permanents dans les parcs d\'État et nationaux. Courez-en un n\'importe quel jour et votre temps entre dans le classement de l\'année.';
+      'Des parcours chronométrés permanents dans les parcs d\'État et nationaux. Courez-en un quand le parc est ouvert et votre temps entre dans le classement de l\'année.';
 
   @override
   String get parksLoading => 'Chargement des parcours…';
@@ -21273,6 +21280,14 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get parksSafetyNotice =>
       'Restez sur le sentier balisé. Le chronométrage exige chaque point de contrôle : un raccourci ne compte jamais. C\'est un contre-la-montre, pas une course : le sentier reste ouvert à tous et personne ne l\'encadre.';
+
+  @override
+  String get parksNotAffiliated =>
+      'Threkir publie ces parcours. Ils ne sont ni organisés, ni parrainés, ni approuvés par le parc ou l\'organisme qui le gère. Les règles, horaires, droits d\'entrée et fermetures du parc s\'appliquent.';
+
+  @override
+  String get parksLongCourseNotice =>
+      'Parcours long. Partez assez tôt pour finir avant la fermeture du parc. Attendez-vous à partager le sentier avec des vélos et des chevaux, et à des passages à gué parfois infranchissables après la pluie.';
 
   @override
   String get parksAttributionOsm =>

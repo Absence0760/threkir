@@ -451,6 +451,17 @@ jobs:
             echo "Reproduce with: node --test scripts/rotate_apple_client_secret.test.mjs (stdlib only, no credentials needed)."
             exit 1
           fi
+      # Park course lines are built offline from a committed spec + snapshot
+      # (issue #1313). This pins the geometry rules and fails when a committed
+      # course no longer matches what its spec and snapshot build.
+      - name: Park course geometry still builds to the committed courses
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/parks/lib/course_geometry.test.mjs || ! node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/; then
+            echo "::error::The park course pipeline regressed: a geometry rule in scripts/parks/lib/course_geometry.mjs (loop tracing, distance, gain, checkpoints) or a committed course under scripts/parks/catalogue/ no longer matches what its park.json and snapshot.json build. Nothing here touches the network."
+            echo "Reproduce with: node --test scripts/parks/lib/course_geometry.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
+            exit 1
+          fi
       # The stack-start wait loop is shell inside a composite action, so it
       # runs in no job's test suite. Its accounting (a wall-clock deadline the
       # error string can be trusted to report) and its failure forensics are

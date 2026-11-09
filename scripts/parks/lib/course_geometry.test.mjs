@@ -2,6 +2,9 @@
 // Run: node --test scripts/parks/lib/course_geometry.test.mjs
 
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {
@@ -19,6 +22,8 @@ import {
 	toPoints,
 	traceLoop,
 	traceVia,
+	GATE_BEARING_LOOK_AHEAD_M,
+	START_LINE_MIN_FROM_LOOP_M,
 	trimToDistance,
 } from './course_geometry.mjs';
 
@@ -178,6 +183,36 @@ test('trimToDistance refuses a short course and a start line off the lead-in', (
 	const total = pathLengthM(pts);
 	assert.throws(() => trimToDistance(pts, total + 1, 50), /short of/);
 	assert.throws(() => trimToDistance(pts, total - 200, 50), /past the/);
+});
+
+test('trimToDistance refuses a start line closer to the loop than the gate look-ahead allows', () => {
+	const pts = toPoints([5, 1, 2, 3, 4, 1, 5], nodes);
+	const leadInM = haversineM({ lat: -0.0005, lng: 0 }, { lat: 0, lng: 0 });
+	const total = pathLengthM(pts);
+	const closest = leadInM - START_LINE_MIN_FROM_LOOP_M;
+	assert.doesNotThrow(() => trimToDistance(pts, total - 2 * closest + 0.01, leadInM));
+	assert.throws(
+		() => trimToDistance(pts, total - 2 * (closest + 1), leadInM),
+		/the start line would sit 29\.0 m from the loop, under the 30 m/,
+	);
+});
+
+const DEFINES_BEARING = /create (?:or replace )?function private\.course_end_bearing\(/;
+
+test('the gate look-ahead mirrors the trigger it is named for', () => {
+	const dir = fileURLToPath(new URL('../../../apps/backend/supabase/migrations/', import.meta.url));
+	const defining = fs
+		.readdirSync(dir)
+		.filter((f) => f.endsWith('.sql'))
+		.sort()
+		.filter((f) => DEFINES_BEARING.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+	assert.ok(defining.length > 0, 'a migration defines private.course_end_bearing');
+	const sql = fs.readFileSync(path.join(dir, /** @type {string} */ (defining.at(-1))), 'utf8');
+	const body = sql.slice(/** @type {number} */ ([...sql.matchAll(new RegExp(DEFINES_BEARING, 'g'))].at(-1)?.index));
+	const along = /c_along constant double precision := (\d+(?:\.\d+)?);/.exec(body);
+	assert.ok(along, `${defining.at(-1)}: c_along not found`);
+	assert.equal(Number(along[1]), GATE_BEARING_LOOK_AHEAD_M);
+	assert.ok(START_LINE_MIN_FROM_LOOP_M >= GATE_BEARING_LOOK_AHEAD_M + 5);
 });
 
 test('slice interpolates elevation at the cut', () => {

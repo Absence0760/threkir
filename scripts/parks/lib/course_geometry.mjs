@@ -329,6 +329,21 @@ export function lapCourse({ leadIn, loop, laps }) {
 }
 
 /**
+ * Mirrors `c_along` in `private.course_end_bearing` (migration
+ * 20271116002390): the global segment gate trigger aims each line at the
+ * point this far along the course. `course_geometry.test.mjs` reads the
+ * migration and fails when the two disagree.
+ */
+export const GATE_BEARING_LOOK_AHEAD_M = 25;
+
+/**
+ * How close a race course's start line may sit to the loop. Any closer and the
+ * trigger's look-ahead point lands on the loop, so the line is skewed off the
+ * lead-in (the half's came out 56 degrees off at 9 m).
+ */
+export const START_LINE_MIN_FROM_LOOP_M = GATE_BEARING_LOOK_AHEAD_M + 5;
+
+/**
  * The polyline between `fromM` and `toM` metres along `points`, with the cut
  * ends interpolated.
  *
@@ -364,8 +379,10 @@ export function slice(points, fromM, toM) {
 /**
  * Cut the same length off both ends of an out-and-back lead-in course so it
  * measures exactly `targetM`, which puts the shared start/finish line on the
- * lead-in. Refused when the course is already short, or when the cut would
- * reach past the lead-in onto the loop (the start would then sit mid-lap).
+ * lead-in. Refused when the course is already short, when the cut would
+ * reach past the lead-in onto the loop (the start would then sit mid-lap), or
+ * when it would leave the start line closer to the loop than
+ * `START_LINE_MIN_FROM_LOOP_M`.
  *
  * @param {LatLng[]} points
  * @param {number} targetM
@@ -381,6 +398,12 @@ export function trimToDistance(points, targetM, leadInM) {
 	if (trim > leadInM) {
 		throw new Error(
 			`course is ${(total - targetM).toFixed(1)} m too long; the start line would sit ${trim.toFixed(1)} m in, past the ${leadInM.toFixed(1)} m lead-in`,
+		);
+	}
+	const fromLoopM = leadInM - trim;
+	if (fromLoopM < START_LINE_MIN_FROM_LOOP_M) {
+		throw new Error(
+			`the start line would sit ${fromLoopM.toFixed(1)} m from the loop, under the ${START_LINE_MIN_FROM_LOOP_M} m the gate trigger needs to take its bearing on the lead-in; shorten the loop`,
 		);
 	}
 	return { points: slice(points, trim, total - trim), trimEachEndM: trim };

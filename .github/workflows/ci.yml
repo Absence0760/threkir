@@ -399,6 +399,17 @@ jobs:
             echo "Reproduce with: node --test scripts/watch_sim_ports.test.mjs (stdlib only, reads the script)."
             exit 1
           fi
+      # bin/protomaps-dev.sh writes the local tileserver's styles. Their vector
+      # source is where the dev map and the flyover video's credit line get the
+      # OpenStreetMap attribution the ODbL requires; no job runs the script.
+      - name: Local Protomaps styles credit OpenStreetMap
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/protomaps_dev_style.test.mjs; then
+            echo "::error::bin/protomaps-dev.sh writes a style.json / style-dark.json that is not valid JSON, or whose vector source no longer carries the OpenStreetMap credit in the wording terrain_source.ts uses, so the local map and every flyover video rendered against it go uncredited. Nothing here is about the watch sim, the Supabase ports or workflow syntax."
+            echo "Reproduce with: node --test scripts/protomaps_dev_style.test.mjs (needs bash, runs the script's write_style only)."
+            exit 1
+          fi
       # The signing step in release-ios.yml runs only when a mobile_ios tag is
       # published, on a Mac runner, against the Xcode project as it is that
       # day. This runs the same planning and editing on Linux against the

@@ -12279,6 +12279,13 @@ class AppLocalizationsPt extends AppLocalizations {
       'Oficial: publicado por um organizador verificado';
 
   @override
+  String get officialBadgeParkCourseLabel => 'Percurso oficial da Threkir';
+
+  @override
+  String get officialBadgeParkCourseTooltip =>
+      'Percurso oficial da Threkir: publicado pela Threkir, não pelo parque';
+
+  @override
   String get raceDistance5k => '5 km';
 
   @override
@@ -21078,7 +21085,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parksIntro =>
-      'Percursos de contrarrelógio permanentes em parques estaduais e nacionais. Corra um em qualquer dia e o seu tempo entra na classificação deste ano.';
+      'Percursos de contrarrelógio permanentes em parques estaduais e nacionais. Corra um sempre que o parque estiver aberto e o seu tempo entra na classificação deste ano.';
 
   @override
   String get parksLoading => 'A carregar percursos…';
@@ -21233,6 +21240,14 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get parksSafetyNotice =>
       'Mantenha-se no trilho marcado. A cronometragem exige todos os pontos de controlo, por isso um atalho nunca conta. É um contrarrelógio, não uma corrida: o trilho continua aberto a todos e ninguém o vigia.';
+
+  @override
+  String get parksNotAffiliated =>
+      'A Threkir publica estes percursos. Não são organizados, patrocinados nem apoiados pelo parque ou pela entidade que o gere. Aplicam-se as regras, os horários, as taxas e os encerramentos do parque.';
+
+  @override
+  String get parksLongCourseNotice =>
+      'Percurso longo. Comece cedo o suficiente para terminar antes de o parque fechar. Conte com trilhos partilhados com bicicletas e cavalos, e travessias de água que podem ficar intransitáveis depois da chuva.';
 
   @override
   String get parksAttributionOsm =>
@@ -33853,6 +33868,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Oficial: publicado por um organizador verificado';
 
   @override
+  String get officialBadgeParkCourseLabel => 'Percurso oficial da Threkir';
+
+  @override
+  String get officialBadgeParkCourseTooltip =>
+      'Percurso oficial da Threkir: publicado pela Threkir, não pelo parque';
+
+  @override
   String get raceDistance5k => '5 km';
 
   @override
@@ -42644,7 +42666,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksIntro =>
-      'Percursos de contrarrelógio permanentes em parques estaduais e nacionais. Corra um em qualquer dia e o seu tempo entra na classificação deste ano.';
+      'Percursos de contrarrelógio permanentes em parques estaduais e nacionais. Corra um sempre que o parque estiver aberto e o seu tempo entra na classificação deste ano.';
 
   @override
   String get parksLoading => 'Carregando percursos…';
@@ -42799,6 +42821,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get parksSafetyNotice =>
       'Fique na trilha sinalizada. A cronometragem exige todos os pontos de controle, então um atalho nunca conta. É um contrarrelógio, não uma corrida: a trilha continua aberta a todos e ninguém a fiscaliza.';
+
+  @override
+  String get parksNotAffiliated =>
+      'A Threkir publica estes percursos. Eles não são organizados, patrocinados nem endossados pelo parque ou pelo órgão que o administra. Valem as regras, os horários, as taxas e os fechamentos do parque.';
+
+  @override
+  String get parksLongCourseNotice =>
+      'Percurso longo. Comece cedo o bastante para terminar antes de o parque fechar. Espere trilhas compartilhadas com bicicletas e cavalos, e travessias de água que podem ficar intransitáveis depois da chuva.';
 
   @override
   String get parksAttributionOsm =>

@@ -12291,6 +12291,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Offiziell: von einem verifizierten Veranstalter veröffentlicht';
 
   @override
+  String get officialBadgeParkCourseLabel => 'Offizielle Threkir-Strecke';
+
+  @override
+  String get officialBadgeParkCourseTooltip =>
+      'Offizielle Threkir-Strecke: von Threkir veröffentlicht, nicht vom Park';
+
+  @override
   String get raceDistance5k => '5 km';
 
   @override
@@ -21101,7 +21108,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksIntro =>
-      'Feste Zeitfahrstrecken in State- und Nationalparks. Lauf eine an einem beliebigen Tag, und deine Zeit landet auf der Bestenliste dieses Jahres.';
+      'Feste Zeitfahrstrecken in State- und Nationalparks. Lauf eine, wann immer der Park geöffnet ist, und deine Zeit landet auf der Bestenliste dieses Jahres.';
 
   @override
   String get parksLoading => 'Parkstrecken werden geladen…';
@@ -21256,6 +21263,14 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get parksSafetyNotice =>
       'Bleib auf dem markierten Weg. Die Zeitmessung braucht jeden Kontrollpunkt, eine Abkürzung zählt also nie. Das ist ein Zeitfahren, kein Rennen: Der Weg bleibt für alle offen und wird nicht betreut.';
+
+  @override
+  String get parksNotAffiliated =>
+      'Threkir veröffentlicht diese Strecken. Sie werden nicht vom Park oder seiner Verwaltungsbehörde organisiert, gesponsert oder empfohlen. Es gelten die Regeln, Öffnungszeiten, Gebühren und Sperrungen des Parks.';
+
+  @override
+  String get parksLongCourseNotice =>
+      'Lange Strecke. Starte früh genug, um vor der Schließung des Parks fertig zu sein. Rechne mit Wegen, die du mit Radfahrern und Reitern teilst, und mit Bachquerungen, die nach Regen unpassierbar sein können.';
 
   @override
   String get parksAttributionOsm =>

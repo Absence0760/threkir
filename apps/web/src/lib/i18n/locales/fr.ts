@@ -3002,6 +3002,7 @@ export const messages = {
 	"raceStart.autoEndDays": "Se termine après, jours",
 	"raceStart.windowHours": "Heures",
 	"raceStart.autoApproveSelfTimedHint": "Désactivé par défaut : les résultats en chrono libre attendent votre validation.",
+	"raceStart.autoApproveHint": "Si activé, chaque résultat soumis est publié sans attendre votre validation.",
 	"raceStart.fixSettings": "Corrigez les horaires de départ de la course avant d'enregistrer.",
 	"raceStart.selfTimedBlocked": "Une course en chrono libre a besoin des deux lignes sur chaque parcours : {issues}",
 	"courseLines.preflightSelfCross": "{name} : l'itinéraire franchit sa ligne d'arrivée avant la fin, l'arrivée par la ligne est donc désactivée pour ce parcours.",

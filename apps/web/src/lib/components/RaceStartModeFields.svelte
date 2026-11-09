@@ -25,6 +25,7 @@
 		autoApprove: boolean | null;
 	}
 
+	const uid = $props.id();
 	let {
 		startTime,
 		mode = $bindable(),
@@ -98,8 +99,13 @@
 
 <fieldset class="start-mode" data-testid="race-start-mode">
 	<legend>{m('raceStart.legend')}</legend>
-	<p class="hint">{m('raceStart.explainer')}</p>
-	<div class="modes" role="radiogroup" aria-label={m('raceStart.legend')}>
+	<p class="hint" id={`${uid}-explainer`}>{m('raceStart.explainer')}</p>
+	<div
+		class="modes"
+		role="radiogroup"
+		aria-label={m('raceStart.legend')}
+		aria-describedby={`${uid}-explainer`}
+	>
 		{#each [
 			{ value: 'host_go', label: m('raceStart.modeHostGo'), hint: m('raceStart.modeHostGoHint') },
 			{ value: 'scheduled', label: m('raceStart.modeScheduled'), hint: m('raceStart.modeScheduledHint') },
@@ -112,11 +118,12 @@
 					value={opt.value}
 					checked={mode === opt.value}
 					onchange={() => pickMode(opt.value as SessionStartMode)}
+					aria-describedby={`${uid}-${opt.value}-hint`}
 					data-testid={`race-start-mode-${opt.value}`}
 				/>
 				<span>
 					<strong>{opt.label}</strong>
-					<span class="hint">{opt.hint}</span>
+					<span class="hint" id={`${uid}-${opt.value}-hint`}>{opt.hint}</span>
 				</span>
 			</label>
 		{/each}
@@ -130,12 +137,14 @@
 					type="time"
 					value={hhmm(goLocal.minuteOfDay)}
 					onchange={(e) => setGo(goLocal.dayOffset, (e.currentTarget as HTMLInputElement).value)}
+					aria-describedby={`${uid}-mode-hint`}
 					data-testid="race-go-time"
 				/>
 			</label>
 			<label>
 				<span>{m('raceStart.goDay')}</span>
 				<select
+					aria-describedby={`${uid}-mode-hint`}
 					value={goLocal.dayOffset}
 					onchange={(e) => setGo(Number((e.currentTarget as HTMLSelectElement).value), hhmm(goLocal.minuteOfDay))}
 				>
@@ -145,7 +154,7 @@
 				</select>
 			</label>
 		</div>
-		<p class="hint">{m('raceStart.autoEndHint')}</p>
+		<p class="hint" id={`${uid}-mode-hint`}>{m('raceStart.autoEndHint')}</p>
 	{:else if mode === 'self_timed'}
 		<div class="row">
 			<label>
@@ -154,12 +163,14 @@
 					type="time"
 					value={hhmm(openLocal.minuteOfDay)}
 					onchange={(e) => setOpen(openLocal.dayOffset, (e.currentTarget as HTMLInputElement).value)}
+					aria-describedby={`${uid}-mode-hint`}
 					data-testid="race-open-time"
 				/>
 			</label>
 			<label>
 				<span>{m('raceStart.opensDay')}</span>
 				<select
+					aria-describedby={`${uid}-mode-hint`}
 					value={openLocal.dayOffset}
 					onchange={(e) => setOpen(Number((e.currentTarget as HTMLSelectElement).value), hhmm(openLocal.minuteOfDay))}
 				>
@@ -169,7 +180,7 @@
 				</select>
 			</label>
 		</div>
-		<p class="hint">{m('raceStart.selfTimedLinesHint')}</p>
+		<p class="hint" id={`${uid}-mode-hint`}>{m('raceStart.selfTimedLinesHint')}</p>
 		<p class="hint warn">{m('raceStart.appVersionWarning')}</p>
 	{/if}
 
@@ -183,6 +194,7 @@
 					max="7"
 					value={lengthDays}
 					onchange={(e) => setLength(Number((e.currentTarget as HTMLInputElement).value), lengthHours)}
+					aria-describedby={`${uid}-mode-hint`}
 					data-testid="race-window-days"
 				/>
 			</label>
@@ -194,6 +206,7 @@
 					max="23"
 					value={lengthHours}
 					onchange={(e) => setLength(lengthDays, Number((e.currentTarget as HTMLInputElement).value))}
+					aria-describedby={`${uid}-mode-hint`}
 					data-testid="race-window-hours"
 				/>
 			</label>
@@ -207,7 +220,9 @@
 			/>
 			<span>
 				{m('clubEvent.autoApproveResults')}
-				{#if mode === 'self_timed'}<span class="hint">{m('raceStart.autoApproveSelfTimedHint')}</span>{/if}
+				<span class="hint">
+					{mode === 'self_timed' ? m('raceStart.autoApproveSelfTimedHint') : m('raceStart.autoApproveHint')}
+				</span>
 			</span>
 		</label>
 		{#each errors as e (e)}

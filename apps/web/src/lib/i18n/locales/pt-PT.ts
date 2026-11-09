@@ -3001,6 +3001,7 @@ export const messages = {
 	"raceStart.autoEndDays": "Termina após, dias",
 	"raceStart.windowHours": "Horas",
 	"raceStart.autoApproveSelfTimedHint": "Desativado por predefinição: os resultados de tempo próprio aguardam a sua aprovação.",
+	"raceStart.autoApproveHint": "Se ativado, cada resultado submetido é publicado sem aguardar a sua aprovação.",
 	"raceStart.fixSettings": "Corrija os horários de partida antes de guardar.",
 	"raceStart.selfTimedBlocked": "Uma corrida de tempo próprio precisa das duas linhas em cada percurso: {issues}",
 	"courseLines.preflightSelfCross": "{name}: a rota atravessa a linha de chegada antes do fim, por isso a chegada pela linha fica desligada neste percurso.",

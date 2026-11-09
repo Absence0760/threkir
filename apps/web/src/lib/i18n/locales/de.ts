@@ -3002,6 +3002,7 @@ export const messages = {
 	"raceStart.autoEndDays": "Endet nach, Tage",
 	"raceStart.windowHours": "Stunden",
 	"raceStart.autoApproveSelfTimedHint": "Standardmäßig aus: selbstgestoppte Ergebnisse warten auf deine Freigabe.",
+	"raceStart.autoApproveHint": "Wenn aktiv, wird jedes eingereichte Ergebnis ohne deine Freigabe veröffentlicht.",
 	"raceStart.fixSettings": "Korrigiere vor dem Speichern die Startzeiten des Rennens.",
 	"raceStart.selfTimedBlocked": "Ein selbstgestopptes Rennen braucht beide Linien auf jeder Strecke: {issues}",
 	"courseLines.preflightSelfCross": "{name}: Die Route überquert ihre Ziellinie vor dem Ende, daher ist das Finish über die Linie für diese Strecke aus.",

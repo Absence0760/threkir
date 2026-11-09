@@ -3002,6 +3002,7 @@ export const messages = {
 	"raceStart.autoEndDays": "Termina después de, días",
 	"raceStart.windowHours": "Horas",
 	"raceStart.autoApproveSelfTimedHint": "Desactivado por defecto: los resultados con cronometraje propio esperan tu aprobación.",
+	"raceStart.autoApproveHint": "Si está activado, cada resultado enviado se publica sin esperar tu aprobación.",
 	"raceStart.fixSettings": "Corrige los horarios de salida de la carrera antes de guardar.",
 	"raceStart.selfTimedBlocked": "Una carrera con cronometraje propio necesita ambas líneas en cada recorrido: {issues}",
 	"courseLines.preflightSelfCross": "{name}: la ruta cruza su línea de meta antes del final, así que la llegada por la línea está desactivada en este recorrido.",

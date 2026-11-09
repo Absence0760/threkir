@@ -2997,6 +2997,7 @@ export const messages = {
 	"raceStart.autoEndDays": "終了まで（日）",
 	"raceStart.windowHours": "時間",
 	"raceStart.autoApproveSelfTimedHint": "既定ではオフ：セルフタイムの結果はあなたの承認を待ちます。",
+	"raceStart.autoApproveHint": "オンにすると、送信された結果はあなたの承認を待たずに公開されます。",
 	"raceStart.fixSettings": "保存する前にレースの開始時刻を修正してください。",
 	"raceStart.selfTimedBlocked": "セルフタイムのレースには、各コースに両方のラインが必要です：{issues}",
 	"courseLines.preflightSelfCross": "{name}:ルートが終点より前にフィニッシュラインを通過するため、このコースではラインによるフィニッシュはオフです。",

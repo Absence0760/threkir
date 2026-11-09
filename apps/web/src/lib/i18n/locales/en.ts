@@ -3015,6 +3015,7 @@ export const en = {
 	"raceStart.autoEndDays": "Ends after, days",
 	"raceStart.windowHours": "Hours",
 	"raceStart.autoApproveSelfTimedHint": "Off by default: self-timed results wait for you to approve them.",
+	"raceStart.autoApproveHint": "When on, each submitted result is published without waiting for your approval.",
 	"raceStart.fixSettings": "Fix the race start times before saving.",
 	"raceStart.selfTimedBlocked": "A self-timed race needs both lines on every course: {issues}",
 	"courseLines.preflightSelfCross": "{name}: the route crosses its finish line before the end, so finishing by the line is off for this course.",

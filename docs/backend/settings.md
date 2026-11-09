@@ -261,9 +261,13 @@ Some per-device prefs are **never** synced to `user_settings` / `user_device_set
   rejects out of `updateUniversal` / `updateDevice`, and never enters the
   queue, so the page shows the failure instead of "Saved" and the drain
   can't retry a doomed write forever. Cache keys are
-  user- + device-scoped, and the auth store's `logout()` calls
-  `dropUserCache(userId)` so a subsequent sign-in as a different user
-  on the same browser can't read or replay against another account.
+  user- + device-scoped, and the auth store's `onAuthStateChange`
+  listener calls `dropUserCache(userId)` the moment a session ends
+  (ahead of clearing `loggedIn`; `logout()` repeats it for a failed
+  sign-out), so a subsequent sign-in as a different user on the same
+  browser can't read or replay against another account. A settings call
+  still awaiting the network at that point writes through a fenced
+  handle and cannot put the bag back (decisions § 2418).
   This lifts the dashboard's Fitness / Intensity / weekly-goal /
   unit-preference reads off the critical network path on every visit
   after the first.

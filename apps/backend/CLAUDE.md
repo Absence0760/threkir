@@ -30,8 +30,10 @@ apps/backend/
         ├── .env                  # committed local-dev env the CLI auto-loads into
         │                         # the edge runtime on `supabase start` (auth-email
         │                         # hook secret + Mailpit SMTP; non-secret values only)
-        ├── _shared/database_types.ts  # the tree's ONLY reach into apps/web: re-exports
+        ├── _shared/database_types.ts  # the tree's ONLY import from apps/web: re-exports
         │                              # the generated `Database` type, no supabase-js
+        │                              # (segment_matcher.generated.js is a committed bundle
+        │                              # of web code, not an import)
         ├── _shared/database.ts     # re-exports those + the `DbClient` alias (npm supabase-js)
         ├── _shared/{rate_limit,sentry,strava,body_limit,redirect_allowlist}.ts
         ├── auth-email/{index,handler,lib,smtp}.ts   # GoTrue send-email hook → localized auth mail
@@ -43,6 +45,9 @@ apps/backend/
         ├── plan-calendar/{index,handler,lib}.ts   # subscribable plan .ics behind a revocable URL token
         ├── refresh-tokens/index.ts
         ├── revenuecat-webhook/index.ts
+        ├── segment-match/{index,handler,lib}.ts   # catalogue scoring for the job worker's segment_match;
+        │                                          # runs _shared/segment_matcher.generated.js, a bundle of
+        │                                          # the web matcher (pnpm gen:edge-segment-matcher, § 2393)
         ├── strava-import/index.ts + backfill.ts
         ├── strava-webhook/index.ts
         ├── events-connect-onboard/{index,lib}.ts   # Stripe Connect host onboarding

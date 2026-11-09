@@ -1,4 +1,4 @@
-// GPS distance estimator, spec v1.4. docs/features/gps_distance.md is the spec
+// GPS distance estimator, spec v1.5. docs/features/gps_distance.md is the spec
 // and scripts/gps_distance/reference.py the reference; every port must
 // reproduce fixtures/gps_distance_vectors.json to 1e-3 m, so keep the
 // formulas in the reference's order. Parity pair with
@@ -8,7 +8,7 @@
 // screen runs; smoothDistance is the saved / recomputed figure, a forward pass
 // plus a Rauch-Tung-Striebel backward pass over the whole run.
 
-export const SPEC_VERSION = '1.4';
+export const SPEC_VERSION = '1.5';
 
 export const EARTH_RADIUS_M = 6371008.8;
 export const Q_ACCEL = 0.6;
@@ -55,6 +55,9 @@ export const ZUPT_NO_STEP_S = 6.0;
 export const ZUPT_VEL_SIGMA_MPS = 0.1;
 export const ZUPT_DOPPLER_OVERRIDE_MPS = 1.0;
 export const ZUPT_RELEASE_M = 40.0;
+export const ZUPT_BATCH_MIN_CADENCE_SPS = 1.0;
+export const ZUPT_BATCH_MARGIN = 1.5;
+export const ZUPT_MAX_NO_STEP_S = 30.0;
 export const STOP_HALF_WINDOW_S = 20.0;
 export const STOP_MIN_HALF_FIXES = 3;
 export const STOP_SPEED_MPS = 0.5;
@@ -191,6 +194,8 @@ export class GpsDistanceEstimator {
 	rScale = 1.0;
 	rejectedFixes = 0;
 	zuptFixes = 0;
+	/** v1.5: the longest walking span between two step increases. */
+	stepBatchS = 0;
 	dopplerTrusted = true;
 	dopplerScale = 1.0;
 
@@ -263,12 +268,20 @@ export class GpsDistanceEstimator {
 		return [lat, wrapLng(lng)];
 	}
 
-	/** Pedometer says stationary: steps seen this run, none for ZUPT_NO_STEP_S, Doppler not contradicting. */
+	/**
+	 * v1.5: how long without a step increase reads as stationary. Android delivers the
+	 * step counter in batches while the screen is off, so it stretches to the batches seen.
+	 */
+	get zuptWindowS(): number {
+		return Math.min(Math.max(ZUPT_NO_STEP_S, ZUPT_BATCH_MARGIN * this.stepBatchS), ZUPT_MAX_NO_STEP_S);
+	}
+
+	/** Pedometer says stationary: steps seen this run, none for zuptWindowS, Doppler not contradicting. */
 	private zuptDue(t: number, dop: number | null): boolean {
 		if (
 			!this.stepsSeen ||
 			this.zuptReleased ||
-			t - (this.lastStepIncT as number) <= ZUPT_NO_STEP_S
+			t - (this.lastStepIncT as number) <= this.zuptWindowS
 		) {
 			return false;
 		}
@@ -560,6 +573,10 @@ export class GpsDistanceEstimator {
 		if (prev === null || cumulativeSteps < prev || prevT === null || t <= prevT) return;
 		const d = cumulativeSteps - prev;
 		if (d > 0) {
+			if (this.lastStepIncT !== null) {
+				const span = t - this.lastStepIncT;
+				if (d >= ZUPT_BATCH_MIN_CADENCE_SPS * span) this.stepBatchS = Math.max(this.stepBatchS, span);
+			}
 			this.stepsSeen = true;
 			this.lastStepIncT = t;
 			this.zuptReleased = false;

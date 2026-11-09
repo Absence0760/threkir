@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { USER_A } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * /plans/[id] bulk editor ops (roadmap Phase 3 — Bulk operations):
@@ -14,6 +15,10 @@ import { USER_A } from '../fixtures/users';
 
 test.describe('/plans/[id] bulk ops', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	const dayMs = 24 * 3600 * 1000;
 	const iso = (d: Date) => d.toISOString().slice(0, 10);

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 
+import 'gate_crossing.dart';
 import 'geo.dart' show unwrapLonDeg;
 import 'run_stats.dart' show haversineMetres;
 
@@ -121,6 +122,32 @@ EffortResult? _effortFromIndex(
   );
 }
 
+/// The catalogue matcher's version. Mirrors `GLOBAL_SEGMENT_MATCHER_VERSION`
+/// in `apps/web/src/lib/segments/segments.ts`: 1 was the circles-only
+/// matcher; 2 times a segment with a usable pair of lines by its line
+/// crossings and reads only on-track fixes (issue #1308).
+const int kGlobalSegmentMatcherVersion = 2;
+
+/// Covered distance between the start and end must be within this fraction
+/// of the segment's stored length, whichever way the segment is matched.
+const double kGlobalSegmentLengthTolerance = 0.25;
+
+/// How a catalogue effort was matched: between the segment's two lines, or
+/// by the 35 m circles. Mirrors `GlobalSegmentMatchedBy` in
+/// `apps/web/src/lib/types.ts` and the `global_segment_efforts.matched_by`
+/// CHECK (migration 20271122002402).
+enum GlobalSegmentMatchedBy { zone, gate }
+
+/// A catalogue effort, with how it was matched.
+class GlobalSegmentEffortResult extends EffortResult {
+  final GlobalSegmentMatchedBy matchedBy;
+  const GlobalSegmentEffortResult({
+    required super.timeSeconds,
+    required super.startedAt,
+    required this.matchedBy,
+  });
+}
+
 /// A free-standing catalogue-segment geometry (the global/famous-segment
 /// layer — decisions §232). Carries its own polyline, so matching keys off
 /// the run passing the segment's start then its end rather than a
@@ -129,21 +156,53 @@ EffortResult? _effortFromIndex(
 class GlobalSegmentGeometry {
   final List<Waypoint> points;
   final double distanceM;
-  const GlobalSegmentGeometry({required this.points, required this.distanceM});
+
+  /// Ordered points the run must also pass, in order, within the match
+  /// tolerance between the start and end crossings (a park course's
+  /// `checkpoints`, decisions § 2383). The 25% length guard alone lets a
+  /// runner cut a fifth off an out-and-back or take a cut-through on a trail
+  /// network; a checkpoint on the far side of the cut refuses it.
+  final List<Waypoint> checkpoints;
+
+  /// The segment's start and end lines (`global_segments.start_gate_*` /
+  /// `end_gate_*`, decisions § 2402). When both are usable the segment is
+  /// matched by its line crossings ONLY; otherwise by the circles.
+  final Gate? startGate;
+  final Gate? endGate;
+  const GlobalSegmentGeometry({
+    required this.points,
+    required this.distanceM,
+    this.checkpoints = const [],
+    this.startGate,
+    this.endGate,
+  });
 }
 
 /// Scores a run track against a free-standing catalogue-segment geometry
 /// and returns the effort time, or null if the run didn't run it.
 ///
-/// v1 is a CURATED end-to-end match, NOT arbitrary-geometry HMM matching
-/// (deferred): the run must approach the segment's START within
-/// [toleranceM], then reach its END within [toleranceM] LATER in the track
-/// (a segment is directional), having covered a distance within 25% of the
-/// segment's own length between the two crossings — otherwise null. The
-/// timing runs [computeEffortFromTrack]'s own logic over that window so the
-/// sparsity + timestamp-interpolation guards are shared. Mirrors
-/// `computeGlobalSegmentEffort` in `apps/web/src/lib/segments/segments.ts`.
-EffortResult? computeGlobalSegmentEffort(
+/// Two rules, chosen per segment:
+///
+/// - **Lines** (a segment with a usable start and end line, decisions
+///   § 2402): a forward crossing of the start line, then a forward crossing
+///   of the end line later in the run, with the covered distance between them
+///   within 25% of the segment's length and every checkpoint passed in order
+///   between them. The time is the interpolated end crossing minus the
+///   interpolated start crossing. Where the run makes more than one such pass
+///   the fastest counts, and the crossing that ends one pass never also starts
+///   the next, which on a loop whose start and end lines coincide means
+///   consecutive laps are not both passes. A run that never crosses the lines
+///   is not matched by the circles instead: no circle fallback.
+/// - **Circles** (no usable pair of lines): the v1 CURATED end-to-end match:
+///   the run must approach the segment's START within [toleranceM], then
+///   reach its END within [toleranceM] LATER in the track, with the same
+///   length guard and checkpoints, timed by [computeEffortFromTrack]'s own
+///   distance-window logic.
+///
+/// Either way only on-track fixes ([trackLine]) are read, at their line
+/// positions. Mirrors `computeGlobalSegmentEffort` in
+/// `apps/web/src/lib/segments/segments.ts`.
+GlobalSegmentEffortResult? computeGlobalSegmentEffort(
   List<Waypoint> track,
   GlobalSegmentGeometry segment, {
   double toleranceM = 35,
@@ -165,15 +224,16 @@ EffortResult? computeGlobalSegmentEffort(
 ///
 /// Mirrors `computeGlobalSegmentEfforts` in
 /// `apps/web/src/lib/segments/segments.ts`.
-List<EffortResult?> computeGlobalSegmentEfforts(
+List<GlobalSegmentEffortResult?> computeGlobalSegmentEfforts(
   List<Waypoint> track,
   List<GlobalSegmentGeometry> segments, {
   double toleranceM = 35,
 }) {
-  final out = List<EffortResult?>.filled(segments.length, null);
-  if (track.length < 2 || segments.isEmpty) return out;
+  final out = List<GlobalSegmentEffortResult?>.filled(segments.length, null);
+  final line = trackLine(track);
+  if (line.length < 2 || segments.isEmpty) return out;
 
-  final bounds = _trackBounds(track);
+  final bounds = _trackBounds(line);
   // Only built once a segment survives the extent test — a sweep that
   // rejects every segment must not pay a haversine pass at all.
   _TrackDistanceIndex? index;
@@ -181,13 +241,154 @@ List<EffortResult?> computeGlobalSegmentEfforts(
   for (var i = 0; i < segments.length; i++) {
     final segment = segments[i];
     final pts = segment.points;
-    if (pts.length < 2 || segment.distanceM <= 0) continue;
-    if (!_boundsAdmit(bounds, pts.first, toleranceM)) continue;
-    if (!_boundsAdmit(bounds, pts.last, toleranceM)) continue;
-    index ??= _distanceIndex(track);
-    out[i] = _scoreAgainstTrack(track, index, segment, toleranceM);
+    if (pts.length < 2 || !(segment.distanceM > 0)) continue;
+    final start = segment.startGate;
+    final end = segment.endGate;
+    if (start != null && end != null && gateUsable(start) && gateUsable(end)) {
+      // A crossing lies on the chord between two fixes, so inside the
+      // track's extent, and within the half-width of the line's centre.
+      if (!_boundsAdmit(bounds, start.lat, start.lng, start.halfWidthM)) {
+        continue;
+      }
+      if (!_boundsAdmit(bounds, end.lat, end.lng, end.halfWidthM)) continue;
+      index ??= _distanceIndex(line);
+      out[i] = _scoreByGates(line, index, segment, start, end, toleranceM);
+      continue;
+    }
+    if (!_boundsAdmit(bounds, pts.first.lat, pts.first.lng, toleranceM)) {
+      continue;
+    }
+    if (!_boundsAdmit(bounds, pts.last.lat, pts.last.lng, toleranceM)) continue;
+    index ??= _distanceIndex(line);
+    final eff = _scoreAgainstTrack(line, index, segment, toleranceM);
+    out[i] = eff == null
+        ? null
+        : GlobalSegmentEffortResult(
+            timeSeconds: eff.timeSeconds,
+            startedAt: eff.startedAt,
+            matchedBy: GlobalSegmentMatchedBy.zone,
+          );
   }
   return out;
+}
+
+class _PendingStart {
+  final GateCrossing crossing;
+
+  /// Track index of the fix before the crossing: checkpoints count from it.
+  final int fromIdx;
+  const _PendingStart(this.crossing, this.fromIdx);
+}
+
+GlobalSegmentEffortResult? _scoreByGates(
+  List<Waypoint> line,
+  _TrackDistanceIndex index,
+  GlobalSegmentGeometry segment,
+  Gate startGate,
+  Gate endGate,
+  double toleranceM,
+) {
+  final len = segment.distanceM;
+  final minCovered = len * (1 - kGlobalSegmentLengthTolerance);
+  final maxCovered = len * (1 + kGlobalSegmentLengthTolerance);
+  final startDetector = GateCrossingDetector(startGate);
+  final endDetector = GateCrossingDetector(endGate);
+
+  var pending = <_PendingStart>[];
+  double? bestStartMs;
+  double? bestEndMs;
+  var prevIdx = -1;
+  var prevMs = double.negativeInfinity;
+
+  for (var i = 0; i < line.length; i++) {
+    final p = line[i];
+    final ts = p.timestamp;
+    if (ts == null) continue;
+    final tMs = ts.millisecondsSinceEpoch.toDouble();
+    final lat = p.lineLat;
+    final lng = p.lineLng;
+    // The detectors drop these too; skipping them here keeps prevIdx on the
+    // fix the detectors last accepted.
+    if (!lat.isFinite || !lng.isFinite || tMs <= prevMs) continue;
+    final fix = GateFix(lat: lat, lng: lng, tMs: tMs, coveredM: index.cum[i]);
+    final endCrossing = endDetector.offer(fix);
+    final startCrossing = startDetector.offer(fix);
+
+    var closed = false;
+    if (endCrossing != null &&
+        endCrossing.direction == GateDirection.forward) {
+      pending = [
+        for (final s in pending)
+          if (endCrossing.coveredM - s.crossing.coveredM <= maxCovered) s,
+      ];
+      // Pending starts are in time order, so the last valid one is the latest
+      // start and so the fastest pass ending here.
+      _PendingStart? pick;
+      for (final s in pending) {
+        if (endCrossing.coveredM - s.crossing.coveredM < minCovered) continue;
+        if (!_passesCheckpoints(
+            line, segment.checkpoints, s.fromIdx, i, toleranceM)) {
+          continue;
+        }
+        pick = s;
+      }
+      if (pick != null) {
+        final startMs = pick.crossing.tMs;
+        final endMs = endCrossing.tMs;
+        if (endMs > startMs &&
+            (bestStartMs == null ||
+                endMs - startMs < bestEndMs! - bestStartMs)) {
+          bestStartMs = startMs;
+          bestEndMs = endMs;
+        }
+        pending = [];
+        closed = true;
+      }
+    }
+    if (startCrossing != null &&
+        startCrossing.direction == GateDirection.forward &&
+        !closed) {
+      pending.add(_PendingStart(startCrossing, prevIdx));
+    }
+    prevIdx = i;
+    prevMs = tMs;
+  }
+
+  if (bestStartMs == null) return null;
+  return GlobalSegmentEffortResult(
+    timeSeconds: (bestEndMs! - bestStartMs) / 1000,
+    startedAt: DateTime.fromMillisecondsSinceEpoch(bestStartMs.round(),
+        isUtc: true),
+    matchedBy: GlobalSegmentMatchedBy.gate,
+  );
+}
+
+/// Whether the track passes every checkpoint, in order, between the start and
+/// end crossings. Each checkpoint takes the FIRST in-tolerance track index at
+/// or after the previous one's, so a checkpoint only reachable by doubling
+/// back past a later one fails rather than matching out of order.
+bool _passesCheckpoints(
+  List<Waypoint> track,
+  List<Waypoint> checkpoints,
+  int startIdx,
+  int endIdx,
+  double toleranceM,
+) {
+  if (checkpoints.isEmpty) return true;
+  var cursor = startIdx;
+  for (final cp in checkpoints) {
+    var hit = -1;
+    for (var i = cursor; i <= endIdx; i++) {
+      if (haversineMetres(track[i].lineLat, track[i].lineLng, cp.lat, cp.lng) <=
+          toleranceM) {
+        hit = i;
+        break;
+      }
+    }
+    if (hit < 0) return false;
+    cursor = hit;
+  }
+  return true;
 }
 
 /// Latitude / longitude extent of a run track. Longitudes are unwrapped
@@ -255,18 +456,23 @@ _TrackBounds _trackBounds(List<Waypoint> track) {
 /// That linearisation only under-states the window as the ratio approaches 1,
 /// which cannot happen while the window is still under a degree — so past a
 /// degree, where the test has stopped discriminating anyway, it admits.
-bool _boundsAdmit(_TrackBounds bounds, Waypoint point, double toleranceM) {
+bool _boundsAdmit(
+  _TrackBounds bounds,
+  double pointLat,
+  double pointLng,
+  double toleranceM,
+) {
   final padLat = toleranceM / _conservativeMetresPerDeg;
-  if (point.lat < bounds.minLat - padLat || point.lat > bounds.maxLat + padLat) {
+  if (pointLat < bounds.minLat - padLat || pointLat > bounds.maxLat + padLat) {
     return false;
   }
 
-  final cosLat = math.cos(point.lat * math.pi / 180);
+  final cosLat = math.cos(pointLat * math.pi / 180);
   if (cosLat <= 0) return true;
   final padLon = padLat / cosLat;
   if (padLon >= 1) return true;
 
-  final lon = unwrapLonDeg(bounds.refLon, point.lng);
+  final lon = unwrapLonDeg(bounds.refLon, pointLng);
   return lon >= bounds.minLon - padLon && lon <= bounds.maxLon + padLon;
 }
 
@@ -312,7 +518,13 @@ EffortResult? _scoreAgainstTrack(
   // End-to-end guard: covered distance must be ~the segment length so a
   // straight-line shortcut between distant endpoints isn't mistaken for
   // running the segment.
-  if ((dEnd - dStart - segment.distanceM).abs() / segment.distanceM > 0.25) {
+  if ((dEnd - dStart - segment.distanceM).abs() / segment.distanceM >
+      kGlobalSegmentLengthTolerance) {
+    return null;
+  }
+
+  if (!_passesCheckpoints(
+      track, segment.checkpoints, startIdx, endIdx, toleranceM)) {
     return null;
   }
 

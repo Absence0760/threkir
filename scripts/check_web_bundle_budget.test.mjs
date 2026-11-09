@@ -145,25 +145,28 @@ test('twenty more languages move no budget, where the retired total ceiling fail
 	assert.equal(summary.catalogueFiles.filter((c) => c.part === CORE_PART).length, 26);
 });
 
-test('a rogue dep the retired total ceiling had room for trips the code budget', () => {
+// This case used to show a dep the retired 2700 KB total would have admitted
+// tripping the code budget. That held while MAX_CODE_KB + the fixture's 162 KB
+// of catalogue parts stayed under 2700, i.e. up to a 2538 KB code ceiling; the
+// § 2410 ceiling is past it, so the code budget no longer undercuts the retired
+// rule at this fixture's size. What still holds, and is what the split exists
+// for, is that a dep is charged to code alone and a locale is never blamed.
+test('a rogue dep past the code ceiling trips the code budget alone', () => {
+	const over = MAX_CODE_KB - 2057 + 2;
 	const rogue = fixture({
 		extraCode: [
-			{ path: '_app/immutable/chunks/rogue-dep.js', kb: 205 },
-			{ path: '_app/immutable/chunks/rogue-dep-2.js', kb: 220 },
+			{ path: '_app/immutable/chunks/rogue-dep.js', kb: Math.floor(over / 2) },
+			{ path: '_app/immutable/chunks/rogue-dep-2.js', kb: Math.ceil(over / 2) },
 		],
 	});
-
-	assert.equal(
-		retiredTotalPasses(rogue.files),
-		true,
-		'2057 + 162 KB of catalogue parts + 425 = 2644 sits under 2700 — the catalogues ' +
-			'in that total were the cover the dep hid behind',
-	);
 
 	const { errors } = checkBudgets(rogue);
 	assert.equal(errors.length, 1);
 	assert.equal(errors[0].budget, 'code');
-	assert.match(errors[0].message, /code is 2482 KB gzipped, over the 2480 KB ceiling by 2 KB/);
+	assert.match(
+		errors[0].message,
+		new RegExp(`code is ${MAX_CODE_KB + 2} KB gzipped, over the ${MAX_CODE_KB} KB ceiling by 2 KB`),
+	);
 	assert.match(
 		errors[0].message,
 		/a new locale cannot have caused it/,
@@ -176,7 +179,10 @@ test('an oversized core names its own locale and its own budget', () => {
 	assert.equal(errors.length, 1);
 	assert.equal(errors[0].budget, 'catalogue');
 	assert.match(errors[0].message, /the ja core catalogue is 40 KB/);
-	assert.match(errors[0].message, /over the 13 KB per-core ceiling by 27 KB/);
+	assert.match(
+		errors[0].message,
+		new RegExp(`over the ${MAX_CORE_CATALOGUE_KB} KB per-core ceiling by ${40 - MAX_CORE_CATALOGUE_KB} KB`),
+	);
 	assert.match(errors[0].message, /adding a language cannot trip it/);
 	assert.match(errors[0].message, /keys moved into core/);
 });
@@ -361,8 +367,8 @@ test('gzipKb rounds a part-kilobyte up', () => {
 
 test('the summary states the catalogue total without gating on it', () => {
 	const text = renderSummary(checkBudgets(fixture()).summary);
-	assert.match(text, /Code \(every reader, any language\) \| 2057 KB across 9 files \| 2480 KB/);
-	assert.match(text, /Largest core catalogue \(de\) \| 10 KB \| 13 KB, per core/);
+	assert.match(text, new RegExp(`Code \\(every reader, any language\\) \\| 2057 KB across 9 files \\| ${MAX_CODE_KB} KB`));
+	assert.match(text, new RegExp(`Largest core catalogue \\(de\\) \\| 10 KB \\| ${MAX_CORE_CATALOGUE_KB} KB, per core`));
 	assert.match(text, /Largest area catalogue \(de\/settings\) \| 11 KB \| 14 KB, per area/);
 	assert.match(text, /ungated in total \(162 KB across 27 parts; a reader fetches one core/);
 	assert.match(text, /Largest single asset[^|]*\| 74 KB \| 100 KB, per asset/);
@@ -370,8 +376,8 @@ test('the summary states the catalogue total without gating on it', () => {
 });
 
 test('the shipped ceilings are the ones this suite reasons about', () => {
-	assert.equal(MAX_CODE_KB, 2480);
-	assert.equal(MAX_CORE_CATALOGUE_KB, 13);
+	assert.equal(MAX_CODE_KB, 2585);
+	assert.equal(MAX_CORE_CATALOGUE_KB, 15);
 	assert.equal(MAX_AREA_CATALOGUE_KB, 14);
 	assert.equal(MAX_LARGEST_CHUNK_KB, 350);
 	assert.equal(MAX_ASSET_KB, 100);

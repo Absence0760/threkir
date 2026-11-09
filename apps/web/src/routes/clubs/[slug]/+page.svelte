@@ -13,7 +13,7 @@
 	import { handleTablistKeydown } from '#lib/util/tablist.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import { hashHue } from '#lib/format/avatar.ts';
-	import { runnerHandle } from '#lib/social/runner_handle.ts';
+	import { namedOrNull, runnerHandle } from '#lib/social/runner_handle.ts';
 	import { page } from '$app/state';
 	import { goto, afterNavigate } from '$app/navigation';
 	import { PUBLIC_SITE_URL } from '$app/env/public';
@@ -57,7 +57,7 @@
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
 	import type { GymRoutineSummary } from '#lib/core/data.ts';
-	import type { Route, TrainingPlan, SessionPlan } from '#lib/types.ts';
+	import type { OfficialFlag, Route, TrainingPlan, SessionPlan } from '#lib/types.ts';
 	import type { RouteListItem } from '#lib/routes/route_list_columns.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -69,6 +69,8 @@
 	import Modal from '#lib/components/Modal.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
+	import ClubVerificationCard from '#lib/components/ClubVerificationCard.svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import ClubPhotos from '#lib/components/ClubPhotos.svelte';
 	import type {
 		ClubWithMeta,
@@ -134,7 +136,7 @@
 	let clubTemplates = $state<TrainingPlan[]>([]);
 	let sessionTemplates = $state<SessionPlan[]>([]);
 	let adoptingSession = $state('');
-	let gymRoutineTemplates = $state<GymRoutineSummary[]>([]);
+	let gymRoutineTemplates = $state<(GymRoutineSummary & OfficialFlag)[]>([]);
 	let adoptingRoutine = $state('');
 	const templatesCount = $derived(
 		clubTemplates.length + sessionTemplates.length + gymRoutineTemplates.length
@@ -189,7 +191,7 @@
 	// (decisions § 2365).
 	function shownName(name: string | null | undefined, userId: string): string {
 		return (
-			name ??
+			namedOrNull(name) ??
 			runnerHandle(userId, {
 				handle: (slug) => tr('live.runnerHandle', { slug }),
 				anonymous: tr('live.runnerAnonymous'),
@@ -1148,6 +1150,10 @@
 			</section>
 		{/if}
 
+		{#if isAdmin}
+			<ClubVerificationCard {club} isOwner={club.viewer_role === 'owner'} />
+		{/if}
+
 		{#if isAdmin && pendingError}
 			<section class="admin-card" role="alert">
 				<div class="admin-card-title">
@@ -1190,7 +1196,7 @@
 			</section>
 		{/if}
 
-		{#if isMember && auth.user && !auth.user.display_name}
+		{#if isMember && auth.user && !namedOrNull(auth.user.display_name)}
 			<aside class="name-hint" data-testid="club-name-hint">
 				<span class="material-symbols" aria-hidden="true">info</span>
 				<p>
@@ -1721,7 +1727,7 @@
 						{#each gymRoutineTemplates as g (g.id)}
 							<li class="template-row">
 								<a href="/gym/routines/{g.id}" class="template-link">
-									<strong>{g.title}</strong>
+									<strong>{g.title}{#if g.is_official}<OfficialBadge />{/if}</strong>
 									<span class="template-meta">
 										{tr('clubHome.routineExerciseCount', { n: g.exercise_count })}
 									</span>
@@ -1894,7 +1900,7 @@
 	open={removingMemberId !== null}
 	title={tr('clubHome.removeMemberTitle')}
 	message={tr('clubHome.removeMemberMessage', {
-		name: members.find((m) => m.user_id === removingMemberId)?.display_name ?? tr('clubHome.thisMember'),
+		name: namedOrNull(members.find((m) => m.user_id === removingMemberId)?.display_name) ?? tr('clubHome.thisMember'),
 		club: club?.name ?? tr('clubHome.theClub')
 	})}
 	confirmLabel={tr('clubHome.remove')}
@@ -1907,7 +1913,7 @@
 	open={rejectingMemberId !== null}
 	title={tr('clubHome.rejectRequestTitle')}
 	message={tr('clubHome.rejectRequestMessage', {
-		name: pending.find((p) => p.user_id === rejectingMemberId)?.display_name ?? tr('clubHome.thisMember'),
+		name: namedOrNull(pending.find((p) => p.user_id === rejectingMemberId)?.display_name) ?? tr('clubHome.thisMember'),
 		club: club?.name ?? tr('clubHome.theClub')
 	})}
 	confirmLabel={tr('clubHome.reject')}

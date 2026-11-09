@@ -104,6 +104,14 @@ void main() {
               .descendant(of: find.byWidget(c), matching: find.byType(Material))
               .first);
           if (rect.width <= 200 || rect.top < stripTop) continue;
+          // A card that is a row of another card (the one Training load card
+          // holds the load views, decisions § 2385) is not in the stack.
+          if (find
+              .ancestor(of: find.byWidget(c), matching: find.byType(Card))
+              .evaluate()
+              .isNotEmpty) {
+            continue;
+          }
           final group = find
               .ancestor(of: find.byWidget(c), matching: find.byType(DisclosureSection))
               .evaluate();
@@ -112,8 +120,9 @@ void main() {
         expect(runs.length, greaterThanOrEqualTo(3),
             reason: 'the strip run plus at least two trend groups must mount');
         expect(runs.values.fold<int>(0, (n, r) => n + r.length),
-            greaterThanOrEqualTo(6),
-            reason: 'the card stack must actually have mounted');
+            greaterThanOrEqualTo(5),
+            reason: 'the card stack must actually have mounted (the four load '
+                'views are one card since decisions § 2385)');
 
         final gaps = <double>[];
         for (final run in runs.values) {

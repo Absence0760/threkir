@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'challenge_list.dart';
 import 'challenge_progress.dart';
+import 'course_gates.dart' show CourseGate, GateWhich, courseGate;
 import 'event_category.dart';
 import 'event_host_cancel.dart';
 import 'event_occurrence.dart';
@@ -48,7 +49,9 @@ const String _eventSelectCols =
     'meet_label, route_id, distance_m, pace_target_sec, capacity, '
     'author_id, created_at, updated_at, recurrence_freq, '
     'recurrence_byday, recurrence_until, recurrence_count, '
-    'category, discipline, gym_template, session_plan_id, gym_routine_id';
+    'category, discipline, gym_template, session_plan_id, gym_routine_id, '
+    'race_start_mode, race_scheduled_offset_s, race_window_open_offset_s, '
+    'race_window_length_s, race_auto_approve';
 
 /// Parse the `events.recurrence_byday` jsonb array (a list of weekday
 /// short-codes like `['MO','WE']`) into a list of `Weekday`s. Returns
@@ -233,6 +236,16 @@ class EventCourseView {
   /// (decisions § 1845); null when the row has none or it was clipped away.
   final double? startLat;
   final double? startLng;
+
+  /// The course's timing lines (migration `20271116002390`, decisions
+  /// § 2390): derived from the clipped route or placed by an organiser. Null
+  /// when the course has none at that end.
+  final CourseGate? startGate;
+  final CourseGate? finishGate;
+
+  /// The route crosses its own finish line before its end, so a line finish
+  /// could fire early (server-computed).
+  final bool finishLineSelfCross;
   const EventCourseView({
     required this.id,
     required this.eventId,
@@ -244,6 +257,9 @@ class EventCourseView {
     this.finishLng,
     this.startLat,
     this.startLng,
+    this.startGate,
+    this.finishGate,
+    this.finishLineSelfCross = false,
   });
 
   static EventCourseView? fromJson(Map<String, dynamic> m) {
@@ -271,9 +287,59 @@ class EventCourseView {
       finishLng: hasFinish ? lng.toDouble() : null,
       startLat: hasStart ? sLat.toDouble() : null,
       startLng: hasStart ? sLng.toDouble() : null,
+      startGate: courseGate(m, GateWhich.start),
+      finishGate: courseGate(m, GateWhich.finish),
+      finishLineSelfCross: m['finish_line_self_cross'] == true,
     );
   }
 }
+
+/// One `race_session_courses` row: a course as it was frozen when its race
+/// session was created (Arm, for Host GO; decisions § 2391). Devices and the
+/// race screen read this rather than the live course row, so a route or zone
+/// edit mid-race moves only the next race.
+class FrozenRaceCourse {
+  final String courseId;
+  final CourseGate? startGate;
+  final CourseGate? finishGate;
+  final double? finishLat;
+  final double? finishLng;
+  final double? distanceM;
+  final bool finishLineSelfCross;
+  const FrozenRaceCourse({
+    required this.courseId,
+    this.startGate,
+    this.finishGate,
+    this.finishLat,
+    this.finishLng,
+    this.distanceM,
+    this.finishLineSelfCross = false,
+  });
+
+  static FrozenRaceCourse? fromJson(Map<String, dynamic> m) {
+    final id = m['course_id'];
+    if (id is! String) return null;
+    final lat = m['finish_lat'];
+    final lng = m['finish_lng'];
+    final hasFinish = lat is num && lng is num;
+    final distance = m['distance_m'];
+    return FrozenRaceCourse(
+      courseId: id,
+      startGate: courseGate(m, GateWhich.start),
+      finishGate: courseGate(m, GateWhich.finish),
+      finishLat: hasFinish ? lat.toDouble() : null,
+      finishLng: hasFinish ? lng.toDouble() : null,
+      distanceM: distance is num ? distance.toDouble() : null,
+      finishLineSelfCross: m['finish_line_self_cross'] == true,
+    );
+  }
+}
+
+/// The line columns every course read selects, live row and frozen copy.
+const String kCourseGateColumns =
+    'start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, '
+    'finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, '
+    'finish_line_self_cross';
 
 /// A challenge plus the caller-relative meta the list + detail surfaces need.
 /// `metric` / `scope` stay raw strings here (the narrow unions live in
@@ -364,6 +430,10 @@ class ChallengeView implements MyProgressRow {
   /// (migration 20271021000030), present on the list and detail reads.
   final bool isOfficial;
 
+  /// A `park_courses` challenge narrowed to one region's parks (ISO 3166-2,
+  /// `US-VA`); null counts every park.
+  final String? parkRegionCode;
+
   const ChallengeView({
     required this.id,
     required this.creatorId,
@@ -384,6 +454,7 @@ class ChallengeView implements MyProgressRow {
     this.completedAt,
     this.myTeamClubId,
     this.isOfficial = false,
+    this.parkRegionCode,
   });
 
   /// The caller-relative half of the row replaced with what `mergeMyProgress`
@@ -410,6 +481,7 @@ class ChallengeView implements MyProgressRow {
         completedAt: merged.completedAt,
         myTeamClubId: myTeamClubId,
         isOfficial: isOfficial,
+        parkRegionCode: parkRegionCode,
       );
 }
 
@@ -1138,6 +1210,20 @@ class SocialService extends ChangeNotifier {
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     return List<String>.generate(4, (_) => chars[r.nextInt(chars.length)])
         .join();
+  }
+
+  /// A club's verification requests, newest first. RLS lets the club's owner
+  /// and active admins read them; anyone else gets none. Read-only here: the
+  /// request and review flow is on the web (decisions § 2398).
+  Future<List<ClubVerificationRequestRow>> fetchClubVerificationRequests(
+      String clubId) async {
+    final rows = await _c
+        .from('club_verification_requests')
+        .select(_clubVerificationColumns)
+        .eq('club_id', clubId)
+        .order('created_at', ascending: false)
+        .limit(20);
+    return rows.map(ClubVerificationRequestRow.fromJson).toList();
   }
 
   /// Pending join requests on a club (admins only — RLS will filter), oldest
@@ -2122,13 +2208,31 @@ class SocialService extends ChangeNotifier {
     final rows = await _c
         .from('event_courses')
         .select(
-            'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng, start_lat, start_lng')
+            'id, event_id, route_id, name, distance_m, sort_order, finish_lat, finish_lng, start_lat, start_lng, '
+            'start_gate_source, finish_gate_source, $kCourseGateColumns')
         .eq('event_id', eventId)
         .order('sort_order', ascending: true);
     return [
       for (final r in (rows as List).whereType<Map>())
         ?EventCourseView.fromJson(r.cast<String, dynamic>()),
     ];
+  }
+
+  /// The occurrence's frozen courses, keyed by course id. Empty when the
+  /// session has no frozen copy (one created before 20271116002390, or none
+  /// yet); a read error throws so the caller can keep the live row.
+  Future<Map<String, FrozenRaceCourse>> fetchRaceSessionCourses(
+      String eventId, DateTime instance) async {
+    final rows = await _c
+        .from('race_session_courses')
+        .select('course_id, finish_lat, finish_lng, distance_m, $kCourseGateColumns')
+        .eq('event_id', eventId)
+        .eq('instance_start', instanceStartKey(instance));
+    return {
+      for (final r in (rows as List).whereType<Map>())
+        if (FrozenRaceCourse.fromJson(r.cast<String, dynamic>()) case final f?)
+          f.courseId: f,
+    };
   }
 
   /// The event's own `distance_m`: what a race with no courses is gated on.
@@ -2401,6 +2505,91 @@ class SocialService extends ChangeNotifier {
     final row = await _c
         .from(RaceSessionRow.table)
         .update(raceEndPatch(status, DateTime.now()))
+        .eq(RaceSessionRow.colEventId, eventId)
+        .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
+        .select()
+        .single();
+    notifyListeners();
+    return RaceSessionRow.fromJson(row);
+  }
+
+  /// Create the session of a scheduled or self-timed occurrence that is due
+  /// within a day (`ensure_race_session`, #1306), so the event screen's first
+  /// read finds it. False for a Host GO event, a cancelled or not-yet-due
+  /// occurrence, or a failed call: the screen then shows the race as not yet
+  /// open, which the next read fixes.
+  Future<bool> ensureRaceSession(String eventId, DateTime instance) async {
+    try {
+      final ok = await _c.rpc('ensure_race_session', params: {
+        'p_event_id': eventId,
+        'p_instance_start': instanceStartKey(instance),
+      });
+      return ok == true;
+    } catch (e) {
+      debugPrint('[SocialService.ensureRaceSession] ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  /// The server clock minus this device's (`server_now`), halving the round
+  /// trip; null when the call fails, so a countdown falls back to the device
+  /// clock rather than to a wrong offset (m3).
+  Future<Duration?> fetchServerClockOffset() async {
+    try {
+      final sent = DateTime.now();
+      final raw = await _c.rpc('server_now', params: const {}, get: true);
+      final received = DateTime.now();
+      final server = parseIsoStrictValue(raw);
+      if (server == null) return null;
+      final mid = sent.add(received.difference(sent) ~/ 2);
+      return server.difference(mid);
+    } catch (e) {
+      debugPrint('[SocialService.fetchServerClockOffset] ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
+
+  /// Delay a scheduled GO, or a self-timed window's opening, to [start]
+  /// (organiser only). The server refuses once the start has passed and moves
+  /// the window's close by the same amount.
+  Future<RaceSessionRow> delayRaceStart({
+    required String eventId,
+    required DateTime instance,
+    required bool selfTimed,
+    required DateTime start,
+  }) async {
+    if (_uid == null) throw Exception('Not authenticated');
+    final row = await _c
+        .from(RaceSessionRow.table)
+        .update({
+          selfTimed
+                  ? RaceSessionRow.colWindowOpensAt
+                  : RaceSessionRow.colScheduledStartAt:
+              start.toUtc().toIso8601String(),
+          RaceSessionRow.colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
+        })
+        .eq(RaceSessionRow.colEventId, eventId)
+        .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
+        .select()
+        .single();
+    notifyListeners();
+    return RaceSessionRow.fromJson(row);
+  }
+
+  /// Move a window's close (Extend). The server refuses a close in the past,
+  /// before the opening or more than 7 days after it.
+  Future<RaceSessionRow> setRaceWindowClose({
+    required String eventId,
+    required DateTime instance,
+    required DateTime closes,
+  }) async {
+    if (_uid == null) throw Exception('Not authenticated');
+    final row = await _c
+        .from(RaceSessionRow.table)
+        .update({
+          RaceSessionRow.colWindowClosesAt: closes.toUtc().toIso8601String(),
+          RaceSessionRow.colUpdatedAt: DateTime.now().toUtc().toIso8601String(),
+        })
         .eq(RaceSessionRow.colEventId, eventId)
         .eq(RaceSessionRow.colInstanceStart, instanceStartKey(instance))
         .select()
@@ -2772,6 +2961,7 @@ class SocialService extends ChangeNotifier {
       completedAt: completedAt,
       myTeamClubId: myTeamClubId,
       isOfficial: r['is_official'] == true,
+      parkRegionCode: r['park_region_code'] as String?,
     );
   }
 
@@ -3142,3 +3332,8 @@ String fmtRelative(DateTime when, String localeTag, {DateTime? now}) {
 String fmtEventDate(DateTime when, String localeTag) =>
     '${formatDateShort(when, localeTag)}, ${formatTime(when, localeTag)}';
 
+const _clubVerificationColumns =
+    'id, club_id, submitted_by, organisation, domain, note, token, status, '
+    'proof_method, proof_verified_at, proof_detail, last_checked_at, '
+    'check_failures, decided_by, decided_at, decision_reason, closed_by, '
+    'closed_at, close_reason, created_at';

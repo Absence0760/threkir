@@ -30,7 +30,11 @@
 		type RaceListingRun,
 		type RaceListingPhoto
 	} from '#lib/core/data.ts';
-	import { raceSourceLabel } from '#lib/integrations/race_source.ts';
+	import { raceCourseSourceLabel, raceSourceLabel } from '#lib/integrations/race_source.ts';
+	import RaceCourseTools from '#lib/components/RaceCourseTools.svelte';
+	import ProvenanceBadge from '#lib/components/ProvenanceBadge.svelte';
+	import CourseAlerts from '#lib/components/CourseAlerts.svelte';
+	import { raceCourseProvenance, raceListingProvenance } from '#lib/social/provenance.ts';
 	import { buildRaceShareCanonical } from '#lib/share/share_race_meta.ts';
 	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -39,6 +43,7 @@
 	import { safeImageSrc } from '#lib/util/safe_image_src.ts';
 	import type { Route, RouteMarker } from '#lib/types.ts';
 	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import DriveCourseButton from '#lib/components/DriveCourseButton.svelte';
 	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
 	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
 
@@ -90,6 +95,41 @@
 			const routeId = race.course?.routeId;
 			if (routeId) void loadCourse(id, routeId);
 		}
+	}
+
+	// After a claim or a course change: re-read the listing without the
+	// loading state, so the page stays put while the course updates.
+	async function refreshRace() {
+		const id = data.id;
+		try {
+			const next = await fetchRaceListing(id);
+			if (id !== data.id || !next) return;
+			race = next;
+			const routeId = next.course?.routeId;
+			if (routeId && routeId !== courseRoute?.id) void loadCourse(id, routeId);
+			if (!routeId) {
+				courseRoute = null;
+				courseMarkers = [];
+			}
+		} catch (e) {
+			console.error('race refresh failed', e);
+		}
+	}
+
+	// While a course removal waits out its undo window the page shows the race
+	// without it; the returned function puts it back on Undo or a failure.
+	function hideCourse(): () => void {
+		const id = race?.id;
+		const before = { course: race?.course ?? null, route: courseRoute, markers: courseMarkers };
+		if (race) race = { ...race, course: null };
+		courseRoute = null;
+		courseMarkers = [];
+		return () => {
+			if (!race || race.id !== id) return;
+			race = { ...race, course: before.course };
+			courseRoute = before.route;
+			courseMarkers = before.markers;
+		};
 	}
 
 	// The line comes from `fetchPublicRoute`, so a non-owner gets the
@@ -225,6 +265,32 @@
 		return parts;
 	});
 
+	let listingProvenance = $derived(
+		race
+			? raceListingProvenance({
+					organiserIsOfficial: race.organiserIsOfficial,
+					provider: race.provider,
+					isVerified: race.is_verified,
+				})
+			: null,
+	);
+	let courseProvenance = $derived(
+		race
+			? raceCourseProvenance({
+					hasCourse: race.course != null,
+					organiserIsOfficial: race.organiserIsOfficial,
+					courseSource: race.course?.source ?? null,
+				})
+			: null,
+	);
+	// The sentence names the club as the course's source, so it is shown only
+	// while that club still vouches for it (decisions § 2406).
+	let courseSource = $derived(
+		race?.course && race.organiserIsOfficial
+			? raceCourseSourceLabel(race.course.source, race.organiser?.name ?? null)
+			: null,
+	);
+
 	const coursePoints = $derived(routePathPoints(courseRoute?.waypoints));
 	const courseClimbNames = $derived(climbNamesFromMarkers(courseMarkers, coursePoints));
 
@@ -276,7 +342,14 @@
 				{#if race.distance_m}· {formatDistance(race.distance_m)}{/if}
 				{#if race.location_label}· {race.location_label}{/if}
 			</p>
-			<p class="source" data-testid="race-detail-source">{raceSourceLabel(race.provider)}</p>
+			{#if listingProvenance}
+				<p class="source" data-testid="race-detail-provenance">
+					<ProvenanceBadge kind={listingProvenance} />
+				</p>
+			{/if}
+			<p class="source" data-testid="race-detail-source">
+				{raceSourceLabel(race.provider, race.organiser?.name ?? null)}
+			</p>
 			{#if !race.is_verified}
 				<span class="unverified">{m('races.unverified')}</span>
 			{/if}
@@ -359,6 +432,22 @@
 				{#if courseParts.length > 0}
 					<p class="course-summary">{courseParts.join(' · ')}</p>
 				{/if}
+				{#if courseProvenance}
+					<p class="course-provenance" data-testid="race-detail-course-provenance">
+						<ProvenanceBadge kind={courseProvenance} />
+					</p>
+				{/if}
+				{#if courseSource}
+					<p class="course-provenance" data-testid="race-detail-course-source">
+						{courseSource}{#if race.course?.checkedAt}
+							· {m('raceCourse.checked', { date: formatDate(race.course.checkedAt.slice(0, 10)) })}{/if}
+					</p>
+				{/if}
+				{#if race.course?.updatedAt}
+					<p class="course-provenance" data-testid="race-detail-course-updated">
+						{m('raceCourse.updated', { date: formatDate(race.course.updatedAt.slice(0, 10)) })}
+					</p>
+				{/if}
 				{#if courseRoute && coursePoints.length > 1}
 					<a class="course-map card-elevated" href="/routes/{courseRoute.id}" data-testid="race-detail-course-map">
 						<span class="course-map-image">
@@ -379,10 +468,24 @@
 							officialDistanceM={courseRoute.official_distance_m}
 							videoSource={courseRoute.user_id === auth.user?.id ? undefined : async () => ({ points: coursePoints })}
 						/>
+						<DriveCourseButton points={courseRoute.waypoints} markers={courseMarkers} title={race.name} />
 					</div>
 				{/if}
 			</section>
 		{/if}
+
+		<CourseAlerts
+			target={{ listingId: race.id }}
+			clubId={race.organiserIsOfficial ? (race.organiser?.id ?? null) : null}
+			signedIn={auth.user != null}
+		/>
+
+		<RaceCourseTools
+			{race}
+			signedIn={auth.user != null}
+			onchanged={() => void refreshRace()}
+			onhidecourse={hideCourse}
+		/>
 
 		<section class="section" aria-labelledby="race-runs-heading">
 			<h2 id="race-runs-heading">{m('races.detailYourRuns')}</h2>
@@ -500,6 +603,11 @@
 	}
 	.course-summary {
 		margin: 0;
+	}
+	.course-provenance {
+		margin: 0;
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
 	}
 	.course-map {
 		display: flex;

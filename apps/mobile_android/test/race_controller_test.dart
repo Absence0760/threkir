@@ -40,6 +40,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../lib/apple_watch_race_bridge.dart';
+import '../lib/course_gates.dart' show CourseGate, GateSource, SessionStartMode;
 import '../lib/race_controller.dart';
 import '../lib/race_finish.dart';
 import '../lib/social_service.dart';
@@ -1682,6 +1683,120 @@ void main() {
     test('a pick the event no longer offers falls back like no pick', () {
       expect(pickRaceCourse([course('a')], 'gone')!.id, 'a');
       expect(pickRaceCourse([course('a'), course('b')], 'gone'), isNull);
+    });
+  });
+
+
+  group('start modes (#1306)', () {
+    final now = DateTime.now().toUtc();
+    ActiveRace selfTimed({bool open = true}) => ActiveRace(
+          eventId: 'tt-1',
+          instanceStart: now.subtract(const Duration(hours: 1)),
+          status: open ? 'running' : 'armed',
+          startedAt: open ? now.subtract(const Duration(hours: 1)) : null,
+          eventTitle: 'Park time trial',
+          startMode: SessionStartMode.selfTimed,
+          windowOpensAt: open
+              ? now.subtract(const Duration(hours: 1))
+              : now.add(const Duration(hours: 1)),
+          windowClosesAt: now.add(const Duration(days: 1)),
+        );
+
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('a self-timed window binds nothing until the runner says this run is the attempt', () {
+      final c = _rc(_FakeSocial())..courseLoader = (_, _) async => null;
+      c.setActiveForTest(selfTimed());
+      expect(c.attachIfRaceRunning(recordingStartedAt: now), isFalse,
+          reason: 'owner decision 4a: explicit binding only');
+      expect(c.isHosting, isFalse);
+
+      c.armAttempt();
+      expect(c.attemptArmed, isTrue);
+      expect(c.attachIfRaceRunning(recordingStartedAt: now), isTrue);
+      expect(c.isHosting, isTrue);
+    });
+
+    test('the attempt is forgotten when the race on screen changes', () {
+      final c = _rc(_FakeSocial());
+      c.setActiveForTest(selfTimed());
+      c.armAttempt();
+      c.setActiveForTest(race(status: 'running', startedAt: now));
+      expect(c.attemptArmed, isFalse);
+    });
+
+    test('a scheduled race whose GO has passed is running before the stored row says so', () {
+      final r = ActiveRace(
+        eventId: 'sch-1',
+        instanceStart: now,
+        status: 'armed',
+        startedAt: null,
+        eventTitle: 'Saturday 5K',
+        startMode: SessionStartMode.scheduled,
+        scheduledStartAt: now.subtract(const Duration(seconds: 5)),
+        windowClosesAt: now.add(const Duration(hours: 1)),
+      );
+      expect(r.isRunning, isTrue);
+      expect(r.goAt, r.scheduledStartAt);
+      final c = _rc(_FakeSocial())..courseLoader = (_, _) async => null;
+      c.setActiveForTest(r);
+      expect(c.attachIfRaceRunning(recordingStartedAt: now), isTrue,
+          reason: 'a scheduled race joins at its instant, no organiser needed');
+    });
+
+    test('discovery goes by the window and keeps the race offline from the cache', () async {
+      final c = _rc(_FakeSocial())
+        ..courseLoader = (_, _) async => const RaceCourse(
+              courseId: 'c-5k',
+              distanceM: 5000,
+              startGate: CourseGate(
+                  lat: 51.5, lng: -0.1, bearingDeg: 90, halfWidthM: 15,
+                  source: GateSource.organiser),
+            );
+      c.activeRaceLoader = () async => [selfTimed(open: false), selfTimed()];
+      await c.refreshForTest();
+      expect(c.active?.isRunning, isTrue, reason: 'running wins over armed');
+      expect(c.active?.startLineLat, 51.5,
+          reason: 'the frozen start line comes with the race');
+
+      final offline = _rc(_FakeSocial());
+      offline.activeRaceLoader = () async => throw Exception('offline');
+      await offline.refreshForTest();
+      expect(offline.active?.eventId, 'tt-1',
+          reason: 'the cached window still stands with no signal');
+      expect(offline.active?.startLineLat, 51.5);
+    });
+
+    test('a cached race of another account is never restored', () async {
+      final c = _rc(_FakeSocial())..courseLoader = (_, _) async => null;
+      c.activeRaceLoader = () async => [selfTimed()];
+      await c.refreshForTest();
+
+      final other = RaceController(_FakeSocial())
+        ..userIdReader = () => 'someone-else';
+      other.activeRaceLoader = () async => throw Exception('offline');
+      await other.refreshForTest();
+      expect(other.active, isNull);
+    });
+
+    test('a closed window is not restored from the cache', () async {
+      final closed = ActiveRace(
+        eventId: 'tt-old',
+        instanceStart: now.subtract(const Duration(days: 2)),
+        status: 'running',
+        startedAt: now.subtract(const Duration(days: 2)),
+        eventTitle: 'Old trial',
+        startMode: SessionStartMode.selfTimed,
+        windowOpensAt: now.subtract(const Duration(days: 2)),
+        windowClosesAt: now.subtract(const Duration(hours: 1)),
+      );
+      SharedPreferences.setMockInitialValues({
+        kActiveRaceCacheKey: jsonEncode({'user_id': _me, ...closed.toJson()}),
+      });
+      final c = _rc(_FakeSocial());
+      c.activeRaceLoader = () async => throw Exception('offline');
+      await c.refreshForTest();
+      expect(c.active, isNull);
     });
   });
 }

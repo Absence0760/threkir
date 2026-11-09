@@ -26,11 +26,17 @@
 	const hasActive = $derived(activeId !== null || onCoach);
 
 	// Archived conversations sit in their own list until a newer message
-	// arrives (dm_threads() decides that). The Coach row belongs to the inbox.
+	// arrives (dm_threads() decides that), and message requests the runner has
+	// not answered sit in Requests. The Coach row belongs to the inbox.
 	const split = $derived(partitionArchived(messagesInbox.threads));
-	const showingArchived = $derived(messagesInbox.showingArchived && split.archived.length > 0);
+	const showingRequests = $derived(messagesInbox.showingRequests && split.requests.length > 0);
+	const showingArchived = $derived(
+		!showingRequests && messagesInbox.showingArchived && split.archived.length > 0,
+	);
 	const entries = $derived(
-		showingArchived
+		showingRequests
+			? split.requests.map((thread) => ({ kind: 'dm' as const, thread }))
+			: showingArchived
 			? split.archived.map((thread) => ({ kind: 'dm' as const, thread }))
 			: inboxEntries(
 					split.inbox,
@@ -122,12 +128,15 @@
 		<div class="layout">
 			<aside class="threads" class:has-active={hasActive}>
 				<header class="pane-head">
-					{#if showingArchived}
+					{#if showingArchived || showingRequests}
 						<button
 							type="button"
 							class="btn btn-secondary btn-sm"
 							data-testid="inbox-back-to-inbox"
-							onclick={() => (messagesInbox.showingArchived = false)}
+							onclick={() => {
+								messagesInbox.showingArchived = false;
+								messagesInbox.showingRequests = false;
+							}}
 						>
 							{m('messages.backToInbox')}
 						</button>
@@ -225,10 +234,21 @@
 						{/each}
 					</ul>
 				{/if}
-				{#if !messagesInbox.threadsError && split.inbox.length === 0 && !showingArchived}
+				{#if !messagesInbox.threadsError && split.inbox.length === 0 && !showingArchived && !showingRequests}
 					<p class="muted empty">{m('messages.emptyThreads')}</p>
 				{/if}
-				{#if !showingArchived && split.archived.length > 0}
+				{#if !showingArchived && !showingRequests && split.requests.length > 0}
+					<button
+						type="button"
+						class="archived-toggle"
+						data-testid="inbox-show-requests"
+						onclick={() => (messagesInbox.showingRequests = true)}
+					>
+						<span class="material-symbols" aria-hidden="true">person_add</span>
+						{m('messages.requestsCount', { count: split.requests.length })}
+					</button>
+				{/if}
+				{#if !showingArchived && !showingRequests && split.archived.length > 0}
 					<button
 						type="button"
 						class="archived-toggle"

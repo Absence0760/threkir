@@ -302,6 +302,46 @@ void main() {
       expect(fab.foregroundColor, isNull);
     });
 
+    group('Drive this course', () {
+      tearDown(() => dotenv.loadFromString(isOptional: true));
+
+      const line = [
+        cm.Waypoint(lat: 37.5, lng: -77.45),
+        cm.Waypoint(lat: 37.51, lng: -77.45),
+        cm.Waypoint(lat: 37.52, lng: -77.45),
+      ];
+
+      Future<bool> offered(WidgetTester tester) async {
+        final more = find.byTooltip('More');
+        if (more.evaluate().isNotEmpty) {
+          await tester.tap(more);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+        }
+        return find.text('Drive this course').evaluate().isNotEmpty ||
+            find.byTooltip('Drive this course').evaluate().isNotEmpty;
+      }
+
+      testWidgets('a public route offers it with the flag on', (tester) async {
+        dotenv.loadFromString(envString: 'COURSE_DRIVE_ENABLED=true');
+        await _pump(tester, _route(isPublic: true, waypoints: line, userId: ''),
+            isOwner: true);
+        expect(await offered(tester), isTrue);
+      });
+
+      testWidgets('a private route does not, even to its owner', (tester) async {
+        dotenv.loadFromString(envString: 'COURSE_DRIVE_ENABLED=true');
+        await _pump(tester, _route(waypoints: line, userId: ''), isOwner: true);
+        expect(await offered(tester), isFalse);
+      });
+
+      testWidgets('nothing is offered with the flag off', (tester) async {
+        await _pump(tester, _route(isPublic: true, waypoints: line, userId: ''),
+            isOwner: true);
+        expect(await offered(tester), isFalse);
+      });
+    });
+
     testWidgets('delete button is hidden when isOwner is false', (tester) async {
       await _pump(tester, _route(), isOwner: false);
       expect(find.byIcon(Icons.delete_outline), findsNothing);

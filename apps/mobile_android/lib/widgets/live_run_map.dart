@@ -9,6 +9,8 @@ import '../l10n/gen/app_localizations.dart';
 import 'package:core_models/core_models.dart' show ActivityType;
 import '../preferences.dart' show activeMapStyle;
 import '../tile_cache.dart';
+import '../course_gates.dart' show CourseGate;
+import 'course_lines_map.dart' show courseGateLayers;
 import 'map_attribution.dart';
 import 'pace_segments.dart';
 import 'track_decorations.dart';
@@ -606,6 +608,8 @@ class LiveRunMap extends StatefulWidget {
     this.weakPosition = false,
     this.approximateLocation = false,
     this.courseMarkers = const [],
+    this.courseStartGate,
+    this.courseFinishGate,
     this.markerPlacing = false,
     this.onMarkerPlace,
     this.onMarkerTap,
@@ -620,6 +624,11 @@ class LiveRunMap extends StatefulWidget {
   /// Course markers (aid stations, cutoffs, …) painted as coloured pins
   /// with a label above the trace. Empty = no marker layer.
   final List<MapMarkerPin> courseMarkers;
+
+  /// A race course's start and finish lines (decisions § 2390), drawn under
+  /// the markers. Null for no line at that end.
+  final CourseGate? courseStartGate;
+  final CourseGate? courseFinishGate;
 
   /// When true, a map tap reports its lat/lng up via [onMarkerPlace]
   /// (the marker-editor "tap to drop a pin" mode) instead of doing
@@ -1394,6 +1403,12 @@ class _LiveRunMapState extends State<LiveRunMap> with TickerProviderStateMixin {
                   ),
                 ],
               ),
+
+            ...courseGateLayers(
+              start: widget.courseStartGate,
+              finish: widget.courseFinishGate,
+              darkBasemap: darkBasemap,
+            ),
 
             // Course markers (aid stations, cutoffs, …). Coloured pins
             // above the trace with a label; tapping one (in edit mode)

@@ -228,7 +228,7 @@ void main() {
   });
 
   testWidgets(
-      'with an active plan it leads above the plan hero and names the next '
+      'with an active plan it sits under the Today hero and names the next '
       'open session', (tester) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -256,8 +256,10 @@ void main() {
               'Long run · ${UnitFormat.distance(16000, DistanceUnit.km)}')),
       findsOneWidget,
     );
-    expect(tester.getBottomLeft(_lead).dy,
-        lessThan(tester.getTopLeft(find.text("TODAY'S WORKOUT")).dy));
+    // The Today hero leads Home (decisions § 2385); on a plan day it is
+    // today's workout, and the lead follows it.
+    expect(tester.getBottomLeft(find.text("TODAY'S WORKOUT")).dy,
+        lessThan(tester.getTopLeft(_lead).dy));
     // The plan puts distance in this calendar week, so it is the yardstick.
     expect(
       tester.widget<Text>(find.byKey(const Key('dashboardWeekLeadVs'))).data,
@@ -355,28 +357,36 @@ void main() {
     expect(_lead, findsNothing);
   });
 
-  group('Home\'s Start (decisions § 2282)', () {
-    final leadStart = find.byKey(const Key('dashboardWeekLeadStart'));
+  group('Home\'s Start (decisions § 2282, § 2385)', () {
+    final heroStart = find.byKey(const Key('dashboardHeroStart'));
     final cardStart = find.byKey(const Key('todaysWorkoutStart'));
 
-    testWidgets('without a plan the week lead carries the Start, captioned '
+    testWidgets('without a plan the Today hero carries the Start, captioned '
         'for the default activity, and it opens the recorder', (tester) async {
       var started = 0;
       await _mount(
         tester,
         runs: [_run('r1', DateTime.now(), 5000)],
         onStartRun: () => started++,
-        ready: () => leadStart.evaluate().isNotEmpty,
-        describe: 'the lead Start to mount',
+        ready: () => heroStart.evaluate().isNotEmpty,
+        describe: 'the hero Start to mount',
       );
-      expect(find.descendant(of: leadStart, matching: find.text('Start run')),
+      expect(
+          find.descendant(
+              of: find.byKey(const Key('dashboardTodayHero')),
+              matching: heroStart),
           findsOneWidget);
-      await tester.tap(leadStart);
+      expect(find.descendant(of: _lead, matching: find.byType(FilledButton)),
+          findsNothing,
+          reason: 'the lead carries no Start of its own any more');
+      expect(find.descendant(of: heroStart, matching: find.text('Start run')),
+          findsOneWidget);
+      await tester.tap(heroStart);
       expect(started, 1);
     });
 
     testWidgets('an open workout today takes the Start, which loads that '
-        'workout, and the lead carries none', (tester) async {
+        'workout, and the hero carries no second one', (tester) async {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final todays = _workout('wo-today', today, 'easy', distanceM: 6000);
@@ -390,13 +400,13 @@ void main() {
         ready: () => cardStart.evaluate().isNotEmpty,
         describe: 'the workout card Start to mount',
       );
-      expect(leadStart, findsNothing);
+      expect(heroStart, findsNothing);
       await tester.tap(cardStart);
       expect(loaded?.id, 'wo-today');
     });
 
-    testWidgets('a workout already done today hands the Start back to the '
-        'lead', (tester) async {
+    testWidgets('a workout already done today leaves the hero its own Start',
+        (tester) async {
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final todays =
@@ -409,8 +419,8 @@ void main() {
         onStartWorkout: (_) {},
         ready: () =>
             find.byType(TodaysWorkoutCard).evaluate().isNotEmpty &&
-            leadStart.evaluate().isNotEmpty,
-        describe: 'the done workout card and the lead Start to mount',
+            heroStart.evaluate().isNotEmpty,
+        describe: 'the done workout card and the hero Start to mount',
       );
       expect(cardStart, findsNothing);
     });
@@ -425,7 +435,7 @@ void main() {
         ready: () => _lead.evaluate().isNotEmpty,
         describe: 'the week lead to mount',
       );
-      expect(leadStart, findsNothing);
+      expect(heroStart, findsNothing);
       expect(cardStart, findsNothing);
     });
 
@@ -437,7 +447,7 @@ void main() {
         ready: () => _lead.evaluate().isNotEmpty,
         describe: 'the week lead to mount',
       );
-      expect(leadStart, findsNothing);
+      expect(heroStart, findsNothing);
     });
   });
 }

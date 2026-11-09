@@ -19,6 +19,7 @@ export const variables = defineEnvVars({
 	PUBLIC_BYPASS_PAYWALL: { public: true, schema: optional },
 	PUBLIC_COACH_ENABLED: { public: true, schema: optional },
 	PUBLIC_COACH_FUEL_ENABLED: { public: true, schema: optional },
+	PUBLIC_COURSE_DRIVE_ENABLED: { public: true, schema: optional },
 	PUBLIC_CYCLE_PLANS_ENABLED: { public: true, schema: optional },
 	PUBLIC_DONATE_URL: { public: true, schema: optional },
 	PUBLIC_EXPORT_HUB_URL: { public: true, schema: optional },

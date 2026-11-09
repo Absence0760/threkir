@@ -44,6 +44,11 @@ class _FakeApiClient extends ApiClient {
   List<cm.ClubPin> nextClubs = const [];
   cm.Route? nextRouteById;
 
+  // Upcoming race pins.
+  int raceCalls = 0;
+  bool? lastOfficialOnly;
+  List<cm.UpcomingRacePin> nextRaces = const [];
+
   @override
   Future<List<HeatmapPoint>> fetchHeatmapPoints({
     required double minLng,
@@ -93,6 +98,20 @@ class _FakeApiClient extends ApiClient {
       nextClubs;
 
   @override
+  Future<List<cm.UpcomingRacePin>> fetchUpcomingRacesInBbox({
+    required double minLng,
+    required double minLat,
+    required double maxLng,
+    required double maxLat,
+    int limit = 100,
+    bool officialOnly = false,
+  }) async {
+    raceCalls++;
+    lastOfficialOnly = officialOnly;
+    return nextRaces;
+  }
+
+  @override
   Future<({cm.Route? route, String? ownerId})> fetchRouteById(
     String routeId,
   ) async =>
@@ -106,6 +125,7 @@ Future<void> _pump(
   Future<String> Function(Uri)? geocodingFetcher,
   Future<Position> Function()? locateFn,
   Future<Position?> Function()? backgroundLocateFn,
+  void Function(BuildContext, String)? openRaceOverride,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -117,6 +137,7 @@ Future<void> _pump(
         geocodingFetcher: geocodingFetcher,
         locateFn: locateFn,
         backgroundLocateFn: backgroundLocateFn,
+        openRaceOverride: openRaceOverride,
       ),
     ),
   );
@@ -461,6 +482,89 @@ void main() {
       await _pump(tester, api);
       expect(find.text('Search places…'), findsOneWidget);
       expect(find.byType(FlutterMap), findsOneWidget);
+    });
+  });
+
+  group('upcoming race pins', () {
+    // No saved view from an earlier test, so the camera opens on the
+    // default centre the race below sits at.
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    // At the map's initial centre, so the marker is on screen.
+    const race = cm.UpcomingRacePin(
+      id: 'race-1',
+      name: 'Thames Half',
+      raceDate: '2027-01-10',
+      distanceM: 21097,
+      locationLabel: 'London',
+      lat: 51.5074,
+      lng: -0.1276,
+    );
+
+    testWidgets('a race pin is on by default; its card opens the race',
+        (tester) async {
+      String? opened;
+      final api = _FakeApiClient()..nextRaces = const [race];
+      await _pump(tester, api, openRaceOverride: (_, id) => opened = id);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.raceCalls, greaterThanOrEqualTo(1));
+      expect(api.lastOfficialOnly, isFalse);
+
+      final pin = find.byKey(const ValueKey('heatmap-race-pin-race-1'));
+      expect(pin, findsOneWidget);
+      await tester.tap(pin);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Thames Half'), findsOneWidget);
+      expect(find.text('London'), findsOneWidget);
+      expect(find.textContaining('2027-01-10'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('heatmap-race-view')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(opened, 'race-1');
+    });
+
+    testWidgets('the Upcoming races chip hides the pins and stops the fetch',
+        (tester) async {
+      final api = _FakeApiClient()..nextRaces = const [race];
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byKey(const ValueKey('heatmap-race-pin-race-1')),
+          findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final chip = find.byKey(const ValueKey('heatmap-race-pins-chip'));
+      await tester.ensureVisible(chip);
+      await tester.pump();
+      await tester.tap(chip);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final callsWhenOff = api.raceCalls;
+      expect(find.byKey(const ValueKey('heatmap-race-pin-race-1')),
+          findsNothing);
+      // Another refetch while off asks for no races.
+      await tester.tap(find.text('Featured'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.raceCalls, callsWhenOff);
+    });
+
+    testWidgets('the Official lens asks for official races only',
+        (tester) async {
+      final api = _FakeApiClient();
+      await _pump(tester, api);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(find.byIcon(Icons.tune));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Official'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(api.lastOfficialOnly, isTrue);
     });
   });
 

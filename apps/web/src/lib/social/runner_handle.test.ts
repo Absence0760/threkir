@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { runnerHandle, shouldRevealDisplayName, type RunnerHandleLabels } from './runner_handle';
+import { namedOrNull, runnerHandle, shouldRevealDisplayName, type RunnerHandleLabels } from './runner_handle';
 
 const EN: RunnerHandleLabels = { handle: (slug) => `Runner #${slug}`, anonymous: 'Runner' };
 
@@ -119,4 +119,17 @@ test('shouldRevealDisplayName: signed-in stranger with no follow edge → false'
 		}),
 		false,
 	);
+});
+
+test('namedOrNull: returns the trimmed name', () => {
+	assert.equal(namedOrNull('  Ada  '), 'Ada');
+	assert.equal(namedOrNull('Ada Lovelace'), 'Ada Lovelace');
+});
+
+test('namedOrNull: null / undefined / empty / whitespace-only is unnamed', () => {
+	assert.equal(namedOrNull(null), null);
+	assert.equal(namedOrNull(undefined), null);
+	assert.equal(namedOrNull(''), null);
+	assert.equal(namedOrNull('   '), null);
+	assert.equal(namedOrNull('\t\n\u00a0'), null);
 });

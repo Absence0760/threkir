@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../lib/disclosure_state.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
@@ -9,6 +10,7 @@ import '../lib/training_service.dart';
 import '../lib/widgets/current_week_strip.dart';
 import '../lib/widgets/todays_workout_card.dart';
 import '../lib/widgets/loading_skeletons.dart';
+import 'plan_sections_open.dart';
 import 'pump_until.dart';
 
 // Plan detail answers "where am I in my plan?": week of N, the countdown, a
@@ -93,8 +95,10 @@ class _FakeSocial extends SocialService {
 Future<void> _pump(WidgetTester tester, DateTime today,
     {String status = 'active',
     String? coachId,
-    Size size = const Size(420, 5000)}) async {
+    Size size = const Size(420, 5000),
+    bool sectionsOpen = true}) async {
   SharedPreferences.setMockInitialValues({});
+  if (sectionsOpen) await rememberPlanSectionsOpen(tester, _owner);
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
@@ -217,6 +221,22 @@ void main() {
     await tester.pumpAndSettle();
     expect(week.hitTestable(), findsOneWidget);
     expect(tester.getTopLeft(week).dy, lessThan(800 / 2));
+  });
+
+  testWidgets('the week pill opens a shut week list and remembers it',
+      (tester) async {
+    await _pump(tester, DateTime(2026, 3, 18),
+        size: const Size(420, 800), sectionsOpen: false);
+    final week = find.byKey(const ValueKey('planDetailWeek-2'));
+    expect(week, findsNothing, reason: 'the week list starts shut');
+
+    await tester.tap(find.byKey(const Key('planDetailWeekOfN')));
+    await tester.pumpAndSettle();
+    expect(week.hitTestable(), findsOneWidget);
+    expect(tester.getBottomLeft(week).dy, lessThanOrEqualTo(800));
+    final prefs = await tester.runAsync(SharedPreferences.getInstance);
+    expect(prefs!.getString(disclosureStorageKey('plan_detail', _owner)),
+        contains('"weeks":true'));
   });
 
   // The row opened and closed without saying so: only the chevron's label

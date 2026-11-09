@@ -69,6 +69,7 @@ DmThread _thread(
   bool mine = false,
   bool muted = false,
   bool archived = false,
+  bool request = false,
 }) =>
     DmThread(
       conversationId: 'c-$id',
@@ -80,6 +81,7 @@ DmThread _thread(
       unread: unread,
       muted: muted,
       archived: archived,
+      request: request,
     );
 
 class _FakeApi extends ApiClient {
@@ -128,6 +130,14 @@ class _FakeApi extends ApiClient {
   @override
   Stream<String?> get authUserChanges => _authChanges.stream;
 
+  /// The thread's suggested-plan-change strip reads this; none here.
+  @override
+  Future<List<PlanChangeRequestRow>> fetchPlanChangeRequests({
+    String? planId,
+    String? partnerId,
+  }) async =>
+      const [];
+
   void switchTo(String id) {
     me = id;
     _authChanges.add(id);
@@ -151,6 +161,17 @@ class _FakeApi extends ApiClient {
 
   final List<String> unsent = [];
   Object? unsendError;
+
+  final List<String> edits = [];
+  Object? editError;
+
+  @override
+  Future<DirectMessageRow> editDm(String messageId, String body) async {
+    edits.add(body);
+    if (editError != null) throw editError!;
+    final m = [...newest, ...?server].firstWhere((m) => m.id == messageId);
+    return m.copyWith(body: body, editedAt: DateTime.now().toUtc());
+  }
 
   @override
   Future<DirectMessageRow> unsendDm(String messageId) async {
@@ -319,7 +340,8 @@ class _FakeApi extends ApiClient {
   final List<(String, bool)> archives = [];
   final List<(String, String)> hides = [];
   Object? conversationError;
-  ({bool muted, DateTime? archivedAt, bool markedUnread})? conversationState;
+  ({bool muted, DateTime? archivedAt, bool markedUnread, bool request})?
+      conversationState;
   final List<(String, bool)> unreadMarks = [];
   final List<String> stateReads = [];
 
@@ -355,6 +377,23 @@ class _FakeApi extends ApiClient {
 
   Object? hideError;
 
+  final List<String> accepts = [];
+  final List<(String, String, bool)> declines = [];
+  Object? requestError;
+
+  @override
+  Future<void> acceptDmRequest(String conversationId) async {
+    accepts.add(conversationId);
+    if (requestError != null) throw requestError!;
+  }
+
+  @override
+  Future<void> declineDmRequest(String conversationId,
+      {required String throughMessageId, bool block = false}) async {
+    declines.add((conversationId, throughMessageId, block));
+    if (requestError != null) throw requestError!;
+  }
+
   @override
   Future<void> hideDmConversation(String conversationId,
       {required String throughMessageId}) async {
@@ -363,7 +402,8 @@ class _FakeApi extends ApiClient {
   }
 
   @override
-  Future<({bool muted, DateTime? archivedAt, bool markedUnread})?>
+  Future<
+          ({bool muted, DateTime? archivedAt, bool markedUnread, bool request})?>
       fetchDmConversationState(
       String conversationId) async {
     stateReads.add(conversationId);
@@ -825,6 +865,130 @@ void main() {
     });
   });
 
+  group('edit', () {
+    DirectMessageRow fresh(String id, {String from = _me, String? body}) =>
+        DirectMessageRow(
+          id: id,
+          conversationId: 'c-1',
+          senderId: from,
+          recipientId: from == _me ? _partner : _me,
+          body: body ?? 'body $id',
+          createdAt:
+              DateTime.now().toUtc().subtract(const Duration(minutes: 1)),
+        );
+
+    Future<void> longPress(WidgetTester tester, String body) async {
+      await tester.longPress(find.text(body));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('your fresh message offers Edit; an old one does not',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [
+          _msg('m0', from: _me, body: 'old'),
+          fresh('m1', body: 'new'),
+        ];
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'new');
+      expect(find.byKey(const ValueKey('message-action-edit')), findsOneWidget);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      await longPress(tester, 'old');
+      expect(find.byKey(const ValueKey('message-action-edit')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('message-action-unsend')), findsOneWidget);
+    });
+
+    testWidgets("the other person's fresh message offers no Edit",
+        (tester) async {
+      final api = _FakeApi()..newest = [fresh('m1', from: _partner, body: 'hi')];
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'hi');
+      expect(find.byKey(const ValueKey('message-action-edit')), findsNothing);
+      expect(
+          find.byKey(const ValueKey('message-action-report')), findsOneWidget);
+    });
+
+    testWidgets('a saved edit replaces the text and marks it Edited',
+        (tester) async {
+      final api = _FakeApi()..newest = [fresh('m1', body: 'see you at 7')];
+      await _pumpThread(tester, api);
+      expect(find.byKey(const ValueKey('dm-edited')), findsNothing);
+
+      await longPress(tester, 'see you at 7');
+      await tester.tap(find.byKey(const ValueKey('message-action-edit')));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.messagesEditTitle), findsWidgets);
+
+      await tester.enterText(
+          find.byKey(const ValueKey('message-edit-field')), 'see you at 7:30');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('message-edit-save')));
+      await tester.pumpAndSettle();
+
+      expect(api.edits, ['see you at 7:30']);
+      expect(find.text('see you at 7:30'), findsOneWidget);
+      expect(find.text('see you at 7'), findsNothing);
+      expect(find.byKey(const ValueKey('dm-edited')), findsOneWidget);
+      expect(find.text(l10n.messagesEdited), findsOneWidget);
+    });
+
+    testWidgets('a refused edit keeps the dialog and the text, and says why',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [fresh('m1', body: 'see you at 7')]
+        ..editError = const DmEditClosed();
+      await _pumpThread(tester, api);
+
+      await longPress(tester, 'see you at 7');
+      await tester.tap(find.byKey(const ValueKey('message-action-edit')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+          find.byKey(const ValueKey('message-edit-field')), 'too late');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('message-edit-save')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(l10n.messagesEditClosed), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-edit-field')), findsOneWidget);
+      expect(find.text('too late'), findsOneWidget);
+
+      await tester.tap(find.text(l10n.commonCancel));
+      await tester.pumpAndSettle();
+      expect(find.text('see you at 7'), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-edited')), findsNothing);
+    });
+
+    testWidgets('an edit the other person made reads as Edited',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [
+          _msg('m1', body: 'changed').copyWith(
+              editedAt: DateTime.utc(2026, 10, 14, 8, 5)),
+        ];
+      await _pumpThread(tester, api);
+
+      expect(find.text('changed'), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-edited')), findsOneWidget);
+    });
+
+    test('the edit throttle says how long to wait', () {
+      final message = dmEditErrorMessage(
+        l10n,
+        const PostgrestException(
+          code: 'P0001',
+          message: 'rate limit exceeded for edit_direct_message, retry in 60s',
+        ),
+      );
+      expect(message, contains('editing messages too quickly'));
+    });
+  });
+
   group('unsend and report', () {
     Future<void> longPress(WidgetTester tester, String body) async {
       await tester.longPress(find.text(body));
@@ -1230,7 +1394,7 @@ void main() {
       final api = _FakeApi()
         ..newest = [_msg('m1')]
         ..conversationState =
-            (muted: true, archivedAt: null, markedUnread: false);
+            (muted: true, archivedAt: null, markedUnread: false, request: false);
       await _pumpThread(tester, api);
 
       await openMenu(tester);
@@ -1285,7 +1449,7 @@ void main() {
       final api = _FakeApi()
         ..newest = [_msg('m1')]
         ..conversationState =
-            (muted: false, archivedAt: null, markedUnread: true);
+            (muted: false, archivedAt: null, markedUnread: true, request: false);
       await _pumpThread(tester, api);
       await tester.pump();
       expect(api.unreadMarks, [('c-1', false)]);
@@ -1296,7 +1460,7 @@ void main() {
       final api = _FakeApi()
         ..newest = [_msg('m1')]
         ..conversationState =
-            (muted: false, archivedAt: null, markedUnread: false);
+            (muted: false, archivedAt: null, markedUnread: false, request: false);
       await _pumpThread(tester, api);
       await tester.pump();
       expect(api.stateReads, ['c-1']);
@@ -1819,10 +1983,136 @@ void main() {
     });
   });
 
+  group('message requests', () {
+    Future<void> pumpRequest(WidgetTester tester, _FakeApi api) async {
+      api.conversationState =
+          (muted: false, archivedAt: null, markedUnread: false, request: true);
+      await _pumpThread(tester, api);
+      await tester.pump();
+    }
+
+    testWidgets('the inbox files requests under Requests, out of the badge list',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [
+          _thread('p-1', name: 'Ada', unread: 1),
+          _thread('p-2', name: 'Grace', unread: 2, request: true),
+        ];
+      await tester.pumpWidget(_app(MessagesScreen(api: api, pollInterval: _quiet)));
+      await tester.pump();
+
+      expect(find.text('Ada'), findsOneWidget);
+      expect(find.text('Grace'), findsNothing);
+      expect(find.text(l10n.messagesRequestsCount(1)), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('inbox-show-requests')));
+      await tester.pump();
+      expect(find.text('Grace'), findsOneWidget);
+      expect(find.text('Ada'), findsNothing);
+
+      await tester.tap(find.byKey(const ValueKey('inbox-back-to-inbox')));
+      await tester.pump();
+      expect(find.text('Ada'), findsOneWidget);
+      expect(find.text('Grace'), findsNothing);
+    });
+
+    testWidgets('a request swaps the composer for Accept, Decline and Block',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await pumpRequest(tester, api);
+
+      expect(find.byKey(const ValueKey('message-request-bar')), findsOneWidget);
+      expect(find.text(l10n.messagesRequestNotice('Ada')), findsOneWidget);
+      expect(find.byKey(const ValueKey('message-composer')), findsNothing);
+    });
+
+    testWidgets('Accept brings the composer back', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await pumpRequest(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('message-request-accept')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(api.accepts, ['c-1']);
+      expect(find.byKey(const ValueKey('message-request-bar')), findsNothing);
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('a failed Accept says so and keeps the request bar',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1')]
+        ..requestError = const PostgrestException(message: 'boom');
+      await pumpRequest(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('message-request-accept')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('message-request-bar')), findsOneWidget);
+      expect(find.textContaining(l10n.messagesRequestActionFailed('').trim()),
+          findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('Decline asks first; cancelling changes nothing', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await pumpRequest(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('message-request-decline')));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.messagesRequestDeclineConfirmTitle), findsOneWidget);
+      await tester.tap(find.text(l10n.profileCancel));
+      await tester.pumpAndSettle();
+
+      expect(api.declines, isEmpty);
+      expect(find.byKey(const ValueKey('message-request-bar')), findsOneWidget);
+    });
+
+    testWidgets('a confirmed Decline stops at the newest request message',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1'), _msg('m2', minute: 1), _msg('m3', from: _me, minute: 2)];
+      await pumpRequest(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('message-request-decline')));
+      await tester.pumpAndSettle();
+      await tester
+          .tap(find.byKey(const ValueKey('message-request-decline-confirm')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(api.declines, [('c-1', 'm2', false)]);
+      expect(api.blocks, isEmpty);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('Block from a request asks first, then declines and blocks',
+        (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await pumpRequest(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('message-request-block')));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.profileBlockConfirmTitle('Ada')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('message-block-confirm')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(api.declines, [('c-1', 'm1', true)]);
+      expect(api.blocks, isEmpty);
+      await _drainBanner(tester);
+    });
+  });
+
   group('dmSendErrorMessage', () {
     test('each refusal reads its own sentence', () {
       expect(dmSendErrorMessage(l10n, const DmSendNotPermitted()),
           l10n.messagesSendNotAllowed);
+      expect(dmSendErrorMessage(l10n, const DmRequestCapReached()),
+          l10n.messagesRequestCapReached);
       expect(
         dmSendErrorMessage(
           l10n,
@@ -1839,16 +2129,17 @@ void main() {
       expect(dmSendErrorMessage(l10n, StateError('x')), l10n.messagesSendFailed);
     });
 
-    test('the four sentences differ in every locale', () async {
+    test('the five sentences differ in every locale', () async {
       for (final locale in AppLocalizations.supportedLocales) {
         final l = await AppLocalizations.delegate.load(locale);
         final sentences = {
           l.messagesSendNotAllowed,
+          l.messagesRequestCapReached,
           l.rateLimitSendMessage(rateLimitWait(l, 41)),
           l.authErrorOffline,
           l.messagesSendFailed,
         };
-        expect(sentences, hasLength(4), reason: '$locale');
+        expect(sentences, hasLength(5), reason: '$locale');
       }
     });
   });

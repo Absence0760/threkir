@@ -19,7 +19,9 @@ test.describe('/plans/[id] publish placement', () => {
 	test('both publish rows sit in a Share & publish section after the plan', async ({ page }) => {
 		await page.goto(`/plans/${RICHMOND_HALF_PLAN_ID}`);
 
+		// The section starts shut (decisions § 2375); the owner opens it.
 		const section = page.getByRole('region', { name: 'Share & publish' });
+		await section.locator('summary').click({ timeout: 10_000 });
 		await expect(
 			section.locator('.publish-row').filter({ has: page.getByLabel('Club to publish to') })
 		).toBeVisible({ timeout: 10_000 });

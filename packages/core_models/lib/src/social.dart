@@ -391,6 +391,42 @@ class GlobalSegmentLeaderboardEntry {
   });
 }
 
+/// A park with the calendar year it is now where the park is (`park_season`,
+/// migration 20271115002383). Mirrors the web `Park` type.
+class ParkListing {
+  final ParkRow park;
+  final int season;
+
+  const ParkListing({required this.park, required this.season});
+}
+
+/// A park course with the catalogue segment it is timed on. [checkpoints] is
+/// the raw `checkpoints` jsonb; the app reads it with `parseCourseCheckpoints`.
+/// Mirrors the web `ParkCourse` type.
+class ParkCourseListing {
+  final ParkCourseRow course;
+  final GlobalSegmentRow segment;
+
+  const ParkCourseListing({required this.course, required this.segment});
+}
+
+/// One row of the most-completions board on a catalogue segment
+/// (`global_segment_completions`): distinct local days with a visible effort.
+/// Tied counts share a rank. Mirrors the web `CompletionsEntry`.
+class GlobalSegmentCompletionsEntry {
+  final PublicProfile athlete;
+  final int completions;
+  final DateTime lastCompletedAt;
+  final int rank;
+
+  const GlobalSegmentCompletionsEntry({
+    required this.athlete,
+    required this.completions,
+    required this.lastCompletedAt,
+    required this.rank,
+  });
+}
+
 /// One catalogue-segment effort a run earned, joined to the segment and ranked.
 /// The global-catalogue twin of [SegmentEffortWithSegment]; mirrors the web
 /// `GlobalSegmentEffortWithSegment` interface.
@@ -482,6 +518,36 @@ class ClubPin {
     required this.lat,
     required this.lng,
     this.isVerified = false,
+  });
+}
+
+/// An upcoming verified race returned by `upcoming_races_in_bbox` (migration
+/// 20271125002408). Mobile mirror of the web `UpcomingRacePin`: the pin sits
+/// at a publicly shown course's start, else the listing's location.
+/// [official] races (claimed by a verified organiser club) rank first.
+class UpcomingRacePin {
+  final String id;
+  final String name;
+
+  /// `YYYY-MM-DD`, the race's local calendar day.
+  final String raceDate;
+  final int? distanceM;
+  final String? locationLabel;
+  final bool official;
+  final bool hasCourse;
+  final double lat;
+  final double lng;
+
+  const UpcomingRacePin({
+    required this.id,
+    required this.name,
+    required this.raceDate,
+    this.distanceM,
+    this.locationLabel,
+    this.official = false,
+    this.hasCourse = false,
+    required this.lat,
+    required this.lng,
   });
 }
 

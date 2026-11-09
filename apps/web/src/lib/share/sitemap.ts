@@ -10,6 +10,8 @@
 ///     foreseeable future.
 
 import { buildClubShareCanonical } from './share_club_meta';
+import { courseShareKey } from './share_course_lookup';
+import { buildCourseShareCanonical } from './share_course_meta';
 import { buildEventShareCanonical } from './share_event_meta';
 import { buildRaceShareCanonical } from './share_race_meta';
 import { buildRouteShareCanonical, buildRunShareCanonical } from './share_meta';
@@ -159,6 +161,29 @@ export function entityEntries(
 		});
 	}
 	return entries;
+}
+
+/// Park course pages (`/share/course/<region>/<park>/<course>`). A course
+/// page names the course and its park, never a runner, so it is not a
+/// people-directory and is enumerated like a club. Pure — the caller passes
+/// the anon-readable rows (inactive parks and pulled segments are already
+/// hidden by RLS).
+export function courseEntries(
+	base: string,
+	courses: Array<{
+		slug: string;
+		park_slug: string;
+		region_code: string;
+		updated_at?: string | null;
+	}>,
+): SitemapEntry[] {
+	const b = normaliseBase(base);
+	return courses.map((c) => ({
+		loc: buildCourseShareCanonical(b, courseShareKey(c.region_code, c.park_slug, c.slug)),
+		lastmod: c.updated_at ?? undefined,
+		changefreq: 'monthly',
+		priority: 0.7,
+	}));
 }
 
 /// Learn-hub sitemap entries: the hub, one per category, one per guide.

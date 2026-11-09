@@ -42,7 +42,9 @@ internal fun raceFinishDecision(
 
 /// The race a recording binds to, or null. Only an unbound run binds, only to
 /// a race that is running, and never the run the host already ended a race
-/// under — the next poll would otherwise re-bind it to a race it has left.
+/// under — the next poll would otherwise re-bind it to a race it has left. A
+/// self-timed race binds only once the runner tapped "This run is my attempt"
+/// (#1306): other runs in the window never bind or ping.
 internal fun raceToBind(
     alreadyBound: Boolean,
     runId: String?,
@@ -52,7 +54,7 @@ internal fun raceToBind(
     if (alreadyBound) return null
     val id = runId ?: return null
     if (id == endedRunId) return null
-    return active?.takeIf { it.isRunning }
+    return active?.takeIf { it.isRunning && (!it.isSelfTimed || it.attemptArmed) }
 }
 
 /// What a polled session status means for this runner.

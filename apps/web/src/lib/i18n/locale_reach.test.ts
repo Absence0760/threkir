@@ -496,6 +496,12 @@ const VARIANT_WORD_PAIRS: Record<string, string> = {
 	// "this backup": the demonstrative agrees with the noun, feminine `cópia de
 	// segurança` in Portugal and masculine `backup` in Brazil.
 	esta: "este",
+	// "this request": masculine `pedido` in Portugal, feminine `solicitação`
+	// in Brazil.
+	este: "esta",
+	// "request accepted": the participle is `aceite` in Portugal and `aceita`
+	// in Brazil; neither is an imperative.
+	aceite: "aceita",
 };
 
 function registerExempt(key: string): boolean {

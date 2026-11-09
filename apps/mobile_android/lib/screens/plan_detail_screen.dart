@@ -11,6 +11,7 @@ import '../adaptive_fitness_flag.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../widgets/confirm_destructive.dart';
+import '../widgets/plan_change_requests.dart';
 import '../widgets/plan_details_sheet.dart';
 import '../plan_repace.dart';
 import '../plan_bulk_ops.dart' show shiftIsoDate;
@@ -93,17 +94,18 @@ enum PlanReview { adaptive, replan }
 enum _PlanAdjustment { replan, adaptiveReplan, raceTaper, cycle, pause, resume }
 
 /// Today's session and this week lead the screen; everything else sits behind
-/// a named expander whose open/closed state is remembered per account. Every
-/// default is open: a runner who uses one of these sections today must not
-/// find it gone on the first visit after this shipped. Web twin: the
-/// `DISCLOSURE_*` constants on `/plans/[id]` (decisions § 1660).
-const String _kDisclosureScope = 'plan_detail';
-const DisclosureState _kDisclosureDefaults = {
-  'progress': true,
-  'rules': true,
-  'calendar': true,
-  'weeks': true,
-  'share': true,
+/// a named expander, shut until the runner opens it and remembered per
+/// account, so the current week is drawn once (the strip) rather than three
+/// times. Web twin: `apps/web/src/lib/training/plan_detail_sections.ts`, which
+/// holds this map to the same keys, order and values from source
+/// (decisions § 2375).
+const String kPlanDetailDisclosureScope = 'plan_detail';
+const DisclosureState kPlanDetailDisclosureDefaults = {
+  'progress': false,
+  'rules': false,
+  'calendar': false,
+  'weeks': false,
+  'share': false,
 };
 
 /// Web `isWorkoutSkipped` twin — deliberately dropped, off the books.
@@ -151,6 +153,10 @@ class PlanDetailScreen extends StatefulWidget {
   /// Threaded from the Fitness hub via PlansScreen; other call sites pass null.
   final LocalRunStore? runStore;
 
+  /// The client the suggested-plan-change card reads and decides through
+  /// (decisions § 2382). Null uses the app's, when one is initialised.
+  final ApiClient? planChangeApi;
+
   /// Clock for every "today" this screen derives. The adherence surfaces are
   /// windowed on the days of the current week that have already ended, so on
   /// a Monday nothing has and the banner correctly does not render -- which
@@ -196,6 +202,7 @@ class PlanDetailScreen extends StatefulWidget {
     this.social,
     this.viewerIdOverride,
     this.runStore,
+    this.planChangeApi,
     this.now = DateTime.now,
     this.cyclePlanConfig = readCyclePlanConfig,
     this.openResume = false,
@@ -213,6 +220,9 @@ class PlanDetailScreen extends StatefulWidget {
 class _PlanDetailScreenState extends State<PlanDetailScreen>
     with WidgetsBindingObserver {
   TrainingPlanRow? _plan;
+
+  late final ApiClient? _planChangeApi = widget.planChangeApi ??
+      (ApiClient.isInitialized ? ApiClient() : null);
   List<PlanWeekRow> _weeks = const [];
   Map<String, List<PlanWorkoutRow>> _byWeek = const {};
   bool _loading = true;
@@ -246,7 +256,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   // Set only when the current preview came from the adaptive (trend-based)
   // path, so its header can explain the multi-week reason + confidence.
   ({AdaptiveReason reason, AdaptiveConfidence confidence})? _adaptiveInfo;
-  DisclosureState _disclosure = Map.of(_kDisclosureDefaults);
+  DisclosureState _disclosure = Map.of(kPlanDetailDisclosureDefaults);
   // A toggle made before the stored state arrives wins over it.
   bool _disclosureTouched = false;
   // Finished weeks fold into one summary row until the runner opens them.
@@ -410,8 +420,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
   }
 
   Future<void> _loadDisclosure() async {
-    final stored = await readDisclosureState(
-        _kDisclosureScope, _viewerId(), _kDisclosureDefaults);
+    final stored = await readDisclosureState(kPlanDetailDisclosureScope,
+        _viewerId(), kPlanDetailDisclosureDefaults);
     if (!mounted || _disclosureTouched) return;
     setState(() => _disclosure = stored);
   }
@@ -420,8 +430,8 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
     if (_disclosure[key] == open) return;
     _disclosureTouched = true;
     setState(() => _disclosure = {..._disclosure, key: open});
-    unawaited(
-        writeDisclosureState(_kDisclosureScope, _viewerId(), _disclosure));
+    unawaited(writeDisclosureState(
+        kPlanDetailDisclosureScope, _viewerId(), _disclosure));
   }
 
   Future<void> _load() async {
@@ -2278,6 +2288,15 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
       children: [
         _heroCard(theme, l10n, p, pct, done, total,
             heroRace: _heroRace(p, races)),
+        if (p.assignedByCoachId != null && _planChangeApi != null) ...[
+          const SizedBox(height: 8),
+          PlanChangeRequestsSection(
+            key: ValueKey('plan-changes-${p.id}'),
+            api: _planChangeApi,
+            planId: p.id,
+            onChanged: _load,
+          ),
+        ],
         if (_linkedRace != null) ...[
           const SizedBox(height: 8),
           _linkedRaceRow(theme, l10n, _linkedRace!),
@@ -2522,7 +2541,7 @@ class _PlanDetailScreenState extends State<PlanDetailScreen>
           key: ValueKey('plan-disclosure-$key'),
           title: title,
           hint: hint,
-          open: _disclosure[key] ?? true,
+          open: _disclosure[key] ?? false,
           onToggle: (open) => _setDisclosure(key, open),
           child: child,
         );

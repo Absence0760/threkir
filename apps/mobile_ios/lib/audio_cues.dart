@@ -670,6 +670,17 @@ class AudioCues {
     await _tts.speak(text);
   }
 
+  /// Speak a Drive this course note or status line
+  /// (docs/features/course_drive.md), queued like every run cue so a note
+  /// landing on a leg-done line never cuts it off. The ducking set up in
+  /// [_init] is what lets it talk over Google Maps' own prompts without
+  /// pausing them. The caller wraps it: a failure never stops the drive.
+  Future<void> announceDriveText(String text) async {
+    await _init();
+    await _applyLanguage();
+    await _tts.speak(text);
+  }
+
   Future<void> stop() async {
     await _tts.stop();
   }

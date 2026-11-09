@@ -390,7 +390,9 @@ void main() {
       await tester.pump();
       expect(find.text('Welcome!'), findsNothing,
           reason: 'web gates on runs AND gym sessions; 50 lifts is a history');
-      expect(find.text('ALL TIME'), findsOneWidget,
+      // The Today hero opens the dashboard (decisions § 2385); the period
+      // strip it pushes below the fold is not built until scrolled to.
+      expect(find.byKey(const Key('dashboardTodayHero')), findsOneWidget,
           reason: 'the account with history gets the dashboard, not a blank');
       await pumpUntilStoreWritesSettle(tester);
     });

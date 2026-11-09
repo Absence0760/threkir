@@ -11,6 +11,8 @@ import 'package:ui_kit/ui_kit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../column_limits.dart';
+import '../course_gates.dart'
+    show CourseGate, PreflightCourse, SessionStartMode, racePreflight;
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../calendar_intent.dart';
@@ -33,8 +35,10 @@ import '../runner_handle.dart';
 import '../recurrence.dart';
 import '../session_step_label.dart';
 import '../session_steps.dart';
+import '../race_start_modes.dart';
 import '../social_service.dart';
 import '../backend_timeout.dart';
+import '../widgets/course_lines_map.dart';
 import '../widgets/error_state.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/event_photos.dart';
@@ -46,6 +50,7 @@ import '../widgets/help_button.dart';
 import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
+import '../widgets/race_preflight_dialog.dart';
 
 /// Host-only attendance marking is offered iff the viewer organises the
 /// event's club AND the event is a `class` (instructor_business.md M6).
@@ -160,6 +165,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// event, which RSVPs and races exactly as before courses existed.
   List<EventCourseView> _courses = const [];
   RaceSessionRow? _raceSession;
+
+  /// The occurrence's courses as frozen when its race session was created
+  /// (decisions § 2391), keyed by course id. Empty without a frozen copy, in
+  /// which case the course map reads the live course row.
+  Map<String, FrozenRaceCourse> _frozenCourses = const {};
   DateTime? _activeInstance;
   List<DateTime> _instances = const [];
   // Instance starts cancelled via `event_exceptions`. Filtered out of the
@@ -191,6 +201,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   RealtimeChannel? _channel;
   Timer? _debounce;
+
+  /// Rebuilds a scheduled or self-timed race's panel as the server clock
+  /// passes its instants, so GO and the window's close show without a poll.
+  Timer? _raceClock;
+
+  /// The server clock minus this device's, sampled when the screen loads a
+  /// scheduled or self-timed race (#1306 m3).
+  Duration _serverOffset = Duration.zero;
 
   /// The class -> gym seam writes through this store (inform-tier: the composer
   /// is what saves). Created + initialised lazily on first use so a run/social
@@ -696,6 +714,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       // elapsed-time: a loose one-year expansion horizon, not a calendar date.
       final horizon = now.add(const Duration(days: 365));
       final instances = expandInstances(event.toRecurrence(), now, horizon);
+      // A scheduled or self-timed session is created lazily; the screen's
+      // first read creates it when it is due (ensure_race_session).
+      if (event.row.raceStartMode != 'host_go') {
+        await widget.social.ensureRaceSession(event.row.id, _activeInstance!);
+        final offset = await widget.social.fetchServerClockOffset();
+        if (offset != null) _serverOffset = offset;
+      }
       final bodyResults = await Future.wait([
         widget.social.fetchAttendees(event.row.id, _activeInstance!),
         widget.social.fetchEventResults(event.row.id, _activeInstance!),
@@ -725,6 +750,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       });
       unawaited(_maybeLoadSessionPlan(event));
       unawaited(_maybeLoadGymRoutine(event));
+      unawaited(_loadFrozenCourses());
       if (isAthleticEventCategory(event.row.category)) {
         unawaited(_loadCourses(event.row.id));
       }
@@ -764,6 +790,64 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     } catch (e) {
       debugPrint('EventDetailScreen._loadCourses: ${safeErrorLabel(e)}');
     }
+  }
+
+  /// The frozen copy of the courses for the occurrence on screen, read only
+  /// once its race session says one exists. Off the critical path, like the
+  /// courses: a failed read leaves the map on the live course row.
+  Future<void> _loadFrozenCourses() async {
+    final e = _event;
+    final inst = _activeInstance;
+    final race = _raceSession;
+    if (e == null || inst == null || race?.coursesFrozenAt == null) {
+      if (_frozenCourses.isNotEmpty && mounted) {
+        setState(() => _frozenCourses = const {});
+      }
+      return;
+    }
+    try {
+      final frozen =
+          await widget.social.fetchRaceSessionCourses(e.row.id, inst);
+      if (mounted && identical(race, _raceSession)) {
+        setState(() => _frozenCourses = frozen);
+      }
+    } catch (err) {
+      debugPrint(
+          'EventDetailScreen._loadFrozenCourses: ${safeErrorLabel(err)}');
+    }
+  }
+
+  /// Arm, after the course preflight (#1305): warnings ask, errors block.
+  /// The courses are read fresh, so a line edited on the web since the page
+  /// loaded is what is checked; a failed read checks what the page holds.
+  /// The phone never reads a course's route, so the far-from-route row
+  /// (a warning the web editor shows inline) is not checked here.
+  Future<void> _armWithPreflight() async {
+    final e = _event;
+    if (e == null || _raceBusy) return;
+    var courses = _courses;
+    try {
+      courses = await widget.social.fetchEventCourses(e.row.id);
+    } catch (err) {
+      debugPrint(
+          'EventDetailScreen._armWithPreflight: ${safeErrorLabel(err)}');
+    }
+    if (!mounted) return;
+    final issues = racePreflight([
+      for (final c in courses)
+        PreflightCourse(
+          id: c.id,
+          startGate: c.startGate,
+          finishGate: c.finishGate,
+          hasFinishPoint: c.finishLat != null && c.finishLng != null,
+          selfCross: c.finishLineSelfCross,
+          route: null,
+        ),
+    ], _raceMode);
+    final names = {for (final c in courses) c.id: c.name};
+    final go =
+        await confirmRacePreflight(context, issues, (id) => names[id] ?? '');
+    if (go && mounted) await _raceMutation(_RaceAction.arm);
   }
 
   /// The course on the viewer's own RSVP for the occurrence on screen.
@@ -956,6 +1040,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   void dispose() {
+    _raceClock?.cancel();
     _debounce?.cancel();
     final channel = _channel;
     if (channel != null) {
@@ -970,6 +1055,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (e == null) return;
     final attendees = await widget.social.fetchAttendees(e.row.id, dt);
     final results = await widget.social.fetchEventResults(e.row.id, dt);
+    if (e.row.raceStartMode != 'host_go') {
+      await widget.social.ensureRaceSession(e.row.id, dt);
+    }
     final race = await widget.social.fetchRaceSession(e.row.id, dt);
     if (mounted) {
       setState(() {
@@ -977,6 +1065,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         _results = results;
         _raceSession = race;
       });
+      unawaited(_loadFrozenCourses());
     }
   }
 
@@ -1141,6 +1230,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       };
       if (mounted) {
         setState(() => _raceSession = row);
+        unawaited(_loadFrozenCourses());
       }
     } catch (err) {
       debugPrint('event race control failed: $err');
@@ -1279,6 +1369,8 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // An idempotent start or stop of the panel's clock tick; no rebuild.
+    _syncRaceClock();
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     if (_loading) {
@@ -1545,6 +1637,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                         formatPaceForPref(e.row.paceTargetSec!.toDouble())),
                 ],
               ),
+            ],
+            if (athletic &&
+                _club?.isRaceDirector != true &&
+                _raceMode == SessionStartMode.selfTimed &&
+                _raceStatus == 'running') ...[
+              const SizedBox(height: 24),
+              _buildSelfTimedParticipant(theme),
             ],
             if (athletic && _club?.isRaceDirector == true) ...[
               const SizedBox(height: 24),
@@ -2153,6 +2252,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
   }
 
+  /// A course's lines: the frozen copy while the occurrence has one, else
+  /// the live course row.
+  (CourseGate?, CourseGate?) _courseLines(EventCourseView c) {
+    final frozen = _frozenCourses[c.id];
+    if (frozen != null) return (frozen.startGate, frozen.finishGate);
+    return (c.startGate, c.finishGate);
+  }
+
   Widget _buildCourses(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
     final mine = _myCourseId;
@@ -2169,7 +2276,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
           ),
         ),
         const SizedBox(height: 6),
-        for (final c in _courses)
+        for (final c in _courses) ...[
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
@@ -2201,6 +2308,17 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ],
             ),
           ),
+          if (_courseLines(c) case (final start, final finish)
+              when start != null || finish != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: CourseLinesMap(
+                key: Key('course-lines-map-${c.id}'),
+                start: start,
+                finish: finish,
+              ),
+            ),
+        ],
         if (canPick)
           Align(
             alignment: Alignment.centerLeft,
@@ -2249,9 +2367,172 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   /// race directors. Renders the state machine as a single status line
   /// + primary CTA; secondary destructive actions (cancel / reset)
   /// sit below at reduced visual weight.
+  /// How this occurrence's race starts (#1306): the session's copy once it
+  /// exists, the event's setting before.
+  SessionStartMode get _raceMode => sessionStartModeFromWire(
+      _raceSession?.startMode ?? _event?.row.raceStartMode);
+
+  /// The session's status on the server clock: a scheduled race whose GO has
+  /// passed is running before the per-minute job moves it.
+  String? get _raceStatus {
+    final race = _raceSession;
+    if (race == null) return null;
+    final eff = effectiveRaceStatus(
+      StartModeSession(
+        status: raceStatusFromWire(race.status) ?? RaceStatus.armed,
+        startMode: sessionStartModeFromWire(race.startMode),
+        scheduledStartAt: race.scheduledStartAt,
+        windowOpensAt: race.windowOpensAt,
+        windowClosesAt: race.windowClosesAt,
+      ),
+      DateTime.now().add(_serverOffset).toUtc(),
+    );
+    return eff.name;
+  }
+
+  void _syncRaceClock() {
+    final needed = _raceMode != SessionStartMode.hostGo &&
+        (_raceStatus == 'armed' || _raceStatus == 'running');
+    if (needed && _raceClock == null) {
+      _raceClock = Timer.periodic(const Duration(seconds: 5), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (!needed) {
+      _raceClock?.cancel();
+      _raceClock = null;
+    }
+  }
+
+  String _clock(DateTime? t) => t == null
+      ? ''
+      : MaterialLocalizations.of(context)
+          .formatTimeOfDay(TimeOfDay.fromDateTime(t.toLocal()));
+
+  /// Delay a scheduled GO or a window's opening by a few minutes. Reversible
+  /// (it can be delayed again), so no confirm; the server refuses once the
+  /// start has passed and the snackbar says so.
+  Future<void> _delayRace() async {
+    final e = _event;
+    final inst = _activeInstance;
+    final race = _raceSession;
+    if (e == null || inst == null || race == null || _raceBusy) return;
+    final l10n = AppLocalizations.of(context);
+    final minutes = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l10n.eventRaceDelay),
+        children: [
+          for (final m in const [5, 10, 15, 30, 60])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, m),
+              child: Text(l10n.eventRaceDelayBy('$m')),
+            ),
+        ],
+      ),
+    );
+    if (minutes == null || !mounted) return;
+    final selfTimed = _raceMode == SessionStartMode.selfTimed;
+    final current = selfTimed ? race.windowOpensAt : race.scheduledStartAt;
+    if (current == null) return;
+    final serverNow = DateTime.now().add(_serverOffset);
+    final base = current.isAfter(serverNow) ? current : serverNow;
+    await _raceWrite(() => widget.social.delayRaceStart(
+          eventId: e.row.id,
+          instance: inst,
+          selfTimed: selfTimed,
+          start: base.add(Duration(minutes: minutes)),
+        ));
+  }
+
+  /// Keep a self-timed window open longer, capped at 7 days from its opening.
+  Future<void> _extendRace() async {
+    final e = _event;
+    final inst = _activeInstance;
+    final race = _raceSession;
+    final opens = race?.windowOpensAt;
+    final closes = race?.windowClosesAt;
+    if (e == null || inst == null || opens == null || closes == null || _raceBusy) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    final hours = await showDialog<int>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(l10n.eventRaceExtend),
+        children: [
+          for (final h in const [1, 6, 24])
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(ctx, h),
+              child: Text(l10n.eventRaceExtendBy('$h')),
+            ),
+        ],
+      ),
+    );
+    if (hours == null || !mounted) return;
+    final cap = opens.add(const Duration(seconds: kRaceWindowMaxS));
+    var next = closes.add(Duration(hours: hours));
+    if (next.isAfter(cap)) next = cap;
+    await _raceWrite(() => widget.social
+        .setRaceWindowClose(eventId: e.row.id, instance: inst, closes: next));
+  }
+
+  Future<void> _raceWrite(Future<RaceSessionRow> Function() write) async {
+    setState(() => _raceBusy = true);
+    try {
+      final row = await write();
+      if (mounted) setState(() => _raceSession = row);
+    } catch (err) {
+      debugPrint('event race control failed: ${safeErrorLabel(err)}');
+      if (mounted) {
+        final l10n = AppLocalizations.of(context);
+        showTopBanner(context,
+            l10n.eventRaceControlFailed(friendlyError(l10n, err)));
+      }
+    } finally {
+      if (mounted) setState(() => _raceBusy = false);
+    }
+  }
+
+  /// A runner's view of an open self-timed race (#1306 m16): a runner who is
+  /// not going can join from here (course first on a multi-course race), and
+  /// the attempt itself is the run screen's "This run is my attempt".
+  Widget _buildSelfTimedParticipant(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      key: const ValueKey('self-timed-participant'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.eventRaceSelfTimedParticipant(
+                  _clock(_raceSession?.windowClosesAt)),
+              style: theme.textTheme.bodyMedium,
+            ),
+            if (!_viewerGoing) ...[
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                key: const ValueKey('self-timed-join'),
+                onPressed: _busy ? null : () => _rsvp('going'),
+                icon: const Icon(Icons.flag_outlined),
+                label: Text(l10n.eventRaceJoinAttempt),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRaceControl(ThemeData theme, DateTime active) {
     final l10n = AppLocalizations.of(context);
     final race = _raceSession;
+    final mode = _raceMode;
+    if (mode != SessionStartMode.hostGo) {
+      return _buildModeRaceControl(theme, mode);
+    }
     final status = race?.status ?? 'idle';
     final banner = switch (status) {
       'armed' => l10n.eventRaceArmed,
@@ -2310,7 +2591,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 onChanged: (v) => setState(() => _autoApproveOnArm = v ?? true),
               ),
               FilledButton.icon(
-                onPressed: _raceBusy ? null : () => _raceMutation(_RaceAction.arm),
+                onPressed: _raceBusy ? null : _armWithPreflight,
                 icon: const Icon(Icons.bolt),
                 label: Text(l10n.eventRaceArm),
               ),
@@ -2365,6 +2646,119 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ],
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The race director's panel for a Scheduled GO or Self-timed race: the
+  /// server fires GO and opens the window, so there is no GO button; Delay
+  /// and Cancel until the start passes, Extend and End while a window is
+  /// open, End while a scheduled race runs.
+  Widget _buildModeRaceControl(ThemeData theme, SessionStartMode mode) {
+    final l10n = AppLocalizations.of(context);
+    final race = _raceSession;
+    final status = _raceStatus ?? 'idle';
+    final selfTimed = mode == SessionStartMode.selfTimed;
+    final muted = theme.textTheme.bodySmall
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    return Card(
+      key: const ValueKey('race-mode-control'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.eventRaceControlLabel,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 4),
+            if (race == null || status == 'idle') ...[
+              Text(
+                selfTimed ? l10n.eventRaceSelfTimedNotYet : l10n.eventRaceScheduledNotYet,
+                style: muted,
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                key: const ValueKey('race-arm-early'),
+                onPressed: _raceBusy ? null : _armWithPreflight,
+                icon: const Icon(Icons.bolt),
+                label: Text(l10n.eventRaceArmEarly),
+              ),
+            ] else if (status == 'armed') ...[
+              Text(
+                selfTimed
+                    ? l10n.eventRaceOpensAt(_clock(race.windowOpensAt))
+                    : l10n.eventRaceGoAt(_clock(race.scheduledStartAt)),
+                key: const ValueKey('race-mode-start'),
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: theme.colorScheme.tertiary),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    key: const ValueKey('race-delay'),
+                    onPressed: _raceBusy ? null : _delayRace,
+                    icon: const Icon(Icons.schedule),
+                    label: Text(l10n.eventRaceDelay),
+                  ),
+                  TextButton(
+                    key: const ValueKey('race-cancel'),
+                    onPressed: _raceBusy
+                        ? null
+                        : () => _confirmRaceAction(_RaceAction.cancel),
+                    child: Text(l10n.eventRaceCancel),
+                  ),
+                ],
+              ),
+            ] else if (status == 'running') ...[
+              Text(
+                selfTimed
+                    ? l10n.eventRaceOpenUntil(_clock(race.windowClosesAt))
+                    : l10n.eventRaceRunning,
+                key: const ValueKey('race-mode-live'),
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(color: theme.colorScheme.primary),
+              ),
+              if (!selfTimed)
+                Text(l10n.eventRaceAutoEnds(_clock(race.windowClosesAt)),
+                    style: muted),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (selfTimed)
+                    OutlinedButton.icon(
+                      key: const ValueKey('race-extend'),
+                      onPressed: _raceBusy ? null : _extendRace,
+                      icon: const Icon(Icons.more_time),
+                      label: Text(l10n.eventRaceExtend),
+                    ),
+                  FilledButton.icon(
+                    key: const ValueKey('race-end'),
+                    onPressed: _raceBusy
+                        ? null
+                        : () => _confirmRaceAction(_RaceAction.end),
+                    icon: const Icon(Icons.stop_circle),
+                    label: Text(selfTimed ? l10n.eventRaceEndEarly : l10n.eventRaceEnd),
+                  ),
+                ],
+              ),
+            ] else
+              Text(
+                status == 'cancelled' ? l10n.eventRaceCancelled : l10n.eventRaceFinished,
+                style: muted,
+              ),
           ],
         ),
       ),

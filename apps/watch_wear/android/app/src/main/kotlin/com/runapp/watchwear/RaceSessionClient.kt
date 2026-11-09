@@ -40,6 +40,11 @@ class RaceSessionClient(
         val status: String,
         val startedAtIso: String?,
         val eventTitle: String?,
+        /// `host_go` | `scheduled` | `self_timed` (#1306).
+        val startMode: String = "host_go",
+        /// When the clock starts: the scheduled GO or the window's opening.
+        val startInstantIso: String? = null,
+        val windowClosesAtIso: String? = null,
     )
 
     /// The runner's chosen course for a race: `event_attendees.course_id` →
@@ -62,49 +67,15 @@ class RaceSessionClient(
         val hasStart: Boolean get() = startLat != null && startLng != null
     }
 
-    /// Return the most relevant armed/running race for the signed-in
-    /// user by scanning their `going` RSVPs within a +/- 12h window and
-    /// looking up race_sessions row-by-row. Returns null when none
-    /// match — the watch screen then hides the race banner entirely.
+    /// The most relevant armed or live race for the signed-in user, from
+    /// `my_race_sessions()` (#1306): one round trip that finds races by
+    /// window rather than by the occurrence's start (a self-timed window can
+    /// open days after it), creates the sessions of due scheduled and
+    /// self-timed occurrences, and judges status on the server clock. Null
+    /// when none match; the watch then hides the race banner.
     suspend fun fetchActive(accessToken: String, userId: String): ActiveRace? {
-        val now = System.currentTimeMillis()
-        val past = isoUtc(now - 12 * 3600_000L)
-        val future = isoUtc(now + 12 * 3600_000L)
-        val rsvps = get(
-            "$baseUrl/rest/v1/event_attendees?user_id=eq.${enc(userId)}" +
-                "&status=eq.going" +
-                "&instance_start=gte.${enc(past)}" +
-                "&instance_start=lte.${enc(future)}" +
-                "&select=event_id,instance_start",
-            accessToken,
-        )
-        val list = (json.parseToJsonElement(rsvps) as? JsonArray) ?: return null
-        for (el in list) {
-            val obj = el as? JsonObject ?: continue
-            val eventId = obj["event_id"]?.jsonPrimitive?.content ?: continue
-            val instance = obj["instance_start"]?.jsonPrimitive?.content ?: continue
-            val raceRes = get(
-                "$baseUrl/rest/v1/race_sessions" +
-                    "?event_id=eq.${enc(eventId)}" +
-                    "&instance_start=eq.${enc(instance)}" +
-                    "&status=in.(armed,running)" +
-                    "&select=status,started_at",
-                accessToken,
-            )
-            val races = (json.parseToJsonElement(raceRes) as? JsonArray) ?: continue
-            if (races.isEmpty()) continue
-            val r = races[0] as JsonObject
-            val status = r["status"]?.jsonPrimitive?.content ?: continue
-            val startedAt = r["started_at"]?.jsonPrimitive?.content
-            val titleRes = get(
-                "$baseUrl/rest/v1/events?id=eq.${enc(eventId)}&select=title",
-                accessToken,
-            )
-            val title = (json.parseToJsonElement(titleRes) as? JsonArray)
-                ?.firstOrNull()?.let { (it as JsonObject)["title"]?.jsonPrimitive?.content }
-            return ActiveRace(eventId, instance, status, startedAt, title)
-        }
-        return null
+        val body = post("$baseUrl/rest/v1/rpc/my_race_sessions", "{}", accessToken)
+        return pickActiveRace(parseMyRaceSessions(body))
     }
 
     /// The course the runner picked at RSVP. Null when they picked none.
@@ -226,6 +197,17 @@ class RaceSessionClient(
         return execute(req)
     }
 
+    private suspend fun post(url: String, body: String, token: String): String {
+        val req = Request.Builder()
+            .url(url)
+            .header("apikey", anonKey)
+            .header("Authorization", "Bearer $token")
+            .header("Content-Type", "application/json")
+            .post(body.toRequestBody(jsonMedia))
+            .build()
+        return execute(req)
+    }
+
     private suspend fun execute(req: Request): String = withContext(Dispatchers.IO) {
         http.newCall(req).execute().use { resp ->
             val body = resp.body.string()
@@ -234,14 +216,6 @@ class RaceSessionClient(
             }
             body
         }
-    }
-
-    private fun isoUtc(ms: Long): String {
-        // `Instant.toString()` always emits the `Z` suffix form which
-        // happens to be URL-safe, but we still feed it through `enc`
-        // below so the URL-building call sites can't accidentally
-        // forget to encode some future caller's value.
-        return java.time.Instant.ofEpochMilli(ms).toString()
     }
 
     private fun enc(s: String): String = encodeQueryValue(s)
@@ -304,17 +278,46 @@ class RaceSessionClient(
             r.chipTimeS?.let { put("chip_time_s", it) }
         }
 
+        /// The rows of `my_race_sessions()`, each with its status on the
+        /// server clock. Malformed rows are skipped.
+        @JvmStatic
+        internal fun parseMyRaceSessions(body: String): List<ActiveRace> {
+            val arr = runCatching { Json.parseToJsonElement(body) as? JsonArray }.getOrNull()
+                ?: return emptyList()
+            return arr.mapNotNull { el ->
+                val o = el as? JsonObject ?: return@mapNotNull null
+                fun str(k: String) = o[k]?.jsonPrimitive?.contentOrNull
+                val eventId = str("event_id") ?: return@mapNotNull null
+                val instance = str("instance_start") ?: return@mapNotNull null
+                val status = str("effective_status") ?: str("status") ?: return@mapNotNull null
+                val mode = str("start_mode") ?: "host_go"
+                ActiveRace(
+                    eventId = eventId,
+                    instanceStart = instance,
+                    status = status,
+                    startedAtIso = str("started_at"),
+                    eventTitle = str("event_title"),
+                    startMode = mode,
+                    startInstantIso = if (mode == "self_timed") str("window_opens_at") else str("scheduled_start_at"),
+                    windowClosesAtIso = str("window_closes_at"),
+                )
+            }
+        }
+
+        /// A live race wins over an armed one; otherwise the first.
+        @JvmStatic
+        internal fun pickActiveRace(races: List<ActiveRace>): ActiveRace? =
+            races.firstOrNull { it.status == "running" } ?: races.firstOrNull()
+
         /// URL-encode a value for interpolation into a PostgREST query
         /// string. Critically defensive for `instance_start` values
         /// that come BACK from PostgREST as timestamptz — Postgres
         /// serializes timestamptz as `2026-05-22T18:00:00+00:00`, and
         /// a raw `+` in a PostgREST query value gets decoded as a
         /// SPACE (PostgREST treats the query as
-        /// application/x-www-form-urlencoded). Without this encoding
-        /// the second-hop query `instance_start=eq.<value>` would fail
-        /// to match the row it just read, and `fetchActive` would
-        /// return null whenever a user has an actual armed race
-        /// waiting on the day-of.
+        /// application/x-www-form-urlencoded). Without this encoding a
+        /// course or status read's `instance_start=eq.<value>` would fail
+        /// to match the row the race came back with.
         ///
         /// `internal` so unit tests can exercise it without spinning
         /// up a real OkHttp stack — see `RaceSessionClientTest`.

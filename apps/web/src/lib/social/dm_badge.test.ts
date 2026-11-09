@@ -9,6 +9,7 @@ const state = (conversationId: string, unread: number, muted = false, archived =
 	unread,
 	muted,
 	archived,
+	request: false,
 });
 
 test('a conversation whose delete is pending leaves the badge', () => {

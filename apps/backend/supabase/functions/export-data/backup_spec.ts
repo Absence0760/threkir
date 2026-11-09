@@ -46,7 +46,7 @@ export function orderForTable(table: string): string {
 
 /** Every direct_messages column but read_at (see the sent spec below). */
 export const DIRECT_MESSAGES_SENT_SELECT =
-	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id';
+	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body';
 
 /// Build the full table-spec list. Pure — only takes the caller's
 /// user id. Mirrors the Go worker's `FetchExportPersonalDataTables`
@@ -131,6 +131,9 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			select: '*',
 		},
 		{ entry: 'segment_efforts.json', table: 'segment_efforts', filter: uidEq, select: '*' },
+		// global_segment_efforts — the subject's times on catalogue segments,
+		// park courses included. Mirror of the Go worker's exportPersonalDataSpecs.
+		{ entry: 'global_segment_efforts.json', table: 'global_segment_efforts', filter: uidEq, select: '*' },
 		{ entry: 'gear.json', table: 'gear', filter: `owner_id=eq.${uid}`, select: '*' },
 		// gear_wear_logs (migration 20270225_001) + gear_rotations
 		// (migration 20270227_001) — owner-private gear sub-data, keyed by
@@ -236,14 +239,16 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'reports_against_my_messages.json',
 			table: 'reports',
 			filter: `target_kind=eq.direct_message&snapshot_author_id=eq.${uid}&status=neq.pending`,
-			select: 'id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at',
+			select: 'id,target_kind,target_id,reason,status,created_at,reviewed_at,snapshot_body,snapshot_sent_at,snapshot_original_body',
 		},
 		// direct_messages — private 1:1 conversations, both directions.
 		// `body` is the subject's own correspondence and ships verbatim.
 		// audit/data-export-completeness (2026-05-30) Critical.
 		// The sent side leaves out read_at: it is the recipient's own read
 		// time, withheld from the sender by a column grant (20271113000001).
-		// seen_at is what the recipient chose to share.
+		// seen_at is what the recipient chose to share. edited_at and
+		// original_body (the text before an edit, 20271114000210) are the
+		// subject's own words, so they ship on both sides.
 		{
 			entry: 'direct_messages_sent.json',
 			table: 'direct_messages',
@@ -258,14 +263,15 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		},
 		// conversation_participants — the subject's own view of each
 		// conversation: when they joined, and whether they deleted it for
-		// themselves, muted it, archived it or marked it unread (migrations
-		// 20271105000010, 20271109000020). Only their own row: the other
+		// themselves, muted it, archived it, marked it unread, and where a
+		// message request to or from them stands (migrations 20271105000010,
+		// 20271109000020, 20271115002384). Only their own row: the other
 		// participant's state is theirs.
 		{
 			entry: 'conversation_settings.json',
 			table: 'conversation_participants',
 			filter: uidEq,
-			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at',
+			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at',
 		},
 		// coach_athletes — coaching relationships as coach + as athlete.
 		// `invite_token` is a redeemable credential; the narrow select
@@ -282,6 +288,21 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			table: 'coach_athletes',
 			filter: `athlete_id=eq.${uid}`,
 			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at',
+		},
+		// plan_change_requests — changes to a coach-assigned plan the subject
+		// sent as athlete or decided as coach (issue #1215 Phase 2). The
+		// change set is structured plan data, the note the coach's reply.
+		{
+			entry: 'plan_change_requests_as_athlete.json',
+			table: 'plan_change_requests',
+			filter: `athlete_id=eq.${uid}`,
+			select: '*',
+		},
+		{
+			entry: 'plan_change_requests_as_coach.json',
+			table: 'plan_change_requests',
+			filter: `coach_id=eq.${uid}`,
+			select: '*',
 		},
 		// event_results — own race finish records (time, rank, DNF/DNS,
 		// age-grade). audit/data-export-completeness (2026-05-30) Critical.
@@ -305,6 +326,51 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'event_result_claims.json',
 			table: 'event_result_claims',
 			filter: `claimant_id=eq.${uid}`,
+			select: '*',
+		},
+		// race_course_suggestions — the routes the subject suggested as a
+		// race's course, with their note and the review outcome (migration
+		// 20271114002381). `reviewed_by` is the organiser-club admin who ruled
+		// on it, kept as a recipient disclosure under Art 15(1)(c).
+		{
+			entry: 'race_course_suggestions.json',
+			table: 'race_course_suggestions',
+			filter: uidEq,
+			select: '*',
+		},
+		// race_listing_audit — the race claims, course links and reviews the
+		// subject made as a verified club's admin (migration 20271114002381).
+		{
+			entry: 'race_listing_audit.json',
+			table: 'race_listing_audit',
+			filter: `actor_id=eq.${uid}`,
+			select: '*',
+		},
+		// club_verification_requests — the verification requests the subject
+		// submitted as a club owner: the organisation and domain they claimed,
+		// the proof and the review outcome (migration 20271120000004). The
+		// reviewer is kept as an id only, as a recipient disclosure.
+		{
+			entry: 'club_verification_requests.json',
+			table: 'club_verification_requests',
+			filter: `submitted_by=eq.${uid}`,
+			select: '*',
+		},
+		// club_verification_audit — the verification actions the subject took
+		// (submit, withdraw, email proof sent; as a site admin, reviews).
+		{
+			entry: 'club_verification_audit.json',
+			table: 'club_verification_audit',
+			filter: `actor_id=eq.${uid}`,
+			select: '*',
+		},
+		// course_alerts — the course alerts the subject posted as a verified
+		// organiser club's admin (migration 20271124002407). The alert speaks
+		// for the club, but the subject wrote it.
+		{
+			entry: 'course_alerts.json',
+			table: 'course_alerts',
+			filter: `author_id=eq.${uid}`,
 			select: '*',
 		},
 		// user_blocks — the subject's own block list. High.

@@ -25,19 +25,21 @@ export type RunStickerLayout = (typeof RUN_STICKER_LAYOUTS)[number];
 
 /// What a sticker is about: the run's numbers (`stats`, in one of the four
 /// layouts), or the occasion the run marks: its `splits`, a personal record
-/// (`pr`), a day of a `streak`, a `race` finish, a `badge` it earned, or the
-/// `route` outline alone.
-export const RUN_STICKER_KINDS = ['stats', 'splits', 'pr', 'streak', 'race', 'badge', 'route'] as const;
+/// (`pr`), a day of a `streak`, a `race` finish, a park `course` time, a
+/// `badge` it earned, or the `route` outline alone.
+export const RUN_STICKER_KINDS = ['stats', 'splits', 'pr', 'streak', 'race', 'course', 'badge', 'route'] as const;
 export type RunStickerKind = (typeof RUN_STICKER_KINDS)[number];
 
 /// What a run holds for each occasion: the splits it has, the records it set,
 /// the streak day it was (as of its own day, not today), whether it is linked
-/// to a race and earned a badge, and whether it has a line to draw.
+/// to a race, completed a park course and earned a badge, and whether it has a
+/// line to draw.
 export interface RunStickerOccasions {
 	splits: number;
 	records: number;
 	streakDays: number;
 	race: boolean;
+	course: boolean;
 	badge: boolean;
 	route: boolean;
 }
@@ -64,6 +66,8 @@ export function offeredStickerKinds(o: RunStickerOccasions): RunStickerKind[] {
 				return o.streakDays >= MIN_STREAK_STICKER_DAYS;
 			case 'race':
 				return o.race;
+			case 'course':
+				return o.course;
 			case 'badge':
 				return o.badge;
 			case 'route':

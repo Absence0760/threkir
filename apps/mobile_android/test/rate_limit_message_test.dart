@@ -16,6 +16,7 @@ import '../lib/rate_limit_message.dart';
 const _buckets = <String>[
   'create_club',
   'create_route',
+  'edit_direct_message',
   'create_report',
   'create_challenge',
   'join_challenge_by_token',

@@ -1,12 +1,14 @@
 import 'package:core_models/core_models.dart' hide Route;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
+import 'plan_sections_open.dart';
 
 // The plan_workouts update policies admit the owner and an athlete's active
 // coach on a non-template plan. The pencil and the long-press used to open
@@ -85,6 +87,7 @@ Future<void> _pump(WidgetTester tester, _GateTraining training,
   tester.view.physicalSize = const Size(420, 4000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
+  await rememberPlanSectionsOpen(tester, viewerId);
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -109,6 +112,7 @@ Future<void> _pump(WidgetTester tester, _GateTraining training,
 Finder get _pencil => find.byTooltip('Edit workout');
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   testWidgets('the owner gets the pencil', (tester) async {
     await _pump(tester, _GateTraining(), viewerId: _owner);
     expect(_pencil, findsWidgets);

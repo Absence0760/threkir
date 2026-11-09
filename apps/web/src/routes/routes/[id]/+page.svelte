@@ -4,12 +4,13 @@
 	import { formatDistance } from '#lib/core/mock-data.ts';
 	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import { toGpx, toKml, downloadFile } from '#lib/routes/gpx.ts';
-	import { toRouteGpxWithMarkers, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
-	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, updateRouteDetails, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
+	import { toRouteGpxWithMarkers, type GpxAttribution, type RouteGpxMarker } from '#lib/routes/route_gpx.ts';
+	import { fetchClippedRouteForViewer, fetchRouteById, fetchRouteCourseAttribution, fetchRouteMarkers, getRouteReviews, upsertRouteReview, deleteRouteReview, updateRouteTags, updateRouteDetails, setRoutePublic, setRouteStar, audienceSharingEnabled, fetchShares, deleteRoute, fetchRouteDeleteImpact } from '#lib/core/data.ts';
 	import { routeDeleteImpactLines } from '#lib/routes/route_delete_impact.ts';
 	import { goto } from '$app/navigation';
 	import AudienceDialog from '#lib/components/AudienceDialog.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import CourseAlerts from '#lib/components/CourseAlerts.svelte';
 	import { audienceOf, type AudienceColumns } from '#lib/social/run_visibility.ts';
 	import type { RouteMarker } from '#lib/types.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -29,6 +30,7 @@
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import RoutePreviewScrubber from '#lib/components/RoutePreviewScrubber.svelte';
 	import CoursePreviewButton from '#lib/components/CoursePreviewButton.svelte';
+	import DriveCourseButton from '#lib/components/DriveCourseButton.svelte';
 	import { climbNamesFromMarkers, routePathPoints } from '#lib/routes/course_preview_points.ts';
 	import { interpolateAlongRoute } from '#lib/routes/route_geometry.ts';
 	import { distinctTags } from '#lib/routes/route_tags.ts';
@@ -527,28 +529,50 @@
 		}
 	}
 
-	function handleExportGpx() {
+	// A park course's route carries third-party geometry, so its exports carry
+	// the credit. Undefined means the check failed on a route that may be a
+	// park course's (they are official routes): the export is refused rather
+	// than written uncredited. A route known not to be official exports
+	// without the check, so a failed read cannot block an ordinary export.
+	async function exportAttribution(r: Route): Promise<GpxAttribution | null | undefined> {
+		try {
+			return await fetchRouteCourseAttribution(r.id);
+		} catch (e) {
+			console.error('route export attribution failed', e);
+			if (r.is_official === false) return null;
+			showToast(m('routeDetail.exportCreditFailed'), 'error');
+			return undefined;
+		}
+	}
+
+	async function handleExportGpx() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route);
+		if (attribution === undefined) return;
 		// Use displayWaypoints (clipped for non-owners) so a non-owner
 		// download doesn't leak what the renderer hides.
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
 		const eles = displayWaypoints.map((w) => w.ele ?? 0);
-		const gpx = toGpx(route.name, coords, eles);
+		const gpx = toGpx(route.name, coords, eles, attribution);
 		const filename = route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '.gpx';
 		downloadFile(gpx, filename, 'application/gpx+xml');
 	}
 
-	function handleExportKml() {
+	async function handleExportKml() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route);
+		if (attribution === undefined) return;
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
 		const eles = displayWaypoints.map((w) => w.ele ?? 0);
-		const kml = toKml(route.name, coords, eles);
+		const kml = toKml(route.name, coords, eles, attribution);
 		const filename = route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '.kml';
 		downloadFile(kml, filename, 'application/vnd.google-earth.kml+xml');
 	}
 
-	function handleExportGpxWithMarkers() {
+	async function handleExportGpxWithMarkers() {
 		if (!route || !displayWaypoints.length) return;
+		const attribution = await exportAttribution(route);
+		if (attribution === undefined) return;
 		// displayWaypoints is privacy-clipped for non-owners, so a download
 		// can't leak hidden geometry.
 		const coords: [number, number][] = displayWaypoints.map((w) => [w.lng, w.lat]);
@@ -560,7 +584,7 @@
 			kind: mk.kind,
 			meta: mk.meta
 		}));
-		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers);
+		const gpx = toRouteGpxWithMarkers(route.name, coords, eles, gpxMarkers, attribution);
 		const filename =
 			route.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_') + '_with_markers.gpx';
 		downloadFile(gpx, filename, 'application/gpx+xml');
@@ -997,6 +1021,10 @@
 						officialDistanceM={route.official_distance_m}
 						videoSource={isOwner ? undefined : async () => ({ points: previewPoints })}
 					/>
+					<!-- A private course offers no drive mode, its owner included (course_drive.md gotcha 6). -->
+					{#if route.is_public === true && !route.line_unavailable}
+						<DriveCourseButton points={displayWaypoints} markers={routeMarkers} title={route.name} />
+					{/if}
 					<button class="btn btn-outline btn-sm" onclick={handleExportGpx}>GPX</button>
 					<button class="btn btn-outline btn-sm" onclick={handleExportKml}>KML</button>
 					{#if routeMarkers.length > 0}
@@ -1214,6 +1242,8 @@
 					</p>
 				{/if}
 			</section>
+
+			<CourseAlerts target={{ routeId: route.id }} clubId={route.club_id ?? null} signedIn={auth.loggedIn} />
 
 			<section class="section">
 				<SegmentsPanel

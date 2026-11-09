@@ -11,6 +11,7 @@ import '../help_guides.dart' show HelpDestination;
 import '../l10n/gen/app_localizations.dart';
 import '../notification_groups.dart';
 import '../preferences.dart';
+import '../race_service.dart';
 import '../settings_destination.dart';
 import '../social_service.dart';
 import '../training_service.dart';
@@ -31,6 +32,7 @@ import 'follow_requests_screen.dart';
 import 'message_thread_screen.dart';
 import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
+import 'race_detail_screen.dart';
 
 /// Page size for the followers / following tabs. Same value as the
 /// runs + routes screens — the convention is one consistent page size
@@ -1480,7 +1482,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             kind == 'event_cancel' ||
             kind == 'event_reminder' ||
             kind == 'event_waitlist_slot' ||
-            kind == 'event_updated') &&
+            kind == 'event_updated' ||
+            kind == 'race_starting_soon' ||
+            kind == 'race_start_moved') &&
         item.row.eventId != null &&
         item.eventClubSlug != null) {
       await Navigator.of(context).push(
@@ -1495,6 +1499,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else if ((kind == 'club_post' ||
             kind == 'club_join_request' ||
             kind == 'club_join_approved' ||
+            kind == 'club_verification' ||
             // A deleted event's cancel links no event, only the club it
             // belonged to (decisions § 2358).
             (kind == 'event_cancel' && item.row.eventId == null)) &&
@@ -1528,6 +1533,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else if ((kind == 'plan_update' ||
             kind == 'plan_assigned' ||
             kind == 'plan_ai_edit' ||
+            kind == 'plan_change_request' ||
+            kind == 'plan_change_decision' ||
             kind == 'workout_reminder') &&
         item.row.planId != null) {
       await Navigator.of(context).push(
@@ -1538,6 +1545,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
+    } else if (kind == 'course_alert' && item.row.courseAlertId != null) {
+      await _openCourseAlert(item.row.courseAlertId!);
     } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -1576,6 +1585,35 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
+    }
+  }
+
+  /// The race or route a course alert is on (decisions § 2407): a race opens
+  /// here, a route goes through the shell, which holds the route stores. An
+  /// alert that is gone says so rather than opening nothing.
+  Future<void> _openCourseAlert(String alertId) async {
+    final l10n = AppLocalizations.of(context);
+    final service = RaceService();
+    ({String? listingId, String? routeId})? target;
+    try {
+      target = await service.fetchCourseAlertTarget(alertId);
+    } catch (e) {
+      debugPrint('ProfileScreen: course alert resolve failed: $e');
+    }
+    if (!mounted) return;
+    final listingId = target?.listingId;
+    final routeId = target?.routeId;
+    if (listingId != null) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              RaceDetailScreen(service: service, listingId: listingId),
+        ),
+      );
+    } else if (routeId != null) {
+      pendingEntityLink.value = EntityLink(EntityLinkKind.route, routeId);
+    } else {
+      showTopBanner(context, l10n.courseAlertsNotFound);
     }
   }
 
@@ -1634,6 +1672,18 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.eventTitle != null
             ? l10n.profileNotifEventUpdatedTitled(item.eventTitle!)
             : l10n.profileNotifEventUpdated;
+      case 'course_alert':
+        return item.clubName != null
+            ? l10n.profileNotifCourseAlertNamed(item.clubName!)
+            : l10n.profileNotifCourseAlert;
+      case 'race_starting_soon':
+        return item.eventTitle != null
+            ? l10n.profileNotifRaceStartingSoonTitled(item.eventTitle!)
+            : l10n.profileNotifRaceStartingSoon;
+      case 'race_start_moved':
+        return item.eventTitle != null
+            ? l10n.profileNotifRaceStartMovedTitled(item.eventTitle!)
+            : l10n.profileNotifRaceStartMoved;
       case 'club_join_request':
         return item.clubName != null
             ? l10n.profileNotifClubJoinRequestNamed(name, item.clubName!)
@@ -1642,6 +1692,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.clubName != null
             ? l10n.profileNotifClubJoinApprovedNamed(item.clubName!)
             : l10n.profileNotifClubJoinApproved;
+      case 'club_verification':
+        return item.clubName != null
+            ? l10n.profileNotifClubVerificationNamed(item.clubName!)
+            : l10n.profileNotifClubVerification;
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)
@@ -1658,6 +1712,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         return l10n.profileNotifPlanAssigned(name);
       case 'plan_ai_edit':
         return l10n.profileNotifPlanAiEdit(name);
+      case 'plan_change_request':
+        return l10n.profileNotifPlanChangeRequest(name);
+      case 'plan_change_decision':
+        return l10n.profileNotifPlanChangeDecision(name);
       case 'workout_reminder':
         return l10n.profileNotifWorkoutReminder;
       case 'achievement':

@@ -75,6 +75,7 @@ class _CatalogueApi extends ApiClient {
     String? gender,
     String? ageBand,
     String? clubId,
+    int? season,
     int limit = 50,
   }) async =>
       const [];
@@ -102,10 +103,48 @@ class _BoardApi extends _CatalogueApi {
     String? gender,
     String? ageBand,
     String? clubId,
+    int? season,
     int limit = 50,
   }) async =>
       board;
 }
+
+class _ZoneNoteApi extends _CatalogueApi {
+  _ZoneNoteApi(super.segments, {required this.hasZone});
+
+  final bool hasZone;
+  int asked = 0;
+
+  @override
+  Future<bool> globalSegmentHasZoneEfforts(String segmentId) async {
+    asked++;
+    return hasZone;
+  }
+}
+
+GlobalSegmentRow _gatedSegment(String id) => GlobalSegmentRow(
+      id: id,
+      name: 'Harlem Hill',
+      waypoints: const [],
+      distanceM: 857,
+      surface: 'road',
+      isActive: true,
+      createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
+      startGateLat: 40.79,
+      startGateLng: -73.95,
+      startGateBearingDeg: 0,
+      startGateHalfWidthM: 15,
+      startGateSource: 'derived',
+      endGateLat: 40.8,
+      endGateLng: -73.95,
+      endGateBearingDeg: 0,
+      endGateHalfWidthM: 15,
+      endGateSource: 'derived',
+    );
+
+const _oldMatchNote = 'Some older efforts were measured the old way, by '
+    'passing near the start and finish rather than crossing the lines. Each is '
+    're-measured the next time its runner opens the run.';
 
 class _ThrowingBoardApi extends _CatalogueApi {
   _ThrowingBoardApi(super.segments);
@@ -116,6 +155,7 @@ class _ThrowingBoardApi extends _CatalogueApi {
     String? gender,
     String? ageBand,
     String? clubId,
+    int? season,
     int limit = 50,
   }) async =>
       throw StateError('leaderboard network down');
@@ -131,6 +171,7 @@ GlobalSegmentLeaderboardEntry _entry(String userId, String name, int rank) =>
         timeSeconds: 300.0 + rank,
         startedAt: DateTime.parse('2026-02-01T00:00:00Z'),
         createdAt: DateTime.parse('2026-02-01T00:00:00Z'),
+        matchedBy: 'zone',
       ),
       athlete: PublicProfile(id: userId, displayName: name),
       rank: rank,
@@ -271,6 +312,26 @@ void main() {
       expect(find.text('Road'), findsOneWidget);
     });
 
+    testWidgets('a segment with geometry lays its preview out in a bounded box',
+        (tester) async {
+      final api = _CatalogueApi([
+        _segment(
+          id: 'a',
+          name: 'Harlem Hill',
+          waypoints: const [
+            {'lat': 40.7963, 'lng': -73.9582},
+            {'lat': 40.7988, 'lng': -73.9575},
+          ],
+        ),
+      ]);
+      await tester.pumpWidget(
+        _host(GlobalSegmentDetailScreen(api: api, segmentId: 'a')),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byType(AspectRatio), findsOneWidget);
+    });
+
     testWidgets('an unknown or retired segment renders the not-found state',
         (tester) async {
       await tester.pumpWidget(
@@ -342,6 +403,37 @@ void main() {
       expect(find.text('Leaderboard'), findsOneWidget);
       expect(find.text("Couldn't load the leaderboard"), findsNothing);
       expect(find.text('Loading…'), findsNothing);
+    });
+
+    testWidgets(
+        'a segment timed by its lines with old circle efforts shows the note '
+        '(issue #1308)', (tester) async {
+      final api = _ZoneNoteApi([_gatedSegment('a')], hasZone: true);
+      await tester.pumpWidget(
+        _host(GlobalSegmentDetailScreen(api: api, segmentId: 'a')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(_oldMatchNote), findsOneWidget);
+    });
+
+    testWidgets(
+        'no note when every effort is a line match, or the segment has no '
+        'lines (and then nothing is asked)', (tester) async {
+      final gated = _ZoneNoteApi([_gatedSegment('a')], hasZone: false);
+      await tester.pumpWidget(
+        _host(GlobalSegmentDetailScreen(api: gated, segmentId: 'a')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(_oldMatchNote), findsNothing);
+
+      final plain = _ZoneNoteApi([_segment(id: 'b', name: 'Plain')],
+          hasZone: true);
+      await tester.pumpWidget(
+        _host(GlobalSegmentDetailScreen(api: plain, segmentId: 'b')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(_oldMatchNote), findsNothing);
+      expect(plain.asked, 0);
     });
   });
 }

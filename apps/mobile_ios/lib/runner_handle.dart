@@ -19,6 +19,15 @@ String runnerHandle(
   return handle(stripped.substring(0, 4).toUpperCase());
 }
 
+/// A display name others can read, or null when it is absent or blank. The
+/// roster and a viewer's own "you show as a handle" hint must agree on what
+/// counts as unnamed, or a whitespace name renders as a blank row while the
+/// hint stays hidden.
+String? namedOrNull(String? displayName) {
+  final trimmed = displayName?.trim();
+  return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
 /// Decides whether a mobile spectator should see the runner's
 /// display_name or the anonymous handle. The persona contract is
 /// "friends see the real name, strangers see the handle" — `friends`

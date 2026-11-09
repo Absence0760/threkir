@@ -19,6 +19,7 @@ export interface NotificationLinkInput {
 		plan_id: string | null;
 		achievement_id: string | null;
 		challenge_id: string | null;
+		course_alert_id?: string | null;
 	};
 	event_club_slug: string | null;
 	club_slug: string | null;
@@ -49,6 +50,8 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'event_reminder':
 		case 'event_waitlist_slot':
 		case 'event_updated':
+		case 'race_starting_soon':
+		case 'race_start_moved':
 			return r.event_id && item.event_club_slug
 				? `/clubs/${item.event_club_slug}/events/${r.event_id}`
 				: null;
@@ -63,6 +66,8 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'plan_update':
 		case 'plan_assigned':
 		case 'plan_ai_edit':
+		case 'plan_change_request':
+		case 'plan_change_decision':
 		case 'workout_reminder':
 			return r.plan_id ? `/plans/${r.plan_id}` : null;
 		case 'message':
@@ -70,7 +75,9 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'club_post':
 		case 'club_join_approved':
 		case 'club_join_request':
-			// A request's approve and decline sit on the club page for its admins.
+		case 'club_verification':
+			// A request's approve and decline sit on the club page for its admins,
+			// as does the verification card that says what changed and why.
 			return item.club_slug ? `/clubs/${item.club_slug}` : null;
 		case 'achievement':
 			// The recipient earned it, so it is on their own Achievements tab —
@@ -100,6 +107,10 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			return r.event_id && item.event_club_slug
 				? `/clubs/${item.event_club_slug}/events/${r.event_id}`
 				: null;
+		case 'course_alert':
+			// The stable-id resolver opens the race or route the alert is on
+			// (decisions § 2407); the row carries only the alert's id.
+			return r.course_alert_id ? `/course-alerts/${r.course_alert_id}` : null;
 		case 'content_hidden':
 			return null;
 		default:

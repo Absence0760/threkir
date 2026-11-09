@@ -41,6 +41,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitCreateClub(wait);
     case 'create_route':
       return l10n.rateLimitCreateRoute(wait);
+    case 'edit_direct_message':
+      return l10n.rateLimitEditMessage(wait);
     case 'create_report':
       return l10n.rateLimitCreateReport(wait);
     case 'create_challenge':
@@ -64,6 +66,8 @@ String rateLimitMessage(AppLocalizations l10n, RateLimitInfo info) {
       return l10n.rateLimitRepeatWeek(wait);
     case 'create_live_overlay_token':
       return l10n.rateLimitCreateOverlayLink(wait);
+    case 'open_message_request':
+      return l10n.rateLimitOpenMessageRequest(wait);
     case 'send_direct_message':
     case 'send_direct_message_burst':
       return l10n.rateLimitSendMessage(wait);

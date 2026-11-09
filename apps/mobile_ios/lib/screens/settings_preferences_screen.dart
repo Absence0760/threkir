@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
 import '../adaptive_width.dart';
+import '../dashboard_layout.dart';
 import '../disclosure.dart';
 import '../goals.dart';
 import '../hr_prescription_gate.dart';
@@ -946,6 +947,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     await _putUniversal(SettingsKeys.notifyWorkoutReminder, on ? 'off' : 'on');
   }
 
+  Future<void> _toggleNotifyRaceStartingSoon() async {
+    final on = _bagValue<String>(SettingsKeys.notifyRaceStartingSoon) != 'off';
+    await _putUniversal(SettingsKeys.notifyRaceStartingSoon, on ? 'off' : 'on');
+  }
+
   Future<void> _editEmailLifecycleDrip() async {
     // Opt-IN consent stored as 'on'|'off' (default 'off'); a separate key from
     // both email_notifications and email_weekly_digest — one engagement stream
@@ -1042,6 +1048,57 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     );
     if (picked == null || picked == current) return;
     await _putUniversal(disclosureLevelKey, picked == 'auto' ? null : picked);
+  }
+
+  String _homeCardLabel(AppLocalizations l10n, String id) => switch (id) {
+        'volume' => l10n.dashboardTrendGroupVolume,
+        'fitness' => l10n.dashboardTrendGroupFitness,
+        'performance' => l10n.dashboardTrendGroupPerformance,
+        'effort' => l10n.dashboardTrendGroupEffort,
+        _ => l10n.dashboardTrendGroupRecent,
+      };
+
+  /// Where a trend group hidden from Home comes back, and where one can be
+  /// hidden too (`dashboard_hidden_cards`, decisions § 2386). Web twin: the
+  /// Home section of `/settings/display`.
+  Future<void> _editHomeCards() async {
+    final l10n = AppLocalizations.of(context);
+    var hidden =
+        parseHiddenCards(_bagValue<Object>(SettingsKeys.dashboardHiddenCards));
+    await showDialog<void>(
+      context: context,
+      builder: (dialog) => StatefulBuilder(
+        builder: (dialog, setDialogState) => AlertDialog(
+          title: Text(l10n.prefsHomeCards),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(l10n.prefsHomeCardsHint),
+                for (final id in hideableDashboardCards)
+                  CheckboxListTile(
+                    key: Key('prefsHomeCard-$id'),
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(_homeCardLabel(l10n, id)),
+                    value: !hidden.contains(id),
+                    onChanged: (shown) {
+                      hidden = withCardHidden(hidden, id, shown != true);
+                      setDialogState(() {});
+                      _putUniversal(SettingsKeys.dashboardHiddenCards, hidden);
+                    },
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialog).pop(),
+              child: Text(MaterialLocalizations.of(dialog).closeButtonLabel),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   /// The bag is the source of truth once it has loaded; before that, the
@@ -1677,6 +1734,15 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                       trailing: const Icon(Icons.chevron_right),
                       enabled: _bagReady,
                       onTap: _editDisclosureLevel,
+                    ),
+                    ListTile(
+                      key: const Key('prefsHomeCards'),
+                      title: Text(l10n.prefsHomeCards),
+                      subtitle: Text(l10n.prefsHomeCardsHint),
+                      isThreeLine: true,
+                      trailing: const Icon(Icons.chevron_right),
+                      enabled: _bagReady,
+                      onTap: _editHomeCards,
                     ),
                     ListTile(
                       title: Text(l10n.prefsMapStyle),
@@ -2325,6 +2391,19 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                           'off',
                       onChanged: _bagReady
                           ? (_) => _toggleNotifyWorkoutReminder()
+                          : null,
+                    ),
+                    SwitchListTile(
+                      key: const ValueKey('prefs-notify-race-starting-soon'),
+                      title: Text(l10n.prefsNotifyRaceStartingSoon),
+                      subtitle: Text(l10n.prefsNotifyRaceStartingSoonHint),
+                      value:
+                          _bagValue<String>(
+                            SettingsKeys.notifyRaceStartingSoon,
+                          ) !=
+                          'off',
+                      onChanged: _bagReady
+                          ? (_) => _toggleNotifyRaceStartingSoon()
                           : null,
                     ),
                     SwitchListTile(

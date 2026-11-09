@@ -2,6 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { deletePlan, setPlanStatus } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { showAllPlanWeeks } from '../fixtures/helpers';
 
 const SEED_PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
 
@@ -81,8 +82,7 @@ test.describe('/plans/new — create wizard', () => {
 			plantedPlanId = page.url().match(/\/plans\/([0-9a-f-]+)$/)![1];
 			await expect(page.getByRole('heading', { level: 1, name }))
 				.toBeVisible({ timeout: 10_000 });
-			await expect(page.locator('.weeks .week').first())
-				.toBeVisible({ timeout: 10_000 });
+			await showAllPlanWeeks(page);
 		});
 
 		// ── Phase 3: back to /plans, abandon the new active plan ──

@@ -40,6 +40,12 @@ select plan(6);
 create temporary table definer_auth_exemptions (fname name, reason text);
 
 insert into definer_auth_exemptions (fname, reason) values
+  ('confirm_club_verification_email',
+   'the mailed token IS the credential — whoever reads the inbox at the club''s '
+   'claimed domain confirms from a link, often with no account. The token is '
+   '192 random bits, stored as its SHA-256, single use (the challenge row is '
+   'deleted on the first match) and expires in 24 hours. Registered as '
+   'anon-reachable with the same reason in anon_execute_contract_test.'),
   ('confirm_safety_contact_by_token',
    'the emailed confirm_token IS the credential — a trusted contact confirms '
    'from a link with no account, so there is no caller identity to check. The '

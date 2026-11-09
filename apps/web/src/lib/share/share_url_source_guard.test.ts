@@ -82,6 +82,7 @@ const REGISTER: Record<string, [number, string]> = {
 	'src/lib/share/share_workout_meta.ts': [1, 'defines the workout share path'],
 	'src/lib/share/share_plan_meta.ts': [1, 'defines the plan share path'],
 	'src/lib/share/share_challenge_meta.ts': [2, 'defines the challenge share + og-image paths'],
+	'src/lib/share/share_course_meta.ts': [1, 'defines the park course share path'],
 };
 
 /// Comments are blanked before the scan so a path written in prose is not

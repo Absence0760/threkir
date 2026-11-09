@@ -9,7 +9,7 @@
 
 import { isPlausibleRunDuration } from '../runs/run_duration';
 
-export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
+export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days' | 'park_courses';
 
 /** Fraction of the goal reached, clamped to 0..1. Null goal (pure-ranking
  * board) → null: there is no bar to fill. */
@@ -91,6 +91,10 @@ export function metricFromActivity(
 			return 1;
 		case 'streak_days':
 			return 1;
+		case 'park_courses':
+			// A course completion lands in global_segment_efforts, not in the
+			// activity summary, so only the server board can count it.
+			return 0;
 	}
 }
 

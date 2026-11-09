@@ -4,9 +4,10 @@
  * by every Garmin/Coros/Suunto so the runner sees "Aid 2 in 1.3 km" on the
  * wrist mid-race.
  *
- * Pure + deterministic (no `new Date()`): the GPX `<metadata>` carries only a
- * `<name>`, so the output is byte-stable for tests. GPX 1.1 schema requires
- * `<wpt>` elements BEFORE `<trk>`, so waypoints are emitted first.
+ * Pure + deterministic (no `new Date()`): the GPX `<metadata>` carries a
+ * `<name>` and, for a line someone else holds rights in, its attribution, so
+ * the output is byte-stable for tests. GPX 1.1 schema requires `<wpt>`
+ * elements BEFORE `<trk>`, so waypoints are emitted first.
  *
  * Twin of `apps/mobile_android/lib/route_gpx.dart` — keep the element order,
  * `<sym>` mapping, `<desc>` construction, escaping, and test count in lockstep.
@@ -23,6 +24,47 @@ export interface RouteGpxMarker {
 	kind: string;
 	/** Carries cutoff_clock / cutoff_elapsed_s / services. */
 	meta: Record<string, unknown>;
+}
+
+/**
+ * Credit for a line drawn from third-party data (a park course traced from
+ * OpenStreetMap or National Park Service trails). It travels in the file's
+ * `<metadata>` because the file outlives the page that credited it, and
+ * OpenStreetMap's licence requires the credit on the exported work too.
+ */
+export interface GpxAttribution {
+	/** One canonical-English sentence, written to `<desc>`. */
+	notice: string;
+	/** Rights holder for `<copyright author>`; null when no third party holds rights. */
+	author: string | null;
+	/** Licence URL for `<copyright><license>`. */
+	licenseUrl: string | null;
+	/** Credit link for `<link href>`; null writes no `<link>`. */
+	linkHref: string | null;
+	/** `<link><text>`. */
+	linkText: string;
+}
+
+/**
+ * The `<desc>`, `<copyright>` and `<link>` lines of a GPX 1.1 `<metadata>`,
+ * in the schema's order (they follow `<name>` and precede `<time>`), each
+ * indented four spaces and newline-terminated. Empty for no attribution.
+ */
+export function gpxAttributionMetadata(attribution: GpxAttribution | null | undefined): string {
+	if (!attribution) return '';
+	const lines = [`    <desc>${escapeXml(attribution.notice)}</desc>`];
+	if (attribution.author) {
+		const license = attribution.licenseUrl
+			? `<license>${escapeXml(attribution.licenseUrl)}</license>`
+			: '';
+		lines.push(`    <copyright author="${escapeXml(attribution.author)}">${license}</copyright>`);
+	}
+	if (attribution.linkHref) {
+		lines.push(
+			`    <link href="${escapeXml(attribution.linkHref)}"><text>${escapeXml(attribution.linkText)}</text></link>`,
+		);
+	}
+	return lines.map((l) => l + '\n').join('');
 }
 
 /** Garmin-recognised `<sym>` name per marker kind; absent → no `<sym>`. */
@@ -43,7 +85,8 @@ export function toRouteGpxWithMarkers(
 	name: string,
 	coordinates: [number, number][],
 	elevations: number[],
-	markers: RouteGpxMarker[]
+	markers: RouteGpxMarker[],
+	attribution: GpxAttribution | null = null
 ): string {
 	const waypoints = markers.flatMap((m) => renderWaypoint(m) ?? []).join('\n');
 
@@ -67,7 +110,7 @@ export function toRouteGpxWithMarkers(
   xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
     <name>${escapeXml(name)}</name>
-  </metadata>
+${gpxAttributionMetadata(attribution)}  </metadata>
 ${waypoints ? waypoints + '\n' : ''}  <trk>
     <name>${escapeXml(name)}</name>
     <trkseg>

@@ -4,7 +4,7 @@ import { expect, test } from '../fixtures/test';
 
 import { browserDate, browserDayStart, noonOnBrowserDay } from '../fixtures/dates';
 import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, planSectionsOpen } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 import { deletePlan, insertRun } from '../fixtures/simulate';
@@ -114,7 +114,7 @@ test.describe('Home plan card and the over-run status', () => {
 	});
 	test.beforeEach(async ({ browser }) => {
 		ctx = await browser.newContext({ storageState: user.storageStatePath });
-		await acceptCookieConsent(ctx);
+		await acceptCookieConsent(ctx, planSectionsOpen(user.id));
 	});
 	test.afterEach(async () => {
 		await ctx?.close();

@@ -1633,15 +1633,16 @@ void main() {
                 withGoal: true);
 
             expect(contentCap(), findsOneWidget);
-            // Today's workout and Goals share the lead row instead of
+            // Today's workout leads in the Today hero (decisions § 2385); the
+            // rest of the Today block and Goals share the lead row instead of
             // stacking full-width.
-            expect(find.byKey(leadRowKey), findsOneWidget);
             expect(
               find.descendant(
-                  of: find.byKey(leadRowKey),
+                  of: find.byKey(const Key('dashboardTodayHero')),
                   matching: find.text("TODAY'S WORKOUT")),
               findsOneWidget,
             );
+            expect(find.byKey(leadRowKey), findsOneWidget);
             expect(
               find.descendant(
                   of: find.byKey(leadRowKey), matching: find.text('Goals')),

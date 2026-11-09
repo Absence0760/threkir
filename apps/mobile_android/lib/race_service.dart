@@ -1,5 +1,6 @@
 import 'package:api_client/api_client.dart';
-import 'package:core_models/core_models.dart' show parseImportCompleteness;
+import 'package:core_models/core_models.dart'
+    show RouteMarkerRow, Waypoint, parseImportCompleteness;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -27,6 +28,16 @@ class RaceListingView {
   /// (decisions § 2157). Calendar search rows never carry it.
   final RaceListingCourse? course;
 
+  /// The verified club that claimed the race (decisions § 2381). Null while
+  /// unclaimed, and while the club is private or moderated away. Calendar
+  /// search rows never carry it.
+  final String? organiserClubId;
+  final String? organiserClubName;
+
+  /// The claiming club is verified, public and unhidden right now
+  /// (`organiser_is_official`, decisions § 2406). Search rows carry it too.
+  final bool organiserIsOfficial;
+
   const RaceListingView({
     required this.id,
     required this.provider,
@@ -40,6 +51,9 @@ class RaceListingView {
     required this.isVerified,
     required this.distanceMAway,
     this.course,
+    this.organiserClubId,
+    this.organiserClubName,
+    this.organiserIsOfficial = false,
   });
 
   factory RaceListingView.fromJson(Map<String, dynamic> j) => RaceListingView(
@@ -55,25 +69,193 @@ class RaceListingView {
         isVerified: j['is_verified'] as bool? ?? false,
         distanceMAway: (j['distance_m_away'] as num?)?.toDouble(),
         course: RaceListingCourse.fromViewRow(j),
+        organiserClubId: j['organiser_club_name'] == null
+            ? null
+            : j['organiser_club_id'] as String?,
+        organiserClubName: j['organiser_club_id'] == null
+            ? null
+            : j['organiser_club_name'] as String?,
+        organiserIsOfficial: j['organiser_is_official'] as bool? ?? false,
+      );
+
+  /// The same listing with no course, which the race screen shows while a
+  /// course removal waits out its undo window.
+  RaceListingView withoutCourse() => RaceListingView(
+        id: id,
+        provider: provider,
+        providerRaceId: providerRaceId,
+        name: name,
+        raceDate: raceDate,
+        distanceM: distanceM,
+        locationLabel: locationLabel,
+        entryUrl: entryUrl,
+        resultsUrl: resultsUrl,
+        isVerified: isVerified,
+        distanceMAway: distanceMAway,
+        organiserClubId: organiserClubId,
+        organiserClubName: organiserClubName,
+        organiserIsOfficial: organiserIsOfficial,
       );
 }
+
+/// The CHECK'd vocabulary of `race_listings.course_source` (decisions § 2381);
+/// web's `RaceCourseSource`.
+const kRaceCourseSources = ['official', 'traced'];
 
 class RaceListingCourse {
   final double? distanceM;
   final double? ascentM;
   final String? surface;
 
-  const RaceListingCourse({this.distanceM, this.ascentM, this.surface});
+  /// The view's `course_route_id`: set only while the course route is public
+  /// and not shadow-hidden (decisions § 2253), so it names a route anyone can
+  /// already open. Its line is read through `clip_route_for_viewer`, never
+  /// from this view.
+  final String? routeId;
+
+  /// `official` or `traced` (decisions § 2381); null on a course linked
+  /// before claims existed.
+  final String? source;
+  final String? checkedAt;
+
+  /// Set when the route's line changed after the club last checked it.
+  final String? updatedAt;
+
+  const RaceListingCourse({
+    this.distanceM,
+    this.ascentM,
+    this.surface,
+    this.routeId,
+    this.source,
+    this.checkedAt,
+    this.updatedAt,
+  });
 
   /// Null when the row carries none of the view's course columns.
   static RaceListingCourse? fromViewRow(Map<String, dynamic> j) {
     final distance = (j['course_distance_m'] as num?)?.toDouble();
     final ascent = (j['course_elevation_m'] as num?)?.toDouble();
     final surface = j['course_surface'] as String?;
-    if (distance == null && ascent == null && surface == null) return null;
+    final routeId = j['course_route_id'] as String?;
+    if (distance == null && ascent == null && surface == null && routeId == null) {
+      return null;
+    }
+    final source = j['course_source'] as String?;
     return RaceListingCourse(
-        distanceM: distance, ascentM: ascent, surface: surface);
+      distanceM: distance,
+      ascentM: ascent,
+      surface: surface,
+      routeId: routeId,
+      source: kRaceCourseSources.contains(source) ? source : null,
+      checkedAt: j['course_checked_at'] as String?,
+      updatedAt: j['course_updated_at'] as String?,
+    );
   }
+}
+
+/// The CHECK'd vocabulary of `course_alerts.kind` (decisions § 2407); web's
+/// `CourseAlertKind`.
+const kCourseAlertKinds = ['reroute', 'closure', 'direction', 'notice'];
+
+/// An organiser's course alert on a race it claimed or a route its club
+/// owns (decisions § 2407). Readable only while the club is still verified;
+/// who typed it is never readable. Mirrors web's `CourseAlert`.
+class CourseAlertView {
+  final String id;
+  final String clubId;
+  final String? listingId;
+  final String? routeId;
+
+  /// One of [kCourseAlertKinds]; an unknown value reads as `notice`.
+  final String kind;
+  final String message;
+  final String createdAt;
+
+  const CourseAlertView({
+    required this.id,
+    required this.clubId,
+    required this.listingId,
+    required this.routeId,
+    required this.kind,
+    required this.message,
+    required this.createdAt,
+  });
+
+  factory CourseAlertView.fromJson(Map<String, dynamic> j) {
+    final kind = j['kind'] as String?;
+    return CourseAlertView(
+      id: j['id'] as String,
+      clubId: j['club_id'] as String,
+      listingId: j['listing_id'] as String?,
+      routeId: j['route_id'] as String?,
+      kind: kCourseAlertKinds.contains(kind) ? kind! : 'notice',
+      message: j['message'] as String,
+      createdAt: j['created_at'] as String,
+    );
+  }
+}
+
+/// A club the signed-in runner can claim races or link courses for.
+class OrganiserClub {
+  final String id;
+  final String name;
+  const OrganiserClub({required this.id, required this.name});
+}
+
+/// A route offered in the link or suggest picker.
+class CourseRouteOption {
+  final String id;
+  final String name;
+  const CourseRouteOption({required this.id, required this.name});
+}
+
+/// A pending course suggestion a reviewer may act on. It never names who
+/// suggested it. Mirrors web's `RaceCourseSuggestion`.
+class RaceCourseSuggestion {
+  final String id;
+  final String routeId;
+  final String routeName;
+
+  /// The club that owns the suggested route, when it is a club route.
+  final String? routeClubId;
+  final String? note;
+  const RaceCourseSuggestion({
+    required this.id,
+    required this.routeId,
+    required this.routeName,
+    this.routeClubId,
+    this.note,
+  });
+}
+
+/// Which race-course actions the runner is offered (decisions § 2381). The
+/// RPCs are the gate; this only picks the buttons. Mirrors web's
+/// `raceCourseAccess` in `integrations/race_course_access.ts`.
+class RaceCourseAccess {
+  final bool canClaim;
+  final bool canManage;
+  final bool canSuggest;
+  const RaceCourseAccess({
+    required this.canClaim,
+    required this.canManage,
+    required this.canSuggest,
+  });
+}
+
+RaceCourseAccess raceCourseAccess({
+  required bool signedIn,
+  required String? organiserClubId,
+  required List<OrganiserClub> myOrganiserClubs,
+}) {
+  if (!signedIn) {
+    return const RaceCourseAccess(
+        canClaim: false, canManage: false, canSuggest: false);
+  }
+  final canManage = organiserClubId != null &&
+      myOrganiserClubs.any((c) => c.id == organiserClubId);
+  final canClaim = organiserClubId == null && myOrganiserClubs.isNotEmpty;
+  return RaceCourseAccess(
+      canClaim: canClaim, canManage: canManage, canSuggest: !canManage);
 }
 
 /// The matched-race view for a run: the run's owner-only race metadata + its
@@ -402,6 +584,17 @@ class RaceService extends ChangeNotifier {
     }
   }
 
+  /// A race course's line and markers for Drive this course
+  /// (docs/features/course_drive.md): the privacy-clipped line and the
+  /// viewer-redacted markers, the same reads the route screen makes for a
+  /// non-owner. Throws on a failed read so the screen can offer a retry.
+  Future<({List<Waypoint> line, List<RouteMarkerRow> markers})>
+      fetchCourseForDrive(String routeId) async {
+    final line = await _api.clipRouteForViewer(routeId);
+    final markers = await _api.fetchRouteMarkers(routeId);
+    return (line: line, markers: markers);
+  }
+
   /// One calendar listing, for the race detail screen. Read through the
   /// redacted `public_race_listings` view, the projection a logged-out visitor
   /// gets. A malformed id or a missing row is null; a failed read throws, so
@@ -411,7 +604,7 @@ class RaceService extends ChangeNotifier {
     final row = await _c
         .from('public_race_listings')
         .select(
-            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface')
+            'id, provider, provider_race_id, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_is_official')
         .eq('id', id)
         .maybeSingle();
     if (row == null ||
@@ -440,6 +633,196 @@ class RaceService extends ChangeNotifier {
         .whereType<Map<String, dynamic>>()
         .map(RaceListingRun.fromJson)
         .toList();
+  }
+
+  bool get isSignedIn => isReady && _uid != null;
+
+  /// The clubs the runner is an active owner/admin of that are verified,
+  /// public and not hidden: the facts `private.is_official_publisher` reads.
+  Future<List<OrganiserClub>> fetchMyOrganiserClubs() async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    final rows = await _c
+        .from('club_members')
+        .select('club_id, role, status, clubs!inner(id, name, is_verified, is_public, shadow_hidden)')
+        .eq('user_id', uid)
+        .eq('status', 'active')
+        .inFilter('role', ['owner', 'admin']);
+    final out = <OrganiserClub>[];
+    for (final r in (rows as List).whereType<Map<String, dynamic>>()) {
+      final c = r['clubs'];
+      if (c is! Map) continue;
+      if (c['is_verified'] == true &&
+          c['is_public'] == true &&
+          c['shadow_hidden'] != true) {
+        out.add(OrganiserClub(id: c['id'] as String, name: c['name'] as String));
+      }
+    }
+    return out;
+  }
+
+  /// A club's public routes, for the link picker.
+  Future<List<CourseRouteOption>> fetchClubPublicRoutes(String clubId) async {
+    final rows = await _c
+        .from('routes')
+        .select('id, name')
+        .eq('club_id', clubId)
+        .eq('is_public', true)
+        .eq('shadow_hidden', false)
+        .order('created_at', ascending: false)
+        .limit(200);
+    return [
+      for (final r in (rows as List).whereType<Map<String, dynamic>>())
+        CourseRouteOption(id: r['id'] as String, name: r['name'] as String),
+    ];
+  }
+
+  /// The runner's own public routes, for the suggest picker.
+  Future<List<CourseRouteOption>> fetchMyPublicRoutes() async {
+    final uid = _uid;
+    if (uid == null) return const [];
+    final rows = await _c
+        .from('routes')
+        .select('id, name')
+        .eq('user_id', uid)
+        .eq('is_public', true)
+        .eq('shadow_hidden', false)
+        .order('created_at', ascending: false)
+        .limit(200);
+    return [
+      for (final r in (rows as List).whereType<Map<String, dynamic>>())
+        CourseRouteOption(id: r['id'] as String, name: r['name'] as String),
+    ];
+  }
+
+  /// The route of the runner's own open suggestion for a race, or null.
+  Future<String?> fetchMyRaceCourseSuggestionRouteId(String listingId) async {
+    if (_uid == null || !_uuid.hasMatch(listingId)) return null;
+    final row = await _c
+        .from('race_course_suggestions')
+        .select('route_id')
+        .eq('listing_id', listingId)
+        .eq('status', 'pending')
+        .maybeSingle();
+    return row?['route_id'] as String?;
+  }
+
+  /// A race's or a route's course alerts, newest first. Mirrors web's
+  /// `fetchCourseAlerts`.
+  Future<List<CourseAlertView>> fetchCourseAlerts({
+    String? listingId,
+    String? routeId,
+    int limit = 20,
+  }) async {
+    final id = listingId ?? routeId;
+    if (id == null || !_uuid.hasMatch(id)) return const [];
+    final rows = await _c
+        .from('course_alerts')
+        .select('id, club_id, listing_id, route_id, kind, message, created_at')
+        .eq(listingId != null ? 'listing_id' : 'route_id', id)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return [
+      for (final r in (rows as List).whereType<Map<String, dynamic>>())
+        CourseAlertView.fromJson(r),
+    ];
+  }
+
+  /// Where an alert points, for a tapped course-alert notification; null
+  /// when the alert is gone or its club no longer vouches for it.
+  Future<({String? listingId, String? routeId})?> fetchCourseAlertTarget(
+      String alertId) async {
+    if (!_uuid.hasMatch(alertId)) return null;
+    final row = await _c
+        .from('course_alerts')
+        .select('listing_id, route_id')
+        .eq('id', alertId)
+        .maybeSingle();
+    if (row == null) return null;
+    return (
+      listingId: row['listing_id'] as String?,
+      routeId: row['route_id'] as String?,
+    );
+  }
+
+  /// Posts an alert as the organiser club; the RPC is the gate and tells the
+  /// runners training for the race or who saved its course. Mirrors web's
+  /// `postCourseAlert`.
+  Future<void> postCourseAlert({
+    String? listingId,
+    String? routeId,
+    required String kind,
+    required String message,
+  }) async {
+    await _c.rpc('post_course_alert', params: {
+      'p_listing_id': listingId,
+      'p_route_id': routeId,
+      'p_kind': kind,
+      'p_message': message.trim(),
+    });
+  }
+
+  /// Mirrors web's `deleteCourseAlert`.
+  Future<void> deleteCourseAlert(String alertId) async {
+    await _c.rpc('delete_course_alert', params: {'p_alert_id': alertId});
+  }
+
+  /// Mirrors web's `claimRaceListing`.
+  Future<void> claimRaceListing(String listingId, String clubId) async {
+    await _c.rpc('claim_race_listing',
+        params: {'p_listing_id': listingId, 'p_club_id': clubId});
+  }
+
+  /// Mirrors web's `linkRaceCourse`; linking the same route again re-checks it.
+  Future<void> linkRaceCourse(
+      String listingId, String? routeId, String? source) async {
+    await _c.rpc('link_race_course', params: {
+      'p_listing_id': listingId,
+      'p_route_id': routeId,
+      'p_source': source,
+    });
+  }
+
+  /// Mirrors web's `suggestRaceCourse`.
+  Future<void> suggestRaceCourse(
+      String listingId, String routeId, String? note) async {
+    final trimmed = note?.trim();
+    await _c.rpc('suggest_race_course', params: {
+      'p_listing_id': listingId,
+      'p_route_id': routeId,
+      'p_note': (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+    });
+  }
+
+  /// The pending suggestions a reviewer may act on; empty for anyone who is
+  /// not one. Mirrors web's `fetchRaceCourseSuggestionsForReview`.
+  Future<List<RaceCourseSuggestion>> fetchRaceCourseSuggestionsForReview(
+      String listingId) async {
+    if (_uid == null || !_uuid.hasMatch(listingId)) return const [];
+    final rows = await _c.rpc('race_course_suggestions_for_review',
+        params: {'p_listing_id': listingId}, get: true);
+    return [
+      for (final r in (rows as List).whereType<Map<String, dynamic>>())
+        RaceCourseSuggestion(
+          id: r['id'] as String,
+          routeId: r['route_id'] as String,
+          routeName: r['route_name'] as String,
+          routeClubId: r['route_club_id'] as String?,
+          note: r['note'] as String?,
+        ),
+    ];
+  }
+
+  /// Approve (linking [routeId], the club's own public copy) or reject a
+  /// suggestion. Mirrors web's `reviewRaceCourseSuggestion`.
+  Future<void> reviewRaceCourseSuggestion(String suggestionId, bool approve,
+      {String? routeId, String source = 'official'}) async {
+    await _c.rpc('review_race_course_suggestion', params: {
+      'p_suggestion_id': suggestionId,
+      'p_approve': approve,
+      'p_route_id': routeId,
+      'p_source': source,
+    });
   }
 
   /// Submit a crowd-sourced manual listing. `is_verified` is forced false by

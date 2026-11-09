@@ -31,6 +31,8 @@ export function challengeGoalStable(c: Pick<SharedChallenge, 'metric' | 'goal_va
 			return `${Math.round(v)} activities`;
 		case 'streak_days':
 			return `${Math.round(v)} days`;
+		case 'park_courses':
+			return `${Math.round(v)} park courses`;
 	}
 }
 

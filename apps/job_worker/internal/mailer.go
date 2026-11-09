@@ -346,6 +346,16 @@ var importantKinds = map[string]bool{
 	"club_join_request":  true,
 	"club_join_approved": true,
 	"event_updated":      true,
+	// A suggested change to a coach-assigned plan waits on the coach, and the
+	// athlete is waiting on the answer (decisions § 2382).
+	"plan_change_request":  true,
+	"plan_change_decision": true,
+	// A club's verified badge was granted, refused, revoked or dropped; the
+	// owner may have to act to get it back (decisions § 2398).
+	"club_verification": true,
+	// A verified organiser's reroute or closure on a race the recipient is
+	// training for changes their race day (decisions § 2407).
+	"course_alert": true,
 }
 
 // pushImportantKinds are carried by the default "important" PUSH mode but not
@@ -360,6 +370,20 @@ var pushImportantKinds = map[string]bool{
 	// busy event raises one per RSVP, so the default is the push only; the
 	// email is opt-in through email_notifications = all.
 	"event_rsvp": true,
+	// A scheduled race about to fire, and an organiser moving its start
+	// (decisions § 2400). Both matter only in the minutes before a start, so
+	// they are pushed by default and never emailed (pushOnlyKinds).
+	"race_starting_soon": true,
+	"race_start_moved":   true,
+}
+
+// pushOnlyKinds are never emailed, whatever the email mode. A warning about a
+// race starting in ten minutes, or that its start just moved, is stale by the
+// time a mailbox is read, so "all" must not turn it into mail either. Both
+// still land in the inbox and on the push channels.
+var pushOnlyKinds = map[string]bool{
+	"race_starting_soon": true,
+	"race_start_moved":   true,
 }
 
 // kindMutePrefKey maps a notification kind to the user_settings.prefs key
@@ -406,6 +430,14 @@ var kindMutePrefKey = map[string]string{
 	"club_join_request":  "notify_club_join_request",
 	"club_join_approved": "notify_club_join_approved",
 	"event_updated":      "notify_event_updated",
+	// Raised by the race organiser and in the default set, so it gets a
+	// control narrower than the channel (decisions § 2407).
+	"course_alert": "notify_course_alert",
+	// One key for both race notices: a runner who does not want to be told
+	// about a start wants neither the countdown warning nor the move. The
+	// per-minute job also reads it and raises no starting-soon row at all.
+	"race_starting_soon": "notify_race_starting_soon",
+	"race_start_moved":   "notify_race_starting_soon",
 }
 
 // kindMuted reports whether the recipient silenced this one kind. Only the
@@ -474,7 +506,7 @@ func emailMode(prefs map[string]interface{}) string {
 // check the per-kind mute separately would eventually be a channel that
 // forgot to — and the miss is invisible, because the mail still sends.
 func shouldEmail(kind string, prefs map[string]interface{}) bool {
-	if inAppOnlyKinds[kind] || kindMuted(kind, prefs) {
+	if inAppOnlyKinds[kind] || pushOnlyKinds[kind] || kindMuted(kind, prefs) {
 		return false
 	}
 	switch emailMode(prefs) {
@@ -536,6 +568,10 @@ func pathForKind(kind, base string, n NotificationRow) string {
 	switch kind {
 	case "event_reminder", "event_rsvp", "event_waitlist_slot", "event_updated":
 		return eventPath(base, n)
+	case "race_starting_soon", "race_start_moved":
+		// The occurrence's event page, which carries the race panel and its
+		// countdown (decisions § 2400).
+		return eventPath(base, n)
 	case "event_cancel":
 		// A deleted event's notice links no event, because the delete's cascade
 		// would erase a row that did (20271112000013); its club is the nearest
@@ -547,6 +583,10 @@ func pathForKind(kind, base string, n NotificationRow) string {
 	case "club_join_request", "club_join_approved":
 		// The club home, where a request's approve and decline sit for its
 		// admins and where an approved member lands.
+		return clubPath(base, n)
+	case "club_verification":
+		// The club home, whose verification card says what changed and why
+		// (decisions § 2398).
 		return clubPath(base, n)
 	case "plan_update", "plan_assigned":
 		// Training plans live at /plans — there is no /training route, so the
@@ -561,6 +601,18 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// /plans/{id} renders the coach's view of an active athlete's plan
 		// (coach_plan_access), which is where the change is to be read.
 		return planPath(base, n)
+	case "plan_change_request", "plan_change_decision":
+		// The athlete's plan, where both the athlete and the coach (through
+		// coach_plan_access) see the request with its approve and decline
+		// (decisions § 2382).
+		return planPath(base, n)
+	case "course_alert":
+		// The stable-id resolver, which opens the race or route the alert is
+		// on; the projection carries only the alert's id (decisions § 2407).
+		if n.CourseAlertID != nil {
+			return base + "/course-alerts/" + *n.CourseAlertID
+		}
+		return inboxPath(base, n)
 	case "workout_reminder":
 		// The runner's active plan, whose detail page opens on the current
 		// week with today's workout in it. The row carries plan_id and the

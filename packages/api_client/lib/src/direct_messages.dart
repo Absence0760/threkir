@@ -40,6 +40,7 @@ class DmThread {
     this.muted = false,
     this.archived = false,
     this.markedUnread = false,
+    this.request = false,
   }) : assert(partnerId != null || deletedPartnerKey != null);
 
   /// The conversation the mute, archive and delete-for-me actions act on.
@@ -69,6 +70,11 @@ class DmThread {
   /// counts it as at least one; opening the conversation clears it.
   final bool markedUnread;
 
+  /// A message request to the viewer they have not accepted yet (migration
+  /// 20271115002384): listed under Requests, left out of the badge, and the
+  /// requester learns nothing until it is accepted.
+  final bool request;
+
   /// Unique per conversation, for keys and the opened-at map.
   String get threadKey => partnerId ?? deletedPartnerKey!;
 
@@ -81,6 +87,7 @@ class DmThread {
     bool? muted,
     bool? archived,
     bool? markedUnread,
+    bool? request,
   }) =>
       DmThread(
     conversationId: conversationId,
@@ -96,6 +103,7 @@ class DmThread {
     muted: muted ?? this.muted,
     archived: archived ?? this.archived,
     markedUnread: markedUnread ?? this.markedUnread,
+    request: request ?? this.request,
   );
 }
 
@@ -109,8 +117,9 @@ class DmThreadPage {
 }
 
 /// The `direct_messages` INSERT policy refused the send (SQLSTATE 42501): no
-/// follow edge in either direction, or a block in either direction. The two
-/// are one policy and deliberately indistinguishable — `user_blocks` is
+/// follow edge in either direction and no shared club or event, a declined
+/// request, or a block in either direction. They are one policy and
+/// deliberately indistinguishable — `user_blocks` is
 /// owner-read only, so telling a sender "they blocked you" would leak exactly
 /// what the block exists to hide.
 class DmSendNotPermitted implements Exception {
@@ -118,4 +127,25 @@ class DmSendNotPermitted implements Exception {
 
   @override
   String toString() => 'DmSendNotPermitted';
+}
+
+/// A fourth message into a message request the recipient has not accepted
+/// (SQLSTATE 54000, migration 20271115002384): a requester may send three
+/// until it is accepted. It says nothing about the recipient.
+class DmRequestCapReached implements Exception {
+  const DmRequestCapReached();
+
+  @override
+  String toString() => 'DmRequestCapReached';
+}
+
+/// `edit_direct_message` refused the edit (migration 20271114000210): the
+/// message is unsent, past the 15-minute window, between a blocked pair
+/// (SQLSTATE 55000 for all three, so a block is not revealed), or not the
+/// viewer's own (P0002). Clients say one sentence for all of them.
+class DmEditClosed implements Exception {
+  const DmEditClosed();
+
+  @override
+  String toString() => 'DmEditClosed';
 }

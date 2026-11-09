@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:ui_kit/ui_kit.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/club_detail_screen.dart';
+import '../lib/widgets/official_badge.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/social_service.dart';
 import '../lib/training_service.dart';
@@ -89,7 +90,12 @@ class _FakeApi extends ApiClient {
 
   /// Held open so a test can observe the Templates tab's loading frame.
   final Completer<void>? templatesGate;
-  _FakeApi(this.routines, {this.templatesGate});
+  final Set<String> officialRoutineIds;
+  _FakeApi(this.routines, {this.templatesGate, this.officialRoutineIds = const {}});
+
+  @override
+  Future<Set<String>> fetchOfficialGymRoutineIds(List<String> routineIds) async =>
+      officialRoutineIds.intersection(routineIds.toSet());
 
   /// The screen gates on the viewer id, so a fake must declare who is
   /// looking rather than falling through to a real Supabase read.
@@ -409,6 +415,13 @@ class _RosterSocial extends SocialService {
 
   @override
   String? get currentUserId => 'u-viewer';
+  // The viewer is an admin, so the Members tab also mounts the verification
+  // status card; answer its read here rather than reaching the network.
+  @override
+  Future<List<ClubVerificationRequestRow>> fetchClubVerificationRequests(
+    String clubId,
+  ) async =>
+      const [];
   @override
   Future<ClubView?> fetchClubBySlug(String slug) async => _adminClub();
   @override
@@ -564,7 +577,10 @@ void main() {
           home: ClubDetailScreen(
             social: _FakeSocial(),
             training: _FakeTraining(),
-            apiClient: _FakeApi([_routine('r-1', 'Club push day', 3)]),
+            apiClient: _FakeApi(
+              [_routine('r-1', 'Club push day', 3), _routine('r-2', 'Member legs', 2)],
+              officialRoutineIds: const {'r-1'},
+            ),
             slug: 'track-club',
           ),
         ),
@@ -584,6 +600,15 @@ void main() {
       expect(find.text('Club push day'), findsOneWidget);
       expect(find.text('3 exercises'), findsOneWidget);
       expect(find.text('Adopt'), findsWidgets);
+      // Only the verified organiser's routine carries the Official badge.
+      expect(find.byType(OfficialBadge), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(of: find.text('Club push day'), matching: find.byType(Card)),
+          matching: find.byType(OfficialBadge),
+        ),
+        findsOneWidget,
+      );
     });
 
     realtimeWidgetTest(
@@ -841,6 +866,11 @@ void main() {
       _RosterSocial? social,
     }) async {
       final s = social ?? _RosterSocial();
+      // Tall enough for the whole roster below the admin's verification card,
+      // which the ListView would otherwise never build.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -1573,6 +1603,7 @@ class _EventSocial extends _FakeSocial {
   Future<List<EventView>> fetchUpcomingEvents(String clubId) async => [
         EventView(
           row: EventRow(
+            raceStartMode: 'host_go',
             id: 'event-1',
             clubId: 'club-1',
             title: 'Long run',

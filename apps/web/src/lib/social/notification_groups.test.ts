@@ -338,3 +338,21 @@ test('groupNotifications: reactions, comment likes and mentions collapse per run
 		],
 	);
 });
+
+test('groupNotifications: race start notices collapse per event', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'm1', kind: 'race_start_moved', event_id: 'ev1', created_at: ago(1000) }),
+			n({ id: 'm2', kind: 'race_start_moved', event_id: 'ev1', created_at: ago(2000) }),
+			n({ id: 's1', kind: 'race_starting_soon', event_id: 'ev2', created_at: ago(3000) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(
+		groups.map((g) => [g.lead.id, g.otherCount]),
+		[
+			['m1', 1],
+			['s1', 0],
+		],
+	);
+});

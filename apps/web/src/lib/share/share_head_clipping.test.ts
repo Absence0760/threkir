@@ -9,6 +9,7 @@ import { buildShareClubHead } from './share_club_meta';
 import { buildShareEventHead } from './share_event_meta';
 import { buildShareProfileHead } from './share_profile_meta';
 import { buildShareRaceHead } from './share_race_meta';
+import { buildShareCourseHead } from './share_course_meta';
 import { buildShareRecapMeta } from './share_recap_meta';
 import { buildShareRouteHead } from './share_route_meta';
 import { buildShareRunMeta } from './share_run_meta';
@@ -135,6 +136,38 @@ const builders: Array<{ name: string; head: () => Record<string, unknown> }> = [
 					location_label: HUGE,
 					entry_url: null,
 					is_verified: true,
+				},
+				siteUrl: SITE,
+			}) as unknown as Record<string, unknown>,
+	},
+	{
+		name: 'buildShareCourseHead',
+		head: () =>
+			buildShareCourseHead({
+				key: 'us-va/fixture-park/lake-loop',
+				course: {
+					slug: 'lake-loop',
+					course_shape: 'loop',
+					status: 'open',
+					status_note: HUGE,
+					geometry_source: 'osm',
+					difficulty: null,
+					segment: {
+						name: HUGE,
+						description: HUGE,
+						distance_m: 5_000,
+						elevation_m: 40,
+						surface: 'trail',
+						waypoints: [{ lat: 37.1, lng: -77.5, ele: null }],
+					},
+					park: {
+						slug: 'fixture-park',
+						name: HUGE,
+						region_code: 'US-VA',
+						country_code: 'US',
+						agency: 'state',
+						website_url: null,
+					},
 				},
 				siteUrl: SITE,
 			}) as unknown as Record<string, unknown>,

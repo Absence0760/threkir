@@ -98,9 +98,17 @@ class PreRunHomeLayoutTest {
     fun `every setting chip states its current value`() {
         val list = listContent(preRun())
         assertEquals(
-            "Workout, Activity, Pace and Route each render as a label-plus-value chip",
-            4,
+            "Self-timed race, Workout, Activity, Pace and Route each render as a label-plus-value chip",
+            5,
             Regex("""PreRunSettingChip\(""").findAll(list).count(),
+        )
+        assertTrue(
+            "Self-timed race must say whether the attempt is armed",
+            list.contains("R.string.race_attempt_ready") && list.contains("R.string.race_attempt)"),
+        )
+        assertTrue(
+            "Self-timed race appears only while a self-timed window is open",
+            list.contains("if (selfTimedOpen)"),
         )
         assertTrue("Activity must show the current activity", list.contains("value = label") && list.contains("activityLabel(activityType)"))
         assertTrue("Pace must say Off rather than go blank", list.contains("R.string.pace_off"))

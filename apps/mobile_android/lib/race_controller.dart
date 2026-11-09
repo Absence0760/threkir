@@ -8,7 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'apple_watch_race_bridge.dart';
+import 'course_gates.dart' show CourseGate, SessionStartMode;
 import 'race_finish.dart';
+import 'race_start_modes.dart';
 import 'rate_limit_errors.dart';
 import 'social_service.dart';
 
@@ -20,6 +22,11 @@ const kPendingRaceResultsKey = 'race_pending_results';
 /// is generous; the cap only exists so a permanently-failing write can't
 /// grow the stored list without limit. Oldest entries drop first.
 const kPendingRaceResultsMax = 20;
+
+/// SharedPreferences key holding the last scheduled or self-timed race this
+/// account found, with its window and the frozen start line, so the banner
+/// and the attempt still work with no signal (#1306 offline).
+const kActiveRaceCacheKey = 'race_active_cache';
 
 /// The HTTP status PostgREST answers an error [code] with, after its error
 /// table (docs.postgrest.org, "Errors"): `supabase_flutter` surfaces the
@@ -189,8 +196,9 @@ class PendingRaceResult {
 }
 
 /// The course a racer is running: what the finish detector and the coverage
-/// gate need, resolved once when the recorder attaches. Read off the
-/// `event_courses` row alone — never the route.
+/// gate need, resolved once when the recorder attaches. Read off the race's
+/// frozen copy of the course (`race_session_courses`, decisions § 2391) when
+/// it has one, else the `event_courses` row — never the route.
 class RaceCourse {
   const RaceCourse({
     required this.courseId,
@@ -199,6 +207,8 @@ class RaceCourse {
     this.finishLng,
     this.startLat,
     this.startLng,
+    this.startGate,
+    this.finishGate,
   });
 
   /// Null for an event with no `event_courses` rows, raced on the event's
@@ -209,6 +219,11 @@ class RaceCourse {
   final double? finishLng;
   final double? startLat;
   final double? startLng;
+
+  /// The course's timing lines, drawn on the race screen's map. Detection by
+  /// the lines is #1307's; until then the finish rule is the 30 m circle.
+  final CourseGate? startGate;
+  final CourseGate? finishGate;
 
   bool get hasFinish => finishLat != null && finishLng != null;
   bool get hasStart => startLat != null && startLng != null;
@@ -243,9 +258,22 @@ EventCourseView? pickRaceCourse(
 class ActiveRace {
   final String eventId;
   final DateTime instanceStart;
-  final String status; // armed | running | finished | cancelled
+  final String status; // armed | running | finished | cancelled (stored)
   final DateTime? startedAt;
   final String? eventTitle;
+
+  /// How the race starts (#1306) and its instants on the server clock.
+  final SessionStartMode startMode;
+  final DateTime? scheduledStartAt;
+  final DateTime? windowOpensAt;
+  final DateTime? windowClosesAt;
+
+  /// The course on this runner's RSVP; null for a single-course race.
+  final String? courseId;
+
+  /// A self-timed race's frozen start line centre, for the distance to it.
+  final double? startLineLat;
+  final double? startLineLng;
 
   const ActiveRace({
     required this.eventId,
@@ -253,10 +281,102 @@ class ActiveRace {
     required this.status,
     required this.startedAt,
     required this.eventTitle,
+    this.startMode = SessionStartMode.hostGo,
+    this.scheduledStartAt,
+    this.windowOpensAt,
+    this.windowClosesAt,
+    this.courseId,
+    this.startLineLat,
+    this.startLineLng,
   });
 
-  bool get isArmed => status == 'armed';
-  bool get isRunning => status == 'running';
+  StartModeSession get _session => StartModeSession(
+        status: raceStatusFromWire(status) ?? RaceStatus.armed,
+        startMode: startMode,
+        scheduledStartAt: scheduledStartAt,
+        windowOpensAt: windowOpensAt,
+        windowClosesAt: windowClosesAt,
+      );
+
+  /// The status on the server clock at [serverNow]: a scheduled race whose
+  /// GO has passed is running before the per-minute job moves it.
+  RaceStatus statusAt(DateTime serverNow) =>
+      effectiveRaceStatus(_session, serverNow);
+
+  /// When the clock starts: the scheduled GO or the window's opening.
+  DateTime? get startInstant => raceStartInstant(_session);
+
+  /// GO as the server stamps it; for a scheduled or self-timed race that is
+  /// the instant itself, known before the stored row says running.
+  DateTime? get goAt => startedAt ?? startInstant;
+
+  bool get isSelfTimed => startMode == SessionStartMode.selfTimed;
+
+  /// A status the client does not know reads as neither armed nor running.
+  bool get isArmed =>
+      raceStatusFromWire(status) != null &&
+      statusAt(DateTime.now().toUtc()) == RaceStatus.armed;
+  bool get isRunning =>
+      raceStatusFromWire(status) != null &&
+      statusAt(DateTime.now().toUtc()) == RaceStatus.running;
+
+  Map<String, dynamic> toJson() => {
+        'event_id': eventId,
+        'instance_start': instanceStartKey(instanceStart),
+        'status': status,
+        'started_at': startedAt?.toUtc().toIso8601String(),
+        'event_title': eventTitle,
+        'start_mode': switch (startMode) {
+          SessionStartMode.scheduled => 'scheduled',
+          SessionStartMode.selfTimed => 'self_timed',
+          SessionStartMode.hostGo => 'host_go',
+        },
+        'scheduled_start_at': scheduledStartAt?.toUtc().toIso8601String(),
+        'window_opens_at': windowOpensAt?.toUtc().toIso8601String(),
+        'window_closes_at': windowClosesAt?.toUtc().toIso8601String(),
+        'course_id': courseId,
+        'start_line_lat': startLineLat,
+        'start_line_lng': startLineLng,
+      };
+
+  /// A row of `my_race_sessions()` or a cached [toJson]; null when the keys
+  /// it cannot do without are missing or malformed.
+  static ActiveRace? fromJson(Map<String, dynamic> j) {
+    final eventId = j['event_id'];
+    final inst = parseIsoStrictValue(j['instance_start']);
+    final status = j['status'];
+    if (eventId is! String || inst == null || status is! String) return null;
+    double? num_(Object? v) => v is num ? v.toDouble() : null;
+    return ActiveRace(
+      eventId: eventId,
+      instanceStart: inst,
+      status: status,
+      startedAt: parseIsoStrictValue(j['started_at']),
+      eventTitle: j['event_title'] as String?,
+      startMode: sessionStartModeFromWire(j['start_mode'] as String?),
+      scheduledStartAt: parseIsoStrictValue(j['scheduled_start_at']),
+      windowOpensAt: parseIsoStrictValue(j['window_opens_at']),
+      windowClosesAt: parseIsoStrictValue(j['window_closes_at']),
+      courseId: j['course_id'] as String?,
+      startLineLat: num_(j['start_line_lat']),
+      startLineLng: num_(j['start_line_lng']),
+    );
+  }
+
+  ActiveRace withStartLine(double? lat, double? lng) => ActiveRace(
+        eventId: eventId,
+        instanceStart: instanceStart,
+        status: status,
+        startedAt: startedAt,
+        eventTitle: eventTitle,
+        startMode: startMode,
+        scheduledStartAt: scheduledStartAt,
+        windowOpensAt: windowOpensAt,
+        windowClosesAt: windowClosesAt,
+        courseId: courseId,
+        startLineLat: lat,
+        startLineLng: lng,
+      );
 }
 
 /// One `race_pings` row, built in one place.
@@ -408,13 +528,18 @@ class RaceController extends ChangeNotifier {
     }
     _pollTimer?.cancel();
     _pingTimer?.cancel();
+    _transitionTimer?.cancel();
     final ch = _channel;
     if (ch != null) _c.removeChannel(ch);
     super.dispose();
   }
 
+  /// One discovery pass, for tests that drive [activeRaceLoader].
+  @visibleForTesting
+  Future<void> refreshForTest() => _refresh();
+
   Future<void> _refresh() async {
-    final uid = _c.auth.currentUser?.id;
+    final uid = _signedInUserId;
     if (uid == null) {
       if (_active != null) {
         _active = null;
@@ -431,84 +556,150 @@ class RaceController extends ChangeNotifier {
       final s = await _social.fetchRaceSession(hostEid, hostInst);
       if (s != null) observeHostedSession(s.status, s.startedAt);
     }
-    // Events the user is `going` to within the next 24h (window for
-    // live races). Keeps the fetch small for a single user.
-    final now = DateTime.now().toUtc();
-    final horizon = now.add(const Duration(hours: 24));
-    final past = now.subtract(const Duration(hours: 6));
+    // One call finds every race this runner is going to that is armed or
+    // live by the server clock, in any start mode, and creates the sessions
+    // of their scheduled and self-timed occurrences that are due: discovery
+    // goes by the window, not by how far the occurrence's start is from now
+    // (#1306 B4). Its server clock samples the countdown's offset (m3).
     try {
-      final rsvps = await _c
-          .from('event_attendees')
-          .select('event_id, instance_start, status')
-          .eq('user_id', uid)
-          .eq('status', 'going')
-          .gte('instance_start', instanceStartKey(past))
-          .lte('instance_start', instanceStartKey(horizon));
-      final list = (rsvps as List).cast<Map<String, dynamic>>();
-      if (list.isEmpty) { _setActive(null); return; }
-
-      // Check each for an armed/running race session. In practice a user
-      // has 1-3 upcoming RSVPs at most, but firing the per-RSVP fetches
-      // in parallel via Future.wait means we get done in the wall time
-      // of the slowest one rather than the sum of all of them.
-      final sessionResults = await Future.wait(list.map((r) async {
-        final eventId = r['event_id'] as String;
-        final inst =
-            parseIsoStrictRequired(r['instance_start'], 'instance_start');
-        final res = await _c
-            .from('race_sessions')
-            .select('status, started_at')
-            .eq('event_id', eventId)
-            .eq('instance_start', instanceStartKey(inst))
-            .inFilter('status', ['armed', 'running'])
-            .maybeSingle();
-        return (eventId: eventId, inst: inst, row: res);
-      }));
-
+      final loader = activeRaceLoader ?? _loadActiveRaces;
+      final rows = await loader();
       ActiveRace? next;
-      for (final s in sessionResults) {
-        final res = s.row;
-        if (res == null) continue;
-        final title = await _eventTitle(s.eventId);
-        next = ActiveRace(
-          eventId: s.eventId,
-          instanceStart: s.inst,
-          status: res['status'] as String,
-          startedAt: parseIsoStrictValue(res['started_at']),
-          eventTitle: title,
-        );
-        // Prefer running over armed if we somehow see both.
-        if (next.isRunning) break;
+      for (final r in rows) {
+        if (next == null || (r.isRunning && !next.isRunning)) next = r;
+      }
+      if (next != null && next.isSelfTimed) {
+        next = await _withStartLine(next);
       }
       _setActive(next);
+      unawaited(_writeActiveCache(next));
     } catch (e) {
-      debugPrint('[RaceController._refresh] $e');
+      debugPrint('[RaceController._refresh] ${safeErrorLabel(e)}');
+      // Offline: a self-timed or scheduled race found earlier still stands
+      // while its window has not closed on this device's clock.
+      final cached = await _readActiveCache();
+      if (cached != null && cached.statusAt(clockOffset.toServer(DateTime.now()).toUtc()) != RaceStatus.finished) {
+        _setActive(cached);
+      }
     }
   }
 
-  // LinkedHashMap-style cache with a simple LRU cap. Was unbounded —
-  // a user attending many events over an app session would accumulate
-  // titles indefinitely.
-  static const _titleCacheMax = 32;
-  final Map<String, String?> _titleCache = <String, String?>{};
-  Future<String?> _eventTitle(String eventId) async {
-    if (_titleCache.containsKey(eventId)) {
-      // Bump to most-recent by re-inserting.
-      final v = _titleCache.remove(eventId);
-      _titleCache[eventId] = v;
-      return v;
+  /// The discovery read, as a seam: the default reaches Supabase, which no
+  /// host test can initialize.
+  @visibleForTesting
+  Future<List<ActiveRace>> Function()? activeRaceLoader;
+
+  Future<List<ActiveRace>> _loadActiveRaces() async {
+    final sentAt = DateTime.now();
+    final raw = await _c.rpc('my_race_sessions');
+    final receivedAt = DateTime.now();
+    final out = <ActiveRace>[];
+    for (final row in (raw as List).cast<Map<String, dynamic>>()) {
+      final serverNow = parseIsoStrictValue(row['server_now']);
+      if (serverNow != null) {
+        clockOffset.addSample(
+            sentAt: sentAt, receivedAt: receivedAt, serverAt: serverNow);
+      }
+      final race = ActiveRace.fromJson(row);
+      if (race != null) out.add(race);
     }
-    final row = await _c
-        .from('events')
-        .select('title')
-        .eq('id', eventId)
-        .maybeSingle();
-    final title = (row as Map?)?['title'] as String?;
-    _titleCache[eventId] = title;
-    if (_titleCache.length > _titleCacheMax) {
-      _titleCache.remove(_titleCache.keys.first);
+    return out;
+  }
+
+  /// A self-timed race's frozen start line, for the banner's distance to it.
+  /// L4: a failed read keeps the race without one (the attempt still works).
+  Future<ActiveRace> _withStartLine(ActiveRace race) async {
+    final cur = _active;
+    if (cur != null &&
+        cur.eventId == race.eventId &&
+        cur.instanceStart.isAtSameMomentAs(race.instanceStart) &&
+        cur.startLineLat != null) {
+      return race.withStartLine(cur.startLineLat, cur.startLineLng);
     }
-    return title;
+    try {
+      final loader = courseLoader ?? _loadCourse;
+      final course = await loader(race.eventId, race.instanceStart);
+      final gate = course?.startGate;
+      if (gate != null) return race.withStartLine(gate.lat, gate.lng);
+    } catch (e) {
+      debugPrint('[RaceController._withStartLine] ${safeErrorLabel(e)}');
+    }
+    return race;
+  }
+
+  Future<void> _writeActiveCache(ActiveRace? race) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (race == null || race.startMode == SessionStartMode.hostGo) {
+        await prefs.remove(kActiveRaceCacheKey);
+        return;
+      }
+      await prefs.setString(kActiveRaceCacheKey, jsonEncode({
+        'user_id': _signedInUserId,
+        ...race.toJson(),
+      }));
+    } catch (e) {
+      debugPrint('[RaceController._writeActiveCache] $e');
+    }
+  }
+
+  Future<ActiveRace?> _readActiveCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(kActiveRaceCacheKey);
+      if (raw == null) return null;
+      final j = jsonDecode(raw);
+      if (j is! Map<String, dynamic>) return null;
+      if (j['user_id'] != _signedInUserId) return null;
+      return ActiveRace.fromJson(j);
+    } catch (e) {
+      debugPrint('[RaceController._readActiveCache] $e');
+      return null;
+    }
+  }
+
+  /// Fires a listener notification at the active race's start instant and at
+  /// its window close, so the banner turns live and a recording waiting on
+  /// GO joins it without waiting for the next poll (no cron lag on the
+  /// phone either).
+  Timer? _transitionTimer;
+
+  void _scheduleTransition(ActiveRace? race) {
+    _transitionTimer?.cancel();
+    _transitionTimer = null;
+    if (race == null || race.startMode == SessionStartMode.hostGo) return;
+    final serverNow = clockOffset.toServer(DateTime.now());
+    final targets = [race.startInstant, race.windowClosesAt]
+        .whereType<DateTime>()
+        .where((t) => t.isAfter(serverNow))
+        .toList()
+      ..sort();
+    if (targets.isEmpty) return;
+    final wait = targets.first.difference(serverNow) +
+        const Duration(milliseconds: 250);
+    _transitionTimer = Timer(wait, () {
+      notifyListeners();
+      _scheduleTransition(_active);
+    });
+  }
+
+  /// A Self-timed race binds a recording only after the runner says so
+  /// (#1306 owner decision 4a): "This run is my attempt". Other runs in the
+  /// window never bind or ping.
+  bool _attemptArmed = false;
+  bool get attemptArmed => _attemptArmed;
+
+  void armAttempt() {
+    final race = _active;
+    if (race == null || !race.isSelfTimed || _attemptArmed) return;
+    _attemptArmed = true;
+    notifyListeners();
+  }
+
+  void cancelAttempt() {
+    if (!_attemptArmed) return;
+    _attemptArmed = false;
+    notifyListeners();
   }
 
   /// Visible-for-testing — RaceControllerTest exercises the change-
@@ -528,10 +719,17 @@ class RaceController extends ChangeNotifier {
     // startedAt) silently update `_active` without firing
     // notifyListeners, leaving the banner rendering Instance 1's
     // time until something else triggered a rebuild.
-    final changed = next?.eventId != _active?.eventId ||
-        next?.instanceStart != _active?.instanceStart ||
+    final sameRace = next?.eventId == _active?.eventId &&
+        next?.instanceStart == _active?.instanceStart;
+    final changed = !sameRace ||
         next?.status != _active?.status ||
-        next?.startedAt != _active?.startedAt;
+        next?.startedAt != _active?.startedAt ||
+        next?.startMode != _active?.startMode ||
+        next?.scheduledStartAt != _active?.scheduledStartAt ||
+        next?.windowOpensAt != _active?.windowOpensAt ||
+        next?.windowClosesAt != _active?.windowClosesAt ||
+        next?.startLineLat != _active?.startLineLat;
+    if (!sameRace) _attemptArmed = false;
     // The paired Apple Watch is TOLD Arm / Go / End; it cannot poll
     // `race_sessions` itself, because the Supabase surface does not grow on
     // that wrist (decisions § 1712). Computed before `_active` moves, and off
@@ -542,6 +740,7 @@ class RaceController extends ChangeNotifier {
       next: _watchRace(next),
     );
     _active = next;
+    _scheduleTransition(next);
     if (changed) notifyListeners();
     // L4, and last: a watch on a charger in another room must not be able to
     // hold up the poll that found this transition, let alone fail it.
@@ -643,10 +842,11 @@ class RaceController extends ChangeNotifier {
     if (isHosting) return false;
     final race = _active;
     if (race == null || !race.isRunning) return false;
+    if (race.isSelfTimed && !_attemptArmed) return false;
     attachRecorder(
       eventId: race.eventId,
       instance: race.instanceStart,
-      startedAt: race.startedAt,
+      startedAt: race.goAt,
       recordingStartedAt: recordingStartedAt,
     );
     return true;
@@ -753,6 +953,27 @@ class RaceController extends ChangeNotifier {
       final mine = pickRaceCourse(
           courses, await _social.fetchMyCourseId(eventId, instance));
       if (mine == null) return null;
+      // The frozen copy is what every racer in this race crosses; a race with
+      // none (created before it existed) or a failed read keeps the live row.
+      FrozenRaceCourse? frozen;
+      try {
+        frozen =
+            (await _social.fetchRaceSessionCourses(eventId, instance))[mine.id];
+      } catch (e) {
+        debugPrint('[RaceController._loadCourse frozen] ${safeErrorLabel(e)}');
+      }
+      if (frozen != null) {
+        return RaceCourse(
+          courseId: mine.id,
+          distanceM: frozen.distanceM,
+          finishLat: frozen.finishLat,
+          finishLng: frozen.finishLng,
+          startLat: mine.startLat,
+          startLng: mine.startLng,
+          startGate: frozen.startGate,
+          finishGate: frozen.finishGate,
+        );
+      }
       return RaceCourse(
         courseId: mine.id,
         distanceM: mine.distanceM,
@@ -760,6 +981,8 @@ class RaceController extends ChangeNotifier {
         finishLng: mine.finishLng,
         startLat: mine.startLat,
         startLng: mine.startLng,
+        startGate: mine.startGate,
+        finishGate: mine.finishGate,
       );
     }
     return RaceCourse(

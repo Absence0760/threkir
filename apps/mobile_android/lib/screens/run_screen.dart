@@ -19,7 +19,7 @@ import 'package:pedometer/pedometer.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:run_recorder/run_recorder.dart';
 import 'package:ui_kit/ui_kit.dart'
-    show AppMotion, AppSemanticColors, StatTile, motionDuration;
+    show AppMotion, AppRadius, AppSemanticColors, StatTile, motionDuration;
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -58,6 +58,7 @@ import '../off_route_alert.dart';
 import '../orphaned_recording.dart';
 import '../race_controller.dart';
 import '../race_finish.dart';
+import '../widgets/race_banner.dart';
 import '../reactive_ble_watch_transport.dart';
 import '../race_phases.dart';
 import '../roadbook.dart';
@@ -1014,6 +1015,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// The course of the race this recording is bound to, for the map's start
+  /// and finish lines; null when not racing.
+  RaceCourse? get _raceCourse {
+    final rc = widget.raceController;
+    return rc != null && rc.isHosting ? rc.course : null;
+  }
+
   bool _raceStopSheetOpen = false;
 
   /// Every Stop entry point lands here. During a live race with no outcome
@@ -1179,6 +1187,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
   /// Fire-and-forget TTS announcement. Wraps both synchronous and
   /// asynchronous failures so a TTS-engine fault never escapes as an
   /// unhandled error.
+  /// A scheduled GO's countdown, spoken at 10, 5, 3, 2, 1 seconds while the
+  /// run screen is open (#1306 m4). Voice cues off means silence.
+  void _speakRaceCountdown(int secondsLeft) {
+    if (!widget.preferences.audioCues) return;
+    _ttsCue('raceCountdown',
+        () => widget.audioCues.announceGuidedCue('$secondsLeft'));
+  }
+
   void _ttsCue(String label, Future<void> Function() invoke) {
     try {
       unawaited(invoke().catchError((Object e) {
@@ -5086,7 +5102,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                           if (race == null) return const SizedBox.shrink();
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 8),
-                            child: _RaceBanner(race: race),
+                            child: RaceBanner(
+                              race: race,
+                              controller: widget.raceController!,
+                              onCountdownCue: _speakRaceCountdown,
+                            ),
                           );
                         },
                       ),
@@ -5296,6 +5316,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             activity: isCountdown ? null : _activityType,
             ghostPosition: _computeGhostPosition(),
             approximateLocation: !isCountdown && _preciseLocationOff,
+            courseStartGate: _raceCourse?.startGate,
+            courseFinishGate: _raceCourse?.finishGate,
           ),
         ),
 
@@ -5593,7 +5615,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
               // banners above do not.
               expandedChild: ValueListenableBuilder<_LiveStats>(
                 valueListenable: _statsNotifier,
-                builder: (context, _, _) => _StatsOverlay(
+                builder: (context, _, _) => LiveStatsOverlay(
                   time: _formattedTime,
                   distanceValue: _formattedDistanceValue,
                   distanceUnit: UnitFormat.distanceLabel(_unit),
@@ -5621,6 +5643,8 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                   lapCount: _lapCount,
                   paused: _manualPaused,
                   stopped: _standingStill,
+                  workoutActive: _workoutRunner != null &&
+                      _workoutBand.value.step != null,
                   onHoldComplete: dockedStop ? null : _requestStop,
                   onDiscard: _confirmDiscardMidRun,
                   onPauseToggle: _toggleManualPause,
@@ -5885,8 +5909,73 @@ class _StoppedChip extends StatelessWidget {
   }
 }
 
-/// Frosted glass stats bar overlaid on the map during recording.
-class _StatsOverlay extends StatelessWidget {
+/// A metric the live stats panel can show.
+enum LiveStatField {
+  distance,
+  pace,
+  avgPace,
+  heartRate,
+  elevation,
+  cadence,
+  calories,
+  steps,
+}
+
+/// Most tiles the glance page holds: three [StatTile.large] cells still share
+/// a 360 dp phone's 320 dp row without scaling (`kStatLargeCellMinWidth`).
+const int kLiveStatsGlanceMax = 3;
+
+/// Most tiles any later page holds in its one row.
+const int kLiveStatsPerPage = 4;
+
+/// The live panel's tiles as pages, glance page first.
+///
+/// Every page is ONE row, so the panel is the same height on every page and
+/// with every sensor combination: what does not fit the glance row moves to a
+/// later page instead of growing another row under it (#1300 §1, decisions
+/// § 2374). The glance row is Distance, the live Pace (or Speed) and one third
+/// slot: Heart rate when a strap is reporting, otherwise Avg pace. While a
+/// workout step is showing, Avg pace leaves the glance row: the workout card
+/// already carries the step's progress and its pace against the target, and a
+/// whole-run average across warm-up and reps is the figure an interval
+/// session makes misleading. Nothing is dropped, only moved.
+List<List<LiveStatField>> liveStatPages({
+  required bool workoutActive,
+  required bool hasHeartRate,
+}) {
+  final glance = <LiveStatField>[
+    LiveStatField.distance,
+    LiveStatField.pace,
+    if (hasHeartRate)
+      LiveStatField.heartRate
+    else if (!workoutActive)
+      LiveStatField.avgPace,
+  ];
+  assert(glance.length <= kLiveStatsGlanceMax);
+  final rest = <LiveStatField>[
+    if (!glance.contains(LiveStatField.avgPace)) LiveStatField.avgPace,
+    LiveStatField.elevation,
+    LiveStatField.cadence,
+    LiveStatField.calories,
+    LiveStatField.steps,
+  ];
+  // Spread the rest evenly over as few pages as hold it, so five tiles read
+  // three and two rather than four and an orphan.
+  final pageCount = (rest.length / kLiveStatsPerPage).ceil();
+  final perPage = (rest.length / pageCount).ceil();
+  return [
+    glance,
+    for (var i = 0; i < rest.length; i += perPage)
+      rest.sublist(i, math.min(i + perPage, rest.length)),
+  ];
+}
+
+/// The frosted stats panel over the map while recording: the clock, one row
+/// of stat tiles paged by tap or swipe ([liveStatPages]), and the controls.
+///
+/// Public so its density can be widget-tested on a small phone at large text
+/// scales without pumping the whole run screen.
+class LiveStatsOverlay extends StatefulWidget {
   final String time;
   final String distanceValue;
   final String distanceUnit;
@@ -5908,6 +5997,9 @@ class _StatsOverlay extends StatelessWidget {
   /// recording. Shows a chip beside the clock; changes nothing else.
   final bool stopped;
 
+  /// A structured-workout step is on the workout card; see [liveStatPages].
+  final bool workoutActive;
+
   /// Null when the shell's docked centre button is the Stop ([RunStopDock]),
   /// which leaves the row Discard · Pause · Lap.
   final VoidCallback? onHoldComplete;
@@ -5922,7 +6014,8 @@ class _StatsOverlay extends StatelessWidget {
   final bool paceCuesMuted;
   final VoidCallback? onTogglePaceMute;
 
-  const _StatsOverlay({
+  const LiveStatsOverlay({
+    super.key,
     required this.time,
     required this.distanceValue,
     required this.distanceUnit,
@@ -5940,6 +6033,7 @@ class _StatsOverlay extends StatelessWidget {
     required this.lapCount,
     required this.paused,
     this.stopped = false,
+    this.workoutActive = false,
     required this.onHoldComplete,
     required this.onDiscard,
     required this.onPauseToggle,
@@ -5949,237 +6043,343 @@ class _StatsOverlay extends StatelessWidget {
     this.onTogglePaceMute,
   });
 
+  /// Ceiling on the clock's text scale. The clock is 45 sp display type,
+  /// already the largest thing on the panel at 1.0x; at the OS's 2.0x it alone
+  /// would take over 100 dp of a 640 dp phone. Android 14's non-linear font
+  /// scaling grows type this size by about 1.3x at a 200% setting, so this
+  /// matches what the platform does to large text; tile labels and the rest
+  /// of the panel keep the full OS scale.
+  static const double clockMaxTextScale = 1.3;
+
+  @override
+  State<LiveStatsOverlay> createState() => _LiveStatsOverlayState();
+}
+
+class _LiveStatsOverlayState extends State<LiveStatsOverlay> {
+  int _page = 0;
+
+  static const double _gap = 12;
+  static const double _tightGap = 8;
+  static const double _swipeVelocity = 200;
+
+  void _turn(int by, int pageCount) =>
+      setState(() => _page = (_page + by) % pageCount);
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final semantic = AppSemanticColors.of(context);
     final l10n = AppLocalizations.of(context);
+    final pages = liveStatPages(
+      workoutActive: widget.workoutActive,
+      hasHeartRate: widget.bpm != null,
+    );
+    // A strap that drops out takes a page with it; never index past the end.
+    final page = _page.clamp(0, pages.length - 1);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          _clock(context, theme, l10n),
+          const SizedBox(height: _gap),
+          Semantics(
+            container: true,
+            button: true,
+            label: l10n.runStatsPageA11yLabel(page + 1, pages.length),
+            hint: l10n.runStatsNextPageA11yHint,
+            onTap: () => _turn(1, pages.length),
+            child: GestureDetector(
+              key: const Key('liveStatsPager'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => _turn(1, pages.length),
+              onHorizontalDragEnd: (d) {
+                final v = d.primaryVelocity ?? 0;
+                if (v < -_swipeVelocity) _turn(1, pages.length);
+                if (v > _swipeVelocity) _turn(-1, pages.length);
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Every page stays laid out, so the panel is as tall as its
+                  // tallest page on all of them and the follow-cam offset
+                  // does not jump when the runner pages.
+                  IndexedStack(
+                    index: page,
+                    children: [
+                      for (var i = 0; i < pages.length; i++)
+                        _row(theme, l10n, pages[i], hero: i == 0),
+                    ],
+                  ),
+                  const SizedBox(height: _tightGap),
+                  ExcludeSemantics(child: _dots(theme, page, pages.length)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: _gap),
+          _controls(context, theme, l10n),
+        ],
+      ),
+    );
+  }
+
+  Widget _clock(BuildContext context, ThemeData theme, AppLocalizations l10n) {
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: [
           // Equal flex either side keeps the clock centred whether or not
-          // the chip is showing.
-          Row(
-            children: [
-              const Spacer(),
-              Text(
-                time,
+          // the mute toggle or the chip is showing; the clock's width cap
+          // leaves both room. The toggle sits in the clock row rather than a
+          // row of its own (#1300 §1).
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: widget.paceCuesActive
+                  ? IconButton(
+                      key: const Key('liveStatsPaceMute'),
+                      isSelected: widget.paceCuesMuted,
+                      tooltip: widget.paceCuesMuted
+                          ? l10n.runPaceCuesMuted
+                          : l10n.runMutePaceCues,
+                      onPressed: widget.onTogglePaceMute,
+                      icon: const Icon(Icons.volume_up),
+                      selectedIcon: const Icon(Icons.volume_off_rounded),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.6),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                widget.time,
+                key: const Key('liveStatsClock'),
+                maxLines: 1,
+                textScaler: MediaQuery.textScalerOf(context)
+                    .clamp(maxScaleFactor: LiveStatsOverlay.clockMaxTextScale),
                 style: theme.textTheme.displayMedium?.copyWith(
                   fontFeatures: [const FontFeature.tabularFigures()],
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              Expanded(
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: stopped
-                      ? Padding(
-                          padding: const EdgeInsetsDirectional.only(start: 8),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: _StoppedChip(label: l10n.runStoppedChip),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-                children: [
-                  Expanded(
-                      child: StatTile.medium(
-                          label: l10n.runStatDistance, value: distanceValue, unit: distanceUnit)),
-                  _divider(theme),
-                  Expanded(
-                      child: StatTile.medium(
-                          label: primaryLabel, value: primaryValue, unit: primaryUnit)),
-                  _divider(theme),
-                  Expanded(
-                      child: StatTile.medium(
-                          label: secondaryLabel, value: secondaryValue, unit: primaryUnit)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: StatTile.medium(label: l10n.runStatCalories, value: calories, unit: l10n.runUnitKcal)),
-                  _divider(theme),
-                  Expanded(child: StatTile.medium(label: l10n.runStatElevation, value: elevation, unit: elevationUnit)),
-                  _divider(theme),
-                  Expanded(child: StatTile.medium(label: l10n.runStatSteps, value: steps)),
-                  _divider(theme),
-                  Expanded(child: StatTile.medium(label: l10n.runStatCadence, value: cadence, unit: l10n.runUnitSpm)),
-                ],
-              ),
-              // Heart rate row — only renders when a BLE chest strap is
-              // paired AND has produced at least one sample. Null-on-null
-              // keeps the overlay the same height as before for runners
-              // without a strap.
-              if (bpm != null) ...[
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: StatTile.medium(
-                        label: l10n.runStatHeartRate,
-                        value: '$bpm',
-                        unit: l10n.runUnitBpm,
+          Expanded(
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: widget.stopped
+                  ? Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: _StoppedChip(label: l10n.runStoppedChip),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-              if (paceCuesActive) ...[
-                const SizedBox(height: 12),
-                TextButton.icon(
-                  onPressed: onTogglePaceMute,
-                  icon: Icon(
-                    paceCuesMuted ? Icons.volume_off_rounded : Icons.volume_up,
-                    size: 18,
-                  ),
-                  label: Text(
-                    paceCuesMuted ? l10n.runPaceCuesMuted : l10n.runMutePaceCues,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Discard button.
-                  // audit/accessibility (May 2026) Critical: the bare
-                  // GestureDetector + Container + Icon shape gave
-                  // TalkBack no name or role — a screen-reader user
-                  // couldn't end the run from this control.
-                  // Semantics(button: true, label:) is the Flutter idiom.
-                  Semantics(
-                    button: true,
-                    enabled: true,
-                    label: l10n.runDiscardA11yLabel,
-                    hint: l10n.runDiscardA11yHint,
-                    child: GestureDetector(
-                      onTap: onDiscard,
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Icon(
-                          Icons.delete_outline,
-                          size: 24,
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Pause / Resume.
-                  // audit/accessibility (May 2026) Critical — see
-                  // above. Toggle label reflects current state.
-                  Semantics(
-                    button: true,
-                    enabled: true,
-                    toggled: paused,
-                    label: paused ? l10n.runResumeA11yLabel : l10n.runPauseA11yLabel,
-                    hint: paused
-                        ? l10n.runResumeA11yHint
-                        : l10n.runPauseA11yHint,
-                    child: GestureDetector(
-                      onTap: onPauseToggle,
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: paused ? semantic.success : semantic.warning,
-                        ),
-                        child: Center(
-                          child: Icon(
-                            paused ? Icons.play_arrow : Icons.pause,
-                            size: 24,
-                            color: paused
-                                ? semantic.onSuccess
-                                : semantic.onWarning,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  // Stop button — hold-to-stop, 800ms. Prevents accidental
-                  // one-tap stops mid-run.
-                  if (onHoldComplete case final stop?) ...[
-                    HoldToStopButton(onHoldComplete: stop),
-                    const SizedBox(width: 16),
-                  ],
-                  // Lap button.
-                  // audit/accessibility (May 2026) Critical — same fix
-                  // pattern. Lap count is announced so a screen-reader
-                  // user knows how many laps the gesture produced.
-                  Semantics(
-                    button: true,
-                    enabled: true,
-                    label: lapCount > 0
-                        ? l10n.runMarkLapWithCountA11yLabel(lapCount)
-                        : l10n.runMarkLapA11yLabel,
-                    hint: l10n.runMarkLapA11yHint,
-                    child: GestureDetector(
-                      onTap: onLap,
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: theme.colorScheme.primaryContainer,
-                        ),
-                        child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Icon(
-                            Icons.flag_outlined,
-                            size: 24,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
-                          if (lapCount > 0)
-                            Positioned(
-                              right: 6,
-                              top: 6,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: semantic.danger,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 14,
-                                  minHeight: 14,
-                                ),
-                                child: Text(
-                                  '$lapCount',
-                                  style: theme.textTheme.labelSmall?.copyWith(
-                                    color: semantic.onDanger,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  ),
-                ],
-              ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ),
         ],
       ),
+    );
+  }
+
+  Widget _row(ThemeData theme, AppLocalizations l10n,
+      List<LiveStatField> fields, {required bool hero}) {
+    return Row(
+      children: [
+        for (var i = 0; i < fields.length; i++) ...[
+          if (i > 0) _divider(theme),
+          Expanded(child: _tile(l10n, fields[i], hero: hero)),
+        ],
+      ],
+    );
+  }
+
+  Widget _tile(AppLocalizations l10n, LiveStatField field,
+      {required bool hero}) {
+    final (label, value, unit) = switch (field) {
+      LiveStatField.distance =>
+        (l10n.runStatDistance, widget.distanceValue, widget.distanceUnit),
+      LiveStatField.pace =>
+        (widget.primaryLabel, widget.primaryValue, widget.primaryUnit),
+      LiveStatField.avgPace =>
+        (widget.secondaryLabel, widget.secondaryValue, widget.primaryUnit),
+      LiveStatField.heartRate =>
+        (l10n.runStatHeartRate, '${widget.bpm ?? '-'}', l10n.runUnitBpm),
+      LiveStatField.elevation =>
+        (l10n.runStatElevation, widget.elevation, widget.elevationUnit),
+      LiveStatField.cadence =>
+        (l10n.runStatCadence, widget.cadence, l10n.runUnitSpm),
+      LiveStatField.calories =>
+        (l10n.runStatCalories, widget.calories, l10n.runUnitKcal),
+      LiveStatField.steps => (l10n.runStatSteps, widget.steps, null),
+    };
+    return hero
+        ? StatTile.large(label: label, value: value, unit: unit)
+        : StatTile.medium(label: label, value: value, unit: unit);
+  }
+
+  Widget _dots(ThemeData theme, int page, int count) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < count; i++)
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            // The current page is a pill as well as a darker shade, so it
+            // does not lean on colour alone.
+            width: i == page ? 16 : 6,
+            height: 6,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.pill),
+              color: i == page
+                  ? theme.colorScheme.onSurface
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _controls(
+      BuildContext context, ThemeData theme, AppLocalizations l10n) {
+    final semantic = AppSemanticColors.of(context);
+    final paused = widget.paused;
+    final lapCount = widget.lapCount;
+    // Fixed-size controls between gaps that give way first: every button
+    // keeps its tap size and the row cannot overflow on a narrow phone.
+    const gap = Flexible(child: SizedBox(width: 16));
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Discard button.
+        // audit/accessibility (May 2026) Critical: the bare
+        // GestureDetector + Container + Icon shape gave
+        // TalkBack no name or role — a screen-reader user
+        // couldn't end the run from this control.
+        // Semantics(button: true, label:) is the Flutter idiom.
+        Semantics(
+          button: true,
+          enabled: true,
+          label: l10n.runDiscardA11yLabel,
+          hint: l10n.runDiscardA11yHint,
+          child: GestureDetector(
+            onTap: widget.onDiscard,
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.surfaceContainerHighest,
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Icon(
+                Icons.delete_outline,
+                size: 24,
+                color: theme.colorScheme.outline,
+              ),
+            ),
+          ),
+        ),
+        gap,
+        // Pause / Resume.
+        // audit/accessibility (May 2026) Critical — see
+        // above. Toggle label reflects current state.
+        Semantics(
+          button: true,
+          enabled: true,
+          toggled: paused,
+          label: paused ? l10n.runResumeA11yLabel : l10n.runPauseA11yLabel,
+          hint: paused
+              ? l10n.runResumeA11yHint
+              : l10n.runPauseA11yHint,
+          child: GestureDetector(
+            onTap: widget.onPauseToggle,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: paused ? semantic.success : semantic.warning,
+              ),
+              child: Center(
+                child: Icon(
+                  paused ? Icons.play_arrow : Icons.pause,
+                  size: 24,
+                  color: paused
+                      ? semantic.onSuccess
+                      : semantic.onWarning,
+                ),
+              ),
+            ),
+          ),
+        ),
+        gap,
+        // Stop button — hold-to-stop, 800ms. Prevents accidental
+        // one-tap stops mid-run.
+        if (widget.onHoldComplete case final stop?) ...[
+          HoldToStopButton(onHoldComplete: stop),
+          gap,
+        ],
+        // Lap button.
+        // audit/accessibility (May 2026) Critical — same fix
+        // pattern. Lap count is announced so a screen-reader
+        // user knows how many laps the gesture produced.
+        Semantics(
+          button: true,
+          enabled: true,
+          label: lapCount > 0
+              ? l10n.runMarkLapWithCountA11yLabel(lapCount)
+              : l10n.runMarkLapA11yLabel,
+          hint: l10n.runMarkLapA11yHint,
+          child: GestureDetector(
+            onTap: widget.onLap,
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.primaryContainer,
+              ),
+              child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(
+                  Icons.flag_outlined,
+                  size: 24,
+                  color: theme.colorScheme.onPrimaryContainer,
+                ),
+                if (lapCount > 0)
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: semantic.danger,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 14,
+                        minHeight: 14,
+                      ),
+                      child: Text(
+                        '$lapCount',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: semantic.onDanger,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        ),
+      ],
     );
   }
 
@@ -6877,13 +7077,22 @@ class _HoldToStopButtonState extends State<HoldToStopButton>
       children: [
         button,
         const SizedBox(height: 6),
-        ExcludeSemantics(
-          child: Text(
-            l10n.runHoldToStopHint,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+        // Bounded so a long or text-scaled caption wraps under the button
+        // instead of widening its slot and pushing the control row off the
+        // screen (#1300 §1).
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: widget.size + 24),
+          child: ExcludeSemantics(
+            child: Text(
+              l10n.runHoldToStopHint,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
           ),
         ),
       ],
@@ -7118,113 +7327,6 @@ class _LastRunCard extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-/// Idle-state banner that surfaces a live race. Armed → tells the user
-/// to get ready; running → shows elapsed since the server's start and a
-/// prompt to tap Start.
-class _RaceBanner extends StatefulWidget {
-  final ActiveRace race;
-  const _RaceBanner({required this.race});
-
-  @override
-  State<_RaceBanner> createState() => _RaceBannerState();
-}
-
-class _RaceBannerState extends State<_RaceBanner> {
-  Timer? _tick;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.race.isRunning) {
-      _tick = Timer.periodic(
-        const Duration(milliseconds: 500),
-        (_) { if (mounted) setState(() {}); },
-      );
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _RaceBanner old) {
-    super.didUpdateWidget(old);
-    if (!old.race.isRunning && widget.race.isRunning) {
-      _tick = Timer.periodic(
-        const Duration(milliseconds: 500),
-        (_) { if (mounted) setState(() {}); },
-      );
-    } else if (old.race.isRunning && !widget.race.isRunning) {
-      _tick?.cancel();
-      _tick = null;
-    }
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final l10n = AppLocalizations.of(context);
-    final race = widget.race;
-    final isRunning = race.isRunning && race.startedAt != null;
-    final elapsed = isRunning
-        ? DateTime.now().difference(race.startedAt!).inSeconds
-        : 0;
-    final label = race.eventTitle ?? l10n.runRaceFallbackTitle;
-    final primary = theme.colorScheme.primary;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: primary.withValues(alpha: 0.08),
-        border: Border.all(color: primary, width: 1.5),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            race.isArmed ? Icons.sports_score : Icons.directions_run,
-            color: primary,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  race.isArmed ? l10n.runRaceArmed : l10n.runRaceLive,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: primary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                Text(
-                  race.isArmed
-                      ? l10n.runRaceWaitingForGo(label)
-                      : l10n.runRaceElapsedTapStart(label, _fmt(elapsed)),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _fmt(int s) {
-    final h = s ~/ 3600;
-    final m = (s % 3600) ~/ 60;
-    final sec = s % 60;
-    if (h > 0) return '$h:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
-    return '$m:${sec.toString().padLeft(2, '0')}';
   }
 }
 

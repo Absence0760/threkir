@@ -6,6 +6,7 @@ import {
 	RUNNER_PUBLIC_ROUTE_ID
 } from '../fixtures/seeded-data';
 import { USER_A, USER_B } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Surface-level detail tests — small focused checks on individual
@@ -61,6 +62,11 @@ test.describe('detail surface — routes', () => {
 
 test.describe('detail surface — plans', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	// The sections below today's card start shut (decisions § 2375).
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	test('/plans/<seeded> renders the progress ring', async ({ page }) => {
 		await page.goto('/plans/a1a1eada-aaaa-0000-0000-000000000001');

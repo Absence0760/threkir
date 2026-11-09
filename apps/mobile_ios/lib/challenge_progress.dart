@@ -12,7 +12,7 @@ library;
 
 import 'package:core_models/core_models.dart' show isPlausibleRunDuration;
 
-enum ChallengeMetric { distance, duration, vert, activityCount, streakDays }
+enum ChallengeMetric { distance, duration, vert, activityCount, streakDays, parkCourses }
 
 /// Fraction of the goal reached, clamped to 0..1. Null goal (pure-ranking
 /// board) → null: there is no bar to fill.
@@ -91,6 +91,10 @@ num metricFromActivity(
       return 1;
     case ChallengeMetric.streakDays:
       return 1;
+    case ChallengeMetric.parkCourses:
+      // A course completion lands in global_segment_efforts, not the activity
+      // summary, so the server board is the only source.
+      return 0;
   }
 }
 

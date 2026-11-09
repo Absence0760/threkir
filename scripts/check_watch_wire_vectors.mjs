@@ -649,7 +649,7 @@ export const CONSTANT_ROWS = [
     why: 'the threshold a climb must clear before it counts as gain. A rail without it — which is what the firmware shipped with until this round — reads a plus/minus 1 m barometric sawtooth as metres of phantom vert per minute, on the device whose headline metric is cumulative climb. It is a THRESHOLD rather than a wire field, so no format version moves when it drifts and no decode fails; the three rails simply answer different numbers for the same track',
     rails: [
       rustRail(RS_ROUTE_SIMPLIFY, rustConst('ELEVATION_GAIN_MIN_DELTA_M')),
-      dartRail('apps/mobile_android/lib/route_simplify.dart', dartConst('kElevationGainMinDeltaM')),
+      dartRail('packages/core_models/lib/src/elevation_gain.dart', dartConst('kElevationGainMinDeltaM')),
       otherRail('apps/web/src/lib/routes/route_simplify.ts', tsConst('ELEVATION_GAIN_MIN_DELTA_M')),
     ],
   },

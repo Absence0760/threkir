@@ -5,6 +5,7 @@ import { lookupSharedClub } from './share_club_lookup';
 import { lookupSharedEvent } from './share_event_lookup';
 import { lookupSharedBadge } from './share_badge_lookup';
 import { lookupSharedRace } from './share_race_lookup';
+import { lookupSharedCourse } from './share_course_lookup';
 
 // The club / event / badge / race lookups serve logged-out /share/* pages.
 // RLS is the first wall; these pin the second one the lookups themselves
@@ -169,4 +170,84 @@ test('club, event, badge, race: missing config makes no request at all', async (
 	assert.deepEqual(await lookupSharedBadge(ID, null), { badge: null, displayName: null });
 	assert.deepEqual(await lookupSharedRace(ID, { supabaseUrl: '', supabaseAnonKey: 'anon' }), { race: null });
 	assert.equal(requests.length, 0);
+});
+
+test('course: reads park_courses with inner joins on its park and segment, keyed by the three slugs', async () => {
+	stubPostgrest({});
+	await lookupSharedCourse('us-va/fixture-state-park/lake-loop', CONFIG);
+	assert.equal(requests.length, 1);
+	assert.equal(requests[0].pathname, '/rest/v1/park_courses');
+	const select = requests[0].searchParams.get('select') ?? '';
+	assert.match(select, /global_segments!inner\(/);
+	assert.match(select, /parks!inner\(/);
+	// Nothing about a runner: no effort, board or profile is read.
+	assert.doesNotMatch(select, /effort|user_id|display_name|profile/);
+	assert.equal(requests[0].searchParams.get('slug'), 'eq.lake-loop');
+	assert.equal(requests[0].searchParams.get('parks.slug'), 'eq.fixture-state-park');
+	assert.equal(requests[0].searchParams.get('parks.region_code'), 'eq.US-VA');
+});
+
+test('course: a malformed key is a quiet not-found that never reaches PostgREST', async () => {
+	stubPostgrest({});
+	assert.deepEqual(await lookupSharedCourse('us-va/only-two', CONFIG), { course: null });
+	assert.deepEqual(await lookupSharedCourse("us-va/park/bad'slug", CONFIG), { course: null });
+	assert.equal(requests.length, 0);
+	assert.equal(alarmed(), false);
+});
+
+test('course: a PostgREST error raises the alarm tag; a clean miss does not; missing config asks nothing', async () => {
+	stubPostgrest({ '/rest/v1/park_courses': { status: 400, body: { code: 'PGRST100', message: 'bad' } } });
+	assert.deepEqual(await lookupSharedCourse('us-va/p/c', CONFIG), { course: null });
+	assert.equal(alarmed(), true);
+
+	stubPostgrest({ '/rest/v1/park_courses': { body: [] } });
+	assert.deepEqual(await lookupSharedCourse('us-va/p/c', CONFIG), { course: null });
+	assert.equal(alarmed(), false);
+
+	stubPostgrest({});
+	assert.deepEqual(await lookupSharedCourse('us-va/p/c', { supabaseUrl: '', supabaseAnonKey: 'anon' }), {
+		course: null,
+	});
+	assert.equal(requests.length, 0);
+});
+
+test('course: a row maps onto the course, its segment geometry and its park', async () => {
+	stubPostgrest({
+		'/rest/v1/park_courses': {
+			body: [
+				{
+					slug: 'lake-loop',
+					course_shape: 'loop',
+					status: 'open',
+					status_note: null,
+					geometry_source: 'osm',
+					difficulty: null,
+					global_segments: {
+						name: 'Lake Loop',
+						description: null,
+						distance_m: '5120',
+						elevation_m: null,
+						surface: 'trail',
+						waypoints: [{ lat: 37.1, lng: -77.5 }, { lat: 'x', lng: 1 }, { lat: 37.2, lng: -77.6, ele: 3 }],
+					},
+					parks: {
+						slug: 'fixture-state-park',
+						name: 'Fixture State Park',
+						region_code: 'US-VA',
+						country_code: 'US',
+						agency: 'state',
+						website_url: null,
+					},
+				},
+			],
+		},
+	});
+	const { course } = await lookupSharedCourse('us-va/fixture-state-park/lake-loop', CONFIG);
+	assert.equal(course?.segment.name, 'Lake Loop');
+	assert.equal(course?.segment.distance_m, 5120);
+	assert.deepEqual(course?.segment.waypoints, [
+		{ lat: 37.1, lng: -77.5, ele: null },
+		{ lat: 37.2, lng: -77.6, ele: 3 },
+	]);
+	assert.equal(course?.park.name, 'Fixture State Park');
 });

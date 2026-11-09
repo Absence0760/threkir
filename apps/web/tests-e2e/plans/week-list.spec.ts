@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/test';
 
 import { USER_A } from '../fixtures/users';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, planSectionsOpen } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — the week-by-week list (issue #1186).
@@ -9,7 +9,8 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  * The seed slides the Richmond Half plan so today is day 17: week 3 of 12
  * (index 2). Weeks 1 and 2 are behind the runner, so they fold into one
  * summary row and the current week leads the section; the hero's week pill
- * jumps to it.
+ * jumps to it. The list starts shut (decisions § 2375), so a test about its
+ * contents seeds it open, as a runner who had opened it would find it.
  */
 
 const PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
@@ -22,6 +23,7 @@ test.describe('/plans/[id] — week list', () => {
 	});
 
 	test('earlier weeks fold into one summary row that expands', async ({ page }) => {
+		await acceptCookieConsent(page, planSectionsOpen(USER_A.id));
 		await page.goto(`/plans/${PLAN_ID}`);
 		const section = page.locator('section.weeks');
 		const summary = section.getByTestId('plan-earlier-weeks');
@@ -47,6 +49,7 @@ test.describe('/plans/[id] — week list', () => {
 
 	test('the week pill jumps to the current week', async ({ page }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
+		await acceptCookieConsent(page, planSectionsOpen(USER_A.id));
 		await page.goto(`/plans/${PLAN_ID}`);
 		const current = page.locator('#plan-week-current');
 		await expect(page.getByTestId('week-pill')).toBeVisible({ timeout: 10_000 });
@@ -58,11 +61,9 @@ test.describe('/plans/[id] — week list', () => {
 		await expect(current.locator('.week-num')).toHaveText('Week 3');
 	});
 
-	test('the week pill opens a collapsed week list before jumping', async ({ page }) => {
+	test('the week pill opens the shut week list before jumping', async ({ page }) => {
 		await page.goto(`/plans/${PLAN_ID}`);
-		const summary = page.locator('#plan-weeks-title');
-		await expect(page.locator('section.weeks details')).toHaveAttribute('open', '');
-		await summary.click();
+		await expect(page.getByTestId('week-pill')).toBeVisible({ timeout: 10_000 });
 		await expect(page.locator('section.weeks details')).not.toHaveAttribute('open', '');
 
 		await page.getByTestId('week-pill').click();
@@ -71,6 +72,7 @@ test.describe('/plans/[id] — week list', () => {
 	});
 
 	test('an upcoming day draws no box of its own inside the week card', async ({ page }) => {
+		await acceptCookieConsent(page, planSectionsOpen(USER_A.id));
 		await page.goto(`/plans/${PLAN_ID}`);
 		const upcoming = page
 			.locator('#plan-week-current ~ .week .day[data-status="upcoming"]')

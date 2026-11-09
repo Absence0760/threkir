@@ -149,6 +149,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapLatestStartLabel => 'Latest start';
 
   @override
+  String get recapParkCoursesLabel => 'Park courses';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'in $n parks',
+      one: 'in $n park',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Parks you ran';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'Choose route';
 
   @override
@@ -779,6 +807,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboardTrendGroupRecentHint => 'Your latest sessions';
+
+  @override
+  String get dashboardHeroNothingPlanned => 'Nothing planned today';
+
+  @override
+  String get dashboardHeroRestDay => 'Rest day';
+
+  @override
+  String get dashboardHeroRestDayBody => 'Nothing on the plan today.';
+
+  @override
+  String dashboardHeroReadiness(int score) {
+    return 'Readiness $score';
+  }
+
+  @override
+  String get dashboardHideFromHome => 'Hide from Home';
+
+  @override
+  String dashboardCardHidden(String name) {
+    return '$name is hidden. You can bring it back in Settings.';
+  }
+
+  @override
+  String get dashboardHideCardFailed => 'Couldn\'t hide that card. Try again.';
 
   @override
   String get readinessFromLoadOnly =>
@@ -2122,6 +2175,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runExpandStatsPanel => 'Expand stats panel';
+
+  @override
+  String runStatsPageA11yLabel(int page, int total) {
+    return 'Stats page $page of $total';
+  }
+
+  @override
+  String get runStatsNextPageA11yHint => 'Shows the next stats';
 
   @override
   String runRouteRemaining(String distance) {
@@ -4333,6 +4394,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get routeDetailExportCreditFailed =>
+      'Couldn\'t check this route\'s map credits, so nothing was exported. Try again.';
+
+  @override
   String get routeDetailClubsLoadTimeout =>
       'Couldn\'t load your clubs — check your network.';
 
@@ -4742,6 +4807,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get heatmapHeatDensity => 'Heat density';
+
+  @override
+  String get heatmapUpcomingRaces => 'Upcoming races';
+
+  @override
+  String get heatmapViewRace => 'View race';
+
+  @override
+  String get heatmapRaceFallbackName => 'Race';
 
   @override
   String get heatmapResetFilters => 'Reset filters';
@@ -5232,6 +5306,136 @@ class AppLocalizationsEn extends AppLocalizations {
   String profileNotifPlanAiEdit(String name) {
     return '$name applied AI-suggested changes to a plan you assigned';
   }
+
+  @override
+  String profileNotifPlanChangeRequest(String name) {
+    return '$name suggested a change to a plan you assigned';
+  }
+
+  @override
+  String profileNotifPlanChangeDecision(String name) {
+    return '$name answered your suggested plan change';
+  }
+
+  @override
+  String get planChangeTitle => 'Suggested plan change';
+
+  @override
+  String get planChangeWaitingForCoach => 'Waiting for your coach to answer';
+
+  @override
+  String get planChangeWaitingForYou =>
+      'Your athlete is waiting for your answer';
+
+  @override
+  String get planChangeApprovedByCoach => 'Approved by the coach and applied';
+
+  @override
+  String get planChangeApprovedInPartByCoach =>
+      'Approved in part by the coach; the lines shown were applied';
+
+  @override
+  String get planChangeDeclinedByCoach => 'Declined by the coach';
+
+  @override
+  String get planChangeWithdrawnByAthlete => 'Withdrawn by the athlete';
+
+  @override
+  String get planChangeAppliedByAthlete =>
+      'Applied by the athlete without the coach';
+
+  @override
+  String planChangeMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String planChangeIncludeLine(String line) {
+    return 'Include this change: $line';
+  }
+
+  @override
+  String planChangeWeekLabel(int n) {
+    return 'Week $n target';
+  }
+
+  @override
+  String get planChangeSkipped => 'Skipped';
+
+  @override
+  String planChangeWeekTarget(int n, String from, String to) {
+    return 'Week $n target: $from → $to';
+  }
+
+  @override
+  String get planChangeUnreadable =>
+      'Some of these changes can no longer be shown.';
+
+  @override
+  String planChangeCoachNote(String note) {
+    return 'Coach\'s note: $note';
+  }
+
+  @override
+  String get planChangeNoteLabel => 'Note to your athlete (optional)';
+
+  @override
+  String get planChangeNotePlaceholder => 'Why you approved or declined';
+
+  @override
+  String get planChangeDecline => 'Decline';
+
+  @override
+  String get planChangeApprove => 'Approve';
+
+  @override
+  String get planChangeApproveSelected => 'Approve selected';
+
+  @override
+  String get planChangeApplyMyselfHint =>
+      'You own this plan, so you can apply the change yourself. Your coach will be told.';
+
+  @override
+  String get planChangeWithdraw => 'Withdraw';
+
+  @override
+  String get planChangeApplyMyself => 'Apply it myself';
+
+  @override
+  String get planChangeWithdrawConfirmTitle =>
+      'Withdraw this suggested change?';
+
+  @override
+  String get planChangeWithdrawConfirmMessage =>
+      'Your coach will no longer be asked to approve it. To suggest it again, ask the Coach to adjust your plan again.';
+
+  @override
+  String get planChangeKeep => 'Keep it';
+
+  @override
+  String planChangeFailed(String error) {
+    return 'Couldn\'t update the suggested change: $error';
+  }
+
+  @override
+  String get planChangeApprovedToast =>
+      'Change approved and applied to the plan';
+
+  @override
+  String get planChangeDeclinedToast => 'Change declined';
+
+  @override
+  String get planChangeWithdrawnToast => 'Suggestion withdrawn';
+
+  @override
+  String get planChangeAppliedToast =>
+      'Change applied to your plan; your coach has been told';
+
+  @override
+  String get planChangeLoadFailed => 'Couldn\'t load suggested plan changes.';
+
+  @override
+  String get planChangeRetry => 'Try again';
 
   @override
   String get profileNotifWorkoutReminder =>
@@ -10672,6 +10876,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No efforts yet — be the first to run this segment.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'You hold this crown — $label.';
   }
@@ -14578,6 +14786,28 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get challengesMetricParkCourses => 'Park courses';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'courses';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Counts park courses in $region';
+  }
+
+  @override
   String get challengesLeaveConfirmTitle => 'Leave challenge?';
 
   @override
@@ -14760,6 +14990,168 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get racesSourceManual => 'Added by a runner';
+
+  @override
+  String racesSourceClub(String club) {
+    return 'Added by $club';
+  }
+
+  @override
+  String raceCourseSourceOfficial(String club) {
+    return 'Official course from $club';
+  }
+
+  @override
+  String raceCourseSourceTraced(String club) {
+    return 'Course drawn by $club from the race\'s published map';
+  }
+
+  @override
+  String raceCourseChecked(String date) {
+    return 'last checked $date';
+  }
+
+  @override
+  String raceCourseUpdated(String date) {
+    return 'Course updated $date';
+  }
+
+  @override
+  String get raceCourseToolsHeading => 'Race course';
+
+  @override
+  String get raceCourseClaim => 'Claim this race';
+
+  @override
+  String get raceCourseClaimTitle => 'Claim this race for your club';
+
+  @override
+  String get raceCourseClaimBody =>
+      'Claiming marks the race as verified and lets your club link its course. Claim only a race your club organises or draws courses for.';
+
+  @override
+  String get raceCourseClaimClub => 'Club';
+
+  @override
+  String get raceCourseClaimConfirm => 'Claim race';
+
+  @override
+  String get raceCourseClaimed => 'Race claimed.';
+
+  @override
+  String get raceCourseClaimFailed => 'Couldn\'t claim this race.';
+
+  @override
+  String get raceCourseLinkCourse => 'Link course';
+
+  @override
+  String get raceCourseChangeCourse => 'Change course';
+
+  @override
+  String get raceCourseLinkTitle => 'Link the course';
+
+  @override
+  String get raceCourseLinkRoute => 'Course route';
+
+  @override
+  String get raceCourseLinkNoRoutes =>
+      'Your club has no public routes yet. Create one from the club\'s Routes tab, make it public, then link it here.';
+
+  @override
+  String get raceCourseLinkSourceLabel => 'Where the course comes from';
+
+  @override
+  String get raceCourseSourceOptionOfficial =>
+      'The organiser\'s official course';
+
+  @override
+  String get raceCourseSourceOptionTraced =>
+      'Traced from the race\'s published map';
+
+  @override
+  String get raceCourseLinkConfirm => 'Link course';
+
+  @override
+  String get raceCourseLinked => 'Course linked.';
+
+  @override
+  String get raceCourseLinkFailed => 'Couldn\'t update the course.';
+
+  @override
+  String get raceCourseMarkChecked => 'Mark course checked';
+
+  @override
+  String get raceCourseCheckedDone => 'Course marked as checked.';
+
+  @override
+  String get raceCourseSuggest => 'Suggest a course';
+
+  @override
+  String get raceCourseSuggestTitle => 'Suggest a course for this race';
+
+  @override
+  String get raceCourseSuggestBody =>
+      'Pick one of your public routes. The race\'s organiser reviews it, or a verified club if nobody has claimed the race yet.';
+
+  @override
+  String get raceCourseSuggestRoute => 'Your route';
+
+  @override
+  String get raceCourseSuggestNoRoutes =>
+      'You have no public routes yet. Make a route public to suggest it.';
+
+  @override
+  String get raceCourseSuggestNote => 'Note (optional)';
+
+  @override
+  String get raceCourseSuggestConfirm => 'Send suggestion';
+
+  @override
+  String get raceCourseSuggested => 'Suggestion sent.';
+
+  @override
+  String get raceCourseSuggestFailed => 'Couldn\'t send your suggestion.';
+
+  @override
+  String get raceCourseSuggestPending =>
+      'You suggested a course. It\'s waiting for review.';
+
+  @override
+  String get raceCourseUnlink => 'Remove course';
+
+  @override
+  String get raceCourseUnlinked => 'Course removed.';
+
+  @override
+  String get raceCourseReviewHeading => 'Course suggestions';
+
+  @override
+  String get raceCourseReviewClaimFirst =>
+      'Claim this race to approve or reject a suggestion.';
+
+  @override
+  String get raceCourseReviewApprove => 'Approve';
+
+  @override
+  String get raceCourseReviewReject => 'Reject';
+
+  @override
+  String get raceCourseReviewApproveTitle => 'Approve this course';
+
+  @override
+  String raceCourseReviewApproveBody(String route) {
+    return 'The course must be a public route your club owns. Pick the club\'s copy of $route.';
+  }
+
+  @override
+  String get raceCourseReviewApproved =>
+      'Suggestion approved and course linked.';
+
+  @override
+  String get raceCourseReviewRejected => 'Suggestion rejected.';
+
+  @override
+  String get raceCourseReviewFailed => 'Couldn\'t review the suggestion.';
 
   @override
   String get racesDetailShare => 'Share';
@@ -15346,6 +15738,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => 'Completed 10 training plans';
+
+  @override
+  String get badgesParkCourses1Label => 'First park course';
+
+  @override
+  String get badgesParkCourses1Desc => 'Completed a park course';
+
+  @override
+  String get badgesParkCourses5Label => 'Park regular';
+
+  @override
+  String get badgesParkCourses5Desc => 'Completed 5 different park courses';
+
+  @override
+  String get badgesParkCourses10Label => 'Trail collector';
+
+  @override
+  String get badgesParkCourses10Desc => 'Completed 10 different park courses';
+
+  @override
+  String get badgesParkCourses25Label => 'Park explorer';
+
+  @override
+  String get badgesParkCourses25Desc => 'Completed 25 different park courses';
+
+  @override
+  String get badgesParkComplete1Label => 'Park finisher';
+
+  @override
+  String get badgesParkComplete1Desc => 'Completed every course in a park';
+
+  @override
+  String get badgesParkComplete3Label => 'Three parks finished';
+
+  @override
+  String get badgesParkComplete3Desc => 'Completed every course in 3 parks';
+
+  @override
+  String get badgesParkComplete10Label => 'Park completionist';
+
+  @override
+  String get badgesParkComplete10Desc => 'Completed every course in 10 parks';
+
+  @override
+  String get badgesParkPassport1Label => 'Park passport';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Completed a course in every park of a state';
+
+  @override
+  String get badgesParkPassport3Label => 'Passport stamped';
+
+  @override
+  String get badgesParkPassport3Desc => 'Completed a park passport in 3 states';
+
+  @override
+  String get badgesParkPassport10Label => 'Passport collector';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Completed a park passport in 10 states';
 
   @override
   String get racePredictorTitle => 'Race-time predictor';
@@ -16477,6 +16931,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String rateLimitEditMessage(String wait) {
+    return 'You\'re editing messages too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitOpenMessageRequest(String wait) {
+    return 'You\'ve started a lot of message requests today — please wait $wait and try again.';
+  }
+
+  @override
   String rateLimitGeneric(String wait) {
     return 'You\'re doing that too quickly — please wait $wait and try again.';
   }
@@ -17600,7 +18064,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesSendNotAllowed =>
-      'You can only message people you follow or who follow you, and who haven\'t blocked you.';
+      'You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other.';
 
   @override
   String get messagesLoadEarlier => 'Load earlier messages';
@@ -17651,6 +18115,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesUnsendFailed => 'Couldn\'t unsend the message.';
+
+  @override
+  String get messagesEdit => 'Edit';
+
+  @override
+  String get messagesEdited => 'Edited';
+
+  @override
+  String get messagesEditTitle => 'Edit message';
+
+  @override
+  String get messagesEditSave => 'Save';
+
+  @override
+  String get messagesEditFailed => 'Couldn\'t edit the message.';
+
+  @override
+  String get messagesEditClosed => 'This message can no longer be edited.';
 
   @override
   String get messagesReport => 'Report';
@@ -17711,6 +18193,44 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesBackToInbox => 'Back to inbox';
+
+  @override
+  String get messagesRequestCapReached =>
+      'You can send up to 3 messages until they accept your request.';
+
+  @override
+  String messagesRequestsCount(int count) {
+    return 'Requests ($count)';
+  }
+
+  @override
+  String messagesRequestNotice(String name) {
+    return '$name wants to message you. They won\'t know you\'ve read this unless you accept.';
+  }
+
+  @override
+  String get messagesRequestAccept => 'Accept';
+
+  @override
+  String get messagesRequestDecline => 'Decline';
+
+  @override
+  String get messagesRequestDeclineConfirmTitle => 'Decline this request?';
+
+  @override
+  String get messagesRequestDeclineConfirmMessage =>
+      'Their messages leave your Requests, and they can\'t message you again unless you message them first. They won\'t be told.';
+
+  @override
+  String get messagesRequestAcceptedToast => 'Request accepted';
+
+  @override
+  String get messagesRequestDeclinedToast => 'Request declined';
+
+  @override
+  String messagesRequestActionFailed(String error) {
+    return 'Couldn\'t update the request: $error';
+  }
 
   @override
   String get messagesMutedMark => 'Muted';
@@ -19637,6 +20157,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prefsDisclosureLevel => 'How much detail';
 
   @override
+  String get prefsHomeCards => 'Home cards';
+
+  @override
+  String get prefsHomeCardsHint =>
+      'Untick a group to take it off Home. The choice follows you to every device.';
+
+  @override
   String get prefsDisclosureAuto => 'Automatic';
 
   @override
@@ -19960,6 +20487,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCardBadgeKicker => 'Badge earned';
 
   @override
+  String get shareCardKindCourse => 'Park course';
+
+  @override
+  String get shareCardCourseKicker => 'Park course time';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return '#$rank in $season';
+  }
+
+  @override
   String get runDetailSharePr => 'Share PR card';
 
   @override
@@ -20125,5 +20663,691 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String runDetailBlockedDurationTooLong(int hours) {
     return 'This run lasts longer than $hours hours, which no run can, so the cloud store refuses it and trying again will never work. Correct its duration to upload it.';
+  }
+
+  @override
+  String ttsDriveAhead(String distance, String kind, String label) {
+    return 'In $distance: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAheadKind(String distance, String kind) {
+    return 'In $distance: $kind.';
+  }
+
+  @override
+  String ttsDriveAt(String kind, String label) {
+    return 'Now: $kind, $label.';
+  }
+
+  @override
+  String ttsDriveAtKind(String kind) {
+    return 'Now: $kind.';
+  }
+
+  @override
+  String ttsDrivePassed(String kind, String label) {
+    return 'Just passed: $kind, $label.';
+  }
+
+  @override
+  String ttsDrivePassedKind(String kind) {
+    return 'Just passed: $kind.';
+  }
+
+  @override
+  String ttsDriveServices(String services) {
+    return 'Services: $services.';
+  }
+
+  @override
+  String ttsDriveClimb(String distance, String grade) {
+    return '$distance at about $grade percent.';
+  }
+
+  @override
+  String ttsDriveCutoffClock(String clock) {
+    return 'Cut-off at $clock.';
+  }
+
+  @override
+  String ttsDriveCutoffElapsed(String time) {
+    return 'Cut-off $time after the start.';
+  }
+
+  @override
+  String get ttsDriveStarted => 'Drive notes on.';
+
+  @override
+  String ttsDriveLegDone(String done, String next) {
+    return 'Leg $done done. Leg $next is ready.';
+  }
+
+  @override
+  String get ttsDriveFinished =>
+      'You\'ve reached the finish. Drive notes stopped.';
+
+  @override
+  String get ttsDriveAbandoned =>
+      'You\'ve been off the course for a while, so drive notes have stopped.';
+
+  @override
+  String get courseDriveTitle => 'Drive this course';
+
+  @override
+  String get courseDriveNoticeTitle => 'Before you drive';
+
+  @override
+  String get courseDriveNoticeBody =>
+      'Use this with a passenger or a mounted phone, and don\'t touch it while driving. Follow road rules and signs. Course roads may be closed on race day, and the Maps route may not match the course.';
+
+  @override
+  String get courseDriveNoticeAccept => 'I understand';
+
+  @override
+  String get courseDriveMapsApp => 'Open in';
+
+  @override
+  String get courseDriveAppGoogle => 'Google Maps';
+
+  @override
+  String get courseDriveAppApple => 'Apple Maps';
+
+  @override
+  String get courseDriveAppWaze => 'Waze';
+
+  @override
+  String get courseDriveToStart => 'Drive to the start';
+
+  @override
+  String get courseDriveLegsHeading => 'Legs';
+
+  @override
+  String courseDriveLeg(String n, String from, String to) {
+    return 'Leg $n: $from to $to';
+  }
+
+  @override
+  String get courseDriveGuidanceOnly =>
+      'The Maps route is guidance only. The notes follow the real course.';
+
+  @override
+  String get courseDriveChecking => 'Checking which stretches Maps can follow…';
+
+  @override
+  String get courseDriveAllDrivable => 'Maps can follow the whole course.';
+
+  @override
+  String get courseDriveCheckFailed =>
+      'We couldn\'t check which stretches Maps can follow.';
+
+  @override
+  String get courseDriveUndrivableHeading =>
+      'Maps can\'t follow these stretches';
+
+  @override
+  String courseDriveStretch(String from, String to) {
+    return '$from to $to';
+  }
+
+  @override
+  String get courseDriveNotesHeading => 'Course notes';
+
+  @override
+  String get courseDriveNoNotes => 'This course has no markers to read out.';
+
+  @override
+  String get courseDriveStart => 'Start spoken notes';
+
+  @override
+  String get courseDriveStop => 'Stop';
+
+  @override
+  String get courseDriveWaiting =>
+      'Head to the course. Notes start when you reach it.';
+
+  @override
+  String courseDriveNextIn(String distance) {
+    return 'Next note in $distance';
+  }
+
+  @override
+  String get courseDriveNoMoreNotes => 'No more notes ahead.';
+
+  @override
+  String get courseDriveFinished => 'You reached the finish.';
+
+  @override
+  String get courseDriveAbandoned =>
+      'Stopped: you were off the course for 10 minutes.';
+
+  @override
+  String get courseDriveLocationDenied =>
+      'Location is off, so the notes can\'t follow you.';
+
+  @override
+  String get courseDriveLoadFailed => 'Couldn\'t load this course.';
+
+  @override
+  String get courseDriveOpenFailed => 'Couldn\'t open the Maps app.';
+
+  @override
+  String courseDriveCutoffClock(String clock) {
+    return 'Cut-off at $clock';
+  }
+
+  @override
+  String courseDriveCutoffElapsed(String time) {
+    return 'Cut-off $time after the start';
+  }
+
+  @override
+  String courseDriveClimb(String distance, String grade) {
+    return '$distance at about $grade%';
+  }
+
+  @override
+  String get parksTitle => 'Park courses';
+
+  @override
+  String get parksIntro =>
+      'Standing time-trial courses in state and national parks. Run one on any day and your time lands on this year\'s board.';
+
+  @override
+  String get parksLoading => 'Loading park courses…';
+
+  @override
+  String get parksLoadFailed => 'Couldn\'t load park courses.';
+
+  @override
+  String get parksRetry => 'Retry';
+
+  @override
+  String get parksEmpty =>
+      'No park courses yet. The first ones are on their way.';
+
+  @override
+  String parksCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksBackToParks => 'All park courses';
+
+  @override
+  String get parksParkNotFoundTitle => 'Park not found';
+
+  @override
+  String get parksParkNotFoundBody =>
+      'This park isn\'t listed, or isn\'t listed any more.';
+
+  @override
+  String get parksCourseNotFoundTitle => 'Course not found';
+
+  @override
+  String get parksCourseNotFoundBody =>
+      'This course isn\'t listed, or isn\'t listed any more.';
+
+  @override
+  String get parksWebsite => 'Park website';
+
+  @override
+  String get parksNoCourses => 'No courses listed in this park yet.';
+
+  @override
+  String get parksAgencyNps => 'National Park Service';
+
+  @override
+  String get parksAgencyState => 'State park';
+
+  @override
+  String get parksAgencyCounty => 'County park';
+
+  @override
+  String get parksAgencyOther => 'Park';
+
+  @override
+  String get parksShapeLoop => 'Loop';
+
+  @override
+  String get parksShapeOutAndBack => 'Out and back';
+
+  @override
+  String get parksShapePointToPoint => 'Point to point';
+
+  @override
+  String get parksStatusOpen => 'Open';
+
+  @override
+  String get parksStatusClosed => 'Closed';
+
+  @override
+  String get parksStatusSeasonal => 'Seasonal';
+
+  @override
+  String get parksClosedBanner =>
+      'This course is closed. Its times and boards stay, but please don\'t run it until it reopens.';
+
+  @override
+  String parksStatusChecked(String date) {
+    return 'Status checked $date';
+  }
+
+  @override
+  String get parksDifficultyEasy => 'Easy';
+
+  @override
+  String get parksDifficultyModerate => 'Moderate';
+
+  @override
+  String get parksDifficultyHard => 'Hard';
+
+  @override
+  String get parksStatDistance => 'Distance';
+
+  @override
+  String get parksStatElevation => 'Elevation gain';
+
+  @override
+  String get parksStatShape => 'Shape';
+
+  @override
+  String get parksStatSurface => 'Surface';
+
+  @override
+  String get parksStatDifficulty => 'Difficulty';
+
+  @override
+  String get parksBoardFastest => 'Fastest';
+
+  @override
+  String get parksBoardCompletions => 'Most completions';
+
+  @override
+  String parksSeasonThisYear(int year) {
+    return 'This year ($year)';
+  }
+
+  @override
+  String get parksSeasonAllTime => 'All time';
+
+  @override
+  String parksCompletionDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days',
+      one: '$n day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get parksNoEfforts =>
+      'No times on this board yet. Run the course and yours is the first.';
+
+  @override
+  String get parksSignInForBoards => 'Sign in to see this course\'s boards.';
+
+  @override
+  String get parksSignIn => 'Sign in';
+
+  @override
+  String get parksBoardFailed => 'Couldn\'t load this board.';
+
+  @override
+  String get parksSafetyNotice =>
+      'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.';
+
+  @override
+  String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';
+
+  @override
+  String get parksAttributionNps =>
+      'Course line from National Park Service trail data';
+
+  @override
+  String get parksAttributionAgency =>
+      'Course line from the park\'s own trail data';
+
+  @override
+  String get parksAttributionTraced =>
+      'Course line traced against the park\'s published map';
+
+  @override
+  String get parksNavigate => 'Navigate this course';
+
+  @override
+  String get parksShareGpx => 'Share GPX';
+
+  @override
+  String get parksBrowseLink => 'Park courses';
+
+  @override
+  String get eventCourseLinesMapBoth =>
+      'Map of the course\'s start and finish lines';
+
+  @override
+  String get eventCourseLinesMapStart => 'Map of the course\'s start line';
+
+  @override
+  String get eventCourseLinesMapFinish => 'Map of the course\'s finish line';
+
+  @override
+  String get eventRacePreflightTitle => 'Check the courses before arming';
+
+  @override
+  String get eventRacePreflightBlockedTitle => 'This race can\'t be armed yet';
+
+  @override
+  String get eventRacePreflightFixOnWeb =>
+      'Course lines are edited in the event editor on the web.';
+
+  @override
+  String get eventRaceArmAnyway => 'Arm anyway';
+
+  @override
+  String get eventRacePreflightOk => 'OK';
+
+  @override
+  String eventRacePreflightNoFinish(String course) {
+    return '$course: no finish line or finish point, so runners finish by hand.';
+  }
+
+  @override
+  String eventRacePreflightNoStart(String course) {
+    return '$course: no start line. A self-timed race needs one.';
+  }
+
+  @override
+  String eventRacePreflightSelfCross(String course) {
+    return '$course: the route crosses its own finish line before the end, so a finish by the line could come early.';
+  }
+
+  @override
+  String eventRacePreflightFarStart(String course) {
+    return '$course: the start line is more than 100 m from the route.';
+  }
+
+  @override
+  String eventRacePreflightFarFinish(String course) {
+    return '$course: the finish line is more than 100 m from the route.';
+  }
+
+  @override
+  String get runRaceScheduled => 'Scheduled start';
+
+  @override
+  String runRaceStartsIn(String label, String time) {
+    return '$label starts in $time';
+  }
+
+  @override
+  String get runRaceSelfTimed => 'Self-timed';
+
+  @override
+  String get runRaceSelfTimedSoon => 'Self-timed window';
+
+  @override
+  String runRaceSelfTimedHow(String label, String time) {
+    return '$label: tap This run is my attempt, then Start, and cross the start line. Open until $time.';
+  }
+
+  @override
+  String runRaceSelfTimedOpens(String label, String time) {
+    return '$label opens at $time';
+  }
+
+  @override
+  String runRaceToStartLine(String distance) {
+    return '$distance to the start line';
+  }
+
+  @override
+  String get runRaceThisIsMyAttempt => 'This run is my attempt';
+
+  @override
+  String get runRaceAttemptReady => 'Attempt ready: tap Start';
+
+  @override
+  String get eventRaceArmEarly => 'Arm early';
+
+  @override
+  String get eventRaceScheduledNotYet =>
+      'Starts by itself at its scheduled time. Arm early to check the lines now.';
+
+  @override
+  String get eventRaceSelfTimedNotYet =>
+      'Opens by itself. Arm early to check the lines now.';
+
+  @override
+  String eventRaceGoAt(String time) {
+    return 'GO at $time';
+  }
+
+  @override
+  String eventRaceOpensAt(String time) {
+    return 'Opens at $time';
+  }
+
+  @override
+  String eventRaceOpenUntil(String time) {
+    return 'Open until $time';
+  }
+
+  @override
+  String eventRaceAutoEnds(String time) {
+    return 'Ends by itself at $time';
+  }
+
+  @override
+  String get eventRaceDelay => 'Delay start';
+
+  @override
+  String eventRaceDelayBy(String minutes) {
+    return '+$minutes min';
+  }
+
+  @override
+  String get eventRaceExtend => 'Extend window';
+
+  @override
+  String eventRaceExtendBy(String hours) {
+    return '+$hours h';
+  }
+
+  @override
+  String get eventRaceEndEarly => 'End window now';
+
+  @override
+  String get eventRaceJoinAttempt => 'Join and attempt';
+
+  @override
+  String eventRaceSelfTimedParticipant(String time) {
+    return 'Self-timed race open until $time. Join, then time your attempt from the run screen.';
+  }
+
+  @override
+  String get profileNotifRaceStartingSoon =>
+      'A race you\'re going to starts in about 10 minutes';
+
+  @override
+  String profileNotifRaceStartingSoonTitled(String title) {
+    return '\"$title\" starts in about 10 minutes';
+  }
+
+  @override
+  String get profileNotifRaceStartMoved =>
+      'The start of a race you\'re going to has moved';
+
+  @override
+  String profileNotifRaceStartMovedTitled(String title) {
+    return 'The start of \"$title\" has moved';
+  }
+
+  @override
+  String get prefsNotifyRaceStartingSoon => 'Race starting soon';
+
+  @override
+  String get prefsNotifyRaceStartingSoonHint =>
+      'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.';
+
+  @override
+  String get clubVerificationStatusTitle => 'Official verification';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verified as the official presence of $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verified as an official organisation.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'The request for $org is waiting for review. No domain proof found yet.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'The request for $org is waiting for review. Domain proof found.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'The last request was not approved: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'The badge was removed: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'The badge was removed after a change to the club or its domain, and needs a new review.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'The last request was withdrawn.';
+
+  @override
+  String get clubVerificationStatusNone => 'Not verified.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Requests and domain proof are managed on the web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Couldn\'t load the verification status.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Retry';
+
+  @override
+  String get profileNotifClubVerification =>
+      'There\'s a verification update for your club';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'There\'s a verification update for $club';
+  }
+
+  @override
+  String get provenanceVerifiedSource => 'Verified source';
+
+  @override
+  String get provenanceVerifiedSourceTooltip =>
+      'Verified source: listed by a race data partner';
+
+  @override
+  String get provenanceTraced => 'Traced';
+
+  @override
+  String get provenanceTracedTooltip =>
+      'Traced: drawn by a verified club from the race\'s published map';
+
+  @override
+  String get provenanceCommunity => 'Community';
+
+  @override
+  String get provenanceCommunityTooltip =>
+      'Community: added by a runner, not checked by the organiser';
+
+  @override
+  String get courseAlertsHeading => 'Course alerts';
+
+  @override
+  String get courseAlertsEmpty =>
+      'No alerts. Post one when the course changes, and runners training for it are told.';
+
+  @override
+  String get courseAlertsLoadFailed => 'Couldn\'t load the course alerts.';
+
+  @override
+  String get courseAlertsRetry => 'Try again';
+
+  @override
+  String get courseAlertsKindReroute => 'Reroute';
+
+  @override
+  String get courseAlertsKindClosure => 'Closure';
+
+  @override
+  String get courseAlertsKindDirection => 'Course direction';
+
+  @override
+  String get courseAlertsKindNotice => 'Notice';
+
+  @override
+  String get courseAlertsKindLabel => 'Type';
+
+  @override
+  String get courseAlertsMessageLabel => 'What changed';
+
+  @override
+  String get courseAlertsPostHint =>
+      'Runners training for this race and runners who saved its course are notified once.';
+
+  @override
+  String get courseAlertsPost => 'Post alert';
+
+  @override
+  String get courseAlertsPosted => 'Course alert posted.';
+
+  @override
+  String get courseAlertsPostFailed => 'Couldn\'t post the alert. Try again.';
+
+  @override
+  String get courseAlertsRemove => 'Remove';
+
+  @override
+  String courseAlertsRemoveLabel(String kind) {
+    return 'Remove the $kind alert';
+  }
+
+  @override
+  String get courseAlertsRemoved => 'Course alert removed.';
+
+  @override
+  String get courseAlertsRemoveFailed => 'Couldn\'t remove the alert.';
+
+  @override
+  String get courseAlertsNotFound => 'This alert is no longer available';
+
+  @override
+  String get profileNotifCourseAlert => 'The organiser posted a course alert';
+
+  @override
+  String profileNotifCourseAlertNamed(String club) {
+    return '$club posted a course alert';
   }
 }

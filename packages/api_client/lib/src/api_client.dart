@@ -2748,6 +2748,48 @@ class ApiClient {
     }
   }
 
+  /// Upcoming verified races inside the viewport bbox, for the discovery
+  /// map's race pins. Mirror of the web `fetchUpcomingRacesInBbox`;
+  /// [officialOnly] narrows to official organisers' races for the Official
+  /// lens. Fails soft.
+  Future<List<UpcomingRacePin>> fetchUpcomingRacesInBbox({
+    required double minLng,
+    required double minLat,
+    required double maxLng,
+    required double maxLat,
+    int limit = 100,
+    bool officialOnly = false,
+  }) async {
+    try {
+      final data = await _client.rpc('upcoming_races_in_bbox', params: {
+        'p_min_lng': minLng,
+        'p_min_lat': minLat,
+        'p_max_lng': maxLng,
+        'p_max_lat': maxLat,
+        'p_limit': limit,
+        'p_official_only': officialOnly,
+      }, get: true);
+      if (data is! List) return const [];
+      return data.map<UpcomingRacePin>((row) {
+        final r = row as Map<String, dynamic>;
+        return UpcomingRacePin(
+          id: r['id'] as String,
+          name: (r['name'] as String?) ?? '',
+          raceDate: r['race_date'] as String,
+          distanceM: (r['distance_m'] as num?)?.toInt(),
+          locationLabel: r['location_label'] as String?,
+          official: (r['is_official'] as bool?) ?? false,
+          hasCourse: (r['has_course'] as bool?) ?? false,
+          lat: (r['lat'] as num).toDouble(),
+          lng: (r['lng'] as num).toDouble(),
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('fetchUpcomingRacesInBbox failed: ${safeErrorLabel(e)}');
+      return const [];
+    }
+  }
+
   // -- Route reviews --
 
   /// Fetch all reviews for a route, newest first, walked by keyset cursor so
@@ -5740,6 +5782,20 @@ class ApiClient {
     ];
   }
 
+  /// Whether any effort the viewer can see on [segmentId] was matched by the
+  /// circles (`global_segment_efforts.matched_by = 'zone'`). On a segment
+  /// timed by its lines that is an effort written before the line matcher,
+  /// waiting for its runner's next view to be re-matched (issue #1308).
+  /// Mirrors web `globalSegmentHasZoneEfforts`.
+  Future<bool> globalSegmentHasZoneEfforts(String segmentId) async {
+    final count = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .count(CountOption.exact)
+        .eq(GlobalSegmentEffortRow.colGlobalSegmentId, segmentId)
+        .eq(GlobalSegmentEffortRow.colMatchedBy, 'zone');
+    return count > 0;
+  }
+
   /// Block-guarded catalogue-segment leaderboard. Mirrors
   /// [fetchSegmentLeaderboardTiered] but calls `global_segment_leaderboard`
   /// (migration 20270411_001) — no per-route visibility branch, since the
@@ -5751,6 +5807,7 @@ class ApiClient {
     String? gender,
     String? ageBand,
     String? clubId,
+    int? season,
     int limit = 50,
   }) async {
     final rows = await _client.rpc(
@@ -5761,6 +5818,7 @@ class ApiClient {
         'p_age_band': ?ageBand,
         'p_limit': limit,
         'p_club_id': ?clubId,
+        'p_season': ?season,
       },
       get: true,
     );
@@ -5783,6 +5841,9 @@ class ApiClient {
             timeSeconds: (maps[i]['time_seconds'] as num).toDouble(),
             startedAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
             createdAt: parseIsoStrictRequired(maps[i]['started_at'], 'started_at'),
+            // The board RPC does not return how an effort was matched; no
+            // mobile surface reads it.
+            matchedBy: (maps[i]['matched_by'] as String?) ?? 'zone',
           ),
           athlete: PublicProfile(
             id: maps[i]['user_id'] as String,
@@ -5790,6 +5851,166 @@ class ApiClient {
             avatarUrl: maps[i]['avatar_url'] as String?,
           ),
           rank: ranks[i],
+        ),
+    ];
+  }
+
+  /// Every active park with its current season, region then name order
+  /// (migration 20271115002383, decisions § 2383). Throws on a failed read.
+  Future<List<ParkListing>> fetchParks() async {
+    final rows = await _client
+        .from(ParkRow.table)
+        .select('*, park_season')
+        .order(ParkRow.colRegionCode, ascending: true)
+        .order(ParkRow.colName, ascending: true);
+    return [
+      for (final r in rows)
+        ParkListing(
+          park: ParkRow.fromJson(r),
+          season: (r['park_season'] as num).toInt(),
+        ),
+    ];
+  }
+
+  /// A park's courses with their catalogue segment, by slug. A course whose
+  /// segment was pulled is dropped (RLS hides the segment). Throws on a
+  /// failed read.
+  Future<List<ParkCourseListing>> fetchParkCourses(String parkId) async {
+    final rows = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colParkId, parkId)
+        .order(ParkCourseRow.colSlug, ascending: true);
+    return [
+      for (final r in rows)
+        if (r['global_segments'] is Map)
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson(r),
+            segment: GlobalSegmentRow.fromJson(
+              (r['global_segments'] as Map).cast<String, dynamic>(),
+            ),
+          ),
+    ];
+  }
+
+  /// The geometry provenance of the park course whose official route is
+  /// [routeId], with its park's name and site, for the credit an exported
+  /// file of that route must carry. Null for any other route; the park fields
+  /// are null when the park is hidden from the reader. Throws on a failed
+  /// read, so an export never goes out uncredited because the check could
+  /// not run.
+  Future<({String geometrySource, String? parkName, String? parkWebsiteUrl})?>
+      fetchRouteCourseProvenance(String routeId) async {
+    final row = await _client
+        .from(ParkCourseRow.table)
+        .select('${ParkCourseRow.colGeometrySource}, parks(name, website_url)')
+        .eq(ParkCourseRow.colRouteId, routeId)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return null;
+    final park = row['parks'] is Map
+        ? (row['parks'] as Map).cast<String, dynamic>()
+        : null;
+    return (
+      geometrySource: row[ParkCourseRow.colGeometrySource] as String,
+      parkName: park?['name'] as String?,
+      parkWebsiteUrl: park?['website_url'] as String?,
+    );
+  }
+
+  /// The most-completions board on a catalogue segment
+  /// (`global_segment_completions`): one row per athlete, distinct local days
+  /// in the park's timezone. [season] null is all time. Tied counts share a
+  /// rank. Throws on a failed read.
+  Future<List<GlobalSegmentCompletionsEntry>> fetchGlobalSegmentCompletions(
+    String segmentId, {
+    int? season,
+    int limit = 50,
+  }) async {
+    final rows = await _client.rpc(
+      'global_segment_completions',
+      params: {
+        'p_segment_id': segmentId,
+        'p_season': ?season,
+        'p_limit': limit,
+      },
+      get: true,
+    );
+    if (rows is! List) return const [];
+    final out = <GlobalSegmentCompletionsEntry>[];
+    var rank = 0;
+    int? prev;
+    for (var i = 0; i < rows.length; i++) {
+      final r = (rows[i] as Map).cast<String, dynamic>();
+      final completions = (r['completions'] as num).toInt();
+      if (completions != prev) {
+        rank = i + 1;
+        prev = completions;
+      }
+      out.add(
+        GlobalSegmentCompletionsEntry(
+          athlete: PublicProfile(
+            id: r['user_id'] as String,
+            displayName: r['display_name'] as String?,
+            avatarUrl: r['avatar_url'] as String?,
+          ),
+          completions: completions,
+          lastCompletedAt: parseIsoStrictRequired(
+            r['last_completed_at'],
+            'last_completed_at',
+          ),
+          rank: rank,
+        ),
+      );
+    }
+    return out;
+  }
+
+  /// The park courses the signed-in runner's own [runId] completed, from
+  /// `run_park_course_times`: course and park names, the time, the season (the
+  /// calendar year in the park's timezone) and the effort's place on that
+  /// season's fastest board when it is the runner's best and in the top 100.
+  /// Raw rows; the app parses them in its `park_courses` pair. Mirrors web
+  /// `fetchRunParkCourseTimes`. Throws on a failed read.
+  Future<List<Map<String, dynamic>>> fetchRunParkCourseTimes(String runId) async {
+    final data = await _client.rpc('run_park_course_times',
+        params: {'p_run_id': runId}, get: true);
+    return [
+      for (final r in (data as List? ?? const <dynamic>[]))
+        Map<String, dynamic>.from(r as Map),
+    ];
+  }
+
+  /// The signed-in runner's park course efforts started in `[start, end)`,
+  /// each with its course and park, for the recap's park lines. Mirrors web
+  /// `fetchRecapParkCourses`. Empty when signed out; throws on a failed read.
+  Future<List<({String parkId, String parkName, String regionCode, String courseId})>>
+      fetchRecapParkCourses(DateTime start, DateTime end) async {
+    final uid = _client.auth.currentUser?.id;
+    if (uid == null) return const [];
+    final effortRows = await _client
+        .from(GlobalSegmentEffortRow.table)
+        .select(GlobalSegmentEffortRow.colGlobalSegmentId)
+        .eq(GlobalSegmentEffortRow.colUserId, uid)
+        .gte(GlobalSegmentEffortRow.colStartedAt, start.toUtc().toIso8601String())
+        .lt(GlobalSegmentEffortRow.colStartedAt, end.toUtc().toIso8601String());
+    final segmentIds = {
+      for (final r in effortRows) r[GlobalSegmentEffortRow.colGlobalSegmentId] as String,
+    }.toList();
+    final courseRows = await readChunked(
+      segmentIds,
+      (chunk) async => List<Map<String, dynamic>>.from(await _client
+          .from(ParkCourseRow.table)
+          .select('id, park_id, parks!inner(name, region_code)')
+          .inFilter(ParkCourseRow.colGlobalSegmentId, chunk)),
+    );
+    return [
+      for (final r in courseRows)
+        (
+          parkId: r['park_id'] as String,
+          parkName: (r['parks'] as Map)['name'] as String,
+          regionCode: (r['parks'] as Map)['region_code'] as String,
+          courseId: r['id'] as String,
         ),
     ];
   }
@@ -8262,6 +8483,30 @@ class ApiClient {
     }
   }
 
+  /// Which of [routineIds] read as official: published by an owner/admin of
+  /// a verified club (the `is_official` computed field, migration
+  /// 20271021000030; decisions § 2228). Fail-soft to none, because the badge
+  /// is auxiliary to the list it decorates.
+  Future<Set<String>> fetchOfficialGymRoutineIds(List<String> routineIds) async {
+    if (routineIds.isEmpty) return const {};
+    try {
+      final rows = await readChunked(
+        routineIds,
+        (chunk) async => List<dynamic>.from(await _client
+            .from(GymRoutineRow.table)
+            .select('id, is_official')
+            .inFilter(GymRoutineRow.colId, chunk)),
+      );
+      return {
+        for (final r in rows.whereType<Map<String, dynamic>>())
+          if (r['is_official'] == true) r['id'] as String,
+      };
+    } catch (e) {
+      debugPrint('fetchOfficialGymRoutineIds failed: $e');
+      return const {};
+    }
+  }
+
   /// Publish a personal gym routine into a club-owned template. The
   /// publish_gym_routine_as_template RPC is author + club-admin gated and
   /// deep-copies the routine + exercises + sets server-side (the personal
@@ -9043,6 +9288,98 @@ class ApiClient {
     }).toList();
   }
 
+  // ──────────────────── Plan change requests (decisions § 2382) ──────────
+  //
+  // Mirror of the web layer (apps/web/src/lib/core/data.ts): a change to a
+  // coach-assigned plan the athlete sent to the coach. Mobile reads and acts
+  // on requests; it does not create them (AI plan edits are web-only).
+
+  /// The requests on one plan, or between the signed-in user and [partnerId]
+  /// on either side of the coaching link, newest first.
+  Future<List<PlanChangeRequestRow>> fetchPlanChangeRequests({
+    String? planId,
+    String? partnerId,
+  }) async {
+    final uid = userId;
+    if (uid == null || (planId == null && partnerId == null)) return const [];
+    var query = _client.from(PlanChangeRequestRow.table).select();
+    if (planId != null) {
+      query = query.eq(PlanChangeRequestRow.colPlanId, planId);
+    } else {
+      final p = partnerId!;
+      if (!RegExp(r'^[0-9a-fA-F-]{36}$').hasMatch(p)) return const [];
+      query = query.or(
+        'and(athlete_id.eq.$uid,coach_id.eq.$p),and(coach_id.eq.$uid,athlete_id.eq.$p)',
+      );
+    }
+    final rows = await query
+        .order(PlanChangeRequestRow.colCreatedAt, ascending: false)
+        .limit(20);
+    return (rows as List)
+        .cast<Map<String, dynamic>>()
+        .map(PlanChangeRequestRow.fromJson)
+        .toList();
+  }
+
+  /// The plan rows a request's lines describe, read by id under the viewer's
+  /// RLS (the athlete's own rows, or an active coach's read of them).
+  Future<({List<Map<String, dynamic>> workouts, List<Map<String, dynamic>> weeks})>
+      fetchPlanChangeTargets(List<String> workoutIds, List<String> weekIds) async {
+    final results = await Future.wait([
+      readChunked(
+        workoutIds,
+        (chunk) async => ((await _client
+                    .from(PlanWorkoutRow.table)
+                    .select(
+                        'id, scheduled_date, kind, target_distance_m, target_duration_seconds, skipped_at')
+                    .inFilter(PlanWorkoutRow.colId, chunk)) as List)
+            .cast<Map<String, dynamic>>(),
+      ),
+      readChunked(
+        weekIds,
+        (chunk) async => ((await _client
+                    .from(PlanWeekRow.table)
+                    .select('id, week_index, target_volume_m')
+                    .inFilter(PlanWeekRow.colId, chunk)) as List)
+            .cast<Map<String, dynamic>>(),
+      ),
+    ]);
+    return (workouts: results[0], weeks: results[1]);
+  }
+
+  /// The coach approves (the chosen lines, or every line when both lists
+  /// are null) or declines, with an optional note.
+  Future<void> decidePlanChange({
+    required String requestId,
+    required bool approve,
+    required String todayIso,
+    List<String>? workoutIds,
+    List<String>? weekIds,
+    String? note,
+  }) async {
+    final trimmed = note?.trim();
+    await _client.rpc('decide_plan_change', params: {
+      'p_request_id': requestId,
+      'p_approve': approve,
+      'p_today': todayIso,
+      'p_workout_ids': workoutIds,
+      'p_week_ids': weekIds,
+      'p_note': trimmed == null || trimmed.isEmpty ? null : trimmed,
+    });
+  }
+
+  Future<void> withdrawPlanChange(String requestId) async {
+    await _client.rpc('withdraw_plan_change', params: {'p_request_id': requestId});
+  }
+
+  /// The athlete applies their own request without the coach; the coach is told.
+  Future<void> applyPlanChangeMyself(String requestId, String todayIso) async {
+    await _client.rpc('apply_plan_change_myself', params: {
+      'p_request_id': requestId,
+      'p_today': todayIso,
+    });
+  }
+
   Future<List<CoachAthleteLink>> _linksWithProfiles(
       List<Map<String, dynamic>> rows, String otherIdCol) async {
     if (rows.isEmpty) return const [];
@@ -9455,6 +9792,7 @@ class ApiClient {
           muted: r['muted'] == true,
           archived: r['archived'] == true,
           markedUnread: r['marked_unread'] == true,
+          request: r['request'] == true,
         ),
     ];
   }
@@ -9465,10 +9803,17 @@ class ApiClient {
   /// `dm_threads()` aggregation as [fetchDmThreads], without its partner-name
   /// read. Throws on a failed read; signed out answers empty without a call.
   /// The conversation id lets the badge leave out a conversation whose
-  /// delete is still inside its undo window.
+  /// delete is still inside its undo window; `request` an unanswered message
+  /// request, which is counted under Requests only.
   Future<
           List<
-              ({String conversationId, int unread, bool muted, bool archived})>>
+              ({
+                String conversationId,
+                int unread,
+                bool muted,
+                bool archived,
+                bool request
+              })>>
       fetchDmBadgeStates() async {
     if (_client.auth.currentUser == null) return const [];
     final res = await _client.rpc('dm_threads', params: const {}, get: true);
@@ -9479,15 +9824,49 @@ class ApiClient {
           unread: (r['unread'] as num?)?.toInt() ?? 0,
           muted: r['muted'] == true,
           archived: r['archived'] == true,
+          request: r['request'] == true,
         ),
     ];
   }
 
-  /// The viewer's own mute, archive and unread-mark state for one
-  /// conversation, for a thread opened from outside the inbox (a profile, a
-  /// route). The row is owner-read only. Null when the viewer has no row, or
-  /// signed out. Throws on a failed read.
-  Future<({bool muted, DateTime? archivedAt, bool markedUnread})?>
+  /// Accepts a message request to the viewer (migration 20271115002384): the
+  /// conversation joins the inbox, and notifications and read receipts start
+  /// from now. Accepting twice is not an error; a conversation with no
+  /// pending request for the viewer raises P0002. Mirrors web
+  /// `acceptDmRequest`.
+  Future<void> acceptDmRequest(String conversationId) async {
+    await _client.rpc(
+      'accept_message_request',
+      params: {'p_conversation_id': conversationId},
+    );
+  }
+
+  /// Declines a message request to the viewer: its messages up to and
+  /// including [throughMessageId] (the newest one on screen) leave the
+  /// viewer's reads, and the requester cannot send again until the viewer
+  /// writes to them. [block] also blocks the requester in the same
+  /// transaction. The requester is not told. Mirrors web `declineDmRequest`.
+  Future<void> declineDmRequest(
+    String conversationId, {
+    required String throughMessageId,
+    bool block = false,
+  }) async {
+    await _client.rpc(
+      'decline_message_request',
+      params: {
+        'p_conversation_id': conversationId,
+        'p_through_message_id': throughMessageId,
+        'p_block': block,
+      },
+    );
+  }
+
+  /// The viewer's own mute, archive, unread-mark and message-request state
+  /// for one conversation, for a thread opened from outside the inbox (a
+  /// profile, a route). The row is owner-read only. Null when the viewer has
+  /// no row, or signed out. Throws on a failed read.
+  Future<
+          ({bool muted, DateTime? archivedAt, bool markedUnread, bool request})?>
       fetchDmConversationState(
     String conversationId,
   ) async {
@@ -9495,7 +9874,7 @@ class ApiClient {
     if (me == null) return null;
     final row = await _client
         .from('conversation_participants')
-        .select('muted_at, archived_at, marked_unread_at')
+        .select('muted_at, archived_at, marked_unread_at, request_state')
         .eq('conversation_id', conversationId)
         .eq('user_id', me)
         .maybeSingle();
@@ -9504,6 +9883,7 @@ class ApiClient {
       muted: row['muted_at'] != null,
       archivedAt: parseIsoStrictValue(row['archived_at']),
       markedUnread: row['marked_unread_at'] != null,
+      request: row['request_state'] == 'pending',
     );
   }
 
@@ -9571,7 +9951,7 @@ class ApiClient {
   /// `DM_COLUMNS`.
   static const String dmColumns =
       'id, sender_id, recipient_id, body, created_at, seen_at, route_id, '
-      'unsent_at, deleted_partner_key, conversation_id';
+      'unsent_at, deleted_partner_key, conversation_id, edited_at';
 
   /// One page of a conversation, oldest message first. A partner thread is
   /// both directions between the viewer and the partner; a deleted-partner
@@ -9627,8 +10007,10 @@ class ApiClient {
 
   /// Send [body] to [recipientId]. Mirrors web `sendDm`.
   ///
-  /// The INSERT policy refuses a send with no follow edge either way or with
-  /// a block either way; that 42501 is thrown as [DmSendNotPermitted]. The
+  /// The INSERT policy refuses a send with no follow edge either way and no
+  /// shared club or event, after a declined request, or with a block either
+  /// way; that 42501 is thrown as [DmSendNotPermitted]. A fourth message into
+  /// an unaccepted request (54000) is [DmRequestCapReached]. The
   /// rail's send throttle (migration 20270608_001) raises the shared P0001
   /// every create-rate-limit raises, and is rethrown as the
   /// `PostgrestException` it is so the caller runs the shared
@@ -9662,6 +10044,7 @@ class ApiClient {
       return DirectMessageRow.fromJson(row);
     } on PostgrestException catch (e) {
       if (e.code == '42501') throw const DmSendNotPermitted();
+      if (e.code == '54000') throw const DmRequestCapReached();
       rethrow;
     }
   }
@@ -9677,6 +10060,28 @@ class ApiClient {
       params: {'p_message_id': messageId},
     );
     return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+  }
+
+  /// Replace the text of one of the viewer's own messages through
+  /// `edit_direct_message` (migration 20271114000210), which allows it for 15
+  /// minutes after sending. A refusal (unsent, past the window, a block, or
+  /// not the viewer's message) is thrown as [DmEditClosed]; the edit throttle's
+  /// P0001 is rethrown as the `PostgrestException` it is, for the shared
+  /// `rateLimitErrorMessage` parser. Returns the updated row. Mirrors web
+  /// `editDm`.
+  Future<DirectMessageRow> editDm(String messageId, String body) async {
+    final trimmed = body.trim();
+    if (trimmed.isEmpty) throw ArgumentError.value(body, 'body', 'is empty');
+    try {
+      final row = await _client.rpc(
+        'edit_direct_message',
+        params: {'p_message_id': messageId, 'p_body': trimmed},
+      );
+      return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      if (e.code == '55000' || e.code == 'P0002') throw const DmEditClosed();
+      rethrow;
+    }
   }
 
   /// Mark the messages [otherId] sent the viewer as read, up to and including

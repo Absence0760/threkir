@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan, deleteRun, insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
-import { acceptCookieConsent } from '../fixtures/helpers';
+import { acceptCookieConsent, planSectionsOpen } from '../fixtures/helpers';
 
 /**
  * Structured-workout EXECUTION → COMPLETION → PLAN-PROGRESS journey (web).
@@ -91,7 +91,7 @@ test.describe('structured workout execution → plan progress journey', () => {
 	test.beforeEach(async ({ context }) => {
 		// Pre-accept cookie consent so the banner doesn't layer over modal
 		// pointer events (same fix as workout-runner-surfaces.spec.ts).
-		await acceptCookieConsent(context);
+		await acceptCookieConsent(context, planSectionsOpen(USER_A.id));
 	});
 
 	test.afterEach(async () => {

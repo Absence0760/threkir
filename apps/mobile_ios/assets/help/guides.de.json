@@ -1799,6 +1799,89 @@
     ]
   },
   {
+    "id": "drive-a-course",
+    "lang": "de",
+    "title": "Eine Rennstrecke vor dem Renntag abfahren",
+    "summary": "Öffne eine öffentliche Strecke in deiner Karten-App, sieh, welchen Abschnitten sie nicht folgen kann, und lass dir die Streckenhinweise während der Fahrt von der Handy-App vorlesen.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/routes/[id]",
+      "/races/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Was es macht",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Auf einer öffentlichen Route oder einem Rennen mit öffentlicher Strecke teilt **Strecke abfahren** die Strecke in Etappen auf, denen Google Maps, Apple Karten oder Waze folgen können. Die Karten-App übernimmt die Navigation, auch über CarPlay und Android Auto."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Google Maps nimmt mehrere Zwischenziele pro Etappe. Apple Karten und Waze nehmen jeweils nur ein Ziel, deshalb öffnest du die Etappen nacheinander.",
+              "Rennstrecken nutzen Wege, Brücken und gesperrte Straßen. Die Liste unter den Etappen zeigt die Abschnitte, denen die Karten-App nicht folgen kann, damit du weißt, welche Teile du nicht siehst.",
+              "Die Route der Karten-App dient nur zur Orientierung. Die Streckenhinweise folgen der echten Strecke."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Strecke abfahren wird schrittweise freigeschaltet. Wenn eine öffentliche Strecke **Strecke abfahren** nicht anzeigt, ist es für dich noch nicht verfügbar."
+          }
+        ]
+      },
+      {
+        "heading": "Eine Strecke in der Karten-App öffnen",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne die Route oder das Rennen und wähle **Strecke abfahren**.",
+              "Wähle deine Karten-App und dann **Zum Start fahren**.",
+              "Öffne am Start Etappe 1. Wenn eine Etappe endet, öffne die nächste."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Die Webseite listet außerdem jeden Streckenhinweis mit seiner Distanz auf, und du kannst die Liste für einen Beifahrer ausdrucken."
+          }
+        ]
+      },
+      {
+        "heading": "Die Streckenhinweise auf dem Handy hören",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne in der Handy-App die Route oder das Rennen und tippe auf **Strecke abfahren**.",
+              "Lies den Sicherheitshinweis und tippe auf **Verstanden**. Er erscheint auf jedem Handy nur einmal.",
+              "Tippe auf **Gesprochene Hinweise starten**, wechsle dann zu deiner Karten-App und sperre das Handy."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Jede Verpflegungsstation, jeder Zielschluss, jeder Anstieg, jede Gefahrenstelle und jeder Hinweis wird etwa 15 Sekunden vorher vorgelesen und noch einmal, wenn du dort bist. Steigst du unterwegs ein, beginnen die Hinweise dort, wo du bist. Sie enden im Ziel oder nach 10 Minuten abseits der Strecke. Tippe auf **Stopp**, um sie früher zu beenden."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Nutze es mit Beifahrer oder fest montiertem Handy und bediene das Handy nicht während der Fahrt. Beachte Verkehrsregeln und Schilder, und denk daran, dass Straßen der Strecke am Renntag gesperrt sein können."
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "follow-a-race-live",
     "lang": "de",
     "title": "Ein Rennen live verfolgen",
@@ -3166,6 +3249,121 @@
     "related": [
       "what-pro-includes",
       "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "park-courses",
+    "lang": "de",
+    "title": "Parkstrecken: Kontrollpunkte, Saisons und Bestenlisten",
+    "summary": "Wie eine Parkstrecke deinen Lauf misst, warum jeder Kontrollpunkt zählt, wann eine Saison beginnt und wie die Listen Schnellste und Meiste Läufe ranken.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/parks",
+      "/parks/[region]/[park]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "Was eine Parkstrecke ist",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Eine Parkstrecke ist eine feste Zeitlaufstrecke auf einem Weg in einem State Park oder Nationalpark. Es gibt keinen Veranstalter und keinen Wettkampftag: Lauf sie, wann immer der Park geöffnet ist, und ein Lauf, der die ganze Strecke abdeckt, bekommt eine Zeit. Du findest sie unter [[route:/parks|Parkstrecken]]."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Es ist ein Zeitlauf, kein Rennen. Der Weg bleibt für alle offen und niemand sichert ihn ab, also halte dich an die Regeln des Parks und lass anderen auf dem Weg den Vortritt.",
+              "Jede Streckenseite zeigt Distanz, Anstieg, Form, Untergrund und Schwierigkeit, woher die Streckenlinie stammt und ob die Strecke geöffnet ist.",
+              "Wähle **Diese Strecke navigieren**, um der Strecke als Route zu folgen. Solange die Strecke gesperrt ist, wird das nicht angeboten."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Eine gesperrte Strecke behält ihre Zeiten und Listen, aber lauf sie bitte nicht, bis sie wieder geöffnet ist. Die Seite zeigt, wann ihr Status zuletzt geprüft wurde."
+          }
+        ]
+      },
+      {
+        "heading": "Kontrollpunkte: Warum Abkürzungen nie zählen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Neben Start und Ziel kann eine Strecke unterwegs Kontrollpunkte haben. Dein Lauf bekommt nur dann eine Zeit, wenn er jeden Kontrollpunkt in der richtigen Reihenfolge zwischen Start und Ziel passiert. Ein Lauf, der eine Ecke abschneidet, eine Serpentine auslässt oder einen Pfad quer durch die Mitte nimmt, verpasst einen Kontrollpunkt und bekommt keine Zeit."
+          },
+          {
+            "type": "p",
+            "text": "Bleib auf dem markierten Weg. Abkürzungen beschädigen den Weg, und Parks werten sie als Verstoß gegen ihre Regeln."
+          }
+        ]
+      },
+      {
+        "heading": "Saisons folgen der Uhr des Parks",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Eine Saison ist ein Kalenderjahr in der Zeitzone des Parks, nicht in deiner. Die Listen beginnen um Mitternacht am 1. Januar neu, dort wo der Park liegt."
+          },
+          {
+            "type": "p",
+            "text": "Ein Lauf, der zum Beispiel um 22:00 Uhr am 31. Dezember in einem Park in Virginia startet, zählt für dieses Jahr, auch wenn dein Handy auf eine Zeitzone eingestellt ist, in der schon der 1. Januar ist."
+          }
+        ]
+      },
+      {
+        "heading": "Die Liste Schnellste",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Schnellste** ordnet jede Person nach ihrer besten Zeit auf der Strecke. Du erscheinst einmal, mit deinem besten Lauf.",
+              "Standardmäßig zeigt sie dieses Jahr. Wähle **Gesamt** für die besten Zeiten aller Zeiten.",
+              "Filtere nach Geschlecht oder Altersklasse. Der Altersfilter enthält nur Personen, die dem Teilen von Gesundheitsdaten zugestimmt haben, daher kann er kürzer sein als die ganze Liste."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Die Liste Meiste Läufe",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "**Meiste Läufe** belohnt die Stammgäste. Sie zählt die Tage, an denen du die Strecke absolviert hast, in der Zeitzone des Parks, also zählen mehrere Runden an einem Tag als einer."
+          }
+        ]
+      },
+      {
+        "heading": "Wer auf den Listen erscheint",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Du musst angemeldet sein, um die Listen zu sehen. Ohne Anmeldung zeigt eine Streckenseite trotzdem die Strecke und einen Link **Anmelden**.",
+              "Eine Zeit aus einem Lauf, den andere nicht sehen können, wird ihnen nicht angezeigt.",
+              "Du siehst keine Personen, die du blockiert hast, und sie sehen dich nicht."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Ein Lauf wird kurz nach dem Speichern oder Importieren auf unseren Servern mit den Parkstrecken abgeglichen, egal von welchem Gerät. Bis eine neue Zeit auf einer Liste erscheint, kann es ein paar Minuten dauern."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "import-your-history",
+      "record-your-first-run"
     ]
   },
   {

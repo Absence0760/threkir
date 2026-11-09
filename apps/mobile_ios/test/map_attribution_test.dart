@@ -336,6 +336,7 @@ void main() {
     // not a per-screen nicety, so this list is the whole set by construction
     // — a new map that forgets it fails here.
     const mapFiles = [
+      'lib/widgets/course_lines_map.dart',
       'lib/widgets/live_run_map.dart',
       'lib/widgets/route_share_card.dart',
       'lib/widgets/run_share_card.dart',

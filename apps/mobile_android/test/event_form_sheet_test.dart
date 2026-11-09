@@ -126,6 +126,7 @@ class _CapturingSocialService extends SocialService {
     capturedCount = recurrenceCount;
     if (throwOnCreate != null) throw throwOnCreate!;
     return EventRow(
+      raceStartMode: 'host_go',
       id: 'event-new',
       clubId: clubId,
       title: title,

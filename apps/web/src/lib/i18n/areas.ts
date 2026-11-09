@@ -34,7 +34,9 @@ export const AREAS = {
 	settingsDevices: ['/settings/devices'],
 	settingsPrivacy: ['/settings/privacy'],
 	settingsShares: ['/settings/shares'],
-	clubs: ['/clubs'],
+	clubs: ['/clubs', '/club-verification'],
+	clubDetail: ['/clubs/[slug]'],
+	clubEvents: ['/clubs/[slug]/events'],
 	routes: ['/routes'],
 	routeBuilder: ['/routes/new'],
 	plans: ['/plans'],
@@ -53,7 +55,7 @@ export const AREAS = {
 	challenges: ['/challenges'],
 	recap: ['/recap'],
 	login: ['/login'],
-	races: ['/races'],
+	races: ['/races', '/course-alerts'],
 	admin: ['/admin'],
 } as const satisfies Record<string, readonly string[]>;
 

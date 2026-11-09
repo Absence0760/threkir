@@ -124,7 +124,10 @@ insert into write_lockdown_registry (role, tbl, verb, col, reason) values
   ('authenticated', 'direct_messages', 'INSERT', 'seen_at',             'the shared read receipt (20271113000001); only mark_direct_messages_read writes it, and only while both participants have receipts on'),
   -- 20271105000010 (issue #1216): the direct_messages_set_conversation trigger
   -- assigns the pair's conversation on insert.
-  ('authenticated', 'direct_messages', 'INSERT', 'conversation_id',     'set by the direct_messages_set_conversation trigger; a client-chosen one would post into a conversation the sender is not in');
+  ('authenticated', 'direct_messages', 'INSERT', 'conversation_id',     'set by the direct_messages_set_conversation trigger; a client-chosen one would post into a conversation the sender is not in'),
+  -- 20271114000210 (issue #1216): editing is the edit_direct_message RPC, inside its window.
+  ('authenticated', 'direct_messages', 'INSERT', 'edited_at',           'a message is not edited when it is sent; only edit_direct_message stamps it'),
+  ('authenticated', 'direct_messages', 'INSERT', 'original_body',       'the text before an edit, kept for reports; only edit_direct_message writes it, and a client-set one would forge what a report shows as sent');
 
 -- Columns a client may set once, at row creation, and never change. Each needs
 -- a reason why write-once is safe — this is the register assertion (5) reads.

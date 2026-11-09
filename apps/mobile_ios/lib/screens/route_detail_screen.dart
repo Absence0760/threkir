@@ -14,6 +14,8 @@ import '../ai_disclosure.dart';
 import '../apple_watch_route_bridge.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
+import '../course_drive.dart' show DriveMarkerInput, DrivePoint;
+import '../course_drive_flag.dart';
 import '../detail_map_height.dart';
 import '../dev_auto_login.dart' show isLocalSupabaseUrl;
 import '../l10n/date_format.dart';
@@ -29,6 +31,7 @@ import '../reactive_ble_watch_transport.dart';
 import '../route_describe_client.dart';
 import '../route_description.dart';
 import '../route_geometry.dart' show interpolateAlongRoute;
+import '../park_courses.dart';
 import '../route_gpx.dart';
 import '../official_distance.dart';
 import '../share_sheet.dart';
@@ -44,6 +47,7 @@ import '../tile_pack.dart' show TileBbox;
 import '../undo_queue.dart';
 import '../watch_course.dart';
 import '../watch_roadbook.dart';
+import 'course_drive_screen.dart';
 import 'message_thread_screen.dart';
 import 'roadbook_screen.dart';
 import '../widgets/ai_disclosure_notice.dart';
@@ -53,6 +57,8 @@ import '../widgets/missing_map_tiles_hint.dart';
 import '../widgets/official_badge.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_markers_panel.dart';
+import '../race_service.dart';
+import '../widgets/course_alerts_section.dart';
 import '../widgets/route_conditions.dart';
 import '../widgets/route_photos.dart';
 import '../widgets/route_share_card.dart';
@@ -140,6 +146,8 @@ class RouteDetailScreen extends StatefulWidget {
 }
 
 class _RouteDetailScreenState extends State<RouteDetailScreen> {
+  late final RaceService _raceService = RaceService();
+
   late bool _isPublic = widget.route.isPublic;
   late bool _isStarred = widget.route.isStarred;
   late bool _isOfflinePinned =
@@ -1127,6 +1135,14 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     : l10n.routeDetailSaveForOffline,
                 onPressed: _offlinePinBusy ? null : _toggleOfflinePin,
               ),
+              // A private course offers no drive mode, its owner included
+              // (course_drive.md gotcha 6).
+              if (courseDriveGate && _isPublic && _displayWaypoints.length >= 2)
+                AppBarAction(
+                  icon: const Icon(Icons.directions_car_outlined),
+                  label: l10n.courseDriveTitle,
+                  onPressed: _openCourseDrive,
+                ),
               if (_isOwner)
                 AppBarAction(
                   icon: Icon(_isStarred ? Icons.star : Icons.star_border),
@@ -1672,6 +1688,13 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                   routeId: widget.route.id,
                   routeOwnerId: widget.route.userId,
                 ),
+                if (widget.route.clubId != null)
+                  CourseAlertsSection(
+                    key: ValueKey('course-alerts-${widget.route.id}'),
+                    service: _raceService,
+                    routeId: widget.route.id,
+                    clubId: widget.route.clubId,
+                  ),
               ],
 
               // Trailing bottom-of-scroll padding so the FAB doesn't
@@ -1832,6 +1855,37 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   /// half is held to the same bar: an over-cap one is reduced deliberately (see
   /// [watchRoadbookFromRoadbook]) and the runner is told what was dropped, or
   /// refused outright when it can't be reduced honestly.
+  /// Reads the same clipped polyline the map does, and the viewer-redacted
+  /// markers, so a drive can show no more than the screen (decisions §33).
+  void _openCourseDrive() {
+    final line = [
+      for (final w in _displayWaypoints)
+        DrivePoint(w.lat, w.lng, ele: w.elevationMetres),
+    ];
+    final api = widget.apiClient;
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => CourseDriveScreen(
+        title: widget.route.name,
+        load: () async {
+          final rows = api == null
+              ? const <cm.RouteMarkerRow>[]
+              : await api.fetchRouteMarkers(widget.route.id);
+          return CourseDriveCourse(line: line, markers: [
+            for (final m in rows)
+              DriveMarkerInput(
+                kind: m.kind,
+                label: m.label,
+                lat: m.lat,
+                lng: m.lng,
+                positionM: m.positionM,
+                meta: m.meta,
+              ),
+          ]);
+        },
+      ),
+    ));
+  }
+
   Future<void> _sendCourseToWatch() async {
     if (_watchPushBusy) return;
     final l10n = AppLocalizations.of(context);
@@ -2083,6 +2137,32 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       }
     }
 
+    // A park course's route carries third-party geometry, so its exported
+    // file carries the credit. Park course routes are official routes, so a
+    // failed check refuses an official route's export rather than writing it
+    // uncredited, and lets any other route export as before (offline too).
+    GpxAttribution? attribution;
+    try {
+      final provenance =
+          await widget.apiClient?.fetchRouteCourseProvenance(widget.route.id);
+      if (provenance != null) {
+        attribution = courseAttribution(
+          provenance.geometrySource,
+          parkName: provenance.parkName,
+          parkWebsiteUrl: provenance.parkWebsiteUrl,
+        );
+      }
+    } catch (e) {
+      debugPrint('shareAs $format: fetchRouteCourseProvenance failed: $e');
+      if (widget.route.official) {
+        if (context.mounted) {
+          showTopBanner(context,
+              AppLocalizations.of(context).routeDetailExportCreditFailed);
+        }
+        return;
+      }
+    }
+
     try {
       final tmp = await getTemporaryDirectory();
       final safe = route.name
@@ -2097,11 +2177,11 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
       final file = File('${tmp.path}/$fileName');
       final String contents;
       if (isKml) {
-        contents = _routeToKml(route);
+        contents = routeToKml(route, attribution);
       } else if (withMarkers) {
-        contents = routeGpxFromRoute(route, markers);
+        contents = routeGpxFromRoute(route, markers, attribution);
       } else {
-        contents = _routeToGpx(route);
+        contents = routeToGpx(route, attribution);
       }
       await file.writeAsString(contents);
       await shareFilesFrom(
@@ -2338,7 +2418,8 @@ List<String> routeDeleteConfirmLines(
   return lines;
 }
 
-String _routeToKml(cm.Route route) {
+/// The route as KML. [attribution] becomes the Document description.
+String routeToKml(cm.Route route, [GpxAttribution? attribution]) {
   final coords = StringBuffer();
   // A waypoint without finite coordinates is dropped rather than written as
   // `NaN`, which every KML reader refuses; a non-finite elevation is 0.
@@ -2353,6 +2434,7 @@ String _routeToKml(cm.Route route) {
       '<kml xmlns="http://www.opengis.net/kml/2.2">\n'
       '  <Document>\n'
       '    <name>${escapeXmlText(route.name)}</name>\n'
+      '${attribution != null ? '    <description>${escapeXmlText(attribution.notice)}</description>\n' : ''}'
       '    <Placemark>\n'
       '      <name>${escapeXmlText(route.name)}</name>\n'
       '      <Style>\n'
@@ -2371,13 +2453,15 @@ String _routeToKml(cm.Route route) {
       '</kml>\n';
 }
 
-String _routeToGpx(cm.Route route) {
+/// The route as plain GPX. [attribution] lands in `<metadata>`.
+String routeToGpx(cm.Route route, [GpxAttribution? attribution]) {
   final buf = StringBuffer();
   buf.writeln('<?xml version="1.0" encoding="UTF-8"?>');
   buf.writeln(
       '<gpx version="1.1" creator="Run" xmlns="http://www.topografix.com/GPX/1/1">');
   buf.writeln('  <metadata>');
   buf.writeln('    <name>${escapeXmlText(route.name)}</name>');
+  buf.write(gpxAttributionMetadata(attribution));
   buf.writeln('    <time>${DateTime.now().toUtc().toIso8601String()}</time>');
   buf.writeln('  </metadata>');
   buf.writeln('  <trk>');
@@ -2402,7 +2486,11 @@ String _routeToGpx(cm.Route route) {
 /// plus one `<wpt>` per course marker. Pure composition over
 /// `toRouteGpxWithMarkers` so the share path stays testable without file
 /// IO. `[lng, lat]` order matches the shared emitter.
-String routeGpxFromRoute(cm.Route route, List<cm.RouteMarkerRow> markers) {
+String routeGpxFromRoute(
+  cm.Route route,
+  List<cm.RouteMarkerRow> markers, [
+  GpxAttribution? attribution,
+]) {
   final coordinates = <List<double>>[];
   final elevations = <double>[];
   for (final w in route.waypoints) {
@@ -2420,7 +2508,8 @@ String routeGpxFromRoute(cm.Route route, List<cm.RouteMarkerRow> markers) {
                 : <String, dynamic>{},
           ))
       .toList();
-  return toRouteGpxWithMarkers(route.name, coordinates, elevations, gpxMarkers);
+  return toRouteGpxWithMarkers(
+      route.name, coordinates, elevations, gpxMarkers, attribution);
 }
 
 /// Horizontal scrubber for previewing a route's direction. Hosted

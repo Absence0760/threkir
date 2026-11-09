@@ -11,7 +11,13 @@ import type { Database, Json } from '../database.types';
 import { asProjectedRun, asRun, type ProjectedRun, type RunRow } from './run_narrow';
 import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
-import type { JsonObject, OfficialFlag, TrackPoint } from '../types';
+import type {
+	GlobalSegmentMatchedBy,
+	JsonObject,
+	OfficialFlag,
+	SegmentGateSource,
+	TrackPoint,
+} from '../types';
 import { isEntityId } from './entity_id';
 import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
@@ -60,6 +66,7 @@ import type { RaceDateChange } from '../training/plan_race_date';
 import type { BreakChange } from '../training/plan_break';
 import type { RepeatWeekChange } from '../training/plan_repeat_week';
 import type { AiPlanEditPayload } from '../training/plan_edit/season';
+import type { PlanChangeWeekRow, PlanChangeWorkoutRow } from '../training/plan_change';
 import { shiftIsoDate } from '../training/plan_bulk_ops';
 import type { PlanRecapRecord, PlanRecapRun } from '../training/plan_recap';
 import {
@@ -74,6 +81,9 @@ import {
 	type CourseDraft,
 	type EventCourse,
 } from '../social/event_courses';
+import type { CourseGateColumns, GateWhich, SessionStartMode } from '../races/course_gates';
+import { parseStartMode } from '../races/race_start_modes';
+import type { Gate } from '../geo/gate_crossing';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
 import {
@@ -84,6 +94,15 @@ import {
 } from '../social/paid_registration';
 import { planHeadCopyFields, planWeekCopyRows, planWorkoutCopyRows } from './plan_copy';
 import { clubSlug, CLUB_SLUG_FALLBACK } from '../social/club_slug';
+import {
+	CLUB_VERIFICATION_REQUEST_COLUMNS,
+	type ClubVerificationAuditAction,
+	type ClubVerificationProofMethod,
+	type ClubVerificationRequest,
+	type ClubVerificationStatus,
+	type ProofCheckResult,
+	verificationErrorKey,
+} from '../social/club_verification';
 import {
 	ROUTE_LIST_COLS,
 	PUBLIC_ROUTE_LIST_COLS,
@@ -137,6 +156,8 @@ import type {
 	FundraiserStatus,
 	FundraiserFeedEntry,
 	FundraiserTotals,
+	CourseAlertKind,
+	RaceCourseSource,
 	RaceListing,
 	RaceProvider,
 	RouteCondition,
@@ -151,6 +172,8 @@ import {
 	parseNutritionAssignmentStatus,
 	parseNutritionGoalPhase,
 	parseNutritionProgression,
+	parseCourseAlertKind,
+	parseRaceCourseSource,
 	parseRouteSurface,
 	parseRunMetadata,
 	parseRunSource,
@@ -186,6 +209,15 @@ import {
 } from '../runs/smoothed_sidecar';
 import { compareLeaderboard } from '../runs/race_leaderboard';
 import { readRankRows } from '../segments/effort_rank';
+import { trackExtent, type TrackExtent } from '../segments/track_extent';
+import {
+	courseAttribution,
+	parseCourseCheckpoints,
+	type CourseCheckpoint,
+	type RecapParkRow,
+	type RunParkCourseTime,
+} from '../parks/park_courses';
+import type { GpxAttribution } from '../routes/route_gpx';
 import type { RecapPeriodKind } from '../types';
 import { GYM_SESSION_DRAFT_KEY, hasSessionDraft } from '../gym/gym_session_draft';
 import { dedupeShadowedExercises } from '../gym/exercise_catalogue';
@@ -238,6 +270,8 @@ import {
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
 	GLOBAL_SEGMENT_SCORING_LIMIT,
+	GLOBAL_SEGMENT_CANDIDATE_LIMIT,
+	GLOBAL_SEGMENT_CANDIDATE_PAD_M,
 } from './data_normalise';
 import { dashboardRunsWindowStart } from './dashboard_runs';
 import {
@@ -252,6 +286,7 @@ import {
 import { deleteRunsBounded } from './bulk_delete';
 import {
 	assignCompetitionRanks,
+	GLOBAL_SEGMENT_MATCHER_VERSION,
 	type SegmentAgeBand,
 	type SegmentGenderFilter,
 } from '../segments/segments';
@@ -717,6 +752,60 @@ export async function fetchRecapExtras(
 		photoCount: photos.error ? 0 : photos.count ?? 0,
 		personalRecordCount: prs.error ? 0 : prs.count ?? 0,
 	};
+}
+
+/// The signed-in runner's park course efforts started in `[startIso, endIso)`,
+/// each joined to its course and park, for the recap's park card and list
+/// (`recapParkSummary`). A course whose park was pulled is left out (RLS
+/// hides it). Throws on a failed read so the page can leave the card off
+/// rather than claim zero.
+export async function fetchRecapParkCourses(startIso: string, endIso: string): Promise<RecapParkRow[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	const { data: efforts, error } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('global_segment_id')
+		.eq('user_id', userId)
+		.gte('started_at', startIso)
+		.lt('started_at', endIso);
+	if (error) throw dbError(error);
+	const segmentIds = Array.from(new Set((efforts ?? []).map((e) => e.global_segment_id)));
+	if (segmentIds.length === 0) return [];
+	const { data: courses, error: courseError } = await queryChunked(segmentIds, (part) =>
+		supabase
+			.from(TABLES.park_courses)
+			.select('id, global_segment_id, park_id, parks!inner(name, region_code)')
+			.in('global_segment_id', part),
+	);
+	if (courseError) throw dbError(courseError);
+	const bySegment = new Map<string, RecapParkRow>();
+	for (const c of courses ?? []) {
+		bySegment.set(c.global_segment_id, {
+			parkId: c.park_id,
+			parkName: c.parks.name,
+			regionCode: c.parks.region_code,
+			courseId: c.id,
+		});
+	}
+	return (efforts ?? []).flatMap((e) => {
+		const row = bySegment.get(e.global_segment_id);
+		return row ? [row] : [];
+	});
+}
+
+/// The park course times one of the caller's own runs set, with the season
+/// rank each holds (`run_park_course_times`), for the share image's course
+/// sticker. Throws on a failed read.
+export async function fetchRunParkCourseTimes(runId: string): Promise<RunParkCourseTime[]> {
+	const { data, error } = await supabase.rpc('run_park_course_times', { p_run_id: runId }, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		course_name: r.course_name,
+		park_name: r.park_name,
+		time_seconds: r.time_seconds,
+		season: r.season,
+		season_rank: r.season_rank ?? null,
+	}));
 }
 
 /// Publish (or re-publish) a recap as a public, OG-unfurlable snapshot and
@@ -2767,7 +2856,7 @@ const CLUB_SELECT_COLS =
 // enumerates these safe columns; the two coords are write-only
 // today (no UI consumer).
 const EVENT_SELECT_COLS =
-	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, gym_routine_id, is_public' as const;
+	'id, club_id, title, description, starts_at, timezone, duration_min, meet_label, route_id, distance_m, pace_target_sec, capacity, author_id, created_at, updated_at, recurrence_freq, recurrence_byday, recurrence_until, recurrence_count, category, discipline, gym_template, session_plan_id, gym_routine_id, is_public, race_start_mode, race_scheduled_offset_s, race_window_open_offset_s, race_window_length_s, race_auto_approve' as const;
 
 /** Browse public clubs. Most recently created first. */
 export async function browseClubsWithError(
@@ -2952,6 +3041,9 @@ export interface RaceListingResult {
 	results_url: string | null;
 	is_verified: boolean;
 	distance_m_away: number | null;
+	/// The claiming club is verified, public and unhidden right now
+	/// (public_race_listings, decisions § 2406). Never stored per row.
+	organiser_is_official: boolean;
 }
 
 /// Race discovery (security invoker, public clubs/listings). Mirrors
@@ -2989,10 +3081,22 @@ export interface RaceListingDetail {
 	entry_url: string | null;
 	results_url: string | null;
 	is_verified: boolean;
+	/// The verified club that claimed the race (decisions § 2381). Null while
+	/// unclaimed, and while the club is private or moderated away.
+	organiser: RaceOrganiser | null;
+	/// The organiser club is verified right now (decisions § 2406); a club
+	/// whose badge was revoked still names itself but vouches for nothing.
+	organiserIsOfficial: boolean;
 	/// The linked course's summary. The view fills it only while the route is
 	/// public, so null covers "no course" and "a course nobody may see" alike
 	/// (decisions § 2157).
 	course: RaceListingCourse | null;
+}
+
+export interface RaceOrganiser {
+	id: string;
+	name: string;
+	slug: string | null;
 }
 
 export interface RaceListingCourse {
@@ -3002,19 +3106,43 @@ export interface RaceListingCourse {
 	/// Null unless the route is public (decisions § 2253); its line is read
 	/// with `fetchPublicRoute`, never from this row.
 	routeId: string | null;
+	/// Where the course came from and when its club last checked it; null on
+	/// a course linked by an operator before claims existed (decisions § 2381).
+	source: RaceCourseSource | null;
+	checkedAt: string | null;
+	/// Set when the route's line changed after the last check.
+	updatedAt: string | null;
 }
 
-export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
-	if (!isEntityId(id)) return null;
-	const { data, error } = await supabase
-		.from('public_race_listings')
-		.select(
-			'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id'
-		)
-		.eq('id', id)
-		.maybeSingle();
-	if (error) throw dbError(error);
-	if (!data || !data.id || !data.name || !data.race_date || !data.provider) return null;
+const RACE_LISTING_DETAIL_COLUMNS =
+	'id, provider, name, race_date, distance_m, location_label, entry_url, results_url, is_verified, course_distance_m, course_elevation_m, course_surface, course_route_id, course_source, course_checked_at, course_updated_at, organiser_club_id, organiser_club_name, organiser_club_slug, organiser_is_official';
+
+type RaceListingDetailRow = Pick<
+	Database['public']['Views']['public_race_listings']['Row'],
+	| 'id'
+	| 'provider'
+	| 'name'
+	| 'race_date'
+	| 'distance_m'
+	| 'location_label'
+	| 'entry_url'
+	| 'results_url'
+	| 'is_verified'
+	| 'course_distance_m'
+	| 'course_elevation_m'
+	| 'course_surface'
+	| 'course_route_id'
+	| 'course_source'
+	| 'course_checked_at'
+	| 'course_updated_at'
+	| 'organiser_club_id'
+	| 'organiser_club_name'
+	| 'organiser_club_slug'
+	| 'organiser_is_official'
+>;
+
+function raceListingDetailFromRow(data: RaceListingDetailRow): RaceListingDetail | null {
+	if (!data.id || !data.name || !data.race_date || !data.provider) return null;
 	const hasCourse =
 		data.course_distance_m != null ||
 		data.course_elevation_m != null ||
@@ -3030,15 +3158,288 @@ export async function fetchRaceListing(id: string): Promise<RaceListingDetail | 
 		entry_url: data.entry_url,
 		results_url: data.results_url,
 		is_verified: data.is_verified ?? false,
+		organiser:
+			data.organiser_club_id && data.organiser_club_name
+				? { id: data.organiser_club_id, name: data.organiser_club_name, slug: data.organiser_club_slug }
+				: null,
+		organiserIsOfficial: data.organiser_is_official === true,
 		course: hasCourse
 			? {
 					distanceM: data.course_distance_m,
 					ascentM: data.course_elevation_m,
 					surface: data.course_surface,
-					routeId: data.course_route_id
+					routeId: data.course_route_id,
+					source: parseRaceCourseSource(data.course_source),
+					checkedAt: data.course_checked_at,
+					updatedAt: data.course_updated_at
 				}
 			: null
 	};
+}
+
+export async function fetchRaceListing(id: string): Promise<RaceListingDetail | null> {
+	if (!isEntityId(id)) return null;
+	const { data, error } = await supabase
+		.from('public_race_listings')
+		.select(RACE_LISTING_DETAIL_COLUMNS)
+		.eq('id', id)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? raceListingDetailFromRow(data) : null;
+}
+
+/// Several listings in one read, for the course-suggestion review queue.
+/// Order follows `ids`; an id the view no longer returns is dropped.
+export async function fetchRaceListings(ids: readonly string[]): Promise<RaceListingDetail[]> {
+	const wanted = [...new Set(ids.filter(isEntityId))];
+	if (wanted.length === 0) return [];
+	const rows = await readChunked(wanted, async (part) => {
+		const { data, error } = await supabase
+			.from('public_race_listings')
+			.select(RACE_LISTING_DETAIL_COLUMNS)
+			.in('id', part);
+		if (error) throw dbError(error);
+		return data ?? [];
+	});
+	const byId = new Map<string, RaceListingDetail>();
+	for (const row of rows) {
+		const detail = raceListingDetailFromRow(row);
+		if (detail) byId.set(detail.id, detail);
+	}
+	return wanted.flatMap((id) => byId.get(id) ?? []);
+}
+
+/// A verified club claims an unclaimed race (decisions § 2381). The RPC is
+/// the gate: only an active owner/admin of a public, verified club passes.
+export async function claimRaceListing(listingId: string, clubId: string): Promise<void> {
+	const { error } = await supabase.rpc('claim_race_listing', {
+		p_listing_id: listingId,
+		p_club_id: clubId
+	});
+	if (error) throw dbError(error);
+}
+
+/// Links a course (a public route the organiser club owns), or unlinks it
+/// with `routeId: null`. Linking the same route again re-checks it.
+export async function linkRaceCourse(
+	listingId: string,
+	routeId: string | null,
+	source: RaceCourseSource | null
+): Promise<void> {
+	const { error } = await supabase.rpc('link_race_course', {
+		p_listing_id: listingId,
+		p_route_id: routeId,
+		p_source: source
+	});
+	if (error) throw dbError(error);
+}
+
+/// A runner suggests one of their public routes as the race's course. It
+/// links nothing; the organiser club reviews it.
+export async function suggestRaceCourse(
+	listingId: string,
+	routeId: string,
+	note: string | null
+): Promise<void> {
+	const { error } = await supabase.rpc('suggest_race_course', {
+		p_listing_id: listingId,
+		p_route_id: routeId,
+		p_note: note?.trim() || null
+	});
+	if (error) throw dbError(error);
+}
+
+/// The caller's own open suggestion for a race, or null.
+export async function fetchMyRaceCourseSuggestion(
+	listingId: string
+): Promise<{ id: string; routeId: string } | null> {
+	if (!isEntityId(listingId)) return null;
+	const { data, error } = await supabase
+		.from('race_course_suggestions')
+		.select('id, route_id')
+		.eq('listing_id', listingId)
+		.eq('status', 'pending')
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? { id: data.id, routeId: data.route_id } : null;
+}
+
+export interface RaceCourseSuggestion {
+	id: string;
+	routeId: string;
+	routeName: string;
+	/// The club that owns the suggested route, when it is a club route.
+	routeClubId: string | null;
+	note: string | null;
+	createdAt: string;
+}
+
+/// The pending suggestions a reviewer may act on. Empty for anyone who is not
+/// one; the queue never says who suggested a route.
+export async function fetchRaceCourseSuggestionsForReview(
+	listingId: string
+): Promise<RaceCourseSuggestion[]> {
+	const { data, error } = await supabase.rpc(
+		'race_course_suggestions_for_review',
+		{ p_listing_id: listingId },
+		{ get: true }
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		id: r.id,
+		routeId: r.route_id,
+		routeName: r.route_name,
+		routeClubId: r.route_club_id,
+		note: r.note,
+		createdAt: r.created_at
+	}));
+}
+
+/// An organiser's course alert on a race it claimed or a route its club
+/// owns (decisions § 2407). Readable only while the club is still verified,
+/// and a route alert only by someone who can see the route; who typed it is
+/// never readable.
+export interface CourseAlert {
+	id: string;
+	clubId: string;
+	listingId: string | null;
+	routeId: string | null;
+	kind: CourseAlertKind;
+	message: string;
+	createdAt: string;
+}
+
+export type CourseAlertTarget = { listingId: string; routeId?: undefined } | { routeId: string; listingId?: undefined };
+
+const COURSE_ALERT_COLUMNS = 'id, club_id, listing_id, route_id, kind, message, created_at';
+
+function courseAlertFromRow(r: {
+	id: string;
+	club_id: string;
+	listing_id: string | null;
+	route_id: string | null;
+	kind: string;
+	message: string;
+	created_at: string;
+}): CourseAlert {
+	return {
+		id: r.id,
+		clubId: r.club_id,
+		listingId: r.listing_id,
+		routeId: r.route_id,
+		kind: parseCourseAlertKind(r.kind),
+		message: r.message,
+		createdAt: r.created_at
+	};
+}
+
+/// A race's or a route's alerts, newest first.
+export async function fetchCourseAlerts(target: CourseAlertTarget, limit = 20): Promise<CourseAlert[]> {
+	const id = target.listingId ?? target.routeId;
+	if (!isEntityId(id)) return [];
+	const query = supabase.from(TABLES.course_alerts).select(COURSE_ALERT_COLUMNS);
+	const { data, error } = await (target.listingId
+		? query.eq('listing_id', target.listingId)
+		: query.eq('route_id', id))
+		.order('created_at', { ascending: false })
+		.limit(limit);
+	if (error) throw dbError(error);
+	return (data ?? []).map(courseAlertFromRow);
+}
+
+/// Where an alert points, for the stable-id resolver a notification links to.
+/// Null when the alert is gone or its club no longer vouches for it.
+export async function fetchCourseAlertTarget(
+	alertId: string
+): Promise<{ listingId: string | null; routeId: string | null } | null> {
+	if (!isEntityId(alertId)) return null;
+	const { data, error } = await supabase
+		.from(TABLES.course_alerts)
+		.select('listing_id, route_id')
+		.eq('id', alertId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data ? { listingId: data.listing_id, routeId: data.route_id } : null;
+}
+
+/// Posts an alert as the organiser club; the RPC is the gate and tells the
+/// runners training for the race or who saved its course.
+export async function postCourseAlert(
+	target: CourseAlertTarget,
+	kind: CourseAlertKind,
+	message: string
+): Promise<string> {
+	const { data, error } = await supabase.rpc('post_course_alert', {
+		p_listing_id: target.listingId ?? null,
+		p_route_id: target.routeId ?? null,
+		p_kind: kind,
+		p_message: message.trim()
+	});
+	if (error) throw dbError(error);
+	return data;
+}
+
+export async function deleteCourseAlert(alertId: string): Promise<void> {
+	const { error } = await supabase.rpc('delete_course_alert', { p_alert_id: alertId });
+	if (error) throw dbError(error);
+}
+
+/// A race with pending course suggestions the signed-in runner may review
+/// (decisions § 2396): a race their verified club claimed, or an unclaimed
+/// race while they administer any verified club.
+export interface RaceCourseReviewQueueItem {
+	listingId: string;
+	name: string;
+	raceDate: string;
+	/// Null while the race is unclaimed; claiming it is the first step.
+	organiserClubId: string | null;
+	pendingCount: number;
+}
+
+export async function fetchRaceCourseReviewQueue(): Promise<RaceCourseReviewQueueItem[]> {
+	const { data, error } = await supabase.rpc('race_course_review_queue', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		listingId: r.listing_id,
+		name: r.name,
+		raceDate: r.race_date,
+		organiserClubId: r.organiser_club_id,
+		pendingCount: r.pending_count
+	}));
+}
+
+/// Approve (linking `routeId`, the club's own public copy, or the suggested
+/// route itself when the club already owns it) or reject a suggestion.
+export async function reviewRaceCourseSuggestion(
+	suggestionId: string,
+	approve: boolean,
+	routeId: string | null = null,
+	source: RaceCourseSource = 'official'
+): Promise<void> {
+	const { error } = await supabase.rpc('review_race_course_suggestion', {
+		p_suggestion_id: suggestionId,
+		p_approve: approve,
+		p_route_id: routeId,
+		p_source: source
+	});
+	if (error) throw dbError(error);
+}
+
+/// The caller's own public routes, for the "Suggest a course" picker.
+export async function fetchMyPublicRoutes(): Promise<{ id: string; name: string }[]> {
+	const { data: sessionData } = await supabase.auth.getSession();
+	const userId = sessionData.session?.user?.id;
+	if (!userId) return [];
+	const { data, error } = await supabase
+		.from('routes')
+		.select('id, name')
+		.eq('user_id', userId)
+		.eq('is_public', true)
+		.eq('shadow_hidden', false)
+		.order('created_at', { ascending: false })
+		.limit(200);
+	if (error) throw dbError(error);
+	return data ?? [];
 }
 
 /// The signed-in runner's own runs linked to a listing (an imported or
@@ -4337,7 +4738,8 @@ function normaliseEvent(e: Event): Event {
 		// Legacy rows predate the category column; treat them as athletic runs.
 		category: (e.category ?? 'run') as EventCategory,
 		// Raw jsonb on the row -> the typed seam shape (null for empty/malformed).
-		gym_template: parseGymTemplate(e.gym_template as unknown)
+		gym_template: parseGymTemplate(e.gym_template as unknown),
+		race_start_mode: parseStartMode(e.race_start_mode)
 	};
 }
 
@@ -4379,6 +4781,13 @@ export async function createEvent(input: {
 	// Defaults to public. Only meaningful in a public club (a private club's
 	// events are already members-only via the club gate).
 	is_public?: boolean;
+	// How the event's races start and when, as offsets from each occurrence
+	// (#1306). Omitted: Host GO.
+	race_start_mode?: SessionStartMode;
+	race_scheduled_offset_s?: number | null;
+	race_window_open_offset_s?: number | null;
+	race_window_length_s?: number | null;
+	race_auto_approve?: boolean | null;
 }): Promise<Event> {
 	const userId = auth.user?.id;
 	if (!userId) throw new Error('Not authenticated');
@@ -4408,6 +4817,11 @@ export async function createEvent(input: {
 			recurrence_byday: input.recurrence_byday ?? null,
 			recurrence_until: input.recurrence_until ?? null,
 			recurrence_count: input.recurrence_count ?? null,
+			race_start_mode: input.race_start_mode ?? 'host_go',
+			race_scheduled_offset_s: input.race_scheduled_offset_s ?? null,
+			race_window_open_offset_s: input.race_window_open_offset_s ?? null,
+			race_window_length_s: input.race_window_length_s ?? null,
+			race_auto_approve: input.race_auto_approve ?? null,
 			author_id: userId
 		})
 		.select(EVENT_SELECT_COLS)
@@ -4432,6 +4846,11 @@ export async function updateEvent(
 		pace_target_sec: number | null;
 		capacity: number | null;
 		is_public: boolean;
+		race_start_mode: SessionStartMode;
+		race_scheduled_offset_s: number | null;
+		race_window_open_offset_s: number | null;
+		race_window_length_s: number | null;
+		race_auto_approve: boolean | null;
 	}>
 ): Promise<void> {
 	// RLS `is_event_organiser` gates the UPDATE; owner/admin/event_organiser
@@ -5396,6 +5815,91 @@ export interface RaceSessionRow {
 	is_auto_approve: boolean;
 	created_at: string;
 	updated_at: string;
+	/// When the race froze its courses' lines (`race_session_courses`); null
+	/// for a race armed before the frozen copy existed.
+	courses_frozen_at?: string | null;
+	/// How the race starts (#1306) and its instants, copied from the event's
+	/// offsets when the session was created and moved by Delay / Extend.
+	start_mode?: SessionStartMode;
+	scheduled_start_at?: string | null;
+	window_opens_at?: string | null;
+	window_closes_at?: string | null;
+	/// The status on the server clock (`race_sessions_redacted`); a scheduled
+	/// race whose GO passed reads running before the per-minute job moves it.
+	effective_status?: RaceSessionStatus;
+}
+
+/// Create the session of a scheduled or self-timed occurrence that is due
+/// within a day (`ensure_race_session`), so the event page's first read finds
+/// it. False for a Host GO event, a cancelled occurrence, one not yet due or
+/// an event the caller cannot see. A failure is logged and reads as false:
+/// the page then shows the race as not yet open, which the next poll fixes.
+export async function ensureRaceSession(eventId: string, instanceStart: string): Promise<boolean> {
+	const { data, error } = await supabase.rpc('ensure_race_session', {
+		p_event_id: eventId,
+		p_instance_start: instanceStart,
+	});
+	if (error) {
+		console.warn('ensureRaceSession failed', error);
+		return false;
+	}
+	return data === true;
+}
+
+/// The server clock minus this device's, in ms (`server_now`), halving the
+/// round trip. Null when the call fails: callers then count down on the
+/// device clock and say nothing more precise than it.
+export async function fetchServerClockOffsetMs(): Promise<number | null> {
+	const sent = Date.now();
+	const { data, error } = await supabase.rpc('server_now', undefined, { get: true });
+	const received = Date.now();
+	if (error || typeof data !== 'string') {
+		if (error) console.warn('fetchServerClockOffsetMs failed', error);
+		return null;
+	}
+	const server = Date.parse(data);
+	if (!Number.isFinite(server)) return null;
+	return Math.round(server - (sent + received) / 2);
+}
+
+/// Delay a scheduled GO, or a self-timed window's opening, to `startIso`
+/// (organiser only). The server refuses once the start has passed and moves
+/// the window's close by the same amount.
+export async function delayRaceStart(
+	eventId: string,
+	instanceStart: string,
+	mode: SessionStartMode,
+	startIso: string
+): Promise<RaceSessionRow> {
+	const patch: Updatable<'race_sessions'> =
+		mode === 'scheduled' ? { scheduled_start_at: startIso } : { window_opens_at: startIso };
+	const { data, error } = await supabase
+		.from('race_sessions')
+		.update({ ...patch, updated_at: new Date().toISOString() })
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.select()
+		.single();
+	if (error) throw dbError(error);
+	return data as RaceSessionRow;
+}
+
+/// Move a window's close (Extend, or close sooner). The server refuses a
+/// close in the past, before the opening or more than 7 days after it.
+export async function setRaceWindowClose(
+	eventId: string,
+	instanceStart: string,
+	closesIso: string
+): Promise<RaceSessionRow> {
+	const { data, error } = await supabase
+		.from('race_sessions')
+		.update({ window_closes_at: closesIso, updated_at: new Date().toISOString() })
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart)
+		.select()
+		.single();
+	if (error) throw dbError(error);
+	return data as RaceSessionRow;
 }
 
 export async function fetchRaceSession(
@@ -5600,6 +6104,81 @@ export async function fetchEventCourses(eventId: string): Promise<EventCourse[]>
 	return sortCourses(data ?? []);
 }
 
+/// One course's timing lines and finish point (#1305), from the live course
+/// row or a race's frozen copy. `course_id` is the course either way.
+export interface CourseLinesRow extends CourseGateColumns {
+	course_id: string;
+	finish_lat: number | null;
+	finish_lng: number | null;
+	finish_line_self_cross: boolean;
+}
+
+/// Every course's lines as they stand now. The source columns say whether an
+/// organiser placed a line, which the editor and the preflight need.
+export async function fetchEventCourseLines(eventId: string): Promise<CourseLinesRow[]> {
+	const { data, error } = await supabase
+		.from(TABLES.event_courses)
+		.select(
+			'id, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, start_gate_source, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_gate_source, finish_lat, finish_lng, finish_line_self_cross'
+		)
+		.eq('event_id', eventId);
+	if (error) throw dbError(error);
+	return (data ?? []).map(({ id, ...rest }) => ({ course_id: id, ...rest }));
+}
+
+/// The lines a race froze when it was armed (`race_session_courses`), which
+/// is what its runners cross. Empty for a race armed before the copy existed;
+/// `race_sessions_redacted.courses_frozen_at` says whether there is one.
+export async function fetchRaceSessionCourseLines(
+	eventId: string,
+	instanceStart: string
+): Promise<CourseLinesRow[]> {
+	const { data, error } = await supabase
+		.from(TABLES.race_session_courses)
+		.select(
+			'course_id, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_lat, finish_lng, finish_line_self_cross'
+		)
+		.eq('event_id', eventId)
+		.eq('instance_start', instanceStart);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// The lines a viewer of one occurrence should see: the race's frozen copy
+/// once it has one, otherwise the courses as they stand.
+export async function fetchCourseLinesForOccurrence(
+	eventId: string,
+	instanceStart: string | null,
+	frozen: boolean
+): Promise<CourseLinesRow[]> {
+	if (frozen && instanceStart) return fetchRaceSessionCourseLines(eventId, instanceStart);
+	return fetchEventCourseLines(eventId);
+}
+
+/// Place one of a course's lines (organiser only, `set_event_course_gate`).
+/// The server normalises the bearing into [0, 360) and refuses a half-width
+/// outside 5-100 m.
+export async function setEventCourseGate(courseId: string, which: GateWhich, gate: Gate): Promise<void> {
+	const { error } = await supabase.rpc('set_event_course_gate', {
+		p_course_id: courseId,
+		p_which: which,
+		p_lat: gate.lat,
+		p_lng: gate.lng,
+		p_bearing_deg: gate.bearingDeg,
+		p_half_width_m: gate.halfWidthM,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Put a line back to the route's (or to none on a routeless course).
+export async function resetEventCourseGate(courseId: string, which: GateWhich): Promise<void> {
+	const { error } = await supabase.rpc('reset_event_course_gate', {
+		p_course_id: courseId,
+		p_which: which,
+	});
+	if (error) throw dbError(error);
+}
+
 /// Persist the event editor's course list (a dropped course's RSVPs and
 /// results fall back to no course). The write order and the refused-write
 /// check live in `applyCourseSave`; each statement returns its ids so a write
@@ -5681,6 +6260,9 @@ export interface RacePingRow {
 	elapsed_s: number | null;
 	bpm: number | null;
 	coarse: boolean;
+	/// Seconds since this runner crossed the start line (#1306 M13). Null
+	/// from an Apple Watch relay, an older app, or before the crossing.
+	since_start_line_s?: number | null;
 }
 
 /// Recent pings for a race instance, newest first. The spectator page
@@ -7003,6 +7585,141 @@ export async function applyAiPlanEdits(
 		p_include_following: includeFollowing,
 		p_workouts: payload.workouts,
 		p_weeks: payload.weeks
+	});
+	if (error) throw dbError(error);
+}
+
+export type PlanChangeRequest = Database['public']['Tables']['plan_change_requests']['Row'];
+
+/// The coach a change to this plan goes to for approval (decisions § 2382):
+/// the coach who assigned it, while the signed-in athlete's link with them is
+/// active. Null when there is none, or when the read fails — the athlete can
+/// still apply the change themselves.
+export async function fetchPlanReviewCoach(
+	planId: string,
+): Promise<{ coachId: string; name: string | null } | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const { data: plan, error } = await supabase
+		.from('training_plans')
+		.select('assigned_by_coach_id')
+		.eq('id', planId)
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error || !plan?.assigned_by_coach_id) return null;
+	const coachId = plan.assigned_by_coach_id;
+	const { data: link, error: linkError } = await supabase
+		.from(TABLES.coach_athletes)
+		.select('id')
+		.eq('coach_id', coachId)
+		.eq('athlete_id', userId)
+		.eq('status', 'active')
+		.limit(1)
+		.maybeSingle();
+	if (linkError || !link) return null;
+	const byId = await fetchProfilesByIds([coachId]);
+	return { coachId, name: byId.get(coachId)?.display_name ?? null };
+}
+
+/// Send a reviewed plan edit to the plan's coach instead of applying it.
+/// The RPC runs the same checks as an apply and refuses what they refuse.
+export async function proposePlanChange(
+	planId: string,
+	todayIso: string,
+	includeFollowing: boolean,
+	payload: AiPlanEditPayload,
+): Promise<string> {
+	const { data, error } = await supabase.rpc('propose_plan_change', {
+		p_plan_id: planId,
+		p_today: todayIso,
+		p_include_following: includeFollowing,
+		p_workouts: payload.workouts,
+		p_weeks: payload.weeks,
+	});
+	if (error) throw dbError(error);
+	return data as string;
+}
+
+/// The plan change requests on one plan, or between the signed-in user and
+/// one other person (either side of the coaching link), newest first.
+export async function fetchPlanChangeRequests(
+	scope: { planId: string } | { partnerId: string },
+): Promise<PlanChangeRequest[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	let query = supabase.from(TABLES.plan_change_requests).select('*');
+	if ('planId' in scope) {
+		query = query.eq('plan_id', scope.planId);
+	} else {
+		if (!isEntityId(scope.partnerId)) return [];
+		query = query.or(
+			`and(athlete_id.eq.${userId},coach_id.eq.${scope.partnerId}),and(coach_id.eq.${userId},athlete_id.eq.${scope.partnerId})`,
+		);
+	}
+	const { data, error } = await query.order('created_at', { ascending: false }).limit(20);
+	if (error) throw dbError(error);
+	return data ?? [];
+}
+
+/// The plan rows a request's lines describe, read by id under the viewer's
+/// RLS (the athlete's own rows, or an active coach's read of them).
+export async function fetchPlanChangeTargets(
+	workoutIds: string[],
+	weekIds: string[],
+): Promise<{ workouts: PlanChangeWorkoutRow[]; weeks: PlanChangeWeekRow[] }> {
+	const [workouts, weeks] = await Promise.all([
+		readChunked(workoutIds, async (part) => {
+			const { data, error } = await supabase
+				.from('plan_workouts')
+				.select('id, scheduled_date, kind, target_distance_m, target_duration_seconds, skipped_at')
+				.in('id', part);
+			if (error) throw dbError(error);
+			return (data ?? []) as PlanChangeWorkoutRow[];
+		}),
+		readChunked(weekIds, async (part) => {
+			const { data, error } = await supabase
+				.from('plan_weeks')
+				.select('id, week_index, target_volume_m')
+				.in('id', part);
+			if (error) throw dbError(error);
+			return (data ?? []) as PlanChangeWeekRow[];
+		}),
+	]);
+	return { workouts, weeks };
+}
+
+/// The coach approves (the chosen lines, or all with null) or declines.
+export async function decidePlanChange(
+	requestId: string,
+	approve: boolean,
+	todayIso: string,
+	workoutIds: string[] | null,
+	weekIds: string[] | null,
+	note: string | null,
+): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('decide_plan_change', {
+		p_request_id: requestId,
+		p_approve: approve,
+		p_today: todayIso,
+		p_workout_ids: workoutIds,
+		p_week_ids: weekIds,
+		p_note: note,
+	});
+	if (error) throw dbError(error);
+}
+
+export async function withdrawPlanChange(requestId: string): Promise<void> {
+	const { error } = await supabase.rpc('withdraw_plan_change', { p_request_id: requestId });
+	if (error) throw dbError(error);
+}
+
+/// The athlete applies their own request without the coach; the coach is told.
+export async function applyPlanChangeMyself(requestId: string, todayIso: string): Promise<void> {
+	markListsStale('plans');
+	const { error } = await supabase.rpc('apply_plan_change_myself', {
+		p_request_id: requestId,
+		p_today: todayIso,
 	});
 	if (error) throw dbError(error);
 }
@@ -9548,6 +10265,47 @@ export async function fetchDiscoverableRoutesInBbox(bbox: {
 	return data as DiscoverableRoutePin[];
 }
 
+/// Verified races in the next ~6 months inside the viewport bbox, for the
+/// discovery map's race pins (`upcoming_races_in_bbox`, migration
+/// 20271125002408). Only `is_verified` listings pin; the point is the start of
+/// a publicly shown course, else the listing's location. Races whose organiser
+/// club is verified rank first; `officialOnly` narrows to them for the
+/// Official lens.
+export interface UpcomingRacePin {
+	id: string;
+	name: string;
+	race_date: string;
+	distance_m: number | null;
+	location_label: string | null;
+	is_official: boolean;
+	has_course: boolean;
+	lng: number;
+	lat: number;
+}
+
+export async function fetchUpcomingRacesInBbox(bbox: {
+	minLng: number;
+	minLat: number;
+	maxLng: number;
+	maxLat: number;
+	limit?: number;
+	officialOnly?: boolean;
+}): Promise<UpcomingRacePin[]> {
+	const { data, error } = await supabase.rpc('upcoming_races_in_bbox', {
+		p_min_lng: bbox.minLng,
+		p_min_lat: bbox.minLat,
+		p_max_lng: bbox.maxLng,
+		p_max_lat: bbox.maxLat,
+		p_limit: bbox.limit ?? 100,
+		p_official_only: bbox.officialOnly ?? false,
+	}, { get: true });
+	if (error || !data) {
+		console.warn('fetchUpcomingRacesInBbox failed', error);
+		return [];
+	}
+	return data as UpcomingRacePin[];
+}
+
 // --- Gear tracking (decisions backlog item #7) ---
 
 export type GearKind = 'shoe' | 'bike';
@@ -10467,6 +11225,21 @@ export interface GlobalSegment {
 	country_code: string | null;
 	is_active: boolean;
 	created_at: string;
+	/** The start and end lines (decisions § 2402); null where a segment has none. */
+	start_gate_lat: number | null;
+	start_gate_lng: number | null;
+	start_gate_bearing_deg: number | null;
+	start_gate_half_width_m: number | null;
+	start_gate_source: SegmentGateSource | null;
+	end_gate_lat: number | null;
+	end_gate_lng: number | null;
+	end_gate_bearing_deg: number | null;
+	end_gate_half_width_m: number | null;
+	end_gate_source: SegmentGateSource | null;
+}
+
+function segmentGateSource(v: string | null): SegmentGateSource | null {
+	return v === 'derived' || v === 'curator' ? v : null;
 }
 
 /// One `global_segments` row as the client's `GlobalSegment`. `waypoints` is a
@@ -10481,7 +11254,14 @@ function asGlobalSegment(
 		waypoints: Array.isArray(row.waypoints)
 			? (row.waypoints as unknown as GlobalSegment['waypoints'])
 			: [],
+		start_gate_source: segmentGateSource(row.start_gate_source),
+		end_gate_source: segmentGateSource(row.end_gate_source),
 	};
+}
+
+/// Whether a catalogue segment is timed by its lines: both ends have one.
+export function globalSegmentHasLines(segment: GlobalSegment): boolean {
+	return segment.start_gate_source !== null && segment.end_gate_source !== null;
 }
 
 export interface GlobalSegmentEffort {
@@ -10492,6 +11272,8 @@ export interface GlobalSegmentEffort {
 	time_seconds: number;
 	started_at: string;
 	created_at: string;
+	/** Absent on a leaderboard row: the board RPC does not return it. */
+	matched_by?: GlobalSegmentMatchedBy;
 }
 
 export interface GlobalSegmentLeaderboardEntry {
@@ -10588,6 +11370,8 @@ export async function fetchGlobalSegmentLeaderboard(
 		gender?: SegmentGenderFilter | null;
 		ageBand?: SegmentAgeBand | null;
 		clubId?: string | null;
+		/** A calendar year in the course's park timezone; omitted is all time. */
+		season?: number | null;
 	} = {},
 	limit = 50,
 ): Promise<GlobalSegmentLeaderboardEntry[]> {
@@ -10597,6 +11381,7 @@ export async function fetchGlobalSegmentLeaderboard(
 		p_age_band: filter.ageBand ?? undefined,
 		p_limit: limit,
 		p_club_id: filter.clubId ?? undefined,
+		p_season: filter.season ?? undefined,
 	}, { get: true });
 	if (error || !data) {
 		console.warn('fetchGlobalSegmentLeaderboard failed', error);
@@ -10628,20 +11413,66 @@ export async function fetchGlobalSegmentLeaderboard(
 	}));
 }
 
-/// Backfill catalogue-segment efforts a run earned. Called from the
-/// run-detail page on mount (owner only). Scores the run's track against
-/// every active catalogue geometry via the pure `computeGlobalSegmentEffort`
-/// (end-to-end match, curated v1) and batch-upserts matches. Idempotent via
-/// unique(global_segment_id, run_id) + ignoreDuplicates. Returns new count.
+/// Whether any effort the viewer can see on a catalogue segment was matched by
+/// the circles. On a segment timed by its lines that means an effort written
+/// before the line matcher, still waiting for its runner's next view to be
+/// re-matched (issue #1308), so the board says so. A failed read answers
+/// false: the note is advisory, and the board itself is unaffected.
+export async function globalSegmentHasZoneEfforts(segmentId: string): Promise<boolean> {
+	const { count, error } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('id', { count: 'exact', head: true })
+		.eq('global_segment_id', segmentId)
+		.eq('matched_by', 'zone');
+	if (error) {
+		console.warn('globalSegmentHasZoneEfforts failed', error);
+		return false;
+	}
+	return (count ?? 0) > 0;
+}
+
+/// The active catalogue segments that could be timed on a track with this
+/// extent (`global_segments_in_bbox`, decisions § 2392): those whose own
+/// extent overlaps it padded by `GLOBAL_SEGMENT_CANDIDATE_PAD_M`. The same
+/// lookup, pad and cap the `segment-match` Edge Function scores with.
+export async function fetchGlobalSegmentsInBbox(
+	extent: TrackExtent,
+): Promise<{ segments: GlobalSegment[]; error: Error | null }> {
+	const { data, error } = await supabase.rpc('global_segments_in_bbox', {
+		p_min_lat: extent.minLat,
+		p_min_lng: extent.minLng,
+		p_max_lat: extent.maxLat,
+		p_max_lng: extent.maxLng,
+		p_pad_m: GLOBAL_SEGMENT_CANDIDATE_PAD_M,
+		p_limit: GLOBAL_SEGMENT_CANDIDATE_LIMIT,
+	}, { get: true });
+	if (error) {
+		console.warn('fetchGlobalSegmentsInBbox failed', error);
+		return { segments: [], error: dbError(error) };
+	}
+	return { segments: (data ?? []).map(asGlobalSegment), error: null };
+}
+
+/// Score a run's catalogue-segment efforts from the run-detail page on mount
+/// (owner only). The FALLBACK path: the `segment-match` job scores every run
+/// server-side when its track lands (decisions § 2392), and this stays until
+/// that job has run in production, then goes (issue #1313). It scores the
+/// run's track against the catalogue segments near it (the bbox lookup, not
+/// the whole catalogue) via the pure `computeGlobalSegmentEfforts`, then makes
+/// the run's stored effort on every segment it scored say what the matcher
+/// said, as the server's `record_segment_match` does: a new match is
+/// inserted, an effort the run no longer earns is deleted, and one whose time
+/// or rule changed is deleted then re-inserted (there is no client UPDATE
+/// path). A segment it did not score is never touched. Returns the number of
+/// efforts inserted.
 ///
-/// The write-side upsert is idempotent, but the FETCH + client-side haversine
-/// match are not — without a short-circuit they'd re-run on every owner view
-/// forever (issue #333). A `runs.metadata.global_segments_scored_count` stamp
-/// records the catalogue size a run was last scored against; a cheap `count`
-/// query gates the expensive polyline fetch so a scored run only recomputes
-/// when the (deliberately growing) catalogue gains segments. Both the gate
-/// and the fetch are bounded by the shared GLOBAL_SEGMENT_SCORING_LIMIT —
-/// see its doc comment for why a drift between the two is a pessimisation.
+/// Two `runs.metadata` stamps gate the pass so a scored run does not
+/// re-match on every view: `global_segments_scored_count`, the size of the
+/// active catalogue it was last scored against (issue #333), and
+/// `global_segments_matcher_version`, the matcher that scored it. The pass
+/// runs when the catalogue has grown or the run was scored by an older
+/// matcher, which is how efforts the circles-only matcher wrote are
+/// re-matched by the line matcher on their next owner view (issue #1308).
 export async function computeGlobalSegmentEffortsForRun(input: {
 	run_id: string;
 	user_id: string;
@@ -10659,39 +11490,80 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 			.eq('is_active', true),
 	]);
 	const runMetadata = (runRow?.metadata ?? null) as JsonObject | null;
-	if (!shouldRescoreGlobalSegments(runMetadata, activeCount)) return 0;
+	if (!shouldRescoreGlobalSegments(runMetadata, activeCount, GLOBAL_SEGMENT_MATCHER_VERSION)) return 0;
+	// An unknown count cannot be stamped; the pass still runs, and the next
+	// view tries again.
+	const scoredCount = typeof activeCount === 'number' ? activeCount : null;
 
-	const { segments } = await fetchGlobalSegmentsWithError(GLOBAL_SEGMENT_SCORING_LIMIT);
-	if (segments.length === 0) return 0;
+	const extent = trackExtent(input.track);
+	if (!extent) return 0;
+	const { segments, error: candidatesError } = await fetchGlobalSegmentsInBbox(extent);
+	if (candidatesError) return 0;
 
-	const { computeGlobalSegmentEfforts } = await import('../segments/segments');
-	const rows: {
-		global_segment_id: string;
-		run_id: string;
-		user_id: string;
-		time_seconds: number;
-		started_at: string;
-	}[] = [];
-	// One sweep over the catalogue rather than a call per segment: the track's
-	// extent is then measured once and the (overwhelming) majority of segments,
-	// which are nowhere near this run, are rejected without walking it.
+	// A park course's checkpoints are part of its match rule. Without them the
+	// matcher would time a run that cut the course, so a failed read scores
+	// nothing (and stamps nothing, so the next view retries), and a course
+	// whose list cannot be read is left out of the sweep.
+	const checkpointsBySegment =
+		segments.length > 0
+			? await fetchParkCourseCheckpoints(segments.map((seg) => seg.id))
+			: new Map<string, CourseCheckpoint[] | null>();
+	if (checkpointsBySegment === null) return 0;
+	const scorable = segments.filter((seg) => checkpointsBySegment.get(seg.id) !== null);
+
+	const { computeGlobalSegmentEfforts, globalSegmentGeometry } = await import('../segments/segments');
+	// One sweep over the candidates rather than a call per segment: the
+	// track's extent is then measured once.
 	const efforts = computeGlobalSegmentEfforts(
 		input.track,
-		segments.map((seg) => ({
-			points: (seg.waypoints ?? []).map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })),
-			distance_m: Number(seg.distance_m),
-		})),
+		scorable.map((seg) => globalSegmentGeometry(seg, checkpointsBySegment.get(seg.id))),
 	);
-	for (let i = 0; i < segments.length; i++) {
+
+	const { data: storedRows, error: storedErr } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('id, global_segment_id, time_seconds, started_at, matched_by')
+		.eq('run_id', input.run_id);
+	if (storedErr) {
+		console.warn('global segment efforts read failed', input.run_id, storedErr);
+		return 0;
+	}
+	const stored = new Map((storedRows ?? []).map((row) => [row.global_segment_id, row]));
+
+	const staleIds: string[] = [];
+	const rows: Insertable<'global_segment_efforts'>[] = [];
+	for (let i = 0; i < scorable.length; i++) {
 		const eff = efforts[i];
+		const have = stored.get(scorable[i].id);
+		if (
+			have &&
+			eff &&
+			have.matched_by === eff.matched_by &&
+			Math.abs(Number(have.time_seconds) - eff.time_seconds) < 0.001 &&
+			Date.parse(have.started_at) === Date.parse(eff.started_at)
+		) {
+			continue;
+		}
+		if (have) staleIds.push(have.id);
 		if (!eff) continue;
 		rows.push({
-			global_segment_id: segments[i].id,
+			global_segment_id: scorable[i].id,
 			run_id: input.run_id,
 			user_id: userId,
 			time_seconds: eff.time_seconds,
 			started_at: eff.started_at,
+			matched_by: eff.matched_by,
 		});
+	}
+
+	if (staleIds.length > 0) {
+		const { error } = await queryChunked(staleIds, (part) =>
+			supabase.from(TABLES.global_segment_efforts).delete().in('id', part).select('id'),
+		);
+		if (error) {
+			// Don't stamp: the next view retries the whole reconciliation.
+			console.warn('global segment effort re-match delete failed', input.run_id, error);
+			return 0;
+		}
 	}
 	let newCount = 0;
 	if (rows.length > 0) {
@@ -10707,13 +11579,14 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		}
 		newCount = inserted?.length ?? 0;
 	}
+	if (scoredCount === null) return newCount;
 
 	// Stamp even when nothing matched (rows.length === 0): a no-match run
-	// must not re-fetch + re-match the whole catalogue every view either.
+	// must not re-fetch + re-match every view either.
 	//
 	// Re-read the bag here rather than merging into the copy read at the top
-	// of the function: the catalogue fetch + haversine pass above takes
-	// seconds, and `runs.metadata` is a whole-column jsonb write. Merging the
+	// of the function: the candidate fetch + haversine pass above takes
+	// time, and `runs.metadata` is a whole-column jsonb write. Merging the
 	// stale copy would silently revert any title / notes edit the owner made
 	// inside that window — the run-detail edit dialog writes the same column.
 	const { data: freshRow } = await supabase
@@ -10723,7 +11596,8 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		.maybeSingle();
 	const next = stampGlobalSegmentsScored(
 		(freshRow?.metadata ?? null) as JsonObject | null,
-		segments.length,
+		scoredCount,
+		GLOBAL_SEGMENT_MATCHER_VERSION,
 	);
 	const { error: stampErr } = await supabase
 		.from(TABLES.runs)
@@ -10731,6 +11605,180 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 		.eq('id', input.run_id);
 	if (stampErr) console.warn('global segment scored stamp failed', input.run_id, stampErr);
 	return newCount;
+}
+
+export type Park = Database['public']['Tables']['parks']['Row'] & {
+	/** The calendar year it is now where the park is (`park_season`). */
+	park_season: number;
+};
+
+export type ParkCourseRow = Database['public']['Tables']['park_courses']['Row'];
+
+export interface ParkCourse extends Omit<ParkCourseRow, 'checkpoints'> {
+	/** Null when the stored list cannot be read; such a course is never scored. */
+	checkpoints: CourseCheckpoint[] | null;
+	segment: GlobalSegment;
+}
+
+const PARK_COLUMNS = '*, park_season';
+
+function asParkCourse(
+	row: ParkCourseRow & {
+		global_segments: Database['public']['Tables']['global_segments']['Row'] | null;
+	},
+): ParkCourse | null {
+	if (!row.global_segments) return null;
+	const { global_segments: segment, ...course } = row;
+	return {
+		...course,
+		checkpoints: parseCourseCheckpoints(course.checkpoints),
+		segment: asGlobalSegment(segment),
+	};
+}
+
+/// Every active park, for the `/parks` index. Throws on a failed read so the
+/// page can tell "no parks yet" from "could not load".
+export async function fetchParks(): Promise<Park[]> {
+	const { data, error } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.order('region_code', { ascending: true })
+		.order('name', { ascending: true });
+	if (error) throw dbError(error);
+	return (data ?? []) as unknown as Park[];
+}
+
+/// One park by its region code and slug; null when there is none (or it was
+/// pulled, which RLS hides). Throws on a failed read.
+export async function fetchPark(regionCode: string, slug: string): Promise<Park | null> {
+	const { data, error } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.eq('region_code', regionCode)
+		.eq('slug', slug)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return (data as unknown as Park | null) ?? null;
+}
+
+/// A park's courses with their catalogue segment, by slug. A course whose
+/// segment was pulled is dropped (RLS hides the segment). Throws on a failed read.
+export async function fetchParkCourses(parkId: string): Promise<ParkCourse[]> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('*, global_segments(*)')
+		.eq('park_id', parkId)
+		.order('slug', { ascending: true });
+	if (error) throw dbError(error);
+	return (data ?? []).flatMap((row) => {
+		const course = asParkCourse(row);
+		return course ? [course] : [];
+	});
+}
+
+/// The park course built on a catalogue segment, with its park, if any. The
+/// segment page uses it to link back to the course. Throws on a failed read.
+export async function fetchParkCourseForSegment(
+	segmentId: string,
+): Promise<{ course: ParkCourseRow; park: Park } | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('*')
+		.eq('global_segment_id', segmentId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	const { data: park, error: parkError } = await supabase
+		.from(TABLES.parks)
+		.select(PARK_COLUMNS)
+		.eq('id', data.park_id)
+		.maybeSingle();
+	if (parkError) throw dbError(parkError);
+	return park ? { course: data, park: park as unknown as Park } : null;
+}
+
+/// The credit an exported file of this route must carry when the route is a
+/// park course's official route (OpenStreetMap's licence asks for it on the
+/// exported work, not only on the page). Null for any other route. Throws on
+/// a failed read, so an export never goes out uncredited because the check
+/// could not run.
+export async function fetchRouteCourseAttribution(routeId: string): Promise<GpxAttribution | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('geometry_source, parks(name, website_url)')
+		.eq('route_id', routeId)
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return courseAttribution(
+		data.geometry_source,
+		data.parks ? { name: data.parks.name, websiteUrl: data.parks.website_url } : null,
+	);
+}
+
+/// Checkpoints per catalogue segment that is a park course, for the scorer.
+/// A segment absent from the map has no checkpoints; one mapped to null has a
+/// list that cannot be read and must not be scored. Null overall when the
+/// read failed, which the scorer treats as "score nothing this time".
+async function fetchParkCourseCheckpoints(segmentIds: readonly string[]): Promise<Map<
+	string,
+	CourseCheckpoint[] | null
+> | null> {
+	// Up to GLOBAL_SEGMENT_CANDIDATE_LIMIT ids, past the in-filter bound, so
+	// chunked: an over-long list can come back empty rather than failing.
+	const { data, error } = await queryChunked(segmentIds, (part) =>
+		supabase
+			.from(TABLES.park_courses)
+			.select('global_segment_id, checkpoints')
+			.in('global_segment_id', part),
+	);
+	if (error) {
+		console.warn('park course checkpoints read failed', error);
+		return null;
+	}
+	const out = new Map<string, CourseCheckpoint[] | null>();
+	for (const row of data ?? []) {
+		out.set(row.global_segment_id, parseCourseCheckpoints(row.checkpoints));
+	}
+	return out;
+}
+
+export interface CompletionsEntry {
+	athlete: PublicProfile;
+	completions: number;
+	lastCompletedAt: string;
+	rank: number;
+}
+
+/// The most-completions board on a catalogue segment: one row per athlete,
+/// counting distinct local days (park timezone) with a visible effort. Tied
+/// counts share a rank. Throws on a failed read.
+export async function fetchGlobalSegmentCompletions(
+	segmentId: string,
+	season: number | null,
+	limit = 50,
+): Promise<CompletionsEntry[]> {
+	const { data, error } = await supabase.rpc(
+		'global_segment_completions',
+		{ p_segment_id: segmentId, p_season: season ?? undefined, p_limit: limit },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	let rank = 0;
+	let prev: number | null = null;
+	return (data ?? []).map((row, i) => {
+		if (row.completions !== prev) {
+			rank = i + 1;
+			prev = row.completions;
+		}
+		return {
+			athlete: { id: row.user_id, display_name: row.display_name, avatar_url: row.avatar_url },
+			completions: row.completions,
+			lastCompletedAt: row.last_completed_at,
+			rank,
+		};
+	});
 }
 
 /// Catalogue-segment efforts a run earned, joined to the segment + ranked
@@ -11039,12 +12087,15 @@ export interface DirectMessage {
 	/// The conversation the message belongs to, assigned by the server on
 	/// send (migration 20271105000010).
 	conversation_id: string;
+	/// When the sender last edited it (migration 20271114000210); null when
+	/// never edited. Both sides show an "edited" mark while it is set.
+	edited_at: string | null;
 }
 
 /// Every column a client may select on direct_messages: `read_at` is withheld
 /// by a column grant (migration 20271113000001), so `*` is refused.
 const DM_COLUMNS =
-	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id';
+	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at';
 
 export interface DmThread {
 	/// The conversation the mute, archive and delete-for-me actions act on.
@@ -11068,6 +12119,10 @@ export interface DmThread {
 	/// The viewer marked it unread (migration 20271109000020). `unread`
 	/// already counts it as at least one; opening the conversation clears it.
 	markedUnread: boolean;
+	/// A message request to the viewer they have not accepted yet (migration
+	/// 20271115002384): listed under Requests, left out of the nav badge, and
+	/// the requester learns nothing until it is accepted.
+	request: boolean;
 }
 
 /// The newest message of the runner's current (not archived) Coach
@@ -11119,6 +12174,7 @@ export async function fetchDmBadgeStates(): Promise<DmBadgeState[]> {
 		unread: Number(r.unread) || 0,
 		muted: r.muted === true,
 		archived: r.archived === true,
+		request: r.request === true,
 	}));
 }
 
@@ -11154,6 +12210,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		muted: boolean;
 		archived: boolean;
 		marked_unread: boolean;
+		request: boolean;
 	}[]).map((r) => ({
 		conversationId: r.conversation_id,
 		partnerId: r.partner_id,
@@ -11168,6 +12225,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		muted: r.muted === true,
 		archived: r.archived === true,
 		markedUnread: r.marked_unread === true,
+		request: r.request === true,
 	}));
 	const byPartner = new Map(
 		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
@@ -11228,8 +12286,11 @@ export async function fetchDmThread(
 	return dmPageFromRows((data ?? []) as DirectMessage[], limit);
 }
 
-/// Send a message. RLS enforces the no-block + follow-graph gate; a
-/// 42501 surfaces as a friendly "can't message this person" error, and
+/// Send a message. RLS enforces the no-block + audience gate (a follow edge,
+/// or a shared club or event for a message request, migration
+/// 20271115002384); a 42501 surfaces as a friendly "can't message this
+/// person" error, a fourth message into an unaccepted request (54000) as
+/// `messages.requestCapReached`, and
 /// the rail's two send buckets (migration 20270608_001) raise the same
 /// P0001 every other create-rate-limit does, so they go through the
 /// shared parser rather than reaching a composer as a raw exception.
@@ -11260,6 +12321,9 @@ export async function sendDm(
 		if (error?.code === '42501') {
 			throw new AppError('messages.sendNotAllowed', { message: m('messages.sendNotAllowed') });
 		}
+		if (error?.code === '54000') {
+			throw new AppError('messages.requestCapReached', { message: m('messages.requestCapReached') });
+		}
 		const limited = rateLimitAppError(m, error);
 		if (limited) throw limited;
 		throw error ? dbError(error) : new Error('Send failed');
@@ -11280,6 +12344,30 @@ export async function unsendDm(messageId: string): Promise<DirectMessage> {
 	return data as DirectMessage;
 }
 
+/// Replace the text of one of the viewer's own messages (migration
+/// 20271114000210). The server allows it for 15 minutes after sending, on a
+/// live message, between a pair neither of whom has blocked the other, and
+/// answers every one of those refusals with one 55000 so a block is not
+/// revealed; that, and a message the viewer did not send (P0002), reach the
+/// caller as `messages.editClosed`. Returns the updated row.
+export async function editDm(messageId: string, body: string): Promise<DirectMessage> {
+	const trimmed = body.trim();
+	if (!trimmed) throw new AppError('messages.emptyBody', { message: 'Message is empty' });
+	const { data, error } = await supabase.rpc('edit_direct_message', {
+		p_message_id: messageId,
+		p_body: trimmed,
+	});
+	if (error || !data) {
+		if (error?.code === '55000' || error?.code === 'P0002') {
+			throw new AppError('messages.editClosed', { message: m('messages.editClosed') });
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('Edit failed');
+	}
+	return data as DirectMessage;
+}
+
 /// Deletes a conversation for the viewer only (migration 20271105000010):
 /// every message up to and including `throughMessageId`, the newest one the
 /// viewer had on screen, leaves their reads, and anything sent after it stays
@@ -11291,6 +12379,31 @@ export async function hideDmConversation(conversationId: string, throughMessageI
 	const { error } = await supabase.rpc('hide_conversation', {
 		p_conversation_id: conversationId,
 		p_through_message_id: throughMessageId,
+	});
+	if (error) throw dbError(error);
+}
+
+/// Accepts a message request to the viewer (migration 20271115002384): the
+/// conversation joins the inbox, and notifications and read receipts start
+/// from now. Accepting twice is not an error.
+export async function acceptDmRequest(conversationId: string): Promise<void> {
+	const { error } = await supabase.rpc('accept_message_request', { p_conversation_id: conversationId });
+	if (error) throw dbError(error);
+}
+
+/// Declines a message request to the viewer: its messages up to and including
+/// `throughMessageId` (the newest one on screen) leave their reads, and the
+/// requester cannot send again until the viewer writes to them. `block` also
+/// blocks the requester in the same transaction. The requester is not told.
+export async function declineDmRequest(
+	conversationId: string,
+	throughMessageId: string,
+	block = false,
+): Promise<void> {
+	const { error } = await supabase.rpc('decline_message_request', {
+		p_conversation_id: conversationId,
+		p_through_message_id: throughMessageId,
+		p_block: block,
 	});
 	if (error) throw dbError(error);
 }
@@ -13812,6 +14925,154 @@ export async function setEventGymRoutine(
 	if (error) throw dbError(error);
 }
 
+// ─── Club verification (issue #1190 § 2, decisions § 2398) ───────────
+// The owner's half reads the club's requests under RLS (owner + active
+// admins) and acts through definer RPCs that re-check the owner. The site
+// admin's half is the queue and the review RPCs, each hard-denying a
+// non-admin at the database (42501).
+
+/** A verification RPC's own refusal (it raises a stable code) as the
+ *  sentence for it; any other failure unchanged. */
+function clubVerificationError(error: unknown): Error {
+	const key = verificationErrorKey(error);
+	return key ? new AppError(key) : dbError(error);
+}
+
+/** Every verification request of one club the caller may read, newest first. */
+export async function fetchClubVerificationRequests(clubId: string): Promise<ClubVerificationRequest[]> {
+	const { data, error } = await supabase
+		.from(TABLES.club_verification_requests)
+		.select(CLUB_VERIFICATION_REQUEST_COLUMNS)
+		.eq('club_id', clubId)
+		.order('created_at', { ascending: false })
+		.limit(20);
+	if (error) throw dbError(error);
+	return (data ?? []) as ClubVerificationRequest[];
+}
+
+/** Opens a request for the club's website domain. Owner only. */
+export async function submitClubVerification(clubId: string, organisation: string, note: string | null): Promise<string> {
+	const { data, error } = await supabase.rpc('submit_club_verification', {
+		p_club_id: clubId,
+		p_organisation: organisation,
+		p_note: note,
+	});
+	if (error) throw clubVerificationError(error);
+	return data as string;
+}
+
+export async function withdrawClubVerification(requestId: string): Promise<void> {
+	const { error } = await supabase.rpc('withdraw_club_verification', { p_request_id: requestId });
+	if (error) throw clubVerificationError(error);
+}
+
+/** Mails a one-time confirm link to `<localPart>@<the request's domain>`. */
+export async function sendClubVerificationEmail(requestId: string, localPart: string): Promise<void> {
+	const { error } = await supabase.rpc('send_club_verification_email', {
+		p_request_id: requestId,
+		p_local_part: localPart,
+	});
+	if (error) throw clubVerificationError(error);
+}
+
+/** Runs the DNS TXT and .well-known checks for a pending request. */
+export async function checkClubVerificationProof(requestId: string): Promise<ProofCheckResult> {
+	const { data, error } = await supabase.functions.invoke('club-verification', {
+		body: { request_id: requestId },
+	});
+	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'club_verification_check_failed'));
+	return data as ProofCheckResult;
+}
+
+export interface ClubVerificationConfirmation {
+	outcome: 'confirmed' | 'invalid';
+	club_name: string | null;
+	club_slug: string | null;
+}
+
+/** The mailed link's landing page; the token is the credential. */
+export async function confirmClubVerificationEmail(token: string): Promise<ClubVerificationConfirmation> {
+	const { data, error } = await supabase.rpc('confirm_club_verification_email', { p_token: token });
+	if (error) throw clubVerificationError(error);
+	const row = (data ?? [])[0];
+	return {
+		outcome: row?.outcome === 'confirmed' ? 'confirmed' : 'invalid',
+		club_name: row?.club_name ?? null,
+		club_slug: row?.club_slug ?? null,
+	};
+}
+
+export type ClubVerificationQueueView = 'pending' | 'verified' | 'closed';
+
+export interface ClubVerificationQueueRow {
+	request_id: string | null;
+	club_id: string;
+	club_name: string;
+	club_slug: string;
+	club_website_url: string | null;
+	club_is_verified: boolean;
+	club_is_public: boolean;
+	member_count: number;
+	owner_name: string | null;
+	organisation: string | null;
+	domain: string | null;
+	note: string | null;
+	status: ClubVerificationStatus | null;
+	proof_method: ClubVerificationProofMethod | null;
+	proof_verified_at: string | null;
+	proof_detail: string | null;
+	last_checked_at: string | null;
+	check_failures: number;
+	decision_reason: string | null;
+	close_reason: string | null;
+	created_at: string | null;
+	decided_at: string | null;
+	closed_at: string | null;
+}
+
+export async function fetchClubVerificationQueue(view: ClubVerificationQueueView): Promise<ClubVerificationQueueRow[]> {
+	const { data, error } = await supabase.rpc('club_verification_queue', { p_view: view }, { get: true });
+	if (error) throw clubVerificationError(error);
+	return (data ?? []).map((r) => ({
+		...r,
+		member_count: Number(r.member_count ?? 0),
+		check_failures: Number(r.check_failures ?? 0),
+		status: r.status as ClubVerificationStatus | null,
+		proof_method: r.proof_method as ClubVerificationProofMethod | null,
+	}));
+}
+
+export interface ClubVerificationAuditRow {
+	id: number;
+	request_id: string | null;
+	club_name: string;
+	actor_name: string | null;
+	action: ClubVerificationAuditAction;
+	detail: string | null;
+	created_at: string;
+}
+
+export async function fetchClubVerificationAudit(clubId: string): Promise<ClubVerificationAuditRow[]> {
+	const { data, error } = await supabase.rpc('club_verification_audit_log', { p_club_id: clubId }, { get: true });
+	if (error) throw clubVerificationError(error);
+	return (data ?? []).map((r) => ({ ...r, id: Number(r.id), action: r.action as ClubVerificationAuditAction }));
+}
+
+export async function approveClubVerification(requestId: string, note: string | null): Promise<void> {
+	const { error } = await supabase.rpc('approve_club_verification', { p_request_id: requestId, p_note: note });
+	if (error) throw clubVerificationError(error);
+}
+
+export async function rejectClubVerification(requestId: string, reason: string): Promise<void> {
+	const { error } = await supabase.rpc('reject_club_verification', { p_request_id: requestId, p_reason: reason });
+	if (error) throw clubVerificationError(error);
+}
+
+export async function revokeClubVerification(clubId: string, reason: string): Promise<void> {
+	const { error } = await supabase.rpc('revoke_club_verification', { p_club_id: clubId, p_reason: reason });
+	if (error) throw clubVerificationError(error);
+}
+
 // ─── Admin moderation (web-only back-office; /admin/reports) ─────────
 // Authorization is DB-enforced: every RPC below hard-denies a non-admin
 // at the database (42501). am_i_admin only picks page chrome.
@@ -13862,6 +15123,9 @@ export interface TargetReport {
 	snapshot_body: string | null;
 	snapshot_author_id: string | null;
 	snapshot_sent_at: string | null;
+	/// The message as first sent when it had been edited before the report
+	/// (migration 20271114000210); null when it never was.
+	snapshot_original_body: string | null;
 	legal_hold: boolean;
 	/** When the retention purge may delete this report; null while it is
 	 *  pending or held. */
@@ -13916,6 +15180,7 @@ export async function fetchReportsForTarget(
 		snapshot_body: (r.snapshot_body ?? null) as string | null,
 		snapshot_author_id: (r.snapshot_author_id ?? null) as string | null,
 		snapshot_sent_at: (r.snapshot_sent_at ?? null) as string | null,
+		snapshot_original_body: (r.snapshot_original_body ?? null) as string | null,
 		legal_hold: r.legal_hold === true,
 		purge_after: (r.purge_after ?? null) as string | null,
 	}));
@@ -14117,17 +15382,19 @@ export async function cloneSessionTemplate(templateId: string): Promise<string> 
 
 /** Club-owned gym routines published as templates (gym_routines.club_id set).
  *  RLS exposes these to club members via private.is_club_member. */
-export async function fetchClubGymRoutineTemplates(clubId: string): Promise<GymRoutineSummary[]> {
+export async function fetchClubGymRoutineTemplates(
+	clubId: string,
+): Promise<(GymRoutineSummary & OfficialFlag)[]> {
 	const { data, error } = await supabase
 		.from(TABLES.gym_routines)
-		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at')
+		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, last_modified_at, created_at, is_official')
 		.eq('club_id', clubId)
 		.order('last_modified_at', { ascending: false });
 	if (error) {
 		console.error('fetchClubGymRoutineTemplates failed', error);
 		return [];
 	}
-	return (data ?? []) as GymRoutineSummary[];
+	return data ?? [];
 }
 
 /** Publish a personal gym routine into a club-owned template. The

@@ -4,6 +4,7 @@ import { expect, test } from '../fixtures/test';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { insertRun } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Every control on a swept surface renders a one-line plain explanation
@@ -265,6 +266,7 @@ test.describe('every swept gym and session control renders its explanation', () 
 	});
 
 	test('/plans/[id] — the workout editor', async ({ page }) => {
+		await setStorageOnLoad(page, { local: planSectionsOpen(USER_A.id) });
 		await page.goto(`/plans/${SYDNEY_HALF_PLAN_ID}`);
 		await expect(page.locator('.cal')).toBeVisible({ timeout: 15_000 });
 		await walkToAWorkoutMonth(page);

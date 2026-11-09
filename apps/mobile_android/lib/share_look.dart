@@ -17,19 +17,22 @@ enum RunStickerLayout { stack, route, strip, hero }
 
 /// What a sticker is about: the run's numbers ([stats], in one of the four
 /// layouts), or the occasion the run marks: its [splits], a personal record
-/// ([pr]), a day of a [streak], a [race] finish, a [badge] it earned, or the
-/// [route] outline alone. Twin of `RUN_STICKER_KINDS` in share_look.ts.
-enum RunStickerKind { stats, splits, pr, streak, race, badge, route }
+/// ([pr]), a day of a [streak], a [race] finish, a park [course] time, a
+/// [badge] it earned, or the [route] outline alone. Twin of
+/// `RUN_STICKER_KINDS` in share_look.ts.
+enum RunStickerKind { stats, splits, pr, streak, race, course, badge, route }
 
 /// What a run holds for each occasion: the splits it has, the records it set,
 /// the streak day it was (as of its own day, not today), whether it is linked
-/// to a race and earned a badge, and whether it has a line to draw.
+/// to a race, completed a park course and earned a badge, and whether it has
+/// a line to draw.
 @immutable
 class RunStickerOccasions {
   final int splits;
   final int records;
   final int streakDays;
   final bool race;
+  final bool course;
   final bool badge;
   final bool route;
 
@@ -38,6 +41,7 @@ class RunStickerOccasions {
     this.records = 0,
     this.streakDays = 0,
     this.race = false,
+    this.course = false,
     this.badge = false,
     this.route = false,
   });
@@ -60,6 +64,7 @@ List<RunStickerKind> offeredStickerKinds(RunStickerOccasions o) => [
           RunStickerKind.pr => o.records > 0,
           RunStickerKind.streak => o.streakDays >= minStreakStickerDays,
           RunStickerKind.race => o.race,
+          RunStickerKind.course => o.course,
           RunStickerKind.badge => o.badge,
           RunStickerKind.route => o.route,
         })

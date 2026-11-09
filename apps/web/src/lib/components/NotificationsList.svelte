@@ -212,6 +212,18 @@
 				return item.event_title
 					? m('notificationsList.verbEventUpdatedTitled', { title: item.event_title })
 					: m('notificationsList.verbEventUpdated');
+			case 'course_alert':
+				return item.club_name
+					? m('notificationsList.verbCourseAlertNamed', { club: item.club_name })
+					: m('notificationsList.verbCourseAlert');
+			case 'race_starting_soon':
+				return item.event_title
+					? m('notificationsList.verbRaceStartingSoonTitled', { title: item.event_title })
+					: m('notificationsList.verbRaceStartingSoon');
+			case 'race_start_moved':
+				return item.event_title
+					? m('notificationsList.verbRaceStartMovedTitled', { title: item.event_title })
+					: m('notificationsList.verbRaceStartMoved');
 			case 'club_join_request':
 				return item.club_name
 					? m('notificationsList.verbClubJoinRequestNamed', { name, club: item.club_name })
@@ -220,6 +232,10 @@
 				return item.club_name
 					? m('notificationsList.verbClubJoinApprovedNamed', { club: item.club_name })
 					: m('notificationsList.verbClubJoinApproved');
+			case 'club_verification':
+				return item.club_name
+					? m('notificationsList.verbClubVerificationNamed', { club: item.club_name })
+					: m('notificationsList.verbClubVerification');
 			case 'event_waitlist_slot': {
 				const msg = waitlistSlotMessage('notificationsList', item.event_title);
 				return m(msg.key, msg.params);
@@ -234,6 +250,10 @@
 				return m('notificationsList.verbPlanAssigned', { name });
 			case 'plan_ai_edit':
 				return m('notificationsList.verbPlanAiEdit', { name });
+			case 'plan_change_request':
+				return m('notificationsList.verbPlanChangeRequest', { name });
+			case 'plan_change_decision':
+				return m('notificationsList.verbPlanChangeDecision', { name });
 			case 'workout_reminder':
 				return m('notificationsList.verbWorkoutReminder');
 			case 'message':

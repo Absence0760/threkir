@@ -4,6 +4,7 @@ import { getAdminClient } from '../fixtures/local-supabase';
 import { deletePlan, deleteRun, insertRun, setPlanStatus } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import { browserDayAt } from '../fixtures/dates';
+import { planSectionsOpen, setStorageOnLoad } from '../fixtures/helpers';
 
 /**
  * Plan PROGRESS / COMPLETION / ADHERENCE / RE-PLAN journey.
@@ -62,6 +63,10 @@ const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 test.describe('plan progress journey', () => {
 	test.use({ storageState: USER_A.storageStatePath });
+
+	test.beforeEach(async ({ context }) => {
+		await setStorageOnLoad(context, { local: planSectionsOpen(USER_A.id) });
+	});
 
 	let plantedPlanId: string | null = null;
 	const seededRunIds: string[] = [];

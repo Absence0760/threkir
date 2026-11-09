@@ -153,44 +153,53 @@ void main() {
     },
   );
 
-  testWidgets('every expander defaults open', (tester) async {
+  // The current week was drawn three times (strip, calendar month, week
+  // list) before every section below the strip started shut (#1186,
+  // decisions § 2375).
+  testWidgets('every expander starts shut, so the strip is the one week view',
+      (tester) async {
     await _pump(tester);
 
-    expect(find.byType(PlanCalendar), findsOneWidget);
-    expect(find.text('Long run on Sunday'), findsOneWidget);
-    expect(find.text('Week 2'), findsOneWidget);
-    expect(find.text('Publish to library'), findsOneWidget);
+    for (final title in _sections) {
+      expect(find.text(title), findsOneWidget,
+          reason: '$title keeps its name on screen while shut');
+    }
+    expect(find.byType(CurrentWeekStrip), findsOneWidget);
+    expect(find.byType(PlanCalendar), findsNothing);
+    expect(find.text('Long run on Sunday'), findsNothing);
+    expect(find.text('Week 2'), findsNothing);
+    expect(find.text('Publish to library'), findsNothing);
   });
 
   testWidgets(
-    'a collapsed section hides its body, is remembered for the account, and '
-    'stays shut on the next visit',
+    'an opened section shows its body, is remembered for the account, and '
+    'stays open on the next visit',
     (tester) async {
       await _pump(tester);
 
       await tester.tap(find.text('Calendar'));
       await tester.pump();
-      expect(find.byType(PlanCalendar), findsNothing);
+      expect(find.byType(PlanCalendar), findsOneWidget);
       expect(
         find.text('Week 2'),
-        findsOneWidget,
-        reason: 'collapsing one section leaves the others alone',
+        findsNothing,
+        reason: 'opening one section leaves the others alone',
       );
 
-      expect(await _storedBlob(tester, _owner), contains('"calendar":false'));
+      expect(await _storedBlob(tester, _owner), contains('"calendar":true'));
 
       await tester.pumpWidget(const SizedBox());
       await _pump(tester);
       await pumpUntil(
         tester,
-        () => !tester.any(find.byType(PlanCalendar)),
-        describe: 'the stored collapse to apply on the next visit',
+        () => tester.any(find.byType(PlanCalendar)),
+        describe: 'the stored open state to apply on the next visit',
       );
-      expect(
-        find.text('Calendar'),
-        findsOneWidget,
-        reason: 'a collapsed section keeps its name on screen',
-      );
+
+      await tester.tap(find.text('Calendar'));
+      await tester.pump();
+      expect(find.byType(PlanCalendar), findsNothing);
+      expect(await _storedBlob(tester, _owner), contains('"calendar":false'));
     },
   );
 
@@ -198,24 +207,24 @@ void main() {
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
-      disclosureStorageKey('plan_detail', 'someone-else'): '{"calendar":false}',
-      disclosureStorageKey('plan_detail', _owner): '{"weeks":false}',
+      disclosureStorageKey('plan_detail', 'someone-else'): '{"calendar":true}',
+      disclosureStorageKey('plan_detail', _owner): '{"weeks":true}',
     });
     await _pump(tester);
     await pumpUntil(
       tester,
-      () => !tester.any(find.text('Week 2')),
-      describe: "the owner's own stored collapse to apply",
+      () => tester.any(find.text('Week 2')),
+      describe: "the owner's own stored open section to apply",
     );
 
     expect(
       find.byType(PlanCalendar),
-      findsOneWidget,
-      reason: "the other account's collapse must not reach this one",
+      findsNothing,
+      reason: "the other account's open section must not reach this one",
     );
   });
 
-  testWidgets('a corrupt stored blob falls back to every section open', (
+  testWidgets('a corrupt stored blob falls back to every section shut', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({
@@ -223,8 +232,9 @@ void main() {
     });
     await _pump(tester);
 
-    expect(find.byType(PlanCalendar), findsOneWidget);
-    expect(find.text('Long run on Sunday'), findsOneWidget);
+    expect(find.byType(PlanCalendar), findsNothing);
+    expect(find.text('Long run on Sunday'), findsNothing);
+    expect(find.text('Calendar'), findsOneWidget);
   });
 
   testWidgets(
@@ -232,6 +242,8 @@ void main() {
     'app bar',
     (tester) async {
       await _pump(tester);
+      await tester.tap(find.text('Share & publish'));
+      await tester.pump();
       expect(find.text('Publish as club template'), findsOneWidget);
       expect(find.text('Publish to library'), findsOneWidget);
       // The app bar's only control is the plan-actions menu, and publishing

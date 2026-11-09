@@ -15,6 +15,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'pump_until.dart';
+import 'plan_sections_open.dart';
 
 const _owner = 'owner-uuid';
 final DateTime _today = DateTime(2026, 3, 11);
@@ -95,6 +96,7 @@ Future<void> _pump(WidgetTester tester, _FakeTraining training) async {
   tester.view.physicalSize = const Size(420, 4000);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
+  await rememberPlanSectionsOpen(tester, _owner);
   await tester.pumpWidget(
     MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,

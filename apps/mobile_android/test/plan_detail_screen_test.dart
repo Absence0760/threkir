@@ -8,6 +8,7 @@ import '../lib/social_service.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/loading_skeletons.dart';
 import 'supabase_test_init.dart';
+import 'plan_sections_open.dart';
 
 ClubView _club({
   required String id,
@@ -218,6 +219,8 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
+      // Signed out in this harness, so the remembered layout is the anon one.
+      await rememberPlanSectionsOpen(tester, null);
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -245,6 +248,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
 
+      await rememberPlanSectionsOpen(tester, null);
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,

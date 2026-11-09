@@ -6,8 +6,8 @@ import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
  * /plans/[id] — the page leads with today's session and this week, and
- * everything else sits behind a named expander that remembers its state
- * (#905 workstream 3, decisions § 1660).
+ * everything else sits behind a named expander that starts shut and remembers
+ * its state (#905 workstream 3, decisions § 1660; shut since #1186, § 2375).
  *
  * Before this, a runner opening their plan read the phase pills, the plan
  * progress bar, the adherence banners, the rules card and the race-day panel
@@ -16,8 +16,9 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *
  * Pinned on DOM order rather than pixels — the same shape `publish-placement`
  * uses — so re-hoisting a secondary block above today fails here at any
- * viewport. The second test pins the persistence: an expander a runner shuts
- * stays shut on the next visit, which is what makes naming them worth it.
+ * viewport. The second test pins the default and the persistence: every
+ * expander starts shut, so the current week is drawn once (the strip), and one
+ * a runner opens stays open on the next visit.
  */
 
 const RICHMOND_HALF_PLAN_ID = 'a1a1eada-aaaa-0000-0000-000000000001';
@@ -78,7 +79,9 @@ test.describe('/plans/[id] reading order', () => {
 		}
 	});
 
-	test('an expander a runner shuts stays shut across a reload', async ({ page }) => {
+	test('every expander starts shut, and one a runner opens stays open across a reload', async ({
+		page
+	}) => {
 		// Asserted on the `<details>` element's own `open`, not on whether the
 		// body is visible: Chromium hides a closed details through
 		// `::details-content`, which Playwright still reports as visible.
@@ -89,31 +92,32 @@ test.describe('/plans/[id] reading order', () => {
 				.evaluate((el) => (el as HTMLDetailsElement).open);
 
 		await page.goto(`/plans/${RICHMOND_HALF_PLAN_ID}`);
-		const calendar = page.getByRole('region', { name: 'Calendar' });
-		await expect(calendar.locator('.cal')).toBeAttached({ timeout: 10_000 });
-		expect(await isOpen('Calendar')).toBe(true);
+		await expect(page.locator('section.today')).toBeVisible({ timeout: 10_000 });
+		for (const name of ['Plan progress', 'Calendar', 'Week by week', 'Share & publish']) {
+			expect(await isOpen(name), name).toBe(false);
+		}
 
 		const stored = () => page.evaluate((k) => localStorage.getItem(k), DISCLOSURE_KEY);
+		const calendar = page.getByRole('region', { name: 'Calendar' });
 
-		try {
-			await calendar.locator('summary').click();
-			await expect.poll(() => isOpen('Calendar')).toBe(false);
-			await expect.poll(stored).toContain('"calendar":false');
+		await calendar.locator('summary').click();
+		await expect.poll(() => isOpen('Calendar')).toBe(true);
+		await expect(calendar.locator('.cal')).toBeVisible();
+		await expect.poll(stored).toContain('"calendar":true');
 
-			await page.reload();
-			await expect(page.locator('section.today')).toBeVisible({ timeout: 10_000 });
-			expect(await isOpen('Calendar')).toBe(false);
+		await page.reload();
+		await expect(page.locator('section.today')).toBeVisible({ timeout: 10_000 });
+		expect(await isOpen('Calendar')).toBe(true);
 
-			// One collapse is not a page-wide one — the siblings are untouched.
-			expect(await isOpen('Week by week')).toBe(true);
-			expect(await isOpen('Plan progress')).toBe(true);
-		} finally {
-			// Restore, and prove re-opening persists the same way.
-			await page.getByRole('region', { name: 'Calendar' }).locator('summary').click();
-			await expect.poll(stored).toContain('"calendar":true');
-			await page.reload();
-			await expect(page.locator('section.today')).toBeVisible({ timeout: 10_000 });
-			expect(await isOpen('Calendar')).toBe(true);
-		}
+		// One opened section is not a page-wide one — the siblings stay shut.
+		expect(await isOpen('Week by week')).toBe(false);
+		expect(await isOpen('Plan progress')).toBe(false);
+
+		// Shutting it again persists the same way.
+		await page.getByRole('region', { name: 'Calendar' }).locator('summary').click();
+		await expect.poll(stored).toContain('"calendar":false');
+		await page.reload();
+		await expect(page.locator('section.today')).toBeVisible({ timeout: 10_000 });
+		expect(await isOpen('Calendar')).toBe(false);
 	});
 });

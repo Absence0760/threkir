@@ -23,6 +23,8 @@ import '../auth_change_aware.dart';
 import '../current_week.dart' show WeekStart;
 import '../device_timezone.dart';
 import '../disclosure.dart';
+import '../dashboard_layout.dart';
+import '../plan_week.dart' show PlanRaceCountdownKind;
 import '../disclosure_state.dart';
 import '../goals.dart';
 import '../health_consent.dart';
@@ -293,6 +295,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   DisclosureState _trendOpen = Map.of(_kTrendDefaults);
 
+  /// This visit's hide, ahead of the settings bag catching up.
+  List<String>? _hiddenCardsLocal;
+
   /// Set once the reader toggles a group, so a slow first read can't undo it.
   bool _trendTouched = false;
 
@@ -310,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     widget.foodStore.addListener(_onChange);
     // The bag drives the disclosure level, so a change made in Settings must
     // reach this keep-alive page without a remount.
-    widget.settingsSync?.addListener(_onChange);
+    widget.settingsSync?.addListener(_onSettingsChange);
     widget.training?.addListener(_refreshPlanOverview);
     runRecordingActive.addListener(_onChange);
     WidgetsBinding.instance.addObserver(this);
@@ -339,6 +344,41 @@ class _DashboardScreenState extends State<DashboardScreen>
         _kTrendScope, widget.apiClient?.userId, _kTrendDefaults);
     if (!mounted || _trendTouched) return;
     setState(() => _trendOpen = stored);
+  }
+
+  /// Trend groups hidden from Home (`dashboard_hidden_cards`, universal,
+  /// decisions § 2386). An unreadable bag hides nothing.
+  List<String> get _hiddenCards {
+    final local = _hiddenCardsLocal;
+    if (local != null) return local;
+    try {
+      return parseHiddenCards(widget.settingsSync?.service
+          ?.effective<Object>(SettingsKeys.dashboardHiddenCards));
+    } catch (e) {
+      debugPrint('dashboard: hidden cards read failed: $e');
+      return const [];
+    }
+  }
+
+  /// Hiding is honestly reversible (Settings brings a group back), so there
+  /// is no confirm; the banner says where the way back is. A refused write
+  /// puts the group back rather than leaving Home and the bag disagreeing.
+  Future<void> _hideTrendGroup(String id, String title) async {
+    final l10n = AppLocalizations.of(context);
+    final previous = _hiddenCards;
+    final next = withCardHidden(previous, id, true);
+    setState(() => _hiddenCardsLocal = next);
+    try {
+      await widget.settingsSync
+          ?.updateUniversal({SettingsKeys.dashboardHiddenCards: next});
+      if (!mounted) return;
+      showTopBanner(context, l10n.dashboardCardHidden(title));
+    } catch (e) {
+      debugPrint('dashboard: hiding $id not saved: $e');
+      if (!mounted) return;
+      setState(() => _hiddenCardsLocal = previous);
+      showTopBanner(context, l10n.dashboardHideCardFailed);
+    }
   }
 
   void _setTrendOpen(String key, bool open) {
@@ -446,6 +486,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       _trendOpen = Map.of(_kTrendDefaults);
       _trendTouched = false;
       _trainingLoadExpandedLocal = null;
+      _hiddenCardsLocal = null;
     });
     _loadTrendOpen();
     _refreshPlanOverview();
@@ -557,7 +598,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     widget.preferences.removeListener(_onChange);
     widget.gymStore.removeListener(_onChange);
     widget.foodStore.removeListener(_onChange);
-    widget.settingsSync?.removeListener(_onChange);
+    widget.settingsSync?.removeListener(_onSettingsChange);
     widget.training?.removeListener(_refreshPlanOverview);
     runRecordingActive.removeListener(_onChange);
     WidgetsBinding.instance.removeObserver(this);
@@ -747,6 +788,13 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (mounted) setState(() {});
   }
 
+  /// The bag moved (Settings restored a group, another device synced), so it
+  /// is the truth again rather than this visit's copy.
+  void _onSettingsChange() {
+    if (!mounted) return;
+    setState(() => _hiddenCardsLocal = null);
+  }
+
   Future<void> _refreshPlanOverview() async {
     final svc = widget.training;
     if (svc == null) return;
@@ -862,8 +910,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Widget _weekLeadCard(
-      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now,
-      {VoidCallback? onStart}) {
+      List<Run> runs, List<RunGoal> goals, DistanceUnit unit, DateTime now) {
     // A finished plan has no sessions left to offer; Home asks to file it
     // instead (FinishPlanCard), so the lead says nothing about the plan.
     final planWorkouts = _planFinished(now) ? null : _leadPlanWorkouts();
@@ -888,9 +935,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       hasPlan: planWorkouts != null,
       unit: unit,
       onOpenSession: _openPlanSession,
-      onStart: onStart,
-      startActivity:
-          ActivityType.fromName(widget.preferences.defaultActivityType),
     );
   }
 
@@ -1599,8 +1643,8 @@ class _DashboardScreenState extends State<DashboardScreen>
     // Active-plan hero + the goals block: both outlive the welcome state,
     // because onboarding can mint a plan and a goal before the first run
     // exists and neither is a derived metric.
-    // Home's primary action (decisions § 2282): one Start, on today's
-    // workout when there is an open one to follow, else on the week lead.
+    // Home's primary action (decisions § 2282, § 2385): one Start, on today's
+    // workout when there is an open one to follow, else on the Today hero.
     // None while a run records, since the centre button is then the way back
     // to it and a second "Start" would misstate what a tap does.
     final recording = runRecordingActive.value;
@@ -1620,7 +1664,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             overrunMetres: _todayOverrun(runs),
           )
         : null;
-    final leadStart =
+    final heroStart =
         recording || startsTodayWorkout ? null : widget.onStartRun;
     final missedPrompt = _missedPromptCard(now);
     final nudgeCard = _planNudgeCard(runs, now);
@@ -1755,9 +1799,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       // The week lead opens Home for an account with runs (#905 workstream
       // 3). A lifter with no runs reaches this branch too and has no running
       // week to lead with.
-      final weekLeadCard = runs.isNotEmpty
-          ? _weekLeadCard(runs, goals, unit, now, onStart: leadStart)
-          : null;
+      final weekLeadCard =
+          runs.isNotEmpty ? _weekLeadCard(runs, goals, unit, now) : null;
       final raceCard = _nextRaceCard(now) ?? _planDiscoveryCard(now);
       final social = widget.social;
       final eventCard = _upcomingEvent == null || social == null
@@ -1770,18 +1813,93 @@ class _DashboardScreenState extends State<DashboardScreen>
                 _loadUpcomingEvent();
               },
             );
-      // Active-plan hero: surface the day's structured workout above
-      // goals so a plan-runner sees what's next before scrolling. Hidden
-      // when no active plan or no workout today.
+      // Today's plan cards (the missed prompt, the workout with its Start,
+      // the nudge) belong to the Today hero.
       final workoutCard = heroWorkoutCard;
       final latestRun = _latestRun(runs);
       final latestRunSection =
           latestRun == null ? null : _latestRunSection(latestRun, unit);
+      final dayStart = DateTime(now.year, now.month, now.day);
+      final plan = _planOverview;
+      final heroState = todayHeroState(
+        hasPlan: plan != null,
+        raceToday: plan != null &&
+            NextRaceCard.countdownFor(plan, now).kind ==
+                PlanRaceCountdownKind.raceDay,
+        todayWorkoutKind: plan?.todayWorkout?.kind,
+        isNewAccount: false,
+        ranToday: latestRun != null &&
+            !latestRun.startedAt.toLocal().isBefore(dayStart),
+      );
+      final runInHero = heroState == TodayHeroState.ranToday;
+      final raceInHero = heroState == TodayHeroState.raceDay;
       final todayBlocks = _orderTodayBlocks(
         latestRun: latestRun,
-        latestRunSection: latestRunSection,
+        latestRunSection: runInHero ? null : latestRunSection,
         modalityBody: _todayModalityBody(),
         now: now,
+      );
+      final startActivity =
+          ActivityType.fromName(widget.preferences.defaultActivityType);
+      final startButton = heroStart == null
+          ? null
+          : FilledButton.icon(
+              key: const Key('dashboardHeroStart'),
+              onPressed: heroStart,
+              icon: Icon(startActivity.icon),
+              label: Text(startActivityCaption(l10n, startActivity)),
+            );
+      final readinessLine = ReadinessCard(
+        key: const Key('dashboardHeroReadiness'),
+        runs: runs,
+        now: now,
+        hrPrefs: _hrPrefs(),
+        loadSeries: loadSeries,
+        compact: true,
+      );
+      // The adaptive Today hero leads Home (#1187, decisions § 2385); the
+      // state comes from the `dashboard_layout` parity pair, the cards from
+      // what Home already had.
+      final hero = DashboardTodayHero(
+        key: const Key('dashboardTodayHero'),
+        state: heroState,
+        children: switch (heroState) {
+          TodayHeroState.raceDay => [
+              ?raceCard,
+              ?workoutCard,
+              readinessLine,
+              ?startButton,
+            ],
+          TodayHeroState.planToday => [?workoutCard, readinessLine, ?startButton],
+          TodayHeroState.restDay => [
+              workoutCard ?? const _RestDayCard(),
+              readinessLine,
+              ?startButton,
+            ],
+          TodayHeroState.ranToday => [
+              ?latestRunSection,
+              readinessLine,
+              ?startButton,
+            ],
+          TodayHeroState.newAccount || TodayHeroState.noPlan => [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+                child: Text(
+                  l10n.dashboardHeroNothingPlanned,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              ReadinessCard(
+                key: const Key('dashboardHeroReadinessCard'),
+                runs: runs,
+                now: now,
+                hrPrefs: _hrPrefs(),
+                loadSeries: loadSeries,
+              ),
+              ?startButton,
+            ],
+        },
       );
       // An empty-goals card earns the slot above the runner's own numbers on
       // a new account, not on visit 200: once there is a run it shrinks to a
@@ -1925,8 +2043,6 @@ class _DashboardScreenState extends State<DashboardScreen>
       final fitnessCard = FitnessCard(
           runs: runs, now: now, hrPrefs: _hrPrefs(), loadSeries: loadSeries);
       final predictorCard = RacePredictorCard(runs: runs, now: now);
-      final readinessCard = ReadinessCard(
-          runs: runs, now: now, hrPrefs: _hrPrefs(), loadSeries: loadSeries);
       final intensityCard = IntensityCard(
         runs: runs,
         hrZones: parseHrZones(
@@ -1958,21 +2074,28 @@ class _DashboardScreenState extends State<DashboardScreen>
       // recent). A group mounts only when a card in it is sure to draw, so a
       // fold never opens on nothing; a member that self-hides still does so
       // inside it, and without the group it renders bare (and hides alone).
-      Widget group(String key, String title, String hint, List<Widget> cards) =>
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: DisclosureSection(
-              key: ValueKey('dashboard-trend-$key'),
-              title: title,
-              hint: hint,
-              open: _trendOpen[key] ?? true,
-              onToggle: (open) => _setTrendOpen(key, open),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: cards,
-              ),
-            ),
-          );
+      // A group the runner hid is not built at all (decisions § 2386).
+      final hidden = _hiddenCards;
+      Widget? group(
+              String key, String title, String hint, List<Widget> cards) =>
+          hidden.contains(key)
+              ? null
+              : Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: DisclosureSection(
+                    key: ValueKey('dashboard-trend-$key'),
+                    title: title,
+                    hint: hint,
+                    open: _trendOpen[key] ?? true,
+                    onToggle: (open) => _setTrendOpen(key, open),
+                    hideLabel: l10n.dashboardHideFromHome,
+                    onHide: () => _hideTrendGroup(key, title),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: cards,
+                    ),
+                  ),
+                );
       final loadBlock = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [loadChart, ?gymNote],
@@ -1983,9 +2106,9 @@ class _DashboardScreenState extends State<DashboardScreen>
       // `standard` / `full` the group is exactly as it was. Web twin: the
       // `training-load-disclosure` <details> on /dashboard, in the same place
       // — after readiness, before the load ramp.
-      final fitnessCards = _disclosureLevel(runs.length) == 'simple'
+      final isSimple = _disclosureLevel(runs.length) == 'simple';
+      final loadRows = isSimple
           ? <Widget>[
-              readinessCard,
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: DisclosureSection(
@@ -2005,28 +2128,37 @@ class _DashboardScreenState extends State<DashboardScreen>
             ]
           : <Widget>[
               fitnessCard,
-              readinessCard,
               loadRampCard,
               comebackCard,
               loadBlock,
             ];
+      // One card for the load views (#1187, decisions § 2385): they read one
+      // series (§ 109), so they are rows of one card rather than four cards.
+      // Readiness is in the Today hero.
+      final fitnessCards = <Widget>[
+        _TrainingLoadCard(
+          key: const Key('dashboardTrainingLoadCard'),
+          title: isSimple ? null : l10n.dashboardTrainingLoadSection,
+          children: loadRows,
+        ),
+      ];
       final trendGroups = <Widget>[
-        group('volume', l10n.dashboardTrendGroupVolume,
+        ?group('volume', l10n.dashboardTrendGroupVolume,
             l10n.dashboardTrendGroupVolumeHint, [mileageCard]),
         // The load chart always draws (it has its own empty state), so this
         // group always mounts.
-        group('fitness', l10n.dashboardTrendGroupFitness,
+        ?group('fitness', l10n.dashboardTrendGroupFitness,
             l10n.dashboardTrendGroupFitnessHint, fitnessCards),
         if (pbCard != null)
-          group('performance', l10n.dashboardTrendGroupPerformance,
+          ?group('performance', l10n.dashboardTrendGroupPerformance,
               l10n.dashboardTrendGroupPerformanceHint, [pbCard, predictorCard])
-        else
+        else if (!hidden.contains('performance'))
           predictorCard,
         if (intensityCard.hasContent)
-          group('effort', l10n.dashboardTrendGroupEffort,
+          ?group('effort', l10n.dashboardTrendGroupEffort,
               l10n.dashboardTrendGroupEffortHint, [intensityCard]),
         if (liftsCard != null)
-          group('recent', l10n.dashboardTrendGroupRecent,
+          ?group('recent', l10n.dashboardTrendGroupRecent,
               l10n.dashboardTrendGroupRecentHint, [liftsCard]),
       ];
       final trendsDivider = _TrendsDivider(label: l10n.dashboardTrendsDivider);
@@ -2037,7 +2169,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         // the chart cards flow into two vertical columns. Blocks
         // alternate columns; internally self-hiding cards render
         // zero-height so a hidden card never reserves a grid cell.
-        final leadBlocks = [?workoutCard, ...todayBlocks];
+        final leadBlocks = todayBlocks;
         final leadColumn = leadBlocks.isEmpty
             ? null
             : Column(
@@ -2070,8 +2202,10 @@ class _DashboardScreenState extends State<DashboardScreen>
             children: [
               actionToolbar,
               pendingBanner,
+              hero,
+              _kSectionGap,
               if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
-              if (raceCard != null) ...[raceCard, _kSectionGap],
+              if (raceCard != null && !raceInHero) ...[raceCard, _kSectionGap],
               if (eventCard != null) ...[eventCard, _kSectionGap],
               if (leadColumn != null && goalsSection != null)
                 Row(
@@ -2119,10 +2253,10 @@ class _DashboardScreenState extends State<DashboardScreen>
           children: [
             actionToolbar,
             pendingBanner,
+            hero,
+            _kSectionGap,
             if (weekLeadCard != null) ...[weekLeadCard, _kSectionGap],
-            if (workoutCard != null) ...[workoutCard, _kSectionGap],
-            // After today's session, which is the more urgent of the two.
-            if (raceCard != null) ...[raceCard, _kSectionGap],
+            if (raceCard != null && !raceInHero) ...[raceCard, _kSectionGap],
             if (eventCard != null) ...[eventCard, _kSectionGap],
             for (final block in todayBlocks) ...[block, _kSectionGap],
             if (coach != null) ...[coach, _kSectionGap],
@@ -2309,19 +2443,15 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 }
 
-/// The opening card of Home for an account with runs: this calendar week
-/// against its yardstick, the next plan session, and the two ways to get a run
-/// in. Mirrors web `DashboardWeekLead.svelte`; the numbers come from the
-/// `week_lead.dart` parity pair.
+/// The card under the Today hero for an account with runs: this calendar week
+/// against its yardstick and the next plan session. Mirrors web
+/// `DashboardWeekLead.svelte`; the numbers come from the `week_lead.dart`
+/// parity pair.
 class _DashboardWeekLead extends StatelessWidget {
   final WeekLead lead;
   final bool hasPlan;
   final DistanceUnit unit;
   final ValueChanged<LeadPlanWorkout> onOpenSession;
-
-  /// Opens the recorder for [startActivity]; null hides the Start.
-  final VoidCallback? onStart;
-  final ActivityType startActivity;
 
   /// Opens this week's summary, the day-by-day detail the lead stands for.
   final VoidCallback onOpenWeek;
@@ -2333,8 +2463,6 @@ class _DashboardWeekLead extends StatelessWidget {
     required this.hasPlan,
     required this.unit,
     required this.onOpenSession,
-    required this.onStart,
-    required this.startActivity,
   });
 
   String _whenLabel(AppLocalizations l10n, String iso, int? inDays) {
@@ -2464,15 +2592,6 @@ class _DashboardWeekLead extends StatelessWidget {
                   style: theme.textTheme.bodyMedium?.copyWith(color: muted),
                 ),
             ],
-            if (onStart != null) ...[
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                key: const Key('dashboardWeekLeadStart'),
-                onPressed: onStart,
-                icon: Icon(startActivity.icon),
-                label: Text(startActivityCaption(l10n, startActivity)),
-              ),
-            ],
           ],
         ),
       ),
@@ -2533,9 +2652,9 @@ class _WeekLeadSession extends StatelessWidget {
   }
 }
 
-/// Pinned "Ask your coach" entry at the top of Home — a full-width tappable
-/// banner that opens the AI coach in one tap (the coach has no bottom-nav
-/// slot under the Fitness-hub redesign).
+/// The "Ask your coach" row that closes Home's Today block: one tap to the
+/// AI coach, which has no bottom-nav slot. A compact row rather than a card
+/// (decisions § 2387): it is a reminder of where the coach is, not a pitch.
 class _CoachEntryCard extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
@@ -2544,47 +2663,134 @@ class _CoachEntryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context);
-    return Card(
-      color: theme.colorScheme.primaryContainer,
-      child: Semantics(
-        button: true,
-        label: l10n.homeAskCoach,
+    return Semantics(
+      button: true,
+      label: l10n.homeAskCoach,
+      child: Material(
+        key: const Key('dashboardCoachRow'),
+        color: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: scheme.outlineVariant),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Icon(Icons.psychology_outlined,
-                    color: theme.colorScheme.onPrimaryContainer),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.homeAskCoach,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: theme.colorScheme.onPrimaryContainer,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.psychology_outlined, color: scheme.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.homeAskCoach,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onPrimaryContainer,
+                        Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Icon(Icons.chevron_right,
-                    color: theme.colorScheme.onPrimaryContainer),
-              ],
+                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                ],
+              ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The adaptive Today hero that leads Home (#1187, decisions § 2385). [state]
+/// is what `todayHeroState` picked; [children] are the cards that state
+/// shows, in order.
+class DashboardTodayHero extends StatelessWidget {
+  final TodayHeroState state;
+  final List<Widget> children;
+  const DashboardTodayHero(
+      {super.key, required this.state, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (i, child) in children.indexed) ...[
+          if (i > 0) const SizedBox(height: 8),
+          child,
+        ],
+      ],
+    );
+  }
+}
+
+/// The hero on a plan day with nothing scheduled.
+class _RestDayCard extends StatelessWidget {
+  const _RestDayCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      key: const Key('dashboardHeroRestDay'),
+      child: ListTile(
+        leading: const Icon(Icons.self_improvement),
+        title: Text(l10n.dashboardHeroRestDay),
+        subtitle: Text(l10n.dashboardHeroRestDayBody),
+      ),
+    );
+  }
+}
+
+/// One card holding the load views as rows. Each row is a card in its own
+/// right elsewhere, so the cards inside drop their chrome here rather than
+/// nesting a card in a card.
+class _TrainingLoadCard extends StatelessWidget {
+  final String? title;
+  final List<Widget> children;
+  const _TrainingLoadCard({super.key, this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Theme(
+          data: theme.copyWith(
+            cardTheme: theme.cardTheme.copyWith(
+              elevation: 0,
+              margin: EdgeInsets.zero,
+              color: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (title != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: ChartCardHeader(title: title!),
+                ),
+              ...children,
+            ],
           ),
         ),
       ),

@@ -1799,6 +1799,89 @@
     ]
   },
   {
+    "id": "drive-a-course",
+    "lang": "es",
+    "title": "Recorrer en coche el recorrido de una carrera antes del día",
+    "summary": "Abre un recorrido público en tu app de mapas, mira qué tramos no puede seguir y deja que la app del móvil te lea en voz alta las notas del recorrido mientras conduces.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/routes/[id]",
+      "/races/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Qué hace",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "En una ruta pública o una carrera con recorrido público, **Conducir el recorrido** divide el recorrido en tramos que Google Maps, Mapas de Apple o Waze pueden seguir. Tu app de mapas se encarga de guiarte, también en CarPlay y Android Auto."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Google Maps admite varias paradas por tramo. Mapas de Apple y Waze admiten un solo destino cada vez, así que abres cada tramo por turnos.",
+              "Los recorridos de carrera usan caminos, puentes y calles cortadas. La lista bajo los tramos muestra los tramos que la app de mapas no puede seguir, para que sepas qué partes no verás.",
+              "La ruta de la app de mapas es solo orientativa. Las notas siguen el recorrido real."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Esta función se está activando poco a poco. Si un recorrido público no muestra **Conducir el recorrido**, todavía no está disponible para ti."
+          }
+        ]
+      },
+      {
+        "heading": "Abrir un recorrido en tu app de mapas",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abre la ruta o la carrera y selecciona **Conducir el recorrido**.",
+              "Elige tu app de mapas y selecciona **Ir a la salida**.",
+              "En la salida, abre el tramo 1. Cuando termine un tramo, abre el siguiente."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "La página web también muestra cada nota del recorrido con su distancia, y puedes imprimir la lista para un acompañante."
+          }
+        ]
+      },
+      {
+        "heading": "Escuchar las notas del recorrido en el móvil",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "En la app del móvil, abre la ruta o la carrera y toca **Conducir el recorrido**.",
+              "Lee el aviso de seguridad y toca **Entendido**. Solo aparece una vez en cada móvil.",
+              "Toca **Iniciar notas habladas**, cambia a tu app de mapas y bloquea el móvil."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Cada avituallamiento, corte, subida, peligro y nota se lee unos 15 segundos antes de llegar y otra vez al llegar. Si te unes a mitad, las notas empiezan donde estás. Se detienen en la meta o tras 10 minutos fuera del recorrido. Toca **Detener** para pararlas antes."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Úsalo con un acompañante o con el móvil en un soporte, y no toques el móvil mientras conduces. Respeta las normas y señales de tráfico, y recuerda que las calles del recorrido pueden estar cortadas el día de la carrera."
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "follow-a-race-live",
     "lang": "es",
     "title": "Seguir una carrera en directo",
@@ -3166,6 +3249,121 @@
     "related": [
       "what-pro-includes",
       "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "park-courses",
+    "lang": "es",
+    "title": "Recorridos de parques: puntos de control, temporadas y clasificaciones",
+    "summary": "Cómo un recorrido de parque cronometra tu carrera, por qué cuenta cada punto de control, cuándo empieza una temporada y cómo ordenan Más rápidos y Más completados.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/parks",
+      "/parks/[region]/[park]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "Qué es un recorrido de parque",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Un recorrido de parque es un recorrido fijo de contrarreloj por un sendero de un parque estatal o nacional. No hay organizador ni día de carrera: córrelo cuando el parque esté abierto y una carrera que cubra todo el recorrido se cronometra. Los encontrarás en [[route:/parks|Recorridos de parques]]."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Es una contrarreloj, no una carrera. El sendero sigue abierto para todos y nadie lo controla, así que respeta las normas del parque y cede el paso a los demás en el sendero.",
+              "Cada página de recorrido muestra la distancia, el desnivel positivo, la forma, la superficie y la dificultad, de dónde viene la línea del recorrido y si está abierto.",
+              "Selecciona **Navegar este recorrido** para seguir el recorrido como una ruta. No se ofrece mientras el recorrido está cerrado."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Un recorrido cerrado conserva sus tiempos y clasificaciones, pero no lo corras hasta que vuelva a abrir. La página muestra cuándo se comprobó su estado por última vez."
+          }
+        ]
+      },
+      {
+        "heading": "Puntos de control: por qué los atajos nunca cuentan",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Además de la salida y la meta, un recorrido puede tener puntos de control por el camino. Tu carrera solo se cronometra si pasa por todos los puntos de control, en orden, entre la salida y la meta. Una carrera que corta una curva, se salta una zeta o atraviesa por el medio pierde un punto de control y no consigue tiempo."
+          },
+          {
+            "type": "p",
+            "text": "No te salgas del sendero marcado. Atajar daña el sendero, y los parques lo consideran una infracción de sus normas."
+          }
+        ]
+      },
+      {
+        "heading": "Las temporadas siguen el reloj del parque",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Una temporada es un año natural en la zona horaria del parque, no en la tuya. Las clasificaciones empiezan de nuevo a medianoche del 1 de enero donde está el parque."
+          },
+          {
+            "type": "p",
+            "text": "Por ejemplo, una carrera que empieza a las 22:00 del 31 de diciembre en un parque de Virginia cuenta para ese año, aunque tu teléfono esté en una zona horaria donde ya es 1 de enero."
+          }
+        ]
+      },
+      {
+        "heading": "La clasificación Más rápidos",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Más rápidos** ordena a cada corredor por su mejor tiempo en el recorrido. Apareces una sola vez, con tu mejor carrera.",
+              "Por defecto muestra este año. Selecciona **Histórico** para ver los mejores tiempos de siempre.",
+              "Filtra por género o por grupo de edad. El filtro de edad solo incluye a quienes han aceptado compartir datos de salud, así que puede ser más corto que la clasificación completa."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "La clasificación Más completados",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "**Más completados** premia a los habituales. Cuenta los días en que completaste el recorrido, en la zona horaria del parque, así que varias vueltas el mismo día cuentan como una."
+          }
+        ]
+      },
+      {
+        "heading": "Quién aparece en las clasificaciones",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Necesitas iniciar sesión para ver las clasificaciones. Sin sesión, la página del recorrido sigue mostrando el recorrido y un enlace **Iniciar sesión**.",
+              "El tiempo de una carrera que los demás no pueden ver no se les muestra.",
+              "No verás a las personas que has bloqueado, y ellas no te verán a ti."
+            ]
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Una carrera se compara con los recorridos de parque en nuestros servidores poco después de guardarla o importarla, desde cualquier dispositivo. Un tiempo nuevo puede tardar unos minutos en aparecer en una clasificación."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "import-your-history",
+      "record-your-first-run"
     ]
   },
   {

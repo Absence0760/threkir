@@ -83,8 +83,14 @@ class _YouScreenState extends State<YouScreen>
 
   /// The last badge read, kept so a conversation deleted in a thread drops
   /// out of the count at once rather than on the next read.
-  List<({String conversationId, int unread, bool muted, bool archived})>
-      _dmStates = const [];
+  List<
+      ({
+        String conversationId,
+        int unread,
+        bool muted,
+        bool archived,
+        bool request
+      })> _dmStates = const [];
 
   /// When the read [_dmStates] came from started, which decides the deleted
   /// conversations it still counts ([DmPendingHides.hides]).
@@ -170,7 +176,12 @@ class _YouScreenState extends State<YouScreen>
     return unreadDmBadgeCount([
       for (final s in _dmStates)
         if (readAt == null || !hides.hides(s.conversationId, readAt))
-          (unread: s.unread, muted: s.muted, archived: s.archived),
+          (
+            unread: s.unread,
+            muted: s.muted,
+            archived: s.archived,
+            request: s.request,
+          ),
     ]);
   }
 

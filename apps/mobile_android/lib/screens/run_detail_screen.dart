@@ -63,6 +63,7 @@ import '../widgets/run_segment_efforts.dart';
 import '../widgets/audience_sheet.dart';
 import '../pr_card.dart';
 import '../widgets/run_share_card.dart';
+import '../park_courses.dart' show RunParkCourseTime, pickShareCourse;
 import '../widgets/run_social_section.dart';
 import '../widgets/pacing_strategy_section.dart';
 import '../widgets/workout_review_section.dart';
@@ -365,6 +366,15 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     };
   }
 
+  RunShareCourseLoader? _shareCourseLoader() {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return null;
+    return () async => pickShareCourse([
+          for (final r in await api.fetchRunParkCourseTimes(run.id))
+            RunParkCourseTime.fromRow(r),
+        ]);
+  }
+
   Future<void> _sharePrCard() async {
     if (_sharing || _runRecords.isEmpty) return;
     _sharing = true;
@@ -387,6 +397,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         initialStyle: RunShareStyle.pr,
         streakDays: _shareStreakDays(),
         badgeLoad: _shareBadgeLoader(),
+        courseLoad: _shareCourseLoader(),
       );
     } finally {
       if (mounted) {
@@ -3019,6 +3030,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         records: _runRecords,
         streakDays: _shareStreakDays(),
         badgeLoad: _shareBadgeLoader(),
+        courseLoad: _shareCourseLoader(),
         onShareLink: api != null && api.userId != null
             ? () => _shareRunLink(api)
             : null,

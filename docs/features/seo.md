@@ -42,6 +42,7 @@ indexed anyway).
 | `/share/workout/[id]` | Lambda-SSR (`share-entity`) | `share_workout_meta` | `WebPage` + breadcrumb |
 | `/share/plan/[id]` | Lambda-SSR (`share-entity`) | `share_plan_meta` | `WebPage` + breadcrumb |
 | `/share/challenge/[id]`, `/og/challenge/[id].png` | Lambda-SSR (`share-entity`, the one surface it rasterises a card for) | `share_challenge_meta` | `Event` |
+| `/share/course/[region]/[park]/[course]` | Lambda-SSR (`share-entity`) | `share_course_meta` | `SportsActivityLocation` in its `Park` |
 | `/challenges/join/[token]` | CSR (shell-less, **anon-reachable**) | inline `<svelte:head>` title + `noindex` | — (an invite link; never indexed, decisions § 2261) |
 | `/runs/[id]`, `/routes/[id]`, `/u/[id]`, `/races` | CSR (app shell) | generic shell + canonical | — (auth-gated) |
 | `/segments` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title | — (in the sitemap; see below) |
@@ -49,6 +50,8 @@ indexed anyway).
 | `/help`, `/help/[id]`, `/help/search` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title + `noindex` | — (`Disallow: /help`, not in the sitemap; decisions § 1866) |
 | `/nutrition/fuel` | CSR (app shell, **anon-reachable** so a Coach fuelling link opens in the phone's browser) | inline `<svelte:head>` title + `noindex` | — (`Disallow: /nutrition`, not in the sitemap) |
 | `/clubs/[slug]`, `/clubs/[slug]/events/[id]`, `/events/[id]`, `/live/[id]`, `/recap/[year]` | CSR (app shell) | generic shell + canonical | — (anon-reachable, shell-only) |
+| `/parks`, `/parks/[region]/[park]` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title | — (not in the sitemap; see below) |
+| `/parks/[region]/[park]/[course]` | CSR (app shell, **anon-reachable**) | inline `<svelte:head>` title + canonical | — (folds onto `/share/course/…`) |
 | dashboard / feed / settings / … | CSR (app shell) | generic shell | — (auth-gated) |
 
 **The `/` row is measured, not intended.** It was intent for as long as the
@@ -88,6 +91,18 @@ Two rows above are easy to misread, and both were wrong in this table before:
   a crawler would only ever be handed the empty shell. Making one genuinely
   indexable is the step-2 `share-entity` path below, not a sitemap append
   (`decisions.md § 677`).
+- **A park course's indexable page is `/share/course/<region>/<park>/<course>`,
+  and it is in the sitemap** (decisions § 2394). The key is the in-app path's
+  own three slugs, so the URL a search result shows names the region, the park
+  and the course. The in-app `/parks/[region]/[park]/[course]` canonicals onto
+  it. The page names the course and its park and **never a runner**: the lookup
+  reads `park_courses` + its park + its catalogue segment and nothing else, the
+  boards stay signed-in only, and the page links to the in-app course for them.
+  That is what puts it on the club side of the people-directory line rather
+  than the segment side (`/segments/[id]` is a board of named runners). The
+  course map is behind `requireExplicitConsent`, as on the route share page.
+  The `/parks` index and the park pages stay CSR and out of the sitemap for
+  now; a park page is the next surface if search traffic says so.
 - **`/share/session/[id]` + `/share/workout/[id]` are NOT in the sitemap**,
   unlike their four `share-entity` siblings. A public gym workout is the
   athlete's own training record, and enumerating every one of them would build
@@ -203,6 +218,7 @@ the two URLs splitting ranking signal, each in-app page emits a
 | `/clubs/[slug]/events/[id]` | `/share/event/[id]` |
 | `/sessions/[id]` | `/share/session/[id]` |
 | `/gym/[id]` | `/share/workout/[id]` |
+| `/parks/[region]/[park]/[course]` | `/share/course/[region]/[park]/[course]` |
 
 The canonical derives from the URL param (via `build<X>ShareCanonical`),
 so it's present even before/without the client data load.
@@ -246,6 +262,7 @@ as a parameter. That covers two paths per entity, not one:
 | `/recap/share/[id]` | `buildRecapShareCanonical` | `share_recap_meta.ts` |
 | `/og/recap/[id].png` | `buildRecapOgImageUrl` | `share_recap_meta.ts` |
 | `/share/{event,profile,club,race,session,workout}/…` | `build<X>ShareCanonical` | `share_<x>_meta.ts` |
+| `/share/course/<region>/<park>/<course>` | `buildCourseShareCanonical` (key from `courseShareKey`) | `share_course_meta.ts` |
 
 Note the recap asymmetry: its share page is `/recap/share/[id]` (it predates the
 `/share/<entity>/` family) while its unfurl image *is* under `/og/<entity>/`.
@@ -358,6 +375,11 @@ e2e-tested without standing up the Lambda.
 - **Sessions**: the plan's authored fields only. Per-item `cue` + `tempo` are
   fetched (the visible sequence renders them) but stay out of the `<head>` —
   an og:description is handed to every unfurler, out of context.
+- **Park courses**: the course, its park and its catalogue segment only. No
+  effort, board, rank or runner name reaches the lookup, the `<head>` or the
+  page body; the boards are signed-in RPCs (42501 for anon) that the share
+  page never calls. RLS hides an inactive park and a pulled segment, which the
+  lookup's inner joins turn into the 404.
 - **Profiles**: only the anon-safe display name + avatar (via the
   `public_profile_by_id` SECURITY DEFINER RPC) — no email / private field.
 - **Profiles are NOT in the sitemap** — no people-directory crawl
@@ -454,8 +476,8 @@ the map failed). Three guards, pinned by `consent_guards.test.ts`:
 - **`/sitemap.xml`** (`sitemap.xml/+server.ts` + `#lib/share/sitemap.ts`)
   — build-time, anon-fetched: the top-level surfaces (`/`, `/feed`,
   `/routes?tab=explore`, `/segments`), public routes + runs
-  (popularity-weighted), learn pages, and public **events + clubs + races**
-  (`entityEntries`).
+  (popularity-weighted), learn pages, public **events + clubs + races**
+  (`entityEntries`), and **park courses** (`courseEntries`).
   Graceful-degrades to top-level-only if Supabase is unreachable at build.
 - **`www` → apex redirect** — a viewer-request CloudFront Function
   (`infra/modules/web-stack/functions/www_redirect.js`, gated on

@@ -440,8 +440,8 @@ void main() {
       // on the run screen and ~38 m on the run-detail screen minutes later.
       // computeRunElevationGain / RunElevationGainAccumulator in
       // run_altitude.dart are the ONE recorded-run elevation-gain contract
-      // (the barometer-or-GPS series and its band, over route_simplify.dart's
-      // gate + dropout carry); the screen must feed that accumulator, not
+      // (the barometer-or-GPS series and its band, over core_models'
+      // elevation_gain.dart gate + dropout carry); the screen must feed that accumulator, not
       // re-derive the arithmetic or pick a band of its own.
       final body = _extractMethodBody(
         source,
@@ -474,7 +474,7 @@ void main() {
         RegExp(r'minDeltaM|kElevationGain\w*MinDeltaM').hasMatch(source),
         isFalse,
         reason: 'The noise bands belong to run_altitude.dart and '
-            'route_simplify.dart; do not fork a threshold here.',
+            'core_models; do not fork a threshold here.',
       );
     });
 
@@ -5641,6 +5641,9 @@ void main() {
       'screens/settings_account_screen.dart::l10n.settingsAccountDisplayName': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsTargetPace': 1,
       'screens/settings_preferences_screen.dart::l10n.prefsHrZonesDialogTitle': 1,
+      // Checkboxes that show or hide Home's trend groups; a group hidden here
+      // is ticked back in the same dialog (decisions § 2386).
+      'screens/settings_preferences_screen.dart::l10n.prefsHomeCards': 1,
       'screens/settings_preferences_screen.dart::title': 3,
       'screens/settings_safety_screen.dart::l10n.safetyTitle': 1,
       'screens/workout_detail_screen.dart::l10n.workoutRelinkTitle': 1,
@@ -5710,6 +5713,28 @@ void main() {
       // the typed figures and "Fix it" returns to the form, so neither button
       // discards anything.
       'manual_duration_input.dart::l10n.manualDurationSlowTitle': 1,
+      // Edits a direct message's text. Cancel keeps the message as it was,
+      // Save replaces only the visible text, and the server keeps the text as
+      // first sent for reports (migration 20271114000210).
+      'screens/message_thread_screen.dart::l10n.messagesEditTitle': 1,
+      // The race-course tools (decisions § 2381). Claiming takes an
+      // unclaimed race and destroys nothing; linking replaces the course with
+      // another public club route, undone by linking the old one again;
+      // suggesting queues a suggestion and links nothing. `dialogTitle` is the
+      // link dialog, which also approves a suggestion (linking through the
+      // same checks); its Remove course is held for the undo window, never
+      // committed from the dialog (decisions § 2396).
+      'screens/race_detail_screen.dart::l.raceCourseClaimTitle': 1,
+      'screens/race_detail_screen.dart::dialogTitle': 1,
+      'screens/race_detail_screen.dart::l.raceCourseSuggestTitle': 1,
+      // The one-time driver safety notice for Drive this course. Cancel leaves
+      // the screen before anything has started; "I understand" only records
+      // that it was read on this device.
+      'screens/course_drive_screen.dart::l.courseDriveNoticeTitle': 1,
+      // The Arm preflight (decisions § 2391). Arm anyway arms a race, which
+      // Cancel undoes from the race card; Cancel and the blocking dialog's OK
+      // leave the race unarmed. Nothing is discarded either way.
+      'widgets/race_preflight_dialog.dart::blocked': 1,
     };
 
     test('no AlertDialog outside the reviewed set omits error emphasis', () {
@@ -6558,13 +6583,15 @@ void main() {
     /// cannot tell them apart on shape. `equipa`/`equipe` is *team*;
     /// `este`/`esta` and `deste`/`desta` are demonstratives agreeing with a
     /// noun whose gender the variants disagree on (`o ecrã` against `a tela`,
-    /// the § 760 rule). Each is asserted to still be in use.
+    /// the § 760 rule). `aceite`/`aceita` is the participle *accepted*, not
+    /// an imperative. Each is asserted to still be in use.
     const variantWordPairs = <String, String>{
       'equipa': 'equipe',
       'este': 'esta',
       'esta': 'este',
       'nesta': 'neste',
       'deste': 'desta',
+      'aceite': 'aceita',
     };
 
     Map<String, String> arbMessages(String path) {

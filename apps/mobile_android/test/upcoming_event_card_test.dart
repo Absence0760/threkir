@@ -13,6 +13,7 @@ EventView _event({
 }) {
   final when = nextInstanceStart ?? DateTime.now().add(const Duration(hours: 5));
   final row = EventRow(
+    raceStartMode: 'host_go',
     id: 'e1',
     clubId: 'c1',
     title: title,

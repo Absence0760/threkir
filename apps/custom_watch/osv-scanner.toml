@@ -1,0 +1,15 @@
+# osv-scanner reads this for Cargo.lock in this directory;
+# supply-chain-scan.yml passes no --config. Rationale:
+# docs/architecture/decisions.md § 2422.
+
+[[IgnoredVulns]]
+# bare-metal 0.2.5 is deprecated and archived (informational: unmaintained).
+id = "RUSTSEC-2026-0110"
+ignoreUntil = 2027-05-09
+reason = """
+Informational, not a vulnerability, and no release fixes it: the advisory \
+lists no patched version. bare-metal arrives only through cortex-m, and every \
+cortex-m 0.7.x through 0.7.10 (the latest) depends on it; embassy-executor, \
+embassy-nrf, nrf-pac and panic-probe all reach it through cortex-m. Drop this \
+once a cortex-m release without bare-metal ships and the workspace moves to it.\
+"""

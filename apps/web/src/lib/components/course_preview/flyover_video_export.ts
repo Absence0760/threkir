@@ -7,17 +7,15 @@
 /// browser is decided in those modules; this file only drives the APIs.
 import maplibregl from '#lib/routes/maplibre.ts';
 import type { Climb, StripSample } from '#lib/routes/course_climbs.ts';
-import {
-	distanceMarkers,
-	pointAtDistance,
-	type FlyoverPath,
-} from '#lib/routes/flyover_path.ts';
+import { pointAtDistance, type FlyoverPath } from '#lib/routes/flyover_path.ts';
 import { FLYOVER_PITCH, type TerrainSource } from '#lib/routes/terrain_source.ts';
 import { basemapIsDarkFromEnv, mapStyleUrlFromEnv } from '#lib/routes/map-style.svelte.ts';
 import { mapAccentColour, mapOverlayOutline } from '#lib/routes/basemap_contrast.ts';
 import { OG_CARD_DARK } from '#lib/share/og_card_palette.ts';
+import { videoCourseLayerInput } from './video_course_layers.ts';
 import { addCourseLayers } from './course_layers.ts';
 import { addCourseTerrain } from './course_terrain.ts';
+import type { StartFinishLabels } from './start_finish.ts';
 import { stripGeometry, stripX } from './strip_geometry.ts';
 import { flightCamera } from './flight_frame.ts';
 import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
@@ -58,6 +56,8 @@ export interface FlyoverVideoText {
 	ofTotal: string;
 	elevationAt: (ele: number) => string;
 	climbLabel: (index: number) => string;
+	/// The start / finish marker labels, in the dialog's locale.
+	startFinish: StartFinishLabels;
 	endLines: readonly string[];
 	url: string;
 }
@@ -361,12 +361,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 				console.warn('flyover video: terrain unavailable', e);
 			}
 		}
-		addCourseLayers(m, {
-			path,
-			climbs: input.climbs,
-			markers: distanceMarkers(path, input.unit, input.officialDistanceM),
-			darkBasemap,
-		});
+		addCourseLayers(m, videoCourseLayerInput(input, darkBasemap));
 
 		const styleCredits = Object.values(m.getStyle().sources ?? {}).map(
 			(s) => (s as { attribution?: string }).attribution,

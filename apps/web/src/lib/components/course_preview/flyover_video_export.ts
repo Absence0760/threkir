@@ -23,7 +23,7 @@ import { stripGeometry, stripX } from './strip_geometry.ts';
 import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 import { VIDEO_HEIGHT, VIDEO_WIDTH } from '#lib/video/frame_clock.ts';
 import { createFrameSink, videoAbortError, type FrameSink } from '#lib/video/encode_video.ts';
-import { VIDEO_FINALE, videoFrame, videoTimeline, type VideoFrame } from './video_timeline.ts';
+import { VIDEO_FINALE, videoFlightSpeedMps, videoFrame, videoTimeline, type VideoFrame } from './video_timeline.ts';
 import {
 	finaleCamera,
 	OVERVIEW_PITCH,
@@ -335,7 +335,8 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 	let sink: FrameSink | null = null;
 	try {
 		if (!ctx) throw new Error('no 2D canvas');
-		const first = cameraAt(path, 0);
+		const speedMps = videoFlightSpeedMps(t, path.totalM);
+		const first = cameraAt(path, 0, { speedMps });
 		map = new maplibregl.Map({
 			container: host,
 			style: mapStyleUrlFromEnv(input.maptilerKey, prefersDark),
@@ -384,7 +385,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			},
 		};
 
-		const finish = cameraAt(path, path.totalM);
+		const finish = cameraAt(path, path.totalM, { speedMps });
 		const from: CameraPose = { center: finish.center, bearing: finish.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM };
 		const overview = overviewTarget(m, path, layout, viewport);
 
@@ -394,7 +395,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			if (signal.aborted) throw videoAbortError();
 			const frame = videoFrame(t, i, path.totalM);
 			if (frame.phase === 'flight') {
-				const pose = cameraAt(path, frame.dM);
+				const pose = cameraAt(path, frame.dM, { speedMps });
 				await settle(m, () =>
 					m.jumpTo({ center: pose.center, bearing: pose.bearing, pitch: FLYOVER_PITCH, zoom: FLIGHT_ZOOM }),
 				);

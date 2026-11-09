@@ -44,6 +44,10 @@ export const DEFAULT_FLYOVER_SPEED_MPS = 250;
 
 const DEFAULT_LOOK_AHEAD_M = 300;
 const DEFAULT_SMOOTHING_M = 400;
+/** The heading window spans this much flight, so at the default 250 m/s it is the 400 m it always was. */
+const SMOOTHING_S = DEFAULT_SMOOTHING_M / DEFAULT_FLYOVER_SPEED_MPS;
+/** A drone pilot's slow yaw; caps the turn per second of flight, whatever the speed (decisions § 2413). */
+export const MAX_TURN_DEG_PER_S = 45;
 const M_PER_DEG_LAT = 111320;
 
 export function buildFlyoverPath(points: readonly PathPoint[]): FlyoverPath {
@@ -100,15 +104,22 @@ export function pointAtDistance(
  * A reversal longer than the window does not cancel: the summed vector passes
  * through zero and would flip the camera 180° in a frame, so the smoothed
  * heading is also turn-rate limited along the course.
- * `smoothingM: 0` is the raw segment heading, unsmoothed and unlimited.
+ *
+ * Both are set by `speedMps`, the speed the flight covers the course at: the
+ * window spans `SMOOTHING_S` of flight (never under 400 m) and the turn is
+ * capped at `MAX_TURN_DEG_PER_S` of flight (never over 0.6° a metre). Per
+ * metre alone, an export flying a 50K in 20 s would swing the camera at every
+ * switchback. An explicit `smoothingM` replaces the window; `smoothingM: 0` is
+ * the raw segment heading, unsmoothed and unlimited.
  */
 export function cameraAt(
 	path: FlyoverPath,
 	dM: number,
-	opts: { lookAheadM?: number; smoothingM?: number } = {},
+	opts: { lookAheadM?: number; smoothingM?: number; speedMps?: number } = {},
 ): CameraPose {
 	const lookAheadM = nonNegative(opts.lookAheadM, DEFAULT_LOOK_AHEAD_M);
-	const smoothingM = nonNegative(opts.smoothingM, DEFAULT_SMOOTHING_M);
+	const speedMps = flightSpeed(opts.speedMps);
+	const smoothingM = nonNegative(opts.smoothingM, flightSmoothingM(speedMps));
 	const d = clampDistance(dM, path.totalM);
 	const here = pointAtDistance(path, d);
 	const ahead = pointAtDistance(path, Math.min(path.totalM, d + lookAheadM));
@@ -116,7 +127,7 @@ export function cameraAt(
 	const lookAt: [number, number] = [ahead.lng, ahead.lat];
 	const bearing =
 		smoothingM > 0 && path.totalM > 0
-			? normalizeBearing(lookupBearing(bearingTable(path, smoothingM), d))
+			? normalizeBearing(lookupBearing(bearingTable(path, smoothingM, maxTurnDegPerM(speedMps)), d))
 			: windowBearing(path, d, smoothingM, lookAheadM);
 	return { center, bearing, lookAt };
 }
@@ -124,29 +135,45 @@ export function cameraAt(
 const BEARING_STEP_M = 5;
 const MAX_TURN_DEG_PER_M = 0.6;
 
+function flightSpeed(speedMps: number | undefined): number {
+	return speedMps !== undefined && Number.isFinite(speedMps) && speedMps > 0 ? speedMps : DEFAULT_FLYOVER_SPEED_MPS;
+}
+
+/** The heading window at `speedMps`: `SMOOTHING_S` of flight, never under 400 m. */
+export function flightSmoothingM(speedMps: number): number {
+	return Math.max(DEFAULT_SMOOTHING_M, flightSpeed(speedMps) * SMOOTHING_S);
+}
+
+/** The turn allowed per metre at `speedMps`: `MAX_TURN_DEG_PER_S` of flight, never over 0.6°. */
+export function maxTurnDegPerM(speedMps: number): number {
+	return Math.min(MAX_TURN_DEG_PER_M, MAX_TURN_DEG_PER_S / flightSpeed(speedMps));
+}
+
 interface BearingTable {
 	stepM: number;
 	totalM: number;
 	deg: Float64Array;
 }
 
-const bearingTables = new WeakMap<FlyoverPath, Map<number, BearingTable>>();
+/** Keyed by window and turn limit together: the dialog's speed menu changes both. */
+const bearingTables = new WeakMap<FlyoverPath, Map<string, BearingTable>>();
 
-function bearingTable(path: FlyoverPath, smoothingM: number): BearingTable {
-	let bySmoothing = bearingTables.get(path);
-	if (!bySmoothing) {
-		bySmoothing = new Map();
-		bearingTables.set(path, bySmoothing);
+function bearingTable(path: FlyoverPath, smoothingM: number, turnDegPerM: number): BearingTable {
+	let byKey = bearingTables.get(path);
+	if (!byKey) {
+		byKey = new Map();
+		bearingTables.set(path, byKey);
 	}
-	const cached = bySmoothing.get(smoothingM);
+	const key = `${smoothingM}|${turnDegPerM}`;
+	const cached = byKey.get(key);
 	if (cached && cached.totalM === path.totalM) return cached;
-	const table = buildBearingTable(path, smoothingM);
-	bySmoothing.set(smoothingM, table);
+	const table = buildBearingTable(path, smoothingM, turnDegPerM);
+	byKey.set(key, table);
 	return table;
 }
 
 /** Unwrapped degrees at `sampleAt(k)`, so a turn through north is a run of numbers, not a jump from 359 to 0. */
-function buildBearingTable(path: FlyoverPath, smoothingM: number): BearingTable {
+function buildBearingTable(path: FlyoverPath, smoothingM: number, turnDegPerM: number): BearingTable {
 	const totalM = path.totalM;
 	const n = Math.ceil(totalM / BEARING_STEP_M);
 	const at = (k: number) => Math.min(totalM, k * BEARING_STEP_M);
@@ -159,13 +186,13 @@ function buildBearingTable(path: FlyoverPath, smoothingM: number): BearingTable 
 	const forward = new Float64Array(n + 1);
 	forward[0] = raw[0];
 	for (let k = 1; k <= n; k++) {
-		const limit = MAX_TURN_DEG_PER_M * (at(k) - at(k - 1));
+		const limit = turnDegPerM * (at(k) - at(k - 1));
 		forward[k] = forward[k - 1] + clampAbs(raw[k] - forward[k - 1], limit);
 	}
 	const backward = new Float64Array(n + 1);
 	backward[n] = raw[n];
 	for (let k = n - 1; k >= 0; k--) {
-		const limit = MAX_TURN_DEG_PER_M * (at(k + 1) - at(k));
+		const limit = turnDegPerM * (at(k + 1) - at(k));
 		backward[k] = backward[k + 1] + clampAbs(raw[k] - backward[k + 1], limit);
 	}
 	const deg = new Float64Array(n + 1);

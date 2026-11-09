@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 
-import { buildFlyoverPath } from '#lib/routes/flyover_path.ts';
-import { drawFlightFrame, type FlightCamera } from './flight_frame.ts';
+import { buildFlyoverPath, cameraAt, MAX_TURN_DEG_PER_S } from '#lib/routes/flyover_path.ts';
+import { drawFlightFrame, flightCamera, type FlightCamera } from './flight_frame.ts';
 
 const VIEW = { pitch: 60, zoom: 14 };
 const path = buildFlyoverPath([
@@ -48,7 +48,7 @@ test('in an animation frame the canvas draws the camera the dot was placed on', 
 	let dot: [number, number] | null = null;
 	for (const dM of [0, 120, 260, 900, 1400]) {
 		map.startFrame();
-		drawFlightFrame(map, { setLngLat: (at) => (dot = at) }, path, dM, VIEW, true);
+		drawFlightFrame(map, { setLngLat: (at) => (dot = at) }, path, dM, VIEW, 250, true);
 		assert.deepEqual(map.drawn?.center, dot, `frame at ${dM} m paints the dot off its spot`);
 	}
 });
@@ -62,13 +62,58 @@ test('the dot is placed after the camera moves, on the camera centre', () => {
 			dot = at;
 		},
 	};
-	drawFlightFrame(map, marker, path, 500, VIEW, true);
+	drawFlightFrame(map, marker, path, 500, VIEW, 250, true);
 	assert.deepEqual(map.calls, ['jumpTo', 'setLngLat', 'redraw']);
 	assert.deepEqual(dot, map.drawn?.center);
 });
 
 test('outside an animation frame no extra render is forced', () => {
 	const map = fakeMap();
-	drawFlightFrame(map, { setLngLat: () => {} }, path, 500, VIEW, false);
+	drawFlightFrame(map, { setLngLat: () => {} }, path, 500, VIEW, 250, false);
 	assert.deepEqual(map.calls, ['jumpTo']);
+});
+
+const M_PER_DEG_LAT = 111320;
+
+/// 50 km of 200 m legs zigzagging 60 degrees either side of north: a trail
+/// ultra's switchbacks.
+const switchbacks = (() => {
+	const pts = [{ lat: 0, lng: 0, ele: null }];
+	let north = 0;
+	let east = 0;
+	for (let i = 0; i < 250; i++) {
+		const rad = ((i % 2 === 0 ? 60 : -60) * Math.PI) / 180;
+		for (let m = 10; m <= 200; m += 10) {
+			north += 10 * Math.cos(rad);
+			east += 10 * Math.sin(rad);
+			pts.push({ lat: north / M_PER_DEG_LAT, lng: east / M_PER_DEG_LAT, ele: null });
+		}
+	}
+	return buildFlyoverPath(pts);
+})();
+
+function worstDegPerS(speedMps: number, fps: number): number {
+	let prev = flightCamera(switchbacks, 0, VIEW, speedMps).bearing;
+	let worst = 0;
+	for (let d = speedMps / fps; d <= switchbacks.totalM; d += speedMps / fps) {
+		const b = flightCamera(switchbacks, d, VIEW, speedMps).bearing;
+		const turn = Math.abs((((b - prev) % 360) + 540) % 360 - 180);
+		worst = Math.max(worst, turn * fps);
+		prev = b;
+	}
+	return worst;
+}
+
+test('the flight camera turns at most the per-second cap at a 50K export speed', () => {
+	const worst = worstDegPerS(2500, 30);
+	assert.ok(worst <= MAX_TURN_DEG_PER_S + 0.5, `turned ${worst.toFixed(1)} deg/s at 2500 m/s`);
+});
+
+test('the flight camera at 250 m/s is the camera cameraAt gives for 250 m/s', () => {
+	for (const dM of [0, 900, 12_345, switchbacks.totalM]) {
+		const pose = cameraAt(switchbacks, dM, { speedMps: 250 });
+		const cam = flightCamera(switchbacks, dM, VIEW, 250);
+		assert.deepEqual([cam.center, cam.bearing], [pose.center, pose.bearing]);
+		assert.deepEqual([cam.pitch, cam.zoom], [VIEW.pitch, VIEW.zoom]);
+	}
 });

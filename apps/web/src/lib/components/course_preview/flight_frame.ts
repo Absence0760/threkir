@@ -21,8 +21,10 @@ export interface FlightDot {
 	setLngLat(at: [number, number]): unknown;
 }
 
-export function flightCamera(path: FlyoverPath, dM: number, view: FlightView): FlightCamera {
-	const pose = cameraAt(path, dM);
+/// `speedMps` is the speed the flight covers the course at; the camera's
+/// heading smoothing and turn limit follow it (`cameraAt`).
+export function flightCamera(path: FlyoverPath, dM: number, view: FlightView, speedMps: number): FlightCamera {
+	const pose = cameraAt(path, dM, { speedMps });
 	return { center: pose.center, bearing: pose.bearing, pitch: view.pitch, zoom: view.zoom };
 }
 
@@ -35,9 +37,10 @@ export function drawFlightFrame(
 	path: FlyoverPath,
 	dM: number,
 	view: FlightView,
+	speedMps: number,
 	inAnimationFrame: boolean,
 ): void {
-	const camera = flightCamera(path, dM, view);
+	const camera = flightCamera(path, dM, view, speedMps);
 	target.jumpTo(camera);
 	dot.setLngLat(camera.center);
 	if (inAnimationFrame) target.redraw();

@@ -16,7 +16,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the segment catalogue's app bar) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
-| **Virginia geometry** | **Not loaded.** See *Loading courses* |
+| Geometry pipeline (`scripts/parks/`) and the operator load (`scripts/parks/load.mjs` → `private.load_park_catalogue`, migration `20271126002423`, decisions § 2423) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) is built and ready; **not yet loaded in production**. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
@@ -133,23 +133,51 @@ shows a banner and hides "Navigate this course"; its times and boards stay.
 
 ## Loading courses
 
-A course needs a route owned by the official account, which no migration can
-create, and reviewed geometry. Real courses are therefore an operator load and
-none are in the tree yet: the Virginia trail names and distances in #1313 are
-unverified, and no openly licensed geometry was sourced in this change.
+A course needs a route owned by an official publisher, which no migration can
+create, and reviewed geometry, so real courses are an operator load. The
+geometry is built and reviewed under `scripts/parks/` (its README has the
+pipeline); the load is one call of `private.load_park_catalogue` (migration
+`20271126002423`, decisions § 2423), which only the service role can execute.
 
-1. Extract the trail line (NPS Public Trails first, then OpenStreetMap via
-   Overpass; Virginia DCR data only after DCR confirms terms in writing; never
-   AllTrails, Strava or Garmin routes). Stitch, orient, simplify, fill
-   elevation, check the length against the park's own published figure (within
-   5 %), and place checkpoints on the far side of every cut a runner could take.
-2. As the service role: insert the `global_segments` row (description carries
-   the attribution), the `parks` row if new, then the `park_courses` row with
-   `geometry_source`, `source_ref` and `source_checked_at`.
-3. Draw or import the public route under the official account and set
-   `park_courses.route_id`.
-4. Queue the launch backfill (`enqueue_segment_backfill`, see *Matching*) so
-   existing runs show on the boards the day the course opens.
+The function refuses unless the author is an active owner or admin of the
+verified, public club (`private.is_official_publisher`). In one transaction it
+upserts the park by slug, with its centroid and bounding box taken from every
+course line, and per course, keyed by park and course slug, the catalogue
+segment, the `park_courses` row and the public official route. A re-run updates
+all three in place, so their ids and every effort survive changed geometry; a
+course whose route was deleted gets a new one. It never writes a course's
+`status` or a row's `is_active`, and leaves alone a course the manifest no
+longer names. Every description ends with the manifest's attribution. The
+segment's start and end lines are derived from the new line by the gates
+trigger (a curator's line is kept). It returns one row per course: slug, the
+three ids, `created` or `updated`, and the backfill job when asked for one.
+
+Race courses (`race_courses` in the manifest, the Swift Creek 5K to 50K) load
+as standing park courses with calendar-year boards, not as self-timed races.
+Each is a `loop` course, because its start and finish are one line on the
+lead-in: the derived start line faces out along the lead-in and the end line
+faces back in, and the matcher never lets the crossing that ends a pass start
+the next. Its route carries the race distance as `official_distance_m`.
+
+Operator steps, once per park and again whenever its built files change:
+
+1. Find the official club's id and the publishing account's id (an active
+   owner or admin of that verified club) in Studio.
+2. Generate the statement on a checkout of `main`:
+   `node scripts/parks/load.mjs scripts/parks/catalogue/us-va/pocahontas --club-id <club uuid> --author-id <author uuid> > pocahontas.sql`.
+   It validates the manifest and GeoJSON (slugs, every CHECK vocabulary,
+   checkpoint count, coordinate ranges, a stale or unclosed line, a race
+   course off its distance) and prints one statement; stderr names the
+   courses.
+3. Run the file as the service role: paste it into the production project's
+   Studio SQL editor, or `psql` on the service-role connection. Check the
+   returned rows: six on a first Pocahontas load, all `created`.
+4. Queue the launch backfill for each course, so existing runs show on the
+   boards the day the course opens (see *Matching*):
+   `select enqueue_segment_backfill(global_segment_id) from park_courses pc join parks p on p.id = pc.park_id where p.slug = 'pocahontas';`
+   (or pass `--enqueue-backfill` in step 2 to queue it from the load itself).
+5. Check each course page and its GPX export for the attribution (the
+   pre-deploy checklist below).
 
 The pilot loads the first ten courses and keeps the rest staged (owner
 decision 4's recommended default). The fixture park in `seed.sql` is fictional
@@ -264,6 +292,12 @@ These gate going live, not the code:
 
 ## Tests
 
+- Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
+  (creation, an idempotent re-run, changed geometry in place with efforts
+  kept, status untouched, a deleted route recreated, the backfill flag, the
+  derived lines, the official route, every refusal); `node --test
+  scripts/parks/lib/catalogue_payload.test.mjs` (the Pocahontas manifest maps
+  to six courses, validation, the printed SQL).
 - pgTAP `apps/backend/supabase/tests/park_courses_test.sql`: catalogue RLS,
   admin-only writes, timezone and vocabulary refusals, the season boundary in
   the park's timezone, completions counting days, block and private-run rules.

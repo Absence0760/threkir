@@ -9,6 +9,8 @@ scripts/parks/
   lib/course_geometry.mjs        pure geometry: trace, measure, simplify, checkpoints
   fetch_snapshot.mjs             network step: OSM ways + USGS elevations -> snapshot.json
   build.mjs                      offline step: spec + snapshot -> <course>.geojson + manifest.json
+  lib/catalogue_payload.mjs      pure: manifest + GeoJSON -> the load payload and its SQL
+  load.mjs                       operator step: built park -> one SQL statement on stdout
   catalogue/<region>/<park>/
     park.json                    the spec, written by hand
     snapshot.json                source data, written by fetch_snapshot.mjs
@@ -37,6 +39,36 @@ A park course is the trail as it is, whatever its length. A race course must mea
 - The build cuts the same length off both ends of lead-in + laps + lead-in, so the course measures exactly the race distance. That puts the shared start/finish line on the lead-in. It refuses a course that comes up short, or one where the start line would land past the lead-in onto the loop. Lengthen or shorten the lead-in, or pick another loop.
 
 Finding a loop that fits is a search over the park's trail graph. For L the loop length, N the laps, D the race distance and S the lead-in length, a loop fits when (D - 2S) / N <= L <= D / N.
+
+## Loading a park
+
+`load.mjs` turns a built park into ONE statement calling
+`private.load_park_catalogue` (migration `20271126002423`, decisions § 2423). It
+connects to nothing; the operator runs its output in production as the service
+role.
+
+```
+node scripts/parks/load.mjs scripts/parks/catalogue/us-va/pocahontas \
+  --club-id <official club uuid> --author-id <owner/admin uuid> [--enqueue-backfill] > pocahontas.sql
+```
+
+- `--club-id` is the verified, public club that publishes the courses, and
+  `--author-id` an active owner or admin of it. The function refuses any other
+  pair, so the routes it writes are official.
+- Every `courses` entry and every `race_courses` entry becomes a park course. A
+  race course is a `loop` (its start and finish are one line on the lead-in),
+  and its route's `official_distance_m` is the race distance.
+- It refuses what the database would: a bad slug or vocabulary value, more than
+  50 checkpoints, a coordinate out of range, a GeoJSON whose line no longer
+  matches the manifest (point count, or length more than 1 % off), a loop whose
+  ends are more than 25 m apart, a race course that does not measure its race
+  distance.
+- `--enqueue-backfill` also queues the launch backfill for each course. Leave it
+  off to queue the backfill as its own step.
+
+A re-run updates the park and each course's segment, course row and route in
+place, so the same statement is how a rebuilt course reaches production. The
+steps around it are in [park_courses.md § Loading courses](../../docs/features/park_courses.md#loading-courses).
 
 ## Licence
 

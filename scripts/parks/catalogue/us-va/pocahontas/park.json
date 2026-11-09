@@ -37,7 +37,7 @@
   "race_courses": [
     {
       "slug": "swift-creek-5k",
-      "name": "Swift Creek 5K",
+      "name": "Swift Creek Loop, 5 km",
       "race_distance": "5k",
       "laps": 1,
       "surface": "trail",
@@ -89,7 +89,7 @@
     },
     {
       "slug": "swift-creek-10k",
-      "name": "Swift Creek 10K",
+      "name": "Swift Creek Loop, 10 km (2 laps)",
       "race_distance": "10k",
       "laps": 2,
       "surface": "trail",
@@ -141,7 +141,7 @@
     },
     {
       "slug": "swift-creek-half",
-      "name": "Swift Creek Half Marathon",
+      "name": "Swift Creek Forest Loop, half-marathon distance",
       "race_distance": "half",
       "laps": 1,
       "surface": "trail",
@@ -281,7 +281,7 @@
     },
     {
       "slug": "swift-creek-marathon",
-      "name": "Swift Creek Marathon",
+      "name": "Swift Creek Forest Loop, marathon distance (2 laps)",
       "race_distance": "marathon",
       "laps": 2,
       "surface": "trail",
@@ -421,7 +421,7 @@
     },
     {
       "slug": "swift-creek-50k",
-      "name": "Swift Creek 50K",
+      "name": "Swift Creek Forest Loop, 50 km (2 laps)",
       "race_distance": "50k",
       "laps": 2,
       "surface": "trail",

@@ -132,15 +132,24 @@ test.describe('park courses', () => {
 
 				await page.goto('/parks');
 				await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
+				await expect(page.getByText(/Run one whenever the park is open/)).toBeVisible();
 				await page.getByRole('link', { name: new RegExp(planted.parkName) }).click();
 				await page.waitForURL(`**/parks/us-va/${planted.parkSlug}`);
 				await expect(page.getByRole('heading', { level: 1, name: planted.parkName })).toBeVisible();
+				await expect(page.getByTestId('park-not-affiliated')).toContainText(
+					'not organised, sponsored or endorsed by the park',
+				);
 
 				await page.getByRole('link', { name: new RegExp(planted.courseName) }).click();
 				await page.waitForURL(`**/parks/us-va/${planted.parkSlug}/lake-loop`);
 				await expect(page.getByRole('heading', { level: 1, name: planted.courseName })).toBeVisible();
 				await expect(page.getByTestId('park-course-safety')).toBeVisible();
 				await expect(page.getByTestId('park-course-attribution')).toContainText('OpenStreetMap');
+				await expect(page.getByTestId('park-course-not-affiliated')).toContainText(
+					'Park rules, hours, fees and closures apply.',
+				);
+				// 1 km is not a long course.
+				await expect(page.getByTestId('park-course-long')).toHaveCount(0);
 
 				const board = page.getByTestId('park-board');
 				const rows = board.locator('li');
@@ -253,6 +262,31 @@ test.describe('park courses', () => {
 				await expect(page.getByTestId('park-board')).toHaveCount(0);
 			} finally {
 				await teardown(planted);
+			}
+		});
+
+		test('a course over 15 km carries the long-course notice, and one at 15 km does not', async ({
+			page,
+		}) => {
+			let long: Planted | null = null;
+			let edge: Planted | null = null;
+			try {
+				long = await plantCourse({ baseLat: 38.0, lng: -80.0, lengthM: 21_100, checkpoints: [] });
+				edge = await plantCourse({ baseLat: 38.3, lng: -80.1, lengthM: 15_000, checkpoints: [] });
+				await page.goto(`/parks/us-va/${long.parkSlug}/lake-loop`);
+				await expect(page.getByRole('heading', { level: 1, name: long.courseName })).toBeVisible();
+				await expect(page.getByTestId('park-course-long')).toContainText(
+					'Start early enough to finish before the park closes.',
+				);
+				await expect(page.getByTestId('park-course-not-affiliated')).toBeVisible();
+
+				await page.goto(`/parks/us-va/${edge.parkSlug}/lake-loop`);
+				await expect(page.getByRole('heading', { level: 1, name: edge.courseName })).toBeVisible();
+				await expect(page.getByTestId('park-course-not-affiliated')).toBeVisible();
+				await expect(page.getByTestId('park-course-long')).toHaveCount(0);
+			} finally {
+				await teardown(long);
+				await teardown(edge);
 			}
 		});
 	});

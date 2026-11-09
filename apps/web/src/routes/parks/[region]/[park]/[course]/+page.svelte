@@ -20,6 +20,7 @@
 	} from '#lib/core/data.ts';
 	import {
 		courseAttribution,
+		isLongCourse,
 		parkCourseGpx,
 		regionCodeFromSlug,
 		regionName,
@@ -254,10 +255,18 @@
 			</section>
 		{/if}
 
+		<p class="not-affiliated" data-testid="park-course-not-affiliated">{m('parks.notAffiliated')}</p>
+
 		<p class="safety" data-testid="park-course-safety">
 			<span class="material-symbols" aria-hidden="true">info</span>
 			{m('parks.safetyNotice')}
 		</p>
+		{#if isLongCourse(Number(course.segment.distance_m))}
+			<p class="safety" data-testid="park-course-long">
+				<span class="material-symbols" aria-hidden="true">schedule</span>
+				{m('parks.longCourseNotice')}
+			</p>
+		{/if}
 
 		<div class="course-actions">
 			{#if course.route_id && course.status !== 'closed'}
@@ -510,6 +519,13 @@
 		margin: 0.3rem 0 0;
 		font-size: 0.75rem;
 		color: var(--color-text-tertiary);
+	}
+	.not-affiliated {
+		max-width: 48rem;
+		margin: var(--space-sm) 0 0;
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+		line-height: 1.5;
 	}
 	.safety {
 		display: flex;

@@ -17,6 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { parseWayFull } from './lib/osm_response.mjs';
 import { readIfExists } from './lib/read_if_exists.mjs';
 
 const USER_AGENT = 'threkir-park-courses/1.0 (+https://github.com/Absence0760/threkir)';
@@ -88,14 +89,9 @@ async function main() {
 	/** @type {Record<string, { lat: number, lon: number, ele?: number }>} */
 	const nodes = {};
 	for (const id of [...wayIds].sort((a, b) => a - b)) {
-		const full = await getJson(`${OSM_API}/way/${id}/full.json`);
-		for (const el of full.elements) {
-			if (el.type === 'node') nodes[String(el.id)] = { lat: el.lat, lon: el.lon };
-			if (el.type === 'way' && el.id === id) {
-				ways[String(id)] = { id, version: el.version, tags: el.tags ?? {}, nodes: el.nodes };
-			}
-		}
-		if (!ways[String(id)]) throw new Error(`OSM returned no way ${id}`);
+		const parsed = parseWayFull(await getJson(`${OSM_API}/way/${id}/full.json`), id);
+		ways[String(id)] = parsed.way;
+		Object.assign(nodes, parsed.nodes);
 	}
 
 	/** @type {Array<{ lat: number, lon: number, ele?: number }>} */

@@ -427,6 +427,16 @@ export const PR_ADVISORY = new Map([
 		'it ACTS on a pull request (approve + enable auto-merge) rather than checking one. A ' +
 			'required check that merges the PR it is required by is a cycle.',
 	],
+	[
+		'supply-chain-scan.yml',
+		'zizmor (SARIF mode) and osv-scanner both exit clean on a finding by design, so a fold ' +
+			'would gate on the scanners COMPLETING, not on what they found — and completion ' +
+			'depends on the OSV database download and the GitHub API, so an outage there would ' +
+			'block every merge while catching nothing. Making a finding block is a policy change ' +
+			'that needs the current baseline fixed and CISO / Security Analyst sign-off first; ' +
+			'the mechanism then is the code-scanning ruleset naming these tools (as it names ' +
+			'CodeQL, decisions § 1908), not a needs: entry.',
+	],
 ]);
 
 /// The workflows and the composite actions as one list of step lists, so the

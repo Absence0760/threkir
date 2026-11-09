@@ -32,7 +32,7 @@ import Stripe, {
   type AssertNoUnknownParamKeys,
   type UnknownParamKeys,
 } from '../_shared/stripe.ts';
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import { readPlatformFeeBps } from '../_shared/platform_fees.ts';
 import type { Database } from '../_shared/database.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';

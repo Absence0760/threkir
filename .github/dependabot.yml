@@ -16,6 +16,11 @@
 # - GitHub Actions are SHA-pinned per the /audit/all GHA pinning pass;
 #   Dependabot keeps those SHAs current so the pinning doesn't go
 #   stale.
+# - Every entry waits out a 7-day `cooldown` before proposing a new
+#   version, the same "at least seven days old" rule the hand-made pins
+#   follow (decisions.md § 2412): a release pulled or found malicious in
+#   its first week never reaches a PR. Cooldown applies to version
+#   updates only; Dependabot security updates still open immediately.
 # - Mobile twin caveat: apps/mobile_android/pubspec.yaml is the
 #   tracked Flutter target. apps/mobile_ios/pubspec.yaml is a manual
 #   mirror per the lib/+test/ byte-identical-twin invariant
@@ -53,6 +58,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(deps)"
       include: "scope"
@@ -104,6 +111,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 4
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(mobile/deps)"
       include: "scope"
@@ -161,6 +170,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(job_worker/deps)"
       include: "scope"
@@ -186,6 +197,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(job_worker/docker)"
       include: "scope"
@@ -204,6 +217,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(watch_wear/deps)"
       include: "scope"
@@ -257,6 +272,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(mobile_android/deps)"
       include: "scope"
@@ -348,6 +365,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -365,6 +384,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -382,6 +403,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -399,6 +422,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -416,6 +441,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -433,6 +460,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(infra/deps)"
       include: "scope"
@@ -456,6 +485,8 @@ updates:
       time: "06:00"
       timezone: "UTC"
     open-pull-requests-limit: 3
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: "chore(ci)"
       include: "scope"

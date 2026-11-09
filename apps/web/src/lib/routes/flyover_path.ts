@@ -49,9 +49,9 @@ const DEFAULT_LOOK_AHEAD_M = 300;
 const DEFAULT_SMOOTHING_M = 400;
 /** The heading window spans this much flight, so at the default 250 m/s it is the 400 m it always was. */
 const SMOOTHING_S = DEFAULT_SMOOTHING_M / DEFAULT_FLYOVER_SPEED_MPS;
-/** A drone pilot's slow yaw; caps the turn per second of flight, whatever the speed (decisions § 2413). */
+/** A drone pilot's slow yaw; caps the turn per second of flight, whatever the speed (decisions § 2418). */
 export const MAX_TURN_DEG_PER_S = 45;
-/** The camera centre averages this much flight either side of the dot, triangle-weighted (decisions § 2414). */
+/** The camera centre averages this much flight either side of the dot, triangle-weighted (decisions § 2419). */
 const CENTRE_SMOOTHING_S = 1.2;
 const MIN_CENTRE_SMOOTHING_M = 150;
 /** The dot stays within this many CSS px of the frame centre: 20% of a 360 px wide phone, so inside its middle 40%. */

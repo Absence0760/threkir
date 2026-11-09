@@ -5,7 +5,7 @@
 /// who may check it; only the result write uses the secret key, because
 /// `record_club_verification_check` is granted to service_role alone.
 
-import { createClient } from 'npm:@supabase/supabase-js@2.118.0';
+import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { Database } from '../_shared/database.ts';
 import { checkRateLimit } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';

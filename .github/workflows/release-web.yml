@@ -72,6 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Determine env + version
@@ -95,6 +96,10 @@ jobs:
           # also a hard requirement for @supabase/realtime-js >=2.105
           # which the coach Lambda transitively imports.
           node-version: "24.20.0"
+          # setup-node turns its npm cache on by itself when package.json
+          # names a packageManager. A release must not restore a cache any
+          # default-branch run can write, so it installs cold.
+          package-manager-cache: false
 
       - run: npm ci
 
@@ -554,7 +559,7 @@ jobs:
 
       - name: Attach build zip to the Release
         if: steps.env.outputs.is_prod == 'true'
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: web-build-${{ steps.env.outputs.version }}.zip

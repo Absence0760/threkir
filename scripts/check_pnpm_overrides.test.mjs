@@ -6,6 +6,7 @@ import {
 	NPM_LOCK,
 	PACKAGE_JSON,
 	PNPM_LOCK,
+	PNPM_WORKSPACE,
 	checkAll,
 	checkDeclarations,
 	checkResolutions,
@@ -27,12 +28,23 @@ const PINS = {
 
 /** @typedef {Record<string, string>} PinMap */
 
-/** @param {{ pnpmOverrides?: PinMap, overrides?: Record<string, unknown> }} [opts] */
-function pkg({ pnpmOverrides = PINS, overrides } = {}) {
+/** @param {{ overrides?: Record<string, unknown> }} [opts] */
+function pkg({ overrides } = {}) {
 	return {
-		pnpm: { overrides: pnpmOverrides },
 		overrides: overrides ?? { cookie: '^1.0.2', devalue: '^5.8.1', '@sveltejs/kit': { cookie: '^1.0.2' } },
 	};
+}
+
+/** @param {PinMap | null} [pins] */
+function workspace(pins = PINS) {
+	const lines = ['packages:', '  - apps/web', ''];
+	if (pins !== null) {
+		lines.push('overrides:');
+		for (const [k, v] of Object.entries(pins)) {
+			lines.push(`  ${k.includes('>') || k.startsWith('@') ? `'${k}'` : k}: '${v}'`);
+		}
+	}
+	return `${lines.join('\n')}\n`;
 }
 
 /** @param {{ overrides?: PinMap | null, packages?: string[] }} [opts] */
@@ -221,6 +233,7 @@ test('the committed tree passes every check', () => {
 		JSON.parse(readFileSync(PACKAGE_JSON, 'utf-8')),
 		readFileSync(PNPM_LOCK, 'utf-8'),
 		JSON.parse(readFileSync(NPM_LOCK, 'utf-8')),
+		readFileSync(PNPM_WORKSPACE, 'utf-8'),
 	);
 	assert.deepEqual(result.errors, []);
 	assert.ok(result.declared.size > 0, 'the guard must be checking a non-empty pin set');
@@ -230,7 +243,7 @@ test('the committed tree passes every check', () => {
 // The #812 reconstruction, as a unit case rather than only as a scratch-tree
 // experiment: the block deleted, everything else untouched.
 test('a lockfile with the overrides block deleted fails, naming the frozen-install abort', () => {
-	const { errors } = checkDeclarations(pkg(), lock({ overrides: null }));
+	const { errors } = checkDeclarations(pkg(), lock({ overrides: null }), workspace());
 	assert.equal(errors.length, 1);
 	assert.match(errors[0], /NO top-level `overrides:` block/);
 	assert.match(errors[0], /ERR_PNPM_LOCKFILE_CONFIG_MISMATCH/);
@@ -239,7 +252,7 @@ test('a lockfile with the overrides block deleted fails, naming the frozen-insta
 
 test('a lockfile whose overrides block dropped one entry fails naming that entry', () => {
 	const partial = { cookie: '^1.0.2', devalue: '^5.8.1' };
-	const { errors } = checkDeclarations(pkg(), lock({ overrides: partial }));
+	const { errors } = checkDeclarations(pkg(), lock({ overrides: partial }), workspace());
 	assert.equal(errors.length, 1);
 	assert.match(errors[0], /@sveltejs\/kit>cookie/);
 	assert.match(errors[0], /missing from pnpm-lock.yaml overrides/);
@@ -247,31 +260,42 @@ test('a lockfile whose overrides block dropped one entry fails naming that entry
 
 test('a lockfile pinning a different range than package.json fails with both values', () => {
 	const stale = { ...PINS, cookie: '^0.6.0' };
-	const { errors } = checkDeclarations(pkg(), lock({ overrides: stale }));
+	const { errors } = checkDeclarations(pkg(), lock({ overrides: stale }), workspace());
 	assert.equal(errors.length, 1);
-	assert.match(errors[0], /package.json pnpm.overrides says \^1\.0\.2, pnpm-lock.yaml overrides says \^0\.6\.0/);
+	assert.match(errors[0], /pnpm-workspace.yaml overrides says \^1\.0\.2, pnpm-lock.yaml overrides says \^0\.6\.0/);
 });
 
-test('an empty or missing pnpm.overrides is an error, not a vacuous pass', () => {
-	for (const p of [{}, { pnpm: {} }, { pnpm: { overrides: {} } }]) {
-		const { errors } = checkDeclarations(p, lock());
+test('an empty or missing workspace overrides block is an error, not a vacuous pass', () => {
+	for (const w of [workspace(null), workspace({}), '']) {
+		const { errors } = checkDeclarations(pkg(), lock(), w);
 		assert.equal(errors.length, 1);
-		assert.match(errors[0], /declares no `pnpm.overrides`/);
+		assert.match(errors[0], /pnpm-workspace.yaml declares no `overrides`/);
 	}
+});
+
+// pnpm 11+ ignores package.json's `pnpm` field, so a pin left there is applied
+// by CI's pnpm 10 and dropped by the next newer-pnpm regeneration (Dependabot
+// #1324 / #1331 / #1332, 2026-11-09).
+test('pnpm.overrides left in package.json fails, because a newer pnpm ignores it', () => {
+	const { errors } = checkDeclarations({ ...pkg(), pnpm: { overrides: PINS } }, lock(), workspace());
+	assert.equal(errors.length, 1);
+	assert.match(errors[0], /pnpm 11\+ does not read/);
+	assert.match(errors[0], /pnpm-workspace.yaml/);
 });
 
 test('the two package.json declarations disagreeing is reported in the flat spelling', () => {
 	const { errors } = checkDeclarations(
 		pkg({ overrides: { cookie: '^1.0.2', devalue: '^5.8.1' } }),
 		lock(),
+		workspace(),
 	);
 	assert.equal(errors.length, 1);
-	assert.match(errors[0], /two override declarations disagree/);
+	assert.match(errors[0], /pnpm-workspace.yaml and package.json's npm-style `overrides` disagree/);
 	assert.match(errors[0], /@sveltejs\/kit>cookie/);
 });
 
-test('declaring pnpm.overrides with no npm-style block fails, because npm ci reads only the latter', () => {
-	const { errors } = checkDeclarations({ pnpm: { overrides: PINS } }, lock());
+test('declaring workspace overrides with no npm-style block fails, because npm ci reads only the latter', () => {
+	const { errors } = checkDeclarations({}, lock(), workspace());
 	assert.equal(errors.length, 1);
 	assert.match(errors[0], /no top-level `overrides`/);
 	assert.match(errors[0], /npm ci/);
@@ -468,7 +492,7 @@ test('the committed pnpm-lock.yaml carries the edges the scoped pins are read th
 });
 
 test('checkAll composes both halves and passes on a well-formed pair', () => {
-	const { errors, ok } = checkAll(pkg(), lock(), npmLock());
+	const { errors, ok } = checkAll(pkg(), lock(), npmLock(), workspace());
 	assert.deepEqual(errors, []);
 	assert.ok(ok.some((line) => line.startsWith('cookie resolves to 1.1.1')));
 });

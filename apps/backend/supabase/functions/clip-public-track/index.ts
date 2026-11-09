@@ -10,7 +10,7 @@
 // may import from `npm:` either, which is why the row types come from
 // `database_types.ts` rather than `database.ts`.
 // `_shared/offline_worker_boot_guard.test.ts` walks the graph and pins both.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.118.0?target=deno';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.119.0?target=deno';
 import type { Database } from '../_shared/database_types.ts';
 import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { readJsonWithLimit } from '../_shared/body_limit.ts';

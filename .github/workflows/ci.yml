@@ -116,6 +116,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
       - id: filter
         name: Decide whether anything outside docs changed
         env:
@@ -191,22 +192,23 @@ jobs:
           # `pull_request` triggers, moved here because the file is now CALLED
           # rather than triggered (decisions § 1149). An INCLUSION list is safe
           # for exactly this job and not for the `web_e2e` one above, because
-          # the three checks read an enumerable input set and nothing else:
-          # `terraform fmt -recursive infra`, `validate` on the five stacks
-          # under infra/, and Trivy's `scan-ref: infra` with its suppressions
-          # in the root .trivyignore. `check_infra_coverage.mjs` (in the gated
+          # the two checks read an enumerable input set and nothing else:
+          # `terraform fmt -recursive infra` and `validate` on the five stacks
+          # under infra/. (The Trivy IaC scan is NOT behind this gate: it
+          # uploads SARIF, so it runs on every PR from security.yml.)
+          # `check_infra_coverage.mjs` (in the gated
           # `infra-guards` job) fails the PR if a Terraform directory under
           # infra/ falls outside the fmt scope or the validate matrix, so the
           # set cannot widen inside infra/ without a red.
           #
           # This file is in the list because the CALLER lives here now: the
-          # `terraform` job's `uses:`, its `if:` and the `security-events`
-          # scope the Trivy SARIF upload needs are all edited in ci.yml, and a
-          # filter that skipped on a ci.yml diff would ship a change to the
+          # `terraform` job's `uses:`, its `if:` and its permissions are all
+          # edited in ci.yml, and a filter that skipped on a ci.yml diff
+          # would ship a change to the
           # wiring without ever exercising it. actionlint catches a reference
           # that does not resolve; it cannot catch a permission that is too
           # narrow, which only shows up when the call actually runs.
-          if grep -qE '^(infra/|\.trivyignore$|\.github/workflows/(terraform|ci)\.yml$)' <<<"$files"; then
+          if grep -qE '^(infra/|\.github/workflows/(terraform|ci)\.yml$)' <<<"$files"; then
             echo "infra=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::nothing under infra/ changed — the Terraform checks skip"
@@ -260,6 +262,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       # `go install` reaches proxy.golang.org for actionlint and its module
       # graph, and that fetch has failed mid-stream on a transient HTTP/2
@@ -468,9 +472,9 @@ jobs:
       - name: Park course geometry still builds to the committed courses
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
-          if ! node --test scripts/parks/lib/course_geometry.test.mjs || ! node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/; then
+          if ! node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs || ! node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/; then
             echo "::error::The park course pipeline regressed: a geometry rule in scripts/parks/lib/course_geometry.mjs (loop tracing, distance, gain, checkpoints) or a committed course under scripts/parks/catalogue/ no longer matches what its park.json and snapshot.json build. Nothing here touches the network."
-            echo "Reproduce with: node --test scripts/parks/lib/course_geometry.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
+            echo "Reproduce with: node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
             exit 1
           fi
       # The stack-start wait loop is shell inside a composite action, so it
@@ -589,6 +593,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
@@ -642,6 +648,8 @@ jobs:
         shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
@@ -687,6 +695,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
@@ -749,6 +759,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: apps/job_worker/go.mod
@@ -805,6 +817,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: apps/graph_cycle/go.mod
@@ -860,6 +874,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -981,7 +997,7 @@ jobs:
             echo "Reproduce with: node --test scripts/rpc_transport.test.mjs scripts/check_dart_rpc_transport.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
-      # The four `pnpm.overrides` entries are security pins, and a bot can drop
+      # The pnpm `overrides` (pnpm-workspace.yaml) are security pins, and a bot can drop
       # them. Dependabot #812 regenerated pnpm-lock.yaml without its top-level
       # `overrides:` block, and all 17 pnpm jobs then died at
       # ERR_PNPM_LOCKFILE_CONFIG_MISMATCH before running anything — an error
@@ -1000,7 +1016,7 @@ jobs:
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node scripts/check_pnpm_overrides.mjs; then
-            echo "::error::A pnpm.overrides security pin is missing from a lockfile or was resolved around. Nothing here is about the Supabase schema, the migrations, or the generated row types — the pins are the CVE nudges in package.json's _overrides_rationale."
+            echo "::error::A pnpm overrides security pin (pnpm-workspace.yaml) is missing from a lockfile or was resolved around. Nothing here is about the Supabase schema, the migrations, or the generated row types — the pins are the CVE nudges in package.json's _overrides_rationale."
             echo "Run 'pnpm install --lockfile-only' locally and commit both lockfiles; the failing line above names which pin and which resolved version broke it."
             exit 1
           fi
@@ -1355,6 +1371,8 @@ jobs:
     # second install to say nothing a per-step diagnosis does not.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -1584,6 +1602,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -1764,6 +1784,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -1919,7 +1941,7 @@ jobs:
             echo "Reproduce with: node --test scripts/check_conflict_markers.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.21.0
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
         id: flutter
         if: ${{ !cancelled() && steps.checkout.outcome == 'success' }}
         with:
@@ -1960,6 +1982,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -2007,6 +2031,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -2086,6 +2112,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -2162,6 +2190,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -2248,6 +2278,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -2287,6 +2319,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24.20.0
@@ -2361,6 +2395,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         id: node
@@ -2451,7 +2487,8 @@ jobs:
           fi
 
   # The Terraform checks, CALLED rather than triggered. `fmt (whole tree)`,
-  # `validate (<stack>)` and the Trivy IaC scan lived in terraform.yml under
+  # `validate (<stack>)` (and, until it moved to security.yml, the Trivy IaC
+  # scan) lived in terraform.yml under
   # its own `pull_request` trigger, where none of them could ever block a
   # merge: branch protection requires exactly one context — the `CI gate`
   # aggregator below — and a `needs:` entry is scoped to its own workflow, so
@@ -2471,13 +2508,9 @@ jobs:
   terraform:
     needs: changes
     if: needs.changes.outputs.infra == 'true'
-    name: Terraform (fmt, validate, Trivy IaC)
+    name: Terraform (fmt, validate)
     permissions:
       contents: read
-      # The Trivy job uploads SARIF to the Security tab. A called workflow's
-      # own `permissions:` is a ceiling the caller sets, so the scope has to be
-      # granted here as well as declared there.
-      security-events: write
     uses: ./.github/workflows/terraform.yml
 
   # The secret scan, CALLED rather than triggered — the same fix § 1149
@@ -2515,7 +2548,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: "21"
@@ -2564,6 +2599,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Cache Cargo registry + target
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -2659,6 +2696,8 @@ jobs:
       DEFMT_LOG: debug
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Cache Cargo registry + target
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -2828,6 +2867,8 @@ jobs:
       DEFMT_LOG: debug
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Cache Cargo registry + target
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -3058,7 +3099,9 @@ jobs:
     # PR so the toolchain stays green.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: "21"
@@ -3177,7 +3220,9 @@ jobs:
     # plugins that probe for Play services find what a real phone has.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: "21"
@@ -3311,6 +3356,8 @@ jobs:
     # why "only on pushes to main" was rejected.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
@@ -3483,6 +3530,8 @@ jobs:
     # backstop: a diverged PR fails CI rather than landing.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: lib/ + test/ + integration_test/ + dart_test.yaml byte-identical
         run: |
           if ! diff -rq apps/mobile_android/lib apps/mobile_ios/lib; then
@@ -3530,6 +3579,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
@@ -3575,6 +3626,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
@@ -3654,6 +3707,8 @@ jobs:
     # and asserts deep equality.
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           channel: stable
@@ -3800,6 +3855,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
         id: checkout
       # `setup-deno` fetches the binary from the same release CDN that returned
       # 504 on 2026-09-21 until all five of setup-supabase-cli's retries were
@@ -4177,6 +4234,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: ./.github/actions/setup-supabase-cli
         with:
           version: 2.84.2
@@ -4307,7 +4366,9 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -4439,7 +4500,9 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -4531,7 +4594,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -4646,7 +4711,9 @@ jobs:
       SSO_MOCK_OIDC_PORT: "9888"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -4753,7 +4820,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -4802,7 +4871,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 10
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -4876,6 +4947,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # The WatchApp scheme is shared (xcshareddata/xcschemes), so the
       # test target is wired deterministically rather than relying on
       # xcodebuild auto-generating a scheme.

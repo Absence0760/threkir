@@ -15,7 +15,7 @@
 /// `deno check` reads the declarations from; the boundary test pins both.
 /// The Stripe functions already needed the npm registry to boot (stripe
 /// imports `node:http`, decisions § 699), so this adds no boot dependency.
-import Stripe from 'npm:stripe@17.5.0';
+import Stripe from 'npm:stripe@23.1.0';
 
 /// The proof that the declarations bound, and the reason this file cannot
 /// go quietly back to `any` on a Deno release, a registry change or a

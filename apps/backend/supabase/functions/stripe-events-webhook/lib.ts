@@ -46,6 +46,22 @@ export { shouldReleaseDedupe };
 /// silently different order status, not a crash.
 type AssertAssignable<From extends To, To> = From;
 
+/// The literal members of a Stripe enum. Since stripe 23 every enum is
+/// declared `'a' | 'b' | OtherString` (`string & Record<never, never>`), so a
+/// value the SDK has never heard of still type-checks; this drops that open
+/// member and keeps the values Stripe actually names.
+type KnownMembers<T> = T extends string ? (string extends T ? never : T) : never;
+
+/// The `payment_status` values this webhook knows how to act on. Asserted
+/// equal to the SDK's named set in both directions, so a value Stripe adds
+/// or renames fails `deno check` instead of reading as an unknown status.
+/// One the SDK only admits through its open member is handled at runtime:
+/// `readCheckoutSession` reads it as null, and null is not settled.
+type KnownPaymentStatus = 'no_payment_required' | 'paid' | 'unpaid';
+type StripesPaymentStatus = KnownMembers<Stripe.Checkout.Session['payment_status']>;
+type KnownPaymentStatusIsStripes = AssertAssignable<KnownPaymentStatus, StripesPaymentStatus>;
+type StripesPaymentStatusIsKnown = AssertAssignable<StripesPaymentStatus, KnownPaymentStatus>;
+
 /// Exactly the Checkout Session fields this webhook reads, spelled with
 /// Stripe's own names and types. This is not an approximation of the SDK
 /// (decisions § 765 refused one of those for the whole 450-file surface):
@@ -54,7 +70,7 @@ type AssertAssignable<From extends To, To> = From;
 interface CheckoutSessionSource {
   metadata: Record<string, string> | null;
   payment_intent: string | { id: string } | null;
-  payment_status: 'no_payment_required' | 'paid' | 'unpaid';
+  payment_status: string;
 }
 type CheckoutSessionSourceIsStripes = AssertAssignable<
   Stripe.Checkout.Session,
@@ -117,7 +133,7 @@ export const STRIPE_EVENT = {
 ///                            says it notifies you with. Available on all
 ///                            refunds (including those with a charge) from API
 ///                            version 2024-10-28.acacia; the pinned SDK is
-///                            stripe@17.5.0, past the 17.3.0 that version
+///                            stripe@23.1.0, past the 17.3.0 that version
 ///                            shipped with.
 ///   refund.updated         — the non-deprecated general refund-lifecycle
 ///                            event. Carries the `canceled` transition, which
@@ -181,7 +197,7 @@ export type StripeMetadata = Readonly<Record<string, string | undefined>>;
 
 export interface CheckoutSession {
   paymentIntentId: string | null;
-  paymentStatus: CheckoutSessionSource['payment_status'] | null;
+  paymentStatus: KnownPaymentStatus | null;
   metadata: StripeMetadata;
 }
 
@@ -232,7 +248,7 @@ function metadataOf(value: unknown): StripeMetadata {
   return out;
 }
 
-const PAYMENT_STATUSES: readonly CheckoutSessionSource['payment_status'][] = [
+const PAYMENT_STATUSES: readonly KnownPaymentStatus[] = [
   'no_payment_required',
   'paid',
   'unpaid',
@@ -397,8 +413,8 @@ export function readConnectAccount(object: Record<string, unknown>): ConnectAcco
 /// `payment_status` this build has never heard of: seating an attendee is
 /// giving away a place, and giving one away for money that has not arrived
 /// is the failure that cannot be undone from here. The CHECK on the other
-/// side is `CheckoutSessionSourceIsStripes` — a fourth value added to
-/// Stripe's own union fails the typecheck rather than reaching a runtime
+/// side is `StripesPaymentStatusIsKnown` — a fourth value added to
+/// Stripe's named set fails the typecheck rather than reaching a runtime
 /// default.
 export function isPaymentSettled(status: CheckoutSession['paymentStatus']): boolean {
   return status === 'paid' || status === 'no_payment_required';

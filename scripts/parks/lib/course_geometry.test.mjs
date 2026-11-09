@@ -25,7 +25,8 @@ import {
 	traceVia,
 	GATE_BEARING_LOOK_AHEAD_M,
 	GATE_BEARING_MIN_LINE_M,
-	assertGateBearings,
+	GATE_HALF_WIDTH_SEGMENT_M,
+	curatedGates,
 	courseEndDirection,
 	derivedGateBearing,
 	trimToDistance,
@@ -244,18 +245,56 @@ test('courseEndDirection reads the first and last 5 m only', () => {
 	assert.ok(Math.abs(courseEndDirection(pts, true) - 270) < 1e-6);
 });
 
-test('assertGateBearings passes a line clear of the bend and refuses one within the look-ahead, with both angles', () => {
-	assert.doesNotThrow(() => assertGateBearings(bentOutAndBack(GATE_BEARING_LOOK_AHEAD_M + 1)));
-	assert.throws(
-		() => assertGateBearings(bentOutAndBack(15)),
-		/the start line's derived bearing 56\.3 degrees is 33\.7 degrees off the course's 90\.0 degrees over its first 5 m; the end line's derived bearing 23\d\.\d degrees is 3\d\.\d degrees off the course's 27\d\.\d degrees over its last 5 m, over the 10 degrees allowed/,
-	);
+test('curatedGates emits no line for an end the trigger derives within tolerance', () => {
+	assert.deepEqual(curatedGates(bentOutAndBack(GATE_BEARING_LOOK_AHEAD_M + 1)), {});
 });
 
-test('assertGateBearings refuses an end too short to get a line', () => {
+test('curatedGates places a curator line on each skewed end, facing the course over its first or last 5 m', () => {
+	const pts = bentOutAndBack(15);
+	const gates = curatedGates(pts);
+	assert.deepEqual(gates.start_gate, {
+		lat: pts[0].lat,
+		lng: pts[0].lng,
+		bearing_deg: 90,
+		half_width_m: GATE_HALF_WIDTH_SEGMENT_M,
+	});
+	assert.deepEqual(gates.end_gate, {
+		lat: pts[pts.length - 1].lat,
+		lng: pts[pts.length - 1].lng,
+		bearing_deg: 270,
+		half_width_m: 15,
+	});
+});
+
+test('curatedGates curates only the end that is skewed', () => {
+	// East 15 m, north 60 m: the start derives 34 degrees off, the end faces north
+	// straight down a 60 m run.
+	const pts = metres([
+		[0, 0],
+		[15, 0],
+		[15, 60],
+	]);
+	const gates = curatedGates(pts);
+	assert.equal(gates.start_gate?.bearing_deg, 90);
+	assert.equal(gates.end_gate, undefined);
+});
+
+test('curatedGates wraps a bearing that rounds to 360 to 0', () => {
+	// The first 5 m head a hair west of north (359.98 degrees); the line then
+	// bends north-east inside the look-ahead.
+	const tilted = metres([
+		[0, 0],
+		[-0.002, 6],
+		[20, 25],
+		[20, 60],
+	]);
+	assert.equal(curatedGates(tilted).start_gate?.bearing_deg, 0);
+});
+
+test('curatedGates refuses an end too short for the trigger to place any line', () => {
 	assert.throws(
 		() =>
-			assertGateBearings(
+			curatedGates(
 				metres([
 					[0, 0],
 					[5, 0],
@@ -263,6 +302,17 @@ test('assertGateBearings refuses an end too short to get a line', () => {
 			),
 		/the start line gets no bearing .* the end line gets no bearing/,
 	);
+});
+
+test('the curated half-width mirrors the segment gate trigger', () => {
+	const sql = fs.readFileSync(
+		fileURLToPath(new URL('../../../apps/backend/supabase/migrations/20271122002402_global_segment_gates.sql', import.meta.url)),
+		'utf8',
+	);
+	const body = sql.slice(sql.indexOf('function public.global_segments_set_gates()'));
+	const hw = /c_half_width constant double precision := (\d+(?:\.\d+)?);/.exec(body);
+	assert.ok(hw, 'c_half_width not found');
+	assert.equal(Number(hw[1]), GATE_HALF_WIDTH_SEGMENT_M);
 });
 
 const DEFINES_BEARING = /create (?:or replace )?function private\.course_end_bearing\(/;

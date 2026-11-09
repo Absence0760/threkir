@@ -498,39 +498,58 @@ function angleApartDeg(a, b) {
 }
 
 /**
- * Refuse a course whose start or end line, as the gate trigger will derive it
- * from these exact points, faces more than `GATE_BEARING_TOLERANCE_DEG` off
- * the course's own direction at that end. A bend within the look-ahead skews
- * the line (the 10K's lay 14 m before an 83 degree turn and came out 36
- * degrees off), and a skewed line misses or double-counts crossings.
+ * Mirrors `c_half_width` in `public.global_segments_set_gates` (migration
+ * 20271122002402): the reach each side of a segment's derived line, which a
+ * curated line takes too.
+ */
+export const GATE_HALF_WIDTH_SEGMENT_M = 15;
+
+/** @typedef {{ lat: number, lng: number, bearing_deg: number, half_width_m: number }} CuratedGate */
+
+/**
+ * The curated start and end lines a course needs. Where the line the gate
+ * trigger will derive from these exact points faces more than
+ * `GATE_BEARING_TOLERANCE_DEG` off the course's own direction at that end (a
+ * bend within the look-ahead skews it: the 10K's start lies 14 m before an 83
+ * degree turn and derives 36 degrees off), that end gets a curator line on its
+ * end point, facing the course's direction over its first or last
+ * `COURSE_END_DIRECTION_SPAN_M`, with the trigger's half-width. The line
+ * follows the route; the route is never reshaped to suit the trigger. An end
+ * within tolerance gets nothing, so the trigger stays its only source.
+ *
+ * Refuses an end with under `GATE_BEARING_MIN_LINE_M` of line: the trigger
+ * would place no line there, and a course that short has no direction worth
+ * curating.
  *
  * @param {LatLng[]} points
+ * @returns {{ start_gate?: CuratedGate, end_gate?: CuratedGate }}
  */
-export function assertGateBearings(points) {
+export function curatedGates(points) {
+	/** @type {{ start_gate?: CuratedGate, end_gate?: CuratedGate }} */
+	const out = {};
 	/** @type {string[]} */
-	const problems = [];
+	const short = [];
 	for (const [finish, name] of /** @type {const} */ ([
 		[false, 'start'],
 		[true, 'end'],
 	])) {
 		const derived = derivedGateBearing(points, finish);
-		const course = courseEndDirection(points, finish);
 		if (derived === null) {
-			problems.push(`the ${name} line gets no bearing (under ${GATE_BEARING_MIN_LINE_M} m of line)`);
+			short.push(`the ${name} line gets no bearing (under ${GATE_BEARING_MIN_LINE_M} m of line)`);
 			continue;
 		}
-		const off = angleApartDeg(derived, course);
-		if (off > GATE_BEARING_TOLERANCE_DEG) {
-			problems.push(
-				`the ${name} line's derived bearing ${derived.toFixed(1)} degrees is ${off.toFixed(1)} degrees off the course's ${course.toFixed(1)} degrees over its ${finish ? 'last' : 'first'} ${COURSE_END_DIRECTION_SPAN_M} m`,
-			);
-		}
+		const course = courseEndDirection(points, finish);
+		if (angleApartDeg(derived, course) <= GATE_BEARING_TOLERANCE_DEG) continue;
+		const at = points[finish ? points.length - 1 : 0];
+		out[finish ? 'end_gate' : 'start_gate'] = {
+			lat: at.lat,
+			lng: at.lng,
+			bearing_deg: (Math.round(course * 10) / 10) % 360,
+			half_width_m: GATE_HALF_WIDTH_SEGMENT_M,
+		};
 	}
-	if (problems.length > 0) {
-		throw new Error(
-			`${problems.join('; ')}, over the ${GATE_BEARING_TOLERANCE_DEG} degrees allowed; the gate trigger aims each line ${GATE_BEARING_LOOK_AHEAD_M} m along the course, so move the line off the bend`,
-		);
-	}
+	if (short.length > 0) throw new Error(short.join('; '));
+	return out;
 }
 
 /**

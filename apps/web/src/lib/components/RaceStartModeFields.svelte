@@ -105,7 +105,7 @@
 			{ value: 'scheduled', label: m('raceStart.modeScheduled'), hint: m('raceStart.modeScheduledHint') },
 			{ value: 'self_timed', label: m('raceStart.modeSelfTimed'), hint: m('raceStart.modeSelfTimedHint') }
 		] as opt (opt.value)}
-			<label class="mode">
+			<label class="start-mode-option">
 				<input
 					type="radio"
 					name="race-start-mode"
@@ -225,13 +225,13 @@
 		display: grid;
 		gap: 0.5rem;
 	}
-	.mode {
+	.start-mode-option {
 		display: flex;
 		gap: 0.5rem;
 		align-items: flex-start;
 		min-height: 44px;
 	}
-	.mode span {
+	.start-mode-option span {
 		display: grid;
 	}
 	.row {

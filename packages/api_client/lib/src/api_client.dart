@@ -8490,12 +8490,15 @@ class ApiClient {
   Future<Set<String>> fetchOfficialGymRoutineIds(List<String> routineIds) async {
     if (routineIds.isEmpty) return const {};
     try {
-      final data = await _client
-          .from(GymRoutineRow.table)
-          .select('id, is_official')
-          .inFilter(GymRoutineRow.colId, routineIds);
+      final rows = await readChunked(
+        routineIds,
+        (chunk) async => List<dynamic>.from(await _client
+            .from(GymRoutineRow.table)
+            .select('id, is_official')
+            .inFilter(GymRoutineRow.colId, chunk)),
+      );
       return {
-        for (final r in (data as List).whereType<Map<String, dynamic>>())
+        for (final r in rows.whereType<Map<String, dynamic>>())
           if (r['is_official'] == true) r['id'] as String,
       };
     } catch (e) {

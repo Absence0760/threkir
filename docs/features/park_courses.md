@@ -174,15 +174,21 @@ all three in place, so their ids and every effort survive changed geometry; a
 course whose route was deleted gets a new one. It never writes a course's
 `status` or a row's `is_active`, and leaves alone a course the manifest no
 longer names. Every description ends with the manifest's attribution. The
-segment's start and end lines are derived from the new line by the gates
-trigger (a curator's line is kept). It returns one row per course: slug, the
+segment's start and end lines follow the manifest: an end the course carries a
+curated `start_gate` / `end_gate` for is written as a curator line, on insert
+and on every re-load (the build emits one where the derived line would face
+more than 10 degrees off the course, decisions § 2424), and every other end is
+written source `derived`, so the gates trigger derives it from the new line and
+a curated line the manifest has dropped goes back to the derived one. For a
+loaded course the manifest is the record: a line placed by hand is replaced by
+the next load. It returns one row per course: slug, the
 three ids, `created` or `updated`, and the backfill job when asked for one.
 
 Race courses (`race_courses` in the manifest, the Swift Creek 5K to 50K) load
 as standing park courses with calendar-year boards, not as self-timed races.
 Each is a `loop` course, because its start and finish are one line on the
-lead-in: the derived start line faces out along the lead-in and the end line
-faces back in, and the matcher never lets the crossing that ends a pass start
+lead-in: the start line faces out along the lead-in and the end line faces
+back in (on the 10K both are curated, its line sitting 14 m before a bend), and the matcher never lets the crossing that ends a pass start
 the next. Its route carries the race distance as `official_distance_m`.
 
 Operator steps, once per park and again whenever its built files change:
@@ -327,7 +333,9 @@ These gate going live, not the code:
 - Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
   (creation, an idempotent re-run, changed geometry in place with efforts
   kept, status untouched, a deleted route recreated, the backfill flag, the
-  derived lines, the official route, every refusal); `node --test
+  derived lines, curated lines stored as curator lines on insert and update,
+  kept across a re-load and a redraw, reset to derived when dropped, the
+  official route, every refusal); `node --test
   scripts/parks/lib/catalogue_payload.test.mjs` (the Pocahontas manifest maps
   to six courses, validation, the printed SQL).
 - pgTAP `apps/backend/supabase/tests/park_courses_test.sql`: catalogue RLS,

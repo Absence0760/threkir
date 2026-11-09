@@ -344,7 +344,7 @@ Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_course
 
 ### 3D course preview (#1270)
 
-✓ **Shipped on web** (routes, races and run replay). The course on 3D terrain with a camera flying it, km/mi markers, a synced elevation strip and named climbs, each stated as net height to crest; "Preview in 3D" on `/routes/[id]` and on `/races/[id]` when the race's course is a public route, "Replay in 3D" on `/runs/[id]`. Free. Still open: a mobile equivalent. See [features § 3D course preview](features.md#3d-course-preview).
+✓ **Shipped on web** (routes, races and run replay). The course on 3D terrain with a camera flying it, km/mi markers, Start and Finish markers (one "Start / Finish" on a loop, decisions § 2423), a synced elevation strip and named climbs, each stated as net height to crest; "Preview in 3D" on `/routes/[id]` and on `/races/[id]` when the race's course is a public route, "Replay in 3D" on `/runs/[id]`. Free. Still open: a mobile equivalent. See [features § 3D course preview](features.md#3d-course-preview).
 
 ✓ **Flyover video export (9:16)** (#1273 item 1, decisions § 2259): **Export video** in the dialog renders and encodes a vertical reel in the browser; the phone's run share sheet gains a **Video** style that opens it on the web. Pre-deploy: the operator confirms MapTiler's plan terms before `PUBLIC_FLYOVER_VIDEO_MAPTILER_ENABLED` is set; until then a deploy with no local tile-style override offers no export at all (decisions § 2270).
 

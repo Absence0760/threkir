@@ -333,3 +333,51 @@ test('swift-creek-5k and swift-creek-10k: a run of one is not timed on the other
 	assert.equal(tenOnFive, null, `a 10K run timed ${tenOnFive?.time_seconds} s on the 5K\n${diagnose(five, tenRun)}`);
 	assert.equal(fiveOnTen, null, `a 5K run timed ${fiveOnTen?.time_seconds} s on the 10K\n${diagnose(ten, fiveRun)}`);
 });
+
+/** The course's own direction at a line: the bearing over its first (or last) few metres. */
+function courseDirectionAt(b: Built, finish: boolean): number {
+	const span = slice(b.line, finish ? b.lineM - 5 : 0, finish ? b.lineM : 5);
+	const o = span[0];
+	const { x, y } = planeXY(o.lat, o.lng, span[span.length - 1].lat, span[span.length - 1].lng);
+	return bearingOf(x, y);
+}
+
+function angleApart(a: number, b: number): number {
+	const d = Math.abs(a - b) % 360;
+	return d > 180 ? 360 - d : d;
+}
+
+/**
+ * The 10K's start/finish line sits 14 m before an 83 degree bend on its
+ * lead-in, so the 25 m look-ahead aims across the bend at both ends. Its
+ * lead-in is out of scope for the designated-trail reroute (#1342); the entry
+ * fails once it is fixed.
+ */
+const KNOWN_SKEWED_LINES = new Set(['swift-creek-10k']);
+
+for (const b of BUILT) {
+	test(`${b.course.slug}: each derived line faces the course's own direction at it, within 10 degrees`, () => {
+		const start = angleApart(b.gates.start.bearingDeg, courseDirectionAt(b, false));
+		const end = angleApart(b.gates.end.bearingDeg, courseDirectionAt(b, true));
+		if (KNOWN_SKEWED_LINES.has(b.course.slug)) {
+			assert.ok(start > 10 && end > 10, `${b.course.slug}: its lines are now within 10 degrees; drop it from KNOWN_SKEWED_LINES`);
+			return;
+		}
+		assert.ok(start <= 10, `${b.course.slug}: start line ${start.toFixed(1)} degrees off the course`);
+		assert.ok(end <= 10, `${b.course.slug}: end line ${end.toFixed(1)} degrees off the course`);
+	});
+}
+
+test('the half, marathon and 50K share a start area, and a run of one is not timed on another', () => {
+	const slugs = ['swift-creek-half', 'swift-creek-marathon', 'swift-creek-50k'];
+	for (const [i, run] of slugs.entries()) {
+		const ran = bySlug(run);
+		const track = syntheticRun(ran.line, ran.gates, 5000 + i);
+		for (const other of slugs) {
+			if (other === run) continue;
+			const course = bySlug(other);
+			const effort = score(course, track);
+			assert.equal(effort, null, `a ${run} run timed ${effort?.time_seconds} s on the ${other}\n${diagnose(course, track)}`);
+		}
+	}
+});

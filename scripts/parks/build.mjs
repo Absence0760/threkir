@@ -32,6 +32,7 @@ import {
 	traceVia,
 	trimToDistance,
 } from './lib/course_geometry.mjs';
+import { readIfExists } from './lib/read_if_exists.mjs';
 
 const METERS_PER_MILE = 1609.344;
 
@@ -226,7 +227,7 @@ function main() {
 	let stale = 0;
 	for (const dir of dirs) {
 		for (const [file, contents] of buildPark(dir)) {
-			const current = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+			const current = readIfExists(file);
 			if (current === contents) continue;
 			if (check) {
 				console.error(`${file} is stale; run node scripts/parks/build.mjs ${dir}`);

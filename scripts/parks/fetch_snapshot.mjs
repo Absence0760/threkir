@@ -17,6 +17,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { readIfExists } from './lib/read_if_exists.mjs';
+
 const USER_AGENT = 'threkir-park-courses/1.0 (+https://github.com/Absence0760/threkir)';
 const OSM_API = 'https://api.openstreetmap.org/api/0.6';
 const EPQS = 'https://epqs.nationalmap.gov/v1/json';
@@ -73,9 +75,7 @@ async function main() {
 	const spec = JSON.parse(fs.readFileSync(path.join(dir, 'park.json'), 'utf8'));
 	const snapshotPath = path.join(dir, 'snapshot.json');
 	/** @type {Record<string, { lat: number, lon: number, ele?: number }>} */
-	const previous = fs.existsSync(snapshotPath)
-		? JSON.parse(fs.readFileSync(snapshotPath, 'utf8')).nodes
-		: {};
+	const previous = JSON.parse(readIfExists(snapshotPath) ?? '{"nodes":{}}').nodes;
 
 	/** @type {Set<number>} */
 	const wayIds = new Set();

@@ -124,6 +124,7 @@ jobs:
       # and fails the job so a broken scan is never read as a clean one.
       # Each call is `|| rc=$?` because the runner's shell is `bash -e`.
       - name: Scan every lockfile (offline database)
+        id: osv
         run: |
           set -euo pipefail
           bin="$RUNNER_TEMP/osv-scanner/osv-scanner"
@@ -137,6 +138,10 @@ jobs:
           }
           rc=0
           "$bin" "${args[@]}" --format sarif --output-file osv.sarif ./ || rc=$?
+          # Recorded before the exit-code check, so a scanner error that still
+          # wrote a report gets it uploaded. A step output rather than
+          # hashFiles(): the report is a run-time file, never a tracked one.
+          if [ -s osv.sarif ]; then echo "sarif=present" >> "$GITHUB_OUTPUT"; fi
           check "$rc"
           {
             echo "## osv-scanner (advisory)"
@@ -154,7 +159,7 @@ jobs:
           fi
 
       - name: Upload SARIF to code scanning
-        if: ${{ !cancelled() && hashFiles('osv.sarif') != '' && github.event.pull_request.head.repo.fork != true }}
+        if: ${{ !cancelled() && steps.osv.outputs.sarif == 'present' && github.event.pull_request.head.repo.fork != true }}
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: osv.sarif

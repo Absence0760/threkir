@@ -117,3 +117,15 @@ test('the flight camera at 250 m/s is the camera cameraAt gives for 250 m/s', ()
 		assert.deepEqual([cam.pitch, cam.zoom], [VIEW.pitch, VIEW.zoom]);
 	}
 });
+
+test('the flight speed turns the camera but never moves or zooms it', () => {
+	for (const dM of [0, 900, 12_345, switchbacks.totalM]) {
+		const at250 = flightCamera(switchbacks, dM, VIEW, 250);
+		for (const speedMps of [100, 1000, 2500]) {
+			const cam = flightCamera(switchbacks, dM, VIEW, speedMps);
+			assert.deepEqual([cam.center, cam.pitch, cam.zoom], [at250.center, at250.pitch, at250.zoom]);
+			const pose = cameraAt(switchbacks, dM, { speedMps });
+			assert.deepEqual([pose.center, pose.lookAt], [cameraAt(switchbacks, dM).center, cameraAt(switchbacks, dM).lookAt]);
+		}
+	}
+});

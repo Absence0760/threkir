@@ -12,7 +12,8 @@ name: supply-chain-scan
 # and `osv-scanner`) and to the job summary, and neither job fails on a
 # finding. Neither tool is named in a code-scanning merge ruleset, so their
 # alerts do not block a merge either. Once the current findings are fixed,
-# a follow-up makes these checks blocking.
+# a follow-up makes these checks blocking. zizmor reads its waivers from
+# .github/zizmor.yml, each with its reason (decisions.md § 2421).
 #
 # Data flow: osv-scanner runs with --offline-vulnerabilities, so it downloads
 # the public OSV database and sends no package list anywhere. zizmor's online

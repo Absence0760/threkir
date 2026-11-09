@@ -1,4 +1,4 @@
-import { cameraAt, type FlyoverPath } from '#lib/routes/flyover_path.ts';
+import { cameraAt, maxDotOffsetM, pointAtDistance, type FlyoverPath } from '#lib/routes/flyover_path.ts';
 
 export interface FlightView {
 	pitch: number;
@@ -21,9 +21,26 @@ export interface FlightDot {
 	setLngLat(at: [number, number]): unknown;
 }
 
-export function flightCamera(path: FlyoverPath, dM: number, view: FlightView): FlightCamera {
-	const pose = cameraAt(path, dM);
-	return { center: pose.center, bearing: pose.bearing, pitch: view.pitch, zoom: view.zoom };
+/// `speedMps` is the speed the flight covers the course at; the camera's
+/// heading and centre smoothing follow it (`cameraAt`). The centre is held
+/// within `MAX_DOT_OFFSET_PX` of the dot at the view's zoom.
+export function flightCamera(path: FlyoverPath, dM: number, view: FlightView, speedMps: number): FlightCamera {
+	return flightPose(path, dM, view, speedMps).camera;
+}
+
+/// The camera and the dot's spot for one flight frame.
+export function flightPose(
+	path: FlyoverPath,
+	dM: number,
+	view: FlightView,
+	speedMps: number,
+): { camera: FlightCamera; dot: [number, number] } {
+	const lat = pointAtDistance(path, dM).lat;
+	const pose = cameraAt(path, dM, { speedMps, maxDotOffsetM: maxDotOffsetM(view.zoom, lat) });
+	return {
+		camera: { center: pose.center, bearing: pose.bearing, pitch: view.pitch, zoom: view.zoom },
+		dot: pose.position,
+	};
 }
 
 /// A camera move made inside an animation frame renders one frame late while
@@ -35,10 +52,11 @@ export function drawFlightFrame(
 	path: FlyoverPath,
 	dM: number,
 	view: FlightView,
+	speedMps: number,
 	inAnimationFrame: boolean,
 ): void {
-	const camera = flightCamera(path, dM, view);
+	const { camera, dot: at } = flightPose(path, dM, view, speedMps);
 	target.jumpTo(camera);
-	dot.setLngLat(camera.center);
+	dot.setLngLat(at);
 	if (inAnimationFrame) target.redraw();
 }

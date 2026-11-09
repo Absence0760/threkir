@@ -53,6 +53,26 @@ test('pushDevice merges through merge_my_device_settings with the NOT NULL platf
 	);
 });
 
+// A settings call still awaiting the network at sign-out must not write the
+// signed-out user's bag back after dropUserCache swept it. Every entry point
+// takes a fenced handle at its start and threads it down; the helpers it
+// calls write through that handle, never the module-level cache.
+test('every settings write goes through a cacheFor handle', () => {
+	for (const name of ['loadSettings', 'updateUniversal', 'updateDevice']) {
+		const start = source.indexOf(`export async function ${name}(`);
+		assert.notEqual(start, -1, `${name} missing from settings.ts`);
+		const body = source.slice(start, source.indexOf('\n}\n', start));
+		assert.match(body, /const cache = cacheFor\(userId\);/, `${name} must take a fenced handle`);
+	}
+	for (const name of ['pushUniversal', 'pushDevice', 'drainPending']) {
+		assert.match(
+			fnBody(name),
+			new RegExp(`async function ${name}\\(\\s*cache: PrefsCache,`),
+			`${name} must write through the caller's fenced handle`,
+		);
+	}
+});
+
 // The same silent-drop family, one layer up: every push failure used to
 // be caught bare and queued as "offline", so a refused write (RLS, CHECK,
 // expired JWT) returned normally, the page said "Saved", and the pending

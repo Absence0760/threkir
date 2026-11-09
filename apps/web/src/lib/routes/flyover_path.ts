@@ -27,7 +27,10 @@ export interface FlyoverPath {
 }
 
 export interface CameraPose {
+	/** Where the camera looks: the course position smoothed over the flight (`frameCentre`). */
 	center: [number, number];
+	/** The course position at the distance itself, where the dot is drawn. */
+	position: [number, number];
 	bearing: number;
 	lookAt: [number, number];
 }
@@ -44,6 +47,18 @@ export const DEFAULT_FLYOVER_SPEED_MPS = 250;
 
 const DEFAULT_LOOK_AHEAD_M = 300;
 const DEFAULT_SMOOTHING_M = 400;
+/** The heading window spans this much flight, so at the default 250 m/s it is the 400 m it always was. */
+const SMOOTHING_S = DEFAULT_SMOOTHING_M / DEFAULT_FLYOVER_SPEED_MPS;
+/** A drone pilot's slow yaw; caps the turn per second of flight, whatever the speed (decisions § 2418). */
+export const MAX_TURN_DEG_PER_S = 45;
+/** The camera centre averages this much flight either side of the dot, triangle-weighted (decisions § 2419). */
+const CENTRE_SMOOTHING_S = 1.2;
+const MIN_CENTRE_SMOOTHING_M = 150;
+/** The dot stays within this many CSS px of the frame centre: 20% of a 360 px wide phone, so inside its middle 40%. */
+export const MAX_DOT_OFFSET_PX = 72;
+const DEFAULT_FLIGHT_ZOOM = 14;
+/** MapLibre's 512 px tiles: metres per CSS px at zoom 0 on the equator. */
+const M_PER_PX_Z0 = 40075016.686 / 512;
 const M_PER_DEG_LAT = 111320;
 
 export function buildFlyoverPath(points: readonly PathPoint[]): FlyoverPath {
@@ -100,29 +115,134 @@ export function pointAtDistance(
  * A reversal longer than the window does not cancel: the summed vector passes
  * through zero and would flip the camera 180° in a frame, so the smoothed
  * heading is also turn-rate limited along the course.
- * `smoothingM: 0` is the raw segment heading, unsmoothed and unlimited.
+ *
+ * Both are set by `speedMps`, the speed the flight covers the course at: the
+ * window spans `SMOOTHING_S` of flight (never under 400 m) and the turn is
+ * capped at `MAX_TURN_DEG_PER_S` of flight (never over 0.6° a metre). Per
+ * metre alone, an export flying a 50K in 20 s would swing the camera at every
+ * switchback. An explicit `smoothingM` replaces the window; `smoothingM: 0` is
+ * the raw segment heading, unsmoothed and unlimited.
+ *
+ * The centre is smoothed too (`frameCentre`), so a wiggle in the traced line
+ * moves the dot a little in the frame instead of jolting the whole map. The
+ * dot itself is drawn at `position`. `centreSmoothingM: 0` centres on the dot.
  */
 export function cameraAt(
 	path: FlyoverPath,
 	dM: number,
-	opts: { lookAheadM?: number; smoothingM?: number } = {},
+	opts: {
+		lookAheadM?: number;
+		smoothingM?: number;
+		speedMps?: number;
+		centreSmoothingM?: number;
+		maxDotOffsetM?: number;
+	} = {},
 ): CameraPose {
 	const lookAheadM = nonNegative(opts.lookAheadM, DEFAULT_LOOK_AHEAD_M);
-	const smoothingM = nonNegative(opts.smoothingM, DEFAULT_SMOOTHING_M);
+	const speedMps = flightSpeed(opts.speedMps);
+	const smoothingM = nonNegative(opts.smoothingM, flightSmoothingM(speedMps));
+	const centreM = nonNegative(opts.centreSmoothingM, flightCentreSmoothingM(speedMps));
 	const d = clampDistance(dM, path.totalM);
 	const here = pointAtDistance(path, d);
-	const ahead = pointAtDistance(path, Math.min(path.totalM, d + lookAheadM));
-	const center: [number, number] = [here.lng, here.lat];
-	const lookAt: [number, number] = [ahead.lng, ahead.lat];
+	const maxOffsetM = nonNegative(opts.maxDotOffsetM, maxDotOffsetM(DEFAULT_FLIGHT_ZOOM, here.lat));
+	const position: [number, number] = [here.lng, here.lat];
+	const center = frameCentre(path, d, centreM, maxOffsetM);
+	const lookAt = frameCentre(path, Math.min(path.totalM, d + lookAheadM), centreM, maxOffsetM);
 	const bearing =
 		smoothingM > 0 && path.totalM > 0
-			? normalizeBearing(lookupBearing(bearingTable(path, smoothingM), d))
+			? normalizeBearing(lookupBearing(bearingTable(path, smoothingM, maxTurnDegPerM(speedMps)), d))
 			: windowBearing(path, d, smoothingM, lookAheadM);
-	return { center, bearing, lookAt };
+	return { center, position, bearing, lookAt };
+}
+
+/** The centre window at `speedMps`: `CENTRE_SMOOTHING_S` of flight, never under 150 m. */
+export function flightCentreSmoothingM(speedMps: number): number {
+	return Math.max(MIN_CENTRE_SMOOTHING_M, flightSpeed(speedMps) * CENTRE_SMOOTHING_S);
+}
+
+/** How far the frame centre may sit from the dot, in metres, at `zoom` and latitude `lat`. */
+export function maxDotOffsetM(zoom: number, lat: number): number {
+	const cosLat = Math.max(1e-6, Math.cos((lat * Math.PI) / 180));
+	return (MAX_DOT_OFFSET_PX * M_PER_PX_Z0 * cosLat) / 2 ** zoom;
+}
+
+/**
+ * The triangle-weighted mean position of the course over `windowM` centred on
+ * `d`, integrated exactly over the line's segments (Simpson's rule is exact
+ * for a linear weight times a linear position), so it moves smoothly however
+ * the points are spaced. The window shrinks symmetrically near either end, so
+ * the centre is on the start at the start and on the finish at the finish.
+ * Its offset from the dot is squashed by `L·tanh(|o| / L)`, which leaves a
+ * small offset as it is and never reaches `L` (`maxOffsetM`), smoothly.
+ */
+function frameCentre(path: FlyoverPath, d: number, windowM: number, maxOffsetM: number): [number, number] {
+	const here = pointAtDistance(path, d);
+	const h = Math.min(windowM / 2, d, path.totalM - d);
+	const { points, cumM } = path;
+	if (!(h > 0) || points.length < 2) return [here.lng, here.lat];
+	const cosLat = Math.max(1e-6, Math.cos((here.lat * Math.PI) / 180));
+	const lo = d - h;
+	const hi = d + h;
+	let sx = 0;
+	let sy = 0;
+	let sw = 0;
+	const add = (i: number, s: number, coef: number) => {
+		const segLen = cumM[i + 1] - cumM[i];
+		const t = segLen > 0 ? (s - cumM[i]) / segLen : 0;
+		const a = points[i];
+		const b = points[i + 1];
+		const x = (lonDeltaDeg(here.lng, a.lng) + lonDeltaDeg(a.lng, b.lng) * t) * cosLat * M_PER_DEG_LAT;
+		const y = (a.lat + (b.lat - a.lat) * t - here.lat) * M_PER_DEG_LAT;
+		const w = coef * (1 - Math.abs(s - d) / h);
+		sx += w * x;
+		sy += w * y;
+		sw += w;
+	};
+	const piece = (i: number, s0: number, s1: number) => {
+		const len = s1 - s0;
+		if (!(len > 0)) return;
+		add(i, s0, len);
+		add(i, (s0 + s1) / 2, 4 * len);
+		add(i, s1, len);
+	};
+	for (let i = segmentIndex(cumM, lo); i < points.length - 1 && cumM[i] < hi; i++) {
+		const s0 = Math.max(lo, cumM[i]);
+		const s1 = Math.min(hi, cumM[i + 1]);
+		if (s0 < d && d < s1) {
+			piece(i, s0, d);
+			piece(i, d, s1);
+		} else {
+			piece(i, s0, s1);
+		}
+	}
+	if (!(sw > 0)) return [here.lng, here.lat];
+	let ox = sx / sw;
+	let oy = sy / sw;
+	const len = Math.hypot(ox, oy);
+	if (len > 0) {
+		const k = maxOffsetM > 0 && Number.isFinite(maxOffsetM) ? (maxOffsetM * Math.tanh(len / maxOffsetM)) / len : maxOffsetM > 0 ? 1 : 0;
+		ox *= k;
+		oy *= k;
+	}
+	return [wrapLonDeg(here.lng + ox / (cosLat * M_PER_DEG_LAT)), here.lat + oy / M_PER_DEG_LAT];
 }
 
 const BEARING_STEP_M = 5;
 const MAX_TURN_DEG_PER_M = 0.6;
+
+function flightSpeed(speedMps: number | undefined): number {
+	return speedMps !== undefined && Number.isFinite(speedMps) && speedMps > 0 ? speedMps : DEFAULT_FLYOVER_SPEED_MPS;
+}
+
+/** The heading window at `speedMps`: `SMOOTHING_S` of flight, never under 400 m. */
+export function flightSmoothingM(speedMps: number): number {
+	return Math.max(DEFAULT_SMOOTHING_M, flightSpeed(speedMps) * SMOOTHING_S);
+}
+
+/** The turn allowed per metre at `speedMps`: `MAX_TURN_DEG_PER_S` of flight, never over 0.6°. */
+export function maxTurnDegPerM(speedMps: number): number {
+	return Math.min(MAX_TURN_DEG_PER_M, MAX_TURN_DEG_PER_S / flightSpeed(speedMps));
+}
 
 interface BearingTable {
 	stepM: number;
@@ -130,23 +250,25 @@ interface BearingTable {
 	deg: Float64Array;
 }
 
-const bearingTables = new WeakMap<FlyoverPath, Map<number, BearingTable>>();
+/** Keyed by window and turn limit together: the dialog's speed menu changes both. */
+const bearingTables = new WeakMap<FlyoverPath, Map<string, BearingTable>>();
 
-function bearingTable(path: FlyoverPath, smoothingM: number): BearingTable {
-	let bySmoothing = bearingTables.get(path);
-	if (!bySmoothing) {
-		bySmoothing = new Map();
-		bearingTables.set(path, bySmoothing);
+function bearingTable(path: FlyoverPath, smoothingM: number, turnDegPerM: number): BearingTable {
+	let byKey = bearingTables.get(path);
+	if (!byKey) {
+		byKey = new Map();
+		bearingTables.set(path, byKey);
 	}
-	const cached = bySmoothing.get(smoothingM);
+	const key = `${smoothingM}|${turnDegPerM}`;
+	const cached = byKey.get(key);
 	if (cached && cached.totalM === path.totalM) return cached;
-	const table = buildBearingTable(path, smoothingM);
-	bySmoothing.set(smoothingM, table);
+	const table = buildBearingTable(path, smoothingM, turnDegPerM);
+	byKey.set(key, table);
 	return table;
 }
 
 /** Unwrapped degrees at `sampleAt(k)`, so a turn through north is a run of numbers, not a jump from 359 to 0. */
-function buildBearingTable(path: FlyoverPath, smoothingM: number): BearingTable {
+function buildBearingTable(path: FlyoverPath, smoothingM: number, turnDegPerM: number): BearingTable {
 	const totalM = path.totalM;
 	const n = Math.ceil(totalM / BEARING_STEP_M);
 	const at = (k: number) => Math.min(totalM, k * BEARING_STEP_M);
@@ -159,13 +281,13 @@ function buildBearingTable(path: FlyoverPath, smoothingM: number): BearingTable 
 	const forward = new Float64Array(n + 1);
 	forward[0] = raw[0];
 	for (let k = 1; k <= n; k++) {
-		const limit = MAX_TURN_DEG_PER_M * (at(k) - at(k - 1));
+		const limit = turnDegPerM * (at(k) - at(k - 1));
 		forward[k] = forward[k - 1] + clampAbs(raw[k] - forward[k - 1], limit);
 	}
 	const backward = new Float64Array(n + 1);
 	backward[n] = raw[n];
 	for (let k = n - 1; k >= 0; k--) {
-		const limit = MAX_TURN_DEG_PER_M * (at(k + 1) - at(k));
+		const limit = turnDegPerM * (at(k + 1) - at(k));
 		backward[k] = backward[k + 1] + clampAbs(raw[k] - backward[k + 1], limit);
 	}
 	const deg = new Float64Array(n + 1);

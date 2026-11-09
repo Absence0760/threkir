@@ -6,6 +6,7 @@ import {
 	MAX_FLIGHT_S,
 	MIN_FLIGHT_S,
 	VIDEO_FINALE,
+	videoFlightSpeedMps,
 	videoFrame,
 	videoTimeline,
 } from './video_timeline.ts';
@@ -55,4 +56,16 @@ test('end-card frames hold the finish and run their own progress to 1', () => {
 test('the same index always gives the same frame', () => {
 	const t = videoTimeline(12_345);
 	assert.deepEqual(videoFrame(t, 77, 12_345), videoFrame(t, 77, 12_345));
+});
+
+test('the flight speed is the distance one flight frame covers, per second', () => {
+	for (const totalM of [5000, 21_097.5, 50_000]) {
+		const t = videoTimeline(totalM);
+		const speed = videoFlightSpeedMps(t, totalM);
+		const step = videoFrame(t, 1, totalM).dM - videoFrame(t, 0, totalM).dM;
+		assert.ok(Math.abs(speed - step * t.fps) < 1e-6, `${totalM} m`);
+	}
+	assert.ok(Math.abs(videoFlightSpeedMps(videoTimeline(5000), 5000) - 250) < 1);
+	assert.ok(Math.abs(videoFlightSpeedMps(videoTimeline(50_000), 50_000) - 2500) < 5);
+	assert.equal(videoFlightSpeedMps(videoTimeline(0), 0), 0);
 });

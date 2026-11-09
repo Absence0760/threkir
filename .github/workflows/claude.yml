@@ -39,6 +39,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # The action pushes with its own token: it strips whatever
+          # credential checkout persisted and sets up its own
+          # (configureGitAuth in claude-code-action), so a persisted one
+          # would only sit on disk unused.
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Run Claude Code

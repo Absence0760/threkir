@@ -7,6 +7,7 @@ import {
 	SIGN_OUT_SETTLE_TIMEOUT_MS,
 	settleBeforeSessionEnds,
 	signOutWithScope,
+	trackSessionUser,
 	type AuthSignOutClient,
 	type SignOutScope,
 } from './sign_out';
@@ -278,6 +279,41 @@ test('logoutEverywhere() routes through the global scope and fails closed', () =
 
 test('the store exposes logoutEverywhere alongside logout', () => {
 	assert.match(store, /\blogoutEverywhere\b\s*,/);
+});
+
+test('trackSessionUser reports the prior user when a session ends', () => {
+	const ended: string[] = [];
+	const feed = trackSessionUser((id) => ended.push(id));
+	feed(null);
+	feed('user-a');
+	feed('user-a');
+	assert.deepEqual(ended, [], 'a refresh of the same session is not an end');
+	feed(null);
+	assert.deepEqual(ended, ['user-a']);
+	feed(null);
+	assert.deepEqual(ended, ['user-a'], 'a second signed-out event drops nothing more');
+});
+
+test('trackSessionUser reports the prior user when another user takes the session', () => {
+	const ended: string[] = [];
+	const feed = trackSessionUser((id) => ended.push(id));
+	feed('user-a');
+	feed('user-b');
+	assert.deepEqual(ended, ['user-a']);
+});
+
+// supabase-js >= 2.119 removes a `local` session and fires SIGNED_OUT before
+// it sends the revoke request, so the auth guard has navigated to /login a
+// whole round trip before `logout()` resumes. The drop has to ride on the
+// listener that clears `loggedIn`, ahead of it, not on logout()'s tail.
+test('the auth listener drops the prior user\'s cache before it clears loggedIn', () => {
+	const start = store.indexOf('supabase.auth.onAuthStateChange(');
+	assert.ok(start > 0);
+	const body = store.slice(start, store.indexOf('// Initial session check', start));
+	assert.match(store, /const sessionUser = trackSessionUser\(dropUserCache\);/);
+	const feed = body.indexOf('sessionUser(session?.user.id ?? null);');
+	const clear = body.indexOf('loggedIn = false');
+	assert.ok(feed > 0 && clear > 0 && feed < clear);
 });
 
 const layout = readFileSync(resolve(here, '../../routes/+layout.svelte'), 'utf8');

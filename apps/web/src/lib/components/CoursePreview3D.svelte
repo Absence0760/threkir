@@ -303,7 +303,7 @@
 	}
 
 	function applyCamera(target: maplibregl.Map, dM: number) {
-		target.jumpTo(flightCamera(path, dM, FLIGHT_VIEW));
+		target.jumpTo(flightCamera(path, dM, FLIGHT_VIEW, speed));
 	}
 
 	function renderPosition(inAnimationFrame = false) {
@@ -318,7 +318,7 @@
 				.addTo(map);
 		}
 		if (mode === 'flight') {
-			drawFlightFrame(map, positionMarker, path, playback.dM, FLIGHT_VIEW, inAnimationFrame);
+			drawFlightFrame(map, positionMarker, path, playback.dM, FLIGHT_VIEW, speed, inAnimationFrame);
 		} else {
 			positionMarker.setLngLat(at);
 		}
@@ -347,7 +347,7 @@
 			if (!fit?.center || fit.zoom == null) return;
 			const c = maplibregl.LngLat.convert(fit.center);
 			finale = {
-				from: flightCamera(path, path.totalM, FLIGHT_VIEW),
+				from: flightCamera(path, path.totalM, FLIGHT_VIEW, speed),
 				to: overviewPose({ center: [c.lng, c.lat], zoom: fit.zoom }),
 				plan: finalePlan(motion.reduced),
 				startTs: null,

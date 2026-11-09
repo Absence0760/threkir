@@ -17,14 +17,20 @@
 //   1. **Runs** — the row's runner must be the workflow's `runs-on:`.
 //   2. **Attaches back to the Release** — whether the row promises an artifact
 //      must match whether the workflow has a LIVE (uncommented) upload step, and
-//      when it promises one, the extension it names must appear in that step's
-//      `files:` glob.
+//      when it promises one, the extension it names must appear in the files
+//      that step uploads.
+//
+// An upload step is a `gh release upload <tag> <file>…` command (what the
+// release workflows use, decisions.md § 2421) or a
+// `softprops/action-gh-release` step.
 //
 // A third rule has no column of its own because it is what makes column 2
-// trustworthy: an upload step carrying a `files:` glob must set
-// `fail_on_unmatched_files: true`. The input defaults to FALSE, so a glob that
-// matches nothing attaches nothing and still reports success — the exact shape
-// that hid § 1673. Three live workflows were missing it (§ 1674).
+// trustworthy: an upload must fail when its file is missing. `gh release
+// upload` does by construction (it stats every path and exits non-zero). A
+// softprops step must set `fail_on_unmatched_files: true`: the input defaults
+// to FALSE, so a glob that matches nothing attaches nothing and still reports
+// success — the exact shape that hid § 1673. Three live workflows were missing
+// it (§ 1674).
 //
 // **What this does NOT check, stated so the guard is not read as complete.** The
 // `Signs` and `Publishes to` columns are prose — "release keystore from secrets",
@@ -110,12 +116,40 @@ function liveLines(yaml) {
 }
 
 /**
+ * The files a `gh release upload` command names, read across `\` line
+ * continuations: every positional argument after the tag. Null when it names
+ * none.
+ * @param {string[]} live
+ * @param {number} at
+ * @returns {string | null}
+ */
+function ghUploadFiles(live, at) {
+	let cmd = '';
+	for (let i = at; i < live.length; i++) {
+		const line = live[i].trim();
+		cmd += ` ${line.replace(/\\$/, '')}`;
+		if (!line.endsWith('\\')) break;
+	}
+	const words = cmd.replace(/^.*?gh release upload\b/, '').trim().split(/\s+/).filter(Boolean);
+	/** @type {string[]} */
+	const positional = [];
+	for (let i = 0; i < words.length; i++) {
+		if (words[i] === '--repo' || words[i] === '-R') i++;
+		else if (!words[i].startsWith('-')) positional.push(words[i]);
+	}
+	const files = positional.slice(1);
+	return files.length > 0 ? files.join(' ') : null;
+}
+
+/**
  * @param {string} yaml
  * @returns {{ runsOn: string, attaches: boolean, files: string | null, failsOnUnmatched: boolean }}
  */
 export function inspectWorkflow(yaml) {
 	const live = liveLines(yaml);
 	const runsOn = (live.find((/** @type {string} */ l) => /^\s*runs-on:/.test(l)) ?? '').replace(/.*runs-on:\s*/, '').trim();
+	const ghIdx = live.findIndex((/** @type {string} */ l) => /^\s*(?:run:\s*)?gh release upload\b/.test(l));
+	if (ghIdx !== -1) return { runsOn, attaches: true, files: ghUploadFiles(live, ghIdx), failsOnUnmatched: true };
 	// Both `uses:` and `- uses:` occur in this tree; anchoring on the former alone
 	// silently reads a real upload step as absent.
 	const uploadIdx = live.findIndex((/** @type {string} */ l) => /^\s*(-\s*)?uses:\s*softprops\/action-gh-release@/.test(l));
@@ -180,7 +214,7 @@ export function check({ doc, workflowOf }) {
 
 		const promised = promisesArtifact(row.attaches);
 		if (promised && !wf.attaches) {
-			problems.push(`the \`${app}@*\` row promises the Release carries ${row.attaches}, but ${file} has no live \`softprops/action-gh-release\` step — the Release would carry nothing. This is the § 1673 shape: an artifact claimed in the docs that the workflow cannot produce.`);
+			problems.push(`the \`${app}@*\` row promises the Release carries ${row.attaches}, but ${file} has no live upload step (\`gh release upload\` or \`softprops/action-gh-release\`) — the Release would carry nothing. This is the § 1673 shape: an artifact claimed in the docs that the workflow cannot produce.`);
 		} else if (!promised && wf.attaches) {
 			problems.push(`the \`${app}@*\` row says nothing is attached, but ${file} has a live upload step. The docs understate what a release publishes.`);
 		} else if (promised && wf.attaches) {

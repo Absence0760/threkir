@@ -113,12 +113,15 @@ jobs:
 
       - name: Pin versionName / versionCode from tag
         working-directory: apps/mobile_android
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
           # Flutter reads `version:` from pubspec.yaml as
           # `{versionName}+{versionCode}`. Rewrite it in place so the
           # AAB carries the tag's numbers rather than whatever's
           # committed.
-          sed -i "s/^version: .*/version: ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }}/" pubspec.yaml
+          sed -i "s/^version: .*/version: ${VERSION_NAME}+${VERSION_CODE}/" pubspec.yaml
           grep '^version:' pubspec.yaml
 
       - name: Decode release keystore
@@ -231,6 +234,7 @@ jobs:
           APPLE_REDIRECT_URI: ${{ secrets.MOBILE_APPLE_REDIRECT_URI }}
           STRAVA_CLIENT_ID: ${{ secrets.MOBILE_STRAVA_CLIENT_ID }}
           REVENUECAT_API_KEY_ANDROID: ${{ secrets.MOBILE_REVENUECAT_API_KEY_ANDROID }}
+          APP_RELEASE: ${{ steps.version.outputs.name }}
         run: |
           flutter build appbundle --release \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
@@ -245,7 +249,7 @@ jobs:
             --dart-define=APPLE_REDIRECT_URI="$APPLE_REDIRECT_URI" \
             --dart-define=STRAVA_CLIENT_ID="$STRAVA_CLIENT_ID" \
             --dart-define=REVENUECAT_API_KEY_ANDROID="$REVENUECAT_API_KEY_ANDROID" \
-            --dart-define=APP_RELEASE="${{ steps.version.outputs.name }}"
+            --dart-define=APP_RELEASE="$APP_RELEASE"
 
       - name: Attach AAB to the Release
         # The Release already exists — it triggered this run. Upload the
@@ -255,14 +259,17 @@ jobs:
         # rule), the signed AAB must still land somewhere durable so it
         # can be hand-uploaded — run 29344377051 built a good bundle and
         # lost it with the runner.
-        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
-          # An unmatched glob is not an empty release, it is a silent one: this input
-          # defaults to false, so a moved build-output path would attach nothing and
-          # still report success (decisions.md § 1674).
-          fail_on_unmatched_files: true
+        #
+        # `gh release upload` exits non-zero on a path that does not exist,
+        # so a moved build output fails here rather than attaching nothing
+        # (decisions.md § 1674). `--clobber` replaces an asset of the same
+        # name, so re-running the job re-attaches instead of failing.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            apps/mobile_android/build/app/outputs/bundle/release/app-release.aab
 
       - name: Upload to Play Internal
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1

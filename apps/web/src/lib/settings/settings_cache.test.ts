@@ -2,9 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+	DropEpochs,
 	InMemoryPrefsCache,
 	LocalStoragePrefsCache,
 	applyPrefsChanges,
+	fenceWrites,
 	type PrefsCache,
 } from './settings_cache';
 
@@ -328,4 +330,67 @@ test('LocalStoragePrefsCache: setItem throw is swallowed (quota / private-mode l
 	// And the subsequent read returns null (the write was lost), which
 	// just forces a network round-trip on the next loadSettings.
 	assert.equal(cache.readUniversal('user-a'), null);
+});
+
+// ───────────────── fenceWrites + DropEpochs (sign-out fence) ─────────────────
+//
+// Mirrors settings.ts `cacheFor`: a handle is taken when a settings call
+// starts, and `dropUserCache` bumps the user's epoch before sweeping.
+
+function handleFor(inner: PrefsCache, epochs: DropEpochs, userId: string): PrefsCache {
+	const taken = epochs.current(userId);
+	return fenceWrites(inner, () => epochs.current(userId) === taken);
+}
+
+function dropUser(inner: PrefsCache, epochs: DropEpochs, userId: string): void {
+	epochs.bump(userId);
+	inner.dropUser(userId);
+}
+
+test('fenceWrites: a load still in flight at sign-out cannot put the bag back', () => {
+	const inner = new InMemoryPrefsCache();
+	const epochs = new DropEpochs();
+	const inFlight = handleFor(inner, epochs, 'user-a');
+	inFlight.writeUniversal('user-a', { resting_hr_bpm: 50 });
+
+	dropUser(inner, epochs, 'user-a');
+	// The fetch resolves after the sign-out swept the keys.
+	inFlight.writeUniversal('user-a', { resting_hr_bpm: 52 });
+	inFlight.writeDevice('user-a', 'd1', { theme: 'dark' });
+	inFlight.appendPending('user-a', 'd1', { isDevice: false, changes: { a: 1 } });
+
+	assert.equal(inner.readUniversal('user-a'), null);
+	assert.equal(inner.readDevice('user-a', 'd1'), null);
+	assert.deepEqual(inner.readPending('user-a', 'd1'), []);
+});
+
+test('fenceWrites: a stale drain cannot clear the queue a later session wrote', () => {
+	const inner = new InMemoryPrefsCache();
+	const epochs = new DropEpochs();
+	const stale = handleFor(inner, epochs, 'user-a');
+	dropUser(inner, epochs, 'user-a');
+
+	const fresh = handleFor(inner, epochs, 'user-a');
+	fresh.appendPending('user-a', 'd1', { isDevice: true, changes: { b: 2 } });
+	stale.clearPending('user-a', 'd1');
+
+	assert.equal(inner.readPending('user-a', 'd1').length, 1);
+});
+
+test('fenceWrites: signing back in as the same user takes a handle that writes again', () => {
+	const inner = new InMemoryPrefsCache();
+	const epochs = new DropEpochs();
+	dropUser(inner, epochs, 'user-a');
+	const next = handleFor(inner, epochs, 'user-a');
+	next.writeUniversal('user-a', { a: 1 });
+	assert.deepEqual(inner.readUniversal('user-a'), { a: 1 });
+});
+
+test('fenceWrites: dropping one user leaves another user\'s handle live', () => {
+	const inner = new InMemoryPrefsCache();
+	const epochs = new DropEpochs();
+	const b = handleFor(inner, epochs, 'user-b');
+	dropUser(inner, epochs, 'user-a');
+	b.writeUniversal('user-b', { a: 1 });
+	assert.deepEqual(inner.readUniversal('user-b'), { a: 1 });
 });

@@ -40,6 +40,14 @@ export function videoTimeline(totalM: number, fps = VIDEO_FPS): VideoTimeline {
 	return { fps, flightFrames, overviewFrames, endFrames, totalFrames: flightFrames + overviewFrames + endFrames };
 }
 
+/// The speed the flight covers the course at, for the camera's heading
+/// smoothing and turn limit (`cameraAt`): the first flight frame is the start
+/// and the last the finish, `flightFrames - 1` frame steps apart.
+export function videoFlightSpeedMps(t: VideoTimeline, totalM: number): number {
+	const total = totalM > 0 ? totalM : 0;
+	return (total * t.fps) / (t.flightFrames - 1);
+}
+
 /// The flight's first frame sits on the start and its last on the finish, so
 /// the counter the overlay ticks up ends on the run's own distance. The
 /// overview frames then step the ending's clock (`finaleCamera`) from the

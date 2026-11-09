@@ -10,6 +10,7 @@ import test from 'node:test';
 import {
 	RACE_DISTANCES_M,
 	assertFootAccess,
+	assertTrailReview,
 	distanceDeviation,
 	elevationGainM,
 	footAccessRefusal,
@@ -285,4 +286,53 @@ test('assertFootAccess names the refused way and its tags', () => {
 test('assertFootAccess ignores a listed way the line never walks', () => {
 	const ways = [...loopWays.map((w) => ({ ...w, tags: { highway: 'path' } })), { ...pier, tags: { highway: 'path', informal: 'yes' } }];
 	assert.doesNotThrow(() => assertFootAccess(traceLoop({ ways, nodes, start: 1, direction: 'clockwise' }), ways));
+});
+
+const reviewed = (/** @type {Partial<import('./course_geometry.mjs').TrailReview>} */ over = {}) => ({
+	checked_at: '2026-11-09',
+	source_urls: ['https://example.org/trail-map.pdf'],
+	designated: [10, 11, 12],
+	refused: {},
+	...over,
+});
+const square = [1, 2, 3, 4, 1];
+
+test('assertTrailReview passes a course that walks only designated ways', () => {
+	assert.deepEqual(assertTrailReview(square, loopWays, reviewed()), []);
+});
+
+test('assertTrailReview refuses a way the review refused, naming it and why', () => {
+	const review = reviewed({ designated: [10, 12], refused: { 11: 'not on the park map' } });
+	assert.throws(
+		() => assertTrailReview(square, loopWays, review),
+		/way 11 was refused on review \(not on the park map\)/,
+	);
+});
+
+test('assertTrailReview refuses a way nobody has reviewed yet', () => {
+	assert.throws(
+		() => assertTrailReview(square, loopWays, reviewed({ designated: [10, 12] })),
+		/way 11 has not been checked against the land manager's trail map/,
+	);
+	assert.throws(() => assertTrailReview(square, loopWays, undefined), /the park has no trail_review/);
+});
+
+test('assertTrailReview ignores an unreviewed way the line never walks', () => {
+	const ways = [...loopWays, pier];
+	const seq = traceLoop({ ways, nodes, start: 1, direction: 'clockwise' });
+	assert.doesNotThrow(() => assertTrailReview(seq, ways, reviewed()));
+});
+
+test('assertTrailReview refuses a review that both designates and refuses a way', () => {
+	assert.throws(
+		() => assertTrailReview(square, loopWays, reviewed({ refused: { 12: 'social trail' } })),
+		/way\(s\) 12 as both designated and refused/,
+	);
+});
+
+test('assertTrailReview returns the walked fords and refuses an unrecorded one', () => {
+	const ways = loopWays.map((w) => (w.id === 11 ? { ...w, tags: { highway: 'track', ford: 'yes' } } : w));
+	assert.throws(() => assertTrailReview(square, ways, reviewed()), /way 11 is tagged ford=yes but trail_review does not list it/);
+	assert.deepEqual(assertTrailReview(square, ways, reviewed({ fords: [11] })), [11]);
+	assert.throws(() => assertTrailReview(square, ways, reviewed({ fords: [99] })), /ford\(s\) 99 that are not designated/);
 });

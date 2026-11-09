@@ -189,14 +189,15 @@ export function footAccessRefusal(tags) {
 }
 
 /**
- * Refuse a traced course whose line runs along any way that is not open on
- * foot. Only the ways the sequence actually walks are checked, so a listed
- * way the trace never uses (a pruned spur) does not block the course.
+ * The listed ways a traced sequence actually walks, by id. A listed way the
+ * trace never uses (a pruned spur, an alternative the via pins avoid) is not
+ * among them.
  *
  * @param {number[]} sequence
  * @param {SnapshotWay[]} ways
+ * @returns {SnapshotWay[]}
  */
-export function assertFootAccess(sequence, ways) {
+export function walkedWays(sequence, ways) {
 	/** @type {Map<string, SnapshotWay[]>} */
 	const byEdge = new Map();
 	for (const way of ways) {
@@ -212,10 +213,20 @@ export function assertFootAccess(sequence, ways) {
 	for (let i = 1; i < sequence.length; i++) {
 		for (const way of byEdge.get(edgeKey(sequence[i - 1], sequence[i])) ?? []) walked.add(way);
 	}
-	const refused = [...walked]
+	return [...walked].sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Refuse a traced course whose line runs along any way that is not open on
+ * foot. Only the ways the sequence actually walks are checked.
+ *
+ * @param {number[]} sequence
+ * @param {SnapshotWay[]} ways
+ */
+export function assertFootAccess(sequence, ways) {
+	const refused = walkedWays(sequence, ways)
 		.map((way) => ({ way, reason: footAccessRefusal(way.tags ?? {}) }))
-		.filter((r) => r.reason !== null)
-		.sort((a, b) => a.way.id - b.way.id);
+		.filter((r) => r.reason !== null);
 	if (refused.length > 0) {
 		throw new Error(
 			`the course runs on way(s) not open to people on foot: ${refused
@@ -223,6 +234,55 @@ export function assertFootAccess(sequence, ways) {
 				.join('; ')}; reroute it onto designated trails`,
 		);
 	}
+}
+
+/**
+ * @typedef {{
+ *   checked_at: string,
+ *   source_urls: string[],
+ *   designated: number[],
+ *   refused: Record<string, string>,
+ *   fords?: number[],
+ * }} TrailReview
+ */
+
+/**
+ * Refuse a traced course that walks a way a person has not checked against
+ * the land manager's own trail map, or one they checked and refused. OSM tags
+ * alone cannot say a path is a designated trail (a day-use walkway or a
+ * social connector is usually an untagged `path`), so `park.json` records the
+ * review and the build holds every course to it. Returns the walked ways the
+ * review lists as fords, for the course's manifest entry.
+ *
+ * @param {number[]} sequence
+ * @param {SnapshotWay[]} ways
+ * @param {TrailReview | undefined} review
+ * @returns {number[]}
+ */
+export function assertTrailReview(sequence, ways, review) {
+	if (!review || !Array.isArray(review.designated) || typeof review.refused !== 'object') {
+		throw new Error('the park has no trail_review; check every way against the land manager\'s trail map first');
+	}
+	const designated = new Set(review.designated);
+	const both = Object.keys(review.refused).filter((id) => designated.has(Number(id)));
+	if (both.length > 0) throw new Error(`trail_review lists way(s) ${both.join(', ')} as both designated and refused`);
+	const fords = new Set(review.fords ?? []);
+	const unlisted = [...fords].filter((id) => !designated.has(id));
+	if (unlisted.length > 0) throw new Error(`trail_review lists ford(s) ${unlisted.join(', ')} that are not designated`);
+
+	const walked = walkedWays(sequence, ways);
+	/** @type {string[]} */
+	const problems = [];
+	for (const way of walked) {
+		const reason = review.refused[String(way.id)];
+		if (reason !== undefined) problems.push(`way ${way.id} was refused on review (${reason})`);
+		else if (!designated.has(way.id)) problems.push(`way ${way.id} has not been checked against the land manager's trail map`);
+		else if (way.tags?.ford === 'yes' && !fords.has(way.id)) problems.push(`way ${way.id} is tagged ford=yes but trail_review does not list it as a ford`);
+	}
+	if (problems.length > 0) {
+		throw new Error(`${problems.join('; ')}; reroute it, or record the way in trail_review once it has been checked`);
+	}
+	return walked.filter((way) => fords.has(way.id)).map((way) => way.id);
 }
 
 /**

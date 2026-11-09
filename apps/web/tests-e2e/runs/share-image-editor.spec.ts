@@ -382,12 +382,18 @@ test.describe('run share-image editor', () => {
 	test('a run that completed a park course offers the course sticker', async ({ page }) => {
 		const admin = getAdminClient();
 		const tag = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+		// The course runs north through the midpoints of the track's chords, so
+		// its derived start and end lines sit mid-chord and the run crosses both
+		// (lines on the first and last fix are never crossed). Six chords of
+		// ~132 m each. The effort is the one the run-detail re-match times, not
+		// a seeded row: that pass deletes any effort the track does not earn.
+		const mid = (a: TrackPoint, b: TrackPoint) => ({ lat: (a.lat + b.lat) / 2, lng: (a.lng + b.lng) / 2 });
 		const { data: seg, error: segErr } = await admin
 			.from('global_segments')
 			.insert({
 				name: `E2E Sticker Loop ${tag}`,
-				waypoints: [TRACK[0], TRACK[TRACK.length - 1]].map((p) => ({ lat: p.lat, lng: p.lng })),
-				distance_m: 1000,
+				waypoints: TRACK.slice(1).map((p, i) => mid(TRACK[i], p)),
+				distance_m: 790,
 				surface: 'trail',
 				country_code: 'US',
 			})
@@ -416,14 +422,21 @@ test.describe('run share-image editor', () => {
 				geometry_source: 'osm',
 			});
 			if (courseErr) throw courseErr;
-			const { error: effortErr } = await admin.from('global_segment_efforts').insert({
-				global_segment_id: seg.id,
-				run_id: runId,
-				user_id: USER_A.id,
-				time_seconds: 1_400,
-				started_at: '2026-05-10T08:00:00Z',
-			});
-			if (effortErr) throw effortErr;
+
+			await page.goto(`/runs/${runId}`);
+			await expect
+				.poll(
+					async () => {
+						const { data } = await admin
+							.from('global_segment_efforts')
+							.select('time_seconds, matched_by')
+							.eq('global_segment_id', seg.id)
+							.eq('run_id', runId);
+						return data ?? [];
+					},
+					{ timeout: 15_000 },
+				)
+				.toEqual([{ time_seconds: 360, matched_by: 'gate' }]);
 
 			const dialog = await openEditor(page, runId);
 			await dialog.getByTestId('share-style-sticker').click();

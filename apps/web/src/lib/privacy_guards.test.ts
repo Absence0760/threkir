@@ -744,7 +744,7 @@ test('the public plan library reader does not select the private template column
 // they stay gone, because the failure mode is invisible from the PR page.
 //
 // `dependabot-auto-merge.yml` is deliberately exempt: it is a
-// `pull_request_target` job with `contents: write` that MERGES code, so its
+// job with `contents: write` that MERGES code, so its
 // base filter is a safety scope rather than this bug.
 
 test('the DM route attachment card reads through the owner-aware fetchRouteById', () => {

@@ -95,6 +95,10 @@ jobs:
           # also a hard requirement for @supabase/realtime-js >=2.105
           # which the coach Lambda transitively imports.
           node-version: "24.20.0"
+          # setup-node turns its npm cache on by itself when package.json
+          # names a packageManager. A release must not restore a cache any
+          # default-branch run can write, so it installs cold.
+          package-manager-cache: false
 
       - run: npm ci
 

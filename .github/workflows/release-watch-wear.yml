@@ -67,22 +67,22 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Cache Gradle
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-watch-wear-${{ hashFiles('apps/watch_wear/android/**/*.gradle*', 'apps/watch_wear/android/gradle/wrapper/gradle-wrapper.properties') }}
+      # No dependency cache on a release build: a cache is writable by any
+      # workflow run on the default branch, so restoring one here would let a
+      # poisoned entry reach a signed artifact. A release builds from a cold
+      # Gradle home every time.
 
       - name: Pin versionCode + versionName from tag
         working-directory: apps/watch_wear/android/app
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
         run: |
           # watch_wear's gradle file hardcodes versionCode / versionName
           # today. Rewrite those two lines in place before building so
           # the signed artifact carries the tag's numbers.
-          sed -i "s/versionCode = [0-9]*/versionCode = ${{ steps.version.outputs.code }}/" build.gradle.kts
-          sed -i "s/versionName = \".*\"/versionName = \"${{ steps.version.outputs.name }}\"/" build.gradle.kts
+          sed -i "s/versionCode = [0-9]*/versionCode = ${VERSION_CODE}/" build.gradle.kts
+          sed -i "s/versionName = \".*\"/versionName = \"${VERSION_NAME}\"/" build.gradle.kts
           grep -E 'versionCode|versionName' build.gradle.kts
 
       - name: Decode release keystore
@@ -110,6 +110,15 @@ jobs:
 
       - name: Build AAB (signed)
         working-directory: apps/watch_wear/android
+        # Every value reaches gradle through the environment, never through a
+        # `${{ }}` spliced into the script: the release tag is free text, and a
+        # quote in it would end the argument and run what follows.
+        env:
+          SUPABASE_URL: ${{ secrets.PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}
+          PUBLIC_MAPTILER_KEY: ${{ secrets.PUBLIC_MAPTILER_KEY }}
+          SENTRY_DSN: ${{ secrets.WATCH_WEAR_SENTRY_DSN }}
+          APP_RELEASE: ${{ github.event.release.tag_name }}
         run: |
           # Use the same PUBLIC_SUPABASE_* secret names the web release
           # workflow reads — keeps a single pair of GitHub secrets in
@@ -119,11 +128,11 @@ jobs:
           # SENTRY_DSN is optional: unset, the build carries an empty DSN and
           # WatchWearApplication leaves Sentry off (decisions § 1763).
           ./gradlew bundleRelease \
-            -PSUPABASE_URL='${{ secrets.PUBLIC_SUPABASE_URL }}' \
-            -PSUPABASE_ANON_KEY='${{ secrets.PUBLIC_SUPABASE_ANON_KEY }}' \
-            -PPUBLIC_MAPTILER_KEY='${{ secrets.PUBLIC_MAPTILER_KEY }}' \
-            -PSENTRY_DSN='${{ secrets.WATCH_WEAR_SENTRY_DSN }}' \
-            -PAPP_RELEASE='${{ github.event.release.tag_name }}' \
+            -PSUPABASE_URL="$SUPABASE_URL" \
+            -PSUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            -PPUBLIC_MAPTILER_KEY="$PUBLIC_MAPTILER_KEY" \
+            -PSENTRY_DSN="$SENTRY_DSN" \
+            -PAPP_RELEASE="$APP_RELEASE" \
             --no-daemon
 
       - name: Attach artifacts to the Release

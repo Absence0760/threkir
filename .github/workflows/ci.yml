@@ -970,7 +970,7 @@ jobs:
             echo "Reproduce with: node --test scripts/rpc_transport.test.mjs scripts/check_dart_rpc_transport.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
-      # The four `pnpm.overrides` entries are security pins, and a bot can drop
+      # The pnpm `overrides` (pnpm-workspace.yaml) are security pins, and a bot can drop
       # them. Dependabot #812 regenerated pnpm-lock.yaml without its top-level
       # `overrides:` block, and all 17 pnpm jobs then died at
       # ERR_PNPM_LOCKFILE_CONFIG_MISMATCH before running anything — an error
@@ -989,7 +989,7 @@ jobs:
         if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           if ! node scripts/check_pnpm_overrides.mjs; then
-            echo "::error::A pnpm.overrides security pin is missing from a lockfile or was resolved around. Nothing here is about the Supabase schema, the migrations, or the generated row types — the pins are the CVE nudges in package.json's _overrides_rationale."
+            echo "::error::A pnpm overrides security pin (pnpm-workspace.yaml) is missing from a lockfile or was resolved around. Nothing here is about the Supabase schema, the migrations, or the generated row types — the pins are the CVE nudges in package.json's _overrides_rationale."
             echo "Run 'pnpm install --lockfile-only' locally and commit both lockfiles; the failing line above names which pin and which resolved version broke it."
             exit 1
           fi

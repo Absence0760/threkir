@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Guardrail: the `pnpm.overrides` entries are supply-chain pins, and they
-// are still both DECLARED and IN EFFECT.
+// Guardrail: the pnpm `overrides` entries (declared in pnpm-workspace.yaml)
+// are supply-chain pins, and they are still both DECLARED and IN EFFECT.
 //
 // They are not preferences. Each one nudges a transitive dependency off a
 // version with a live advisory that its own parent has not bumped past —
@@ -24,11 +24,15 @@
 //
 // Four checks, in the order a reader wants them:
 //
-//   1. `pnpm.overrides` is present and non-empty. A guard over an empty set
+//   1. pnpm-workspace.yaml's `overrides:` is present and non-empty, and root
+//      package.json carries no `pnpm.overrides`. A guard over an empty set
 //      enforces nothing, which is the vacuous-pass hazard the sibling guards'
-//      own comments record.
-//   2. pnpm-lock.yaml carries an `overrides:` block, and it matches
-//      `pnpm.overrides` key for key. This is exactly what #812 deleted.
+//      own comments record. package.json's `pnpm` field is not read by pnpm
+//      11+, so a pin declared there is honoured by CI's pnpm 10 and silently
+//      dropped by whichever newer pnpm regenerates the lockfile next — which
+//      is how Dependabot's PRs #1324 / #1331 / #1332 lost the block (2026-11-09).
+//   2. pnpm-lock.yaml carries an `overrides:` block, and it matches the
+//      declared pins key for key. This is exactly what #812 deleted.
 //   3. The npm-style top-level `overrides` block matches too, once flattened.
 //      The repo carries BOTH declarations and BOTH lockfiles: most CI jobs run
 //      `npm ci` off package-lock.json, the Playwright / live-hub / SSO lanes
@@ -54,10 +58,6 @@
 // other way round. Everything downstream (target resolution, the tree scan)
 // therefore deals with one shape.
 //
-// pnpm 10 also accepts `overrides` in pnpm-workspace.yaml. Moving them there
-// is a legitimate future change, and this guard fails loudly on it rather than
-// passing over an empty set — check 1 is what makes that true.
-//
 // Check-only, deliberately — no `--fix`. `sync_deno_lock.mjs` auto-writes
 // because the section it owns is inert (nothing resolves against it) and deno
 // canonicalizes the ranges so a hand-edit does not stick. This one is the
@@ -80,6 +80,7 @@ import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const PACKAGE_JSON = join(REPO_ROOT, 'package.json');
+export const PNPM_WORKSPACE = join(REPO_ROOT, 'pnpm-workspace.yaml');
 export const PNPM_LOCK = join(REPO_ROOT, 'pnpm-lock.yaml');
 export const NPM_LOCK = join(REPO_ROOT, 'package-lock.json');
 
@@ -116,8 +117,8 @@ function unquote(value) {
 	return trimmed;
 }
 
-/// pnpm-lock.yaml's top-level `overrides:` block as a Map, or null when the
-/// block is absent. Null and an empty Map are different answers: the first is
+/// A top-level `overrides:` block as a Map, or null when the block is absent.
+/// pnpm-lock.yaml and pnpm-workspace.yaml spell it identically. Null and an empty Map are different answers: the first is
 /// #812's regression, the second is a block that exists and pins nothing.
 ///
 /// Line-based rather than YAML-parsed because the guard jobs run `node`
@@ -413,35 +414,38 @@ function diffMaps(expected, actual, expectedLabel, actualLabel) {
 /**
  * @param {PackageManifest | null | undefined} pkg
  * @param {string} pnpmLockText
+ * @param {string} workspaceText
  * @returns {{ errors: string[], ok: string[], declared: Map<string, string> }}
  */
-export function checkDeclarations(pkg, pnpmLockText) {
+export function checkDeclarations(pkg, pnpmLockText, workspaceText) {
 	/** @type {string[]} */
 	const errors = [];
 	/** @type {string[]} */
 	const ok = [];
 
-	const declaredRaw = pkg?.pnpm?.overrides;
-	if (!declaredRaw || typeof declaredRaw !== 'object' || Object.keys(declaredRaw).length === 0) {
-		return {
-			errors: [
-				`root package.json declares no \`pnpm.overrides\`. Either the security pins ` +
-					`were removed — in which case delete this guard with them, and record why in ` +
-					`decisions.md — or the block moved and this check now enforces nothing.`,
-			],
-			ok,
-			declared: new Map(),
-		};
+	if (pkg?.pnpm?.overrides !== undefined) {
+		errors.push(
+			`root package.json declares \`pnpm.overrides\`, which pnpm 11+ does not read: CI's ` +
+				`pnpm 10 would apply it and the next lockfile a newer pnpm regenerates (Dependabot's) ` +
+				`would drop it. Declare the pins under \`overrides:\` in pnpm-workspace.yaml only.`,
+		);
 	}
 
-	const { flat: declared, problems } = flattenOverrides(declaredRaw);
-	errors.push(...problems.map((p) => `root package.json \`pnpm.overrides\`: ${p}`));
-	ok.push(`root package.json declares ${declared.size} pnpm override(s)`);
+	const declared = parseLockOverrides(workspaceText) ?? new Map();
+	if (declared.size === 0) {
+		errors.push(
+			`pnpm-workspace.yaml declares no \`overrides\`. Either the security pins ` +
+				`were removed — in which case delete this guard with them, and record why in ` +
+				`decisions.md — or the block moved and this check now enforces nothing.`,
+		);
+		return { errors, ok, declared };
+	}
+	ok.push(`pnpm-workspace.yaml declares ${declared.size} pnpm override(s)`);
 
 	const inLock = parseLockOverrides(pnpmLockText);
 	if (inLock === null) {
 		errors.push(
-			`pnpm-lock.yaml has NO top-level \`overrides:\` block, but root package.json ` +
+			`pnpm-lock.yaml has NO top-level \`overrides:\` block, but pnpm-workspace.yaml ` +
 				`declares ${declared.size}:\n${formatMap(declared)}\n` +
 				`  Every \`pnpm install --frozen-lockfile\` job aborts on this with ` +
 				`ERR_PNPM_LOCKFILE_CONFIG_MISMATCH before it runs anything — and worse, an ` +
@@ -451,15 +455,15 @@ export function checkDeclarations(pkg, pnpmLockText) {
 		);
 	} else if (inLock.size === 0) {
 		errors.push(
-			`pnpm-lock.yaml's \`overrides:\` block is empty while root package.json declares ` +
+			`pnpm-lock.yaml's \`overrides:\` block is empty while pnpm-workspace.yaml declares ` +
 				`${declared.size} pin(s). Regenerate with \`${FIX_COMMAND}\`.`,
 		);
 	} else {
-		const drift = diffMaps(declared, inLock, 'package.json pnpm.overrides', 'pnpm-lock.yaml overrides');
+		const drift = diffMaps(declared, inLock, 'pnpm-workspace.yaml overrides', 'pnpm-lock.yaml overrides');
 		if (drift.length) {
 			errors.push(
-				`pnpm-lock.yaml's \`overrides:\` block has drifted from root package.json's ` +
-					`\`pnpm.overrides\`:\n${drift.join('\n')}\n  Regenerate with \`${FIX_COMMAND}\`.`,
+				`pnpm-lock.yaml's \`overrides:\` block has drifted from pnpm-workspace.yaml's ` +
+					`\`overrides\`:\n${drift.join('\n')}\n  Regenerate with \`${FIX_COMMAND}\`.`,
 			);
 		} else {
 			ok.push(`pnpm-lock.yaml's overrides block matches all ${declared.size} of them`);
@@ -472,23 +476,23 @@ export function checkDeclarations(pkg, pnpmLockText) {
 	errors.push(...npmStyle.problems.map((p) => `root package.json \`overrides\`: ${p}`));
 	if (npmStyle.flat.size === 0) {
 		errors.push(
-			`root package.json declares \`pnpm.overrides\` but no top-level \`overrides\`. ` +
+			`pnpm-workspace.yaml declares \`overrides\` but root package.json has no top-level \`overrides\`. ` +
 				`Most CI jobs install with \`npm ci\` off package-lock.json, which reads only ` +
 				`the npm-style block — so the pins would apply to the pnpm lanes and to nothing ` +
 				`else. Declare both.`,
 		);
 	} else {
-		const drift = diffMaps(declared, npmStyle.flat, 'pnpm.overrides', 'overrides (npm)');
+		const drift = diffMaps(declared, npmStyle.flat, 'pnpm-workspace.yaml', 'package.json overrides (npm)');
 		if (drift.length) {
 			errors.push(
-				`root package.json's two override declarations disagree, so npm and pnpm would ` +
+				`pnpm-workspace.yaml and package.json's npm-style \`overrides\` disagree, so npm and pnpm would ` +
 					`pin different things:\n${drift.join('\n')}\n` +
 					`  npm spells a scoped override as a nested object under the parent ` +
 					`(\`"@sveltejs/kit": { "cookie": "^1.0.2" }\`) where pnpm spells it flat ` +
 					`(\`"@sveltejs/kit>cookie": "^1.0.2"\`); both are shown flattened above.`,
 			);
 		} else {
-			ok.push(`root package.json's npm-style \`overrides\` block agrees with \`pnpm.overrides\``);
+			ok.push(`root package.json's npm-style \`overrides\` block agrees with pnpm-workspace.yaml`);
 		}
 	}
 
@@ -668,9 +672,10 @@ export function checkResolutions(declared, resolutions, edges = new Map()) {
  * @param {PackageManifest | null | undefined} pkg
  * @param {string} pnpmLockText
  * @param {NpmLockfile | null | undefined} npmLockJson
+ * @param {string} workspaceText
  */
-export function checkAll(pkg, pnpmLockText, npmLockJson) {
-	const declarations = checkDeclarations(pkg, pnpmLockText);
+export function checkAll(pkg, pnpmLockText, npmLockJson, workspaceText) {
+	const declarations = checkDeclarations(pkg, pnpmLockText, workspaceText);
 	const resolutions = [...parsePnpmResolutions(pnpmLockText), ...parseNpmResolutions(npmLockJson)];
 	const effect = checkResolutions(
 		declarations.declared,
@@ -690,6 +695,7 @@ function main() {
 		JSON.parse(readFileSync(PACKAGE_JSON, 'utf-8')),
 		readFileSync(PNPM_LOCK, 'utf-8'),
 		JSON.parse(readFileSync(NPM_LOCK, 'utf-8')),
+		readFileSync(PNPM_WORKSPACE, 'utf-8'),
 	);
 
 	for (const line of ok) console.log(`[OK] ${line}`);
@@ -700,7 +706,7 @@ function main() {
 		return 1;
 	}
 	console.log(
-		`\n${declared.size} override(s) declared in package.json, recorded in pnpm-lock.yaml, ` +
+		`\n${declared.size} override(s) declared in pnpm-workspace.yaml, recorded in pnpm-lock.yaml, ` +
 			`and honoured by every one of the ${resolutions.length} resolved package entries across both lockfiles.`,
 	);
 	return 0;

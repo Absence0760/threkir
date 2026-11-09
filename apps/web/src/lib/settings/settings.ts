@@ -8,9 +8,11 @@ import {
 	type PrefsBag,
 } from './settings_overlay';
 import {
+	DropEpochs,
 	InMemoryPrefsCache,
 	LocalStoragePrefsCache,
 	applyPrefsChanges,
+	fenceWrites,
 	type PendingChange,
 	type PrefsCache,
 } from './settings_cache';
@@ -74,7 +76,18 @@ export function getDeviceId(): string {
 /// `logout()` so a subsequent sign-in as a different user on the same
 /// browser can't read the previous user's bag.
 export function dropUserCache(userId: string): void {
+	dropEpochs.bump(userId);
 	cache.dropUser(userId);
+}
+
+const dropEpochs = new DropEpochs();
+
+/// The cache as one settings call sees it: once `dropUserCache(userId)`
+/// has run, every write through this handle is discarded, so a fetch or
+/// push still in flight at sign-out cannot put the bag back.
+function cacheFor(userId: string): PrefsCache {
+	const taken = dropEpochs.current(userId);
+	return fenceWrites(cache, () => dropEpochs.current(userId) === taken);
 }
 
 /// Synchronous cache peek. Returns the cached bags (or empty bags if
@@ -98,6 +111,7 @@ export function peekCachedSettings(userId: string): LoadedSettings {
 
 export async function loadSettings(userId: string): Promise<LoadedSettings> {
 	const deviceId = getDeviceId();
+	const cache = cacheFor(userId);
 
 	// Always attempt the server fetch so external mutations (mobile
 	// edit, another tab, service-role write) are visible. The cache is
@@ -166,7 +180,7 @@ export async function loadSettings(userId: string): Promise<LoadedSettings> {
 
 		cache.writeUniversal(userId, universal);
 		cache.writeDevice(userId, deviceId, device);
-		await drainPending(userId, deviceId);
+		await drainPending(cache, userId, deviceId);
 
 		return { universal, device };
 	} catch {
@@ -190,6 +204,7 @@ export async function loadSettings(userId: string): Promise<LoadedSettings> {
 /// not be treated alike.
 export async function updateUniversal(userId: string, changes: PrefsBag): Promise<PrefsBag> {
 	const deviceId = getDeviceId();
+	const cache = cacheFor(userId);
 
 	// Read current cached bag; fall back to {} so an offline-first
 	// write before any successful load still produces the right merged
@@ -199,7 +214,7 @@ export async function updateUniversal(userId: string, changes: PrefsBag): Promis
 	cache.writeUniversal(userId, merged);
 
 	await pushOrQueue({
-		push: () => pushUniversal(userId, changes),
+		push: () => pushUniversal(cache, userId, changes),
 		// Queue the change verbatim so a future `loadSettings` drains it
 		// against a fresh server bag. Storing the *changes* (not the merged
 		// result) means a concurrent write from another device isn't
@@ -213,13 +228,14 @@ export async function updateUniversal(userId: string, changes: PrefsBag): Promis
 
 export async function updateDevice(userId: string, changes: PrefsBag): Promise<PrefsBag> {
 	const deviceId = getDeviceId();
+	const cache = cacheFor(userId);
 
 	const base = cache.readDevice(userId, deviceId) ?? {};
 	const merged = applyPrefsChanges(base, changes);
 	cache.writeDevice(userId, deviceId, merged);
 
 	await pushOrQueue({
-		push: () => pushDevice(userId, deviceId, changes),
+		push: () => pushDevice(cache, userId, deviceId, changes),
 		queue: () => cache.appendPending(userId, deviceId, { isDevice: true, changes }),
 		rollback: () => cache.writeDevice(userId, deviceId, base),
 	});
@@ -247,7 +263,7 @@ function asBag(value: unknown): PrefsBag | null {
 /// write put the earlier one's key back. The RPC is also an upsert, so a
 /// missing client-provisioned row is created rather than 0-row no-op'd
 /// (#234).
-async function pushUniversal(userId: string, changes: PrefsBag): Promise<void> {
+async function pushUniversal(cache: PrefsCache, userId: string, changes: PrefsBag): Promise<void> {
 	const res = await supabase.rpc('merge_my_settings', { p_changes: wireDelta(changes) });
 	if (res.error) throw new SettingsWriteError(res);
 	// Stamp the cache with the server's union, so a device with a stale
@@ -256,7 +272,12 @@ async function pushUniversal(userId: string, changes: PrefsBag): Promise<void> {
 	if (merged) cache.writeUniversal(userId, merged);
 }
 
-async function pushDevice(userId: string, deviceId: string, changes: PrefsBag): Promise<void> {
+async function pushDevice(
+	cache: PrefsCache,
+	userId: string,
+	deviceId: string,
+	changes: PrefsBag,
+): Promise<void> {
 	// Same atomic merge as pushUniversal; the insert arm needs platform
 	// (NOT NULL) + label, matching the auto-provision row.
 	const res = await supabase.rpc('merge_my_device_settings', {
@@ -270,13 +291,13 @@ async function pushDevice(userId: string, deviceId: string, changes: PrefsBag): 
 	if (merged) cache.writeDevice(userId, deviceId, merged);
 }
 
-async function drainPending(userId: string, deviceId: string): Promise<void> {
+async function drainPending(cache: PrefsCache, userId: string, deviceId: string): Promise<void> {
 	const queue = cache.readPending(userId, deviceId);
 	if (queue.length === 0) return;
 	const unsent = await drainQueue(queue, (change) =>
 		change.isDevice
-			? pushDevice(userId, deviceId, change.changes)
-			: pushUniversal(userId, change.changes),
+			? pushDevice(cache, userId, deviceId, change.changes)
+			: pushUniversal(cache, userId, change.changes),
 	);
 	if (unsent.length === queue.length) return;
 	cache.clearPending(userId, deviceId);

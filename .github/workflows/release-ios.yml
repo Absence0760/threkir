@@ -168,8 +168,11 @@ jobs:
 
       - name: Pin version from tag
         working-directory: apps/mobile_ios
+        env:
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
         run: |
-          sed -i '' "s/^version: .*/version: ${{ steps.version.outputs.name }}+${{ steps.version.outputs.code }}/" pubspec.yaml
+          sed -i '' "s/^version: .*/version: ${VERSION_NAME}+${VERSION_CODE}/" pubspec.yaml
           grep '^version:' pubspec.yaml
 
       - name: Decode the Firebase config

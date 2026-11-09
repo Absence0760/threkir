@@ -193,9 +193,12 @@ export function parseSyncScript(src) {
 
 // The release workflow's per-function deploy steps. Each `aws lambda
 // update-alias` is read for the `--function-name` it targets and the `--name`
-// it repoints, then the `steps.aws.outputs.<key>` reference is resolved back
-// through the `echo "<key>=…" >> "$GITHUB_OUTPUT"` line that defines it — so
-// the function names come out of the workflow rather than out of a list here.
+// it repoints. The step passes the name through its own `env:` (never a
+// `${{ }}` spliced into the script, which zizmor reports as template
+// injection), so `--function-name "$VAR"` is resolved to the nearest
+// `VAR: ${{ steps.aws.outputs.<key> }}` above it, and that output back through
+// the `echo "<key>=…" >> "$GITHUB_OUTPUT"` line that defines it — so the
+// function names come out of the workflow rather than out of a list here.
 /**
  * @param {string} src
  * @returns {ReleaseWorkflow}
@@ -218,12 +221,17 @@ export function parseReleaseWorkflow(src) {
     const args = m[1];
     const fnArg = args.match(/--function-name\s+"([^"]*)"/)?.[1] ?? null;
     const aliasName = args.match(/(?:^|\s)--name\s+(\S+)/)?.[1] ?? null;
-    const ref =
-      fnArg === null
-        ? null
-        : (fnArg.match(
-            /\$\{\{\s*steps\.aws\.outputs\.([A-Za-z0-9_]+)\s*\}\}/,
-          )?.[1] ?? null);
+    const envVar = fnArg?.match(/^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?$/)?.[1] ?? null;
+    /** @type {string | null} */
+    let ref = null;
+    if (envVar !== null) {
+      const binding = new RegExp(
+        `^[ \\t]*${envVar}:[ \\t]*\\$\\{\\{\\s*steps\\.aws\\.outputs\\.([A-Za-z0-9_]+)\\s*\\}\\}`,
+        'gm',
+      );
+      const before = src.slice(0, m.index);
+      for (const b of before.matchAll(binding)) ref = b[1];
+    }
     entries.push({
       outputKey: ref,
       aliasName,
@@ -423,7 +431,7 @@ export function compareSources(tf, sh, rel) {
     if (e.outputKey === null) {
       errors.push(
         'An `aws lambda update-alias` step in release-web.yml does not name its ' +
-          'function via `steps.aws.outputs.<key>`.\n' +
+          'function via an `env:` variable bound to `steps.aws.outputs.<key>`.\n' +
           '  This guard resolves the name through that step output and will not ' +
           'guess.',
       );

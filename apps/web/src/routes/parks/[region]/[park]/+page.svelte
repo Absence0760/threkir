@@ -99,10 +99,18 @@
 				{/each}
 			</ul>
 		{/if}
+		<p class="not-affiliated" data-testid="park-not-affiliated">{m('parks.notAffiliated')}</p>
 	{/if}
 </div>
 
 <style>
+	.not-affiliated {
+		max-width: 48rem;
+		margin: var(--space-lg) 0 0;
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+		line-height: 1.5;
+	}
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
 	}

@@ -11,8 +11,9 @@
 
 	interface Props {
 		size?: number;
+		parkCourse?: boolean;
 	}
-	let { size = 14 }: Props = $props();
+	let { size = 14, parkCourse = false }: Props = $props();
 </script>
 
-<ProvenanceBadge kind="official" {size} />
+<ProvenanceBadge kind="official" {size} {parkCourse} />

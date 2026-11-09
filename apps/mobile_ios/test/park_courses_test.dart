@@ -108,6 +108,18 @@ void main() {
   );
 
   test(
+    'isLongCourse: only a course over 15 km carries the long-course notice',
+    () {
+      expect(kLongCourseThresholdM, 15000);
+      expect(isLongCourse(5000), isFalse);
+      expect(isLongCourse(15000), isFalse);
+      expect(isLongCourse(15001), isTrue);
+      expect(isLongCourse(50000), isTrue);
+      expect(isLongCourse(double.nan), isFalse);
+    },
+  );
+
+  test(
     'groupParksByRegion: regions in code order, parks by name within each',
     () {
       final groups = groupParksByRegion<_Park>(

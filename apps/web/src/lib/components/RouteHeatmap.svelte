@@ -36,6 +36,7 @@
 	} from '#lib/routes/distance_bands.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import { ParkCourseRouteLookup } from '#lib/parks/park_course_routes.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { escapeHtml, safeHref } from '#lib/util/html_escape.ts';
@@ -183,6 +184,10 @@
 	// list (and the count) render straight off the same fetch the map
 	// pins use.
 	let routePins = $state<DiscoverableRoutePin[]>([]);
+	const parkCourseRoutes = new ParkCourseRouteLookup();
+	$effect(() => {
+		void parkCourseRoutes.check(routePins.filter((r) => r.is_official).map((r) => r.id));
+	});
 
 	// Selected race-distance bands (5k / 10k / half / marathon / ultra),
 	// multi-select. Empty = no distance filter. Combines with the lens.
@@ -1693,7 +1698,9 @@
 								>{/if}
 							{#if r.is_featured}<span class="result-star" title={m('routeHeatmap.featured')}>★</span>{/if}
 							{r.name}
-							{#if r.is_official}<OfficialBadge />{/if}
+							{#if r.is_official && parkCourseRoutes.known(r.id)}<OfficialBadge
+									parkCourse={parkCourseRoutes.isParkCourse(r.id)}
+								/>{/if}
 						</span>
 						<span class="result-meta">
 							{#if band}<span class="result-band">{band.label}</span>{/if}

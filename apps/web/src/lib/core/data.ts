@@ -11697,6 +11697,17 @@ export async function fetchParkCourseForSegment(
 	return park ? { course: data, park: park as unknown as Park } : null;
 }
 
+/// Which of these routes are a park course's official route, so their Official
+/// badge can read "Official Threkir course". Throws on a failed read.
+export async function fetchParkCourseRouteIds(routeIds: readonly string[]): Promise<Set<string>> {
+	if (routeIds.length === 0) return new Set();
+	const { data, error } = await queryChunked(routeIds, (part) =>
+		supabase.from(TABLES.park_courses).select('route_id').in('route_id', part),
+	);
+	if (error) throw dbError(error);
+	return new Set((data ?? []).flatMap((r) => (r.route_id ? [r.route_id] : [])));
+}
+
 /// The credit an exported file of this route must carry when the route is a
 /// park course's official route (OpenStreetMap's licence asks for it on the
 /// exported work, not only on the page). Null for any other route. Throws on

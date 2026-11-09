@@ -140,6 +140,7 @@ supabase db reset    # replays everything from scratch, including the new one
 - **Storage buckets and their RLS**: in a migration, via `insert into storage.buckets` + `create policy on storage.objects`. See `20260410_001_runs_to_storage.sql` for the canonical example.
 - **Test data / fixtures**: in `seed.sql`, not a migration. `supabase db reset` runs `seed.sql` after migrations.
 - **Functions / views**: in a migration (`create or replace function ...`). See `20260406_001_database_functions.sql` for `weekly_mileage` and `personal_records`.
+- **Real park courses** (parks, their catalogue segments, `park_courses` rows, official routes): in neither. They are an operator load: `node scripts/parks/load.mjs <park dir> --club-id … --author-id …` prints one call of the service-role-only `private.load_park_catalogue`, which upserts them in place (decisions § 2425, [park_courses.md § Loading courses](../../docs/features/park_courses.md#loading-courses)). Don't hand-insert those rows.
 
 ### Online-safety: NOT VALID on high-volume tables
 

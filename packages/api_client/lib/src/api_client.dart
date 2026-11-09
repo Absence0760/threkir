@@ -5893,6 +5893,25 @@ class ApiClient {
     ];
   }
 
+  /// Which of [routeIds] are a park course's official route, so their
+  /// Official badge can read "Official Threkir course". Mirrors web
+  /// `fetchParkCourseRouteIds`. Throws on a failed read.
+  Future<Set<String>> fetchParkCourseRouteIds(List<String> routeIds) async {
+    if (routeIds.isEmpty) return <String>{};
+    final rows = await readChunked(
+      routeIds,
+      (chunk) async => _client
+          .from(ParkCourseRow.table)
+          .select(ParkCourseRow.colRouteId)
+          .inFilter(ParkCourseRow.colRouteId, chunk),
+    );
+    return {
+      for (final r in rows)
+        if (r[ParkCourseRow.colRouteId] is String)
+          r[ParkCourseRow.colRouteId] as String,
+    };
+  }
+
   /// The geometry provenance of the park course whose official route is
   /// [routeId], with its park's name and site, for the credit an exported
   /// file of that route must carry. Null for any other route; the park fields

@@ -29,7 +29,8 @@ ParkListing _park({
   season: 2026,
 );
 
-ParkCourseListing _course({String status = 'open'}) => ParkCourseListing(
+ParkCourseListing _course({String status = 'open', double distanceM = 1100}) =>
+    ParkCourseListing(
   course: ParkCourseRow(
     id: 'c1',
     parkId: 'p1',
@@ -48,7 +49,7 @@ ParkCourseListing _course({String status = 'open'}) => ParkCourseListing(
       {'lat': 37.0, 'lng': -77.0},
       {'lat': 37.01, 'lng': -77.0},
     ],
-    distanceM: 1100,
+    distanceM: distanceM,
     surface: 'trail',
     isActive: true,
     createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
@@ -183,6 +184,10 @@ void main() {
     expect(find.text('North Carolina'), findsOneWidget);
     expect(find.text('Pocahontas State Park'), findsOneWidget);
     expect(find.text('State park'), findsNWidgets(2));
+    expect(
+      find.textContaining('Run one whenever the park is open'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('ParksScreen says so when there are no parks', (tester) async {
@@ -213,6 +218,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Lake Loop'), findsOneWidget);
+    expect(find.byKey(const Key('park-not-affiliated')), findsOneWidget);
+    expect(
+      find.textContaining('not organised, sponsored or endorsed by the park'),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
@@ -233,6 +243,11 @@ void main() {
       expect(api.leaderboardSeasons, [2026]);
       expect(find.byKey(const Key('park-course-safety')), findsOneWidget);
       expect(find.byKey(const Key('park-course-attribution')), findsOneWidget);
+      expect(
+        find.byKey(const Key('park-course-not-affiliated')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('park-course-long')), findsNothing);
       expect(find.byKey(const Key('park-course-share-gpx')), findsOneWidget);
       expect(find.byKey(const Key('park-course-help')), findsOneWidget);
       expect(find.text('This year (2026)'), findsOneWidget);
@@ -267,6 +282,28 @@ void main() {
     // A closed course offers nothing to follow, the GPX included.
     expect(find.byKey(const Key('park-course-share-gpx')), findsNothing);
     expect(find.byKey(const Key('park-course-safety')), findsOneWidget);
+  });
+
+  testWidgets('ParkCourseScreen adds the long-course notice over 15 km', (
+    tester,
+  ) async {
+    tallView(tester);
+    await tester.pumpWidget(
+      _host(
+        ParkCourseScreen(
+          api: _ParksApi(),
+          listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+          course: _course(distanceM: 21100),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('park-course-long')), findsOneWidget);
+    expect(
+      find.textContaining('Start early enough to finish before the park closes.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('park-course-not-affiliated')), findsOneWidget);
   });
 
   testWidgets(

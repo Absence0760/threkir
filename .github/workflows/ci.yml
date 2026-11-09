@@ -467,14 +467,15 @@ jobs:
             exit 1
           fi
       # Park course lines are built offline from a committed spec + snapshot
-      # (issue #1313). This pins the geometry rules and fails when a committed
-      # course no longer matches what its spec and snapshot build.
+      # (issue #1313). This pins the geometry rules, fails when a committed
+      # course no longer matches what its spec and snapshot build, and pins the
+      # load payload the operator's SQL carries (issue #1342).
       - name: Park course geometry still builds to the committed courses
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
-          if ! node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs || ! node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/; then
-            echo "::error::The park course pipeline regressed: a geometry rule in scripts/parks/lib/course_geometry.mjs (loop tracing, distance, gain, checkpoints) or a committed course under scripts/parks/catalogue/ no longer matches what its park.json and snapshot.json build. Nothing here touches the network."
-            echo "Reproduce with: node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
+          if ! node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs scripts/parks/lib/catalogue_payload.test.mjs || ! node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/; then
+            echo "::error::The park course pipeline regressed: a geometry rule in scripts/parks/lib/course_geometry.mjs (loop tracing, distance, gain, checkpoints), the load payload in scripts/parks/lib/catalogue_payload.mjs (mapping, validation, the printed SQL), or a committed course under scripts/parks/catalogue/ no longer matches what its park.json and snapshot.json build. Nothing here touches the network."
+            echo "Reproduce with: node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs scripts/parks/lib/catalogue_payload.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
             exit 1
           fi
       # The stack-start wait loop is shell inside a composite action, so it

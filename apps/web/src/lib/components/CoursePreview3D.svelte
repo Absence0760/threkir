@@ -50,6 +50,7 @@
 	import { play, seek, tick, type Playback } from './course_preview/playback.ts';
 	import { distanceAtStripOffset, stripGeometry, stripX } from './course_preview/strip_geometry.ts';
 	import { addCourseLayers } from './course_preview/course_layers.ts';
+	import { startFinishMarkers, type StartFinishLabels } from './course_preview/start_finish.ts';
 	import {
 		addCourseTerrain,
 		HILLSHADE_SOURCE_ID,
@@ -144,6 +145,11 @@
 	const path = $derived(buildFlyoverPath(points));
 	const hasPath = $derived(path.points.length >= 2 && path.totalM > 0);
 	const markers = $derived(hasPath ? distanceMarkers(path, unit, officialDistanceM) : []);
+	const startFinishLabels = (): StartFinishLabels => ({
+		start: m('coursePreview.markerStart'),
+		finish: m('coursePreview.markerFinish'),
+		startFinish: m('coursePreview.markerStartFinish'),
+	});
 	const courseScale = $derived(courseDistanceScale(path.totalM, officialDistanceM));
 	const climbs = $derived(hasPath ? detectClimbs(path, { source: climbSource, names: climbNames, noiseBandM }) : []);
 	const strip = $derived(hasPath ? elevationStrip(path, STRIP_SAMPLES) : []);
@@ -242,7 +248,13 @@
 		});
 		created.on('load', () => {
 			addTerrain(created);
-			addCourseLayers(created, { path, climbs, markers, darkBasemap });
+			addCourseLayers(created, {
+				path,
+				climbs,
+				markers,
+				startFinish: startFinishMarkers(path, startFinishLabels()),
+				darkBasemap,
+			});
 			frameCourse(created);
 			renderPosition();
 			if (mode === 'flight' && !viewerDrove) {
@@ -526,6 +538,7 @@
 					ofTotal: m('coursePreview.videoOfTotal', { total: formatDistance(vPath.totalM * vScale) }),
 					elevationAt: (ele) => formatElevation(ele),
 					climbLabel: (i) => climbLabel(i, vClimbs),
+					startFinish: startFinishLabels(),
 					endLines: [videoSummary ?? formatDistance(vPath.totalM * vScale), title],
 					url: new URL(DEFAULT_SITE_URL).host,
 				},

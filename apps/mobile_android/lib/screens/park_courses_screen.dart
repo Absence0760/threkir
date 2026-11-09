@@ -294,8 +294,25 @@ class _ParkScreenState extends State<ParkScreen> {
                       ),
                     ),
                   ),
+                const SizedBox(height: 16),
+                _NotAffiliatedNote(key: const Key('park-not-affiliated')),
               ],
             ),
+    );
+  }
+}
+
+class _NotAffiliatedNote extends StatelessWidget {
+  const _NotAffiliatedNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      AppLocalizations.of(context).parksNotAffiliated,
+      style: theme.textTheme.labelSmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
     );
   }
 }
@@ -520,6 +537,8 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 4),
+          _NotAffiliatedNote(key: const Key('park-course-not-affiliated')),
           const SizedBox(height: 12),
           Row(
             key: const Key('park-course-safety'),
@@ -539,6 +558,27 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
               ),
             ],
           ),
+          if (isLongCourse(segment.distanceM)) ...[
+            const SizedBox(height: 8),
+            Row(
+              key: const Key('park-course-long'),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.schedule,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l10n.parksLongCourseNotice,
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (geometry.length >= 2 && course.status != 'closed') ...[
             const SizedBox(height: 12),
             Align(

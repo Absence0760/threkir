@@ -9,7 +9,17 @@
 // A course is refused (non-zero exit, nothing written) when its traced
 // distance is more than 5 % off the park's published figure: either the spec
 // names the wrong ways or the published figure means a different route, and
-// both need a person to look before anything is loaded.
+// both need a person to look before anything is loaded. A course whose line
+// uses a way not open to people on foot (a social trail, a bike-only trail,
+// `access=no` without a foot override) is refused the same way, and so is one
+// whose line uses a way the park's `trail_review` has not marked designated
+// after checking it against the land manager's own trail map.
+//
+// Where the start or end line the database's gate trigger will derive from the
+// built points faces more than 10 degrees off the course at that end, the
+// course's manifest entry carries a curated `start_gate` / `end_gate` there,
+// which the load writes as a curator line. The line follows the route; the
+// route is not reshaped to suit the trigger.
 //
 // Run:   node scripts/parks/build.mjs scripts/parks/catalogue/us-va/pocahontas
 // Check: node scripts/parks/build.mjs --check scripts/parks/catalogue/us-va/pocahontas
@@ -20,6 +30,9 @@ import path from 'node:path';
 import {
 	PUBLISHED_DISTANCE_TOLERANCE,
 	RACE_DISTANCES_M,
+	assertFootAccess,
+	assertTrailReview,
+	curatedGates,
 	distanceDeviation,
 	elevationGainM,
 	lapCourse,
@@ -65,6 +78,8 @@ export function buildPark(dir) {
 			start: course.start_node,
 			direction: course.direction,
 		});
+		footAccessOrThrow(course.slug, sequence, ways);
+		const fords = trailReviewOrThrow(course.slug, sequence, ways, spec.trail_review);
 		const raw = toPoints(sequence, snapshot.nodes);
 		const distanceM = pathLengthM(raw);
 		const publishedM = course.published.distance_mi * METERS_PER_MILE;
@@ -81,6 +96,7 @@ export function buildPark(dir) {
 			lng: round6(p.lng),
 			ele: p.ele ?? null,
 		}));
+		const gates = curatedGatesOrThrow(course.slug, waypoints);
 
 		const geojson = {
 			type: 'FeatureCollection',
@@ -114,6 +130,7 @@ export function buildPark(dir) {
 			direction: course.direction,
 			surface: course.surface,
 			difficulty: course.difficulty,
+			...(fords.length > 0 ? { fords } : {}),
 			geometry_source: 'osm',
 			source_ref: course.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -124,6 +141,7 @@ export function buildPark(dir) {
 			published_deviation_pct: Math.round(deviation * 1000) / 10,
 			published_source: course.published.source,
 			checkpoints,
+			...gates,
 			waypoint_count: waypoints.length,
 		});
 	}
@@ -139,7 +157,10 @@ export function buildPark(dir) {
 		});
 		const leadIn = traceVia({ ways, nodes: snapshot.nodes, via: race.lead_in_via });
 		const loop = traceVia({ ways, nodes: snapshot.nodes, via: race.loop_via });
-		const full = toPoints(lapCourse({ leadIn, loop, laps: race.laps }), snapshot.nodes);
+		const sequence = lapCourse({ leadIn, loop, laps: race.laps });
+		footAccessOrThrow(race.slug, sequence, ways);
+		const fords = trailReviewOrThrow(race.slug, sequence, ways, spec.trail_review);
+		const full = toPoints(sequence, snapshot.nodes);
 		const leadInM = pathLengthM(toPoints(leadIn, snapshot.nodes));
 		const lapM = pathLengthM(toPoints(loop, snapshot.nodes));
 		const { points: raw, trimEachEndM } = trimToDistance(full, targetM, leadInM);
@@ -150,6 +171,7 @@ export function buildPark(dir) {
 			lng: round6(p.lng),
 			ele: p.ele == null ? null : Math.round(p.ele * 10) / 10,
 		}));
+		const gates = curatedGatesOrThrow(race.slug, waypoints);
 		const startFinish = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 
 		const geojson = {
@@ -195,12 +217,14 @@ export function buildPark(dir) {
 			start_line_from_lead_in_start_m: Math.round(trimEachEndM * 10) / 10,
 			start_finish: startFinish,
 			surface: race.surface,
+			...(fords.length > 0 ? { fords } : {}),
 			geometry_source: 'osm',
 			source_ref: race.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
 			geojson: `${race.slug}.geojson`,
 			elevation_m: gainM,
 			checkpoints,
+			...gates,
 			waypoint_count: waypoints.length,
 		});
 	}
@@ -214,6 +238,45 @@ export function buildPark(dir) {
 	};
 	outputs.set(path.join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 	return outputs;
+}
+
+/**
+ * @param {string} slug
+ * @param {number[]} sequence
+ * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
+ */
+function footAccessOrThrow(slug, sequence, ways) {
+	try {
+		assertFootAccess(sequence, ways);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
+}
+
+/**
+ * @param {string} slug
+ * @param {number[]} sequence
+ * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
+ * @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review
+ */
+function trailReviewOrThrow(slug, sequence, ways, review) {
+	try {
+		return assertTrailReview(sequence, ways, review);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
+}
+
+/**
+ * @param {string} slug
+ * @param {import('./lib/course_geometry.mjs').LatLng[]} waypoints
+ */
+function curatedGatesOrThrow(slug, waypoints) {
+	try {
+		return curatedGates(waypoints);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
 }
 
 function main() {

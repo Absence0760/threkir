@@ -724,6 +724,7 @@ export const PAIRS = [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_SHAPES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseShapes', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'courseShapeLabel', shape: 'switch' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'COURSE_SHAPES', shape: 'strings' },
 		],
 	},
 	{
@@ -732,6 +733,7 @@ export const PAIRS = [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_DIFFICULTIES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kCourseDifficulties', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'courseDifficultyLabel', shape: 'switch' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'COURSE_DIFFICULTIES', shape: 'strings' },
 		],
 	},
 	{
@@ -739,6 +741,7 @@ export const PAIRS = [
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'GEOMETRY_SOURCES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kGeometrySources', shape: 'strings' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'GEOMETRY_SOURCES', shape: 'strings' },
 			{
 				file: 'apps/mobile_android/lib/screens/park_courses_screen.dart',
 				decl: 'geometryAttribution',
@@ -761,6 +764,7 @@ export const PAIRS = [
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'PARK_AGENCIES', shape: 'strings' },
 			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kParkAgencies', shape: 'strings' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'PARK_AGENCIES', shape: 'strings' },
 			{
 				file: 'apps/mobile_android/lib/screens/park_courses_screen.dart',
 				decl: 'agencyLabel',
@@ -1070,6 +1074,7 @@ export const PAIRS = [
 		tableColumn: 'routes.surface',
 		clients: [
 			{ file: TS_TYPES, decl: 'RouteSurface', shape: 'union' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'ROUTE_SURFACES', shape: 'strings' },
 			{
 				file: 'apps/web/src/lib/routes/route_request/constraints.ts',
 				decl: 'RouteRequestSurface',

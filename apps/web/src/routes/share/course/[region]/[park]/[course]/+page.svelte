@@ -6,7 +6,7 @@
 	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
 	import RunMap from '#lib/components/RunMap.svelte';
-	import { regionName } from '#lib/parks/park_courses.ts';
+	import { isLongCourse, regionName } from '#lib/parks/park_courses.ts';
 	import {
 		ATTRIBUTION_LABEL,
 		DIFFICULTY_LABEL,
@@ -131,7 +131,11 @@
 			{#if attributionKey}
 				<p class="attribution" data-testid="share-course-attribution">{m(attributionKey)}</p>
 			{/if}
+			<p class="attribution" data-testid="share-course-not-affiliated">{m('parks.notAffiliated')}</p>
 			<p class="safety" data-testid="share-course-safety">{m('parks.safetyNotice')}</p>
+			{#if isLongCourse(course.segment.distance_m)}
+				<p class="safety" data-testid="share-course-long">{m('parks.longCourseNotice')}</p>
+			{/if}
 		</section>
 	{:else}
 		<main class="content" id="main-content">

@@ -5,7 +5,7 @@
 // rule is unit-tested in `course_geometry.test.mjs`.
 
 /** @typedef {{ lat: number, lon: number, ele?: number | null }} SnapshotNode */
-/** @typedef {{ id: number, nodes: number[] }} SnapshotWay */
+/** @typedef {{ id: number, nodes: number[], tags?: Record<string, string> }} SnapshotWay */
 /** @typedef {{ lat: number, lng: number, ele?: number | null }} LatLng */
 
 const EARTH_RADIUS_M = 6371008.8;
@@ -165,6 +165,134 @@ export function traceLoop({ ways, nodes, start, direction }) {
 	return [...spur.slice(0, -1), ...ring, junction, ...spur.slice(0, -1).reverse()];
 }
 
+/**
+ * Why a way is not open to people on foot, as the tags that say so, or null
+ * when it is. A course over a social trail or a bike-only trail sends runners
+ * where the land manager forbids them (Virginia state parks: 4VAC5-30-274).
+ * `foot=yes` or `foot=designated` overrides a general `access=no`, which is
+ * how OSM marks a foot-only trail.
+ *
+ * @param {Record<string, string>} tags
+ * @returns {string | null}
+ */
+export function footAccessRefusal(tags) {
+	const footOpen = tags.foot === 'yes' || tags.foot === 'designated';
+	/** @type {string[]} */
+	const reasons = [];
+	if (tags.informal === 'yes') reasons.push('informal=yes');
+	if (tags.foot === 'no' || tags.foot === 'private') reasons.push(`foot=${tags.foot}`);
+	if (!footOpen && (tags.access === 'no' || tags.access === 'private')) reasons.push(`access=${tags.access}`);
+	if (!footOpen && tags.highway === 'cycleway') reasons.push('highway=cycleway');
+	if (!footOpen && tags.mtb === 'designated') reasons.push('mtb=designated');
+	if (tags.bicycle === 'designated' && tags.foot === 'no') reasons.push('bicycle=designated');
+	return reasons.length > 0 ? reasons.join(', ') : null;
+}
+
+/**
+ * The listed ways a traced sequence actually walks, by id. A listed way the
+ * trace never uses (a pruned spur, an alternative the via pins avoid) is not
+ * among them.
+ *
+ * @param {number[]} sequence
+ * @param {SnapshotWay[]} ways
+ * @returns {SnapshotWay[]}
+ */
+export function walkedWays(sequence, ways) {
+	/** @type {Map<string, SnapshotWay[]>} */
+	const byEdge = new Map();
+	for (const way of ways) {
+		for (let i = 1; i < way.nodes.length; i++) {
+			const key = edgeKey(way.nodes[i - 1], way.nodes[i]);
+			const list = byEdge.get(key);
+			if (list) list.push(way);
+			else byEdge.set(key, [way]);
+		}
+	}
+	/** @type {Set<SnapshotWay>} */
+	const walked = new Set();
+	for (let i = 1; i < sequence.length; i++) {
+		for (const way of byEdge.get(edgeKey(sequence[i - 1], sequence[i])) ?? []) walked.add(way);
+	}
+	return [...walked].sort((a, b) => a.id - b.id);
+}
+
+/**
+ * Refuse a traced course whose line runs along any way that is not open on
+ * foot. Only the ways the sequence actually walks are checked.
+ *
+ * @param {number[]} sequence
+ * @param {SnapshotWay[]} ways
+ */
+export function assertFootAccess(sequence, ways) {
+	const refused = walkedWays(sequence, ways)
+		.map((way) => ({ way, reason: footAccessRefusal(way.tags ?? {}) }))
+		.filter((r) => r.reason !== null);
+	if (refused.length > 0) {
+		throw new Error(
+			`the course runs on way(s) not open to people on foot: ${refused
+				.map(({ way, reason }) => `way ${way.id} (${reason})`)
+				.join('; ')}; reroute it onto designated trails`,
+		);
+	}
+}
+
+/**
+ * @typedef {{
+ *   checked_at: string,
+ *   source_urls: string[],
+ *   designated: number[],
+ *   refused: Record<string, string>,
+ *   fords?: number[],
+ * }} TrailReview
+ */
+
+/**
+ * Refuse a traced course that walks a way a person has not checked against
+ * the land manager's own trail map, or one they checked and refused. OSM tags
+ * alone cannot say a path is a designated trail (a day-use walkway or a
+ * social connector is usually an untagged `path`), so `park.json` records the
+ * review and the build holds every course to it. Returns the walked ways the
+ * review lists as fords, for the course's manifest entry.
+ *
+ * @param {number[]} sequence
+ * @param {SnapshotWay[]} ways
+ * @param {TrailReview | undefined} review
+ * @returns {number[]}
+ */
+export function assertTrailReview(sequence, ways, review) {
+	if (!review || !Array.isArray(review.designated) || typeof review.refused !== 'object') {
+		throw new Error('the park has no trail_review; check every way against the land manager\'s trail map first');
+	}
+	const designated = new Set(review.designated);
+	const both = Object.keys(review.refused).filter((id) => designated.has(Number(id)));
+	if (both.length > 0) throw new Error(`trail_review lists way(s) ${both.join(', ')} as both designated and refused`);
+	const fords = new Set(review.fords ?? []);
+	const unlisted = [...fords].filter((id) => !designated.has(id));
+	if (unlisted.length > 0) throw new Error(`trail_review lists ford(s) ${unlisted.join(', ')} that are not designated`);
+
+	const walked = walkedWays(sequence, ways);
+	/** @type {string[]} */
+	const problems = [];
+	for (const way of walked) {
+		const reason = review.refused[String(way.id)];
+		if (reason !== undefined) problems.push(`way ${way.id} was refused on review (${reason})`);
+		else if (!designated.has(way.id)) problems.push(`way ${way.id} has not been checked against the land manager's trail map`);
+		else if (way.tags?.ford === 'yes' && !fords.has(way.id)) problems.push(`way ${way.id} is tagged ford=yes but trail_review does not list it as a ford`);
+	}
+	if (problems.length > 0) {
+		throw new Error(`${problems.join('; ')}; reroute it, or record the way in trail_review once it has been checked`);
+	}
+	return walked.filter((way) => fords.has(way.id)).map((way) => way.id);
+}
+
+/**
+ * @param {number} a
+ * @param {number} b
+ */
+function edgeKey(a, b) {
+	return a < b ? `${a}-${b}` : `${b}-${a}`;
+}
+
 /** Race distances in metres, by the slug a race course spec names. */
 export const RACE_DISTANCES_M = Object.freeze({
 	'5k': 5000,
@@ -261,6 +389,170 @@ export function lapCourse({ leadIn, loop, laps }) {
 }
 
 /**
+ * Mirrors `c_along` in `private.course_end_bearing` (migration
+ * 20271116002390): the global segment gate trigger aims each line at the
+ * point this far along the course. `course_geometry.test.mjs` reads the
+ * migration and fails when the two disagree.
+ */
+export const GATE_BEARING_LOOK_AHEAD_M = 25;
+
+/** Mirrors `c_min` in `private.course_end_bearing`: under this much line, an end gets no line. */
+export const GATE_BEARING_MIN_LINE_M = 10;
+
+/** The stretch at each end whose direction the derived line must face. */
+export const COURSE_END_DIRECTION_SPAN_M = 5;
+
+/** How far a derived line may face off the course's own direction at it. */
+export const GATE_BEARING_TOLERANCE_DEG = 10;
+
+/**
+ * `private.gate_plane_xy`: metres east and north of the origin.
+ *
+ * @param {{ lat: number, lng: number }} o
+ * @param {{ lat: number, lng: number }} p
+ */
+function gatePlaneXY(o, p) {
+	let dl = p.lng - o.lng;
+	if (dl >= 180) dl -= 360;
+	else if (dl < -180) dl += 360;
+	const toRad = Math.PI / 180;
+	return { x: dl * toRad * EARTH_RADIUS_M * Math.cos(o.lat * toRad), y: (p.lat - o.lat) * toRad * EARTH_RADIUS_M };
+}
+
+/**
+ * `private.gate_bearing_of`: compass degrees in [0, 360).
+ *
+ * @param {number} x
+ * @param {number} y
+ */
+function gateBearingOf(x, y) {
+	const b = (((Math.atan2(x, y) * 180) / Math.PI) % 360 + 360) % 360;
+	return b >= 360 ? b - 360 : b;
+}
+
+/**
+ * The bearing the gate trigger derives for a course's start line (or, with
+ * `finish`, its end line), step for step as `private.course_end_bearing`
+ * does: the direction from the end point to the point
+ * `GATE_BEARING_LOOK_AHEAD_M` along the line, in a plane centred on the end
+ * point. Null when under `GATE_BEARING_MIN_LINE_M` of line is readable.
+ *
+ * @param {Array<{ lat: number, lng: number }>} points
+ * @param {boolean} finish
+ * @returns {number | null}
+ */
+export function derivedGateBearing(points, finish) {
+	const n = points.length;
+	if (n < 2) return null;
+	const o = points[finish ? n - 1 : 0];
+	let px = 0;
+	let py = 0;
+	let tx = 0;
+	let ty = 0;
+	let acc = 0;
+	for (let i = 1; i <= n - 1; i++) {
+		const { x: cx, y: cy } = gatePlaneXY(o, points[finish ? n - 1 - i : i]);
+		const d = Math.hypot(cx - px, cy - py);
+		if (d > 0) {
+			if (acc + d >= GATE_BEARING_LOOK_AHEAD_M) {
+				const f = (GATE_BEARING_LOOK_AHEAD_M - acc) / d;
+				tx = px + f * (cx - px);
+				ty = py + f * (cy - py);
+				acc = GATE_BEARING_LOOK_AHEAD_M;
+				break;
+			}
+			acc += d;
+			tx = cx;
+			ty = cy;
+		}
+		px = cx;
+		py = cy;
+	}
+	if (acc < GATE_BEARING_MIN_LINE_M) return null;
+	return finish ? gateBearingOf(-tx, -ty) : gateBearingOf(tx, ty);
+}
+
+/**
+ * The direction of travel over the course's first (or, with `finish`, last)
+ * `COURSE_END_DIRECTION_SPAN_M`.
+ *
+ * @param {LatLng[]} points
+ * @param {boolean} finish
+ */
+export function courseEndDirection(points, finish) {
+	const total = pathLengthM(points);
+	const span = finish
+		? slice(points, total - COURSE_END_DIRECTION_SPAN_M, total)
+		: slice(points, 0, COURSE_END_DIRECTION_SPAN_M);
+	const { x, y } = gatePlaneXY(span[0], span[span.length - 1]);
+	return gateBearingOf(x, y);
+}
+
+/**
+ * @param {number} a
+ * @param {number} b
+ */
+function angleApartDeg(a, b) {
+	const d = Math.abs(a - b) % 360;
+	return d > 180 ? 360 - d : d;
+}
+
+/**
+ * Mirrors `c_half_width` in `public.global_segments_set_gates` (migration
+ * 20271122002402): the reach each side of a segment's derived line, which a
+ * curated line takes too.
+ */
+export const GATE_HALF_WIDTH_SEGMENT_M = 15;
+
+/** @typedef {{ lat: number, lng: number, bearing_deg: number, half_width_m: number }} CuratedGate */
+
+/**
+ * The curated start and end lines a course needs. Where the line the gate
+ * trigger will derive from these exact points faces more than
+ * `GATE_BEARING_TOLERANCE_DEG` off the course's own direction at that end (a
+ * bend within the look-ahead skews it: the 10K's start lies 14 m before an 83
+ * degree turn and derives 36 degrees off), that end gets a curator line on its
+ * end point, facing the course's direction over its first or last
+ * `COURSE_END_DIRECTION_SPAN_M`, with the trigger's half-width. The line
+ * follows the route; the route is never reshaped to suit the trigger. An end
+ * within tolerance gets nothing, so the trigger stays its only source.
+ *
+ * Refuses an end with under `GATE_BEARING_MIN_LINE_M` of line: the trigger
+ * would place no line there, and a course that short has no direction worth
+ * curating.
+ *
+ * @param {LatLng[]} points
+ * @returns {{ start_gate?: CuratedGate, end_gate?: CuratedGate }}
+ */
+export function curatedGates(points) {
+	/** @type {{ start_gate?: CuratedGate, end_gate?: CuratedGate }} */
+	const out = {};
+	/** @type {string[]} */
+	const short = [];
+	for (const [finish, name] of /** @type {const} */ ([
+		[false, 'start'],
+		[true, 'end'],
+	])) {
+		const derived = derivedGateBearing(points, finish);
+		if (derived === null) {
+			short.push(`the ${name} line gets no bearing (under ${GATE_BEARING_MIN_LINE_M} m of line)`);
+			continue;
+		}
+		const course = courseEndDirection(points, finish);
+		if (angleApartDeg(derived, course) <= GATE_BEARING_TOLERANCE_DEG) continue;
+		const at = points[finish ? points.length - 1 : 0];
+		out[finish ? 'end_gate' : 'start_gate'] = {
+			lat: at.lat,
+			lng: at.lng,
+			bearing_deg: (Math.round(course * 10) / 10) % 360,
+			half_width_m: GATE_HALF_WIDTH_SEGMENT_M,
+		};
+	}
+	if (short.length > 0) throw new Error(short.join('; '));
+	return out;
+}
+
+/**
  * The polyline between `fromM` and `toM` metres along `points`, with the cut
  * ends interpolated.
  *
@@ -296,7 +588,7 @@ export function slice(points, fromM, toM) {
 /**
  * Cut the same length off both ends of an out-and-back lead-in course so it
  * measures exactly `targetM`, which puts the shared start/finish line on the
- * lead-in. Refused when the course is already short, or when the cut would
+ * lead-in. Refused when the course is already short, when the cut would
  * reach past the lead-in onto the loop (the start would then sit mid-lap).
  *
  * @param {LatLng[]} points

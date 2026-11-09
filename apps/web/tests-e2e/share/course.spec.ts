@@ -24,7 +24,7 @@ interface Planted {
 	courseName: string;
 }
 
-async function plantCourse(baseLat: number, lng: number): Promise<Planted> {
+async function plantCourse(baseLat: number, lng: number, lengthM = 1000): Promise<Planted> {
 	const admin = getAdminClient();
 	const tag = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 	const parkSlug = `e2e-seo-park-${tag}`;
@@ -36,9 +36,9 @@ async function plantCourse(baseLat: number, lng: number): Promise<Planted> {
 			name: courseName,
 			waypoints: [
 				{ lat: baseLat, lng },
-				{ lat: baseLat + 1000 / M_PER_DEG_LAT, lng },
+				{ lat: baseLat + lengthM / M_PER_DEG_LAT, lng },
 			],
-			distance_m: 1000,
+			distance_m: lengthM,
 			surface: 'trail',
 			country_code: 'US',
 		})
@@ -113,12 +113,31 @@ test.describe('park course SEO', () => {
 
 				await expect(page.getByTestId('share-course-attribution')).toContainText('OpenStreetMap');
 				await expect(page.getByTestId('share-course-safety')).toBeVisible();
+				await expect(page.getByTestId('share-course-not-affiliated')).toContainText(
+					'They are not organised, sponsored or endorsed by the park or its managing agency.',
+				);
+				await expect(page.getByTestId('share-course-long')).toHaveCount(0);
 				await expect(page.getByTestId('share-course-boards')).toHaveAttribute(
 					'href',
 					`/parks/${key}`,
 				);
 				// The crawler surface is the course: no board and no runner link.
 				await expect(page.locator('a[href^="/u/"]')).toHaveCount(0);
+			} finally {
+				await teardown(planted);
+			}
+		});
+
+		test('a course over 15 km carries the long-course notice', async ({ page }) => {
+			let planted: Planted | null = null;
+			try {
+				planted = await plantCourse(36.5, -77.6, 21_100);
+				await page.goto(`/share/course/us-va/${planted.parkSlug}/lake-loop`);
+				await expect(page.getByRole('heading', { level: 1, name: planted.courseName })).toBeVisible();
+				await expect(page.getByTestId('share-course-long')).toContainText(
+					'water crossings that can be impassable after rain',
+				);
+				await expect(page.getByTestId('share-course-not-affiliated')).toBeVisible();
 			} finally {
 				await teardown(planted);
 			}

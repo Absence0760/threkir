@@ -16,7 +16,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the segment catalogue's app bar) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
-| **Virginia geometry** | **Not loaded.** See *Loading courses* |
+| Geometry pipeline (`scripts/parks/`) and the operator load (`scripts/parks/load.mjs` → `private.load_park_catalogue`, migration `20271126002425`, decisions § 2425) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) is built and ready; **not yet loaded in production**. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
@@ -126,30 +126,90 @@ Every run is scored on the server (decisions § 2392):
 
 ## Wording and safety
 
-The surfaces say *course* and *time trial*, never *race*. Every course page
-carries the stay-on-trail notice and the geometry attribution (`osm` credits
-OpenStreetMap contributors, `nps` the National Park Service). A closed course
-shows a banner and hides "Navigate this course"; its times and boards stay.
+The surfaces say *course* and *time trial*, never *race*, *compete* or
+*register*. Every course page carries the stay-on-trail notice and the
+geometry attribution (`osm` credits OpenStreetMap contributors, `nps` the
+National Park Service). A closed course shows a banner and hides "Navigate
+this course"; its times and boards stay.
+
+These follow the owner-approved permit conditions (memo
+`reviews/legal-park-course-permit.md`, items 5 and 8; decision on #1097):
+
+- **Not affiliated.** Under the attribution, every park and course page
+  (web and mobile) and the `/share/course` page say that Threkir publishes the
+  courses and the park or its managing agency does not organise, sponsor or
+  endorse them, and that park rules, hours, fees and closures apply
+  (`parks.notAffiliated`).
+- **Long course.** A course over 15 km (`isLongCourse` in the `park_courses`
+  pair) adds `parks.longCourseNotice`: start early enough to finish before the
+  park closes, shared trail with bikes and horses, water crossings that can be
+  impassable after rain. It names no park hours, so no park's hours are
+  hardcoded in copy.
+- **Official label.** A park course's route is official (the official
+  account's club is verified), but its badge reads "Official Threkir course",
+  never just "Official", so it cannot read as the park's own. The route page,
+  heatmap results and route explorer look the route up in `park_courses`
+  (`ParkCourseRouteLookup` on both platforms); an official route shows no
+  badge until the lookup answers, and a failed lookup falls back to the
+  ordinary badge.
+- **Terms.** Terms § 8 Safety says courses, routes and park courses are
+  planning information, not organised or supervised events; Threkir does not
+  inspect, maintain or mark the trails; the runner follows the land's rules,
+  hours, closures and fees and stays on designated trails.
 
 ## Loading courses
 
-A course needs a route owned by the official account, which no migration can
-create, and reviewed geometry. Real courses are therefore an operator load and
-none are in the tree yet: the Virginia trail names and distances in #1313 are
-unverified, and no openly licensed geometry was sourced in this change.
+A course needs a route owned by an official publisher, which no migration can
+create, and reviewed geometry, so real courses are an operator load. The
+geometry is built and reviewed under `scripts/parks/` (its README has the
+pipeline); the load is one call of `private.load_park_catalogue` (migration
+`20271126002425`, decisions § 2425), which only the service role can execute.
 
-1. Extract the trail line (NPS Public Trails first, then OpenStreetMap via
-   Overpass; Virginia DCR data only after DCR confirms terms in writing; never
-   AllTrails, Strava or Garmin routes). Stitch, orient, simplify, fill
-   elevation, check the length against the park's own published figure (within
-   5 %), and place checkpoints on the far side of every cut a runner could take.
-2. As the service role: insert the `global_segments` row (description carries
-   the attribution), the `parks` row if new, then the `park_courses` row with
-   `geometry_source`, `source_ref` and `source_checked_at`.
-3. Draw or import the public route under the official account and set
-   `park_courses.route_id`.
-4. Queue the launch backfill (`enqueue_segment_backfill`, see *Matching*) so
-   existing runs show on the boards the day the course opens.
+The function refuses unless the author is an active owner or admin of the
+verified, public club (`private.is_official_publisher`). In one transaction it
+upserts the park by slug, with its centroid and bounding box taken from every
+course line, and per course, keyed by park and course slug, the catalogue
+segment, the `park_courses` row and the public official route. A re-run updates
+all three in place, so their ids and every effort survive changed geometry; a
+course whose route was deleted gets a new one. It never writes a course's
+`status` or a row's `is_active`, and leaves alone a course the manifest no
+longer names. Every description ends with the manifest's attribution. The
+segment's start and end lines follow the manifest: an end the course carries a
+curated `start_gate` / `end_gate` for is written as a curator line, on insert
+and on every re-load (the build emits one where the derived line would face
+more than 10 degrees off the course, decisions § 2424), and every other end is
+written source `derived`, so the gates trigger derives it from the new line and
+a curated line the manifest has dropped goes back to the derived one. For a
+loaded course the manifest is the record: a line placed by hand is replaced by
+the next load. It returns one row per course: slug, the
+three ids, `created` or `updated`, and the backfill job when asked for one.
+
+Race courses (`race_courses` in the manifest, the Swift Creek 5K to 50K) load
+as standing park courses with calendar-year boards, not as self-timed races.
+Each is a `loop` course, because its start and finish are one line on the
+lead-in: the start line faces out along the lead-in and the end line faces
+back in (on the 10K both are curated, its line sitting 14 m before a bend), and the matcher never lets the crossing that ends a pass start
+the next. Its route carries the race distance as `official_distance_m`.
+
+Operator steps, once per park and again whenever its built files change:
+
+1. Find the official club's id and the publishing account's id (an active
+   owner or admin of that verified club) in Studio.
+2. Generate the statement on a checkout of `main`:
+   `node scripts/parks/load.mjs scripts/parks/catalogue/us-va/pocahontas --club-id <club uuid> --author-id <author uuid> > pocahontas.sql`.
+   It validates the manifest and GeoJSON (slugs, every CHECK vocabulary,
+   checkpoint count, coordinate ranges, a stale or unclosed line, a race
+   course off its distance) and prints one statement; stderr names the
+   courses.
+3. Run the file as the service role: paste it into the production project's
+   Studio SQL editor, or `psql` on the service-role connection. Check the
+   returned rows: six on a first Pocahontas load, all `created`.
+4. Queue the launch backfill for each course, so existing runs show on the
+   boards the day the course opens (see *Matching*):
+   `select enqueue_segment_backfill(global_segment_id) from park_courses pc join parks p on p.id = pc.park_id where p.slug = 'pocahontas';`
+   (or pass `--enqueue-backfill` in step 2 to queue it from the load itself).
+5. Check each course page and its GPX export for the attribution (the
+   pre-deploy checklist below).
 
 The pilot loads the first ten courses and keeps the rest staged (owner
 decision 4's recommended default). The fixture park in `seed.sql` is fictional
@@ -248,9 +308,15 @@ rank, and a closed course drops out of the "every" counts while it is closed.
 
 These gate going live, not the code:
 
-- [ ] Owner sign-off (legal-researcher memo) that a passive leaderboard on public
+- [x] Owner sign-off (legal-researcher memo) that a passive leaderboard on public
       trails needs no Virginia State Parks special-use permit or NPS special
-      event / commercial use authorisation. Record it on #1097.
+      event / commercial use authorisation. Recorded on #1097
+      (`reviews/legal-park-course-permit.md`), conditional on the notices
+      and Terms wording under *Wording and safety*.
+- [ ] A self-timed race event in a state or national park has a land-manager
+      permit (or written no-objection) recorded in its spec's `permit_ref`
+      before the sync creates it. Park courses without a race block need none
+      (reviews/legal-park-course-permit.md).
 - [ ] Attribution checked on each loaded course's page and GPX export.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
 - [ ] NPS API key provisioned before the closures job is built; it must do
@@ -264,6 +330,14 @@ These gate going live, not the code:
 
 ## Tests
 
+- Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
+  (creation, an idempotent re-run, changed geometry in place with efforts
+  kept, status untouched, a deleted route recreated, the backfill flag, the
+  derived lines, curated lines stored as curator lines on insert and update,
+  kept across a re-load and a redraw, reset to derived when dropped, the
+  official route, every refusal); `node --test
+  scripts/parks/lib/catalogue_payload.test.mjs` (the Pocahontas manifest maps
+  to six courses, validation, the printed SQL).
 - pgTAP `apps/backend/supabase/tests/park_courses_test.sql`: catalogue RLS,
   admin-only writes, timezone and vocabulary refusals, the season boundary in
   the park's timezone, completions counting days, block and private-run rules.
@@ -286,8 +360,14 @@ These gate going live, not the code:
   not-found head, the in-app canonical, the course GPX download).
 - Web: `data.test.ts` pins the scorer's fail-closed checkpoint read;
   Playwright `tests-e2e/parks/park-courses.spec.ts` covers the three pages, both
-  boards and seasons, the signed-out view, and a run that skips a checkpoint.
-- Mobile: `test/park_courses_screen_test.dart`.
+  boards and seasons, the signed-out view, a run that skips a checkpoint, the
+  non-affiliation note and the long-course notice either side of 15 km; the
+  share spec pins both notices on `/share/course`.
+- Mobile: `test/park_courses_screen_test.dart` (incl. both notices).
+- Official label: Playwright `tests-e2e/routes/official-content.spec.ts` (a
+  park course route reads "Official Threkir course" in the heatmap results and
+  on the route page); mobile `test/park_course_routes_test.dart` and the park
+  course case in `test/routes_heatmap_screen_test.dart`.
 - Collections: pgTAP `park_course_badges_test.sql` (each family, the floors,
   the closed-course rule, the course-update trigger, DNF runs, notifications,
   the challenge metric and its region, `run_park_course_times` and its grants);

@@ -12151,6 +12151,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Official: published by a verified organiser';
 
   @override
+  String get officialBadgeParkCourseLabel => 'Official Threkir course';
+
+  @override
+  String get officialBadgeParkCourseTooltip =>
+      'Official Threkir course: published by Threkir, not by the park';
+
+  @override
   String get raceDistance5k => '5 km';
 
   @override
@@ -20851,7 +20858,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parksIntro =>
-      'Standing time-trial courses in state and national parks. Run one on any day and your time lands on this year\'s board.';
+      'Standing time-trial courses in state and national parks. Run one whenever the park is open and your time lands on this year\'s board.';
 
   @override
   String get parksLoading => 'Loading park courses…';
@@ -21004,6 +21011,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get parksSafetyNotice =>
       'Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.';
+
+  @override
+  String get parksNotAffiliated =>
+      'Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.';
+
+  @override
+  String get parksLongCourseNotice =>
+      'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.';
 
   @override
   String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';

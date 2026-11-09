@@ -6,7 +6,10 @@
 // `private.course_end_bearing`). No TS port of that derivation exists, so
 // `derivedGates` replicates it: the start line on the first point facing the
 // point 25 m along, the end line on the last point facing from the point 25 m
-// before, none when under 10 m of line survives, half-width 15 m.
+// before, none when under 10 m of line survives, half-width 15 m. Where the
+// manifest carries a curated `start_gate` / `end_gate` for an end, the load
+// writes it as a curator line, which the trigger never re-derives, so that end
+// is timed by the curated line instead (decisions § 2424).
 
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
@@ -33,8 +36,17 @@ interface LatLng {
 	lng: number;
 }
 
+interface CuratedGate {
+	lat: number;
+	lng: number;
+	bearing_deg: number;
+	half_width_m: number;
+}
+
 interface ManifestCourse {
 	slug: string;
+	start_gate?: CuratedGate;
+	end_gate?: CuratedGate;
 	geojson: string;
 	distance_m: number;
 	checkpoints: LatLng[];
@@ -116,6 +128,19 @@ function derivedGates(line: LatLng[]): { start: Gate; end: Gate } {
 	return {
 		start: { lat: first.lat, lng: first.lng, bearingDeg: sb, halfWidthM: GATE_HALF_WIDTH_SEGMENT_M },
 		end: { lat: last.lat, lng: last.lng, bearingDeg: eb, halfWidthM: GATE_HALF_WIDTH_SEGMENT_M },
+	};
+}
+
+function asGate(g: CuratedGate): Gate {
+	return { lat: g.lat, lng: g.lng, bearingDeg: g.bearing_deg, halfWidthM: g.half_width_m };
+}
+
+/** The lines the segment ends up with: a curated one where the manifest has it, else the derived one. */
+function effectiveGates(course: ManifestCourse, line: LatLng[]): { start: Gate; end: Gate } {
+	const derived = derivedGates(line);
+	return {
+		start: course.start_gate ? asGate(course.start_gate) : derived.start,
+		end: course.end_gate ? asGate(course.end_gate) : derived.end,
 	};
 }
 
@@ -223,7 +248,7 @@ interface Built {
 
 const BUILT: Built[] = COURSES.map((course) => {
 	const line = courseLine(course);
-	const gates = derivedGates(line);
+	const gates = effectiveGates(course, line);
 	return {
 		course,
 		line,
@@ -285,7 +310,7 @@ function score(b: Built, track: TrackPoint[]) {
 	return computeGlobalSegmentEfforts(track, [b.geometry])[0];
 }
 
-test('the derived start and end lines sit on one point, as the manifest places them', () => {
+test('the start and end lines sit on one point, as the manifest places them', () => {
 	for (const b of BUILT) {
 		const apart = hopM(b.gates.start, b.gates.end);
 		assert.ok(apart <= 25, `${b.course.slug}: start and end lines ${apart.toFixed(1)} m apart`);
@@ -348,13 +373,30 @@ function angleApart(a: number, b: number): number {
 }
 
 for (const b of BUILT) {
-	test(`${b.course.slug}: each derived line faces the course's own direction at it, within 10 degrees`, () => {
+	test(`${b.course.slug}: each line it is timed by faces the course's own direction at it, within 10 degrees`, () => {
 		const start = angleApart(b.gates.start.bearingDeg, courseDirectionAt(b, false));
 		const end = angleApart(b.gates.end.bearingDeg, courseDirectionAt(b, true));
 		assert.ok(start <= 10, `${b.course.slug}: start line ${start.toFixed(1)} degrees off the course`);
 		assert.ok(end <= 10, `${b.course.slug}: end line ${end.toFixed(1)} degrees off the course`);
 	});
 }
+
+test('a curated line sits only where the derived one would face off the course', () => {
+	for (const b of BUILT) {
+		const derived = derivedGates(b.line);
+		for (const [finish, curated, d] of [
+			[false, b.course.start_gate, derived.start],
+			[true, b.course.end_gate, derived.end],
+		] as const) {
+			const off = angleApart(d.bearingDeg, courseDirectionAt(b, finish));
+			assert.equal(
+				curated !== undefined,
+				off > 10,
+				`${b.course.slug} ${finish ? 'end' : 'start'}: derived ${off.toFixed(1)} degrees off, curated ${curated !== undefined}`,
+			);
+		}
+	}
+});
 
 test('the half, marathon and 50K share a start area, and a run of one is not timed on another', () => {
 	const slugs = ['swift-creek-half', 'swift-creek-marathon', 'swift-creek-50k'];

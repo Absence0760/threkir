@@ -205,7 +205,7 @@ Deno.test('SSRF: a redirect to another host is refused and not followed', async 
 	});
 	const r = await checkDomainProof(DOMAIN, TOKEN, deps);
 	assertEquals(r.checks.well_known, 'refused_redirect');
-	assert(!requested.some((u) => u.includes('attacker.example.net') && !u.startsWith(DOH_URL)));
+	assert(!requested.some((u) => new URL(u).hostname === 'attacker.example.net'));
 });
 
 Deno.test('SSRF: a redirect to an internal address on a lookalike path is refused', async () => {

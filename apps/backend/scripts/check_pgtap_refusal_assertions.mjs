@@ -1808,6 +1808,51 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'segment_match_jobs_test.sql',
+    description: 'an admin can start a backfill',
+    columns: ['jobs.payload'],
+    readBack: "the admin's start is queued as one backfill job for that segment, from the first run",
+    reason:
+      'enqueue_segment_backfill builds the payload with jsonb_strip_nulls(jsonb_build_object(...)) ' +
+      'rather than storing the argument; the read-back compares the whole stored payload of the queued ' +
+      'job, so a server that wrote a different segment, kept the null cursor or wrote nothing fails there.',
+  },
+  {
+    file: 'club_verification_test.sql',
+    description: 'the owner submits',
+    columns: ['club_verification_requests.note', 'club_verification_requests.organisation'],
+    reason:
+      'the claim is that the owner may open a request; the organisation and note are trimmed on the way ' +
+      'in, and the stored organisation is read back on the later requests ("the third request stores ' +
+      'the organisation").',
+  },
+  {
+    file: 'club_verification_test.sql',
+    description: 'the owner resubmits after a lapse',
+    columns: ['club_verification_requests.organisation'],
+    reason:
+      'the claim is that a lapse frees the club to open a new request, which the manual approval that ' +
+      'follows depends on; the trimmed organisation is read back on the later requests.',
+  },
+  {
+    file: 'club_verification_test.sql',
+    description: 'a third request',
+    columns: ['club_verification_requests.organisation'],
+    readBack: 'the third request stores the organisation',
+    reason:
+      'submit_club_verification trims the organisation before storing it; the read-back reads the ' +
+      'stored value of the new pending row, so a server that stopped writing it would fail there.',
+  },
+  {
+    file: 'club_verification_test.sql',
+    description: 'the owner submits for a second club',
+    columns: ['club_verification_requests.organisation'],
+    readBack: "the second club's request stores the organisation",
+    reason:
+      'submit_club_verification trims the organisation before storing it; the read-back reads the ' +
+      'stored value of that club\'s only request.',
+  },
+  {
     file: 'race_course_review_queue_test.sql',
     description: 'the organiser rejects the only suggestion on its race',
     columns: ['race_course_suggestions.status'],

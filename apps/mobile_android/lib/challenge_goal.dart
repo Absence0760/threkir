@@ -24,7 +24,7 @@ const int _dayMs = 86400000;
 /// The kind of unit a goal for a metric is typed in. `distance` and
 /// `elevation` resolve further against the reader's own km/mi preference;
 /// the other three are preference-free.
-enum ChallengeGoalUnit { distance, elevation, hours, activities, days }
+enum ChallengeGoalUnit { distance, elevation, hours, activities, days, courses }
 
 ChallengeGoalUnit challengeGoalUnit(String metric) {
   switch (metric) {
@@ -36,6 +36,8 @@ ChallengeGoalUnit challengeGoalUnit(String metric) {
       return ChallengeGoalUnit.activities;
     case 'streak_days':
       return ChallengeGoalUnit.days;
+    case 'park_courses':
+      return ChallengeGoalUnit.courses;
     case 'distance':
     default:
       return ChallengeGoalUnit.distance;
@@ -54,6 +56,7 @@ num challengeGoalToStored(num typed, String metric, DistanceUnit unit) {
       return unit == DistanceUnit.mi ? typed * kMetresPerMile : typed * 1000;
     case ChallengeGoalUnit.activities:
     case ChallengeGoalUnit.days:
+    case ChallengeGoalUnit.courses:
       return typed;
   }
 }

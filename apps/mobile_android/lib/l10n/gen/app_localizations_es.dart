@@ -150,6 +150,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get recapLatestStartLabel => 'Salida más tardía';
 
   @override
+  String get recapParkCoursesLabel => 'Recorridos de parque';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'en $n parques',
+      one: 'en $n parque',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Parques donde corriste';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n recorridos',
+      one: '$n recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'Elegir ruta';
 
   @override
@@ -4822,6 +4850,15 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get heatmapHeatDensity => 'Densidad de calor';
+
+  @override
+  String get heatmapUpcomingRaces => 'Próximas carreras';
+
+  @override
+  String get heatmapViewRace => 'Ver carrera';
+
+  @override
+  String get heatmapRaceFallbackName => 'Carrera';
 
   @override
   String get heatmapResetFilters => 'Restablecer filtros';
@@ -10949,6 +10986,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Aún no hay esfuerzos: sé el primero en correr este segmento.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Algunos intentos antiguos se midieron a la manera anterior, pasando cerca de la salida y la llegada en lugar de cruzar las líneas. Cada uno se vuelve a medir la próxima vez que su corredor abra la carrera.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'Tienes esta corona: $label.';
   }
@@ -14893,6 +14934,28 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get challengesMetricParkCourses => 'Recorridos de parque';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n recorridos',
+      one: '$n recorrido',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'recorridos';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Cuenta los recorridos de parque en $region';
+  }
+
+  @override
   String get challengesLeaveConfirmTitle => '¿Salir del desafío?';
 
   @override
@@ -15832,6 +15895,75 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => 'Completaste 10 planes de entrenamiento';
+
+  @override
+  String get badgesParkCourses1Label => 'Primer recorrido de parque';
+
+  @override
+  String get badgesParkCourses1Desc => 'Completaste un recorrido de parque';
+
+  @override
+  String get badgesParkCourses5Label => 'Habitual de los parques';
+
+  @override
+  String get badgesParkCourses5Desc =>
+      'Completaste 5 recorridos de parque distintos';
+
+  @override
+  String get badgesParkCourses10Label => 'Coleccionista de senderos';
+
+  @override
+  String get badgesParkCourses10Desc =>
+      'Completaste 10 recorridos de parque distintos';
+
+  @override
+  String get badgesParkCourses25Label => 'Explorador de parques';
+
+  @override
+  String get badgesParkCourses25Desc =>
+      'Completaste 25 recorridos de parque distintos';
+
+  @override
+  String get badgesParkComplete1Label => 'Parque completado';
+
+  @override
+  String get badgesParkComplete1Desc =>
+      'Completaste todos los recorridos de un parque';
+
+  @override
+  String get badgesParkComplete3Label => 'Tres parques completados';
+
+  @override
+  String get badgesParkComplete3Desc =>
+      'Completaste todos los recorridos de 3 parques';
+
+  @override
+  String get badgesParkComplete10Label => 'Completista de parques';
+
+  @override
+  String get badgesParkComplete10Desc =>
+      'Completaste todos los recorridos de 10 parques';
+
+  @override
+  String get badgesParkPassport1Label => 'Pasaporte de parques';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Completaste un recorrido en cada parque de un estado';
+
+  @override
+  String get badgesParkPassport3Label => 'Pasaporte sellado';
+
+  @override
+  String get badgesParkPassport3Desc =>
+      'Completaste un pasaporte de parques en 3 estados';
+
+  @override
+  String get badgesParkPassport10Label => 'Coleccionista de pasaportes';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Completaste un pasaporte de parques en 10 estados';
 
   @override
   String get racePredictorTitle => 'Predictor de tiempo de carrera';
@@ -20568,6 +20700,17 @@ class AppLocalizationsEs extends AppLocalizations {
   String get shareCardBadgeKicker => 'Insignia conseguida';
 
   @override
+  String get shareCardKindCourse => 'Recorrido de parque';
+
+  @override
+  String get shareCardCourseKicker => 'Tiempo en recorrido de parque';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return 'N.º $rank en $season';
+  }
+
+  @override
   String get runDetailSharePr => 'Compartir tarjeta de marca';
 
   @override
@@ -21284,4 +21427,67 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get prefsNotifyRaceStartingSoonHint =>
       'Una notificación push unos 10 minutos antes de que empiece una carrera programada a la que vas, y cuando cambie su salida. Nunca por correo.';
+
+  @override
+  String get clubVerificationStatusTitle => 'Verificación oficial';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verificado como la presencia oficial de $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verificado como organización oficial.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'La solicitud de $org está pendiente de revisión. Aún no hay prueba del dominio.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'La solicitud de $org está pendiente de revisión. Prueba del dominio encontrada.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'La última solicitud no se aprobó: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'Se quitó la insignia: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'Se quitó la insignia tras un cambio en el club o en su dominio, y necesita una nueva revisión.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'La última solicitud se retiró.';
+
+  @override
+  String get clubVerificationStatusNone => 'No verificado.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Las solicitudes y las pruebas de dominio se gestionan en la web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'No se pudo cargar el estado de verificación.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Reintentar';
+
+  @override
+  String get profileNotifClubVerification =>
+      'Hay novedades sobre la verificación de tu club';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'Hay novedades sobre la verificación de $club';
+  }
 }

@@ -11,7 +11,13 @@ import type { Database, Json } from '../database.types';
 import { asProjectedRun, asRun, type ProjectedRun, type RunRow } from './run_narrow';
 import { SELECT_SEPARATOR, type Join } from './database';
 import type { Insertable, Updatable } from './database';
-import type { JsonObject, OfficialFlag, TrackPoint } from '../types';
+import type {
+	GlobalSegmentMatchedBy,
+	JsonObject,
+	OfficialFlag,
+	SegmentGateSource,
+	TrackPoint,
+} from '../types';
 import { isEntityId } from './entity_id';
 import { saveRunEdit, type RunEditFields, type RunEditOutcome } from './run_edit_cas';
 import { markListsStale } from './list_freshness';
@@ -88,6 +94,15 @@ import {
 } from '../social/paid_registration';
 import { planHeadCopyFields, planWeekCopyRows, planWorkoutCopyRows } from './plan_copy';
 import { clubSlug, CLUB_SLUG_FALLBACK } from '../social/club_slug';
+import {
+	CLUB_VERIFICATION_REQUEST_COLUMNS,
+	type ClubVerificationAuditAction,
+	type ClubVerificationProofMethod,
+	type ClubVerificationRequest,
+	type ClubVerificationStatus,
+	type ProofCheckResult,
+	verificationErrorKey,
+} from '../social/club_verification';
 import {
 	ROUTE_LIST_COLS,
 	PUBLIC_ROUTE_LIST_COLS,
@@ -197,6 +212,8 @@ import {
 	courseAttribution,
 	parseCourseCheckpoints,
 	type CourseCheckpoint,
+	type RecapParkRow,
+	type RunParkCourseTime,
 } from '../parks/park_courses';
 import type { GpxAttribution } from '../routes/route_gpx';
 import type { RecapPeriodKind } from '../types';
@@ -267,6 +284,7 @@ import {
 import { deleteRunsBounded } from './bulk_delete';
 import {
 	assignCompetitionRanks,
+	GLOBAL_SEGMENT_MATCHER_VERSION,
 	type SegmentAgeBand,
 	type SegmentGenderFilter,
 } from '../segments/segments';
@@ -732,6 +750,60 @@ export async function fetchRecapExtras(
 		photoCount: photos.error ? 0 : photos.count ?? 0,
 		personalRecordCount: prs.error ? 0 : prs.count ?? 0,
 	};
+}
+
+/// The signed-in runner's park course efforts started in `[startIso, endIso)`,
+/// each joined to its course and park, for the recap's park card and list
+/// (`recapParkSummary`). A course whose park was pulled is left out (RLS
+/// hides it). Throws on a failed read so the page can leave the card off
+/// rather than claim zero.
+export async function fetchRecapParkCourses(startIso: string, endIso: string): Promise<RecapParkRow[]> {
+	const userId = auth.user?.id;
+	if (!userId) return [];
+	const { data: efforts, error } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('global_segment_id')
+		.eq('user_id', userId)
+		.gte('started_at', startIso)
+		.lt('started_at', endIso);
+	if (error) throw dbError(error);
+	const segmentIds = Array.from(new Set((efforts ?? []).map((e) => e.global_segment_id)));
+	if (segmentIds.length === 0) return [];
+	const { data: courses, error: courseError } = await queryChunked(segmentIds, (part) =>
+		supabase
+			.from(TABLES.park_courses)
+			.select('id, global_segment_id, park_id, parks!inner(name, region_code)')
+			.in('global_segment_id', part),
+	);
+	if (courseError) throw dbError(courseError);
+	const bySegment = new Map<string, RecapParkRow>();
+	for (const c of courses ?? []) {
+		bySegment.set(c.global_segment_id, {
+			parkId: c.park_id,
+			parkName: c.parks.name,
+			regionCode: c.parks.region_code,
+			courseId: c.id,
+		});
+	}
+	return (efforts ?? []).flatMap((e) => {
+		const row = bySegment.get(e.global_segment_id);
+		return row ? [row] : [];
+	});
+}
+
+/// The park course times one of the caller's own runs set, with the season
+/// rank each holds (`run_park_course_times`), for the share image's course
+/// sticker. Throws on a failed read.
+export async function fetchRunParkCourseTimes(runId: string): Promise<RunParkCourseTime[]> {
+	const { data, error } = await supabase.rpc('run_park_course_times', { p_run_id: runId }, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		course_name: r.course_name,
+		park_name: r.park_name,
+		time_seconds: r.time_seconds,
+		season: r.season,
+		season_rank: r.season_rank ?? null,
+	}));
 }
 
 /// Publish (or re-publish) a recap as a public, OG-unfurlable snapshot and
@@ -10094,6 +10166,47 @@ export async function fetchDiscoverableRoutesInBbox(bbox: {
 	return data as DiscoverableRoutePin[];
 }
 
+/// Verified races in the next ~6 months inside the viewport bbox, for the
+/// discovery map's race pins (`upcoming_races_in_bbox`, migration
+/// 20271125002408). Only `is_verified` listings pin; the point is the start of
+/// a publicly shown course, else the listing's location. Races whose organiser
+/// club is verified rank first; `officialOnly` narrows to them for the
+/// Official lens.
+export interface UpcomingRacePin {
+	id: string;
+	name: string;
+	race_date: string;
+	distance_m: number | null;
+	location_label: string | null;
+	is_official: boolean;
+	has_course: boolean;
+	lng: number;
+	lat: number;
+}
+
+export async function fetchUpcomingRacesInBbox(bbox: {
+	minLng: number;
+	minLat: number;
+	maxLng: number;
+	maxLat: number;
+	limit?: number;
+	officialOnly?: boolean;
+}): Promise<UpcomingRacePin[]> {
+	const { data, error } = await supabase.rpc('upcoming_races_in_bbox', {
+		p_min_lng: bbox.minLng,
+		p_min_lat: bbox.minLat,
+		p_max_lng: bbox.maxLng,
+		p_max_lat: bbox.maxLat,
+		p_limit: bbox.limit ?? 100,
+		p_official_only: bbox.officialOnly ?? false,
+	}, { get: true });
+	if (error || !data) {
+		console.warn('fetchUpcomingRacesInBbox failed', error);
+		return [];
+	}
+	return data as UpcomingRacePin[];
+}
+
 // --- Gear tracking (decisions backlog item #7) ---
 
 export type GearKind = 'shoe' | 'bike';
@@ -11013,6 +11126,21 @@ export interface GlobalSegment {
 	country_code: string | null;
 	is_active: boolean;
 	created_at: string;
+	/** The start and end lines (decisions § 2402); null where a segment has none. */
+	start_gate_lat: number | null;
+	start_gate_lng: number | null;
+	start_gate_bearing_deg: number | null;
+	start_gate_half_width_m: number | null;
+	start_gate_source: SegmentGateSource | null;
+	end_gate_lat: number | null;
+	end_gate_lng: number | null;
+	end_gate_bearing_deg: number | null;
+	end_gate_half_width_m: number | null;
+	end_gate_source: SegmentGateSource | null;
+}
+
+function segmentGateSource(v: string | null): SegmentGateSource | null {
+	return v === 'derived' || v === 'curator' ? v : null;
 }
 
 /// One `global_segments` row as the client's `GlobalSegment`. `waypoints` is a
@@ -11027,7 +11155,14 @@ function asGlobalSegment(
 		waypoints: Array.isArray(row.waypoints)
 			? (row.waypoints as unknown as GlobalSegment['waypoints'])
 			: [],
+		start_gate_source: segmentGateSource(row.start_gate_source),
+		end_gate_source: segmentGateSource(row.end_gate_source),
 	};
+}
+
+/// Whether a catalogue segment is timed by its lines: both ends have one.
+export function globalSegmentHasLines(segment: GlobalSegment): boolean {
+	return segment.start_gate_source !== null && segment.end_gate_source !== null;
 }
 
 export interface GlobalSegmentEffort {
@@ -11038,6 +11173,8 @@ export interface GlobalSegmentEffort {
 	time_seconds: number;
 	started_at: string;
 	created_at: string;
+	/** Absent on a leaderboard row: the board RPC does not return it. */
+	matched_by?: GlobalSegmentMatchedBy;
 }
 
 export interface GlobalSegmentLeaderboardEntry {
@@ -11177,6 +11314,24 @@ export async function fetchGlobalSegmentLeaderboard(
 	}));
 }
 
+/// Whether any effort the viewer can see on a catalogue segment was matched by
+/// the circles. On a segment timed by its lines that means an effort written
+/// before the line matcher, still waiting for its runner's next view to be
+/// re-matched (issue #1308), so the board says so. A failed read answers
+/// false: the note is advisory, and the board itself is unaffected.
+export async function globalSegmentHasZoneEfforts(segmentId: string): Promise<boolean> {
+	const { count, error } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('id', { count: 'exact', head: true })
+		.eq('global_segment_id', segmentId)
+		.eq('matched_by', 'zone');
+	if (error) {
+		console.warn('globalSegmentHasZoneEfforts failed', error);
+		return false;
+	}
+	return (count ?? 0) > 0;
+}
+
 /// The active catalogue segments that could be timed on a track with this
 /// extent (`global_segments_in_bbox`, decisions § 2392): those whose own
 /// extent overlaps it padded by `GLOBAL_SEGMENT_CANDIDATE_PAD_M`. The same
@@ -11199,20 +11354,26 @@ export async function fetchGlobalSegmentsInBbox(
 	return { segments: (data ?? []).map(asGlobalSegment), error: null };
 }
 
-/// Backfill catalogue-segment efforts a run earned, from the run-detail page
-/// on mount (owner only). The FALLBACK path: the `segment-match` job scores
-/// every run server-side when its track lands (decisions § 2392), and this
-/// stays until that job has run in production, then goes (issue #1313). It
-/// scores the run's track against the catalogue segments near it (the bbox
-/// lookup, not the whole catalogue) via the pure `computeGlobalSegmentEfforts`
-/// and batch-upserts matches. Idempotent via unique(global_segment_id, run_id)
-/// + ignoreDuplicates. Returns new count.
+/// Score a run's catalogue-segment efforts from the run-detail page on mount
+/// (owner only). The FALLBACK path: the `segment-match` job scores every run
+/// server-side when its track lands (decisions § 2392), and this stays until
+/// that job has run in production, then goes (issue #1313). It scores the
+/// run's track against the catalogue segments near it (the bbox lookup, not
+/// the whole catalogue) via the pure `computeGlobalSegmentEfforts`, then makes
+/// the run's stored effort on every segment it scored say what the matcher
+/// said, as the server's `record_segment_match` does: a new match is
+/// inserted, an effort the run no longer earns is deleted, and one whose time
+/// or rule changed is deleted then re-inserted (there is no client UPDATE
+/// path). A segment it did not score is never touched. Returns the number of
+/// efforts inserted.
 ///
-/// A `runs.metadata.global_segments_scored_count` stamp records the size of
-/// the active catalogue the run was last scored against (issue #333); a cheap
-/// `count` query gates the pass so a scored run only recomputes when the
-/// catalogue grows. The stamp is that count itself, not the number of rows a
-/// fetch returned, so it can always reach the count the gate compares.
+/// Two `runs.metadata` stamps gate the pass so a scored run does not
+/// re-match on every view: `global_segments_scored_count`, the size of the
+/// active catalogue it was last scored against (issue #333), and
+/// `global_segments_matcher_version`, the matcher that scored it. The pass
+/// runs when the catalogue has grown or the run was scored by an older
+/// matcher, which is how efforts the circles-only matcher wrote are
+/// re-matched by the line matcher on their next owner view (issue #1308).
 export async function computeGlobalSegmentEffortsForRun(input: {
 	run_id: string;
 	user_id: string;
@@ -11230,7 +11391,7 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 			.eq('is_active', true),
 	]);
 	const runMetadata = (runRow?.metadata ?? null) as JsonObject | null;
-	if (!shouldRescoreGlobalSegments(runMetadata, activeCount)) return 0;
+	if (!shouldRescoreGlobalSegments(runMetadata, activeCount, GLOBAL_SEGMENT_MATCHER_VERSION)) return 0;
 	// An unknown count cannot be stamped; the pass still runs, and the next
 	// view tries again.
 	const scoredCount = typeof activeCount === 'number' ? activeCount : null;
@@ -11251,26 +11412,39 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	if (checkpointsBySegment === null) return 0;
 	const scorable = segments.filter((seg) => checkpointsBySegment.get(seg.id) !== null);
 
-	const { computeGlobalSegmentEfforts } = await import('../segments/segments');
-	const rows: {
-		global_segment_id: string;
-		run_id: string;
-		user_id: string;
-		time_seconds: number;
-		started_at: string;
-	}[] = [];
+	const { computeGlobalSegmentEfforts, globalSegmentGeometry } = await import('../segments/segments');
 	// One sweep over the candidates rather than a call per segment: the
 	// track's extent is then measured once.
 	const efforts = computeGlobalSegmentEfforts(
 		input.track,
-		scorable.map((seg) => ({
-			points: (seg.waypoints ?? []).map((w) => ({ lat: Number(w.lat), lng: Number(w.lng) })),
-			distance_m: Number(seg.distance_m),
-			checkpoints: checkpointsBySegment.get(seg.id) ?? undefined,
-		})),
+		scorable.map((seg) => globalSegmentGeometry(seg, checkpointsBySegment.get(seg.id))),
 	);
+
+	const { data: storedRows, error: storedErr } = await supabase
+		.from(TABLES.global_segment_efforts)
+		.select('id, global_segment_id, time_seconds, started_at, matched_by')
+		.eq('run_id', input.run_id);
+	if (storedErr) {
+		console.warn('global segment efforts read failed', input.run_id, storedErr);
+		return 0;
+	}
+	const stored = new Map((storedRows ?? []).map((row) => [row.global_segment_id, row]));
+
+	const staleIds: string[] = [];
+	const rows: Insertable<'global_segment_efforts'>[] = [];
 	for (let i = 0; i < scorable.length; i++) {
 		const eff = efforts[i];
+		const have = stored.get(scorable[i].id);
+		if (
+			have &&
+			eff &&
+			have.matched_by === eff.matched_by &&
+			Math.abs(Number(have.time_seconds) - eff.time_seconds) < 0.001 &&
+			Date.parse(have.started_at) === Date.parse(eff.started_at)
+		) {
+			continue;
+		}
+		if (have) staleIds.push(have.id);
 		if (!eff) continue;
 		rows.push({
 			global_segment_id: scorable[i].id,
@@ -11278,7 +11452,19 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 			user_id: userId,
 			time_seconds: eff.time_seconds,
 			started_at: eff.started_at,
+			matched_by: eff.matched_by,
 		});
+	}
+
+	if (staleIds.length > 0) {
+		const { error } = await queryChunked(staleIds, (part) =>
+			supabase.from(TABLES.global_segment_efforts).delete().in('id', part).select('id'),
+		);
+		if (error) {
+			// Don't stamp: the next view retries the whole reconciliation.
+			console.warn('global segment effort re-match delete failed', input.run_id, error);
+			return 0;
+		}
 	}
 	let newCount = 0;
 	if (rows.length > 0) {
@@ -11312,6 +11498,7 @@ export async function computeGlobalSegmentEffortsForRun(input: {
 	const next = stampGlobalSegmentsScored(
 		(freshRow?.metadata ?? null) as JsonObject | null,
 		scoredCount,
+		GLOBAL_SEGMENT_MATCHER_VERSION,
 	);
 	const { error: stampErr } = await supabase
 		.from(TABLES.runs)
@@ -14637,6 +14824,154 @@ export async function setEventGymRoutine(
 		)
 		.eq('id', eventId);
 	if (error) throw dbError(error);
+}
+
+// ─── Club verification (issue #1190 § 2, decisions § 2398) ───────────
+// The owner's half reads the club's requests under RLS (owner + active
+// admins) and acts through definer RPCs that re-check the owner. The site
+// admin's half is the queue and the review RPCs, each hard-denying a
+// non-admin at the database (42501).
+
+/** A verification RPC's own refusal (it raises a stable code) as the
+ *  sentence for it; any other failure unchanged. */
+function clubVerificationError(error: unknown): Error {
+	const key = verificationErrorKey(error);
+	return key ? new AppError(key) : dbError(error);
+}
+
+/** Every verification request of one club the caller may read, newest first. */
+export async function fetchClubVerificationRequests(clubId: string): Promise<ClubVerificationRequest[]> {
+	const { data, error } = await supabase
+		.from(TABLES.club_verification_requests)
+		.select(CLUB_VERIFICATION_REQUEST_COLUMNS)
+		.eq('club_id', clubId)
+		.order('created_at', { ascending: false })
+		.limit(20);
+	if (error) throw dbError(error);
+	return (data ?? []) as ClubVerificationRequest[];
+}
+
+/** Opens a request for the club's website domain. Owner only. */
+export async function submitClubVerification(clubId: string, organisation: string, note: string | null): Promise<string> {
+	const { data, error } = await supabase.rpc('submit_club_verification', {
+		p_club_id: clubId,
+		p_organisation: organisation,
+		p_note: note,
+	});
+	if (error) throw clubVerificationError(error);
+	return data as string;
+}
+
+export async function withdrawClubVerification(requestId: string): Promise<void> {
+	const { error } = await supabase.rpc('withdraw_club_verification', { p_request_id: requestId });
+	if (error) throw clubVerificationError(error);
+}
+
+/** Mails a one-time confirm link to `<localPart>@<the request's domain>`. */
+export async function sendClubVerificationEmail(requestId: string, localPart: string): Promise<void> {
+	const { error } = await supabase.rpc('send_club_verification_email', {
+		p_request_id: requestId,
+		p_local_part: localPart,
+	});
+	if (error) throw clubVerificationError(error);
+}
+
+/** Runs the DNS TXT and .well-known checks for a pending request. */
+export async function checkClubVerificationProof(requestId: string): Promise<ProofCheckResult> {
+	const { data, error } = await supabase.functions.invoke('club-verification', {
+		body: { request_id: requestId },
+	});
+	if (error) throw new Error(await edgeFunctionErrorMessage(error, 'club_verification_check_failed'));
+	return data as ProofCheckResult;
+}
+
+export interface ClubVerificationConfirmation {
+	outcome: 'confirmed' | 'invalid';
+	club_name: string | null;
+	club_slug: string | null;
+}
+
+/** The mailed link's landing page; the token is the credential. */
+export async function confirmClubVerificationEmail(token: string): Promise<ClubVerificationConfirmation> {
+	const { data, error } = await supabase.rpc('confirm_club_verification_email', { p_token: token });
+	if (error) throw clubVerificationError(error);
+	const row = (data ?? [])[0];
+	return {
+		outcome: row?.outcome === 'confirmed' ? 'confirmed' : 'invalid',
+		club_name: row?.club_name ?? null,
+		club_slug: row?.club_slug ?? null,
+	};
+}
+
+export type ClubVerificationQueueView = 'pending' | 'verified' | 'closed';
+
+export interface ClubVerificationQueueRow {
+	request_id: string | null;
+	club_id: string;
+	club_name: string;
+	club_slug: string;
+	club_website_url: string | null;
+	club_is_verified: boolean;
+	club_is_public: boolean;
+	member_count: number;
+	owner_name: string | null;
+	organisation: string | null;
+	domain: string | null;
+	note: string | null;
+	status: ClubVerificationStatus | null;
+	proof_method: ClubVerificationProofMethod | null;
+	proof_verified_at: string | null;
+	proof_detail: string | null;
+	last_checked_at: string | null;
+	check_failures: number;
+	decision_reason: string | null;
+	close_reason: string | null;
+	created_at: string | null;
+	decided_at: string | null;
+	closed_at: string | null;
+}
+
+export async function fetchClubVerificationQueue(view: ClubVerificationQueueView): Promise<ClubVerificationQueueRow[]> {
+	const { data, error } = await supabase.rpc('club_verification_queue', { p_view: view }, { get: true });
+	if (error) throw clubVerificationError(error);
+	return (data ?? []).map((r) => ({
+		...r,
+		member_count: Number(r.member_count ?? 0),
+		check_failures: Number(r.check_failures ?? 0),
+		status: r.status as ClubVerificationStatus | null,
+		proof_method: r.proof_method as ClubVerificationProofMethod | null,
+	}));
+}
+
+export interface ClubVerificationAuditRow {
+	id: number;
+	request_id: string | null;
+	club_name: string;
+	actor_name: string | null;
+	action: ClubVerificationAuditAction;
+	detail: string | null;
+	created_at: string;
+}
+
+export async function fetchClubVerificationAudit(clubId: string): Promise<ClubVerificationAuditRow[]> {
+	const { data, error } = await supabase.rpc('club_verification_audit_log', { p_club_id: clubId }, { get: true });
+	if (error) throw clubVerificationError(error);
+	return (data ?? []).map((r) => ({ ...r, id: Number(r.id), action: r.action as ClubVerificationAuditAction }));
+}
+
+export async function approveClubVerification(requestId: string, note: string | null): Promise<void> {
+	const { error } = await supabase.rpc('approve_club_verification', { p_request_id: requestId, p_note: note });
+	if (error) throw clubVerificationError(error);
+}
+
+export async function rejectClubVerification(requestId: string, reason: string): Promise<void> {
+	const { error } = await supabase.rpc('reject_club_verification', { p_request_id: requestId, p_reason: reason });
+	if (error) throw clubVerificationError(error);
+}
+
+export async function revokeClubVerification(clubId: string, reason: string): Promise<void> {
+	const { error } = await supabase.rpc('revoke_club_verification', { p_club_id: clubId, p_reason: reason });
+	if (error) throw clubVerificationError(error);
 }
 
 // ─── Admin moderation (web-only back-office; /admin/reports) ─────────

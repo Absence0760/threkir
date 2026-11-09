@@ -151,6 +151,7 @@ alter table notifications
       'personal_record',
       'club_join_request', 'club_join_approved', 'event_updated',
       'plan_change_request', 'plan_change_decision',
+      'club_verification',
       'race_starting_soon', 'race_start_moved'
     )
   )

@@ -201,6 +201,13 @@ class _ChallengeDetailScreenState extends State<ChallengeDetailScreen> {
                       const SizedBox(height: 8),
                       Text(c.description!),
                     ],
+                    if (c.metric == 'park_courses' && c.parkRegionCode != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        l10n.challengesParkRegion(c.parkRegionCode!),
+                        key: const Key('challenge-park-region'),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     if (c.joined && c.scope != 'club_vs_club') _progress(context, c),
                     const SizedBox(height: 12),

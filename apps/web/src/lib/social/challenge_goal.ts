@@ -23,8 +23,8 @@ const DAY_MS = 86_400_000;
 
 /// The kind of unit a goal for a metric is typed in. `distance` and
 /// `elevation` resolve further against the reader's own km/mi preference;
-/// the other three are preference-free.
-export type ChallengeGoalUnit = 'distance' | 'elevation' | 'hours' | 'activities' | 'days';
+/// the other four are preference-free.
+export type ChallengeGoalUnit = 'distance' | 'elevation' | 'hours' | 'activities' | 'days' | 'courses';
 
 export function challengeGoalUnit(metric: ChallengeMetric): ChallengeGoalUnit {
 	switch (metric) {
@@ -36,6 +36,8 @@ export function challengeGoalUnit(metric: ChallengeMetric): ChallengeGoalUnit {
 			return 'activities';
 		case 'streak_days':
 			return 'days';
+		case 'park_courses':
+			return 'courses';
 		case 'distance':
 			return 'distance';
 	}
@@ -57,6 +59,7 @@ export function challengeGoalToStored(
 			return unit === 'mi' ? typed * METRES_PER_MILE : typed * 1000;
 		case 'activities':
 		case 'days':
+		case 'courses':
 			return typed;
 	}
 }
@@ -78,6 +81,7 @@ export function challengeGoalFromStored(
 			return unit === 'mi' ? stored / METRES_PER_MILE : stored / 1000;
 		case 'activities':
 		case 'days':
+		case 'courses':
 			return stored;
 	}
 }

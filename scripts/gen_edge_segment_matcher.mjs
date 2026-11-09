@@ -12,7 +12,8 @@
 //
 //   apps/backend/supabase/functions/_shared/segment_matcher.generated.js
 //
-// The entry exports exactly what the function needs: the catalogue sweep, the
+// The entry exports exactly what the function needs: the catalogue sweep and
+// the row-to-geometry reader that carries each segment's lines, the
 // park-course checkpoint parser (so a malformed list fails closed the same way
 // on both sides) and the track extent the candidates are chosen by.
 // apps/web/src/lib/segments/edge_matcher_bundle.test.ts rebuilds the file and
@@ -40,7 +41,7 @@ export const OUTPUT = join(
 );
 
 const ENTRY = [
-	"export { computeGlobalSegmentEfforts } from './segments/segments';",
+	"export { computeGlobalSegmentEfforts, globalSegmentGeometry } from './segments/segments';",
 	"export { parseCourseCheckpoints } from './parks/park_courses';",
 	"export { trackExtent } from './segments/track_extent';",
 	'',

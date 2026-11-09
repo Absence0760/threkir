@@ -82,8 +82,8 @@ test('a deleted event\'s cancel notice links to its club, the page that still ex
 	assert.equal(notificationLinkFor(make({ kind: 'event_cancel' })), null);
 });
 
-test('join requests and approvals link to the club home', () => {
-	for (const kind of ['club_join_request', 'club_join_approved']) {
+test('join requests, approvals and verification updates link to the club home', () => {
+	for (const kind of ['club_join_request', 'club_join_approved', 'club_verification']) {
 		assert.equal(notificationLinkFor(make({ kind, club_slug: 'road-runners' })), '/clubs/road-runners');
 		assert.equal(notificationLinkFor(make({ kind })), null);
 	}

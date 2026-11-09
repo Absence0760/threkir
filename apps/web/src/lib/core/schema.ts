@@ -88,6 +88,7 @@ export const TABLES = {
 	challenges: 'challenges',
 	challenge_participants: 'challenge_participants',
 	challenge_badges: 'challenge_badges',
+	club_verification_requests: 'club_verification_requests',
 } as const;
 
 /// Supabase Storage buckets reached via `supabase.storage.from(...)`.
@@ -133,6 +134,7 @@ export const METADATA_KEYS = {
 	age_grade: 'age_grade',
 	elevation_m: 'elevation_m',
 	global_segments_scored_count: 'global_segments_scored_count',
+	global_segments_matcher_version: 'global_segments_matcher_version',
 	distance_source: 'distance_source',
 	distance_estimator: 'distance_estimator',
 	distance_recorded_m: 'distance_recorded_m',

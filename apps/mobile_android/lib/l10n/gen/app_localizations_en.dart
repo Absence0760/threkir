@@ -149,6 +149,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recapLatestStartLabel => 'Latest start';
 
   @override
+  String get recapParkCoursesLabel => 'Park courses';
+
+  @override
+  String recapParkCoursesSub(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'in $n parks',
+      one: 'in $n park',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get recapParksHeading => 'Parks you ran';
+
+  @override
+  String recapParkCourseCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get routePickerTitle => 'Choose route';
 
   @override
@@ -4779,6 +4807,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get heatmapHeatDensity => 'Heat density';
+
+  @override
+  String get heatmapUpcomingRaces => 'Upcoming races';
+
+  @override
+  String get heatmapViewRace => 'View race';
+
+  @override
+  String get heatmapRaceFallbackName => 'Race';
 
   @override
   String get heatmapResetFilters => 'Reset filters';
@@ -10839,6 +10876,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No efforts yet — be the first to run this segment.';
 
   @override
+  String get segmentOldMatchNote =>
+      'Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.';
+
+  @override
   String segmentsPanelCrownBanner(String label) {
     return 'You hold this crown — $label.';
   }
@@ -14745,6 +14786,28 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get challengesMetricParkCourses => 'Park courses';
+
+  @override
+  String challengesUnitParkCourses(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n courses',
+      one: '$n course',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get challengesGoalSuffixCourses => 'courses';
+
+  @override
+  String challengesParkRegion(String region) {
+    return 'Counts park courses in $region';
+  }
+
+  @override
   String get challengesLeaveConfirmTitle => 'Leave challenge?';
 
   @override
@@ -15675,6 +15738,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get badgesPlan10Desc => 'Completed 10 training plans';
+
+  @override
+  String get badgesParkCourses1Label => 'First park course';
+
+  @override
+  String get badgesParkCourses1Desc => 'Completed a park course';
+
+  @override
+  String get badgesParkCourses5Label => 'Park regular';
+
+  @override
+  String get badgesParkCourses5Desc => 'Completed 5 different park courses';
+
+  @override
+  String get badgesParkCourses10Label => 'Trail collector';
+
+  @override
+  String get badgesParkCourses10Desc => 'Completed 10 different park courses';
+
+  @override
+  String get badgesParkCourses25Label => 'Park explorer';
+
+  @override
+  String get badgesParkCourses25Desc => 'Completed 25 different park courses';
+
+  @override
+  String get badgesParkComplete1Label => 'Park finisher';
+
+  @override
+  String get badgesParkComplete1Desc => 'Completed every course in a park';
+
+  @override
+  String get badgesParkComplete3Label => 'Three parks finished';
+
+  @override
+  String get badgesParkComplete3Desc => 'Completed every course in 3 parks';
+
+  @override
+  String get badgesParkComplete10Label => 'Park completionist';
+
+  @override
+  String get badgesParkComplete10Desc => 'Completed every course in 10 parks';
+
+  @override
+  String get badgesParkPassport1Label => 'Park passport';
+
+  @override
+  String get badgesParkPassport1Desc =>
+      'Completed a course in every park of a state';
+
+  @override
+  String get badgesParkPassport3Label => 'Passport stamped';
+
+  @override
+  String get badgesParkPassport3Desc => 'Completed a park passport in 3 states';
+
+  @override
+  String get badgesParkPassport10Label => 'Passport collector';
+
+  @override
+  String get badgesParkPassport10Desc =>
+      'Completed a park passport in 10 states';
 
   @override
   String get racePredictorTitle => 'Race-time predictor';
@@ -20362,6 +20487,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareCardBadgeKicker => 'Badge earned';
 
   @override
+  String get shareCardKindCourse => 'Park course';
+
+  @override
+  String get shareCardCourseKicker => 'Park course time';
+
+  @override
+  String shareCardCourseRank(String rank, String season) {
+    return '#$rank in $season';
+  }
+
+  @override
   String get runDetailSharePr => 'Share PR card';
 
   @override
@@ -21061,4 +21197,67 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get prefsNotifyRaceStartingSoonHint =>
       'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.';
+
+  @override
+  String get clubVerificationStatusTitle => 'Official verification';
+
+  @override
+  String clubVerificationStatusVerified(String org, String domain) {
+    return 'Verified as the official presence of $org ($domain).';
+  }
+
+  @override
+  String get clubVerificationStatusVerifiedLegacy =>
+      'Verified as an official organisation.';
+
+  @override
+  String clubVerificationStatusPending(String org) {
+    return 'The request for $org is waiting for review. No domain proof found yet.';
+  }
+
+  @override
+  String clubVerificationStatusPendingProof(String org) {
+    return 'The request for $org is waiting for review. Domain proof found.';
+  }
+
+  @override
+  String clubVerificationStatusRejected(String reason) {
+    return 'The last request was not approved: $reason';
+  }
+
+  @override
+  String clubVerificationStatusRevoked(String reason) {
+    return 'The badge was removed: $reason';
+  }
+
+  @override
+  String get clubVerificationStatusLapsed =>
+      'The badge was removed after a change to the club or its domain, and needs a new review.';
+
+  @override
+  String get clubVerificationStatusWithdrawn =>
+      'The last request was withdrawn.';
+
+  @override
+  String get clubVerificationStatusNone => 'Not verified.';
+
+  @override
+  String get clubVerificationStatusWebHint =>
+      'Requests and domain proof are managed on the web.';
+
+  @override
+  String get clubVerificationStatusLoadFailed =>
+      'Couldn\'t load the verification status.';
+
+  @override
+  String get clubVerificationStatusRetry => 'Retry';
+
+  @override
+  String get profileNotifClubVerification =>
+      'There\'s a verification update for your club';
+
+  @override
+  String profileNotifClubVerificationNamed(String club) {
+    return 'There\'s a verification update for $club';
+  }
 }

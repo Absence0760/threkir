@@ -99,12 +99,27 @@ export function readGlobalSegmentsScoredCount(
 	return count;
 }
 
+/// The `runs.metadata.global_segments_matcher_version` stamp: the catalogue
+/// matcher version (`GLOBAL_SEGMENT_MATCHER_VERSION`) a run's efforts were
+/// last computed by. A run scored before the stamp existed carries only the
+/// count, and was scored by version 1 (the circles-only matcher); a run never
+/// scored reads null.
+export function readGlobalSegmentsMatcherVersion(
+	metadata: JsonObject | null | undefined,
+): number | null {
+	if (!metadata || typeof metadata !== 'object') return null;
+	const version = metadata[METADATA_KEYS.global_segments_matcher_version];
+	if (typeof version === 'number' && Number.isInteger(version) && version >= 1) return version;
+	return readGlobalSegmentsScoredCount(metadata) == null ? null : 1;
+}
+
 /// Decide whether a run needs its global-segment efforts (re)computed.
-/// True when the run was never scored, when the stamp is unreadable,
-/// or when the active catalogue has grown past the count the run was
-/// last scored against. `activeCount` null (an unknown / failed count
-/// query) fails open to true — better to re-score once than to never
-/// score a run whose catalogue size we couldn't read.
+/// True when the run was never scored, when the stamp is unreadable, when
+/// the run was scored by an older matcher than `matcherVersion` (its efforts
+/// are then re-matched, issue #1308), or when the active catalogue has grown
+/// past the count the run was last scored against. `activeCount` null (an
+/// unknown / failed count query) fails open to true — better to re-score once
+/// than to never score a run whose catalogue size we couldn't read.
 ///
 /// The stamp is the active count the pass ran under, not the size of a
 /// capped fetch, so it can always reach the count it is compared with. A
@@ -113,22 +128,30 @@ export function readGlobalSegmentsScoredCount(
 export function shouldRescoreGlobalSegments(
 	metadata: JsonObject | null | undefined,
 	activeCount: number | null | undefined,
+	matcherVersion: number,
 ): boolean {
 	const scored = readGlobalSegmentsScoredCount(metadata);
 	if (scored == null) return true;
+	const version = readGlobalSegmentsMatcherVersion(metadata);
+	if (version == null || version < matcherVersion) return true;
 	if (typeof activeCount !== 'number' || !Number.isFinite(activeCount)) return true;
 	return activeCount > scored;
 }
 
-/// Merge the `global_segments_scored_count` stamp into a run's metadata
-/// bag without clobbering the rest of it. Pure — the caller writes the
-/// result back.
+/// Merge the `global_segments_scored_count` and
+/// `global_segments_matcher_version` stamps into a run's metadata bag without
+/// clobbering the rest of it. Pure — the caller writes the result back.
 export function stampGlobalSegmentsScored(
 	metadata: JsonObject | null | undefined,
 	catalogueCount: number,
+	matcherVersion: number,
 ): JsonObject {
 	const base = metadata ?? {};
-	return { ...base, [METADATA_KEYS.global_segments_scored_count]: catalogueCount };
+	return {
+		...base,
+		[METADATA_KEYS.global_segments_scored_count]: catalogueCount,
+		[METADATA_KEYS.global_segments_matcher_version]: matcherVersion,
+	};
 }
 
 /// Normalise the `notes` field of a plan-workout update patch. Trims

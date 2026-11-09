@@ -80,6 +80,10 @@ test('metricFromActivity count + streak each contribute 1', () => {
 	assert.equal(metricFromActivity({}, 'streak_days', null), 1);
 });
 
+test('park_courses is server-only: an activity contributes 0', () => {
+	assert.equal(metricFromActivity({ distance_m: 5000, activity_type: 'run' }, 'park_courses', null), 0);
+});
+
 test('metricFromActivity activity_type filter excludes non-matching', () => {
 	assert.equal(metricFromActivity({ distance_m: 5000, activity_type: 'walk' }, 'distance', 'run'), 0);
 	assert.equal(metricFromActivity({ distance_m: 5000, activity_type: 'run' }, 'distance', 'run'), 5000);

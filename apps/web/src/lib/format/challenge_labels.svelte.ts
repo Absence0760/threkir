@@ -19,6 +19,8 @@ export function formatChallengeGoal(metric: ChallengeMetric, v: number): string 
 			return m('challenges.unitDays', { n: Math.round(v) });
 		case 'activity_count':
 			return m('challenges.unitActivities', { n: Math.round(v) });
+		case 'park_courses':
+			return m('challenges.unitParkCourses', { n: Math.round(v) });
 	}
 }
 

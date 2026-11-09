@@ -25,7 +25,11 @@
 >
 > - **Owner badge sheet (mobile, 2026-11-03, issue #1273 item 7):** tapping one of your own badges on the Achievements tab opens `widgets/badge_share_sheet.dart` — the badge, a Share button that hands the public `/share/badge/<id>` link to the OS share sheet (disabled, with a hint, while the badge is private, since that page answers "not found" for it), and Make public / Make private through `ApiClient.setBadgeVisibility` (an UPDATE of `is_public`, which RLS limits to the owner; an empty answer is treated as the refusal it is). A private badge carries a lock icon on its tile for the owner. Mirrors the owner controls on web's `BadgeGrid.svelte`. Tests: `test/badge_share_sheet_test.dart`.
 > - **Share page in production:** `/share/badge/*` and `/og/badge/*` are CloudFront behaviours routed to the `share-badge` Lambda (`infra/modules/web-stack/main.tf`), bundled and deployed by `release-web.yml` on every `web@*` tag. (This section used to list that wiring as deferred; it shipped.)
-> - **Deferred:** segment badges.
+> - **Deferred:** rank-based segment badges. Completion-based park course families shipped instead (below).
+>
+> ## Park course families (2026-11-08, issue #1313 phase 5)
+>
+> `park_courses` (distinct park courses: 1 / 5 / 10 / 25), `park_complete` (parks where every course not closed is done: 1 / 3 / 10) and `park_passport` (regions with a course done in every active park: 1 / 3 / 10), all `source_kind = 'segment'` with `source_id` null, so a public badge names no course or park. They count completions, which do not move the way a rank does, so they are durable and the revoker never touches them. Awarded from statement triggers on `global_segment_efforts` and `park_courses` (migration `20271123002404`, [decisions § 2404](../architecture/decisions.md)); ladders in `achievement_tiers_met` and both catalogues, compared by `check_shared_constants.mjs`. Details and the floors in [park_courses.md § Collections](park_courses.md#collections). Tests: `park_course_badges_test.sql` and the park cases in `badges.test.ts` ↔ `badges_test.dart`.
 >
 > ## PR cards (2026-11-03, issue #1273 item 7)
 >

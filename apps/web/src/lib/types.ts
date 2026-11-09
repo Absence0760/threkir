@@ -465,6 +465,14 @@ export type RaceSessionStatus = 'armed' | 'running' | 'finished' | 'cancelled';
 // event_courses CHECKs (migration 20271116002390); keep in lockstep
 // (check_constraint_unions.mjs PAIRS).
 export type GateSource = 'derived' | 'organiser';
+// global_segments.start_gate_source / end_gate_source — where a catalogue
+// segment's timing line came from: `derived` from its own polyline, or placed
+// by a `curator`. global_segment_efforts.matched_by — whether an effort was
+// timed between the two lines (`gate`) or by the 35 m circles (`zone`).
+// Enforced by the CHECKs in migration 20271122002402; keep in lockstep
+// (check_constraint_unions.mjs PAIRS).
+export type SegmentGateSource = 'derived' | 'curator';
+export type GlobalSegmentMatchedBy = 'zone' | 'gate';
 // Charity fundraising (fundraising.md, migration 20270213_001). Two
 // narrow-union ↔ CHECK pairs; the Dart side treats both as raw String. Keep
 // each in lockstep with the migration (check_constraint_unions.mjs PAIRS).
@@ -639,6 +647,7 @@ export type NotificationKind =
 	| 'event_updated'
 	| 'plan_change_request'
 	| 'plan_change_decision'
+	| 'club_verification'
 	| 'race_starting_soon'
 	| 'race_start_moved';
 
@@ -813,7 +822,7 @@ export type ActivePlanOverview = {
 
 // ─────────────────────── Challenges & competitions ───────────────────────
 
-export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days';
+export type ChallengeMetric = 'distance' | 'duration' | 'vert' | 'activity_count' | 'streak_days' | 'park_courses';
 export type ChallengeScope = 'individual' | 'club_vs_club' | 'group_goal';
 
 export type Challenge = Omit<ChallengeRow, 'metric' | 'scope' | 'activity_type'> & OfficialFlag & {

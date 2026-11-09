@@ -23,7 +23,7 @@ Give a new or aspiring runner a public, no-auth **Learn** surface — evergreen 
   - Decision to make (see Mobile / IA below): Learn should be **shell-less + anon** like the landing page — a marketing surface shouldn't be wrapped in the dashboard sidebar even for logged-in visitors. Add a `/learn` prefix to `isShellless` and to `isAnonAllowed`.
 - **i18n** — seven locales (`en, de, fr, es, ja, pt-BR, pt-PT`) under `apps/web/src/lib/i18n/locales/*.ts`. `en.ts` is the source of truth; every other locale must define exactly the same keys (`satisfies Messages` + `messages_parity.test.ts` enforce parity — adding a key to `en.ts` without adding it to all six others **fails the build/test**). Strings used at call sites via `m('key', params)`. Detection is client-side (the site is statically prerendered — no Accept-Language SSR).
 - **Prerendering / static hosting** — `apps/web/vite.config.ts` (the `sveltekit()` plugin options): `@sveltejs/adapter-static` with `prerender: { default: true }`. Every route prerenders to static HTML at build unless it opts out with `export const prerender = false` (the share pages do, because they're per-id and Lambda-rendered). **Learn pages are finite, evergreen, and known at build time → they prerender to static HTML and ship in `build/`, served by CloudFront from S3 with zero runtime cost.** This is exactly the SEO-optimal shape decisions §53 makes cheap. `mdsvex` is **already wired** in the `sveltekit()` plugin in `vite.config.ts` (`extensions: ['.svelte', '.md']`, `mdsvex({ extensions: ['.md'] })`) but currently **unused** — no `.md` content routes exist yet. Learn is the first consumer.
-- **In-app features that exist to cross-link to** (verified routes): `/plans` + `/plans/new` (training plans), `/routes/new` (route builder), gear lives under `/settings` integrations / run-gear (no dedicated `/gear` route — link to `/runs` gear or `/settings`; see Cross-linking), `/coach` (AI coach), `/nutrition`, `/social` (clubs/events), `/routes?tab=explore` (route discovery). **Planned, NOT shipped: a race / event calendar** — clubs have events (`/clubs/[slug]/events/*`) but there is no public race-calendar feature. Link to "find a club / event" via `/social?tab=clubs` and note the race-calendar dependency rather than inventing a route.
+- **In-app features that exist to cross-link to** (verified routes): `/plans` + `/plans/new` (training plans), `/routes/new` (route builder), gear lives under `/settings` integrations / run-gear (no dedicated `/gear` route — link to `/runs` gear or `/settings`; see Cross-linking), `/coach` (AI coach), `/nutrition`, `/social` (clubs/events), `/routes?tab=explore` (route discovery). **Race calendar: shipped since 2026-06-20** at `/races` ([race_calendar.md](race_calendar.md)); when this plan was written it did not exist, so the text below still describes the interim `/social?tab=clubs` CTA. The `racing` category and the first-race guide now point at `/races` ([learn.md](learn.md)).
 
 ## Content architecture (source-of-truth decision)
 
@@ -127,11 +127,11 @@ Each guide ends with a contextual CTA block: a short "Ready to do this in the ap
 | What to eat before a long run | `nutrition` | `/nutrition` | shipped |
 | Train smarter / get coached | `ai-coach` | `/messages/coach` | shipped |
 | Find people to run with | `clubs` | `/social?tab=clubs` | shipped |
-| Your first race: how to sign up | `racing` | `/social?tab=clubs` (find a club/event) | **race calendar PLANNED, not shipped** — see note |
+| Your first race: how to sign up | `racing` | `/races` (race calendar) | shipped; the plan's interim CTA was `/social?tab=clubs` |
 | Explore routes near you | `explore` | `/routes?tab=explore` | shipped |
 
 - **Sign-up CTA**: every guide also shows a "Create a free account" button → `/login?signup=1` (the explicit-signup variant used by the share pages). Reuse the share-page CTA copy pattern but with Learn-specific i18n keys.
-- **Planned-vs-shipped note**: there is **no public race-calendar feature today** (clubs have private/public events, but no aggregated race-finder). The "first race" guide must link to the closest *shipped* surface (find a club / browse events via `/social?tab=clubs`) and the plan flags the race-calendar as a future dependency — do **not** link a route that doesn't exist. When a race calendar ships, point this guide's CTA at it and update the mapping table.
+- **Planned-vs-shipped note (superseded: the race calendar shipped 2026-06-20 and the CTA is `/races`)**: when this was written there was **no public race-calendar feature** (clubs have private/public events, but no aggregated race-finder). The "first race" guide must link to the closest *shipped* surface (find a club / browse events via `/social?tab=clubs`) and the plan flags the race-calendar as a future dependency — do **not** link a route that doesn't exist. When a race calendar ships, point this guide's CTA at it and update the mapping table.
 - All CTA targets are auth-gated app routes; an anon reader clicking them hits the layout auth guard → `/login?return_to=...`, which is the desired acquisition funnel (sign in, land on the feature).
 
 ## Sample initial guide set (English first, ~8 starter guides)
@@ -141,7 +141,7 @@ Each guide ends with a contextual CTA block: a short "Ready to do this in the ap
 3. **Choosing your first running shoes** (`gear`) — neutral vs stability, fit, when to replace. CTA → gear tracking.
 4. **What to eat before a long run** (`nutrition`) — timing, carbs, hydration, what to avoid. CTA → `/nutrition`.
 5. **How to pace your first race** (`racing`) — even splits, going out too fast, course recon. CTA → route builder / coach.
-6. **Your first race: how to find and sign up** (`racing`) — finding events, what to expect on race day. CTA → find a club/event (note: race calendar planned).
+6. **Your first race: how to find and sign up** (`racing`) — finding events, what to expect on race day. CTA → `/races` (the race calendar; the plan's interim CTA was find a club/event).
 7. **Trail running basics** (`trail`) — terrain, footing, kit differences, safety. CTA → explore routes.
 8. **Building a weekly running routine** (`training`) — frequency, easy/hard balance, recovery, how a plan helps. CTA → training plans / coach.
 
@@ -242,7 +242,7 @@ Each commit includes its tests (conventions § Commit cadence). Commit with expl
 ## Open questions / decisions owed by the user
 
 1. **Localization scope** (the big one): (a) chrome strings — machine-translate into all six locales now, or ship English-in-all-six (parity-passing) and translate later? (b) guide prose — English-only with the locale-suffix fallback wired (recommended), or commit to translating the starter set into the five other locales, and on what timeline?
-2. **Race-calendar dependency**: the "Your first race" guide currently has no shipped race-finder to point at (only `/social?tab=clubs`). Confirm that's the right interim CTA, and whether a public race-calendar feature is on the roadmap (which would change this guide's CTA later).
+2. **Race-calendar dependency (resolved: `/races` shipped 2026-06-20 and is the guide's CTA)**: the "Your first race" guide had no shipped race-finder to point at (only `/social?tab=clubs`). Confirm that's the right interim CTA, and whether a public race-calendar feature is on the roadmap (which would change this guide's CTA later).
 3. **Shell-less vs app-shell for logged-in visitors**: recommendation is shell-less (marketing chrome like the landing page) for everyone. Confirm — the alternative is wrapping `/learn` in the app sidebar for signed-in users (like `/privacy` does via `anonExtraExact`). Shell-less is recommended because Learn is an acquisition surface, not an in-app destination.
 4. **Gear CTA target**: there's no dedicated `/gear` route; the "choosing shoes" guide CTA points at `/settings` (gear/integrations) or `/runs` (run-gear). Confirm which is the better funnel destination.
 5. **OG images**: ship a single generic branded `/og-default.png` for all guides initially, or author a per-guide hero/OG image? (Generic is the cheap, durable start; per-guide images are a later polish.)

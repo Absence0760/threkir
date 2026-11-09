@@ -69,6 +69,7 @@ GlobalSegmentLeaderboardEntry _fast(
     timeSeconds: t,
     startedAt: DateTime.parse('2026-02-01T00:00:00Z'),
     createdAt: DateTime.parse('2026-02-01T00:00:00Z'),
+    matchedBy: 'zone',
   ),
   athlete: PublicProfile(id: userId, displayName: name),
   rank: rank,

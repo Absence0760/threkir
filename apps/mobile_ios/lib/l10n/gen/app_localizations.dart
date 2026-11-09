@@ -335,6 +335,30 @@ abstract class AppLocalizations {
   /// **'Latest start'**
   String get recapLatestStartLabel;
 
+  /// Park courses phase 5 (recap.parkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get recapParkCoursesLabel;
+
+  /// Park courses phase 5 (recap.parkCoursesSub)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {in {n} park} other {in {n} parks}}'**
+  String recapParkCoursesSub(int n);
+
+  /// Park courses phase 5 (recap.parksHeading)
+  ///
+  /// In en, this message translates to:
+  /// **'Parks you ran'**
+  String get recapParksHeading;
+
+  /// Park courses phase 5 (recap.parkCourseCount)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} course} other {{n} courses}}'**
+  String recapParkCourseCount(int n);
+
   /// App bar title for the full-screen route picker
   ///
   /// In en, this message translates to:
@@ -7767,6 +7791,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Heat density'**
   String get heatmapHeatDensity;
+
+  /// Filter chip toggling the upcoming verified race pins (races in the next six months) in the heatmap filter sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming races'**
+  String get heatmapUpcomingRaces;
+
+  /// Button on a race pin's card on the heatmap that opens the race page
+  ///
+  /// In en, this message translates to:
+  /// **'View race'**
+  String get heatmapViewRace;
+
+  /// Title shown on a heatmap race pin card when the race has no name
+  ///
+  /// In en, this message translates to:
+  /// **'Race'**
+  String get heatmapRaceFallbackName;
 
   /// Button to reset all heatmap filters
   ///
@@ -17505,6 +17547,12 @@ abstract class AppLocalizations {
   /// **'No efforts yet — be the first to run this segment.'**
   String get segmentsPanelLeaderboardEmpty;
 
+  /// Note above a catalogue segment leaderboard timed by start and end lines, shown while some efforts on it were still measured by the old near-the-start-and-finish rule
+  ///
+  /// In en, this message translates to:
+  /// **'Some older efforts were measured the old way, by passing near the start and finish rather than crossing the lines. Each is re-measured the next time its runner opens the run.'**
+  String get segmentOldMatchNote;
+
   /// Banner shown when the viewer holds the segment crown
   ///
   /// In en, this message translates to:
@@ -24128,6 +24176,30 @@ abstract class AppLocalizations {
   /// **'{n}'**
   String challengesUnitActivities(int n);
 
+  /// Park courses phase 5 (challenges.metricParkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses'**
+  String get challengesMetricParkCourses;
+
+  /// Park courses phase 5 (challenges.unitParkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} course} other {{n} courses}}'**
+  String challengesUnitParkCourses(int n);
+
+  /// Park courses phase 5 (challenges.goalSuffixCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'courses'**
+  String get challengesGoalSuffixCourses;
+
+  /// Park courses phase 5 (challenges.parkRegion)
+  ///
+  /// In en, this message translates to:
+  /// **'Counts park courses in {region}'**
+  String challengesParkRegion(String region);
+
   /// Leave-confirm dialog title
   ///
   /// In en, this message translates to:
@@ -25747,6 +25819,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Completed 10 training plans'**
   String get badgesPlan10Desc;
+
+  /// Park courses phase 5 (badges.parkCourses1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'First park course'**
+  String get badgesParkCourses1Label;
+
+  /// Park courses phase 5 (badges.parkCourses1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park course'**
+  String get badgesParkCourses1Desc;
+
+  /// Park courses phase 5 (badges.parkCourses5.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park regular'**
+  String get badgesParkCourses5Label;
+
+  /// Park courses phase 5 (badges.parkCourses5.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 5 different park courses'**
+  String get badgesParkCourses5Desc;
+
+  /// Park courses phase 5 (badges.parkCourses10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Trail collector'**
+  String get badgesParkCourses10Label;
+
+  /// Park courses phase 5 (badges.parkCourses10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 10 different park courses'**
+  String get badgesParkCourses10Desc;
+
+  /// Park courses phase 5 (badges.parkCourses25.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park explorer'**
+  String get badgesParkCourses25Label;
+
+  /// Park courses phase 5 (badges.parkCourses25.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed 25 different park courses'**
+  String get badgesParkCourses25Desc;
+
+  /// Park courses phase 5 (badges.parkComplete1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park finisher'**
+  String get badgesParkComplete1Label;
+
+  /// Park courses phase 5 (badges.parkComplete1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in a park'**
+  String get badgesParkComplete1Desc;
+
+  /// Park courses phase 5 (badges.parkComplete3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Three parks finished'**
+  String get badgesParkComplete3Label;
+
+  /// Park courses phase 5 (badges.parkComplete3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in 3 parks'**
+  String get badgesParkComplete3Desc;
+
+  /// Park courses phase 5 (badges.parkComplete10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park completionist'**
+  String get badgesParkComplete10Label;
+
+  /// Park courses phase 5 (badges.parkComplete10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed every course in 10 parks'**
+  String get badgesParkComplete10Desc;
+
+  /// Park courses phase 5 (badges.parkPassport1.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Park passport'**
+  String get badgesParkPassport1Label;
+
+  /// Park courses phase 5 (badges.parkPassport1.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a course in every park of a state'**
+  String get badgesParkPassport1Desc;
+
+  /// Park courses phase 5 (badges.parkPassport3.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Passport stamped'**
+  String get badgesParkPassport3Label;
+
+  /// Park courses phase 5 (badges.parkPassport3.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park passport in 3 states'**
+  String get badgesParkPassport3Desc;
+
+  /// Park courses phase 5 (badges.parkPassport10.label)
+  ///
+  /// In en, this message translates to:
+  /// **'Passport collector'**
+  String get badgesParkPassport10Label;
+
+  /// Park courses phase 5 (badges.parkPassport10.desc)
+  ///
+  /// In en, this message translates to:
+  /// **'Completed a park passport in 10 states'**
+  String get badgesParkPassport10Desc;
 
   /// Title of the dashboard race-time predictor card
   ///
@@ -33203,6 +33395,24 @@ abstract class AppLocalizations {
   /// **'Badge earned'**
   String get shareCardBadgeKicker;
 
+  /// Park courses phase 5 (runShare.kindCourse)
+  ///
+  /// In en, this message translates to:
+  /// **'Park course'**
+  String get shareCardKindCourse;
+
+  /// Park courses phase 5 (runShare.courseKicker)
+  ///
+  /// In en, this message translates to:
+  /// **'Park course time'**
+  String get shareCardCourseKicker;
+
+  /// Park courses phase 5 (runShare.courseRank)
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank} in {season}'**
+  String shareCardCourseRank(String rank, String season);
+
   /// Run detail action that opens the share sheet on the PR card
   ///
   /// In en, this message translates to:
@@ -34312,6 +34522,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A push about 10 minutes before a scheduled race you\'re going to starts, and when its start moves. Never emailed.'**
   String get prefsNotifyRaceStartingSoonHint;
+
+  /// Title of the read-only card on a club screen that shows the club's official verification status to its owner and admins
+  ///
+  /// In en, this message translates to:
+  /// **'Official verification'**
+  String get clubVerificationStatusTitle;
+
+  /// The club is verified; org is the organisation it officially represents and domain the website domain that was verified
+  ///
+  /// In en, this message translates to:
+  /// **'Verified as the official presence of {org} ({domain}).'**
+  String clubVerificationStatusVerified(String org, String domain);
+
+  /// The club is verified but no request with a domain is on record
+  ///
+  /// In en, this message translates to:
+  /// **'Verified as an official organisation.'**
+  String get clubVerificationStatusVerifiedLegacy;
+
+  /// A verification request for the named organisation is waiting for review and the domain proof has not been found yet
+  ///
+  /// In en, this message translates to:
+  /// **'The request for {org} is waiting for review. No domain proof found yet.'**
+  String clubVerificationStatusPending(String org);
+
+  /// A verification request for the named organisation is waiting for review and the domain proof was found
+  ///
+  /// In en, this message translates to:
+  /// **'The request for {org} is waiting for review. Domain proof found.'**
+  String clubVerificationStatusPendingProof(String org);
+
+  /// The last verification request was rejected; reason is the reviewer's own text
+  ///
+  /// In en, this message translates to:
+  /// **'The last request was not approved: {reason}'**
+  String clubVerificationStatusRejected(String reason);
+
+  /// A reviewer removed the club's verified badge; reason is their own text
+  ///
+  /// In en, this message translates to:
+  /// **'The badge was removed: {reason}'**
+  String clubVerificationStatusRevoked(String reason);
+
+  /// The badge dropped on its own: the club was renamed or moved domain, or the domain proof disappeared
+  ///
+  /// In en, this message translates to:
+  /// **'The badge was removed after a change to the club or its domain, and needs a new review.'**
+  String get clubVerificationStatusLapsed;
+
+  /// The club owner withdrew the last verification request
+  ///
+  /// In en, this message translates to:
+  /// **'The last request was withdrawn.'**
+  String get clubVerificationStatusWithdrawn;
+
+  /// The club has never asked for verification
+  ///
+  /// In en, this message translates to:
+  /// **'Not verified.'**
+  String get clubVerificationStatusNone;
+
+  /// Tells the club admin that requesting verification happens on the web app
+  ///
+  /// In en, this message translates to:
+  /// **'Requests and domain proof are managed on the web.'**
+  String get clubVerificationStatusWebHint;
+
+  /// The verification status could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the verification status.'**
+  String get clubVerificationStatusLoadFailed;
+
+  /// Retry button tooltip for loading the verification status
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get clubVerificationStatusRetry;
+
+  /// Notification text: a club the recipient owns or administers had its verification approved, rejected, removed or dropped; club name unknown
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s a verification update for your club'**
+  String get profileNotifClubVerification;
+
+  /// Notification text: the named club the recipient owns or administers had its verification approved, rejected, removed or dropped
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s a verification update for {club}'**
+  String profileNotifClubVerificationNamed(String club);
 }
 
 class _AppLocalizationsDelegate

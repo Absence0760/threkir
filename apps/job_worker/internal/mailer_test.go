@@ -214,6 +214,7 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"event_cancel for a deleted event", NotificationRow{Kind: "event_cancel", ClubID: &club}, base + "/clubs/club-1"},
 		{"club_join_request", NotificationRow{Kind: "club_join_request", ClubID: &club}, base + "/clubs/club-1"},
 		{"club_join_approved", NotificationRow{Kind: "club_join_approved", ClubID: &club}, base + "/clubs/club-1"},
+		{"club_verification", NotificationRow{Kind: "club_verification", ClubID: &club}, base + "/clubs/club-1"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},
 		// Sent to the assigning coach, whose view of the athlete's plan is the
@@ -348,6 +349,7 @@ func TestPathForKind(t *testing.T) {
 		{"club nil id → /clubs", "club_post", NotificationRow{}, base + "/clubs"},
 		{"club_join_request", "club_join_request", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
 		{"club_join_approved", "club_join_approved", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
+		{"club_verification", "club_verification", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
 		// Engagement on the recipient's OWN run → the owner-scoped detail page.
 		// comment_reply folds to run.
 		{"kudos", "kudos", NotificationRow{RunID: &run}, base + "/runs/r1"},

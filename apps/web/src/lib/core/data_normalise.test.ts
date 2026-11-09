@@ -6,6 +6,7 @@ import {
 	applyRunMetadataPatch,
 	normalisePlanWorkoutNotes,
 	readGlobalSegmentsScoredCount,
+	readGlobalSegmentsMatcherVersion,
 	shouldRescoreGlobalSegments,
 	stampGlobalSegmentsScored,
 	singleEmbed,
@@ -203,9 +204,13 @@ test('readGlobalSegmentsScoredCount: well-formed value parses (0 is valid)', () 
 	assert.equal(readGlobalSegmentsScoredCount({ global_segments_scored_count: 0 }), 0);
 });
 
+// The matcher version the count-rule cases run under; the version rule has
+// cases of its own below.
+const V = 2;
+
 test('shouldRescoreGlobalSegments: never-scored run → true', () => {
-	assert.equal(shouldRescoreGlobalSegments(null, 12), true);
-	assert.equal(shouldRescoreGlobalSegments({}, 12), true);
+	assert.equal(shouldRescoreGlobalSegments(null, 12, V), true);
+	assert.equal(shouldRescoreGlobalSegments({}, 12, V), true);
 });
 
 test('shouldRescoreGlobalSegments: SKIPS the expensive path when the run was '
@@ -213,19 +218,19 @@ test('shouldRescoreGlobalSegments: SKIPS the expensive path when the run was '
 	// This is the regression guard: a scored run whose catalogue has not
 	// grown must NOT re-fetch + re-match. Before the fix the function had
 	// no stamp to read, so this was unconditionally re-scored every view.
-	const meta = { global_segments_scored_count: 12 };
-	assert.equal(shouldRescoreGlobalSegments(meta, 12), false);
-	assert.equal(shouldRescoreGlobalSegments(meta, 5), false); // catalogue shrank
+	const meta = { global_segments_scored_count: 12, global_segments_matcher_version: V };
+	assert.equal(shouldRescoreGlobalSegments(meta, 12, V), false);
+	assert.equal(shouldRescoreGlobalSegments(meta, 5, V), false); // catalogue shrank
 });
 
 test('shouldRescoreGlobalSegments: re-scores when the catalogue grew', () => {
-	assert.equal(shouldRescoreGlobalSegments({ global_segments_scored_count: 12 }, 13), true);
+	assert.equal(shouldRescoreGlobalSegments({ global_segments_scored_count: 12, global_segments_matcher_version: V }, 13, V), true);
 });
 
 test('shouldRescoreGlobalSegments: unknown active count fails open to true', () => {
-	const meta = { global_segments_scored_count: 12 };
-	assert.equal(shouldRescoreGlobalSegments(meta, null), true);
-	assert.equal(shouldRescoreGlobalSegments(meta, undefined), true);
+	const meta = { global_segments_scored_count: 12, global_segments_matcher_version: V };
+	assert.equal(shouldRescoreGlobalSegments(meta, null, V), true);
+	assert.equal(shouldRescoreGlobalSegments(meta, undefined, V), true);
 });
 
 test('shouldRescoreGlobalSegments: a catalogue past the old 500-row fetch is tracked exactly', () => {
@@ -234,23 +239,57 @@ test('shouldRescoreGlobalSegments: a catalogue past the old 500-row fetch is tra
 	// is real growth and must re-score, and a stamp at the count must not.
 	// A run stamped 500 by the old capped fetch is re-scored once, because it
 	// never saw the tail.
-	const old = { global_segments_scored_count: 500 };
-	assert.equal(shouldRescoreGlobalSegments(old, 520), true);
-	const current = { global_segments_scored_count: 5_000 };
-	assert.equal(shouldRescoreGlobalSegments(current, 5_000), false);
-	assert.equal(shouldRescoreGlobalSegments(current, 5_001), true);
+	const old = { global_segments_scored_count: 500, global_segments_matcher_version: V };
+	assert.equal(shouldRescoreGlobalSegments(old, 520, V), true);
+	const current = { global_segments_scored_count: 5_000, global_segments_matcher_version: V };
+	assert.equal(shouldRescoreGlobalSegments(current, 5_000, V), false);
+	assert.equal(shouldRescoreGlobalSegments(current, 5_001, V), true);
+});
+
+test('readGlobalSegmentsMatcherVersion: a count with no version was scored by version 1', () => {
+	assert.equal(readGlobalSegmentsMatcherVersion(null), null);
+	assert.equal(readGlobalSegmentsMatcherVersion({}), null);
+	assert.equal(readGlobalSegmentsMatcherVersion({ global_segments_scored_count: 12 }), 1);
+	assert.equal(
+		readGlobalSegmentsMatcherVersion({ global_segments_scored_count: 12, global_segments_matcher_version: 2 }),
+		2,
+	);
+	assert.equal(
+		readGlobalSegmentsMatcherVersion({ global_segments_scored_count: 12, global_segments_matcher_version: 'x' }),
+		1,
+	);
+});
+
+test('shouldRescoreGlobalSegments: a run scored by an older matcher is re-matched (issue #1308)', () => {
+	// A run stamped before the line matcher existed holds circle efforts; its
+	// next owner view must re-match it even though the catalogue has not grown.
+	assert.equal(shouldRescoreGlobalSegments({ global_segments_scored_count: 12 }, 12, 2), true);
+	assert.equal(
+		shouldRescoreGlobalSegments({ global_segments_scored_count: 12, global_segments_matcher_version: 1 }, 12, 2),
+		true,
+	);
+	assert.equal(
+		shouldRescoreGlobalSegments({ global_segments_scored_count: 12, global_segments_matcher_version: 2 }, 12, 2),
+		false,
+	);
+	assert.equal(
+		shouldRescoreGlobalSegments({ global_segments_scored_count: 12, global_segments_matcher_version: 3 }, 12, 2),
+		false,
+		'a newer stamp (another tab on a newer build) is not re-matched backwards',
+	);
 });
 
 test('stampGlobalSegmentsScored: writes the stamp without clobbering the bag', () => {
-	const next = stampGlobalSegmentsScored({ title: 'Morning run', notes: 'felt great' }, 12);
+	const next = stampGlobalSegmentsScored({ title: 'Morning run', notes: 'felt great' }, 12, V);
 	assert.equal(next.title, 'Morning run');
 	assert.equal(next.notes, 'felt great');
 	assert.equal(next.global_segments_scored_count, 12);
+	assert.equal(next.global_segments_matcher_version, V);
 });
 
 test('stampGlobalSegmentsScored: round-trips through the reader as not-needing-rescore', () => {
-	const next = stampGlobalSegmentsScored(null, 8);
-	assert.equal(shouldRescoreGlobalSegments(next, 8), false);
+	const next = stampGlobalSegmentsScored(null, 8, V);
+	assert.equal(shouldRescoreGlobalSegments(next, 8, V), false);
 });
 
 // `runs.metadata` is a whole-column jsonb write, and the scoring pass that
@@ -266,7 +305,7 @@ function stampRun(
 	bagToMergeInto: JsonObject | null,
 	catalogueCount: number,
 ): void {
-	store.metadata = stampGlobalSegmentsScored(bagToMergeInto, catalogueCount);
+	store.metadata = stampGlobalSegmentsScored(bagToMergeInto, catalogueCount, V);
 }
 
 test('stampGlobalSegmentsScored: merging a bag re-read before the write keeps a '

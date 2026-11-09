@@ -521,6 +521,36 @@ class ClubPin {
   });
 }
 
+/// An upcoming verified race returned by `upcoming_races_in_bbox` (migration
+/// 20271125002408). Mobile mirror of the web `UpcomingRacePin`: the pin sits
+/// at a publicly shown course's start, else the listing's location.
+/// [official] races (claimed by a verified organiser club) rank first.
+class UpcomingRacePin {
+  final String id;
+  final String name;
+
+  /// `YYYY-MM-DD`, the race's local calendar day.
+  final String raceDate;
+  final int? distanceM;
+  final String? locationLabel;
+  final bool official;
+  final bool hasCourse;
+  final double lat;
+  final double lng;
+
+  const UpcomingRacePin({
+    required this.id,
+    required this.name,
+    required this.raceDate,
+    this.distanceM,
+    this.locationLabel,
+    this.official = false,
+    this.hasCourse = false,
+    required this.lat,
+    required this.lng,
+  });
+}
+
 /// A safety contact the owner added (decisions §131). Mobile mirror of the
 /// web `SafetyContact` interface. Carries only the owner-readable columns the
 /// settings list shows — never `confirm_token` (the email-link capability) or

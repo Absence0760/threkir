@@ -36,6 +36,7 @@
 		labelKey,
 	} from '#lib/parks/park_labels.ts';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import OldMatchNote from '#lib/components/OldMatchNote.svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import RunMap from '#lib/components/RunMap.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
@@ -370,6 +371,7 @@
 						</button>
 					</p>
 				{:else if boardKind === 'fastest'}
+					<OldMatchNote segment={course.segment} />
 					{#if fastest == null}
 						<p class="muted">{m('segments.loading')}</p>
 					{:else if fastest.length === 0}

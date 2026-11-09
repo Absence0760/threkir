@@ -2517,6 +2517,18 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			name: "race_listing_audit.json", table: schema.TableRaceListingAudit,
 			filter: "actor_id=eq." + uid, sel: "*",
 		},
+		// club_verification_requests — the verification requests the
+		// subject submitted as a club owner (migration 20271120000004). The
+		// reviewer is kept as an id only, as a recipient disclosure.
+		{
+			name: "club_verification_requests.json", table: schema.TableClubVerificationRequests,
+			filter: "submitted_by=eq." + uid, sel: "*",
+		},
+		// club_verification_audit — the verification actions the subject took.
+		{
+			name: "club_verification_audit.json", table: schema.TableClubVerificationAudit,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
 		// user_blocks — the subject's own block list (who they blocked +
 		// why). audit-findings (2026-05-30) High.
 		{

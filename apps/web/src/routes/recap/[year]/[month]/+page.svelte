@@ -3,7 +3,14 @@
 	import { page } from '$app/state';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { fetchRunsForRecap, fetchRecapExtras, publishRecap, type RecapRun } from '#lib/core/data.ts';
+	import {
+		fetchRunsForRecap,
+		fetchRecapExtras,
+		fetchRecapParkCourses,
+		publishRecap,
+		type RecapRun
+	} from '#lib/core/data.ts';
+	import { recapParkSummary, type RecapParkSummary } from '#lib/parks/park_courses.ts';
 	import { buildMonthInRunningRecap, type YearInRunningRecap } from '#lib/runs/recap.ts';
 	import { buildRecapShareSvg } from '#lib/share/recap_share_image.ts';
 	import { recapCardText } from '#lib/share/recap_card_text.ts';
@@ -22,6 +29,7 @@
 		personalRecordCount: 0
 	});
 	let loading = $state(true);
+	let parkSummary = $state<RecapParkSummary>(recapParkSummary([]));
 	let recap = $state<YearInRunningRecap | null>(null);
 	let publishing = $state(false);
 
@@ -52,6 +60,14 @@
 			return;
 		}
 		const yr = year;
+		const mo = month;
+		// L4: the park card is auxiliary, so its failure leaves the card off
+		// and the rest of the recap untouched.
+		if (valid) {
+			fetchRecapParkCourses(new Date(yr, mo - 1, 1).toISOString(), new Date(yr, mo, 1).toISOString())
+				.then((rows) => (parkSummary = recapParkSummary(rows)))
+				.catch((e) => console.warn('recap park courses read failed', e));
+		}
 		[runs, extras] = await Promise.all([
 			valid ? fetchRunsForRecap(yr) : Promise.resolve([] as RecapRun[]),
 			valid ? fetchRecapExtras(yr) : Promise.resolve({ photoCount: 0, personalRecordCount: 0 })
@@ -61,7 +77,11 @@
 
 	$effect(() => {
 		if (!valid) return;
-		recap = buildMonthInRunningRecap(runs, year, month, extras);
+		recap = buildMonthInRunningRecap(runs, year, month, {
+			...extras,
+			parkCourseCount: parkSummary.courseCount,
+			parkCount: parkSummary.parkCount
+		});
 	});
 
 	async function shareRecap(aspect: RecapCardAspect = 'square') {
@@ -170,6 +190,7 @@
 			onsharestory={() => shareRecap('story')}
 			onpublish={publishAndShareLink}
 			{publishing}
+			parks={parkSummary.parks}
 			video={{
 				title: t('recap.monthShareTitle', { period: periodLabel }),
 				fileStem: `recap ${periodKey}`,

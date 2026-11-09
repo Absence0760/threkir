@@ -18,6 +18,7 @@ import type { Page } from '@playwright/test';
 
 export type HeatmapLayer =
 	| 'heatmap-clubs-layer'
+	| 'heatmap-race-pins-layer'
 	| 'heatmap-route-pins-layer'
 	| 'heatmap-route-pins-cluster';
 

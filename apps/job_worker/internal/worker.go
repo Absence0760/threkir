@@ -528,6 +528,8 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleSafetySms(ctx, job)
 	case "security_email":
 		return w.handleSecurityEmail(ctx, job)
+	case "club_verification_email":
+		return w.handleClubVerificationEmail(ctx, job)
 	case "web_push":
 		return w.handleWebPush(ctx, job)
 	case "native_push":

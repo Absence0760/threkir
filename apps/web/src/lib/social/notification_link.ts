@@ -74,7 +74,9 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'club_post':
 		case 'club_join_approved':
 		case 'club_join_request':
-			// A request's approve and decline sit on the club page for its admins.
+		case 'club_verification':
+			// A request's approve and decline sit on the club page for its admins,
+			// as does the verification card that says what changed and why.
 			return item.club_slug ? `/clubs/${item.club_slug}` : null;
 		case 'achievement':
 			// The recipient earned it, so it is on their own Achievements tab —

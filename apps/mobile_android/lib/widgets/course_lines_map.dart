@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:ui_kit/ui_kit.dart' show AppSemanticColors;
 
 import '../course_gates.dart' show CourseGate, gateArrowTip, gateLineEnds, offsetPoint, GatePoint;
 import '../l10n/gen/app_localizations.dart';
@@ -8,15 +9,21 @@ import 'live_run_map.dart'
     show basemapTileLayer, basemapVoidColour, currentBasemapIsDark, currentTileUrl;
 import 'map_attribution.dart';
 
-/// The start line's colour. Twin of web's `mapStartColour`
-/// (`basemap_contrast.ts`): a bright green on a dark basemap, a deep one on a
-/// light basemap.
-Color mapStartColour({required bool darkBasemap}) =>
-    darkBasemap ? const Color(0xFF22C55E) : const Color(0xFF15803D);
+/// The semantic palette that reads against the basemap under the lines: the
+/// dark set's lighter success / danger on a dark basemap, the light set's
+/// deeper ones on a light basemap. Keyed on the basemap, not the app theme,
+/// because the lines are drawn over tiles (as web's `mapStartColour` /
+/// `mapFinishColour` are), and the extension's pairs are the measured ones.
+AppSemanticColors _gatePalette(bool darkBasemap) =>
+    darkBasemap ? AppSemanticColors.dark : AppSemanticColors.light;
 
-/// The finish line's colour. Twin of web's `mapFinishColour`.
+/// The start line's colour: the palette's success green.
+Color mapStartColour({required bool darkBasemap}) =>
+    _gatePalette(darkBasemap).success;
+
+/// The finish line's colour: the palette's danger red.
 Color mapFinishColour({required bool darkBasemap}) =>
-    darkBasemap ? const Color(0xFFEF4444) : const Color(0xFFB91C1C);
+    _gatePalette(darkBasemap).danger;
 
 LatLng _ll(GatePoint p) => LatLng(p.lat, p.lng);
 

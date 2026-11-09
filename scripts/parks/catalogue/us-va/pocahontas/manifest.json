@@ -88,45 +88,57 @@
       "distance_m": 10000,
       "laps": 2,
       "lap_m": 4902.1,
-      "lead_in_m": 179.6,
-      "start_line_from_lead_in_start_m": 81.7,
+      "lead_in_m": 119.9,
+      "start_line_from_lead_in_start_m": 22,
       "start_finish": {
-        "lat": 37.389732,
-        "lng": -77.576078
+        "lat": 37.389336,
+        "lng": -77.576344
       },
       "surface": "trail",
       "geometry_source": "osm",
       "source_ref": "way/19937462,way/19944982,way/287546057,way/287546059,way/287546060,way/287546061,way/305588774,way/307664200,way/658276220,way/1066130691,way/1533115532,way/1533115533,way/1533115534,way/1533115535",
       "source_checked_at": "2026-11-09",
       "geojson": "swift-creek-10k.geojson",
-      "elevation_m": 153,
+      "elevation_m": 156,
       "checkpoints": [
         {
           "lat": 37.394255,
-          "lng": -77.568764
+          "lng": -77.569416
         },
         {
-          "lat": 37.38716,
-          "lng": -77.564139
+          "lat": 37.387292,
+          "lng": -77.563529
         },
         {
-          "lat": 37.389923,
-          "lng": -77.571057
+          "lat": 37.389903,
+          "lng": -77.570396
         },
         {
-          "lat": 37.393593,
-          "lng": -77.572676
+          "lat": 37.393307,
+          "lng": -77.573147
         },
         {
-          "lat": 37.389893,
-          "lng": -77.565197
+          "lat": 37.390334,
+          "lng": -77.565581
         },
         {
-          "lat": 37.387887,
-          "lng": -77.568958
+          "lat": 37.387471,
+          "lng": -77.569352
         }
       ],
-      "waypoint_count": 367
+      "start_gate": {
+        "lat": 37.389336,
+        "lng": -77.576344,
+        "bearing_deg": 68.4,
+        "half_width_m": 15
+      },
+      "end_gate": {
+        "lat": 37.389336,
+        "lng": -77.576344,
+        "bearing_deg": 248.4,
+        "half_width_m": 15
+      },
+      "waypoint_count": 369
     },
     {
       "slug": "swift-creek-half",

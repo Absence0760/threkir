@@ -5,6 +5,8 @@ import {
 	courseAttribution,
 	courseIsCountable,
 	groupParksByRegion,
+	isLongCourse,
+	LONG_COURSE_THRESHOLD_M,
 	MAX_COURSE_CHECKPOINTS,
 	parkCourseGpx,
 	parseCourseCheckpoints,
@@ -77,6 +79,15 @@ test('courseIsCountable: a closed course drops out of counts, a seasonal one sta
 	assert.equal(courseIsCountable('open'), true);
 	assert.equal(courseIsCountable('seasonal'), true);
 	assert.equal(courseIsCountable('closed'), false);
+});
+
+test('isLongCourse: only a course over 15 km carries the long-course notice', () => {
+	assert.equal(LONG_COURSE_THRESHOLD_M, 15000);
+	assert.equal(isLongCourse(5000), false);
+	assert.equal(isLongCourse(15000), false);
+	assert.equal(isLongCourse(15001), true);
+	assert.equal(isLongCourse(50000), true);
+	assert.equal(isLongCourse(Number.NaN), false);
 });
 
 test('groupParksByRegion: regions in code order, parks by name within each', () => {

@@ -130,6 +130,13 @@ String regionName(String regionCode) => kRegionNames[regionCode] ?? regionCode;
 bool courseIsCountable(String status) =>
     status == 'open' || status == 'seasonal';
 
+/// Courses longer than this carry the long-course notice.
+const double kLongCourseThresholdM = 15000;
+
+/// Whether a course is long enough to show the long-course notice.
+bool isLongCourse(double distanceM) =>
+    distanceM.isFinite && distanceM > kLongCourseThresholdM;
+
 class ParkRegionGroup<T> {
   final String regionCode;
   final List<T> parks;

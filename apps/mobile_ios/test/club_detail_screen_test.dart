@@ -415,6 +415,13 @@ class _RosterSocial extends SocialService {
 
   @override
   String? get currentUserId => 'u-viewer';
+  // The viewer is an admin, so the Members tab also mounts the verification
+  // status card; answer its read here rather than reaching the network.
+  @override
+  Future<List<ClubVerificationRequestRow>> fetchClubVerificationRequests(
+    String clubId,
+  ) async =>
+      const [];
   @override
   Future<ClubView?> fetchClubBySlug(String slug) async => _adminClub();
   @override
@@ -859,6 +866,11 @@ void main() {
       _RosterSocial? social,
     }) async {
       final s = social ?? _RosterSocial();
+      // Tall enough for the whole roster below the admin's verification card,
+      // which the ListView would otherwise never build.
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
       await tester.pumpWidget(
         MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,

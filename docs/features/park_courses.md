@@ -126,10 +126,36 @@ Every run is scored on the server (decisions § 2392):
 
 ## Wording and safety
 
-The surfaces say *course* and *time trial*, never *race*. Every course page
-carries the stay-on-trail notice and the geometry attribution (`osm` credits
-OpenStreetMap contributors, `nps` the National Park Service). A closed course
-shows a banner and hides "Navigate this course"; its times and boards stay.
+The surfaces say *course* and *time trial*, never *race*, *compete* or
+*register*. Every course page carries the stay-on-trail notice and the
+geometry attribution (`osm` credits OpenStreetMap contributors, `nps` the
+National Park Service). A closed course shows a banner and hides "Navigate
+this course"; its times and boards stay.
+
+These follow the owner-approved permit conditions (memo
+`reviews/legal-park-course-permit.md`, items 5 and 8; decision on #1097):
+
+- **Not affiliated.** Under the attribution, every park and course page
+  (web and mobile) and the `/share/course` page say that Threkir publishes the
+  courses and the park or its managing agency does not organise, sponsor or
+  endorse them, and that park rules, hours, fees and closures apply
+  (`parks.notAffiliated`).
+- **Long course.** A course over 15 km (`isLongCourse` in the `park_courses`
+  pair) adds `parks.longCourseNotice`: start early enough to finish before the
+  park closes, shared trail with bikes and horses, water crossings that can be
+  impassable after rain. It names no park hours, so no park's hours are
+  hardcoded in copy.
+- **Official label.** A park course's route is official (the official
+  account's club is verified), but its badge reads "Official Threkir course",
+  never just "Official", so it cannot read as the park's own. The route page,
+  heatmap results and route explorer look the route up in `park_courses`
+  (`ParkCourseRouteLookup` on both platforms); an official route shows no
+  badge until the lookup answers, and a failed lookup falls back to the
+  ordinary badge.
+- **Terms.** Terms § 8 Safety says courses, routes and park courses are
+  planning information, not organised or supervised events; Threkir does not
+  inspect, maintain or mark the trails; the runner follows the land's rules,
+  hours, closures and fees and stays on designated trails.
 
 ## Loading courses
 
@@ -248,9 +274,15 @@ rank, and a closed course drops out of the "every" counts while it is closed.
 
 These gate going live, not the code:
 
-- [ ] Owner sign-off (legal-researcher memo) that a passive leaderboard on public
+- [x] Owner sign-off (legal-researcher memo) that a passive leaderboard on public
       trails needs no Virginia State Parks special-use permit or NPS special
-      event / commercial use authorisation. Record it on #1097.
+      event / commercial use authorisation. Recorded on #1097
+      (`reviews/legal-park-course-permit.md`), conditional on the notices
+      and Terms wording under *Wording and safety*.
+- [ ] A self-timed race event in a state or national park has a land-manager
+      permit (or written no-objection) recorded in its spec's `permit_ref`
+      before the sync creates it. Park courses without a race block need none
+      (reviews/legal-park-course-permit.md).
 - [ ] Attribution checked on each loaded course's page and GPX export.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
 - [ ] NPS API key provisioned before the closures job is built; it must do
@@ -286,8 +318,14 @@ These gate going live, not the code:
   not-found head, the in-app canonical, the course GPX download).
 - Web: `data.test.ts` pins the scorer's fail-closed checkpoint read;
   Playwright `tests-e2e/parks/park-courses.spec.ts` covers the three pages, both
-  boards and seasons, the signed-out view, and a run that skips a checkpoint.
-- Mobile: `test/park_courses_screen_test.dart`.
+  boards and seasons, the signed-out view, a run that skips a checkpoint, the
+  non-affiliation note and the long-course notice either side of 15 km; the
+  share spec pins both notices on `/share/course`.
+- Mobile: `test/park_courses_screen_test.dart` (incl. both notices).
+- Official label: Playwright `tests-e2e/routes/official-content.spec.ts` (a
+  park course route reads "Official Threkir course" in the heatmap results and
+  on the route page); mobile `test/park_course_routes_test.dart` and the park
+  course case in `test/routes_heatmap_screen_test.dart`.
 - Collections: pgTAP `park_course_badges_test.sql` (each family, the floors,
   the closed-course rule, the course-update trigger, DNF runs, notifications,
   the challenge metric and its region, `run_park_course_times` and its grants);

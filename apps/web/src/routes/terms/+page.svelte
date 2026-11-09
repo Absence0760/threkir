@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-10-06';
+	const lastUpdated = '2026-11-09';
 </script>
 
 <svelte:head>
@@ -175,6 +175,12 @@
 		safety-contact features depend on your phone's network and battery state, may be delayed or
 		absent without warning, and are <strong>not an emergency service</strong>. In an emergency,
 		contact your local emergency services directly.
+	</p>
+	<p>
+		Courses, routes and park courses are information to help you plan, not organised or
+		supervised events. We don't inspect, maintain or mark the trails they use. You are
+		responsible for following the rules, hours, closures and fees of the land you run on and for
+		staying on designated trails.
 	</p>
 
 	<h2>9. Disclaimers</h2>

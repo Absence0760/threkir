@@ -193,11 +193,12 @@
         3816522348,
         3457100638,
         2911685944,
-        2911685950
-      ],
-      "loop_via": [
         2911685950,
         2911685967,
+        2911685263
+      ],
+      "loop_via": [
+        2911685263,
         209612182,
         6164550651,
         13971353820,
@@ -213,9 +214,11 @@
         6164550061,
         6164550040,
         2911685952,
-        2911685950
+        2911685950,
+        2911685967,
+        2911685263
       ],
-      "start_note": "Start and finish on the lead-in from the boat-ramp parking lot to the Swift Creek Lake footbridge; the loop runs clockwise from the far end of the bridge on the Forest Exploration, Loop Forest and Co-op trails.",
+      "start_note": "Start and finish on the lead-in from the boat-ramp parking lot to the Swift Creek Lake footbridge; the loop runs clockwise from the far end of the bridge on the Forest Exploration, Loop Forest and Co-op trails. Each lap starts 60 m into the loop, so after the second lap the course turns back on the Forest Exploration Trail to the bridge: two laps alone leave 98 m of lead-in, which puts the line 14 m before the turn off the service road, and the timing line would face across it.",
       "checkpoints_per_lap": 3
     },
     {

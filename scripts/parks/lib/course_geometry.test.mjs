@@ -2,11 +2,15 @@
 // Run: node --test scripts/parks/lib/course_geometry.test.mjs
 
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import {
 	RACE_DISTANCES_M,
 	assertFootAccess,
+	assertTrailReview,
 	distanceDeviation,
 	elevationGainM,
 	footAccessRefusal,
@@ -19,6 +23,8 @@ import {
 	toPoints,
 	traceLoop,
 	traceVia,
+	GATE_BEARING_LOOK_AHEAD_M,
+	START_LINE_MIN_FROM_LOOP_M,
 	trimToDistance,
 } from './course_geometry.mjs';
 
@@ -180,6 +186,36 @@ test('trimToDistance refuses a short course and a start line off the lead-in', (
 	assert.throws(() => trimToDistance(pts, total - 200, 50), /past the/);
 });
 
+test('trimToDistance refuses a start line closer to the loop than the gate look-ahead allows', () => {
+	const pts = toPoints([5, 1, 2, 3, 4, 1, 5], nodes);
+	const leadInM = haversineM({ lat: -0.0005, lng: 0 }, { lat: 0, lng: 0 });
+	const total = pathLengthM(pts);
+	const closest = leadInM - START_LINE_MIN_FROM_LOOP_M;
+	assert.doesNotThrow(() => trimToDistance(pts, total - 2 * closest + 0.01, leadInM));
+	assert.throws(
+		() => trimToDistance(pts, total - 2 * (closest + 1), leadInM),
+		/the start line would sit 29\.0 m from the loop, under the 30 m/,
+	);
+});
+
+const DEFINES_BEARING = /create (?:or replace )?function private\.course_end_bearing\(/;
+
+test('the gate look-ahead mirrors the trigger it is named for', () => {
+	const dir = fileURLToPath(new URL('../../../apps/backend/supabase/migrations/', import.meta.url));
+	const defining = fs
+		.readdirSync(dir)
+		.filter((f) => f.endsWith('.sql'))
+		.sort()
+		.filter((f) => DEFINES_BEARING.test(fs.readFileSync(path.join(dir, f), 'utf8')));
+	assert.ok(defining.length > 0, 'a migration defines private.course_end_bearing');
+	const sql = fs.readFileSync(path.join(dir, /** @type {string} */ (defining.at(-1))), 'utf8');
+	const body = sql.slice(/** @type {number} */ ([...sql.matchAll(new RegExp(DEFINES_BEARING, 'g'))].at(-1)?.index));
+	const along = /c_along constant double precision := (\d+(?:\.\d+)?);/.exec(body);
+	assert.ok(along, `${defining.at(-1)}: c_along not found`);
+	assert.equal(Number(along[1]), GATE_BEARING_LOOK_AHEAD_M);
+	assert.ok(START_LINE_MIN_FROM_LOOP_M >= GATE_BEARING_LOOK_AHEAD_M + 5);
+});
+
 test('slice interpolates elevation at the cut', () => {
 	const pts = [
 		{ lat: 0, lng: 0, ele: 0 },
@@ -250,4 +286,53 @@ test('assertFootAccess names the refused way and its tags', () => {
 test('assertFootAccess ignores a listed way the line never walks', () => {
 	const ways = [...loopWays.map((w) => ({ ...w, tags: { highway: 'path' } })), { ...pier, tags: { highway: 'path', informal: 'yes' } }];
 	assert.doesNotThrow(() => assertFootAccess(traceLoop({ ways, nodes, start: 1, direction: 'clockwise' }), ways));
+});
+
+const reviewed = (/** @type {Partial<import('./course_geometry.mjs').TrailReview>} */ over = {}) => ({
+	checked_at: '2026-11-09',
+	source_urls: ['https://example.org/trail-map.pdf'],
+	designated: [10, 11, 12],
+	refused: {},
+	...over,
+});
+const square = [1, 2, 3, 4, 1];
+
+test('assertTrailReview passes a course that walks only designated ways', () => {
+	assert.deepEqual(assertTrailReview(square, loopWays, reviewed()), []);
+});
+
+test('assertTrailReview refuses a way the review refused, naming it and why', () => {
+	const review = reviewed({ designated: [10, 12], refused: { 11: 'not on the park map' } });
+	assert.throws(
+		() => assertTrailReview(square, loopWays, review),
+		/way 11 was refused on review \(not on the park map\)/,
+	);
+});
+
+test('assertTrailReview refuses a way nobody has reviewed yet', () => {
+	assert.throws(
+		() => assertTrailReview(square, loopWays, reviewed({ designated: [10, 12] })),
+		/way 11 has not been checked against the land manager's trail map/,
+	);
+	assert.throws(() => assertTrailReview(square, loopWays, undefined), /the park has no trail_review/);
+});
+
+test('assertTrailReview ignores an unreviewed way the line never walks', () => {
+	const ways = [...loopWays, pier];
+	const seq = traceLoop({ ways, nodes, start: 1, direction: 'clockwise' });
+	assert.doesNotThrow(() => assertTrailReview(seq, ways, reviewed()));
+});
+
+test('assertTrailReview refuses a review that both designates and refuses a way', () => {
+	assert.throws(
+		() => assertTrailReview(square, loopWays, reviewed({ refused: { 12: 'social trail' } })),
+		/way\(s\) 12 as both designated and refused/,
+	);
+});
+
+test('assertTrailReview returns the walked fords and refuses an unrecorded one', () => {
+	const ways = loopWays.map((w) => (w.id === 11 ? { ...w, tags: { highway: 'track', ford: 'yes' } } : w));
+	assert.throws(() => assertTrailReview(square, ways, reviewed()), /way 11 is tagged ford=yes but trail_review does not list it/);
+	assert.deepEqual(assertTrailReview(square, ways, reviewed({ fords: [11] })), [11]);
+	assert.throws(() => assertTrailReview(square, ways, reviewed({ fords: [99] })), /ford\(s\) 99 that are not designated/);
 });

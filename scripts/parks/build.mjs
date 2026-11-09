@@ -11,7 +11,9 @@
 // names the wrong ways or the published figure means a different route, and
 // both need a person to look before anything is loaded. A course whose line
 // uses a way not open to people on foot (a social trail, a bike-only trail,
-// `access=no` without a foot override) is refused the same way.
+// `access=no` without a foot override) is refused the same way, and so is one
+// whose line uses a way the park's `trail_review` has not marked designated
+// after checking it against the land manager's own trail map.
 //
 // Run:   node scripts/parks/build.mjs scripts/parks/catalogue/us-va/pocahontas
 // Check: node scripts/parks/build.mjs --check scripts/parks/catalogue/us-va/pocahontas
@@ -23,6 +25,7 @@ import {
 	PUBLISHED_DISTANCE_TOLERANCE,
 	RACE_DISTANCES_M,
 	assertFootAccess,
+	assertTrailReview,
 	distanceDeviation,
 	elevationGainM,
 	lapCourse,
@@ -69,6 +72,7 @@ export function buildPark(dir) {
 			direction: course.direction,
 		});
 		footAccessOrThrow(course.slug, sequence, ways);
+		const fords = trailReviewOrThrow(course.slug, sequence, ways, spec.trail_review);
 		const raw = toPoints(sequence, snapshot.nodes);
 		const distanceM = pathLengthM(raw);
 		const publishedM = course.published.distance_mi * METERS_PER_MILE;
@@ -118,6 +122,7 @@ export function buildPark(dir) {
 			direction: course.direction,
 			surface: course.surface,
 			difficulty: course.difficulty,
+			...(fords.length > 0 ? { fords } : {}),
 			geometry_source: 'osm',
 			source_ref: course.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -145,6 +150,7 @@ export function buildPark(dir) {
 		const loop = traceVia({ ways, nodes: snapshot.nodes, via: race.loop_via });
 		const sequence = lapCourse({ leadIn, loop, laps: race.laps });
 		footAccessOrThrow(race.slug, sequence, ways);
+		const fords = trailReviewOrThrow(race.slug, sequence, ways, spec.trail_review);
 		const full = toPoints(sequence, snapshot.nodes);
 		const leadInM = pathLengthM(toPoints(leadIn, snapshot.nodes));
 		const lapM = pathLengthM(toPoints(loop, snapshot.nodes));
@@ -201,6 +207,7 @@ export function buildPark(dir) {
 			start_line_from_lead_in_start_m: Math.round(trimEachEndM * 10) / 10,
 			start_finish: startFinish,
 			surface: race.surface,
+			...(fords.length > 0 ? { fords } : {}),
 			geometry_source: 'osm',
 			source_ref: race.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
 			source_checked_at: snapshot.fetched_at,
@@ -230,6 +237,20 @@ export function buildPark(dir) {
 function footAccessOrThrow(slug, sequence, ways) {
 	try {
 		assertFootAccess(sequence, ways);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
+}
+
+/**
+ * @param {string} slug
+ * @param {number[]} sequence
+ * @param {import('./lib/course_geometry.mjs').SnapshotWay[]} ways
+ * @param {import('./lib/course_geometry.mjs').TrailReview | undefined} review
+ */
+function trailReviewOrThrow(slug, sequence, ways, review) {
+	try {
+		return assertTrailReview(sequence, ways, review);
 	} catch (err) {
 		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
 	}

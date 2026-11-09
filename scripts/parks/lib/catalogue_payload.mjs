@@ -1,6 +1,6 @@
 // Turns a park's built `manifest.json` and course GeoJSON into the payload
-// `private.load_park_catalogue` takes (migration 20271126002423, decisions
-// § 2423), and that payload into the one SQL statement the operator runs.
+// `private.load_park_catalogue` takes (migration 20271126002425, decisions
+// § 2425), and that payload into the one SQL statement the operator runs.
 // Pure: the CLI in ../load.mjs does the file reads.
 //
 // Everything the database would refuse is refused here first, with the course

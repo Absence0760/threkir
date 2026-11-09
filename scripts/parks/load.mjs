@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Print the SQL that loads one park's built catalogue into the database
-// (issue #1342, decisions § 2423). Reads the park's `manifest.json` and course
+// (issue #1342, decisions § 2425). Reads the park's `manifest.json` and course
 // GeoJSON, validates them, and writes ONE statement to stdout calling
 // `private.load_park_catalogue`. It connects to nothing: the operator runs the
 // statement as the service role (Studio's SQL editor, or psql on the

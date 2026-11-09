@@ -43,7 +43,7 @@ Finding a loop that fits is a search over the park's trail graph. For L the loop
 ## Loading a park
 
 `load.mjs` turns a built park into ONE statement calling
-`private.load_park_catalogue` (migration `20271126002423`, decisions § 2423). It
+`private.load_park_catalogue` (migration `20271126002425`, decisions § 2425). It
 connects to nothing; the operator runs its output in production as the service
 role.
 

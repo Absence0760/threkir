@@ -1,5 +1,5 @@
--- The operator load of a park catalogue (migration 20271126002423, issue
--- #1342, decisions § 2423): private.load_park_catalogue creates a park, its
+-- The operator load of a park catalogue (migration 20271126002425, issue
+-- #1342, decisions § 2425): private.load_park_catalogue creates a park, its
 -- courses' catalogue segments, park_courses rows and official routes; a
 -- re-run updates them in place, so ids and efforts survive; it refuses an
 -- author who is not an official publisher, and no client role can call it.

@@ -16,7 +16,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the segment catalogue's app bar) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
-| Geometry pipeline (`scripts/parks/`) and the operator load (`scripts/parks/load.mjs` → `private.load_park_catalogue`, migration `20271126002423`, decisions § 2423) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) is built and ready; **not yet loaded in production**. See *Loading courses* |
+| Geometry pipeline (`scripts/parks/`) and the operator load (`scripts/parks/load.mjs` → `private.load_park_catalogue`, migration `20271126002425`, decisions § 2425) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) is built and ready; **not yet loaded in production**. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
@@ -137,7 +137,7 @@ A course needs a route owned by an official publisher, which no migration can
 create, and reviewed geometry, so real courses are an operator load. The
 geometry is built and reviewed under `scripts/parks/` (its README has the
 pipeline); the load is one call of `private.load_park_catalogue` (migration
-`20271126002423`, decisions § 2423), which only the service role can execute.
+`20271126002425`, decisions § 2425), which only the service role can execute.
 
 The function refuses unless the author is an active owner or admin of the
 verified, public club (`private.is_official_publisher`). In one transaction it

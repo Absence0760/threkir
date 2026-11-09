@@ -1,5 +1,5 @@
 -- The operator load of a park's reviewed course catalogue (issue #1342 step 1,
--- decisions § 2423).
+-- decisions § 2425).
 --
 -- `scripts/parks/load.mjs` turns a park's committed `manifest.json` and its
 -- course GeoJSON into ONE call of this function, which the operator runs as
@@ -238,7 +238,7 @@ $$;
 comment on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) is
   'Upserts one park and its courses (catalogue segment, park_courses row, public official route) from the '
   'payload scripts/parks/load.mjs prints, updating existing rows in place so ids and efforts survive. '
-  'Service role only; refuses an author who is not an official publisher of the club (decisions § 2423).';
+  'Service role only; refuses an author who is not an official publisher of the club (decisions § 2425).';
 
 revoke execute on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) from public, anon, authenticated;
 grant execute on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) to service_role;

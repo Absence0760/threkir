@@ -1,4 +1,4 @@
-// Unit tests for the park catalogue load payload (issue #1342, decisions § 2423).
+// Unit tests for the park catalogue load payload (issue #1342, decisions § 2425).
 // Run: node --test scripts/parks/lib/catalogue_payload.test.mjs
 
 import assert from 'node:assert/strict';

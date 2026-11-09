@@ -9,7 +9,7 @@ import { undoStore } from '#lib/stores/undo.svelte.ts';
 import { m } from '#lib/i18n/store.svelte.ts';
 import { parsePreferredUnit, parseSubscriptionTier } from '#lib/types.ts';
 import { createReadyGate, isAuthSettled } from './auth_ready';
-import { signOutWithScope } from './sign_out';
+import { signOutWithScope, trackSessionUser } from './sign_out';
 import { OAUTH_PROVIDER_STASH_KEY } from '#lib/core/apple_revocation.ts';
 import { OAUTH_LINK_STASH_KEY } from '#lib/core/auth_redirect_error.ts';
 import { consentRecorded } from '#lib/core/auth_confirmation.ts';
@@ -293,7 +293,9 @@ function createAuthStore() {
 
 	// Listen for auth state changes
 	if (browser) {
+		const sessionUser = trackSessionUser(dropUserCache);
 		supabase.auth.onAuthStateChange((event, session) => {
+			sessionUser(session?.user.id ?? null);
 			if (session) {
 				loggedIn = true;
 				loadProfile(session.user.id, session.user.email ?? '');

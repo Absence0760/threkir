@@ -10,7 +10,7 @@
     "osm_boundary": "relation/3144509"
   },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
-  "snapshot_fetched_at": "2026-11-08",
+  "snapshot_fetched_at": "2026-11-09",
   "courses": [
     {
       "slug": "beaver-lake-trail",
@@ -21,7 +21,7 @@
       "difficulty": "moderate",
       "geometry_source": "osm",
       "source_ref": "way/303463878,way/303485217,way/303485220,way/1066130682,way/1066130683",
-      "source_checked_at": "2026-11-08",
+      "source_checked_at": "2026-11-09",
       "geojson": "beaver-lake-trail.geojson",
       "distance_m": 3595,
       "elevation_m": 61,
@@ -62,7 +62,7 @@
       "surface": "trail",
       "geometry_source": "osm",
       "source_ref": "way/19937462,way/19944982,way/287546057,way/287546059,way/287546060,way/287546061,way/305588774,way/307664200,way/658276220,way/1066130691,way/1533115532,way/1533115533,way/1533115534,way/1533115535",
-      "source_checked_at": "2026-11-08",
+      "source_checked_at": "2026-11-09",
       "geojson": "swift-creek-5k.geojson",
       "elevation_m": 76,
       "checkpoints": [
@@ -97,7 +97,7 @@
       "surface": "trail",
       "geometry_source": "osm",
       "source_ref": "way/19937462,way/19944982,way/287546057,way/287546059,way/287546060,way/287546061,way/305588774,way/307664200,way/658276220,way/1066130691,way/1533115532,way/1533115533,way/1533115534,way/1533115535",
-      "source_checked_at": "2026-11-08",
+      "source_checked_at": "2026-11-09",
       "geojson": "swift-creek-10k.geojson",
       "elevation_m": 156,
       "checkpoints": [
@@ -127,6 +127,195 @@
         }
       ],
       "waypoint_count": 369
+    },
+    {
+      "slug": "swift-creek-half",
+      "name": "Swift Creek Half Marathon",
+      "race_distance": "half",
+      "distance_m": 21097.5,
+      "laps": 1,
+      "lap_m": 21079.6,
+      "lead_in_m": 102,
+      "start_line_from_lead_in_start_m": 93,
+      "start_finish": {
+        "lat": 37.389352,
+        "lng": -77.576293
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/19937462,way/19937560,way/19939160,way/19939192,way/19942098,way/19942121,way/19944982,way/19944999,way/19948131,way/19952353,way/287546059,way/287546060,way/287546061,way/303463878,way/303471214,way/303485217,way/303485220,way/305588774,way/368877176,way/368938365,way/368938370,way/378250054,way/378250057,way/378250058,way/399140119,way/399140120,way/573185798,way/576398804,way/578855999,way/658276220,way/773642259,way/773642266,way/773642267,way/898536700,way/898536707,way/898536710,way/898536715,way/898536717,way/898536722,way/1066130680,way/1066130681,way/1066130682,way/1533115534",
+      "source_checked_at": "2026-11-09",
+      "geojson": "swift-creek-half.geojson",
+      "elevation_m": 220,
+      "checkpoints": [
+        {
+          "lat": 37.391668,
+          "lng": -77.555702
+        },
+        {
+          "lat": 37.388281,
+          "lng": -77.53841
+        },
+        {
+          "lat": 37.373989,
+          "lng": -77.548994
+        },
+        {
+          "lat": 37.362531,
+          "lng": -77.575427
+        },
+        {
+          "lat": 37.376481,
+          "lng": -77.588422
+        },
+        {
+          "lat": 37.387167,
+          "lng": -77.594659
+        }
+      ],
+      "waypoint_count": 652
+    },
+    {
+      "slug": "swift-creek-marathon",
+      "name": "Swift Creek Marathon",
+      "race_distance": "marathon",
+      "distance_m": 42195,
+      "laps": 2,
+      "lap_m": 21079.6,
+      "lead_in_m": 102,
+      "start_line_from_lead_in_start_m": 84.1,
+      "start_finish": {
+        "lat": 37.389322,
+        "lng": -77.576387
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/19937462,way/19937560,way/19939160,way/19939192,way/19942098,way/19942121,way/19944982,way/19944999,way/19948131,way/19952353,way/287546059,way/287546060,way/287546061,way/303463878,way/303471214,way/303485217,way/303485220,way/305588774,way/368877176,way/368938365,way/368938370,way/378250054,way/378250057,way/378250058,way/399140119,way/399140120,way/573185798,way/576398804,way/578855999,way/658276220,way/773642259,way/773642266,way/773642267,way/898536700,way/898536707,way/898536710,way/898536715,way/898536717,way/898536722,way/1066130680,way/1066130681,way/1066130682,way/1533115534",
+      "source_checked_at": "2026-11-09",
+      "geojson": "swift-creek-marathon.geojson",
+      "elevation_m": 440,
+      "checkpoints": [
+        {
+          "lat": 37.393616,
+          "lng": -77.555252
+        },
+        {
+          "lat": 37.384995,
+          "lng": -77.540816
+        },
+        {
+          "lat": 37.372339,
+          "lng": -77.555821
+        },
+        {
+          "lat": 37.360574,
+          "lng": -77.584096
+        },
+        {
+          "lat": 37.379737,
+          "lng": -77.597147
+        },
+        {
+          "lat": 37.385334,
+          "lng": -77.583357
+        },
+        {
+          "lat": 37.392315,
+          "lng": -77.565165
+        },
+        {
+          "lat": 37.394676,
+          "lng": -77.545312
+        },
+        {
+          "lat": 37.37453,
+          "lng": -77.540926
+        },
+        {
+          "lat": 37.367911,
+          "lng": -77.572136
+        },
+        {
+          "lat": 37.37383,
+          "lng": -77.58552
+        },
+        {
+          "lat": 37.386763,
+          "lng": -77.596262
+        }
+      ],
+      "waypoint_count": 1294
+    },
+    {
+      "slug": "swift-creek-50k",
+      "name": "Swift Creek 50K",
+      "race_distance": "50k",
+      "distance_m": 50000,
+      "laps": 2,
+      "lap_m": 24976.2,
+      "lead_in_m": 102,
+      "start_line_from_lead_in_start_m": 78.2,
+      "start_finish": {
+        "lat": 37.389302,
+        "lng": -77.576448
+      },
+      "surface": "trail",
+      "geometry_source": "osm",
+      "source_ref": "way/19937462,way/19939160,way/19939192,way/19942098,way/19942121,way/19948131,way/19949582,way/19952353,way/19952895,way/287546057,way/287546059,way/287546060,way/287546061,way/303463877,way/303463878,way/303463882,way/303471214,way/303485217,way/303485220,way/305588774,way/368877176,way/368938365,way/368938370,way/378250054,way/378250057,way/378250058,way/378250059,way/399140112,way/399140119,way/399140120,way/560376580,way/576398804,way/578855999,way/658276220,way/773642259,way/773642260,way/773642266,way/773642267,way/898536700,way/898536707,way/898536710,way/898536711,way/898536714,way/898536715,way/898536717,way/898536718,way/898536720,way/898536722,way/1066130680,way/1066130681,way/1066130682,way/1066130691,way/1457097799,way/1457102137,way/1533115535,way/1539809529",
+      "source_checked_at": "2026-11-09",
+      "geojson": "swift-creek-50k.geojson",
+      "elevation_m": 618,
+      "checkpoints": [
+        {
+          "lat": 37.393694,
+          "lng": -77.565338
+        },
+        {
+          "lat": 37.395824,
+          "lng": -77.537325
+        },
+        {
+          "lat": 37.37377,
+          "lng": -77.541334
+        },
+        {
+          "lat": 37.362489,
+          "lng": -77.575466
+        },
+        {
+          "lat": 37.380092,
+          "lng": -77.593011
+        },
+        {
+          "lat": 37.38142,
+          "lng": -77.585013
+        },
+        {
+          "lat": 37.387226,
+          "lng": -77.573168
+        },
+        {
+          "lat": 37.398477,
+          "lng": -77.550991
+        },
+        {
+          "lat": 37.383186,
+          "lng": -77.542903
+        },
+        {
+          "lat": 37.372199,
+          "lng": -77.560579
+        },
+        {
+          "lat": 37.368765,
+          "lng": -77.584543
+        },
+        {
+          "lat": 37.387794,
+          "lng": -77.584427
+        }
+      ],
+      "waypoint_count": 1553
     }
   ]
 }

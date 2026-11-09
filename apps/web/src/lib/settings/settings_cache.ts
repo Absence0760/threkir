@@ -260,3 +260,44 @@ export function applyPrefsChanges(base: PrefsBag, changes: PrefsBag): PrefsBag {
 	}
 	return merged;
 }
+
+/// Per-user drop counter. `dropUserCache` bumps it, so a handle taken
+/// before a sign-out can tell that the user it was writing for has since
+/// been dropped.
+export class DropEpochs {
+	private epochs = new Map<string, number>();
+
+	current(userId: string): number {
+		return this.epochs.get(userId) ?? 0;
+	}
+
+	bump(userId: string): void {
+		this.epochs.set(userId, this.current(userId) + 1);
+	}
+}
+
+/// Wraps [inner] so every write is discarded once [live] returns false.
+/// A settings call still awaiting the network when the user signs out
+/// would otherwise land its write after `dropUserCache` swept the keys,
+/// leaving the signed-out user's bag (or queued edits) in this browser
+/// for whoever signs in next. Reads pass through.
+export function fenceWrites(inner: PrefsCache, live: () => boolean): PrefsCache {
+	return {
+		readUniversal: (userId) => inner.readUniversal(userId),
+		readDevice: (userId, deviceId) => inner.readDevice(userId, deviceId),
+		readPending: (userId, deviceId) => inner.readPending(userId, deviceId),
+		writeUniversal: (userId, prefs) => {
+			if (live()) inner.writeUniversal(userId, prefs);
+		},
+		writeDevice: (userId, deviceId, prefs) => {
+			if (live()) inner.writeDevice(userId, deviceId, prefs);
+		},
+		appendPending: (userId, deviceId, change) => {
+			if (live()) inner.appendPending(userId, deviceId, change);
+		},
+		clearPending: (userId, deviceId) => {
+			if (live()) inner.clearPending(userId, deviceId);
+		},
+		dropUser: (userId) => inner.dropUser(userId),
+	};
+}

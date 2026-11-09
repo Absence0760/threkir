@@ -63,3 +63,23 @@ export async function signOutWithScope(
 	const { error } = await client.signOut({ scope });
 	return error;
 }
+
+/// Feed every auth state change's session user id (null when there is no
+/// session); calls [onSessionEnded] with the prior user's id each time a
+/// session ends or is replaced by another user's. The auth listener runs
+/// this synchronously in the same callback that clears `loggedIn`, so the
+/// per-user drop has happened before the auth guard reacts to the
+/// signed-out state and navigates to /login. supabase-js notifies
+/// SIGNED_OUT from inside `signOut()`, before that call returns to
+/// `logout()`, and it also fires for an expired refresh token or a
+/// sign-out in another tab, which never pass through `logout()` at all.
+export function trackSessionUser(
+	onSessionEnded: (priorUserId: string) => void,
+): (sessionUserId: string | null) => void {
+	let current: string | null = null;
+	return (sessionUserId) => {
+		const prior = current;
+		current = sessionUserId;
+		if (prior !== null && prior !== sessionUserId) onSessionEnded(prior);
+	};
+}

@@ -141,10 +141,10 @@ test.describe('/dashboard — universal prefs cache', () => {
 				)
 				.not.toBeNull();
 
-			// Driving the actual UI flow proves the store's logout() hook
-			// (which calls dropUserCache before nulling user/loggedIn) is
-			// wired correctly. Calling auth.logout() via window would
-			// bypass the affordance the user actually reaches for.
+			// Driving the actual UI flow proves the auth listener drops the
+			// cache before it clears loggedIn, which is what sends the page
+			// to /login (decisions § 2418). Calling auth.logout() via window
+			// would bypass the affordance the user actually reaches for.
 			await signOut(page);
 
 			// Cache for the signed-out user is gone.

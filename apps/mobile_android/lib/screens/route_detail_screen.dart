@@ -54,7 +54,7 @@ import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/app_bar_actions.dart';
 import '../widgets/live_run_map.dart';
 import '../widgets/missing_map_tiles_hint.dart';
-import '../widgets/official_badge.dart';
+import '../park_course_routes.dart';
 import '../widgets/report_sheet.dart';
 import '../widgets/route_markers_panel.dart';
 import '../race_service.dart';
@@ -147,6 +147,13 @@ class RouteDetailScreen extends StatefulWidget {
 
 class _RouteDetailScreenState extends State<RouteDetailScreen> {
   late final RaceService _raceService = RaceService();
+  late final ParkCourseRouteLookup _parkCourses = ParkCourseRouteLookup((
+    ids,
+  ) async {
+    final api = widget.apiClient;
+    if (api == null) return <String>{};
+    return api.fetchParkCourseRouteIds(ids);
+  });
 
   late bool _isPublic = widget.route.isPublic;
   late bool _isStarred = widget.route.isStarred;
@@ -249,6 +256,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     _loadBookmarkState();
     _resolveDisplayWaypoints();
     _resolveAppleWatchAvailability();
+    if (widget.route.official) unawaited(_parkCourses.check([widget.route.id]));
   }
 
   Future<void> _resolveAppleWatchAvailability() async {
@@ -260,6 +268,7 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
   @override
   void dispose() {
     _tilePackStore?.dispose();
+    _parkCourses.dispose();
     _nameTitle.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -1458,7 +1467,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                           label: l10n.routeDetailFeatured,
                           color: semantic.crown,
                         ),
-                      if (route.official) const OfficialBadge(size: 16),
+                      if (route.official)
+                        OfficialRouteBadge(
+                          routeId: route.id,
+                          lookup: _parkCourses,
+                          size: 16,
+                        ),
                     ],
                   ),
                 ),

@@ -11,10 +11,14 @@ import 'provenance_badge.dart';
 /// content surfaces. Twin of the Svelte `OfficialBadge` component.
 class OfficialBadge extends StatelessWidget {
   final double size;
+  final bool parkCourse;
 
-  const OfficialBadge({super.key, this.size = 14});
+  const OfficialBadge({super.key, this.size = 14, this.parkCourse = false});
 
   @override
-  Widget build(BuildContext context) =>
-      ProvenanceBadge(provenance: Provenance.official, size: size);
+  Widget build(BuildContext context) => ProvenanceBadge(
+        provenance: Provenance.official,
+        size: size,
+        parkCourse: parkCourse,
+      );
 }

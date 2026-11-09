@@ -20,6 +20,10 @@ const OFFICIAL_ID = crypto.randomUUID();
 const PERSONAL_ID = crypto.randomUUID();
 const OFFICIAL_NAME = `Official course ${CLUB_ID.slice(0, 8)}`;
 const PERSONAL_NAME = `Personal loop ${CLUB_ID.slice(0, 8)}`;
+const PARK_ROUTE_ID = crypto.randomUUID();
+const PARK_ROUTE_NAME = `Park course route ${CLUB_ID.slice(0, 8)}`;
+let parkId: string | null = null;
+let segmentId: string | null = null;
 
 test.describe('official content (web)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
@@ -66,11 +70,71 @@ test.describe('official content (web)', () => {
 			},
 		]);
 		if (routes.error) throw routes.error;
+
+		// A park course's route: official like any club route, and its badge
+		// must name Threkir so it cannot read as the park's own.
+		const parkRoute = await admin.from('routes').insert({
+			id: PARK_ROUTE_ID,
+			user_id: USER_B.id,
+			club_id: CLUB_ID,
+			name: PARK_ROUTE_NAME,
+			distance_m: 5000,
+			is_public: true,
+			is_featured: false,
+			surface: 'trail',
+			waypoints: [
+				{ lng: 10.04, lat: 50.04 },
+				{ lng: 10.05, lat: 50.05 },
+			],
+		});
+		if (parkRoute.error) throw parkRoute.error;
+		const seg = await admin
+			.from('global_segments')
+			.insert({
+				name: PARK_ROUTE_NAME,
+				waypoints: [
+					{ lat: 50.04, lng: 10.04 },
+					{ lat: 50.05, lng: 10.05 },
+				],
+				distance_m: 5000,
+				surface: 'trail',
+				country_code: 'US',
+			})
+			.select('id')
+			.single();
+		if (seg.error) throw seg.error;
+		segmentId = seg.data.id;
+		const park = await admin
+			.from('parks')
+			.insert({
+				slug: `e2e-official-park-${CLUB_ID.slice(0, 8)}`,
+				name: `E2E Official Park ${CLUB_ID.slice(0, 8)}`,
+				agency: 'state',
+				region_code: 'US-VA',
+				country_code: 'US',
+				timezone: 'America/New_York',
+			})
+			.select('id')
+			.single();
+		if (park.error) throw park.error;
+		parkId = park.data.id;
+		const course = await admin.from('park_courses').insert({
+			park_id: parkId,
+			global_segment_id: segmentId,
+			slug: 'official-loop',
+			course_shape: 'loop',
+			geometry_source: 'osm',
+			checkpoints: [],
+			route_id: PARK_ROUTE_ID,
+		});
+		if (course.error) throw course.error;
 	});
 
 	test.afterAll(async () => {
 		const admin = getAdminClient();
-		await admin.from('routes').delete().in('id', [OFFICIAL_ID, PERSONAL_ID]);
+		if (parkId) await admin.from('parks').delete().eq('id', parkId);
+		if (segmentId) await admin.from('global_segments').delete().eq('id', segmentId);
+		await admin.from('routes').delete().in('id', [OFFICIAL_ID, PERSONAL_ID, PARK_ROUTE_ID]);
 		await admin.from('clubs').delete().eq('id', CLUB_ID);
 	});
 
@@ -112,5 +176,29 @@ test.describe('official content (web)', () => {
 			timeout: 15_000,
 		});
 		await expect(page.locator('.detail-header').getByTestId('official-badge')).toHaveCount(0);
+	});
+
+	test('a park course route reads "Official Threkir course", never just "Official"', async ({
+		page,
+	}) => {
+		await page.goto('/routes/heatmap');
+		await expect(page.locator('.maplibregl-map')).toBeVisible({ timeout: 15_000 });
+		await jumpAndSettle(page, [10.045, 50.045], 12);
+		const row = page.getByTestId('discover-list').locator('.result-li', { hasText: PARK_ROUTE_NAME });
+		await expect(row.getByTestId('official-badge').locator('.provenance-label')).toHaveText(
+			'Official Threkir course',
+			{ timeout: 10_000 },
+		);
+
+		await page.goto(`/routes/${PARK_ROUTE_ID}`);
+		await expect(page.getByRole('heading', { level: 1, name: PARK_ROUTE_NAME })).toBeVisible({
+			timeout: 15_000,
+		});
+		const badge = page.locator('.detail-header').getByTestId('official-badge');
+		await expect(badge.locator('.provenance-label')).toHaveText('Official Threkir course');
+		await expect(badge).toHaveAttribute(
+			'title',
+			'Official Threkir course: published by Threkir, not by the park',
+		);
 	});
 });

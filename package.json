@@ -124,7 +124,7 @@
     "test:scripts": "node scripts/check_root_scripts.mjs"
   },
   "devDependencies": {
-    "@supabase/supabase-js": "2.118.0",
+    "@supabase/supabase-js": "2.119.0",
     "@types/node": "^26.6.6",
     "stripe": "23.1.0",
     "svelte": "5.57.3"

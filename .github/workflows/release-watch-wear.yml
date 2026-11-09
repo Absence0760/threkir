@@ -149,14 +149,17 @@ jobs:
         # Play, which from 2026-09-30 requires registering
         # `com.threkir.watchwear` by hand in the Android Developer
         # Console. Play-only distribution auto-registers the package.
-        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
-        with:
-          tag_name: ${{ github.event.release.tag_name }}
-          files: apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab
-          # An unmatched glob is not an empty release, it is a silent one: this input
-          # defaults to false, so a moved build-output path would attach nothing and
-          # still report success (decisions.md § 1674).
-          fail_on_unmatched_files: true
+        #
+        # `gh release upload` exits non-zero on a path that does not exist,
+        # so a moved build output fails here rather than attaching nothing
+        # (decisions.md § 1674). `--clobber` replaces an asset of the same
+        # name, so re-running the job re-attaches instead of failing.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            apps/watch_wear/android/app/build/outputs/bundle/release/app-release.aab
 
       - name: Upload to Play Internal
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1

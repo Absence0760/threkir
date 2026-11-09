@@ -61,7 +61,7 @@ test('the § 1673 bug: a row promising an artifact the workflow cannot produce f
 	const { problems } = check({ ...GOOD, doc: docOf(TABLE('`.ipa`')) });
 	assert.equal(problems.length, 1);
 	assert.match(problems[0], /promises the Release carries `\.ipa`/);
-	assert.match(problems[0], /no live `softprops\/action-gh-release` step/);
+	assert.match(problems[0], /no live upload step/);
 });
 
 test('a commented-out upload step is not read as a live one', () => {
@@ -81,6 +81,43 @@ test('an artifact extension that disagrees with the upload glob fails', () => {
 	const { problems } = check({ ...GOOD, doc: docOf(TABLE('— (build smoke-check only)', '`.aab`')) });
 	assert.equal(problems.length, 1);
 	assert.match(problems[0], /uploads `web-build\.zip`, which is not a \.aab/);
+});
+
+const WEB_GH_ATTACH = `
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Attach build zip to the Release
+        env:
+          TAG: x
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \\
+            "web-build-\${VERSION}.zip"
+`;
+
+test('a gh release upload step is read as the upload, with its files across a continuation', () => {
+	const info = inspectWorkflow(WEB_GH_ATTACH);
+	assert.equal(info.attaches, true);
+	assert.equal(info.files, '"web-build-${VERSION}.zip"');
+	// gh stats every path and fails on a missing one, so it needs no flag.
+	assert.equal(info.failsOnUnmatched, true);
+	const { problems } = check({ ...GOOD, workflowOf: wf({ '.github/workflows/release-ios.yml': IOS_NO_ATTACH, '.github/workflows/release-web.yml': WEB_GH_ATTACH }) });
+	assert.deepEqual(problems, []);
+});
+
+test('a gh release upload whose file disagrees with the row fails', () => {
+	const { problems } = check({
+		doc: docOf(TABLE('— (build smoke-check only)', '`.aab`')),
+		workflowOf: wf({ '.github/workflows/release-ios.yml': IOS_NO_ATTACH, '.github/workflows/release-web.yml': WEB_GH_ATTACH }),
+	});
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /which is not a \.aab/);
+});
+
+test('a commented-out gh release upload is not read as a live one', () => {
+	const info = inspectWorkflow(WEB_GH_ATTACH.replace('          gh release upload', '          # gh release upload'));
+	assert.equal(info.attaches, false);
 });
 
 test('a runner the table states wrongly fails', () => {

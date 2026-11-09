@@ -89,12 +89,13 @@ function fakeRelease(entries, prefix = 'threkir-web-${ENV}') {
   const steps = entries
     .map(
       ([key, suffix]) =>
-        `      - name: Update ${suffix} Lambda\n        run: |\n` +
+        `      - name: Update ${suffix} Lambda\n        env:\n` +
+        `          FUNCTION_NAME: \${{ steps.aws.outputs.${key} }}\n        run: |\n` +
         `          NEW_VERSION=$(aws lambda update-function-code \\\n` +
-        `            --function-name "\${{ steps.aws.outputs.${key} }}" \\\n` +
+        `            --function-name "$FUNCTION_NAME" \\\n` +
         `            --publish --query Version --output text)\n` +
         `          aws lambda update-alias \\\n` +
-        `            --function-name "\${{ steps.aws.outputs.${key} }}" \\\n` +
+        `            --function-name "$FUNCTION_NAME" \\\n` +
         `            --name live \\\n` +
         `            --function-version "$NEW_VERSION"\n`,
     )

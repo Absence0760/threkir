@@ -239,9 +239,17 @@ Future<void> _dropTree(WidgetTester tester) async {
 class _MakePrivateApi extends ApiClient {
   int calls = 0;
   bool shouldThrow = false;
+  bool isPublic = true;
 
   @override
   String? get userId => 'user-1';
+
+  @override
+  Future<({bool isPublic, bool followersOnly})?> fetchAudienceColumns(
+    ShareableKind kind,
+    String id,
+  ) async =>
+      (isPublic: isPublic, followersOnly: false);
 
   @override
   Future<void> makeRunPrivate(String runId) async {
@@ -868,6 +876,49 @@ void main() {
       expect(find.textContaining('Could not make run private'),
           findsOneWidget);
       expect(find.text('Run is now private'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('make-private is hidden on a run that is already private',
+        (tester) async {
+      final run = _run(title: 'Morning Tempo');
+      final api = _MakePrivateApi()..isPublic = false;
+      await _pump(tester, run, apiClient: api);
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Save as route'), findsOneWidget);
+      expect(find.text('Make private'), findsNothing);
+    });
+
+    testWidgets('make-private leaves the menu once the run is private',
+        (tester) async {
+      final run = _run(title: 'Morning Tempo');
+      final api = _MakePrivateApi();
+      await _pump(tester, run, apiClient: api);
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.text('Make private'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, 'Make private'),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(api.calls, 1);
+
+      await tester.tap(find.byTooltip('More'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Save as route'), findsOneWidget);
+      expect(find.text('Make private'), findsNothing);
 
       await tester.pump(const Duration(seconds: 4));
     });

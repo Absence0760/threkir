@@ -152,7 +152,9 @@ test.describe('official content (web)', () => {
 		await expect(officialRow.getByTestId('official-badge')).toBeVisible();
 		await expect(personalRow).toBeVisible();
 		await expect(personalRow.getByTestId('official-badge')).toHaveCount(0);
-		await expect(list.locator('.result-li').first()).toContainText(OFFICIAL_NAME);
+		// Two un-run official routes share this view (the park course route too), so
+		// either may rank first; what matters is that an official one outranks the personal one.
+		await expect(list.locator('.result-li').first().getByTestId('official-badge')).toBeVisible();
 
 		await page.getByTestId('filters-button').click();
 		const officialChip = page.getByTestId('filters-panel').locator('[data-filter="official"]');

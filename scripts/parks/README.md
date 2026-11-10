@@ -10,12 +10,15 @@ scripts/parks/
   fetch_snapshot.mjs             network step: OSM ways + USGS elevations -> snapshot.json
   build.mjs                      offline step: spec + snapshot -> <course>.geojson + manifest.json
   lib/catalogue_payload.mjs      pure: manifest + GeoJSON -> the load payload and its SQL
-  load.mjs                       operator step: built park -> one SQL statement on stdout
+  lib/catalogue_sync.mjs         pure: every park + the publisher -> the release sync's SQL
+  sync.mjs                       the release sync's park stage (and its manual fallback)
+  load.mjs                       fallback: one built park -> one SQL statement on stdout
+  publisher.json                 the official club the courses publish as (slug + id)
   catalogue/<region>/<park>/
     park.json                    the spec, written by hand
     snapshot.json                source data, written by fetch_snapshot.mjs
     <course>.geojson             one per course, written by build.mjs
-    manifest.json                what the operator load reads, written by build.mjs
+    manifest.json                what the load reads, written by build.mjs
 ```
 
 ## Adding a course
@@ -45,33 +48,66 @@ Finding a loop that fits is a search over the park's trail graph. For L the loop
 
 ## Loading a park
 
-`load.mjs` turns a built park into ONE statement calling
-`private.load_park_catalogue` (migration `20271126002425`, decisions § 2425). It
-connects to nothing; the operator runs its output in production as the service
-role.
+Every backend release loads the catalogue; nobody runs SQL in production. The
+"Sync production state" step of `.github/workflows/release-backend.yml` runs
+last, after the migrations and the Edge Functions (`apps/backend/scripts/sync-production-state.sh`, stages in
+`scripts/prod_sync/run.mjs`, decisions § 2429). Its park stage, `sync.mjs`,
+finds every `catalogue/<region>/<park>/manifest.json`, validates it as below,
+and calls `private.load_park_catalogue` (migrations `20271126002425` +
+`20271127002429`, decisions § 2425) once per park as the official club in
+`publisher.json`, with the backfill flag on, in one transaction. The job's step
+summary lists every course as `created`, `updated`, `unchanged` or `closed`.
+
+- **Idempotent.** A course that already matches its manifest writes nothing and
+  reports `unchanged`, so an unchanged catalogue is safe on every release.
+- **Backfill only where it changes a result.** A backfill is queued for a
+  `created` course, or when the line, a start or end line, or the checkpoints
+  changed. A name, description, difficulty or source change queues none.
+- **Never deletes.** A course its park's manifest no longer names is set
+  `closed` ("Removed from the park catalogue."), keeping its segment and every
+  effort, and reopens if the manifest names it again. A closure an operator
+  set is never touched.
+- `publisher.json` holds the official club only: `club_slug`, and `club_id` as
+  a cross-check (a public id, not a secret). No author is committed. The stage
+  first calls `private.resolve_club_publisher` (migration `20271127100001`),
+  which returns the club's active owner, else its active admin with the
+  earliest `joined_at` (then the lowest user id), so an ownership change never
+  breaks a release. It fails the stage, rolled back, when the slug's club is
+  not the committed id, is not verified, public and visible, or has no active
+  owner or admin. The account it picks is one `load_park_catalogue` accepts,
+  so the routes it writes are official; after an ownership change they are
+  re-authored to the new account (`updated`, no backfill). The summary's
+  `published_by` column names it.
+- Every `courses` entry and every `race_courses` entry becomes a park course. A
+  race course is a `loop` (its start and finish are one line on the lead-in),
+  and its route's `official_distance_m` is the race distance.
+- It refuses what the database would, before connecting: a bad slug or
+  vocabulary value, more than 50 checkpoints, a coordinate out of range, a
+  GeoJSON whose line no longer matches the manifest (point count, or length
+  more than 1 % off), a loop whose ends are more than 25 m apart, a race course
+  that does not measure its race distance.
+
+To preview a change against production, run the Release Backend workflow by
+hand with `dry_run` on (the default): it runs only the sync, behind the
+`production` environment approval, and rolls it back after writing the table.
+With `dry_run` off, from `main`, it syncs without a release.
+
+### Fallback: the SQL by hand
+
+Only when the workflow cannot run. Both commands print SQL and connect to
+nothing; run the output with `psql` on the service-role connection.
 
 ```
+node scripts/parks/sync.mjs [--dry-run] > sync.sql
 node scripts/parks/load.mjs scripts/parks/catalogue/us-va/pocahontas \
   --club-id <official club uuid> --author-id <owner/admin uuid> [--enqueue-backfill] > pocahontas.sql
 ```
 
-- `--club-id` is the verified, public club that publishes the courses, and
-  `--author-id` an active owner or admin of it. The function refuses any other
-  pair, so the routes it writes are official.
-- Every `courses` entry and every `race_courses` entry becomes a park course. A
-  race course is a `loop` (its start and finish are one line on the lead-in),
-  and its route's `official_distance_m` is the race distance.
-- It refuses what the database would: a bad slug or vocabulary value, more than
-  50 checkpoints, a coordinate out of range, a GeoJSON whose line no longer
-  matches the manifest (point count, or length more than 1 % off), a loop whose
-  ends are more than 25 m apart, a race course that does not measure its race
-  distance.
-- `--enqueue-backfill` also queues the launch backfill for each course. Leave it
-  off to queue the backfill as its own step.
+`sync.mjs` prints the whole release transaction (`--dry-run` ends it in a
+rollback). `load.mjs` prints one park's call; with `--enqueue-backfill` it has
+the same backfill rule as the sync.
 
-A re-run updates the park and each course's segment, course row and route in
-place, so the same statement is how a rebuilt course reaches production. The
-steps around it are in [park_courses.md § Loading courses](../../docs/features/park_courses.md#loading-courses).
+The steps around a load are in [park_courses.md § Loading courses](../../docs/features/park_courses.md#loading-courses).
 
 ## Licence
 

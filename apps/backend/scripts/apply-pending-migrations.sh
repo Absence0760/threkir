@@ -33,7 +33,8 @@
 
 set -euo pipefail
 
-DB_URL="${SUPABASE_DB_URL:?SUPABASE_DB_URL must be set to the target database connection string}"
+# shellcheck source=lib/db_url.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/db_url.sh"
 MIG_DIR="${MIG_DIR:-supabase/migrations}"
 LOCK_TIMEOUT="${MIGRATION_LOCK_TIMEOUT:-5s}"
 LOCK_ATTEMPTS="${MIGRATION_LOCK_ATTEMPTS:-5}"
@@ -48,22 +49,9 @@ if ! [[ "$LOCK_ATTEMPTS" =~ ^[1-9][0-9]*$ && "$RETRY_BASE_S" =~ ^[0-9]+$ ]]; the
   exit 1
 fi
 
-# Authenticate via PGPASSWORD and drop whatever password is embedded in the URL.
-# Supabase DB passwords routinely contain %, !, ^ (which psql's URI parser tries
-# to percent-decode -> "invalid percent-encoded token"), and a hand-set
-# SUPABASE_DB_URL may even keep the `[...]` placeholder brackets around the
-# password. Rather than trust the URL's password, we rebuild the URL from just
-# its user + host and let PGPASSWORD (SUPABASE_DB_PASSWORD) carry auth — so no
-# amount of password weirdness can break the connection.
-if [[ -n "${SUPABASE_DB_PASSWORD:-}" && "$DB_URL" == *"://"*"@"* ]]; then
-  export PGPASSWORD="${SUPABASE_DB_PASSWORD}"
-  scheme="${DB_URL%%://*}"      # postgresql
-  rest="${DB_URL#*://}"         # userinfo@host:port/db[?params]
-  userinfo="${rest%@*}"        # user[:password]  (before the LAST @)
-  hostpart="${rest##*@}"      # host:port/db[?params]  (after the LAST @)
-  user="${userinfo%%:*}"      # user  (before the first :)
-  DB_URL="${scheme}://${user}@${hostpart}"
-fi
+# The URL is rebuilt without its password and PGPASSWORD carries auth; the
+# reason is in lib/db_url.sh, which sync-production-state.sh shares.
+resolve_db_url
 
 if [[ ! -d "$MIG_DIR" ]]; then
   echo "::error::migrations directory not found: $MIG_DIR (run from apps/backend)" >&2

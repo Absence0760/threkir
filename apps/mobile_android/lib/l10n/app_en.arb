@@ -27983,11 +27983,11 @@
   "@parksElevationProfile": {
     "description": "Heading over a park course's elevation chart (#1352)."
   },
-  "parksBoardEmptyTitle": "Be the first on this board",
+  "parksBoardEmptyTitle": "No times yet. Yours could be the first.",
   "@parksBoardEmptyTitle": {
     "description": "Title of a park course board nobody has a time on yet; replaces the filters (#1352)."
   },
-  "parksBoardEmptyBody": "Run this course with Threkir recording. Once the run syncs, your time appears here automatically.",
+  "parksBoardEmptyBody": "Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.",
   "@parksBoardEmptyBody": {
     "description": "Body under parksBoardEmptyTitle: how a time gets onto the board (#1352)."
   },
@@ -28007,7 +28007,7 @@
   "@parksLegendStartFinish": {
     "description": "Map key item: one marker for a course that starts and finishes in the same place (#1352)."
   },
-  "parksLegendCheckpoints": "Checkpoints, in order",
+  "parksLegendCheckpoints": "Checkpoint: your run must pass it",
   "@parksLegendCheckpoints": {
     "description": "Map key item: the numbered checkpoint markers (#1352)."
   },

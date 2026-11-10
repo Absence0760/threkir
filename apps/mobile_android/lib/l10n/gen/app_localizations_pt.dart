@@ -21327,11 +21327,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksElevationProfile => 'Perfil de altitude';
 
   @override
-  String get parksBoardEmptyTitle => 'Seja o primeiro nesta classificação';
+  String get parksBoardEmptyTitle =>
+      'Ainda não há tempos. O seu pode ser o primeiro.';
 
   @override
   String get parksBoardEmptyBody =>
-      'Corra este percurso a gravar com o Threkir. Assim que a corrida sincronizar, o seu tempo aparece aqui automaticamente.';
+      'Corra este percurso a gravar com o Threkir. Quando a sua corrida cobrir todo o percurso e passar por todos os pontos de controlo, o seu tempo aparece aqui sozinho. Não é preciso enviar nada.';
 
   @override
   String get parksLegendTitle => 'Legenda do mapa';
@@ -21346,7 +21347,8 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksLegendStartFinish => 'Partida e meta';
 
   @override
-  String get parksLegendCheckpoints => 'Pontos de controlo, por ordem';
+  String get parksLegendCheckpoints =>
+      'Ponto de controlo: a sua corrida tem de passar por ele';
 
   @override
   String get parksLegendDirection => 'Sentido da corrida';
@@ -43010,11 +43012,12 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get parksElevationProfile => 'Perfil de elevação';
 
   @override
-  String get parksBoardEmptyTitle => 'Seja o primeiro nesta classificação';
+  String get parksBoardEmptyTitle =>
+      'Ainda não há tempos. O seu pode ser o primeiro.';
 
   @override
   String get parksBoardEmptyBody =>
-      'Corra este percurso gravando com o Threkir. Assim que a corrida sincronizar, o seu tempo aparece aqui automaticamente.';
+      'Corra este percurso gravando com o Threkir. Quando a sua corrida cobrir todo o percurso e passar por todos os pontos de controle, o seu tempo aparece aqui sozinho. Não é preciso enviar nada.';
 
   @override
   String get parksLegendTitle => 'Legenda do mapa';
@@ -43029,7 +43032,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get parksLegendStartFinish => 'Largada e chegada';
 
   @override
-  String get parksLegendCheckpoints => 'Pontos de controle, em ordem';
+  String get parksLegendCheckpoints =>
+      'Ponto de controle: sua corrida precisa passar por ele';
 
   @override
   String get parksLegendDirection => 'Sentido da corrida';

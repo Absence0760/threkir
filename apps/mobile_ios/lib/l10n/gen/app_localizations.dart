@@ -34364,13 +34364,13 @@ abstract class AppLocalizations {
   /// Title of a park course board nobody has a time on yet; replaces the filters (#1352).
   ///
   /// In en, this message translates to:
-  /// **'Be the first on this board'**
+  /// **'No times yet. Yours could be the first.'**
   String get parksBoardEmptyTitle;
 
   /// Body under parksBoardEmptyTitle: how a time gets onto the board (#1352).
   ///
   /// In en, this message translates to:
-  /// **'Run this course with Threkir recording. Once the run syncs, your time appears here automatically.'**
+  /// **'Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.'**
   String get parksBoardEmptyBody;
 
   /// Screen-reader name of the key under a park course map (#1352).
@@ -34400,7 +34400,7 @@ abstract class AppLocalizations {
   /// Map key item: the numbered checkpoint markers (#1352).
   ///
   /// In en, this message translates to:
-  /// **'Checkpoints, in order'**
+  /// **'Checkpoint: your run must pass it'**
   String get parksLegendCheckpoints;
 
   /// Map key item: the arrows along the course line (#1352).

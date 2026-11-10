@@ -20282,11 +20282,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksElevationProfile => '高低図';
 
   @override
-  String get parksBoardEmptyTitle => 'このランキングの最初の記録になろう';
+  String get parksBoardEmptyTitle => 'まだタイムがありません。あなたが最初になれます。';
 
   @override
   String get parksBoardEmptyBody =>
-      'Threkirで記録しながらこのコースを走ってください。ランが同期されると、タイムが自動的にここに表示されます。';
+      'Threkirで記録しながらこのコースを走ってください。コース全体を走り、すべてのチェックポイントを通過すると、タイムが自動でここに表示されます。提出の手続きは必要ありません。';
 
   @override
   String get parksLegendTitle => '地図の凡例';
@@ -20301,7 +20301,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksLegendStartFinish => 'スタート・フィニッシュ';
 
   @override
-  String get parksLegendCheckpoints => 'チェックポイント（順番）';
+  String get parksLegendCheckpoints => 'チェックポイント：必ず通過してください';
 
   @override
   String get parksLegendDirection => '走る方向';

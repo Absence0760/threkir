@@ -21324,11 +21324,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parksElevationProfile => 'Perfil de elevación';
 
   @override
-  String get parksBoardEmptyTitle => 'Sé el primero en esta clasificación';
+  String get parksBoardEmptyTitle =>
+      'Todavía no hay tiempos. El tuyo podría ser el primero.';
 
   @override
   String get parksBoardEmptyBody =>
-      'Corre este recorrido grabando con Threkir. En cuanto la carrera se sincronice, tu tiempo aparecerá aquí automáticamente.';
+      'Corre este recorrido grabando con Threkir. Cuando tu carrera cubra todo el recorrido y pase por cada punto de control, tu tiempo aparecerá aquí solo. No tienes que enviar nada.';
 
   @override
   String get parksLegendTitle => 'Leyenda del mapa';
@@ -21343,7 +21344,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parksLegendStartFinish => 'Salida y meta';
 
   @override
-  String get parksLegendCheckpoints => 'Puntos de control, en orden';
+  String get parksLegendCheckpoints =>
+      'Punto de control: tu carrera debe pasar por él';
 
   @override
   String get parksLegendDirection => 'Sentido de carrera';

@@ -21351,11 +21351,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get parksBoardEmptyTitle =>
-      'Sei als Erste oder Erster auf dieser Liste';
+      'Noch keine Zeiten. Deine könnte die erste sein.';
 
   @override
   String get parksBoardEmptyBody =>
-      'Lauf diese Strecke mit Threkir-Aufzeichnung. Sobald der Lauf synchronisiert ist, erscheint deine Zeit automatisch hier.';
+      'Lauf diese Strecke, während Threkir aufzeichnet. Wenn dein Lauf die ganze Strecke abdeckt und jeden Kontrollpunkt passiert, erscheint deine Zeit hier von selbst. Du musst nichts einreichen.';
 
   @override
   String get parksLegendTitle => 'Kartenlegende';
@@ -21370,7 +21370,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksLegendStartFinish => 'Start und Ziel';
 
   @override
-  String get parksLegendCheckpoints => 'Kontrollpunkte, der Reihe nach';
+  String get parksLegendCheckpoints =>
+      'Kontrollpunkt: dein Lauf muss ihn passieren';
 
   @override
   String get parksLegendDirection => 'Laufrichtung';

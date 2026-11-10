@@ -21096,11 +21096,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksElevationProfile => 'Elevation profile';
 
   @override
-  String get parksBoardEmptyTitle => 'Be the first on this board';
+  String get parksBoardEmptyTitle => 'No times yet. Yours could be the first.';
 
   @override
   String get parksBoardEmptyBody =>
-      'Run this course with Threkir recording. Once the run syncs, your time appears here automatically.';
+      'Run this course with Threkir recording. When your run covers the whole course and passes every checkpoint, your time appears here on its own. There is nothing to submit.';
 
   @override
   String get parksLegendTitle => 'Map key';
@@ -21115,7 +21115,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksLegendStartFinish => 'Start and finish';
 
   @override
-  String get parksLegendCheckpoints => 'Checkpoints, in order';
+  String get parksLegendCheckpoints => 'Checkpoint: your run must pass it';
 
   @override
   String get parksLegendDirection => 'Direction to run';

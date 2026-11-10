@@ -609,7 +609,7 @@ void main() {
         find.byKey(const Key('park-course-legend-direction')),
         findsOneWidget,
       );
-      expect(find.text('Checkpoints, in order'), findsOneWidget);
+      expect(find.text('Checkpoint: your run must pass it'), findsOneWidget);
       expect(
         find.bySemanticsLabel(RegExp('Course map with 2 checkpoints')),
         findsOneWidget,
@@ -748,7 +748,7 @@ void main() {
       );
       await _settle(tester);
       expect(find.byKey(const Key('park-board-invitation')), findsOneWidget);
-      expect(find.text('Be the first on this board'), findsOneWidget);
+      expect(find.text('No times yet. Yours could be the first.'), findsOneWidget);
       expect(find.byKey(const Key('park-board-controls')), findsNothing);
       expect(find.byKey(const Key('park-board-kind')), findsNothing);
       expect(find.byKey(const Key('park-board-season')), findsNothing);

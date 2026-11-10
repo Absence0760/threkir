@@ -1510,6 +1510,10 @@ The app has **two** card flavours, and the distinction is load-bearing — don't
 
 When you need an elevated panel: `class="card-elevated"` (+ a layout modifier). When you need a flat panel: keep the existing page-scoped `.card`. Never give the global an unqualified `.card` rule.
 
+## Web empty states — `EmptyState.svelte`
+
+A whole-surface "nothing here yet" or "nothing matches these filters" state renders `apps/web/src/lib/components/EmptyState.svelte` (icon, heading, explainer as `text` or a `body` snippet, an `actions` snippet, and optional `children` inside the card), never a bare grey `<p>` or a page-local `.empty-card` rule. It spans the content width and caps only its prose; `tone="danger"` gives a failed read the same shape. The web's analogue of mobile's ui_kit `EmptyState` (§ Mobile empty states). The run-surface tabs (Runs, Routes, Segments, Plans, Races) use it; older pages still carry local copies awaiting migration.
+
 ## Web status / accent colour tokens — pick the variant for the JOB
 
 The `--color-warning` / `--color-secondary` / `--color-accent-cyan` (and `--color-success` / `--color-danger`) base tokens in `apps/web/src/app.css` are tuned for **tints, borders and dark mode** — they are *light* accents and FAIL WCAG 1.4.3 as foreground text on a light surface (warning 2.05:1, cyan 2.30:1, secondary 3.06:1 on white; issue #368). Each status/accent has purpose-built variants — use the one matching the job, never the base token, for these two jobs:

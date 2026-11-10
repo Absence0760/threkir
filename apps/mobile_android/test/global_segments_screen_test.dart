@@ -6,7 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../lib/l10n/gen/app_localizations.dart';
+import 'package:ui_kit/ui_kit.dart' show EmptyState;
+
 import '../lib/screens/global_segments_screen.dart';
+import '../lib/screens/park_courses_screen.dart';
 import 'supabase_test_init.dart';
 
 GlobalSegmentRow _segment({
@@ -79,6 +82,13 @@ class _CatalogueApi extends ApiClient {
     int limit = 50,
   }) async =>
       const [];
+}
+
+class _NoParksApi extends _CatalogueApi {
+  _NoParksApi() : super(const []);
+
+  @override
+  Future<List<ParkListing>> fetchParks() async => const [];
 }
 
 class _ThrowingCatalogueApi extends ApiClient {
@@ -231,6 +241,22 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('0 segments'), findsNothing);
+      expect(find.byType(EmptyState), findsOneWidget);
+    });
+
+    testWidgets('resetting from the no-match state clears the search field too',
+        (tester) async {
+      await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _CatalogueApi(_catalogue))));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'nowhere at all');
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+          of: find.byType(EmptyState), matching: find.text('Reset')));
+      await tester.pumpAndSettle();
+      expect(find.byType(EmptyState), findsNothing);
+      expect(find.text('2 segments'), findsOneWidget);
+      expect(tester.widget<TextField>(find.byType(TextField)).controller!.text,
+          isEmpty);
     });
 
     testWidgets('the surface filter narrows to that surface only',
@@ -260,14 +286,28 @@ void main() {
       );
     });
 
-    testWidgets('an empty catalogue renders the empty state', (tester) async {
-      await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _CatalogueApi(const []))));
+    testWidgets('an empty catalogue renders the shared empty state',
+        (tester) async {
+      await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _NoParksApi())));
       await tester.pumpAndSettle();
+      final empty = find.byType(EmptyState);
+      expect(empty, findsOneWidget);
       expect(
-        find.text('No famous segments in the catalogue yet.'),
+        find.descendant(
+            of: empty,
+            matching: find.text('No famous segments in the catalogue yet.')),
         findsOneWidget,
       );
       expect(find.byType(TextField), findsNothing);
+    });
+
+    testWidgets('the empty catalogue points to park courses', (tester) async {
+      await tester.pumpWidget(_host(GlobalSegmentsScreen(api: _NoParksApi())));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(
+          of: find.byType(EmptyState), matching: find.text('Park courses')));
+      await tester.pumpAndSettle();
+      expect(find.byType(ParksScreen), findsOneWidget);
     });
 
     testWidgets('a signed-out viewer still browses the world-readable catalogue',
@@ -338,7 +378,12 @@ void main() {
         _host(GlobalSegmentDetailScreen(api: _CatalogueApi(const []), segmentId: 'gone')),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Segment not found'), findsOneWidget);
+      expect(
+        find.descendant(
+            of: find.byType(EmptyState),
+            matching: find.text('Segment not found')),
+        findsOneWidget,
+      );
       expect(find.text('Leaderboard'), findsNothing);
     });
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart'
     show
         AppSemanticColors,
+        EmptyState,
         IdentityAvatar,
         ListSkeleton,
         SkeletonBlock,
@@ -49,11 +50,18 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
   String? _region;
   String? _surface;
   CatalogueSort _sort = CatalogueSort.name;
+  final _search = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -90,6 +98,7 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
   }
 
   void _reset() {
+    _search.clear();
     setState(() {
       _query = '';
       _region = null;
@@ -113,6 +122,12 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
         CatalogueSort.climb => l10n.segmentCatalogueSortClimb,
       };
 
+  void _openParks() => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ParksScreen(api: widget.api),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -124,11 +139,7 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
             key: const Key('segments-parks-link'),
             tooltip: l10n.parksBrowseLink,
             icon: const Icon(Icons.park_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => ParksScreen(api: widget.api),
-              ),
-            ),
+            onPressed: _openParks,
           ),
         ],
       ),
@@ -153,14 +164,12 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
                   onRetry: _load,
                 )
               : _segments.isEmpty
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Text(
-                          l10n.segmentCatalogueEmpty,
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
+                  ? EmptyState(
+                      icon: Icons.terrain,
+                      title: l10n.segmentCatalogueEmpty,
+                      ctaLabel: l10n.parksBrowseLink,
+                      ctaIcon: Icons.park_outlined,
+                      onCta: _openParks,
                     )
                   : _buildCatalogue(context, l10n),
     );
@@ -203,6 +212,7 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
         ),
         const SizedBox(height: 12),
         TextField(
+          controller: _search,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search),
             labelText: l10n.segmentCatalogueSearchLabel,
@@ -286,13 +296,19 @@ class _GlobalSegmentsScreenState extends State<GlobalSegmentsScreen> {
         // nothing on the transition that most needs announcing.
         Semantics(
           liveRegion: true,
-          child: Text(
-            shown.isEmpty
-                ? l10n.segmentCatalogueNoMatches
-                : l10n.segmentCatalogueCount(shown.length),
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
+          child: shown.isEmpty
+              ? EmptyState(
+                  icon: Icons.filter_alt_off,
+                  title: l10n.segmentCatalogueNoMatches,
+                  ctaLabel: l10n.segmentsPanelResetFilters,
+                  ctaIcon: Icons.close,
+                  onCta: _reset,
+                )
+              : Text(
+                  l10n.segmentCatalogueCount(shown.length),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
         ),
         const SizedBox(height: 8),
         for (final segment in shown) ...[
@@ -470,25 +486,10 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
                   onRetry: _loadSegment,
                 )
               : segment == null
-                  ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              l10n.segmentCatalogueNotFoundTitle,
-                              style: Theme.of(context).textTheme.titleMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              l10n.segmentCatalogueNotFoundBody,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
+                  ? EmptyState(
+                      icon: Icons.search_off,
+                      title: l10n.segmentCatalogueNotFoundTitle,
+                      body: l10n.segmentCatalogueNotFoundBody,
                     )
                   : _buildDetail(context, l10n, segment),
     );

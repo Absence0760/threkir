@@ -4,6 +4,7 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -401,13 +402,9 @@
 		<p class="visually-hidden" role="status">{m('settingsIntegrations.loading')}</p>
 	{:else}
 		{#if integrations.every((i) => !i.connected)}
-			<section class="card empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">link</span>
-				<h3>{m('settingsIntegrations.emptyTitle')}</h3>
-				<p class="empty-text">
-					{m('settingsIntegrations.emptyText')}
-				</p>
-			</section>
+			<div class="integrations-empty">
+				<EmptyState icon="link" title={m('settingsIntegrations.emptyTitle')} text={m('settingsIntegrations.emptyText')} />
+			</div>
 		{/if}
 		{#if visibleConnect.length > 0}
 		<section class="provider-section">
@@ -746,33 +743,8 @@
 	}
 
 	/* Empty-state card — matches /u/[id]'s shape. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
+	.integrations-empty {
 		margin-bottom: var(--space-xl);
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
 	}
 
 	/* Skeletons */

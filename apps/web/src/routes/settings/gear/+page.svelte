@@ -33,6 +33,7 @@
 	import { gearBackfillCandidates, gearPurchaseSince } from '#lib/gear/gear_backfill.ts';
 	import GearBackfillModal from '#lib/components/GearBackfillModal.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import UnsavedChangesGuard from '#lib/components/UnsavedChangesGuard.svelte';
 	import { trackDirty } from '#lib/core/form_dirty.ts';
@@ -568,30 +569,26 @@
 		</div>
 		<p class="visually-hidden" role="status">{t('settingsGear.loadingGear')}</p>
 	{:else if visible.length === 0}
-		<section class="card empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">
-				{activeTab === 'shoe' ? 'directions_run' : 'directions_bike'}
-			</span>
-			<h3>{activeTab === 'shoe' ? t('settingsGear.emptyShoesTitle') : t('settingsGear.emptyBikesTitle')}</h3>
-			<p class="empty-text">
-				{#if activeTab === 'shoe'}
-					{t('settingsGear.emptyShoesText')}
-				{:else}
-					{t('settingsGear.emptyBikesText')}
-				{/if}
-			</p>
-			<button
-				class="btn btn-primary"
-				type="button"
-				onclick={() => {
-					resetForm();
-					showCreate = true;
-				}}
-			>
-				<span class="material-symbols" aria-hidden="true">add</span>
-				{activeTab === 'shoe' ? t('settingsGear.addShoes') : t('settingsGear.addBike')}
-			</button>
-		</section>
+		<EmptyState
+			icon={activeTab === 'shoe' ? 'directions_run' : 'directions_bike'}
+			title={activeTab === 'shoe' ? t('settingsGear.emptyShoesTitle') : t('settingsGear.emptyBikesTitle')}
+			text={activeTab === 'shoe' ? t('settingsGear.emptyShoesText') : t('settingsGear.emptyBikesText')}
+			data-testid="gear-empty"
+		>
+			{#snippet actions()}
+				<button
+					class="btn btn-primary"
+					type="button"
+					onclick={() => {
+						resetForm();
+						showCreate = true;
+					}}
+				>
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{activeTab === 'shoe' ? t('settingsGear.addShoes') : t('settingsGear.addBike')}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		{#if active.length > 0}
 			<ul class="gear-list">
@@ -1058,36 +1055,6 @@
 		font-weight: 600;
 	}
 	.spacer { flex: 1; }
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-family: 'Material Symbols Outlined';
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
 
 	.skeleton-stack {
 		display: flex;

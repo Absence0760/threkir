@@ -623,7 +623,7 @@ test.describe('/settings/gear — empty state', () => {
 
 		// CTA inside the empty card opens the same create modal.
 		await page
-			.locator('.empty-card')
+			.getByTestId('gear-empty')
 			.getByRole('button', { name: /Add shoes/ })
 			.click();
 		const planted = `E2E First Pair ${Date.now()}`;
@@ -633,7 +633,7 @@ test.describe('/settings/gear — empty state', () => {
 		await expect(
 			page.locator('.gear-row', { hasText: planted })
 		).toBeVisible({ timeout: 10_000 });
-		await expect(page.locator('.empty-card')).toHaveCount(0);
+		await expect(page.getByTestId('gear-empty')).toHaveCount(0);
 
 		// Sanity: backend row exists with owner_id = USER_C_PRO.
 		const data = await readRows(

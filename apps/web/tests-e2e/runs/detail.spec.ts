@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/test';
 
 import { getAdminClient } from '../fixtures/local-supabase';
 import { RUNNER_PUBLIC_RUN_ID } from '../fixtures/seeded-data';
-import { deleteRun, insertRun } from '../fixtures/simulate';
+import { deleteRun, insertRun, setUserSetting } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 import type { TrackPoint } from '../../src/lib/types';
 import { readMaybeRow, readRow, readRows } from '../fixtures/db-read';
@@ -627,6 +627,49 @@ test.describe('/runs/[id]', () => {
 				'An image shares no link'
 			);
 		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('the elevation stat follows the unit preference and an odd last row has no filler tile', async ({
+		page
+	}) => {
+		// The stat grid printed "218 m" beside a distance in miles and an
+		// elevation profile reading "715 ft" for the same climb. And with a
+		// short last row the empty slot showed the border-coloured grid
+		// background as a grey tile.
+		const admin = getAdminClient();
+		const setUnit = async (unit: 'km' | 'mi') => {
+			await setUserSetting(USER_A.id, 'preferred_unit', unit);
+			await admin.from('user_profiles').update({ preferred_unit: unit }).eq('id', USER_A.id);
+		};
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 16_190,
+			duration_s: 5_400,
+			is_public: false
+		});
+		try {
+			await admin.from('runs').update({ elevation_gain_m: 218 }).eq('id', planted);
+			await setUnit('mi');
+			await page.goto(`/runs/${planted}`);
+			const elevation = page.locator('.key-stat', { hasText: 'Elevation' }).locator('.key-stat-value');
+			await expect(elevation).toHaveText('715 ft', { timeout: 10_000 });
+
+			const grid = page.locator('.key-stats').first();
+			const colours = await grid.evaluate((el) => {
+				const style = getComputedStyle(el);
+				const cell = el.querySelector('.key-stat');
+				return {
+					grid: style.backgroundColor,
+					border: style.borderTopColor,
+					cell: cell ? getComputedStyle(cell).backgroundColor : null
+				};
+			});
+			expect(colours.grid).not.toBe(colours.border);
+			expect(colours.cell).toBe('rgba(0, 0, 0, 0)');
+		} finally {
+			await setUnit('km');
 			await deleteRun(planted);
 		}
 	});

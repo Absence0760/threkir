@@ -6,7 +6,7 @@
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { MetricId } from '#lib/metrics/metric_registry.ts';
 	import { onMount, tick } from 'svelte';
-	import { fmtPace, getUnit, formatPaceNoSuffix } from '#lib/format/units.svelte.ts';
+	import { fmtPace, getUnit, formatPaceNoSuffix, formatElevation } from '#lib/format/units.svelte.ts';
 
 	const METRES_PER_MILE = 1609.344;
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_SITE_URL, PUBLIC_TILE_STYLE_URL as PUBLIC_TILE_STYLE_URL_ENV } from '$app/env/public';
@@ -1296,7 +1296,7 @@
 			});
 		}
 		if (elevationGainM != null) {
-			cells.push({ label: m('runDetail.elevation'), value: `${elevationGainM} m` });
+			cells.push({ label: m('runDetail.elevation'), value: formatElevation(elevationGainM) });
 		}
 		if (showCalories && estimatedCalories > 0) {
 			cells.push({ label: calorieLabel, value: String(estimatedCalories) });
@@ -2703,7 +2703,9 @@
 								{/if}
 								{#if hasElevation}
 									<td class="split-elev" class:positive={(split.elevation_m ?? 0) > 0} class:negative={(split.elevation_m ?? 0) < 0}>
-										{(split.elevation_m ?? 0) > 0 ? '+' : ''}{split.elevation_m ?? '—'} m
+										{split.elevation_m == null
+											? '—'
+											: `${split.elevation_m > 0 ? '+' : ''}${formatElevation(split.elevation_m)}`}
 									</td>
 								{/if}
 							</tr>
@@ -3683,12 +3685,16 @@
 	 *     stats line up vertically + don't jitter when the underlying
 	 *     value ticks (`12:34` vs `12:36` was visually shifting).
 	 */
+	/* The separators are each cell's own right and bottom edge, not a
+	   border-coloured background showing through a 1px gap: that background
+	   also filled the empty slots of a short last row, which read as a grey
+	   placeholder tile. The outer ones fall under the border and are clipped,
+	   and an empty slot is plain panel. */
 	.key-stats {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(min(132px, 100%), 1fr));
-		gap: 1px;
 		margin-bottom: var(--space-xl);
-		background: var(--color-border);
+		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-lg);
 		overflow: hidden;
@@ -3721,7 +3727,9 @@
 		gap: 0.25rem;
 		min-width: 0;
 		padding: var(--space-md) var(--space-lg);
-		background: var(--color-bg-secondary);
+		box-shadow:
+			1px 0 0 var(--color-border),
+			0 1px 0 var(--color-border);
 		container-type: inline-size;
 	}
 

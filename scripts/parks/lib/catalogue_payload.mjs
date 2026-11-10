@@ -244,6 +244,14 @@ export function cataloguePayload(manifest, readGeojson) {
 	check(typeof park.country_code === 'string' && /^[A-Z]{2}$/.test(park.country_code), `park country_code ${park.country_code} is not ISO 3166-1 alpha-2`);
 	check(typeof park.timezone === 'string' && park.timezone.length >= 1, 'park timezone is missing');
 	check(park.website_url == null || /^https:\/\//.test(park.website_url), 'park website_url must be https');
+	if (park.agency === 'nps') {
+		check(
+			typeof park.nps_park_code === 'string' && /^[a-z]{4,10}$/.test(park.nps_park_code),
+			'an nps park needs its nps_park_code (the NPS Data API parkCode, e.g. shen), which the closures sweep reads',
+		);
+	} else {
+		check(park.nps_park_code == null, `only an nps park takes an nps_park_code, not a ${park.agency} park`);
+	}
 	check(typeof manifest.attribution === 'string' && manifest.attribution.trim().length > 0, 'the manifest carries no attribution');
 	check(
 		manifest.attribution.trim().length <= MAX_ATTRIBUTION_LENGTH,
@@ -298,6 +306,7 @@ export function cataloguePayload(manifest, readGeojson) {
 			country_code: park.country_code,
 			timezone: park.timezone,
 			website_url: park.website_url ?? null,
+			nps_park_code: park.nps_park_code ?? null,
 		},
 		region: subdivision ? `${park.name}, ${subdivision}` : park.name,
 		attribution: manifest.attribution.trim(),

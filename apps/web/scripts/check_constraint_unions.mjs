@@ -1029,6 +1029,17 @@ export const PAIRS = [
 		clients: [{ file: DATA_TS, decl: 'OrganiserDisputeAction', shape: 'union' }],
 	},
 	{
+		tableColumn: 'park_course_nps_alerts.match',
+		clients: [
+			{ file: DATA_TS, decl: 'ParkNpsAlertMatch', shape: 'union' },
+			{ file: 'apps/backend/supabase/functions/park-closures-sweep/lib.ts', decl: 'AlertMatch', shape: 'union' },
+		],
+	},
+	{
+		tableColumn: 'park_course_nps_alerts.review_status',
+		clients: [{ file: DATA_TS, decl: 'ParkNpsAlertStatus', shape: 'union' }],
+	},
+	{
 		tableColumn: 'park_course_status_actions.action',
 		clients: [{ file: DATA_TS, decl: 'ParkCourseStatusAction', shape: 'union' }],
 	},

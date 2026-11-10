@@ -34,6 +34,8 @@ scripts/parks/
 
 `node scripts/parks/build.mjs --check <dir>` fails when a committed output no longer matches its spec and snapshot.
 
+A National Park Service unit (`"agency": "nps"` in `park.json`'s `park`) also needs its `nps_park_code`, the NPS Data API `parkCode` (`shen` for Shenandoah, the code in the unit's nps.gov URL). The payload check refuses an `nps` park without one and any other park with one. The daily closures sweep reads the unit's NPS alerts by that code and flags its courses for review (decisions § 2453).
+
 Only loop courses are built so far. Out-and-back and point-to-point courses (the rail trails) are added when the first one is specced.
 
 ## Route guides

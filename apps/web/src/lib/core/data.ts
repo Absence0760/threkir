@@ -15683,6 +15683,67 @@ export async function fetchParkCourseStatusHistory(courseId: string): Promise<Pa
 	}));
 }
 
+/** `park_course_nps_alerts.match`, a rail in check_constraint_unions.mjs. */
+export type ParkNpsAlertMatch = 'named' | 'park_wide';
+/** `park_course_nps_alerts.review_status`, a rail in check_constraint_unions.mjs. */
+export type ParkNpsAlertStatus = 'pending' | 'reviewed' | 'dismissed';
+
+/** An NPS alert the closures sweep flagged against a park course, for review
+ *  at /admin/park-alerts (decisions § 2453). */
+export interface ParkNpsAlert {
+	id: number;
+	park_course_id: string;
+	course_name: string;
+	course_slug: string;
+	course_status: string;
+	park_name: string;
+	park_slug: string;
+	region_code: string;
+	alert_id: string;
+	category: string;
+	title: string;
+	description: string;
+	url: string | null;
+	match: ParkNpsAlertMatch;
+	review_status: ParkNpsAlertStatus;
+	reviewed_at: string | null;
+	first_seen_at: string;
+	last_seen_at: string;
+	gone_at: string | null;
+}
+
+/** The NPS alert flags in one review state, oldest first, gone ones last.
+ *  Admin-gated at the DB (42501 for anyone else). Throws on a failed read. */
+export async function fetchParkNpsAlerts(status: ParkNpsAlertStatus = 'pending'): Promise<ParkNpsAlert[]> {
+	const { data, error } = await supabase.rpc('admin_park_nps_alerts', { p_status: status }, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		...r,
+		url: r.url ?? null,
+		reviewed_at: r.reviewed_at ?? null,
+		gone_at: r.gone_at ?? null,
+		match: r.match === 'park_wide' ? 'park_wide' : 'named',
+		review_status: r.review_status === 'reviewed' || r.review_status === 'dismissed' ? r.review_status : 'pending',
+	}));
+}
+
+/** Act on one flag: `close` closes its course with the note the course page
+ *  shows (logged like a close from the reports queue) and marks every pending
+ *  flag on the course reviewed; `reviewed` and `dismissed` only file the flag.
+ *  Admin-gated at the DB. */
+export async function reviewParkNpsAlert(
+	id: number,
+	action: 'close' | 'reviewed' | 'dismissed',
+	note: string | null = null,
+): Promise<void> {
+	const { error } = await supabase.rpc('admin_review_park_nps_alert', {
+		p_id: id,
+		p_action: action,
+		p_note: note?.trim() || null,
+	});
+	if (error) throw dbError(error);
+}
+
 export interface OrganiserDisputeHistoryEntry {
 	id: number;
 	action: OrganiserDisputeAction;

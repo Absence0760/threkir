@@ -5192,6 +5192,7 @@ class ParkRow {
   static const String colBboxMaxLng = 'bbox_max_lng';
   static const String colIsActive = 'is_active';
   static const String colCreatedAt = 'created_at';
+  static const String colNpsParkCode = 'nps_park_code';
 
   final String id;
   final String slug;
@@ -5210,6 +5211,7 @@ class ParkRow {
   final double? bboxMaxLng;
   final bool isActive;
   final DateTime createdAt;
+  final String? npsParkCode;
 
   const ParkRow({
     required this.id,
@@ -5229,6 +5231,7 @@ class ParkRow {
     this.bboxMaxLng,
     required this.isActive,
     required this.createdAt,
+    this.npsParkCode,
   });
 
   factory ParkRow.fromJson(Map<String, dynamic> json) => ParkRow(
@@ -5249,6 +5252,7 @@ class ParkRow {
     bboxMaxLng: _toDoubleOrNull(json['bbox_max_lng']),
     isActive: (json['is_active'] as bool?) ?? false,
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    npsParkCode: json['nps_park_code'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5269,6 +5273,7 @@ class ParkRow {
     colBboxMaxLng: bboxMaxLng,
     colIsActive: isActive,
     colCreatedAt: createdAt.toIso8601String(),
+    colNpsParkCode: npsParkCode,
   };
 
   ParkRow copyWith({
@@ -5289,6 +5294,7 @@ class ParkRow {
     double? bboxMaxLng,
     bool? isActive,
     DateTime? createdAt,
+    String? npsParkCode,
   }) => ParkRow(
     id: id ?? this.id,
     slug: slug ?? this.slug,
@@ -5307,6 +5313,7 @@ class ParkRow {
     bboxMaxLng: bboxMaxLng ?? this.bboxMaxLng,
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
+    npsParkCode: npsParkCode ?? this.npsParkCode,
   );
 }
 

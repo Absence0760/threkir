@@ -67,6 +67,10 @@ export const EXCLUDED_JOBS = [
 		name: 'club-verification-recheck',
 		reason: "Re-checks verified clubs' domain proof and drops a lapsed badge; deletes nothing.",
 	},
+	{
+		name: 'park-closures-sweep',
+		reason: 'Flags park courses for review from NPS alerts and stamps gone alerts; deletes nothing.',
+	},
 	{ name: 'enqueue-event-reminders', reason: 'Enqueues reminder emails; deletes nothing.' },
 	{ name: 'enqueue-workout-reminders', reason: "Raises today's-workout reminders; deletes nothing." },
 	{

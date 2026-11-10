@@ -15,6 +15,7 @@
 		fetchAdminParkCourse,
 		adminSetParkCourseStatus,
 		fetchParkCourseStatusHistory,
+		fetchParkNpsAlerts,
 		type AdminParkCourse,
 		type ParkCourseStatusHistoryEntry,
 		type OrganiserDisputeHistoryEntry,
@@ -333,10 +334,25 @@
 		}
 	}
 
+	// The NPS closures sweep's flags live on their own page; the count here
+	// is how an admin working this queue learns some are waiting. A failed
+	// read leaves the link off rather than the queue.
+	let npsPending = $state(0);
+	async function loadNpsPending() {
+		try {
+			npsPending = (await fetchParkNpsAlerts('pending')).length;
+		} catch (e) {
+			console.warn('park alerts count failed', e);
+		}
+	}
+
 	onMount(async () => {
 		await auth.ready();
 		isAdmin = await amIAdmin();
-		if (isAdmin) await loadQueue();
+		if (isAdmin) {
+			void loadNpsPending();
+			await loadQueue();
+		}
 		loading = false;
 	});
 </script>
@@ -355,6 +371,13 @@
 		<header>
 			<h1>{t('admin.reports.title')}</h1>
 			<p class="muted">{t('admin.reports.subtitle')}</p>
+			{#if npsPending > 0}
+				<p class="nps-pending">
+					<a href="/admin/park-alerts" data-testid="admin-park-alerts-link">
+						{t('admin.parkAlerts.pendingLink', { count: npsPending })}
+					</a>
+				</p>
+			{/if}
 		</header>
 
 		<div class="tabs" role="group" aria-label={t('admin.reports.title')}>

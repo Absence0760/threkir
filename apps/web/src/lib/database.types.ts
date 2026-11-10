@@ -3546,6 +3546,65 @@ export type Database = {
           },
         ]
       }
+      park_course_nps_alerts: {
+        Row: {
+          alert_id: string
+          category: string
+          description: string
+          first_seen_at: string
+          gone_at: string | null
+          id: number
+          last_seen_at: string
+          match: string
+          park_course_id: string
+          review_status: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          title: string
+          url: string | null
+        }
+        Insert: {
+          alert_id: string
+          category: string
+          description?: string
+          first_seen_at?: string
+          gone_at?: string | null
+          id?: never
+          last_seen_at?: string
+          match: string
+          park_course_id: string
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          title: string
+          url?: string | null
+        }
+        Update: {
+          alert_id?: string
+          category?: string
+          description?: string
+          first_seen_at?: string
+          gone_at?: string | null
+          id?: never
+          last_seen_at?: string
+          match?: string
+          park_course_id?: string
+          review_status?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          title?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "park_course_nps_alerts_park_course_id_fkey"
+            columns: ["park_course_id"]
+            isOneToOne: false
+            referencedRelation: "park_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       park_course_status_actions: {
         Row: {
           action: string
@@ -3714,6 +3773,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          nps_park_code: string | null
           region_code: string
           slug: string
           timezone: string
@@ -3733,6 +3793,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          nps_park_code?: string | null
           region_code: string
           slug: string
           timezone: string
@@ -3752,6 +3813,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          nps_park_code?: string | null
           region_code?: string
           slug?: string
           timezone?: string
@@ -7376,6 +7438,30 @@ export type Database = {
           week_start: string
         }[]
       }
+      admin_park_nps_alerts: {
+        Args: { p_status?: string }
+        Returns: {
+          alert_id: string
+          category: string
+          course_name: string
+          course_slug: string
+          course_status: string
+          description: string
+          first_seen_at: string
+          gone_at: string
+          id: number
+          last_seen_at: string
+          match: string
+          park_course_id: string
+          park_name: string
+          park_slug: string
+          region_code: string
+          review_status: string
+          reviewed_at: string
+          title: string
+          url: string
+        }[]
+      }
       admin_platform_fee_months: {
         Args: never
         Returns: {
@@ -7405,6 +7491,10 @@ export type Database = {
           net_fee_cents: number
           reversed_fee_cents: number
         }[]
+      }
+      admin_review_park_nps_alert: {
+        Args: { p_action: string; p_id: number; p_note?: string }
+        Returns: number
       }
       admin_set_park_course_status: {
         Args: { p_course_id: string; p_note?: string; p_status: string }
@@ -8451,6 +8541,7 @@ export type Database = {
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
       invoke_club_verification_recheck: { Args: never; Returns: number }
       invoke_event_refund_sweep: { Args: never; Returns: number }
+      invoke_park_closures_sweep: { Args: never; Returns: number }
       invoke_race_listings_sweep: { Args: never; Returns: number }
       is_blocked_either_way: {
         Args: { a: string; b: string }
@@ -8753,6 +8844,14 @@ export type Database = {
           status_before: string
         }[]
       }
+      park_nps_sweep_targets: {
+        Args: never
+        Returns: {
+          courses: Json
+          nps_park_code: string
+          park_id: string
+        }[]
+      }
       park_season: {
         Args: { p: Database["public"]["Tables"]["parks"]["Row"] }
         Returns: number
@@ -8957,6 +9056,14 @@ export type Database = {
           p_track_version: string
         }
         Returns: boolean
+      }
+      record_park_nps_alerts: {
+        Args: { p_flags: Json; p_park_id: string; p_seen_alert_ids: string[] }
+        Returns: {
+          created: number
+          gone: number
+          seen: number
+        }[]
       }
       record_segment_match: {
         Args: {

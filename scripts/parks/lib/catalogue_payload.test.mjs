@@ -264,6 +264,17 @@ function refused(mutate) {
 	return () => cataloguePayload(m, squareOnly);
 }
 
+test('an nps park carries its NPS park code into the payload, and no other park takes one', () => {
+	const m = manifest();
+	Object.assign(m.park, { agency: 'nps', nps_park_code: 'shen' });
+	assert.equal(cataloguePayload(m, squareOnly).park.nps_park_code, 'shen');
+	assert.equal(cataloguePayload(manifest(), squareOnly).park.nps_park_code, null);
+	assert.throws(refused((m) => (m.park.agency = 'nps')), /an nps park needs its nps_park_code/);
+	assert.throws(refused((m) => Object.assign(m.park, { agency: 'nps', nps_park_code: 'SHEN' })), /nps_park_code/);
+	assert.throws(refused((m) => Object.assign(m.park, { agency: 'nps', nps_park_code: 'sh' })), /nps_park_code/);
+	assert.throws(refused((m) => (m.park.nps_park_code = 'shen')), /only an nps park takes an nps_park_code/);
+});
+
 test('the manifest is refused where the database would refuse it', () => {
 	assert.throws(refused((m) => (m.park.slug = 'Test Park')), /park slug/);
 	assert.throws(refused((m) => (m.park.agency = 'federal')), /park agency federal/);

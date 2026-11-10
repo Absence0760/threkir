@@ -25,6 +25,8 @@ const ANON_REACHABLE = [
   // A signed-out land manager or runner reporting a park course; the handler
   // verifies a JWT when sent and files through a service-role-only RPC.
   'park-course-report',
+  // pg_cron's daily NPS alerts read, authorised in-handler by the CRON_SECRET bearer.
+  'park-closures-sweep',
   'race-listings-sweep',
   'refresh-tokens',
   'revenuecat-webhook',

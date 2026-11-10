@@ -8655,9 +8655,10 @@ class ApiClient {
   /// Optional case-insensitive title search, every character matched
   /// literally (`literalSubstringPattern`, decisions § 1937). Each entry
   /// carries the author's public display name (handle) joined from
-  /// user_profiles; no other author data is exposed. Mirrors web
-  /// `data.ts#fetchPublicGymRoutineLibrary`.
-  Future<List<({GymRoutineRow routine, String? authorHandle})>>
+  /// user_profiles; no other author data is exposed, and `isOfficial` is the
+  /// view's derived flag (published by a verified organiser, migration
+  /// 20271211000002). Mirrors web `data.ts#fetchPublicGymRoutineLibrary`.
+  Future<List<({GymRoutineRow routine, String? authorHandle, bool isOfficial})>>
       fetchPublicGymRoutineLibrary({String query = ''}) async {
     // public_gym_routines redacts external_id + last_modified_at (migration
     // 20270319_001); created_at stands in for the model's required field.
@@ -8672,8 +8673,12 @@ class ApiClient {
     final rows = await sel
         .order(GymRoutineRow.colCreatedAt, ascending: false)
         .limit(100);
-    final routines = (rows as List)
-        .cast<Map<String, dynamic>>()
+    final raw = (rows as List).cast<Map<String, dynamic>>();
+    final officialIds = {
+      for (final r in raw)
+        if (r['is_official'] == true) r[GymRoutineRow.colId] as String,
+    };
+    final routines = raw
         .map((r) => GymRoutineRow.fromJson({
               ...r,
               GymRoutineRow.colLastModifiedAt: r[GymRoutineRow.colCreatedAt],
@@ -8693,7 +8698,11 @@ class ApiClient {
     }
     return [
       for (final r in routines)
-        (routine: r, authorHandle: byId[r.authorId]),
+        (
+          routine: r,
+          authorHandle: byId[r.authorId],
+          isOfficial: officialIds.contains(r.id),
+        ),
     ];
   }
 
@@ -9903,6 +9912,11 @@ class ApiClient {
               profileById[r['partner_id']]?['avatar_url'] as String?,
           lastBody: r['last_body'] as String?,
           lastUnsent: r['last_unsent'] == true,
+          lastKind: switch (r['last_kind']) {
+            'coach_share' => 'coach_share',
+            'ai_assisted' => 'ai_assisted',
+            _ => 'text',
+          },
           lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
           lastFromMe: r['last_from_me'] == true,
           unread: (r['unread'] as num?)?.toInt() ?? 0,
@@ -10068,7 +10082,7 @@ class ApiClient {
   /// `DM_COLUMNS`.
   static const String dmColumns =
       'id, sender_id, recipient_id, body, created_at, seen_at, route_id, '
-      'unsent_at, deleted_partner_key, conversation_id, edited_at';
+      'unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id';
 
   /// One page of a conversation, oldest message first. A partner thread is
   /// both directions between the viewer and the partner; a deleted-partner
@@ -10199,6 +10213,65 @@ class ApiClient {
       if (e.code == '55000' || e.code == 'P0002') throw const DmEditClosed();
       rethrow;
     }
+  }
+
+  /// Share the picked paragraphs of one of the viewer's own AI Coach answers
+  /// with one of their active coaches, as a `coach_share` direct message
+  /// (issue #1215 Phase 3, migration 20271210001215). The server copies the
+  /// text by paragraph index, so the card's AI label always sits on AI text.
+  /// Mirrors web `shareCoachMessage`.
+  ///
+  /// Not their coach, a block, or a declined request is the same 42501 a
+  /// refused send is, and throws [DmSendNotPermitted]; the gate being closed
+  /// (0A000) is [CoachShareUnavailable]; the request cap (54000) is
+  /// [DmRequestCapReached]. The send throttle's P0001, an answer that is gone
+  /// (P0002) and an excerpt the server refuses (22023 / 22001) are rethrown
+  /// as the `PostgrestException` they are.
+  Future<DirectMessageRow> shareCoachMessage(
+    String coachMessageId,
+    String coachId,
+    List<int> paragraphs,
+  ) async {
+    try {
+      final row = await _client.rpc('share_coach_message', params: {
+        'p_coach_message_id': coachMessageId,
+        'p_coach_id': coachId,
+        'p_paragraphs': paragraphs,
+      });
+      return DirectMessageRow.fromJson(row as Map<String, dynamic>);
+    } on PostgrestException catch (e) {
+      if (e.code == '42501') throw const DmSendNotPermitted();
+      if (e.code == '0A000') throw const CoachShareUnavailable();
+      if (e.code == '54000') throw const DmRequestCapReached();
+      rethrow;
+    }
+  }
+
+  /// Whether sharing an AI Coach answer with a coach is live (the server's
+  /// `coach_share` gate). Mirrors web `fetchCoachShareEnabled`. Fail closed:
+  /// any read failure is "off", and the caller hides the action.
+  Future<bool> fetchCoachShareEnabled() async {
+    try {
+      final result = await _client
+          .rpc('coach_share_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('coach_share_enabled failed: ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  /// The plan a Coach answer belongs to, for the link back from a card the
+  /// viewer shared. Owner-only by RLS, so it answers only for the sender;
+  /// null for an answer outside a plan or one that is gone. Mirrors web
+  /// `fetchCoachMessagePlanId`.
+  Future<String?> fetchCoachMessagePlanId(String coachMessageId) async {
+    final row = await _client
+        .from(CoachMessageRow.table)
+        .select(CoachMessageRow.colPlanId)
+        .eq(CoachMessageRow.colId, coachMessageId)
+        .maybeSingle();
+    return row?[CoachMessageRow.colPlanId] as String?;
   }
 
   /// Mark the messages [otherId] sent the viewer as read, up to and including

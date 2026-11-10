@@ -21785,4 +21785,69 @@ class AppLocalizationsDe extends AppLocalizations {
   String profileNotifOrganiserDisputeNamed(String club) {
     return 'Es gibt ein Update zu einem Namensstreitfall mit $club';
   }
+
+  @override
+  String get coachShareAction => 'Mit Coach teilen';
+
+  @override
+  String get coachShareTitle => 'Mit deinem Coach teilen';
+
+  @override
+  String get coachShareIntro =>
+      'Wähle die Abschnitte dieser Antwort aus, die du senden möchtest. Dein Coach sieht sie als Zitat deines KI-Coaches, nicht als deine eigenen Worte.';
+
+  @override
+  String get coachShareCoachLegend => 'Senden an';
+
+  @override
+  String coachShareTo(String name) {
+    return 'Geht an $name';
+  }
+
+  @override
+  String get coachShareParagraphsLegend => 'Abschnitte zum Teilen';
+
+  @override
+  String coachShareTooLong(int max) {
+    return 'Das sind mehr als $max Zeichen. Lass einen Abschnitt weg.';
+  }
+
+  @override
+  String get coachShareLabelNote =>
+      'In der Unterhaltung ist es als KI gekennzeichnet. An die KI wird nichts Neues gesendet.';
+
+  @override
+  String get coachShareSend => 'Teilen';
+
+  @override
+  String get coachShareSending => 'Wird geteilt…';
+
+  @override
+  String coachShareSent(String name) {
+    return 'Mit $name geteilt.';
+  }
+
+  @override
+  String get coachShareOpenThread => 'Unterhaltung öffnen';
+
+  @override
+  String get coachShareDone => 'Fertig';
+
+  @override
+  String get coachShareCardLabel => 'Antwort des KI-Coaches';
+
+  @override
+  String get coachShareCardFromMe => 'Du hast dies aus deinem KI-Coach geteilt';
+
+  @override
+  String coachShareCardFromAthlete(String name) {
+    return '$name hat dies aus dem eigenen KI-Coach geteilt';
+  }
+
+  @override
+  String get coachShareOpenSource => 'Im KI-Coach öffnen';
+
+  @override
+  String get coachShareUnavailable =>
+      'Das Teilen mit deinem Coach ist noch nicht verfügbar.';
 }

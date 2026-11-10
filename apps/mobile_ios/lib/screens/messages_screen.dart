@@ -672,10 +672,9 @@ class _MessagesScreenState extends State<MessagesScreen>
           ],
         ],
       ),
-      subtitle: Text(
+      subtitle: _previewLine(
+        t,
         t.lastFromMe ? l10n.messagesYouPrefixed(preview) : preview,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -708,6 +707,21 @@ class _MessagesScreenState extends State<MessagesScreen>
         ],
       ),
       onTap: () => _open(t),
+    );
+  }
+
+  /// The preview under a conversation. A shared AI Coach answer carries the
+  /// AI tag before it, as it does in the thread (EU AI Act Art. 50).
+  static Widget _previewLine(DmThread t, String text) {
+    final line = Text(text, maxLines: 1, overflow: TextOverflow.ellipsis);
+    if (t.lastKind != 'coach_share' || t.lastUnsent) return line;
+    return Row(
+      key: ValueKey('dm-coach-share-preview-${t.threadKey}'),
+      children: [
+        const AiTag(),
+        const SizedBox(width: 6),
+        Flexible(child: line),
+      ],
     );
   }
 

@@ -21521,4 +21521,69 @@ class AppLocalizationsEn extends AppLocalizations {
   String profileNotifOrganiserDisputeNamed(String club) {
     return 'There\'s an update on a naming dispute with $club';
   }
+
+  @override
+  String get coachShareAction => 'Share with coach';
+
+  @override
+  String get coachShareTitle => 'Share with your coach';
+
+  @override
+  String get coachShareIntro =>
+      'Pick the parts of this answer to send. Your coach sees them as a quote from your AI Coach, not as your own words.';
+
+  @override
+  String get coachShareCoachLegend => 'Send to';
+
+  @override
+  String coachShareTo(String name) {
+    return 'Sending to $name';
+  }
+
+  @override
+  String get coachShareParagraphsLegend => 'Parts to share';
+
+  @override
+  String coachShareTooLong(int max) {
+    return 'That is more than $max characters. Leave a part out.';
+  }
+
+  @override
+  String get coachShareLabelNote =>
+      'It is labelled as AI in the conversation. Nothing new is sent to the AI.';
+
+  @override
+  String get coachShareSend => 'Share';
+
+  @override
+  String get coachShareSending => 'Sharing…';
+
+  @override
+  String coachShareSent(String name) {
+    return 'Shared with $name.';
+  }
+
+  @override
+  String get coachShareOpenThread => 'Open conversation';
+
+  @override
+  String get coachShareDone => 'Done';
+
+  @override
+  String get coachShareCardLabel => 'AI Coach answer';
+
+  @override
+  String get coachShareCardFromMe => 'You shared this from your AI Coach';
+
+  @override
+  String coachShareCardFromAthlete(String name) {
+    return '$name shared this from their AI Coach';
+  }
+
+  @override
+  String get coachShareOpenSource => 'Open in AI Coach';
+
+  @override
+  String get coachShareUnavailable =>
+      'Sharing with your coach is not available yet.';
 }

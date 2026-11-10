@@ -28585,5 +28585,97 @@
         "type": "String"
       }
     }
+  },
+  "coachShareAction": "Share with coach",
+  "@coachShareAction": {
+    "description": "Tooltip on the button under an AI Coach answer that opens the sheet to send parts of it to the runner's human coach"
+  },
+  "coachShareTitle": "Share with your coach",
+  "@coachShareTitle": {
+    "description": "Title of the sheet where the runner picks parts of an AI Coach answer to send to their human coach"
+  },
+  "coachShareIntro": "Pick the parts of this answer to send. Your coach sees them as a quote from your AI Coach, not as your own words.",
+  "@coachShareIntro": {
+    "description": "Intro text at the top of the share-with-coach sheet"
+  },
+  "coachShareCoachLegend": "Send to",
+  "@coachShareCoachLegend": {
+    "description": "Heading above the list of the runner's coaches to choose from, when they have more than one"
+  },
+  "coachShareTo": "Sending to {name}",
+  "@coachShareTo": {
+    "description": "Shown in the share sheet when the runner has exactly one coach. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachShareParagraphsLegend": "Parts to share",
+  "@coachShareParagraphsLegend": {
+    "description": "Heading above the checkboxes, one per paragraph of the AI Coach answer"
+  },
+  "coachShareTooLong": "That is more than {max} characters. Leave a part out.",
+  "@coachShareTooLong": {
+    "description": "Error when the picked paragraphs are longer than a message may be. {max} is the character limit",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "coachShareLabelNote": "It is labelled as AI in the conversation. Nothing new is sent to the AI.",
+  "@coachShareLabelNote": {
+    "description": "Small note above the Share button explaining the shared text is marked as AI output and the AI is not called again"
+  },
+  "coachShareSend": "Share",
+  "@coachShareSend": {
+    "description": "Button that sends the picked paragraphs to the coach"
+  },
+  "coachShareSending": "Sharing…",
+  "@coachShareSending": {
+    "description": "Share button label while the share is being sent"
+  },
+  "coachShareSent": "Shared with {name}.",
+  "@coachShareSent": {
+    "description": "Confirmation after the share went. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachShareOpenThread": "Open conversation",
+  "@coachShareOpenThread": {
+    "description": "Button after a successful share that opens the direct-message conversation with the coach"
+  },
+  "coachShareDone": "Done",
+  "@coachShareDone": {
+    "description": "Button that closes the share sheet after a successful share"
+  },
+  "coachShareCardLabel": "AI Coach answer",
+  "@coachShareCardLabel": {
+    "description": "Label at the top of a shared AI Coach answer inside a direct-message conversation, next to the AI tag"
+  },
+  "coachShareCardFromMe": "You shared this from your AI Coach",
+  "@coachShareCardFromMe": {
+    "description": "Line on a shared AI Coach answer, seen by the runner who shared it"
+  },
+  "coachShareCardFromAthlete": "{name} shared this from their AI Coach",
+  "@coachShareCardFromAthlete": {
+    "description": "Line on a shared AI Coach answer, seen by the coach who received it. {name} is the runner's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachShareOpenSource": "Open in AI Coach",
+  "@coachShareOpenSource": {
+    "description": "Link under a shared AI Coach answer, seen only by the runner who shared it, that opens the original answer in the AI Coach"
+  },
+  "coachShareUnavailable": "Sharing with your coach is not available yet.",
+  "@coachShareUnavailable": {
+    "description": "Error when sharing an AI Coach answer with a coach is switched off on the server"
   }
 }

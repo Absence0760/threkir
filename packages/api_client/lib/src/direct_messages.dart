@@ -35,6 +35,7 @@ class DmThread {
     required this.unread,
     this.deletedPartnerKey,
     this.lastUnsent = false,
+    this.lastKind = 'text',
     this.partnerName,
     this.partnerAvatarUrl,
     this.muted = false,
@@ -56,6 +57,10 @@ class DmThread {
   /// Null when the latest message was unsent ([lastUnsent]).
   final String? lastBody;
   final bool lastUnsent;
+
+  /// The latest message's `direct_messages.kind`: `coach_share` for an AI
+  /// Coach answer the athlete shared (issue #1215 Phase 3), else `text`.
+  final String lastKind;
   final DateTime lastAt;
   final bool lastFromMe;
   final int unread;
@@ -97,6 +102,7 @@ class DmThread {
     partnerAvatarUrl: partnerAvatarUrl,
     lastBody: lastBody,
     lastUnsent: lastUnsent,
+    lastKind: lastKind,
     lastAt: lastAt,
     lastFromMe: lastFromMe,
     unread: unread ?? this.unread,
@@ -148,4 +154,14 @@ class DmEditClosed implements Exception {
 
   @override
   String toString() => 'DmEditClosed';
+}
+
+/// `share_coach_message` refused because sharing an AI Coach answer with a
+/// coach is not switched on (SQLSTATE 0A000, the server's `coach_share` gate,
+/// migration 20271210001215).
+class CoachShareUnavailable implements Exception {
+  const CoachShareUnavailable();
+
+  @override
+  String toString() => 'CoachShareUnavailable';
 }

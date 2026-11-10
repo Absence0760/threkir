@@ -21800,4 +21800,70 @@ class AppLocalizationsFr extends AppLocalizations {
   String profileNotifOrganiserDisputeNamed(String club) {
     return 'Il y a du nouveau sur un litige de nom avec $club';
   }
+
+  @override
+  String get coachShareAction => 'Partager avec le coach';
+
+  @override
+  String get coachShareTitle => 'Partager avec votre coach';
+
+  @override
+  String get coachShareIntro =>
+      'Choisissez les parties de cette réponse à envoyer. Votre coach les voit comme une citation de votre Coach IA, et non comme vos propres mots.';
+
+  @override
+  String get coachShareCoachLegend => 'Envoyer à';
+
+  @override
+  String coachShareTo(String name) {
+    return 'Envoi à $name';
+  }
+
+  @override
+  String get coachShareParagraphsLegend => 'Parties à partager';
+
+  @override
+  String coachShareTooLong(int max) {
+    return 'Cela dépasse $max caractères. Retirez une partie.';
+  }
+
+  @override
+  String get coachShareLabelNote =>
+      'Le texte partagé est signalé comme provenant de l\'IA dans la conversation. Rien de nouveau n\'est envoyé à l\'IA.';
+
+  @override
+  String get coachShareSend => 'Partager';
+
+  @override
+  String get coachShareSending => 'Partage…';
+
+  @override
+  String coachShareSent(String name) {
+    return 'Partagé avec $name.';
+  }
+
+  @override
+  String get coachShareOpenThread => 'Ouvrir la conversation';
+
+  @override
+  String get coachShareDone => 'Terminé';
+
+  @override
+  String get coachShareCardLabel => 'Réponse du Coach IA';
+
+  @override
+  String get coachShareCardFromMe =>
+      'Vous avez partagé ceci depuis votre Coach IA';
+
+  @override
+  String coachShareCardFromAthlete(String name) {
+    return '$name a partagé ceci depuis son Coach IA';
+  }
+
+  @override
+  String get coachShareOpenSource => 'Ouvrir dans le Coach IA';
+
+  @override
+  String get coachShareUnavailable =>
+      'Le partage avec votre coach n\'est pas encore disponible.';
 }

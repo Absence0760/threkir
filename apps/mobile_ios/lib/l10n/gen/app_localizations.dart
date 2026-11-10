@@ -35014,6 +35014,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'There\'s an update on a naming dispute with {club}'**
   String profileNotifOrganiserDisputeNamed(String club);
+
+  /// Tooltip on the button under an AI Coach answer that opens the sheet to send parts of it to the runner's human coach
+  ///
+  /// In en, this message translates to:
+  /// **'Share with coach'**
+  String get coachShareAction;
+
+  /// Title of the sheet where the runner picks parts of an AI Coach answer to send to their human coach
+  ///
+  /// In en, this message translates to:
+  /// **'Share with your coach'**
+  String get coachShareTitle;
+
+  /// Intro text at the top of the share-with-coach sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the parts of this answer to send. Your coach sees them as a quote from your AI Coach, not as your own words.'**
+  String get coachShareIntro;
+
+  /// Heading above the list of the runner's coaches to choose from, when they have more than one
+  ///
+  /// In en, this message translates to:
+  /// **'Send to'**
+  String get coachShareCoachLegend;
+
+  /// Shown in the share sheet when the runner has exactly one coach. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Sending to {name}'**
+  String coachShareTo(String name);
+
+  /// Heading above the checkboxes, one per paragraph of the AI Coach answer
+  ///
+  /// In en, this message translates to:
+  /// **'Parts to share'**
+  String get coachShareParagraphsLegend;
+
+  /// Error when the picked paragraphs are longer than a message may be. {max} is the character limit
+  ///
+  /// In en, this message translates to:
+  /// **'That is more than {max} characters. Leave a part out.'**
+  String coachShareTooLong(int max);
+
+  /// Small note above the Share button explaining the shared text is marked as AI output and the AI is not called again
+  ///
+  /// In en, this message translates to:
+  /// **'It is labelled as AI in the conversation. Nothing new is sent to the AI.'**
+  String get coachShareLabelNote;
+
+  /// Button that sends the picked paragraphs to the coach
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get coachShareSend;
+
+  /// Share button label while the share is being sent
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing…'**
+  String get coachShareSending;
+
+  /// Confirmation after the share went. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Shared with {name}.'**
+  String coachShareSent(String name);
+
+  /// Button after a successful share that opens the direct-message conversation with the coach
+  ///
+  /// In en, this message translates to:
+  /// **'Open conversation'**
+  String get coachShareOpenThread;
+
+  /// Button that closes the share sheet after a successful share
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get coachShareDone;
+
+  /// Label at the top of a shared AI Coach answer inside a direct-message conversation, next to the AI tag
+  ///
+  /// In en, this message translates to:
+  /// **'AI Coach answer'**
+  String get coachShareCardLabel;
+
+  /// Line on a shared AI Coach answer, seen by the runner who shared it
+  ///
+  /// In en, this message translates to:
+  /// **'You shared this from your AI Coach'**
+  String get coachShareCardFromMe;
+
+  /// Line on a shared AI Coach answer, seen by the coach who received it. {name} is the runner's display name
+  ///
+  /// In en, this message translates to:
+  /// **'{name} shared this from their AI Coach'**
+  String coachShareCardFromAthlete(String name);
+
+  /// Link under a shared AI Coach answer, seen only by the runner who shared it, that opens the original answer in the AI Coach
+  ///
+  /// In en, this message translates to:
+  /// **'Open in AI Coach'**
+  String get coachShareOpenSource;
+
+  /// Error when sharing an AI Coach answer with a coach is switched off on the server
+  ///
+  /// In en, this message translates to:
+  /// **'Sharing with your coach is not available yet.'**
+  String get coachShareUnavailable;
 }
 
 class _AppLocalizationsDelegate

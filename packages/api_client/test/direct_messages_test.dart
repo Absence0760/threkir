@@ -53,6 +53,7 @@ Map<String, dynamic> _message(
     {
       'id': id,
       'conversation_id': 'c-1',
+      'kind': 'text',
       'sender_id': sender,
       'recipient_id': recipient,
       'body': 'Body $id',

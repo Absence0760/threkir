@@ -20687,4 +20687,67 @@ class AppLocalizationsJa extends AppLocalizations {
   String profileNotifOrganiserDisputeNamed(String club) {
     return '$clubとの名前に関する申し立てについてお知らせがあります';
   }
+
+  @override
+  String get coachShareAction => 'コーチに共有';
+
+  @override
+  String get coachShareTitle => 'コーチに共有';
+
+  @override
+  String get coachShareIntro =>
+      'この回答から送る部分を選んでください。コーチには、あなた自身の言葉ではなく、AIコーチからの引用として表示されます。';
+
+  @override
+  String get coachShareCoachLegend => '送信先';
+
+  @override
+  String coachShareTo(String name) {
+    return '$nameさんに送信';
+  }
+
+  @override
+  String get coachShareParagraphsLegend => '共有する部分';
+
+  @override
+  String coachShareTooLong(int max) {
+    return '$max文字を超えています。一部を外してください。';
+  }
+
+  @override
+  String get coachShareLabelNote => '会話ではAIによる生成として表示されます。AIに新たに送信される内容はありません。';
+
+  @override
+  String get coachShareSend => '共有';
+
+  @override
+  String get coachShareSending => '共有中…';
+
+  @override
+  String coachShareSent(String name) {
+    return '$nameさんに共有しました。';
+  }
+
+  @override
+  String get coachShareOpenThread => '会話を開く';
+
+  @override
+  String get coachShareDone => '完了';
+
+  @override
+  String get coachShareCardLabel => 'AIコーチの回答';
+
+  @override
+  String get coachShareCardFromMe => 'あなたがAIコーチから共有しました';
+
+  @override
+  String coachShareCardFromAthlete(String name) {
+    return '$nameさんがAIコーチから共有しました';
+  }
+
+  @override
+  String get coachShareOpenSource => 'AIコーチで開く';
+
+  @override
+  String get coachShareUnavailable => 'コーチへの共有はまだ利用できません。';
 }

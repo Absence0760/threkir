@@ -8,6 +8,7 @@ import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
 import 'package:ui_kit/ui_kit.dart';
 
 import '../auth_error.dart';
+import '../coach_share.dart';
 import '../dm_attachment.dart';
 import '../dm_edit.dart';
 import '../dm_pending_hides.dart';
@@ -17,6 +18,7 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../undo_queue.dart';
+import '../widgets/coach_share_card.dart';
 import '../widgets/dm_route_attachment.dart';
 import '../widgets/error_state.dart';
 import '../widgets/plan_change_requests.dart';
@@ -68,6 +70,7 @@ class MessageThreadScreen extends StatefulWidget {
     this.partnerAvatarUrl,
     this.pollInterval = kMessageThreadPollInterval,
     this.onOpenRoute,
+    this.onOpenCoachSource,
     this.conversationId,
     this.initialMuted,
     this.initialArchived,
@@ -81,6 +84,7 @@ class MessageThreadScreen extends StatefulWidget {
     required String this.deletedPartnerKey,
     this.pollInterval = kMessageThreadPollInterval,
     this.onOpenRoute,
+    this.onOpenCoachSource,
     this.conversationId,
     this.initialMuted,
     this.initialArchived,
@@ -99,6 +103,10 @@ class MessageThreadScreen extends StatefulWidget {
   final String? partnerAvatarUrl;
   final Duration pollInterval;
   final void Function(BuildContext context, String routeId)? onOpenRoute;
+
+  /// Opens the Coach from the link back on a shared Coach answer the viewer
+  /// sent. Defaults to pushing the Coach screen.
+  final void Function(BuildContext context, String? planId)? onOpenCoachSource;
 
   /// The conversation and the viewer's state for it, when the inbox opened
   /// the thread. Opened from elsewhere, the id comes from the messages and the
@@ -1074,6 +1082,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
               ? l10n.messagesUnsentPlaceholder
               : null,
           body: m.body == null ||
+                  _isCoachShare(m) ||
                   (hasDmRouteAttachment(m.routeId) &&
                       bodyRestatesAttachment(m.body!, m.routeId!))
               ? null
@@ -1087,7 +1096,16 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
               : null,
           onLongPress: m.unsentAt == null ? () => _showOptions(m) : null,
           longPressHint: l10n.messagesOptionsHint,
-          attachment: m.unsentAt == null && hasDmRouteAttachment(m.routeId)
+          attachment: m.unsentAt == null && m.body != null && _isCoachShare(m)
+              ? CoachShareCard(
+                  api: widget.api,
+                  body: m.body!,
+                  mine: m.senderId == me,
+                  coachMessageId: m.coachMessageId,
+                  partnerName: _partnerName ?? l10n.profileRunnerFallback,
+                  onOpenSource: widget.onOpenCoachSource,
+                )
+              : m.unsentAt == null && hasDmRouteAttachment(m.routeId)
               ? DmRouteAttachment(
                   api: widget.api,
                   routeId: m.routeId!,
@@ -1243,6 +1261,8 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     );
   }
 }
+
+bool _isCoachShare(DirectMessageRow m) => parseDmKind(m.kind) == 'coach_share';
 
 class _Bubble extends StatelessWidget {
   const _Bubble({

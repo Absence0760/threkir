@@ -37,11 +37,13 @@ import '../weekly_goal.dart';
 import '../widgets/ai_disclosure_notice.dart';
 import '../widgets/ai_tag.dart';
 import '../widgets/chat_stick_to_bottom.dart';
+import '../widgets/coach_share_sheet.dart';
 import '../widgets/confirm_destructive.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/surface_peer_strip.dart';
 import '../widgets/top_banner.dart';
 import 'guided_runs_screen.dart';
+import 'message_thread_screen.dart';
 import 'plan_new_screen.dart';
 import 'races_screen.dart';
 
@@ -370,6 +372,51 @@ class _CoachScreenState extends State<CoachScreen> {
     }
     _bootstrap();
     _loadAiPlanAvailability();
+    _loadShareCoaches();
+  }
+
+  // Share with coach (issue #1215 Phase 3): offered on an answer only while
+  // the server gate is open and the runner has an active coach. Each read
+  // fails closed to "not offered" on its own, and neither blocks the chat.
+  List<CoachAthleteLink> _shareCoaches = const [];
+
+  Future<void> _loadShareCoaches() async {
+    var enabled = false;
+    try {
+      enabled = await widget.api.fetchCoachShareEnabled();
+    } catch (e) {
+      debugPrint('coach_screen: share gate lookup failed: $e');
+    }
+    if (!enabled) return;
+    var coaches = const <CoachAthleteLink>[];
+    try {
+      coaches = await widget.api.fetchMyCoaches();
+    } catch (e) {
+      debugPrint('coach_screen: coaches lookup failed: $e');
+    }
+    if (!mounted || coaches.isEmpty) return;
+    setState(() => _shareCoaches = coaches);
+  }
+
+  Future<void> _shareWithCoach(_Msg m) async {
+    final coach = await showCoachShareSheet(
+      context,
+      api: widget.api,
+      messageId: m.id!,
+      content: m.content.value,
+      coaches: _shareCoaches,
+    );
+    if (coach == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MessageThreadScreen(
+          api: widget.api,
+          partnerId: coach.userId,
+          partnerName: coach.displayName,
+          partnerAvatarUrl: coach.avatarUrl,
+        ),
+      ),
+    );
   }
 
   Future<void> _loadAiPlanAvailability() async {
@@ -1994,6 +2041,15 @@ class _CoachScreenState extends State<CoachScreen> {
               constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               onPressed: () => _react(m.id!, 'down'),
             ),
+            if (_shareCoaches.isNotEmpty)
+              IconButton(
+                key: const ValueKey('coach-share-action'),
+                tooltip: l10n.coachShareAction,
+                icon: Icon(Icons.forward, size: 16, color: iconColor),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                onPressed: () => _shareWithCoach(m),
+              ),
           ],
         ],
       ),

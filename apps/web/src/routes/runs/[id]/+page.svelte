@@ -236,6 +236,9 @@
 	let savingRoute = $state(false);
 	let shareConfirmIntersectsZone = $state(false);
 	let shareConfirmHasZones = $state(false);
+	// Whether confirming make-public also copies the share link: true from
+	// Share, false from the visibility chip.
+	let shareConfirmCopiesLink = $state(true);
 	let shareBusy = $state(false);
 	/// Audience sharing (followers level + named people, decisions
 	/// § 1874) is a server-gated feature; the control and the narrower
@@ -244,6 +247,31 @@
 	let shareCount = $state(0);
 	let showAudience = $state(false);
 	let audienceLevel = $derived(run ? audienceOf(run, shareCount) : 'private');
+	let visibilityIcon = $derived(
+		audienceLevel === 'public'
+			? 'public'
+			: audienceLevel === 'followers'
+				? 'group'
+				: audienceLevel === 'specific'
+					? 'person_add'
+					: 'lock'
+	);
+	let visibilityLabel = $derived(
+		audienceLevel === 'public'
+			? m('runDetail.public')
+			: audienceLevel === 'followers'
+				? m('audience.chipFollowers')
+				: audienceLevel === 'specific'
+					? m('audience.chipShared')
+					: m('runDetail.private')
+	);
+	let visibilityChipAria = $derived(
+		audienceSharingOn
+			? m('runDetail.visibilityChipAudienceAria', { level: visibilityLabel })
+			: run?.is_public
+				? m('runDetail.visibilityChipPublicAria')
+				: m('runDetail.visibilityChipPrivateAria')
+	);
 	let bodyWeightKg = $state<number | null>(null);
 	// Hide-calories opt-out (universal `show_calories` pref, default on) —
 	// hunt-newrunner: a weight-conscious runner can suppress the estimate.
@@ -752,7 +780,24 @@
 
 	function requestPublicFromAudience() {
 		showAudience = false;
-		void requestMakePublic();
+		void requestMakePublic(true);
+	}
+
+	/// The visibility chip is the control for who can see the run, not a
+	/// label: with audience sharing on it opens the audience sheet, otherwise
+	/// it flips public / private through the same confirms Share and the lock
+	/// button use. Going public from here copies nothing; that is Share's job.
+	function handleVisibilityChip() {
+		if (!run || shareBusy) return;
+		if (audienceSharingOn) {
+			showAudience = true;
+			return;
+		}
+		if (run.is_public) {
+			showMakePrivateConfirm = true;
+			return;
+		}
+		void requestMakePublic(false);
 	}
 
 	async function handleShare() {
@@ -781,10 +826,10 @@
 			showAudience = true;
 			return;
 		}
-		await requestMakePublic();
+		await requestMakePublic(true);
 	}
 
-	async function requestMakePublic() {
+	async function requestMakePublic(copyLink: boolean) {
 		if (!run || !auth.user || shareBusy) return;
 		// Visibility-change consent: making a previously-private run
 		// public is a non-trivial state change. A first-time / casual
@@ -806,6 +851,7 @@
 		shareConfirmIntersectsZone =
 			zones.length > 0 && !!run.track && trackEntersAnyZone(trackLine(run.track), zones);
 		shareConfirmHasZones = zones.length > 0;
+		shareConfirmCopiesLink = copyLink;
 		showShareConfirm = true;
 	}
 
@@ -819,6 +865,10 @@
 			// the share button both read `run.is_public` and would otherwise
 			// keep showing "Private" / "Make public" until a reload.
 			run = { ...run, is_public: true, followers_only: false } as Run;
+			if (!shareConfirmCopiesLink) {
+				showToast(m('runDetail.madePublic'), 'success');
+				return;
+			}
 			const url = buildRunShareCanonical(window.location.origin, run.id);
 			await navigator.clipboard.writeText(url);
 			showToast(m('runDetail.shareLinkCopied'), 'success');
@@ -1962,20 +2012,20 @@
 							<span class="meta-source-dot"></span>
 							{sourceLabel(run.source)}
 						</span>
-						<span
+						<button
+							type="button"
 							class="meta-item visibility-chip"
 							class:is-public={run.is_public}
+							aria-label={visibilityChipAria}
+							aria-haspopup="dialog"
+							onclick={handleVisibilityChip}
+							disabled={shareBusy}
 							data-testid="run-visibility-chip"
 						>
-							<span class="material-symbols">{audienceLevel === 'public' ? 'public' : audienceLevel === 'followers' ? 'group' : audienceLevel === 'specific' ? 'person_add' : 'lock'}</span>
-							{audienceLevel === 'public'
-								? m('runDetail.public')
-								: audienceLevel === 'followers'
-									? m('audience.chipFollowers')
-									: audienceLevel === 'specific'
-										? m('audience.chipShared')
-										: m('runDetail.private')}
-						</span>
+							<span class="material-symbols" aria-hidden="true">{visibilityIcon}</span>
+							{visibilityLabel}
+							<span class="material-symbols chip-caret" aria-hidden="true">expand_more</span>
+						</button>
 						{#if runRecords.length > 0}
 							<button
 								type="button"
@@ -2799,7 +2849,7 @@
 		: shareConfirmHasZones
 			? m('runDetail.shareDialogMessageNoIntersect')
 			: m('runDetail.shareDialogMessageNoZones')}
-	confirmLabel={m('runDetail.makePublicConfirm')}
+	confirmLabel={shareConfirmCopiesLink ? m('runDetail.makePublicConfirm') : m('runDetail.makePublic')}
 	onconfirm={proceedShare}
 	oncancel={() => (showShareConfirm = false)}
 	data-testid="share-confirm-dialog"
@@ -3470,12 +3520,24 @@
 	}
 
 	.visibility-chip {
+		min-height: 1.75rem;
 		padding: 0.2rem 0.55rem;
 		border-radius: 9999px;
 		background: var(--color-bg-tertiary);
 		border: 1px solid var(--color-border);
+		font: inherit;
 		font-weight: 600;
 		font-size: 0.72rem;
+		cursor: pointer;
+	}
+
+	.visibility-chip:hover:not(:disabled) {
+		border-color: var(--color-primary);
+	}
+
+	.visibility-chip:disabled {
+		cursor: progress;
+		opacity: 0.6;
 	}
 
 	.visibility-chip.is-public {
@@ -3486,6 +3548,10 @@
 
 	.visibility-chip.is-public .material-symbols {
 		color: var(--color-success-text);
+	}
+
+	.visibility-chip .chip-caret {
+		margin-inline-start: -0.15rem;
 	}
 
 	.dnf-chip {

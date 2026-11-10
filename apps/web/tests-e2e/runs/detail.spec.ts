@@ -502,6 +502,116 @@ test.describe('/runs/[id]', () => {
 		}
 	});
 
+	test('visibility chip is the control: make public through the consent dialog, then make private', async ({
+		page,
+		mockRoute
+	}) => {
+		// The owner could not find how to make a run public: the chip read
+		// "Private" like a control and did nothing, and the only path was the
+		// Share icon. With audience sharing off (as in prod today) the chip now
+		// flips visibility itself, through the same privacy-zone consent the
+		// Share path uses, and copies no link because that is Share's job.
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		const isPublic = async () =>
+			(
+				await readRow(
+					'runs by id',
+					getAdminClient().from('runs').select('is_public').eq('id', planted).single()
+				)
+			).is_public;
+
+		try {
+			await page.goto(`/runs/${planted}`);
+			const chip = page.getByRole('button', { name: 'Private. Make this run public' });
+			await expect(chip).toBeVisible({ timeout: 10_000 });
+			await chip.click();
+
+			const consent = page.getByTestId('share-confirm-dialog');
+			await expect(consent).toBeVisible({ timeout: 10_000 });
+			await expect(consent).toContainText('Make this run public?');
+			await consent.getByRole('button', { name: 'Make public', exact: true }).click();
+
+			await expect(page.locator('.toast', { hasText: 'Run is now public' })).toBeVisible({
+				timeout: 10_000
+			});
+			await expect(page.locator('.toast', { hasText: /Share link copied/ })).toHaveCount(0);
+			const publicChip = page.getByRole('button', { name: 'Public. Make this run private' });
+			await expect(publicChip).toBeVisible({ timeout: 5_000 });
+			await expect(publicChip).toHaveClass(/is-public/);
+			await expect.poll(isPublic).toBe(true);
+
+			await publicChip.click();
+			const revoke = page.getByTestId('make-private-confirm-dialog');
+			await expect(revoke).toBeVisible({ timeout: 5_000 });
+			await revoke.getByRole('button', { name: 'Make private', exact: true }).click();
+
+			await expect(page.getByRole('button', { name: 'Private. Make this run public' })).toBeVisible({
+				timeout: 10_000
+			});
+			await expect.poll(isPublic).toBe(false);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('visibility chip Cancel on the consent dialog keeps the run private', async ({
+		page,
+		mockRoute
+	}) => {
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			await page.getByRole('button', { name: 'Private. Make this run public' }).click();
+			const consent = page.getByTestId('share-confirm-dialog');
+			await expect(consent).toBeVisible({ timeout: 10_000 });
+			await consent.getByRole('button', { name: 'Cancel', exact: true }).click();
+			await expect(consent).toHaveCount(0);
+
+			const row = await readRow(
+				'runs by id',
+				getAdminClient().from('runs').select('is_public').eq('id', planted).single()
+			);
+			expect(row.is_public).toBe(false);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('with audience sharing on, the visibility chip opens the audience sheet', async ({ page }) => {
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			const chip = page.getByRole('button', { name: 'Private. Change who can see this run' });
+			await expect(chip).toBeVisible({ timeout: 10_000 });
+			await chip.click();
+			await expect(page.getByTestId('audience-dialog')).toBeVisible({ timeout: 5_000 });
+			await expect(page.getByTestId('share-confirm-dialog')).toHaveCount(0);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
 	test('Make private dialog Cancel keeps the run public', async ({ page }) => {
 		// Mirror of the share-consent cancel pin above: dismissing the
 		// revoke dialog must not call setRunPublic. A refactor that

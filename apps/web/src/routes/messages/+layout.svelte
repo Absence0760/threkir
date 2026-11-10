@@ -13,10 +13,51 @@
 	import { messagesInbox } from '#lib/stores/messages_inbox.svelte.ts';
 	import { DM_INBOX_POLL_MS, dmThreadRouteId } from '#lib/social/dm_thread.ts';
 	import { coachInboxPreview, inboxEntries, partitionArchived } from '#lib/social/messages_inbox.ts';
+	import { dmSearchSnippet, normalizeDmSearchQuery } from '#lib/social/dm_search.ts';
+	import { searchDms, type DmSearchHit } from '#lib/core/data.ts';
 
 	let { children }: { children: Snippet } = $props();
 
 	let ready = $state(false);
+
+	// Search runs over the viewer's own conversations only; the RPC is
+	// SECURITY INVOKER (migration 20271213121603). A query is sent after a
+	// pause in typing, and only the newest query's answer is shown.
+	let searchQuery = $state('');
+	let searchHits = $state<DmSearchHit[]>([]);
+	let searching = $state(false);
+	let searchError = $state(false);
+	const searchActive = $derived(normalizeDmSearchQuery(searchQuery) !== null);
+	let searchSeq = 0;
+	$effect(() => {
+		const q = normalizeDmSearchQuery(searchQuery);
+		const seq = ++searchSeq;
+		if (q === null || !auth.user) {
+			searchHits = [];
+			searching = false;
+			searchError = false;
+			return;
+		}
+		searching = true;
+		const timer = setTimeout(async () => {
+			try {
+				const hits = await searchDms(q);
+				if (seq !== searchSeq) return;
+				searchHits = hits;
+				searchError = false;
+			} catch (e) {
+				if (seq !== searchSeq) return;
+				console.warn('message search failed', e);
+				searchError = true;
+			} finally {
+				if (seq === searchSeq) searching = false;
+			}
+		}, 300);
+		return () => clearTimeout(timer);
+	});
+	function searchTime(iso: string): string {
+		return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	}
 
 	const coachPath = '/messages/coach';
 	const onCoach = $derived(page.url.pathname === coachPath);
@@ -144,6 +185,54 @@
 						<h2>{m('messages.heading')}</h2>
 					{/if}
 				</header>
+				{#if !showingArchived && !showingRequests}
+					<div class="search">
+						<span class="material-symbols" aria-hidden="true">search</span>
+						<input
+							type="search"
+							bind:value={searchQuery}
+							placeholder={m('messages.searchPlaceholder')}
+							aria-label={m('messages.searchLabel')}
+							maxlength="100"
+							data-testid="inbox-search"
+						/>
+					</div>
+				{/if}
+				{#if searchActive && !showingArchived && !showingRequests}
+					<div class="search-results" aria-live="polite" data-testid="inbox-search-results">
+						{#if searchError}
+							<p class="muted empty" role="alert">{m('messages.searchFailed')}</p>
+						{:else if searching && searchHits.length === 0}
+							<p class="muted empty">{m('shell.loading')}</p>
+						{:else if searchHits.length === 0}
+							<p class="muted empty" data-testid="inbox-search-empty">{m('messages.searchEmpty')}</p>
+						{:else}
+							<ul>
+								{#each searchHits as hit (hit.id)}
+									{@const snip = dmSearchSnippet(hit.body, searchQuery)}
+									<li>
+										<a
+											class="thread"
+											href={`/messages/${dmThreadRouteId(hit)}`}
+											onclick={() => (searchQuery = '')}
+											data-testid="inbox-search-hit"
+										>
+											<span class="thread-text">
+												<span class="thread-top">
+													<strong>{hit.partnerId ? (hit.partnerName ?? m('messages.runnerFallback')) : m('messages.deletedAccount')}</strong>
+													<span class="muted">{searchTime(hit.createdAt)}</span>
+												</span>
+												<span class="preview"
+													>{hit.fromMe ? m('messages.youPrefix') : ''}{snip.before}<mark>{snip.match}</mark>{snip.after}</span
+												>
+											</span>
+										</a>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</div>
+				{:else}
 				{#if messagesInbox.threadsError}
 					<p class="muted empty" role="alert">
 						{m('messages.threadsLoadFailed')}
@@ -225,7 +314,7 @@
 											<span class="preview" class:unsent={t.lastUnsent}
 												>{#if t.lastKind === 'coach_share' && !t.lastUnsent}<AiTag />&nbsp;{/if}{t.lastFromMe ? m('messages.youPrefix') : ''}{t.lastUnsent
 													? m('messages.unsentPlaceholder')
-													: t.lastBody}</span
+													: (t.lastBody ?? (t.lastImage ? m('messages.photoPreview') : ''))}</span
 											>
 										</span>
 									</a>
@@ -259,6 +348,7 @@
 						{m('messages.archivedCount', { count: split.archived.length })}
 					</button>
 				{/if}
+				{/if}
 			</aside>
 
 			<section class="conversation" class:has-active={hasActive}>
@@ -269,6 +359,37 @@
 </div>
 
 <style>
+	.search {
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+		margin: 0 var(--space-sm) var(--space-sm);
+		padding: 0 0.6rem;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		background: var(--color-bg);
+	}
+	.search input {
+		flex: 1 1 auto;
+		min-width: 0;
+		border: 0;
+		background: transparent;
+		color: var(--color-text);
+		font: inherit;
+		padding: 0.45rem 0;
+	}
+	.search input:focus {
+		outline: none;
+	}
+	.search:focus-within {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 1px;
+	}
+	.search-results mark {
+		background: color-mix(in srgb, var(--color-primary) 25%, transparent);
+		color: inherit;
+		border-radius: 2px;
+	}
 	.page {
 		padding: var(--space-lg) var(--space-2xl);
 		height: 100vh;

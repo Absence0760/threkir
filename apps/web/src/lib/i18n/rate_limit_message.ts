@@ -46,6 +46,8 @@ const BUCKET_KEY: Record<string, MessageKey> = {
 	restart_training_plan: 'rateLimit.restartPlan',
 	repeat_plan_week: 'rateLimit.repeatWeek',
 	open_message_request: 'rateLimit.openMessageRequest',
+	dm_reaction: 'rateLimit.reaction',
+	dm_image_upload: 'rateLimit.photoUpload',
 	send_direct_message: 'rateLimit.sendMessage',
 	send_direct_message_burst: 'rateLimit.sendMessage',
 };

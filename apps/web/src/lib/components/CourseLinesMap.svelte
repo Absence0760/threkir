@@ -25,7 +25,8 @@
 		route?: GatePoint[] | null;
 		editWhich?: GateWhich | null;
 		onedit?: (which: GateWhich, gate: Gate) => void;
-		/// Lets the editor ask where the map is looking, to place a new line there.
+		/// Lets the editor ask where the map is looking, to place a new line there;
+		/// null until the map shows something or has been moved.
 		oncenter?: (getCenter: () => GatePoint | null) => void;
 		label: string;
 		testid?: string;
@@ -45,6 +46,10 @@
 	let handleMarker: maplibregl.Marker | null = null;
 	let draft: { which: GateWhich; gate: Gate } | null = null;
 	let framedRoute = false;
+	// Whether the map's centre means anything: it was opened or fitted on a line
+	// or the route, or the organiser moved it. A map with nothing to show sits
+	// at 0,0, which is not a place to put a line (#1358).
+	let located = false;
 
 	function shownGates(): DrawnGate[] {
 		if (!draft) return gates;
@@ -72,6 +77,7 @@
 		}
 		if (!Number.isFinite(w)) return;
 		map.fitBounds([[w, s], [e, n]], { padding: 40, maxZoom: 18, duration: 0 });
+		located = true;
 	}
 
 	function draw() {
@@ -173,6 +179,10 @@
 			center: first ? [first.lng, first.lat] : [0, 0],
 			zoom: first ? 16 : 1
 		});
+		located = first !== null;
+		map.on('moveend', (e) => {
+			if (e.originalEvent) located = true;
+		});
 		map.addControl(new maplibregl.NavigationControl(), 'top-right');
 		stopResize = watchMapResize(container, map);
 		map.on('load', () => {
@@ -182,7 +192,7 @@
 			fit();
 		});
 		oncenter?.(() => {
-			if (!map) return null;
+			if (!map || !located) return null;
 			const c = map.getCenter();
 			return { lat: c.lat, lng: c.lng };
 		});

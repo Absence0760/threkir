@@ -2983,10 +2983,14 @@ The Dart half of the pair above, same case table.
 
 The GeoJSON the maps draw: a start line is one segment with no arrow; a finish line carries an arrow with a chevron head, ahead of the centre by the 20 m floor; and the bounds cover every line and arrow.
 
+### `apps/web/src/lib/races/course_gate_form.test.ts` — 9 tests
+
+The editor's numeric form (#1358, decisions § 2432): a refetched row with the same values is the same line; a refresh mid-edit, a moved line while dirty and a late first load all keep what was typed, while a clean form takes a moved line and a switch to the other line always re-seeds; a cleared width keeps the last valid one; the seed's rounding and default; and two source checks that `CourseGateEditor` goes through these helpers and binds neither width input to the width directly.
+
 ### `apps/mobile_android/test/course_lines_map_test.dart` — 10 tests
 
 The phone's course map draws the start and the finish line with its arrow, and the Arm preflight dialog: warnings offer Arm anyway or Cancel, an error offers only OK.
 
 ### `apps/web/tests-e2e/clubs/event-course-lines.spec.ts` — 3 tests
 
-Through the numeric inputs: place, turn and remove a line on a routeless course; a line turned against the route warned about and Reset to route restoring it; and Arm opening the preflight dialog for a course with no finish, Arm anyway arming the race and freezing its course.
+Through the numeric inputs: place, turn and remove a line on a routeless course (Place opens empty inputs rather than writing a line at the unframed map's 0,0, and a width box cleared before the turn keeps its width, #1358); a line turned against the route warned about and Reset to route restoring it; and Arm opening the preflight dialog for a course with no finish, Arm anyway arming the race and freezing its course.

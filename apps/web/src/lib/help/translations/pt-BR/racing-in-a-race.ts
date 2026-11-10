@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Quando o organizador prepara a prova, a aba Corrida do app do celular mostra **Prova preparada** com “aguardando a largada”. O relógio Wear OS mostra “PROVA PREPARADA” acima do botão Start. Quando o organizador dá o GO, isso muda para **Prova AO VIVO** (“PROVA AO VIVO” no relógio), com o tempo decorrido e “toque em Iniciar”.',
+					text: 'Quando o organizador prepara a prova, a aba Corrida do app do celular mostra **Prova preparada** com “aguardando o GO”. O relógio Wear OS mostra “PROVA PREPARADA” acima do botão Iniciar. Quando o organizador dá o GO, isso muda para **Prova AO VIVO** (“PROVA AO VIVO” no relógio), com o tempo decorrido e “toque em Iniciar”.',
 				},
 				{
 					type: 'note',
@@ -137,7 +137,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Se o organizador encerrar a prova antes da sua chegada, seu celular avisa e seu relógio mostra “Race ended”. Sua corrida continua sendo gravada como uma corrida normal, mas seu dispositivo não envia resultado de prova. Se você já tinha enviado uma posição ao vivo, a prova marca você como DNF.',
+					text: 'Se o organizador encerrar a prova antes da sua chegada, seu celular avisa e seu relógio mostra “Corrida encerrada”. Sua corrida continua sendo gravada como uma corrida normal, mas seu dispositivo não envia resultado de prova. Se você já tinha enviado uma posição ao vivo, a prova marca você como DNF.',
 				},
 			],
 		},

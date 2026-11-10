@@ -1852,7 +1852,8 @@ void main() {
     final instance = DateTime.utc(2026, 5, 22, 18);
     final began = DateTime.utc(2026, 5, 22, 17, 58);
     final gun = DateTime.utc(2026, 5, 22, 18, 0, 0);
-    DateTime at(int s) => gun.add(Duration(seconds: s));
+    DateTime at(int s, {int ms = 0}) =>
+        gun.add(Duration(seconds: s, milliseconds: ms));
 
     /// A fix [eastM] along the course and [northM] off it, having covered
     /// [coveredM] since the Start press.
@@ -1975,6 +1976,54 @@ void main() {
           reason: 'past the zone, a Stop is a pause again');
     });
 
+    test('a ping carries the seconds since the committed start line crossing',
+        () async {
+      final c = armed(_FakeSocial());
+      final rows = <Map<String, dynamic>>[];
+      c.pingWriter = (row) async => rows.add(row);
+      await pumpEventQueue();
+      go(c);
+      await pumpEventQueue();
+
+      // Crossed at +6 s; the start commits 50 m on, at +16 s.
+      for (var s = 0, x = -30.0; x <= 20; x += 10, s += 2) {
+        fix(c, x, s, x + 30);
+      }
+      c.nowReader = () => at(10);
+      await c.pushPing(lat: lat0, lng: lng0);
+      expect(rows.last.containsKey('since_start_line_s'), isFalse,
+          reason: 'a crossing still committing is no start yet');
+
+      for (var s = 12, x = 30.0; x <= 100; x += 10, s += 2) {
+        fix(c, x, s, x + 30);
+      }
+      c.nowReader = () => at(26, ms: 900);
+      await c.pushPing(lat: lat0, lng: lng0);
+      expect(rows.last['since_start_line_s'], 20,
+          reason: 'whole seconds from the crossing at +6 s, truncated');
+      expect(rows, hasLength(2));
+    });
+
+    test('a ping without a start line carries no since_start_line_s',
+        () async {
+      final c = armed(_FakeSocial(),
+          course: RaceCourse(
+              courseId: 'course-5k',
+              distanceM: 5000,
+              finishLat: lat0,
+              finishLng: lngAt(5000)));
+      final rows = <Map<String, dynamic>>[];
+      c.pingWriter = (row) async => rows.add(row);
+      await pumpEventQueue();
+      go(c);
+      await pumpEventQueue();
+      runTo(c, 200);
+      c.nowReader = () => at(60);
+      await c.pushPing(lat: lat0, lng: lng0);
+      expect(rows.single.containsKey('since_start_line_s'), isFalse,
+          reason: 'the Start press is not a start line');
+    });
+
     test('a Stop inside the finish circle files a zone finish', () async {
       final social = _FakeSocial();
       final c = armed(social);
@@ -2053,7 +2102,7 @@ void main() {
       await pumpEventQueue();
       final fin = runTo(c, 5020);
       expect(fin, isNotNull);
-      await c.fileOutcomeNow(runId: 'run-1', durationS: 1010, distanceM: 5050);
+      await c.fileOutcomeNow(durationS: 1010, distanceM: 5050);
       expect(social.submitted.single.finishMethod, 'auto');
 
       expect(await c.voidAutoFinish(), isTrue);
@@ -2069,19 +2118,83 @@ void main() {
       expect(social.submitted, hasLength(2));
       expect(social.submitted.last.finishMethod, 'manual');
       expect(social.lastCrossings!.finishDetection, isNull);
+      expect(social.lastCrossings!.startDetection, 'gate',
+          reason: 'the hand finish is still timed from the start line');
+      expect(social.lastCrossings!.startAt, at(6));
+      expect(social.submitted.last.chipTimeS, 1300 - 6);
     });
 
-    test('a Stop inside the undo window files the finish once', () async {
+    test('a finish filed at the line goes without its run; Stop links it',
+        () async {
       final social = _FakeSocial();
       final c = armed(social);
       await pumpEventQueue();
       go(c);
       await pumpEventQueue();
       runTo(c, 5020);
-      await c.fileOutcomeNow(runId: 'run-1', durationS: 1010, distanceM: 5050);
+      await c.fileOutcomeNow(durationS: 1010, distanceM: 5050);
+      expect(social.submitted.single.runId, isNull,
+          reason: 'the run row does not exist until Stop saves it');
+      final atLine = social.lastCrossings!;
       await c.submitResult(runId: 'run-1', durationS: 1070, distanceM: 5050);
-      expect(social.submitted, hasLength(1));
+      expect(social.submitted, hasLength(2));
+      final linked = social.submitted.last;
+      expect(linked.runId, 'run-1');
+      expect(linked.durationS, social.submitted.first.durationS,
+          reason: 'the same finish, not a new time');
+      expect(social.lastCrossings!.finishAt, atLine.finishAt);
       expect(c.isHosting, isFalse);
+    });
+
+    test('a start at GO times the chip from GO under the offset at filing',
+        () async {
+      final social = _FakeSocial();
+      final c = armed(social);
+      c.clockOffset.addSample(
+        sentAt: gun,
+        receivedAt: gun.add(const Duration(milliseconds: 400)),
+        serverAt: gun.add(const Duration(milliseconds: 400)),
+      );
+      await pumpEventQueue();
+      fix(c, 5, -4, 35);
+      go(c);
+      await pumpEventQueue();
+      // A faster round trip refines the offset after GO was resolved.
+      c.clockOffset.addSample(
+        sentAt: gun,
+        receivedAt: gun.add(const Duration(milliseconds: 10)),
+        serverAt: gun.add(const Duration(milliseconds: 455)),
+      );
+      RaceFinish? fin;
+      for (var s = 2, x = 10.0; x <= 5020; x += 10, s += 2) {
+        fin ??= fix(c, x, s, x + 30);
+      }
+      expect(fin!.start?.kind, RaceStartKind.go);
+      await c.submitResult(runId: 'run-1', durationS: 1100, distanceM: 5050);
+      final r = social.submitted.single;
+      expect(r.chipTimeS, r.gunTimeS,
+          reason: 'a runner whose start is GO has chip time = gun time');
+      expect(social.lastCrossings!.startAt, gun);
+    });
+
+    test('an undo with no signal deletes the finish before the next result',
+        () async {
+      final social = _FakeSocial()..deleteError = Exception('offline');
+      final c = armed(social);
+      await pumpEventQueue();
+      go(c);
+      await pumpEventQueue();
+      runTo(c, 5020);
+      await c.fileOutcomeNow(durationS: 1010, distanceM: 5050);
+      await c.voidAutoFinish();
+      expect(social.deleted, isEmpty);
+
+      social.deleteError = null;
+      c.decideStop(coveredM: 5330, now: at(1300));
+      await c.submitResult(runId: 'run-1', durationS: 1300, distanceM: 5330);
+      expect(social.deleted, hasLength(1),
+          reason: 'the withdrawn finish goes before the hand finish is sent');
+      expect(social.submitted.last.finishMethod, 'manual');
     });
 
     test('an undo drops a finish that was only queued', () async {
@@ -2091,7 +2204,7 @@ void main() {
       go(c);
       await pumpEventQueue();
       runTo(c, 5020);
-      await c.fileOutcomeNow(runId: 'run-1', durationS: 1010, distanceM: 5050);
+      await c.fileOutcomeNow(durationS: 1010, distanceM: 5050);
       await c.voidAutoFinish();
       social.failing = false;
       await c.drainPendingResults();

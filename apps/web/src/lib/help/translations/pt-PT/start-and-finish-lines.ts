@@ -109,7 +109,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'O tipo de prova que está a organizar define-se em **Como a corrida começa**; consulte [[guide:choose-how-your-race-starts|Escolher como começa a sua prova]].',
+					text: 'O tipo de prova que está a organizar define-se em **Como a prova começa**; consulte [[guide:choose-how-your-race-starts|Escolher como começa a sua prova]].',
 				},
 			],
 		},

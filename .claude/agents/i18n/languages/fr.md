@@ -102,6 +102,9 @@ count of 0. Use `{count}` (ARB) / `#` (web).
 | skip a workout / skipped | **Ignorer** / **ignorée** (séance) — un-skip **Ne plus ignorer** | settled 2026-10-21; never "sautée" for the status, never "l'ignorance". Skipping a step or setup is a different action: **Passer**. "Ne sautez pas" stays in coaching advice |
 | warm-up / cool-down / recovery | Échauffement / **Retour au calme** / Récupération | cool-down is also "Récupération" in places, colliding with recovery — inconsistency 7 |
 | save / settings / feed / followers | Enregistrer / **Réglages** (mobile) – **Paramètres** (web) / Fil / Abonnés | settings split — inconsistency 4 |
+| arm / armed (race control) | **Armer** (vous: "Armez la course"), state **armé(e)** — "Armer la course", "Course armée", "Armer plus tôt", "Armer quand même" | settled 2026-11-10; never the tu-form "Arme" |
+| self-timed (race) | **en chrono libre** ("course en chrono libre", "Fenêtre en chrono libre") | settled 2026-11-10; never "chronométrée en autonomie" / "chronométrée par chacun" |
+| GO (the start signal) | **GO** — the button on the web and in the phone app, "GO par l'organisateur", "GO programmé"; prose "donner le GO", "le GO", "après le GO", "en attente du GO" | settled 2026-11-10; never "Lancer le Go" for the button. *Départ* stays for the start line and the time fields ("ligne de départ", "Heure de départ", "Départ à {when}"); the Wear armed banner is "COURSE ARMÉE" |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

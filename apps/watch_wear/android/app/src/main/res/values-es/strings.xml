@@ -112,6 +112,10 @@
     <string name="race_clock">Carrera %1$s</string>
     <string name="race_result_finished">Meta %1$s</string>
     <string name="race_result_dnf">Carrera DNF</string>
+    <string name="race_to_start_line">%1$s hasta la línea de salida</string>
+    <string name="race_start_crossed">Línea de salida cruzada, cronometrando</string>
+    <string name="race_finish_recorded">Llegada registrada</string>
+    <string name="race_undo_resume">¿No has terminado? Reanudar</string>
     <string name="battery_consider_charging">Batería %1$d%% · considera cargar</string>
     <string name="route">Ruta</string>
     <string name="pace">Ritmo</string>

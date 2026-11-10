@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Ein selbstgestopptes Rennen hat keinen gemeinsamen Start. Der Veranstalter öffnet einen Zeitraum, der bis zu einer Woche dauern kann, und du läufst die Strecke, wann immer du willst, solange er offen ist. Deine Zeit läuft vom Überqueren der Startlinie bis zum Überqueren der Ziellinie, es gibt also keine Brutto-Zeit.',
+					text: 'Ein selbstgestopptes Rennen hat keinen gemeinsamen Start. Der Veranstalter öffnet einen Zeitraum, der bis zu einer Woche dauern kann, und du läufst die Strecke, wann immer du willst, solange er offen ist. Deine Zeit läuft vom Überqueren der Startlinie bis zum Überqueren der Ziellinie, es gibt also keine Bruttozeit.',
 				},
 				{
 					type: 'p',

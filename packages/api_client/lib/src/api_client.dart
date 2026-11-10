@@ -10011,6 +10011,7 @@ class ApiClient {
           archived: r['archived'] == true,
           markedUnread: r['marked_unread'] == true,
           request: r['request'] == true,
+          lastImage: r['last_image'] == true,
         ),
     ];
   }
@@ -10169,7 +10170,8 @@ class ApiClient {
   /// `DM_COLUMNS`.
   static const String dmColumns =
       'id, sender_id, recipient_id, body, created_at, seen_at, route_id, '
-      'unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id';
+      'unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id, '
+      'image_id';
 
   /// One page of a conversation, oldest message first. A partner thread is
   /// both directions between the viewer and the partner; a deleted-partner
@@ -10237,15 +10239,25 @@ class ApiClient {
   /// [routeId] is the typed route attachment (route_direct_share.md v2). The
   /// same INSERT policy refuses an id the sender cannot see
   /// (`private.is_route_visible_to`), as the same 42501.
+  ///
+  /// [imageId] is a photo from [uploadDmImage] (migration 20271213121604);
+  /// with one the body may be empty and is sent as null. The INSERT policy
+  /// admits a photo only into a conversation with a follow edge or one the
+  /// recipient accepted, and refuses anything else as the same 42501.
   Future<DirectMessageRow> sendDm(
     String recipientId,
     String body, {
     String? routeId,
+    String? imageId,
   }) async {
     final me = _client.auth.currentUser?.id;
     if (me == null) throw StateError('not signed in');
     final trimmed = body.trim();
-    if (trimmed.isEmpty) throw ArgumentError.value(body, 'body', 'is empty');
+    final image = imageId?.trim();
+    final hasImage = image != null && image.isNotEmpty;
+    if (trimmed.isEmpty && !hasImage) {
+      throw ArgumentError.value(body, 'body', 'is empty');
+    }
     final attached = routeId?.trim();
     try {
       final row = await _client
@@ -10253,9 +10265,10 @@ class ApiClient {
           .insert({
             DirectMessageRow.colSenderId: me,
             DirectMessageRow.colRecipientId: recipientId,
-            DirectMessageRow.colBody: trimmed,
+            DirectMessageRow.colBody: trimmed.isEmpty ? null : trimmed,
             DirectMessageRow.colRouteId:
                 attached == null || attached.isEmpty ? null : attached,
+            if (hasImage) DirectMessageRow.colImageId: image,
           })
           .select(dmColumns)
           .single();
@@ -10411,6 +10424,230 @@ class ApiClient {
       },
       onConflict: UserSettingRow.colUserId,
     );
+  }
+
+  /// The viewer's message-requests setting (`user_settings.dm_requests`,
+  /// migration 20271213121601). Off: nobody without a follow edge can message
+  /// them first. No row reads as the default, on. Mirrors web
+  /// `fetchMyDmRequests`.
+  Future<bool> fetchMyDmRequests() async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) return true;
+    final row = await _client
+        .from(UserSettingRow.table)
+        .select(UserSettingRow.colDmRequests)
+        .eq(UserSettingRow.colUserId, viewerId)
+        .maybeSingle();
+    return row?[UserSettingRow.colDmRequests] != false;
+  }
+
+  /// Mirrors web `setDmRequests`.
+  Future<void> setDmRequests(bool on) async {
+    final viewerId = _client.auth.currentUser?.id;
+    if (viewerId == null) throw StateError('not signed in');
+    await _client.from(UserSettingRow.table).upsert(
+      {
+        UserSettingRow.colUserId: viewerId,
+        UserSettingRow.colDmRequests: on,
+      },
+      onConflict: UserSettingRow.colUserId,
+    );
+  }
+
+  /// The reactions on [messageIds] the viewer can see (migration
+  /// 20271213121602): the SELECT policy admits only reactions on live
+  /// messages the viewer can read. Throws on a failed read so the caller
+  /// keeps what it shows. Mirrors web `fetchDmReactions`.
+  Future<List<DmReactionRecord>> fetchDmReactions(
+    List<String> messageIds,
+  ) async {
+    if (messageIds.isEmpty || _client.auth.currentUser == null) {
+      return const [];
+    }
+    final rows = await readChunked(
+      messageIds.toSet().toList(),
+      (chunk) => _client
+          .from(DirectMessageReactionRow.table)
+          .select('message_id, user_id, reaction')
+          .inFilter(DirectMessageReactionRow.colMessageId, chunk),
+    );
+    return [
+      for (final r in rows)
+        (
+          messageId: r[DirectMessageReactionRow.colMessageId] as String,
+          userId: r[DirectMessageReactionRow.colUserId] as String,
+          reaction: r[DirectMessageReactionRow.colReaction] as String,
+        ),
+    ];
+  }
+
+  /// Sets the viewer's reaction on a message, or clears it with null. Every
+  /// refusal (55000 and P0002) is [DmReactionRefused], so a block is never
+  /// told apart; the reaction throttle's P0001 is rethrown as the
+  /// `PostgrestException` it is, for the shared `rateLimitErrorMessage`
+  /// parser. Mirrors web `setDmReaction`.
+  Future<void> setDmReaction(String messageId, String? reaction) async {
+    try {
+      await _client.rpc('set_direct_message_reaction', params: {
+        'p_message_id': messageId,
+        'p_reaction': reaction,
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == '55000' || e.code == 'P0002') {
+        throw const DmReactionRefused();
+      }
+      rethrow;
+    }
+  }
+
+  /// Searches the viewer's own conversations (migration 20271213121603). The
+  /// RPC runs SECURITY INVOKER under the viewer's RLS and column grants, so
+  /// it returns nothing the viewer could not read row by row, and leaves out
+  /// unanswered requests and people the viewer blocked. The caller passes a
+  /// query already normalised to the 2-100 characters the server accepts.
+  /// Partner names are a second read; a failure there leaves them null.
+  /// Throws on a failed search. Mirrors web `searchDms`.
+  Future<List<DmSearchHit>> searchDms(String query) async {
+    final me = _client.auth.currentUser?.id;
+    final q = query.trim();
+    if (me == null || q.isEmpty) return const [];
+    final res = await _client.rpc(
+      'search_direct_messages',
+      params: {'p_query': q, 'p_limit': 50},
+      get: true,
+    );
+    final hits = <DmSearchHit>[
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        if (r['body'] is String)
+          DmSearchHit(
+            id: r['id'] as String,
+            conversationId: r['conversation_id'] as String,
+            partnerId: (r['sender_id'] == me
+                ? r['recipient_id']
+                : r['sender_id']) as String?,
+            deletedPartnerKey: r['deleted_partner_key'] as String?,
+            body: r['body'] as String,
+            createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+            fromMe: r['sender_id'] == me,
+          ),
+    ];
+    final partnerIds = <String>{
+      for (final h in hits)
+        if (h.partnerId != null) h.partnerId!,
+    }.toList();
+    if (partnerIds.isEmpty) return hits;
+    final names = <String, String?>{};
+    try {
+      final profiles = await readChunked(
+        partnerIds,
+        (chunk) => _client
+            .from(UserProfileRow.table)
+            .select('id, display_name')
+            .inFilter(UserProfileRow.colId, chunk),
+      );
+      for (final p in profiles) {
+        names[p['id'] as String] = p['display_name'] as String?;
+      }
+    } catch (e) {
+      debugPrint('searchDms profile read failed: ${safeErrorLabel(e)}');
+    }
+    return [
+      for (final h in hits)
+        DmSearchHit(
+          id: h.id,
+          conversationId: h.conversationId,
+          partnerId: h.partnerId,
+          deletedPartnerKey: h.deletedPartnerKey,
+          partnerName: names[h.partnerId],
+          body: h.body,
+          createdAt: h.createdAt,
+          fromMe: h.fromMe,
+        ),
+    ];
+  }
+
+  /// Whether photos can be sent in messages (the server's `dm_images` gate).
+  /// Mirrors web `fetchDmImagesEnabled`. Fail closed: any read failure is
+  /// "off", and the caller hides the attach button.
+  Future<bool> fetchDmImagesEnabled() async {
+    try {
+      final result =
+          await _client.rpc('dm_images_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('dm_images_enabled failed: ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  static const String _dmImagesBucket = 'dm-images';
+
+  /// How long a signed URL for a message photo lives, in seconds.
+  static const int dmImageSignedUrlSeconds = 600;
+
+  /// The dm-images bucket's file_size_limit (migration 20271213121604).
+  static const int dmImageMaxBytes = 5 * 1024 * 1024;
+
+  /// One message photo: its processing state and, only once the server has
+  /// re-encoded it, a signed URL valid for [dmImageSignedUrlSeconds]. The
+  /// bucket's SELECT policy admits only that re-encoded copy, and only to
+  /// someone who can read the message. Null when the viewer cannot see the
+  /// image row at all. Throws on a failed read. Mirrors web `fetchDmImage`.
+  Future<DmImageView?> fetchDmImage(String imageId) async {
+    final row = await _client
+        .from(DirectMessageImageRow.table)
+        .select('status, width, height, storage_path')
+        .eq(DirectMessageImageRow.colId, imageId)
+        .maybeSingle();
+    if (row == null) return null;
+    final raw = row[DirectMessageImageRow.colStatus];
+    final status = raw == 'ready' || raw == 'rejected' ? raw as String : 'pending';
+    if (status != 'ready') return DmImageView(status: status);
+    final url = await _client.storage.from(_dmImagesBucket).createSignedUrl(
+          row[DirectMessageImageRow.colStoragePath] as String,
+          dmImageSignedUrlSeconds,
+        );
+    return DmImageView(
+      status: status,
+      width: (row[DirectMessageImageRow.colWidth] as num?)?.toInt(),
+      height: (row[DirectMessageImageRow.colHeight] as num?)?.toInt(),
+      url: url,
+    );
+  }
+
+  /// Uploads a photo the caller has already re-encoded to a JPEG (which drops
+  /// its metadata) and returns the image id to send with [sendDm]. The server
+  /// re-encodes it again before anyone can read it. Anything that is not a
+  /// JPEG is refused before the wire, so an original with its camera
+  /// metadata cannot be uploaded by mistake. A closed gate (0A000) is
+  /// [DmImageUnavailable]; the upload throttle's P0001 is rethrown as the
+  /// `PostgrestException` it is. Mirrors web `uploadDmImage`.
+  Future<String> uploadDmImage(Uint8List jpeg) async {
+    if (jpeg.length < 3 ||
+        jpeg[0] != 0xFF ||
+        jpeg[1] != 0xD8 ||
+        jpeg[2] != 0xFF) {
+      throw ArgumentError.value(jpeg.length, 'jpeg', 'is not a JPEG');
+    }
+    if (jpeg.length > dmImageMaxBytes) {
+      throw ArgumentError.value(jpeg.length, 'jpeg', 'is over the 5 MiB limit');
+    }
+    final List<dynamic> rows;
+    try {
+      rows = await _client.rpc('create_dm_image_upload') as List<dynamic>;
+    } on PostgrestException catch (e) {
+      if (e.code == '0A000') throw const DmImageUnavailable();
+      rethrow;
+    }
+    if (rows.isEmpty) throw StateError('create_dm_image_upload returned nothing');
+    final row = rows.first as Map<String, dynamic>;
+    final id = row['id'] as String;
+    await _client.storage.from(_dmImagesBucket).uploadBinary(
+          row['upload_path'] as String,
+          jpeg,
+          fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: false),
+        );
+    return id;
   }
 
   static String _isoDate(DateTime d) =>

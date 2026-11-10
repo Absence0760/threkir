@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'racing-in-a-race',
 	title: 'Correr numa prova em direto',
-	summary: 'Inscreva-se, escolha o seu percurso, comece a gravar na linha de partida ou depois da partida e deixe o telemóvel ou o relógio cronometrá-lo até à meta.',
+	summary: 'Inscreva-se, escolha o seu percurso, comece a gravar na linha de partida ou depois do GO e deixe o telemóvel ou o relógio cronometrá-lo até à meta.',
 	sections: [
 		{
 			heading: 'Com que dispositivos pode competir',
@@ -42,12 +42,12 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Prova preparada** com “a aguardar a partida”. O relógio Wear OS mostra “PROVA PRONTA” por cima do botão Iniciar. Quando o organizador dá a partida, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”.',
+					text: 'Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Prova preparada** com “a aguardar o GO”. O relógio Wear OS mostra “PROVA PREPARADA” por cima do botão Iniciar. Quando o organizador dá o GO, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”.',
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Prova preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no momento da partida, no telemóvel e num relógio Wear OS, e o seu tempo de chip passa a contar a partir da partida e não de quando premiu Iniciar.',
+					text: 'O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Prova preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no GO, no telemóvel e num relógio Wear OS, e o seu tempo de chip passa a contar a partir do GO e não de quando premiu Iniciar.',
 				},
 				{
 					type: 'p',
@@ -121,9 +121,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'O **Tempo oficial** conta desde o momento em que o organizador deu a partida até à sua chegada. É o tempo pelo qual é classificado.',
-						'O **Tempo de chip** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes da partida, conta a partir da partida, por isso nunca é maior do que o seu tempo oficial.',
-						'Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia e um relógio Wear OS mantém **Partida tardia** por baixo do relógio da prova. O seu tempo oficial continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo de chip.',
+						'O **Tempo oficial** conta desde o momento em que o organizador deu o GO até à sua chegada. É o tempo pelo qual é classificado.',
+						'O **Tempo de chip** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes do GO, conta a partir do GO, por isso nunca é maior do que o seu tempo oficial.',
+						'Se começar mais de 5 minutos depois do GO, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia e um relógio Wear OS mantém **Partida tardia** por baixo do relógio da prova. O seu tempo oficial continua a contar a partir do GO, por isso uma partida tardia torna-o maior do que o seu tempo de chip.',
 					],
 				},
 				{
@@ -137,7 +137,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Se o organizador encerrar a prova antes de chegar à meta, o telemóvel avisa-o e o relógio mostra “Corrida terminada”. A sua corrida continua a ser gravada como uma corrida normal, mas o dispositivo não envia nenhum resultado da prova. Se já tinha enviado uma posição em direto, a prova marca-o como DNF.',
+					text: 'Se o organizador encerrar a prova antes de chegar à meta, o telemóvel avisa-o e o relógio mostra “Prova encerrada”. A sua corrida continua a ser gravada como uma corrida normal, mas o dispositivo não envia nenhum resultado da prova. Se já tinha enviado uma posição em direto, a prova marca-o como DNF.',
 				},
 			],
 		},

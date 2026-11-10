@@ -11,6 +11,8 @@
 		setProfilePrivate,
 		fetchMyDmReadReceipts,
 		setDmReadReceipts,
+		fetchMyDmRequests,
+		setDmRequests,
 	} from '#lib/core/data.ts';
 	import { NEARBY_RUNNERS_ENABLED } from '#lib/social/nearby_flag.ts';
 	import { geocodePlace } from '#lib/routes/geocoding.ts';
@@ -37,6 +39,8 @@
 	// message is marked read (migration 20271113000001).
 	let readReceipts = $state(true);
 	let readReceiptsSaving = $state(false);
+	let messageRequests = $state(true);
+	let messageRequestsSaving = $state(false);
 	let nearbyAreaLabel = $state<string | null>(null);
 	let nearbyAreaInput = $state('');
 	let nearbySavingArea = $state(false);
@@ -66,7 +70,22 @@
 		privacyZones = effective<PrivacyZone[]>(settings, PRIVACY_ZONES_KEY) ?? [];
 		profilePrivate = await fetchMyProfilePrivate();
 		readReceipts = await fetchMyDmReadReceipts();
+		messageRequests = await fetchMyDmRequests();
 	});
+
+	async function saveMessageRequests() {
+		if (messageRequestsSaving) return;
+		const next = messageRequests;
+		messageRequestsSaving = true;
+		try {
+			await setDmRequests(next);
+		} catch (e) {
+			messageRequests = !next;
+			showToast(m('prefs.messageRequestsFailed', { error: errorCopy(e, m, 'prefs.messageRequestsFailed') }), 'error');
+		} finally {
+			messageRequestsSaving = false;
+		}
+	}
 
 	async function saveReadReceipts() {
 		if (readReceiptsSaving) return;
@@ -289,6 +308,19 @@
 				<span>
 					{m('prefs.readReceipts')}
 					<span class="hint">{m('prefs.readReceiptsHint')}</span>
+				</span>
+			</label>
+			<label class="checkbox-row">
+				<input
+					type="checkbox"
+					data-testid="message-requests-toggle"
+					bind:checked={messageRequests}
+					disabled={messageRequestsSaving}
+					onchange={saveMessageRequests}
+				/>
+				<span>
+					{m('prefs.messageRequests')}
+					<span class="hint">{m('prefs.messageRequestsHint')}</span>
 				</span>
 			</label>
 		</div>

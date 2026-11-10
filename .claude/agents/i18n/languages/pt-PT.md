@@ -132,7 +132,12 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar**; status = **estado** | settled 2026-10-21; never "saltado" for the status. Skipping a step or setup is **Saltar**; "não salte" stays in coaching advice |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Guardar / **Definições** / Feed / Seguidores | `navSettings` is "Config." — inconsistency 3 |
-| app | **a app** (feminine, from *a aplicação*): "na app", "da app", "esta app", "outra app" | settled 2026-10-13 |
+| app | **a app** (feminine, from *a aplicação*): "na app", "da app", "esta app", "outra app", plural "as apps" | settled 2026-10-13; never "aplicação" in UI text (the last web and phone strings moved 2026-11-10). Only an Android menu path quotes the OS ("Definições → Aplicações") |
+| arm / armed (race control) | **Preparar** / **preparada** — "Preparar prova", "Prova preparada", "Preparar mais cedo", "Preparar na mesma", "Prepare-a mais cedo" | settled 2026-11-10; never "Armar" / "armada" / "Arme", never "mesmo assim" |
+| set up (a race created automatically before its start) | **configurada** ("A prova é configurada um dia antes da partida") | settled 2026-11-10; never "preparada", which is *arm* |
+| self-timed (race) | **de tempo próprio** ("prova de tempo próprio", "Janela de tempo próprio") | settled 2026-11-10; never "com cronometragem própria" / "cronometrada por cada um" |
+| GO (the start signal) | **GO** — the button on the web and in the phone app, "GO do organizador", "GO agendado"; prose "dar o GO", "o GO", "depois do GO", "a aguardar o GO" | settled 2026-11-10; never "JÁ" / "Disparar o Go" for the button or "dar a partida" for the signal. *Partida* stays for the start line and the time fields ("linha de partida", "Hora da partida", "Partida às {when}") |
+| race on the Wear watch | "PROVA PREPARADA", "Prova encerrada", "Terminar prova", "Prova {clock}", "Prova DNF" | settled 2026-11-10; *corrida* only where the watch means a run ("Esta corrida é a minha tentativa") |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

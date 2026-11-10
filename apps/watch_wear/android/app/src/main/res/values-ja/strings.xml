@@ -105,6 +105,10 @@
     <string name="race_clock">レース %1$s</string>
     <string name="race_result_finished">完走 %1$s</string>
     <string name="race_result_dnf">レース DNF</string>
+    <string name="race_to_start_line">スタートラインまで%1$s</string>
+    <string name="race_start_crossed">スタートラインを通過。計測を開始します</string>
+    <string name="race_finish_recorded">ゴールを記録しました</string>
+    <string name="race_undo_resume">ゴールしていない？再開</string>
     <string name="battery_consider_charging">バッテリー %1$d%% · 充電を検討</string>
     <string name="route">ルート</string>
     <string name="pace">ペース</string>

@@ -22159,6 +22159,120 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get profileNotifParkCourseReport =>
       'Foi comunicado um problema num percurso de parque';
+
+  @override
+  String rateLimitReaction(String wait) {
+    return 'Está a reagir demasiado depressa — aguarde $wait e tente novamente.';
+  }
+
+  @override
+  String rateLimitPhotoUpload(String wait) {
+    return 'Enviou muitas fotografias — aguarde $wait e tente novamente.';
+  }
+
+  @override
+  String get prefsMessageRequests => 'Pedidos de mensagem';
+
+  @override
+  String get prefsMessageRequestsHint =>
+      'Permite que as pessoas com quem partilha um clube ou um evento lhe enviem mensagens primeiro. Se desativar, só as pessoas que segue, ou que o seguem, podem iniciar uma conversa consigo.';
+
+  @override
+  String get prefsMessageRequestsFailed =>
+      'Não foi possível alterar os pedidos de mensagem.';
+
+  @override
+  String get messagesReact => 'Reagir';
+
+  @override
+  String get messagesReactPickerLabel => 'Escolher uma reação';
+
+  @override
+  String messagesReactionChipLabel(String reaction, int count) {
+    return '$reaction, $count';
+  }
+
+  @override
+  String get messagesReactionThumbsUp => 'Polegar para cima';
+
+  @override
+  String get messagesReactionHeart => 'Coração';
+
+  @override
+  String get messagesReactionLaugh => 'A rir';
+
+  @override
+  String get messagesReactionSurprised => 'Surpreendido';
+
+  @override
+  String get messagesReactionSad => 'Triste';
+
+  @override
+  String get messagesReactionFire => 'Fogo';
+
+  @override
+  String get messagesReactionRefused => 'Não pode reagir a esta mensagem.';
+
+  @override
+  String get messagesSearchPlaceholder => 'Procurar mensagens';
+
+  @override
+  String get messagesSearchLabel => 'Procurar nas suas mensagens';
+
+  @override
+  String get messagesSearchEmpty => 'Nenhuma mensagem corresponde.';
+
+  @override
+  String get messagesSearchFailed =>
+      'Não foi possível procurar nas suas mensagens. Tente novamente.';
+
+  @override
+  String get messagesPhotoAttach => 'Anexar uma fotografia';
+
+  @override
+  String get messagesPhotoRemove => 'Remover fotografia';
+
+  @override
+  String get messagesPhotoDraftAlt => 'Fotografia a enviar';
+
+  @override
+  String get messagesPhotoAlt => 'Fotografia na mensagem';
+
+  @override
+  String get messagesPhotoProcessing => 'A preparar a fotografia…';
+
+  @override
+  String get messagesPhotoRejected =>
+      'Não foi possível enviar esta fotografia.';
+
+  @override
+  String get messagesPhotoUnavailableToView => 'Fotografia indisponível';
+
+  @override
+  String get messagesPhotoPreview => 'Fotografia';
+
+  @override
+  String get messagesPhotoTooLarge =>
+      'Essa fotografia é demasiado grande para enviar.';
+
+  @override
+  String get messagesPhotoUnreadable =>
+      'Não foi possível ler esse ficheiro como fotografia.';
+
+  @override
+  String get messagesPhotoUnavailable =>
+      'As fotografias nas mensagens ainda não estão disponíveis.';
+
+  @override
+  String get messagesPhotoUploadFailed =>
+      'Não foi possível carregar a fotografia. Tente novamente.';
+
+  @override
+  String get messagesPhotoSendNotAllowed =>
+      'Pode enviar fotografias a quem segue ou a quem o segue, ou numa conversa que a outra pessoa tenha aceitado, a menos que um dos dois tenha bloqueado o outro.';
+
+  @override
+  String get messagesLinkOpenFailed => 'Não foi possível abrir esse link.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -44298,4 +44412,116 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get profileNotifParkCourseReport =>
       'Um percurso de parque foi relatado';
+
+  @override
+  String rateLimitReaction(String wait) {
+    return 'Você está reagindo rápido demais — espere $wait e tente de novo.';
+  }
+
+  @override
+  String rateLimitPhotoUpload(String wait) {
+    return 'Você enviou muitas fotos — espere $wait e tente de novo.';
+  }
+
+  @override
+  String get prefsMessageRequests => 'Solicitações de mensagem';
+
+  @override
+  String get prefsMessageRequestsHint =>
+      'Permite que pessoas com quem você compartilha um clube ou um evento enviem mensagens a você primeiro. Se desativar, só quem você segue, ou quem segue você, pode iniciar uma conversa com você.';
+
+  @override
+  String get prefsMessageRequestsFailed =>
+      'Não foi possível alterar as solicitações de mensagem.';
+
+  @override
+  String get messagesReact => 'Reagir';
+
+  @override
+  String get messagesReactPickerLabel => 'Escolha uma reação';
+
+  @override
+  String messagesReactionChipLabel(String reaction, int count) {
+    return '$reaction, $count';
+  }
+
+  @override
+  String get messagesReactionThumbsUp => 'Joinha';
+
+  @override
+  String get messagesReactionHeart => 'Coração';
+
+  @override
+  String get messagesReactionLaugh => 'Risada';
+
+  @override
+  String get messagesReactionSurprised => 'Surpresa';
+
+  @override
+  String get messagesReactionSad => 'Triste';
+
+  @override
+  String get messagesReactionFire => 'Fogo';
+
+  @override
+  String get messagesReactionRefused => 'Você não pode reagir a esta mensagem.';
+
+  @override
+  String get messagesSearchPlaceholder => 'Buscar mensagens';
+
+  @override
+  String get messagesSearchLabel => 'Buscar nas suas mensagens';
+
+  @override
+  String get messagesSearchEmpty => 'Nenhuma mensagem corresponde.';
+
+  @override
+  String get messagesSearchFailed =>
+      'Não foi possível buscar nas suas mensagens. Tente de novo.';
+
+  @override
+  String get messagesPhotoAttach => 'Anexar uma foto';
+
+  @override
+  String get messagesPhotoRemove => 'Remover foto';
+
+  @override
+  String get messagesPhotoDraftAlt => 'Foto a enviar';
+
+  @override
+  String get messagesPhotoAlt => 'Foto na mensagem';
+
+  @override
+  String get messagesPhotoProcessing => 'Preparando a foto…';
+
+  @override
+  String get messagesPhotoRejected => 'Não foi possível enviar esta foto.';
+
+  @override
+  String get messagesPhotoUnavailableToView => 'Foto indisponível';
+
+  @override
+  String get messagesPhotoPreview => 'Foto';
+
+  @override
+  String get messagesPhotoTooLarge => 'Essa foto é grande demais para enviar.';
+
+  @override
+  String get messagesPhotoUnreadable =>
+      'Não foi possível ler esse arquivo como foto.';
+
+  @override
+  String get messagesPhotoUnavailable =>
+      'Fotos em mensagens ainda não estão disponíveis.';
+
+  @override
+  String get messagesPhotoUploadFailed =>
+      'Não foi possível enviar a foto. Tente de novo.';
+
+  @override
+  String get messagesPhotoSendNotAllowed =>
+      'Você pode enviar fotos a quem você segue ou quem segue você, ou em uma conversa que a pessoa tenha aceitado, a menos que um de vocês tenha bloqueado o outro.';
+
+  @override
+  String get messagesLinkOpenFailed => 'Não foi possível abrir esse link.';
 }

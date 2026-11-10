@@ -67,8 +67,10 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// global_segment_efforts was in the Go worker's list and missing here
 	// until park course times (issue #1313) made it load-bearing. Course alerts (migration 20271124002407) added
 	// course_alerts. Organiser disputes (migration 20271202000003) added
-	// both legs of organiser_dispute_actions.
-	assertEquals(specs.length, 87, `expected 87 specs, got ${specs.length}`);
+	// both legs of organiser_dispute_actions. Direct-message reactions and
+	// photos (migrations 20271213121602 + 20271213121604) added
+	// direct_message_reactions + direct_message_images.
+	assertEquals(specs.length, 89, `expected 89 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -113,6 +115,8 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'reports_against_my_messages.json',
 		'direct_messages_sent.json',
 		'direct_messages_received.json',
+		'direct_message_reactions.json',
+		'direct_message_images.json',
 		'conversation_settings.json',
 		'coaching_as_coach.json',
 		'coaching_as_athlete.json',
@@ -447,6 +451,7 @@ Deno.test('a shared AI Coach answer exports as one, with its link back', () => {
 	const cols = sent.select.split(',');
 	assertEquals(cols.includes('kind'), true);
 	assertEquals(cols.includes('coach_message_id'), true);
+	assertEquals(cols.includes('image_id'), true);
 });
 
 Deno.test('coach_athletes exported both ways without the invite_token credential', () => {
@@ -867,6 +872,55 @@ Deno.test('orphanStorageEntries only skips exports/ in the runs bucket', () => {
 		{ key: `${TEST_UID}/photo-1_512.jpg`, entry: 'storage/run-photos/photo-1_512.jpg' },
 		{ key: `${TEST_UID}/exports/x.jpg`, entry: 'storage/run-photos/exports/x.jpg' },
 	]);
+});
+
+Deno.test('direct-message reactions and photos export only the subject\'s own (issue #1216)', () => {
+	// Only the reactions the subject made and the photos they sent: the
+	// partner's reactions and photos are the partner's data. The photo rows
+	// leave out the Storage paths, which name the sender's folder; the bytes
+	// ship from the dm-images prefix walk.
+	const specs = buildBackupSpecs(TEST_UID);
+	const reactions = specs.find((s) => s.entry === 'direct_message_reactions.json');
+	const images = specs.find((s) => s.entry === 'direct_message_images.json');
+	assertExists(reactions);
+	assertExists(images);
+	assertEquals(reactions.table, 'direct_message_reactions');
+	assertEquals(reactions.filter, `user_id=eq.${TEST_UID}`);
+	assertEquals(reactions.select, 'message_id,reaction,created_at');
+	assertEquals(orderForTable('direct_message_reactions'), 'message_id,user_id');
+	assertEquals(images.table, 'direct_message_images');
+	assertEquals(images.filter, `owner_id=eq.${TEST_UID}`);
+	assertEquals(images.select, 'id,message_id,status,width,height,created_at,processed_at');
+	assertEquals(orderForTable('direct_message_images'), 'id');
+});
+
+Deno.test('orphanStorageEntries ships the subject\'s dm-images photos but not a raw upload', () => {
+	// {uid}/{image}/upload is the client's bytes before the server re-encode;
+	// only the worker reads it. The re-encode {uid}/{image}.jpg ships. Another
+	// user's folder never does.
+	const entries = orphanStorageEntries({
+		bucket: 'dm-images',
+		userId: TEST_UID,
+		archived: new Set<string>(),
+		keys: [
+			`${TEST_UID}/img-1.jpg`,
+			`${TEST_UID}/img-2/upload`,
+			'someone-else/img-3.jpg',
+		],
+	});
+	assertEquals(entries, [
+		{ key: `${TEST_UID}/img-1.jpg`, entry: 'storage/dm-images/img-1.jpg' },
+	]);
+});
+
+Deno.test('orphanStorageEntries keeps subfolders outside dm-images', () => {
+	const entries = orphanStorageEntries({
+		bucket: 'runs',
+		userId: TEST_UID,
+		archived: new Set<string>(),
+		keys: [`${TEST_UID}/nested/run-1.json.gz`],
+	});
+	assertEquals(entries.length, 1);
 });
 
 Deno.test('kudos + comments received are exported via a parent-run inner join (GDPR Art 15/20)', () => {

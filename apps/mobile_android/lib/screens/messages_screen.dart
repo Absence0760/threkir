@@ -10,6 +10,7 @@ import '../ai_disclosure.dart';
 import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../dm_pending_hides.dart';
+import '../dm_search.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -28,6 +29,9 @@ import 'message_thread_screen.dart';
 /// How often the inbox re-reads its conversation list while on screen. No
 /// Realtime channel carries this rail on any platform.
 const Duration kMessagesInboxPollInterval = Duration(seconds: 30);
+
+/// The pause in typing before a search of the viewer's messages is sent.
+const Duration kMessagesSearchDebounce = Duration(milliseconds: 300);
 
 Object? _activeCoachPlacement() => activeSetting(kMessagesCoachRowKey);
 
@@ -135,6 +139,16 @@ class _MessagesScreenState extends State<MessagesScreen>
   /// not answered, migration 20271115002384).
   bool _showingRequests = false;
 
+  /// Search over the viewer's own conversations (migration 20271213121603).
+  /// Only the newest query's answer is shown: [_searchSeq] drops the rest.
+  final _search = TextEditingController();
+  Timer? _searchTimer;
+  int _searchSeq = 0;
+  String? _searchQuery;
+  List<DmSearchHit> _searchHits = const [];
+  bool _searching = false;
+  bool _searchFailed = false;
+
   @override
   void initState() {
     super.initState();
@@ -165,6 +179,7 @@ class _MessagesScreenState extends State<MessagesScreen>
       _showingArchived = false;
       _showingRequests = false;
     });
+    _clearSearch();
     _hideReader.reset();
     if (userId == null) return;
     _load();
@@ -287,8 +302,91 @@ class _MessagesScreenState extends State<MessagesScreen>
     if (mounted) _loadCoach();
   }
 
+  void _onSearchChanged(String text) {
+    _searchTimer?.cancel();
+    final q = normalizeDmSearchQuery(text);
+    final seq = ++_searchSeq;
+    if (q == null) {
+      setState(() {
+        _searchQuery = null;
+        _searchHits = const [];
+        _searching = false;
+        _searchFailed = false;
+      });
+      return;
+    }
+    setState(() {
+      _searchQuery = q;
+      _searching = true;
+      _searchFailed = false;
+    });
+    _searchTimer = Timer(kMessagesSearchDebounce, () => _runSearch(q, seq));
+  }
+
+  Future<void> _runSearch(String q, int seq) async {
+    final userId = widget.api.userId;
+    try {
+      final hits = await widget.api.searchDms(q);
+      if (!mounted || seq != _searchSeq || widget.api.userId != userId) return;
+      setState(() {
+        _searchHits = hits;
+        _searchFailed = false;
+        _searching = false;
+      });
+    } catch (e) {
+      debugPrint('messages search failed: ${safeErrorLabel(e)}');
+      if (!mounted || seq != _searchSeq) return;
+      setState(() {
+        _searchFailed = true;
+        _searching = false;
+      });
+    }
+  }
+
+  void _clearSearch() {
+    _searchTimer?.cancel();
+    _searchSeq++;
+    _search.clear();
+    _searchQuery = null;
+    _searchHits = const [];
+    _searching = false;
+    _searchFailed = false;
+  }
+
+  /// Opens the conversation a hit belongs to, through its inbox row when the
+  /// list holds one so the thread gets the viewer's state with it.
+  Future<void> _openHit(DmSearchHit hit) async {
+    setState(_clearSearch);
+    FocusScope.of(context).unfocus();
+    for (final t in _threads) {
+      if (t.conversationId == hit.conversationId) return _open(t);
+    }
+    final partnerId = hit.partnerId;
+    await Navigator.of(context).push(
+      MaterialPageRoute<bool>(
+        builder: (_) => partnerId == null
+            ? MessageThreadScreen.deletedPartner(
+                api: widget.api,
+                deletedPartnerKey: hit.deletedPartnerKey!,
+                pollInterval: widget.threadPollInterval,
+                conversationId: hit.conversationId,
+              )
+            : MessageThreadScreen(
+                api: widget.api,
+                partnerId: partnerId,
+                partnerName: hit.partnerName,
+                pollInterval: widget.threadPollInterval,
+                conversationId: hit.conversationId,
+              ),
+      ),
+    );
+    if (mounted) _refresh();
+  }
+
   @override
   void dispose() {
+    _searchTimer?.cancel();
+    _search.dispose();
     _poll?.cancel();
     DmPendingHides.instance.removeListener(_onPendingHidesChanged);
     _hideReader.close();
@@ -454,6 +552,109 @@ class _MessagesScreenState extends State<MessagesScreen>
 
   Widget _body(AppLocalizations l10n) {
     if (widget.api.userId == null) return SignInRequiredState(api: widget.api);
+    final subList = (_showingRequests && _threads.any((t) => t.request)) ||
+        (_showingArchived && _threads.any((t) => t.archived && !t.request));
+    if (subList) return _listBody(l10n);
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+          child: Semantics(
+            label: l10n.messagesSearchLabel,
+            child: TextField(
+              key: const ValueKey('inbox-search'),
+              controller: _search,
+              onChanged: _onSearchChanged,
+              maxLength: kDmSearchMaxChars,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: l10n.messagesSearchPlaceholder,
+                counterText: '',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _search.text.isEmpty
+                    ? null
+                    : IconButton(
+                        key: const ValueKey('inbox-search-clear'),
+                        tooltip: l10n.commonClearSearch,
+                        icon: const Icon(Icons.close),
+                        onPressed: () => setState(_clearSearch),
+                      ),
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: _searchQuery != null ? _searchBody(l10n) : _listBody(l10n),
+        ),
+      ],
+    );
+  }
+
+  Widget _searchBody(AppLocalizations l10n) {
+    final theme = Theme.of(context);
+    final muted = theme.textTheme.bodyMedium
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    Widget note(String key, String text) => Padding(
+          key: ValueKey(key),
+          padding: const EdgeInsets.all(16),
+          child: Text(text, style: muted),
+        );
+    if (_searchFailed) {
+      return note('inbox-search-error', l10n.messagesSearchFailed);
+    }
+    if (_searchHits.isEmpty) {
+      return _searching
+          ? ListSkeleton(label: l10n.commonLoading, rows: 3)
+          : note('inbox-search-empty', l10n.messagesSearchEmpty);
+    }
+    final tag = localeToTag(Localizations.localeOf(context));
+    final query = _searchQuery ?? '';
+    final emphasis = TextStyle(
+      fontWeight: FontWeight.w700,
+      backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.18),
+    );
+    // The own-message prefix is a whole sentence per locale, so it is split
+    // around a marker rather than assumed to come first.
+    final prefixed = l10n.messagesYouPrefixed('\u0000').split('\u0000');
+    return ListView.separated(
+      key: const ValueKey('inbox-search-results'),
+      itemCount: _searchHits.length,
+      separatorBuilder: (_, _) => const Divider(height: 1),
+      itemBuilder: (context, i) {
+        final hit = _searchHits[i];
+        final snip = dmSearchSnippet(hit.body, query);
+        final name = hit.partnerId == null
+            ? l10n.messagesDeletedAccount
+            : hit.partnerName ?? l10n.profileRunnerFallback;
+        return ListTile(
+          key: ValueKey('inbox-search-hit-${hit.id}'),
+          title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          subtitle: Text.rich(
+            TextSpan(children: [
+              if (hit.fromMe) TextSpan(text: prefixed.first),
+              TextSpan(text: snip.before),
+              TextSpan(text: snip.match, style: emphasis),
+              TextSpan(text: snip.after),
+              if (hit.fromMe && prefixed.length > 1)
+                TextSpan(text: prefixed.last),
+            ]),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Text(
+            _stamp(hit.createdAt, tag),
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+          onTap: () => _openHit(hit),
+        );
+      },
+    );
+  }
+
+  Widget _listBody(AppLocalizations l10n) {
     if (_loading && _threads.isEmpty) {
       return ListSkeleton(label: l10n.commonLoading);
     }
@@ -635,9 +836,12 @@ class _MessagesScreenState extends State<MessagesScreen>
     final name = t.partnerId == null
         ? l10n.messagesDeletedAccount
         : t.partnerName ?? l10n.profileRunnerFallback;
-    final preview = t.lastUnsent || t.lastBody == null
+    final preview = t.lastUnsent
         ? l10n.messagesUnsentPlaceholder
-        : t.lastBody!;
+        : t.lastBody ??
+            (t.lastImage
+                ? l10n.messagesPhotoPreview
+                : l10n.messagesUnsentPlaceholder);
     return ListTile(
       key: ValueKey('dm-thread-${t.threadKey}'),
       leading: IdentityAvatar(

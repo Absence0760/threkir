@@ -58,7 +58,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Clique em **JÁ** na web (**Disparar o Go** no app do celular) no momento em que a prova começar.',
+					text: 'Aperte **GO** na web ou no app do celular no momento em que a prova começar.',
 				},
 				{
 					type: 'p',
@@ -115,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Você só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** no app do celular) e depois **Cancelar corrida**. Depois que você dá o GO, a prova só pode ser encerrada.',
+					text: 'Você só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **GO** e depois **Cancelar corrida**. Depois que você dá o GO, a prova só pode ser encerrada.',
 				},
 				{
 					type: 'p',
@@ -167,7 +167,7 @@ export const translation: GuideTranslation = {
 		's1.b2': '9b4a5aa61857cac1',
 		's1.b3': 'e8bb5e75119028d9',
 		's2.heading': 'bcda14674f57c276',
-		's2.b0': '933b20b503e29bac',
+		's2.b0': '7d9717e613d837c4',
 		's2.b1': '656cb122eaf287fc',
 		's2.b2': '65fce2c1be98450f',
 		's3.heading': 'c3c4743c28e9dcc0',
@@ -182,7 +182,7 @@ export const translation: GuideTranslation = {
 		's4.b2': 'eefbd14c075fb596',
 		's4.b3': 'b067bfb6142d262b',
 		's5.heading': '20d55e8c3373cb09',
-		's5.b0': 'df971b2d64e7ef15',
+		's5.b0': '262e1b926341a0a0',
 		's5.b1': 'ba1729be79f60bc4',
 		's5.b2': 'b10fb4196bd3e2ef',
 		's6.heading': '27e65c3d7a252fc5',

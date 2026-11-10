@@ -3,22 +3,22 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-results-explained',
 	title: 'Rennergebnisse erklärt',
-	summary: 'Was Brutto- und Netto-Zeit bedeuten, wie Platzierungen pro Strecke ermittelt werden und was die Kennzeichnungen Manuell, Veranstalter, DNF, DNS und ausstehend aussagen.',
+	summary: 'Was Brutto- und Nettozeit bedeuten, wie Platzierungen pro Strecke ermittelt werden und was die Kennzeichnungen Manuell, Veranstalter, DNF, DNS und ausstehend aussagen.',
 	sections: [
 		{
-			heading: 'Brutto-Zeit und Netto-Zeit',
+			heading: 'Bruttozeit und Nettozeit',
 			blocks: [
 				{
 					type: 'list',
 					items: [
-						'**Brutto-Zeit** wird von dem Moment, in dem der Veranstalter LOS gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. LOS wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.',
-						'**Netto-Zeit** wird von dem Moment, in dem du auf deinem eigenen Gerät auf Start gedrückt hast, bis zu deinem Zieleinlauf gemessen, einschließlich aller Pausen.',
-						'Die große Zeit in der Liste ist deine Brutto-Zeit, wenn es im Rennen ein LOS gab, sonst deine Netto-Zeit. Die Platzierungen werden aus dieser großen Zeit ermittelt.',
+						'**Bruttozeit** wird von dem Moment, in dem der Veranstalter GO gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. GO wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.',
+						'**Nettozeit** wird von dem Moment, in dem du auf deinem eigenen Gerät auf Start gedrückt hast, bis zu deinem Zieleinlauf gemessen, einschließlich aller Pausen.',
+						'Die große Zeit in der Liste ist deine Bruttozeit, wenn es im Rennen einen GO gab, sonst deine Nettozeit. Die Platzierungen werden aus dieser großen Zeit ermittelt.',
 					],
 				},
 				{
 					type: 'p',
-					text: 'Im Web lautet die kleinere Zeile unter einer Zeit etwa „Brutto 41:58 · Netto 41:20“. In der Handy-App wird unter der Hauptzeit eine „Netto“-Zeit angezeigt, wenn sie davon abweicht. Bist du verspätet gestartet, ist deine Brutto-Zeit länger als deine Netto-Zeit.',
+					text: 'Im Web lautet die kleinere Zeile unter einer Zeit etwa „Brutto 41:58 · Netto 41:20“. In der Handy-App wird unter der Hauptzeit eine „Netto“-Zeit angezeigt, wenn sie davon abweicht. Bist du verspätet gestartet, ist deine Bruttozeit länger als deine Nettozeit.',
 				},
 			],
 		},

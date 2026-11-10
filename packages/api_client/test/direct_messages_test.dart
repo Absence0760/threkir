@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
@@ -729,6 +730,383 @@ void main() {
 
     test('signed out cannot write', () async {
       expect(api.setDmReadReceipts(false), throwsStateError);
+      expect(fake.requests, isEmpty);
+    });
+  });
+
+  group('sendDm with a photo', () {
+    test('a photo with no caption sends a null body and the image id',
+        () async {
+      await _signIn(client);
+      fake.bodyByPath[_messagesPath] = {
+        ..._message('m-new'),
+        'body': null,
+        'image_id': 'img-1',
+      };
+
+      final row = await api.sendDm('other-1', '   ', imageId: 'img-1');
+
+      final req = fake.to(_messagesPath).single as http.Request;
+      expect(jsonDecode(req.body), {
+        'sender_id': 'user-1',
+        'recipient_id': 'other-1',
+        'body': null,
+        'route_id': null,
+        'image_id': 'img-1',
+      });
+      expect(req.url.queryParameters['select']!.split(',').map((c) => c.trim()),
+          contains('image_id'));
+      expect(row.imageId, 'img-1');
+      expect(row.body, isNull);
+    });
+
+    test('a blank image id with a blank body is refused before the wire',
+        () async {
+      await _signIn(client);
+      expect(api.sendDm('other-1', ' ', imageId: '  '), throwsArgumentError);
+      expect(fake.requests, isEmpty);
+    });
+
+    test('a refused photo send is the same DmSendNotPermitted', () async {
+      await _signIn(client);
+      fake.statusByPath[_messagesPath] = 403;
+      fake.bodyByPath[_messagesPath] = {'code': '42501', 'message': 'rls'};
+      expect(api.sendDm('other-1', '', imageId: 'img-1'),
+          throwsA(isA<DmSendNotPermitted>()));
+    });
+  });
+
+  test('fetchDmThreads reads last_image', () async {
+    await _signIn(client);
+    fake.bodyByPath[_threadsPath] = [
+      {
+        'conversation_id': 'c-1',
+        'partner_id': 'p-1',
+        'last_body': null,
+        'last_at': '2026-10-14T09:30:00Z',
+        'last_from_me': false,
+        'unread': 0,
+        'last_image': true,
+      },
+    ];
+    final threads = await api.fetchDmThreads();
+    expect(threads.single.lastImage, isTrue);
+    expect(threads.single.copyWith(unread: 2).lastImage, isTrue);
+  });
+
+  group('reactions', () {
+    const reactionsPath = '/rest/v1/direct_message_reactions';
+    const rpcPath = '/rest/v1/rpc/set_direct_message_reaction';
+
+    test('reads the three columns for the messages asked, chunked', () async {
+      await _signIn(client);
+      fake.bodyByPath[reactionsPath] = [
+        {'message_id': 'm-1', 'user_id': 'other-1', 'reaction': 'heart'},
+      ];
+      final ids = [for (var i = 0; i < kInFilterChunk + 1; i++) 'm-$i'];
+
+      final rows = await api.fetchDmReactions(ids);
+
+      final reqs = fake.to(reactionsPath).toList();
+      expect(reqs, hasLength(2));
+      expect(reqs.first.url.queryParameters['select'],
+          'message_id,user_id,reaction');
+      expect(reqs.first.url.queryParameters['message_id'], startsWith('in.('));
+      expect(rows.first,
+          (messageId: 'm-1', userId: 'other-1', reaction: 'heart'));
+    });
+
+    test('no messages, or signed out, asks nothing', () async {
+      expect(await api.fetchDmReactions(const ['m-1']), isEmpty);
+      await _signIn(client);
+      expect(await api.fetchDmReactions(const []), isEmpty);
+      expect(fake.requests, isEmpty);
+    });
+
+    test('a failed read throws rather than reading as no reactions',
+        () async {
+      await _signIn(client);
+      fake.statusByPath[reactionsPath] = 500;
+      fake.bodyByPath[reactionsPath] = {'code': 'XX000', 'message': 'boom'};
+      expect(api.fetchDmReactions(const ['m-1']),
+          throwsA(isA<PostgrestException>()));
+    });
+
+    test('sets and clears through the RPC as a POST', () async {
+      await _signIn(client);
+      await api.setDmReaction('m-1', 'fire');
+      await api.setDmReaction('m-1', null);
+
+      final reqs = fake.to(rpcPath).cast<http.Request>().toList();
+      expect(reqs.map((r) => r.method), ['POST', 'POST']);
+      expect(jsonDecode(reqs[0].body), {'p_message_id': 'm-1', 'p_reaction': 'fire'});
+      expect(jsonDecode(reqs[1].body), {'p_message_id': 'm-1', 'p_reaction': null});
+    });
+
+    for (final (status, code) in [(400, '55000'), (404, 'P0002')]) {
+      test('a $code refusal is one DmReactionRefused', () async {
+        await _signIn(client);
+        fake.statusByPath[rpcPath] = status;
+        fake.bodyByPath[rpcPath] = {'code': code, 'message': 'refused'};
+        expect(api.setDmReaction('m-1', 'heart'),
+            throwsA(isA<DmReactionRefused>()));
+      });
+    }
+
+    test('the reaction throttle stays a PostgrestException', () async {
+      await _signIn(client);
+      fake.statusByPath[rpcPath] = 400;
+      fake.bodyByPath[rpcPath] = {
+        'code': 'P0001',
+        'message': 'rate limit exceeded for dm_reaction, retry in 30s',
+      };
+      expect(
+        api.setDmReaction('m-1', 'heart'),
+        throwsA(isA<PostgrestException>().having((e) => e.code, 'code', 'P0001')),
+      );
+    });
+  });
+
+  group('searchDms', () {
+    const searchPath = '/rest/v1/rpc/search_direct_messages';
+
+    test('searches as a GET and names each partner', () async {
+      await _signIn(client);
+      fake.bodyByPath[searchPath] = [
+        {
+          'id': 'm-1',
+          'conversation_id': 'c-1',
+          'sender_id': 'other-1',
+          'recipient_id': 'user-1',
+          'deleted_partner_key': null,
+          'body': 'see you at the track',
+          'created_at': '2026-10-14T08:00:00Z',
+          'kind': 'text',
+        },
+        {
+          'id': 'm-2',
+          'conversation_id': 'c-2',
+          'sender_id': 'user-1',
+          'recipient_id': null,
+          'deleted_partner_key': 'k-9',
+          'body': 'track session',
+          'created_at': '2026-10-13T08:00:00Z',
+          'kind': 'text',
+        },
+        {
+          'id': 'm-3',
+          'conversation_id': 'c-1',
+          'sender_id': 'other-1',
+          'recipient_id': 'user-1',
+          'body': null,
+          'created_at': '2026-10-12T08:00:00Z',
+          'kind': 'text',
+        },
+      ];
+      fake.bodyByPath[_profilesPath] = [
+        {'id': 'other-1', 'display_name': 'Ada'},
+      ];
+
+      final hits = await api.searchDms('  track ');
+
+      final req = fake.to(searchPath).single;
+      expect(req.method, 'GET');
+      expect(req.url.queryParameters, {'p_query': 'track', 'p_limit': '50'});
+      expect(hits.map((h) => h.id), ['m-1', 'm-2']);
+      expect(hits.first.partnerId, 'other-1');
+      expect(hits.first.partnerName, 'Ada');
+      expect(hits.first.fromMe, isFalse);
+      expect(hits.last.partnerId, isNull);
+      expect(hits.last.deletedPartnerKey, 'k-9');
+      expect(hits.last.target, isA<DmDeletedPartnerThread>());
+      expect(hits.last.fromMe, isTrue);
+      expect(fake.to(_profilesPath).single.url.queryParameters['id'],
+          'in.("other-1")');
+    });
+
+    test('a failed name read keeps the hits with no names', () async {
+      await _signIn(client);
+      fake.bodyByPath[searchPath] = [
+        {
+          'id': 'm-1',
+          'conversation_id': 'c-1',
+          'sender_id': 'other-1',
+          'recipient_id': 'user-1',
+          'body': 'hello',
+          'created_at': '2026-10-14T08:00:00Z',
+        },
+      ];
+      fake.statusByPath[_profilesPath] = 500;
+      fake.bodyByPath[_profilesPath] = {'code': 'XX000', 'message': 'boom'};
+
+      final hits = await api.searchDms('he');
+      expect(hits.single.partnerName, isNull);
+    });
+
+    test('a blank query, or signed out, asks nothing', () async {
+      expect(await api.searchDms('track'), isEmpty);
+      await _signIn(client);
+      expect(await api.searchDms('   '), isEmpty);
+      expect(fake.requests, isEmpty);
+    });
+
+    test('a failed search throws rather than reading as no match', () async {
+      await _signIn(client);
+      fake.statusByPath[searchPath] = 500;
+      fake.bodyByPath[searchPath] = {'code': 'XX000', 'message': 'boom'};
+      expect(api.searchDms('track'), throwsA(isA<PostgrestException>()));
+    });
+  });
+
+  group('photos', () {
+    const gatePath = '/rest/v1/rpc/dm_images_enabled';
+    const imagesPath = '/rest/v1/direct_message_images';
+    const createPath = '/rest/v1/rpc/create_dm_image_upload';
+    const signPath = '/storage/v1/object/sign/dm-images/user-1/img-1.jpg';
+    const uploadPath = '/storage/v1/object/dm-images/user-1/img-1/upload';
+    final jpeg = Uint8List.fromList([0xFF, 0xD8, 0xFF, 0xE0, 0, 0]);
+
+    test('the gate is read as a GET', () async {
+      await _signIn(client);
+      fake.bodyByPath[gatePath] = true;
+      expect(await api.fetchDmImagesEnabled(), isTrue);
+      expect(fake.to(gatePath).single.method, 'GET');
+    });
+
+    test('a failed gate read is off', () async {
+      await _signIn(client);
+      fake.statusByPath[gatePath] = 500;
+      fake.bodyByPath[gatePath] = {'code': 'XX000', 'message': 'boom'};
+      expect(await api.fetchDmImagesEnabled(), isFalse);
+    });
+
+    test('a pending photo is not signed', () async {
+      await _signIn(client);
+      fake.bodyByPath[imagesPath] = {
+        'status': 'pending',
+        'width': null,
+        'height': null,
+        'storage_path': 'user-1/img-1.jpg',
+      };
+
+      final view = await api.fetchDmImage('img-1');
+
+      expect(view!.status, 'pending');
+      expect(view.url, isNull);
+      final req = fake.to(imagesPath).single;
+      expect(req.url.queryParameters['select'],
+          'status,width,height,storage_path');
+      expect(req.url.queryParameters['id'], 'eq.img-1');
+      expect(fake.requests.where((r) => r.url.path.contains('/storage/')),
+          isEmpty);
+    });
+
+    test('a ready photo is signed for ten minutes', () async {
+      await _signIn(client);
+      fake.bodyByPath[imagesPath] = {
+        'status': 'ready',
+        'width': 1200,
+        'height': 800,
+        'storage_path': 'user-1/img-1.jpg',
+      };
+      fake.bodyByPath[signPath] = {
+        'signedURL': '/object/sign/dm-images/user-1/img-1.jpg?token=t',
+      };
+
+      final view = await api.fetchDmImage('img-1');
+
+      expect(view!.status, 'ready');
+      expect(view.width, 1200);
+      expect(view.url, contains('token=t'));
+      final sign = fake.to(signPath).single as http.Request;
+      expect((jsonDecode(sign.body) as Map)['expiresIn'], 600);
+    });
+
+    test('a photo the viewer cannot see is null', () async {
+      await _signIn(client);
+      fake.bodyByPath[imagesPath] = <dynamic>[];
+      expect(await api.fetchDmImage('img-1'), isNull);
+    });
+
+    test('an upload starts the image, then uploads the JPEG to its path',
+        () async {
+      await _signIn(client);
+      fake.bodyByPath[createPath] = [
+        {'id': 'img-1', 'upload_path': 'user-1/img-1/upload'},
+      ];
+      fake.bodyByPath[uploadPath] = {'Key': 'dm-images/user-1/img-1/upload'};
+
+      expect(await api.uploadDmImage(jpeg), 'img-1');
+
+      expect(fake.to(createPath).single.method, 'POST');
+      final up = fake.to(uploadPath).single as http.MultipartRequest;
+      expect(up.method, 'POST');
+      expect(up.files.single.contentType.mimeType, 'image/jpeg');
+      expect(up.headers['x-upsert'], 'false');
+    });
+
+    test('anything but a JPEG is refused before the wire', () async {
+      await _signIn(client);
+      final png = Uint8List.fromList([0x89, 0x50, 0x4E, 0x47, 0, 0]);
+      expect(api.uploadDmImage(png), throwsArgumentError);
+      expect(fake.requests, isEmpty);
+    });
+
+    test('a closed gate is DmImageUnavailable and uploads nothing', () async {
+      await _signIn(client);
+      fake.statusByPath[createPath] = 400;
+      fake.bodyByPath[createPath] = {'code': '0A000', 'message': 'off'};
+      await expectLater(
+          api.uploadDmImage(jpeg), throwsA(isA<DmImageUnavailable>()));
+      expect(fake.requests.where((r) => r.url.path.contains('/storage/')),
+          isEmpty);
+    });
+
+    test('the upload throttle stays a PostgrestException', () async {
+      await _signIn(client);
+      fake.statusByPath[createPath] = 400;
+      fake.bodyByPath[createPath] = {
+        'code': 'P0001',
+        'message': 'rate limit exceeded for dm_image_upload, retry in 120s',
+      };
+      expect(api.uploadDmImage(jpeg),
+          throwsA(isA<PostgrestException>().having((e) => e.code, 'code', 'P0001')));
+    });
+  });
+
+  group('message requests setting', () {
+    const settingsPath = '/rest/v1/user_settings';
+
+    test('reads the viewer\'s own column', () async {
+      await _signIn(client);
+      fake.bodyByPath[settingsPath] = {'dm_requests': false};
+
+      expect(await api.fetchMyDmRequests(), isFalse);
+
+      final req = fake.to(settingsPath).single;
+      expect(req.url.queryParameters['select'], 'dm_requests');
+      expect(req.url.queryParameters['user_id'], 'eq.user-1');
+    });
+
+    test('no row yet reads as on', () async {
+      await _signIn(client);
+      fake.bodyByPath[settingsPath] = <dynamic>[];
+      expect(await api.fetchMyDmRequests(), isTrue);
+    });
+
+    test('writes the column on the viewer\'s row', () async {
+      await _signIn(client);
+
+      await api.setDmRequests(false);
+
+      final req = fake.to(settingsPath).single as http.Request;
+      expect(req.method, 'POST');
+      expect(req.url.queryParameters['on_conflict'], 'user_id');
+      expect(jsonDecode(req.body), {'user_id': 'user-1', 'dm_requests': false});
+    });
+
+    test('signed out cannot write', () async {
+      expect(api.setDmRequests(false), throwsStateError);
       expect(fake.requests, isEmpty);
     });
   });

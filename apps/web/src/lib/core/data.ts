@@ -87,6 +87,15 @@ import type { Gate } from '../geo/gate_crossing';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
 import { parseDmKind, type DmKind } from '../social/coach_share';
+import type { DmReaction, DmReactionRow } from '../social/dm_reactions';
+import { normalizeDmSearchQuery } from '../social/dm_search';
+import {
+	DM_IMAGE_CONTENT_TYPE,
+	DM_IMAGE_MAX_BYTES,
+	DM_IMAGE_SIGNED_URL_SECONDS,
+	parseDmImageStatus,
+	type DmImageStatus,
+} from '../social/dm_image';
 import { courseReportErrorKey, type CourseReportReason } from '../parks/course_report';
 import {
 	cancelledOccurrenceRefunds,
@@ -12302,6 +12311,10 @@ export interface DirectMessage {
 	/// The sender's own Coach answer a `coach_share` quoted; only the sender
 	/// can read that row. Null on every other message, and once unsent.
 	coach_message_id: string | null;
+	/// The photo the message carries (migration 20271213121604), read through
+	/// [fetchDmImage]; null on a text message and once unsent. A photo with no
+	/// caption has a null `body` on a live message.
+	image_id: string | null;
 }
 
 /// A direct_messages row with its `kind` narrowed at the read boundary.
@@ -12312,7 +12325,7 @@ function asDirectMessage(row: Omit<DirectMessage, 'kind'> & { kind: string }): D
 /// Every column a client may select on direct_messages: `read_at` is withheld
 /// by a column grant (migration 20271113000001), so `*` is refused.
 const DM_COLUMNS =
-	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id';
+	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id, image_id';
 
 export interface DmThread {
 	/// The conversation the mute, archive and delete-for-me actions act on.
@@ -12343,6 +12356,9 @@ export interface DmThread {
 	/// What the newest message is: a shared AI Coach answer previews with the
 	/// AI tag (migration 20271210001215).
 	lastKind: DmKind;
+	/// The newest message carries a photo (migration 20271213121604), so a
+	/// preview with no caption can say so.
+	lastImage: boolean;
 }
 
 /// The newest message of the runner's current (not archived) Coach
@@ -12432,6 +12448,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		marked_unread: boolean;
 		request: boolean;
 		last_kind: string;
+		last_image: boolean;
 	}[]).map((r) => ({
 		conversationId: r.conversation_id,
 		partnerId: r.partner_id,
@@ -12448,6 +12465,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		markedUnread: r.marked_unread === true,
 		request: r.request === true,
 		lastKind: parseDmKind(r.last_kind),
+		lastImage: r.last_image === true,
 	}));
 	const byPartner = new Map(
 		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
@@ -12528,26 +12546,29 @@ export async function sendDm(
 	recipientId: string,
 	body: string,
 	routeId?: string,
-	opts: { aiAssisted?: boolean } = {},
+	opts: { aiAssisted?: boolean; imageId?: string } = {},
 ): Promise<DirectMessage> {
 	const me = auth.user?.id;
 	if (!me) throw new Error('Not signed in');
 	const trimmed = body.trim();
-	if (!trimmed) throw new AppError('messages.emptyBody', { message: 'Message is empty' });
+	if (!trimmed && !opts.imageId) throw new AppError('messages.emptyBody', { message: 'Message is empty' });
 	const { data, error } = await supabase
 		.from(TABLES.direct_messages)
 		.insert({
 			sender_id: me,
 			recipient_id: recipientId,
-			body: trimmed,
+			body: trimmed || null,
 			route_id: routeId?.trim() || null,
 			...(opts.aiAssisted ? { kind: 'ai_assisted' as const } : {}),
+			...(opts.imageId ? { image_id: opts.imageId } : {}),
 		})
 		.select(DM_COLUMNS)
 		.single();
 	if (error || !data) {
 		if (error?.code === '42501') {
-			throw new AppError('messages.sendNotAllowed', { message: m('messages.sendNotAllowed') });
+			throw new AppError(opts.imageId ? 'messages.photoSendNotAllowed' : 'messages.sendNotAllowed', {
+				message: m(opts.imageId ? 'messages.photoSendNotAllowed' : 'messages.sendNotAllowed'),
+			});
 		}
 		if (error?.code === '54000') {
 			throw new AppError('messages.requestCapReached', { message: m('messages.requestCapReached') });
@@ -12651,6 +12672,180 @@ export async function fetchCoachShareEnabled(): Promise<boolean> {
 		return false;
 	}
 	return data === true;
+}
+
+/// The reactions on the given messages that the viewer can see (migration
+/// 20271213121602): the SELECT policy admits only reactions on live messages
+/// the viewer can read. Throws on a failed read so the caller keeps what it
+/// shows.
+export async function fetchDmReactions(messageIds: readonly string[]): Promise<DmReactionRow[]> {
+	if (messageIds.length === 0 || !auth.user?.id) return [];
+	const { data, error } = await queryChunked([...messageIds], (part) =>
+		supabase.from('direct_message_reactions').select('message_id, user_id, reaction').in('message_id', part),
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		message_id: r.message_id as string,
+		user_id: r.user_id as string,
+		reaction: r.reaction as string,
+	}));
+}
+
+/// Sets the viewer's reaction on a message, or clears it with null. Every
+/// refusal (an unsent or hidden message, a block either way, an unaccepted
+/// request, someone else's conversation) reaches the caller as one
+/// `messages.reactionRefused`, so a block is never told apart.
+export async function setDmReaction(messageId: string, reaction: DmReaction | null): Promise<void> {
+	const { error } = await supabase.rpc('set_direct_message_reaction', {
+		p_message_id: messageId,
+		p_reaction: reaction,
+	});
+	if (!error) return;
+	if (error.code === '55000' || error.code === 'P0002') {
+		throw new AppError('messages.reactionRefused', { message: m('messages.reactionRefused') });
+	}
+	const limited = rateLimitAppError(m, error);
+	if (limited) throw limited;
+	throw dbError(error);
+}
+
+export interface DmSearchHit {
+	id: string;
+	conversationId: string;
+	/// Null when the partner deleted their account; `deletedPartnerKey` names
+	/// the conversation then.
+	partnerId: string | null;
+	deletedPartnerKey: string | null;
+	partnerName: string | null;
+	body: string;
+	createdAt: string;
+	fromMe: boolean;
+}
+
+/// Searches the viewer's own conversations (migration 20271213121603). The
+/// RPC runs under the viewer's RLS, so it can return nothing the viewer could
+/// not read row by row. A query outside 2-100 characters returns nothing
+/// without a request. Throws on a failed read.
+export async function searchDms(query: string): Promise<DmSearchHit[]> {
+	const me = auth.user?.id;
+	const q = normalizeDmSearchQuery(query);
+	if (!me || q === null) return [];
+	const { data, error } = await supabase.rpc('search_direct_messages', { p_query: q, p_limit: 50 });
+	if (error) throw dbError(error);
+	const hits: DmSearchHit[] = (data ?? []).flatMap((r) =>
+		r.body === null
+			? []
+			: [
+					{
+						id: r.id,
+						conversationId: r.conversation_id,
+						partnerId: (r.sender_id === me ? r.recipient_id : r.sender_id) ?? null,
+						deletedPartnerKey: r.deleted_partner_key ?? null,
+						partnerName: null,
+						body: r.body,
+						createdAt: r.created_at,
+						fromMe: r.sender_id === me,
+					},
+				],
+	);
+	const partnerIds = [...new Set(hits.flatMap((h) => (h.partnerId ? [h.partnerId] : [])))];
+	if (partnerIds.length > 0) {
+		const { data: profiles } = await queryChunked(partnerIds, (part) =>
+			supabase.from('user_profiles').select('id, display_name').in('id', part),
+		);
+		const names = new Map((profiles ?? []).map((p) => [p.id as string, (p.display_name as string | null) ?? null]));
+		for (const h of hits) if (h.partnerId) h.partnerName = names.get(h.partnerId) ?? null;
+	}
+	return hits;
+}
+
+/// Whether photos can be sent in messages (the server's `dm_images` flag).
+/// Fail-closed: a failed read hides the attach button.
+export async function fetchDmImagesEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('dm_images_enabled', undefined, { get: true });
+	if (error) {
+		console.error('dm_images_enabled failed', error.message);
+		return false;
+	}
+	return data === true;
+}
+
+export interface DmImageView {
+	status: DmImageStatus;
+	width: number | null;
+	height: number | null;
+	/// A short-lived signed URL, only once the server has re-encoded the photo.
+	url: string | null;
+}
+
+/// One message photo: its processing state and, once ready, a signed URL
+/// valid for `DM_IMAGE_SIGNED_URL_SECONDS`. The bucket's SELECT policy admits
+/// only the re-encoded copy, and only to someone who can read the message.
+/// Null when the viewer cannot see the image row at all.
+export async function fetchDmImage(imageId: string): Promise<DmImageView | null> {
+	const { data, error } = await supabase
+		.from('direct_message_images')
+		.select('status, width, height, storage_path')
+		.eq('id', imageId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	const status = parseDmImageStatus(data.status);
+	if (status !== 'ready') return { status, width: null, height: null, url: null };
+	const { data: signed, error: signError } = await supabase.storage
+		.from('dm-images')
+		.createSignedUrl(data.storage_path, DM_IMAGE_SIGNED_URL_SECONDS);
+	if (signError || !signed) throw signError ?? new Error('createSignedUrl failed');
+	return { status, width: data.width, height: data.height, url: signed.signedUrl };
+}
+
+/// Uploads a photo the caller has already re-encoded to JPEG (which drops its
+/// metadata) and returns the image id to send with [sendDm]. The server
+/// re-encodes it again before anyone can read it. A closed gate answers
+/// `messages.photoUnavailable`.
+export async function uploadDmImage(jpeg: Blob): Promise<string> {
+	if (jpeg.type !== DM_IMAGE_CONTENT_TYPE || jpeg.size > DM_IMAGE_MAX_BYTES) {
+		throw new AppError('messages.photoTooLarge', { message: m('messages.photoTooLarge') });
+	}
+	const { data, error } = await supabase.rpc('create_dm_image_upload');
+	if (error || !data || data.length === 0) {
+		if (error?.code === '0A000') {
+			throw new AppError('messages.photoUnavailable', { message: m('messages.photoUnavailable') });
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('create_dm_image_upload returned nothing');
+	}
+	const { id, upload_path } = data[0];
+	const { error: uploadError } = await supabase.storage
+		.from('dm-images')
+		.upload(upload_path, jpeg, { contentType: DM_IMAGE_CONTENT_TYPE, upsert: false });
+	if (uploadError) throw new AppError('messages.photoUploadFailed', { message: m('messages.photoUploadFailed') });
+	return id;
+}
+
+/// The viewer's message-requests setting (`user_settings.dm_requests`).
+/// Off: nobody without a follow edge can message them first. No row reads as
+/// the default, on.
+export async function fetchMyDmRequests(): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return true;
+	const { data, error } = await supabase
+		.from('user_settings')
+		.select('dm_requests')
+		.eq('user_id', userId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.dm_requests !== false;
+}
+
+export async function setDmRequests(on: boolean): Promise<void> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not signed in');
+	const { error } = await supabase
+		.from('user_settings')
+		.upsert({ user_id: userId, dm_requests: on }, { onConflict: 'user_id' });
+	if (error) throw dbError(error);
 }
 
 /// Deletes a conversation for the viewer only (migration 20271105000010):

@@ -155,6 +155,10 @@ func (b *dataexportBackend) DownloadAvatar(ctx context.Context, path string) ([]
 	return b.client.DownloadAvatar(ctx, path)
 }
 
+func (b *dataexportBackend) DownloadDmImage(ctx context.Context, path string, maxBytes int64) ([]byte, error) {
+	return b.client.DownloadDmImage(ctx, path, maxBytes)
+}
+
 func (b *dataexportBackend) ListStorageObjects(ctx context.Context, bucket, prefix string) ([]string, error) {
 	return b.client.ListStorageObjects(ctx, bucket, prefix)
 }

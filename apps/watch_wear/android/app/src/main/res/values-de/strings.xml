@@ -112,6 +112,10 @@
     <string name="race_clock">Rennen %1$s</string>
     <string name="race_result_finished">Im Ziel %1$s</string>
     <string name="race_result_dnf">Rennen DNF</string>
+    <string name="race_to_start_line">%1$s bis zur Startlinie</string>
+    <string name="race_start_crossed">Startlinie überquert, Zeitmessung läuft</string>
+    <string name="race_finish_recorded">Zieleinlauf erfasst</string>
+    <string name="race_undo_resume">Nicht im Ziel? Fortsetzen</string>
     <string name="battery_consider_charging">Akku %1$d%% · laden empfohlen</string>
     <string name="route">Route</string>
     <string name="pace">Pace</string>

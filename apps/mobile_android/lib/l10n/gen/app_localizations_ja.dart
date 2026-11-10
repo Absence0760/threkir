@@ -21061,4 +21061,111 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get profileNotifParkCourseReport => '公園コースについて報告がありました';
+
+  @override
+  String rateLimitReaction(String wait) {
+    return 'リアクションの送信が速すぎます。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String rateLimitPhotoUpload(String wait) {
+    return '写真を多く送信しています。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String get prefsMessageRequests => 'メッセージリクエスト';
+
+  @override
+  String get prefsMessageRequestsHint =>
+      '同じクラブやイベントに参加している人が、あなたに先にメッセージを送れるようにします。オフにすると、あなたがフォローしている人、またはあなたのフォロワーだけがあなたとの会話を始められます。';
+
+  @override
+  String get prefsMessageRequestsFailed => 'メッセージリクエストの設定を変更できませんでした。';
+
+  @override
+  String get messagesReact => 'リアクション';
+
+  @override
+  String get messagesReactPickerLabel => 'リアクションを選択';
+
+  @override
+  String messagesReactionChipLabel(String reaction, int count) {
+    return '$reaction、$count人';
+  }
+
+  @override
+  String get messagesReactionThumbsUp => 'いいね';
+
+  @override
+  String get messagesReactionHeart => 'ハート';
+
+  @override
+  String get messagesReactionLaugh => '笑い';
+
+  @override
+  String get messagesReactionSurprised => '驚き';
+
+  @override
+  String get messagesReactionSad => '悲しい';
+
+  @override
+  String get messagesReactionFire => '炎';
+
+  @override
+  String get messagesReactionRefused => 'このメッセージにはリアクションできません。';
+
+  @override
+  String get messagesSearchPlaceholder => 'メッセージを検索';
+
+  @override
+  String get messagesSearchLabel => '自分のメッセージを検索';
+
+  @override
+  String get messagesSearchEmpty => '一致するメッセージはありません。';
+
+  @override
+  String get messagesSearchFailed => 'メッセージを検索できませんでした。もう一度お試しください。';
+
+  @override
+  String get messagesPhotoAttach => '写真を添付';
+
+  @override
+  String get messagesPhotoRemove => '写真を削除';
+
+  @override
+  String get messagesPhotoDraftAlt => '送信する写真';
+
+  @override
+  String get messagesPhotoAlt => 'メッセージ内の写真';
+
+  @override
+  String get messagesPhotoProcessing => '写真を準備中…';
+
+  @override
+  String get messagesPhotoRejected => 'この写真は送信できませんでした。';
+
+  @override
+  String get messagesPhotoUnavailableToView => '写真を表示できません';
+
+  @override
+  String get messagesPhotoPreview => '写真';
+
+  @override
+  String get messagesPhotoTooLarge => 'その写真は大きすぎるため送信できません。';
+
+  @override
+  String get messagesPhotoUnreadable => 'そのファイルを写真として読み込めませんでした。';
+
+  @override
+  String get messagesPhotoUnavailable => 'メッセージの写真機能はまだご利用いただけません。';
+
+  @override
+  String get messagesPhotoUploadFailed => '写真をアップロードできませんでした。もう一度お試しください。';
+
+  @override
+  String get messagesPhotoSendNotAllowed =>
+      '写真は、フォローしている人やフォロワー、または相手が承認した会話に送れます。ただし、どちらかが相手をブロックしている場合は送れません。';
+
+  @override
+  String get messagesLinkOpenFailed => 'リンクを開けませんでした。';
 }

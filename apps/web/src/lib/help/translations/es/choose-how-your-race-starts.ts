@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Se elige en **Cómo empieza la carrera**, en el editor del evento en la web, para un evento de salida en grupo o de ciclismo. La app del móvil puede dirigir la carrera el día (armarla antes, retrasarla, ampliarla o finalizarla), pero la forma de salida se elige en la web.',
+					text: 'Se elige en **Cómo empieza la carrera**, en el editor del evento en la web, para un evento de salida en grupo o de ciclismo. La app del móvil puede dirigir la carrera el día (prepararla antes, retrasarla, ampliarla o finalizarla), pero la forma de salida se elige en la web.',
 				},
 			],
 		},
@@ -48,7 +48,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Preparas la carrera, das la salida y la finalizas tú mismo. Consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]].',
+					text: 'Preparas la carrera, das el GO y la finalizas tú mismo. Consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]].',
 				},
 			],
 		},
@@ -58,8 +58,8 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'No tienes que hacer nada. La carrera se prepara aproximadamente un día antes de la salida y empieza sola a la hora programada.',
-						'Para revisar antes las líneas del recorrido, elige **Armar antes**.',
+						'No tienes que hacer nada. La carrera se configura aproximadamente un día antes de la salida y empieza sola a la hora programada.',
+						'Para revisar antes las líneas del recorrido, elige **Preparar antes**.',
 						'Antes de la salida, el panel de carrera muestra **Salida a las** con la hora y una cuenta atrás. Para retrasar la salida, introduce los minutos y elige **Retrasar salida**; se avisa a todos los apuntados de que la salida ha cambiado. Elige **Cancelar** para suspender la carrera.',
 						'Una vez pasada la hora de salida, la carrera ya no se puede cancelar. Termina sola cuando se acaba su tiempo, o elige **Finalizar carrera** para terminarla antes.',
 						'Los móviles de los corredores hacen la cuenta atrás hasta la salida con el reloj del servidor y dicen en voz alta los últimos segundos, para que todos salgan a la vez.',

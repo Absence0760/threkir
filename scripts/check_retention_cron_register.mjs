@@ -64,6 +64,10 @@ export const MIGRATIONS = 'apps/backend/supabase/migrations';
 export const EXCLUDED_JOBS = [
 	{ name: 'enqueue-token-refresh', reason: 'Enqueues integration token refreshes; deletes nothing.' },
 	{
+		name: 'build-direct-messages-body-trgm',
+		reason: 'Builds the direct-message search index online (CREATE INDEX CONCURRENTLY); a no-op once the index exists, deletes nothing.',
+	},
+	{
 		name: 'club-verification-recheck',
 		reason: "Re-checks verified clubs' domain proof and drops a lapsed badge; deletes nothing.",
 	},

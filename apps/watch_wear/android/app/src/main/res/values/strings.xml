@@ -135,6 +135,10 @@
     <string name="race_clock">Race %1$s</string>
     <string name="race_result_finished">Race finish %1$s</string>
     <string name="race_result_dnf">Race DNF</string>
+    <string name="race_to_start_line">%1$s to start line</string>
+    <string name="race_start_crossed">Start line crossed, timing</string>
+    <string name="race_finish_recorded">Race finish recorded</string>
+    <string name="race_undo_resume">Not finished? Resume</string>
     <string name="battery_consider_charging">Battery %1$d%% · consider charging</string>
     <string name="route">Route</string>
     <string name="pace">Pace</string>

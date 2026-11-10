@@ -154,6 +154,8 @@ const builders: Array<{ name: string; head: () => Record<string, unknown> }> = [
 					difficulty: null,
 					laps: null,
 					attribution: HUGE,
+					route_guide: null,
+					route_guide_checked_at: null,
 					segment: {
 						name: HUGE,
 						description: HUGE,

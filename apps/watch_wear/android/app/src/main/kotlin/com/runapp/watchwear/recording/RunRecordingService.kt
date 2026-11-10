@@ -32,6 +32,7 @@ import com.runapp.watchwear.workout.HapticPattern
 import com.runapp.watchwear.workout.VoiceVerbosity
 import com.runapp.watchwear.workout.WorkoutCue
 import com.runapp.watchwear.workout.WorkoutEvent
+import com.runapp.watchwear.workout.WorkoutHaptics
 import com.runapp.watchwear.workout.WorkoutPush
 import com.runapp.watchwear.workout.WorkoutRunner
 import com.runapp.watchwear.workout.WorkoutVoice
@@ -253,6 +254,7 @@ class RunRecordingService : Service() {
             ACTION_RESUME -> resumeRecording()
             ACTION_LAP -> markLap()
             ACTION_STOP -> stopRecording()
+            ACTION_RACE_CUE -> raceCue(intent.getStringExtra(EXTRA_RACE_CUE))
         }
         return START_STICKY
     }
@@ -559,6 +561,26 @@ class RunRecordingService : Service() {
             announcer.announceWorkout(speech, workout, preferredUnit)
         } catch (e: Throwable) {
             android.util.Log.w(TAG, "workout cue not spoken", e)
+        }
+    }
+
+    /// A start- or finish-line crossing (#1307 cues): the haptic and the
+    /// spoken line, each its own L4 effect, so a TTS engine that throws never
+    /// costs the buzz and neither can reach the run. The finish reuses the
+    /// workout's completion buzz and the start its new-step buzz, as the
+    /// phone does.
+    private fun raceCue(kind: String?) {
+        val start = kind == RACE_CUE_START
+        if (!start && kind != RACE_CUE_FINISH) return
+        try {
+            vibrate(if (start) WorkoutHaptics.STEP else WorkoutHaptics.COMPLETE, "race $kind")
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "race $kind haptic failed", e)
+        }
+        try {
+            cues?.announceRaceCrossing(start)
+        } catch (e: Throwable) {
+            android.util.Log.w(TAG, "race $kind cue not spoken", e)
         }
     }
 
@@ -1177,6 +1199,12 @@ class RunRecordingService : Service() {
         const val ACTION_PAUSE = "com.runapp.watchwear.action.PAUSE_RECORDING"
         const val ACTION_RESUME = "com.runapp.watchwear.action.RESUME_RECORDING"
         const val ACTION_LAP = "com.runapp.watchwear.action.MARK_LAP"
+        const val ACTION_RACE_CUE = "com.runapp.watchwear.action.RACE_CUE"
+        /// Which crossing [ACTION_RACE_CUE] cues: [RACE_CUE_START] or
+        /// [RACE_CUE_FINISH].
+        const val EXTRA_RACE_CUE = "race_cue"
+        const val RACE_CUE_START = "start"
+        const val RACE_CUE_FINISH = "finish"
         const val EXTRA_RUN_ID = "run_id"
         const val EXTRA_ACTIVITY_TYPE = "activity_type"
         /// JSON array of `{"lat": .., "lng": ..}` objects — the picked
@@ -1292,6 +1320,14 @@ class RunRecordingService : Service() {
         fun resume(context: Context) = send(context, ACTION_RESUME)
         fun lap(context: Context) = send(context, ACTION_LAP)
         fun stop(context: Context) = send(context, ACTION_STOP)
+        fun raceCue(context: Context, kind: String) {
+            context.startService(
+                Intent(context, RunRecordingService::class.java).apply {
+                    action = ACTION_RACE_CUE
+                    putExtra(EXTRA_RACE_CUE, kind)
+                },
+            )
+        }
 
         private fun send(context: Context, action: String) {
             context.startService(

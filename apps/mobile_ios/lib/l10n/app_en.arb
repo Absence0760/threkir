@@ -19933,17 +19933,32 @@
   "@racesAnyTimeRecord": {
     "description": "A park course's fastest time this season, when the record holder's name is hidden. Mirrors web races.anyTimeRecord",
     "placeholders": {
-      "year": {"type": "String", "example": "2026"},
-      "time": {"type": "String", "example": "24:31"}
+      "year": {
+        "type": "String",
+        "example": "2026"
+      },
+      "time": {
+        "type": "String",
+        "example": "24:31"
+      }
     }
   },
   "racesAnyTimeRecordBy": "{year} record: {time} by {name}",
   "@racesAnyTimeRecordBy": {
     "description": "A park course's fastest time this season and who ran it. Mirrors web races.anyTimeRecordBy",
     "placeholders": {
-      "year": {"type": "String", "example": "2026"},
-      "time": {"type": "String", "example": "24:31"},
-      "name": {"type": "String", "example": "Sam"}
+      "year": {
+        "type": "String",
+        "example": "2026"
+      },
+      "time": {
+        "type": "String",
+        "example": "24:31"
+      },
+      "name": {
+        "type": "String",
+        "example": "Sam"
+      }
     }
   },
   "racesAnyTimeNoRecord": "No time yet this season. Yours could be the first.",
@@ -19954,7 +19969,10 @@
   "@racesAnyTimeAway": {
     "description": "How far a park course's start is from the runner. Mirrors web races.anyTimeAway",
     "placeholders": {
-      "distance": {"type": "String", "example": "3.2 km"}
+      "distance": {
+        "type": "String",
+        "example": "3.2 km"
+      }
     }
   },
   "racesAnyTimeRecordsFailed": "Couldn't load this season's records.",
@@ -29182,5 +29200,155 @@
   "profileNotifParkCourseReport": "A park course was reported",
   "@profileNotifParkCourseReport": {
     "description": "Notification text, app admins only: someone reported a problem with a park course"
+  },
+  "rateLimitReaction": "You're reacting too quickly — please wait {wait} and try again.",
+  "@rateLimitReaction": {
+    "description": "Rate-limit refusal when the direct-message reaction bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitPhotoUpload": "You've sent a lot of photos — please wait {wait} and try again.",
+  "@rateLimitPhotoUpload": {
+    "description": "Rate-limit refusal when the direct-message photo upload bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "prefsMessageRequests": "Message requests",
+  "@prefsMessageRequests": {
+    "description": "Settings switch: let people you share a club or an event with message you first"
+  },
+  "prefsMessageRequestsHint": "Let people you share a club or an event with message you first. Turn this off and only people you follow, or who follow you, can start a conversation with you.",
+  "@prefsMessageRequestsHint": {
+    "description": "Subtitle of the message requests switch"
+  },
+  "prefsMessageRequestsFailed": "Couldn't update message requests.",
+  "@prefsMessageRequestsFailed": {
+    "description": "Banner when the message requests switch could not be saved; the switch reverts"
+  },
+  "messagesReact": "React",
+  "@messagesReact": {
+    "description": "Option in a message's long-press menu that opens the reaction picker"
+  },
+  "messagesReactPickerLabel": "Choose a reaction",
+  "@messagesReactPickerLabel": {
+    "description": "Title of the sheet listing the six reactions a message can take"
+  },
+  "messagesReactionChipLabel": "{reaction}, {count}",
+  "@messagesReactionChipLabel": {
+    "description": "Accessible label of a reaction chip under a message: the reaction's name and how many people chose it",
+    "placeholders": {
+      "reaction": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "messagesReactionThumbsUp": "Thumbs up",
+  "@messagesReactionThumbsUp": {
+    "description": "Name of the thumbs-up reaction, read by screen readers"
+  },
+  "messagesReactionHeart": "Heart",
+  "@messagesReactionHeart": {
+    "description": "Name of the heart reaction, read by screen readers"
+  },
+  "messagesReactionLaugh": "Laughing",
+  "@messagesReactionLaugh": {
+    "description": "Name of the laughing-face reaction, read by screen readers"
+  },
+  "messagesReactionSurprised": "Surprised",
+  "@messagesReactionSurprised": {
+    "description": "Name of the surprised-face reaction, read by screen readers"
+  },
+  "messagesReactionSad": "Sad",
+  "@messagesReactionSad": {
+    "description": "Name of the sad-face reaction, read by screen readers"
+  },
+  "messagesReactionFire": "Fire",
+  "@messagesReactionFire": {
+    "description": "Name of the fire reaction, read by screen readers"
+  },
+  "messagesReactionRefused": "You can't react to this message.",
+  "@messagesReactionRefused": {
+    "description": "Banner when a reaction was refused; the same sentence for every reason so a block is not revealed"
+  },
+  "messagesSearchPlaceholder": "Search messages",
+  "@messagesSearchPlaceholder": {
+    "description": "Hint text in the search field above the Messages inbox"
+  },
+  "messagesSearchLabel": "Search your messages",
+  "@messagesSearchLabel": {
+    "description": "Accessible label of the search field above the Messages inbox"
+  },
+  "messagesSearchEmpty": "No messages match.",
+  "@messagesSearchEmpty": {
+    "description": "Shown when a search of the viewer's messages finds nothing"
+  },
+  "messagesSearchFailed": "Couldn't search your messages. Try again.",
+  "@messagesSearchFailed": {
+    "description": "Shown when a search of the viewer's messages failed"
+  },
+  "messagesPhotoAttach": "Attach a photo",
+  "@messagesPhotoAttach": {
+    "description": "Tooltip of the composer button that picks a photo to send"
+  },
+  "messagesPhotoRemove": "Remove photo",
+  "@messagesPhotoRemove": {
+    "description": "Tooltip of the button that removes the picked photo from the composer"
+  },
+  "messagesPhotoDraftAlt": "Photo to send",
+  "@messagesPhotoDraftAlt": {
+    "description": "Accessible label of the picked photo shown above the composer"
+  },
+  "messagesPhotoAlt": "Photo in the message",
+  "@messagesPhotoAlt": {
+    "description": "Accessible label of a photo sent in a message"
+  },
+  "messagesPhotoProcessing": "Preparing photo…",
+  "@messagesPhotoProcessing": {
+    "description": "Shown in place of a sent photo while the server is still preparing it"
+  },
+  "messagesPhotoRejected": "This photo couldn't be sent.",
+  "@messagesPhotoRejected": {
+    "description": "Shown in place of a photo the server could not process"
+  },
+  "messagesPhotoUnavailableToView": "Photo unavailable",
+  "@messagesPhotoUnavailableToView": {
+    "description": "Shown in place of a photo that could not be loaded"
+  },
+  "messagesPhotoPreview": "Photo",
+  "@messagesPhotoPreview": {
+    "description": "Inbox preview of a latest message that is a photo with no caption"
+  },
+  "messagesPhotoTooLarge": "That photo is too large to send.",
+  "@messagesPhotoTooLarge": {
+    "description": "Shown when a picked photo is still too large after it was shrunk"
+  },
+  "messagesPhotoUnreadable": "That file couldn't be read as a photo.",
+  "@messagesPhotoUnreadable": {
+    "description": "Shown when a picked file could not be decoded as a photo"
+  },
+  "messagesPhotoUnavailable": "Photos in messages aren't available yet.",
+  "@messagesPhotoUnavailable": {
+    "description": "Shown when the server has photos in messages switched off"
+  },
+  "messagesPhotoUploadFailed": "Couldn't upload the photo. Try again.",
+  "@messagesPhotoUploadFailed": {
+    "description": "Shown when uploading a photo for a message failed"
+  },
+  "messagesPhotoSendNotAllowed": "Photos can go to people you follow or who follow you, or into a conversation they've accepted, unless either of you has blocked the other.",
+  "@messagesPhotoSendNotAllowed": {
+    "description": "Shown when a message with a photo was refused; deliberately does not say which rule refused it"
+  },
+  "messagesLinkOpenFailed": "Couldn't open that link.",
+  "@messagesLinkOpenFailed": {
+    "description": "Banner when a link in a message could not be opened in the browser"
   }
 }

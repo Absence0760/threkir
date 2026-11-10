@@ -1144,6 +1144,82 @@ export type Database = {
         }
         Relationships: []
       }
+      direct_message_images: {
+        Row: {
+          created_at: string
+          height: number | null
+          id: string
+          message_id: string | null
+          owner_id: string | null
+          processed_at: string | null
+          status: string
+          storage_path: string
+          upload_path: string
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          message_id?: string | null
+          owner_id?: string | null
+          processed_at?: string | null
+          status?: string
+          storage_path: string
+          upload_path: string
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          message_id?: string | null
+          owner_id?: string | null
+          processed_at?: string | null
+          status?: string
+          storage_path?: string
+          upload_path?: string
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_message_images_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "direct_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_message_reactions: {
+        Row: {
+          created_at: string
+          message_id: string
+          reaction: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          message_id: string
+          reaction: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          message_id?: string
+          reaction?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_message_reactions_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "direct_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       direct_messages: {
         Row: {
           body: string | null
@@ -1153,6 +1229,7 @@ export type Database = {
           deleted_partner_key: string | null
           edited_at: string | null
           id: string
+          image_id: string | null
           kind: string
           original_body: string | null
           read_at: string | null
@@ -1170,6 +1247,7 @@ export type Database = {
           deleted_partner_key?: string | null
           edited_at?: string | null
           id?: string
+          image_id?: string | null
           kind?: string
           original_body?: string | null
           read_at?: string | null
@@ -1187,6 +1265,7 @@ export type Database = {
           deleted_partner_key?: string | null
           edited_at?: string | null
           id?: string
+          image_id?: string | null
           kind?: string
           original_body?: string | null
           read_at?: string | null
@@ -4834,6 +4913,7 @@ export type Database = {
           signed_out: boolean
           snapshot_author_id: string | null
           snapshot_body: string | null
+          snapshot_image_id: string | null
           snapshot_original_body: string | null
           snapshot_sent_at: string | null
           status: string
@@ -4855,6 +4935,7 @@ export type Database = {
           signed_out?: boolean
           snapshot_author_id?: string | null
           snapshot_body?: string | null
+          snapshot_image_id?: string | null
           snapshot_original_body?: string | null
           snapshot_sent_at?: string | null
           status?: string
@@ -4876,6 +4957,7 @@ export type Database = {
           signed_out?: boolean
           snapshot_author_id?: string | null
           snapshot_body?: string | null
+          snapshot_image_id?: string | null
           snapshot_original_body?: string | null
           snapshot_sent_at?: string | null
           status?: string
@@ -4896,6 +4978,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "public_race_listings"
             referencedColumns: ["organiser_club_id"]
+          },
+          {
+            foreignKeyName: "reports_snapshot_image_id_fkey"
+            columns: ["snapshot_image_id"]
+            isOneToOne: false
+            referencedRelation: "direct_message_images"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -6658,6 +6747,7 @@ export type Database = {
           discoverable_area: unknown
           discoverable_area_label: string | null
           dm_read_receipts: boolean
+          dm_requests: boolean
           prefs: Json
           updated_at: string
           user_id: string
@@ -6666,6 +6756,7 @@ export type Database = {
           discoverable_area?: unknown
           discoverable_area_label?: string | null
           dm_read_receipts?: boolean
+          dm_requests?: boolean
           prefs?: Json
           updated_at?: string
           user_id: string
@@ -6674,6 +6765,7 @@ export type Database = {
           discoverable_area?: unknown
           discoverable_area_label?: string | null
           dm_read_receipts?: boolean
+          dm_requests?: boolean
           prefs?: Json
           updated_at?: string
           user_id?: string
@@ -7420,6 +7512,10 @@ export type Database = {
           value_num: number
         }[]
       }
+      admin_dm_report_image_path: {
+        Args: { p_report_id: string }
+        Returns: string
+      }
       admin_home_coach_engagement_weeks: {
         Args: never
         Returns: {
@@ -7898,6 +7994,13 @@ export type Database = {
         Args: { p_sms_opt_in?: boolean; p_token: string }
         Returns: boolean
       }
+      create_dm_image_upload: {
+        Args: never
+        Returns: {
+          id: string
+          upload_path: string
+        }[]
+      }
       create_live_overlay_token: { Args: never; Returns: string }
       create_training_plan: {
         Args: { p_overlap?: string; p_plan: Json; p_weeks: Json }
@@ -7994,6 +8097,11 @@ export type Database = {
         Args: { p_run_id: string; p_workout_id: string }
         Returns: undefined
       }
+      dm_image_orphan_paths: {
+        Args: { p_limit?: number; p_paths?: string[] }
+        Returns: string[]
+      }
+      dm_images_enabled: { Args: never; Returns: boolean }
       dm_threads: {
         Args: never
         Returns: {
@@ -8003,6 +8111,7 @@ export type Database = {
           last_at: string
           last_body: string
           last_from_me: boolean
+          last_image: boolean
           last_kind: string
           last_unsent: boolean
           marked_unread: boolean
@@ -8026,6 +8135,7 @@ export type Database = {
           deleted_partner_key: string | null
           edited_at: string | null
           id: string
+          image_id: string | null
           kind: string
           original_body: string | null
           read_at: string | null
@@ -9423,6 +9533,19 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      search_direct_messages: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          body: string
+          conversation_id: string
+          created_at: string
+          deleted_partner_key: string
+          id: string
+          kind: string
+          recipient_id: string
+          sender_id: string
+        }[]
+      }
       search_public_events: {
         Args: {
           p_byday?: string
@@ -9587,6 +9710,10 @@ export type Database = {
         Args: { p_conversation_id: string; p_unread: boolean }
         Returns: undefined
       }
+      set_direct_message_reaction: {
+        Args: { p_message_id: string; p_reaction: string }
+        Returns: undefined
+      }
       set_discoverable_area: {
         Args: { p_label?: string; p_lat: number; p_lng: number }
         Returns: string
@@ -9681,6 +9808,7 @@ export type Database = {
           deleted_partner_key: string | null
           edited_at: string | null
           id: string
+          image_id: string | null
           kind: string
           original_body: string | null
           read_at: string | null
@@ -9781,6 +9909,7 @@ export type Database = {
           deleted_partner_key: string | null
           edited_at: string | null
           id: string
+          image_id: string | null
           kind: string
           original_body: string | null
           read_at: string | null

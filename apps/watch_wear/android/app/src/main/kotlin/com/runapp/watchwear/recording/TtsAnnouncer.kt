@@ -172,6 +172,14 @@ class TtsAnnouncer(context: Context) {
         speak(appContext.getString(R.string.tts_split_phrase, label, tail))
     }
 
+    /// "Start line crossed, timing" or "Race finish recorded" (#1307),
+    /// ahead of any split waiting in the queue: the crossing is the moment.
+    fun announceRaceCrossing(start: Boolean) =
+        speak(
+            appContext.getString(if (start) R.string.race_start_crossed else R.string.race_finish_recorded),
+            workoutCue = true,
+        )
+
     fun announcePaceAlert(tooSlow: Boolean) =
         speak(
             appContext.getString(

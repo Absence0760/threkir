@@ -85,6 +85,7 @@ class _FakeApi extends ApiClient {
     String recipientId,
     String body, {
     String? routeId,
+    String? imageId,
   }) async {
     writes.add('dm:$recipientId');
     sent.add((to: recipientId, body: body, routeId: routeId));

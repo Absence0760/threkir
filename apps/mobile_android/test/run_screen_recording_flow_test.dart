@@ -3084,9 +3084,30 @@ void main() {
       await tester.pump(kRaceUndoWindow + const Duration(seconds: 1));
       await pumpUntil(tester, () => r.runStore.captured.isNotEmpty,
           describe: 'the run to stop when the undo window closes');
-      expect(social.submitted, hasLength(1),
-          reason: 'the stop files nothing a second time');
+      expect(social.submitted, hasLength(2),
+          reason: 'Stop files the same finish again, now with its run');
+      expect(social.submitted.last.finishMethod, RaceFinishMethod.auto.wire);
       expect(find.byKey(const ValueKey('race-undo-resume')), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('the ordinary Resume control during the window is the undo',
+        (tester) async {
+      final social = _UndoableRaceSocial();
+      final r = await pumpLined(tester, social, _SpokenCues());
+
+      await runEast(tester, 0, 96);
+      await pumpUntil(tester, () => social.submitted.isNotEmpty,
+          describe: 'the line finish to be filed');
+      await tester.tap(find.byIcon(Icons.play_arrow).hitTestable().first);
+      await pumpUntil(tester, () => social.deletes == 1,
+          describe: 'Resume to withdraw the filed finish');
+      await tester.pump();
+      expect(find.byKey(const ValueKey('race-undo-resume')), findsNothing);
+      expect(r.race.outcome, isNull);
+      await tester.pump(kRaceUndoWindow + const Duration(seconds: 1));
+      expect(r.runStore.captured, isEmpty,
+          reason: 'the window no longer stops a run the runner resumed');
       await unmount(tester);
     });
 

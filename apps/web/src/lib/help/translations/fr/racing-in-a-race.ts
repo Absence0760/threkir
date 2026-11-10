@@ -42,7 +42,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Quand l\'organisateur arme la course, l\'onglet Courir de l\'app mobile affiche **Course armée** avec « en attente du départ ». La montre Wear OS affiche « COURSE PRÊTE » au-dessus de son bouton Démarrer. Quand l\'organisateur donne le GO, cela devient **Course EN DIRECT** (« COURSE EN DIRECT » sur la montre) avec le temps écoulé et « touchez Démarrer ».',
+					text: 'Quand l\'organisateur arme la course, l\'onglet Courir de l\'app mobile affiche **Course armée** avec « en attente du GO ». La montre Wear OS affiche « COURSE ARMÉE » au-dessus de son bouton Démarrer. Quand l\'organisateur donne le GO, cela devient **Course EN DIRECT** (« COURSE EN DIRECT » sur la montre) avec le temps écoulé et « touchez Démarrer ».',
 				},
 				{
 					type: 'note',

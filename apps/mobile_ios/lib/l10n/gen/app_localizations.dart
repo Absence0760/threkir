@@ -35602,6 +35602,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A park course was reported'**
   String get profileNotifParkCourseReport;
+
+  /// Rate-limit refusal when the direct-message reaction bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re reacting too quickly — please wait {wait} and try again.'**
+  String rateLimitReaction(String wait);
+
+  /// Rate-limit refusal when the direct-message photo upload bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve sent a lot of photos — please wait {wait} and try again.'**
+  String rateLimitPhotoUpload(String wait);
+
+  /// Settings switch: let people you share a club or an event with message you first
+  ///
+  /// In en, this message translates to:
+  /// **'Message requests'**
+  String get prefsMessageRequests;
+
+  /// Subtitle of the message requests switch
+  ///
+  /// In en, this message translates to:
+  /// **'Let people you share a club or an event with message you first. Turn this off and only people you follow, or who follow you, can start a conversation with you.'**
+  String get prefsMessageRequestsHint;
+
+  /// Banner when the message requests switch could not be saved; the switch reverts
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update message requests.'**
+  String get prefsMessageRequestsFailed;
+
+  /// Option in a message's long-press menu that opens the reaction picker
+  ///
+  /// In en, this message translates to:
+  /// **'React'**
+  String get messagesReact;
+
+  /// Title of the sheet listing the six reactions a message can take
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a reaction'**
+  String get messagesReactPickerLabel;
+
+  /// Accessible label of a reaction chip under a message: the reaction's name and how many people chose it
+  ///
+  /// In en, this message translates to:
+  /// **'{reaction}, {count}'**
+  String messagesReactionChipLabel(String reaction, int count);
+
+  /// Name of the thumbs-up reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Thumbs up'**
+  String get messagesReactionThumbsUp;
+
+  /// Name of the heart reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Heart'**
+  String get messagesReactionHeart;
+
+  /// Name of the laughing-face reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Laughing'**
+  String get messagesReactionLaugh;
+
+  /// Name of the surprised-face reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Surprised'**
+  String get messagesReactionSurprised;
+
+  /// Name of the sad-face reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Sad'**
+  String get messagesReactionSad;
+
+  /// Name of the fire reaction, read by screen readers
+  ///
+  /// In en, this message translates to:
+  /// **'Fire'**
+  String get messagesReactionFire;
+
+  /// Banner when a reaction was refused; the same sentence for every reason so a block is not revealed
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t react to this message.'**
+  String get messagesReactionRefused;
+
+  /// Hint text in the search field above the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Search messages'**
+  String get messagesSearchPlaceholder;
+
+  /// Accessible label of the search field above the Messages inbox
+  ///
+  /// In en, this message translates to:
+  /// **'Search your messages'**
+  String get messagesSearchLabel;
+
+  /// Shown when a search of the viewer's messages finds nothing
+  ///
+  /// In en, this message translates to:
+  /// **'No messages match.'**
+  String get messagesSearchEmpty;
+
+  /// Shown when a search of the viewer's messages failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t search your messages. Try again.'**
+  String get messagesSearchFailed;
+
+  /// Tooltip of the composer button that picks a photo to send
+  ///
+  /// In en, this message translates to:
+  /// **'Attach a photo'**
+  String get messagesPhotoAttach;
+
+  /// Tooltip of the button that removes the picked photo from the composer
+  ///
+  /// In en, this message translates to:
+  /// **'Remove photo'**
+  String get messagesPhotoRemove;
+
+  /// Accessible label of the picked photo shown above the composer
+  ///
+  /// In en, this message translates to:
+  /// **'Photo to send'**
+  String get messagesPhotoDraftAlt;
+
+  /// Accessible label of a photo sent in a message
+  ///
+  /// In en, this message translates to:
+  /// **'Photo in the message'**
+  String get messagesPhotoAlt;
+
+  /// Shown in place of a sent photo while the server is still preparing it
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing photo…'**
+  String get messagesPhotoProcessing;
+
+  /// Shown in place of a photo the server could not process
+  ///
+  /// In en, this message translates to:
+  /// **'This photo couldn\'t be sent.'**
+  String get messagesPhotoRejected;
+
+  /// Shown in place of a photo that could not be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Photo unavailable'**
+  String get messagesPhotoUnavailableToView;
+
+  /// Inbox preview of a latest message that is a photo with no caption
+  ///
+  /// In en, this message translates to:
+  /// **'Photo'**
+  String get messagesPhotoPreview;
+
+  /// Shown when a picked photo is still too large after it was shrunk
+  ///
+  /// In en, this message translates to:
+  /// **'That photo is too large to send.'**
+  String get messagesPhotoTooLarge;
+
+  /// Shown when a picked file could not be decoded as a photo
+  ///
+  /// In en, this message translates to:
+  /// **'That file couldn\'t be read as a photo.'**
+  String get messagesPhotoUnreadable;
+
+  /// Shown when the server has photos in messages switched off
+  ///
+  /// In en, this message translates to:
+  /// **'Photos in messages aren\'t available yet.'**
+  String get messagesPhotoUnavailable;
+
+  /// Shown when uploading a photo for a message failed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t upload the photo. Try again.'**
+  String get messagesPhotoUploadFailed;
+
+  /// Shown when a message with a photo was refused; deliberately does not say which rule refused it
+  ///
+  /// In en, this message translates to:
+  /// **'Photos can go to people you follow or who follow you, or into a conversation they\'ve accepted, unless either of you has blocked the other.'**
+  String get messagesPhotoSendNotAllowed;
+
+  /// Banner when a link in a message could not be opened in the browser
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open that link.'**
+  String get messagesLinkOpenFailed;
 }
 
 class _AppLocalizationsDelegate

@@ -23,10 +23,13 @@ import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
 import '../elevation_profile.dart' show elevationSeries;
+import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_support.dart';
 import '../park_course_distance.dart';
 import '../park_courses.dart';
 import '../preferences.dart';
+import '../route_guide.dart';
 import '../route_surface_label.dart';
 import '../share_sheet.dart';
 import '../widgets/elevation_chart.dart';
@@ -901,6 +904,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final course = widget.course.course;
     final segment = widget.course.segment;
     final park = widget.listing.park;
+    final guide = parseRouteGuide(course.routeGuide);
     try {
       final gpx = parkCourseGpx(
         name: segment.name,
@@ -914,6 +918,9 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           parkName: park.name,
           parkWebsiteUrl: park.websiteUrl,
         ),
+        guide: guide == null
+            ? null
+            : (guide: guide, checkedAt: _isoDay(course.routeGuideCheckedAt)),
       );
       final safe = segment.name
           .replaceAll(RegExp(r'[^a-zA-Z0-9-_ ]'), '')
@@ -958,6 +965,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final difficulty = courseDifficultyLabel(l10n, course.difficulty);
     final pills = courseFactPills(context, widget.course, includeClimb: false);
     final description = segment.description?.trim();
+    final guide = parseRouteGuide(course.routeGuide);
     final api = widget.api;
     final routeId = course.routeId;
     final open = course.status != 'closed';
@@ -1078,6 +1086,13 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                     track: geometry,
                     theme: theme,
                     unit: activeDistanceUnit,
+                  ),
+                ],
+                if (guide != null) ...[
+                  const SizedBox(height: 20),
+                  _CourseRouteGuide(
+                    guide: guide,
+                    checkedAt: course.routeGuideCheckedAt,
                   ),
                 ],
                 const SizedBox(height: 20),
@@ -1329,6 +1344,108 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           isViewer: e.athlete.id == viewerId,
         ),
     ];
+  }
+}
+
+/// `route_guide_checked_at` as the `YYYY-MM-DD` it is stored as.
+String? _isoDay(DateTime? d) => d == null
+    ? null
+    : '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+
+/// A course's route guide (#1344): its steps as a numbered list in the
+/// reader's language and unit, under a note saying whether a person has
+/// walked it at the park yet. Mirrors web's `ParkCourseRouteGuide`.
+class _CourseRouteGuide extends StatelessWidget {
+  final RouteGuide guide;
+  final DateTime? checkedAt;
+  const _CourseRouteGuide({required this.guide, required this.checkedAt});
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final tag = localeToTag(Localizations.localeOf(context));
+    final fmt = GuideFormat(
+      message: (key, params) => guideLineMessage(l10n, key, params),
+      distance: formatDistanceForPref,
+      short: formatElevationForPref,
+    );
+    final lines = [
+      for (final l in routeGuideLines(guide)) formatGuideLine(l, fmt),
+    ];
+    final checked = checkedAt;
+    final gettingThere = guide.gettingThere;
+    return Column(
+      key: const Key('park-course-guide'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(l10n.parkGuideTitle, style: theme.textTheme.titleMedium),
+        ),
+        const SizedBox(height: 8),
+        if (checked != null)
+          Text(
+            l10n.parkGuideChecked(formatDateMed(
+                DateTime(checked.year, checked.month, checked.day), tag)),
+            key: const Key('park-course-guide-checked'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          )
+        else
+          Container(
+            key: const Key('park-course-guide-pending'),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              border: BorderDirectional(
+                start: BorderSide(
+                  color: AppSemanticColors.of(context).warning,
+                  width: 4,
+                ),
+              ),
+            ),
+            child: Text(l10n.parkGuidePending,
+                style: theme.textTheme.bodyMedium),
+          ),
+        if (gettingThere != null) ...[
+          const SizedBox(height: 12),
+          Semantics(
+            header: true,
+            child: Text(l10n.parkGuideGettingThere,
+                style: theme.textTheme.titleSmall),
+          ),
+          const SizedBox(height: 4),
+          Text(gettingThere, key: const Key('park-course-guide-getting-there')),
+        ],
+        const SizedBox(height: 12),
+        Column(
+          key: const Key('park-course-guide-steps'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < lines.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${i + 1}.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        )),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(lines[i])),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 }
 

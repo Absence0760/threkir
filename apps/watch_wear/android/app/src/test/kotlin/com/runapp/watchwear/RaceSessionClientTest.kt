@@ -219,9 +219,83 @@ class RaceSessionClientTest {
         assertEquals(51.1, course!!.finishLat!!, 0.0)
         assertEquals(0.2, course.finishLng!!, 0.0)
         assertEquals(10_000.0, course.distanceM!!, 0.0)
-        assertEquals(2, seen.size)
+        assertEquals("attendee, live course row, frozen copy", 3, seen.size)
         assertTrue(seen[1].contains("finish_lat") && seen[1].contains("finish_lng"))
         assertFalse("the route must not be read", seen.any { it.contains("/rest/v1/routes") })
+    }
+
+    @Test
+    fun `fetchCourse times by the race's frozen copy of the course, lines included`() {
+        val seen = mutableListOf<String>()
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"5K","distance_m":5200,"finish_lat":51.2,"finish_lng":0.3,
+                        "start_lat":51.0,"start_lng":0.1,
+                        "start_gate_lat":51.0,"start_gate_lng":0.1,"start_gate_bearing_deg":45,"start_gate_half_width_m":10}]""",
+                "/rest/v1/race_session_courses" to
+                    """[{"course_id":"c1","distance_m":5000,"finish_lat":51.1,"finish_lng":0.2,
+                        "start_gate_lat":51.01,"start_gate_lng":0.11,"start_gate_bearing_deg":90,"start_gate_half_width_m":15,
+                        "finish_gate_lat":51.1,"finish_gate_lng":0.2,"finish_gate_bearing_deg":90,"finish_gate_half_width_m":15,
+                        "finish_line_self_cross":true}]""",
+            ),
+            seen,
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00+00:00") }!!
+        assertEquals("a mid-race edit of the live row moves only the next race", 5000.0, course.distanceM!!, 0.0)
+        assertEquals(51.1, course.finishLat!!, 0.0)
+        assertEquals(Gate(51.01, 0.11, 90.0, 15.0), course.startGate)
+        assertEquals(Gate(51.1, 0.2, 90.0, 15.0), course.finishGate)
+        assertTrue(course.finishLineSelfCross)
+        assertEquals("the late-start point stays the live row's", 51.0, course.startLat!!, 0.0)
+        val frozen = seen.single { it.contains("/rest/v1/race_session_courses") }
+        assertTrue(frozen.contains("course_id=eq.c1") && frozen.contains("%2B00%3A00"))
+        assertTrue(frozen.contains("finish_line_self_cross"))
+    }
+
+    @Test
+    fun `fetchCourse keeps the live row's lines when the race has no frozen copy`() {
+        val client = recordingClient(
+            mapOf(
+                "/rest/v1/event_attendees" to """[{"course_id":"c1"}]""",
+                "/rest/v1/event_courses" to
+                    """[{"id":"c1","name":"5K","distance_m":5000,"finish_lat":51.1,"finish_lng":0.2,
+                        "finish_gate_lat":51.1,"finish_gate_lng":0.2,"finish_gate_bearing_deg":90,"finish_gate_half_width_m":15,
+                        "start_gate_lat":51.0,"start_gate_lng":null,"start_gate_bearing_deg":90,"start_gate_half_width_m":15}]""",
+            ),
+            mutableListOf(),
+        )
+        val course = runBlocking { client.fetchCourse("t", "u1", "e1", "2026-05-22T18:00:00Z") }!!
+        assertEquals(Gate(51.1, 0.2, 90.0, 15.0), course.finishGate)
+        assertNull("a line missing a column is no line", course.startGate)
+        assertFalse(course.finishLineSelfCross)
+    }
+
+    @Test
+    fun `deleteOwnAutoResult deletes only the runner's own automatic row`() {
+        val seen = mutableListOf<okhttp3.Request>()
+        val http = OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                seen += chain.request()
+                Response.Builder()
+                    .request(chain.request())
+                    .protocol(Protocol.HTTP_1_1)
+                    .code(204)
+                    .message("No Content")
+                    .body("".toResponseBody(null))
+                    .build()
+            }
+            .build()
+        val client = RaceSessionClient("https://example.test", "anon", http)
+        runBlocking { client.deleteOwnAutoResult("t", "u1", "e1", "2026-05-22T18:00:00+00:00") }
+        val req = seen.single()
+        assertEquals("DELETE", req.method)
+        assertEquals("/rest/v1/event_results", req.url.encodedPath)
+        assertEquals("eq.auto", req.url.queryParameter("finish_method"))
+        assertEquals("eq.u1", req.url.queryParameter("user_id"))
+        assertEquals("eq.e1", req.url.queryParameter("event_id"))
+        assertEquals("eq.2026-05-22T18:00:00+00:00", req.url.queryParameter("instance_start"))
     }
 
     @Test

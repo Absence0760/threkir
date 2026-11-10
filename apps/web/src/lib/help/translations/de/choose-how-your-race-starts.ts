@@ -11,9 +11,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**GO durch Veranstalter**: Du stellst das Rennen scharf und gibst an der Linie LOS. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.',
+						'**GO durch Veranstalter**: Du stellst das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.',
 						'**Geplanter GO**: Das Rennen startet zur eingestellten Zeit von selbst. Nutze das, wenn die Startzeit feststeht, du aber vielleicht nicht an der Linie bist oder selbst mitlaufen möchtest. Bis dahin kannst du den Start verschieben oder das Rennen absagen.',
-						'**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Brutto-Zeit.',
+						'**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Bruttozeit.',
 					],
 				},
 				{
@@ -28,7 +28,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Geplanter GO: Lege **Startzeit** und **Starttag** fest (am Tag des Events, am Vortag oder am Tag danach). Unter **Endet nach, Tage** und **Stunden** legst du fest, wie lange nach LOS das Rennen von selbst endet, außer du beendest es vorher.',
+						'Geplanter GO: Lege **Startzeit** und **Starttag** fest (am Tag des Events, am Vortag oder am Tag danach). Unter **Endet nach, Tage** und **Stunden** legst du fest, wie lange nach GO das Rennen von selbst endet, außer du beendest es vorher.',
 						'Selbstgestoppter Zeitraum: Lege **Zeitraum öffnet um** und **Öffnet am** fest (vom Tag vor dem Event bis eine Woche danach) und unter **Dauer des Zeitraums, Tage** und **Stunden**, wie lange er offen bleibt, von 1 Minute bis 7 Tagen.',
 					],
 				},
@@ -48,7 +48,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Du stellst das Rennen scharf, gibst LOS und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
+					text: 'Du stellst das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
 				},
 			],
 		},
@@ -59,7 +59,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Du musst nichts tun. Das Rennen wird etwa einen Tag vor dem Start angelegt und startet zur geplanten Zeit von selbst.',
-						'Um die Linien der Strecken früher zu prüfen, wähle **Früher scharf schalten**.',
+						'Um die Linien der Strecken früher zu prüfen, wähle **Früher scharfstellen**.',
 						'Vor dem Start zeigt der Rennbereich **Start um** mit der Uhrzeit und einem Countdown. Um den Start nach hinten zu verschieben, gib die Minuten ein und wähle **Start verschieben**; alle, die dabei sind, erfahren, dass der Start verschoben wurde. Wähle **Abbrechen**, um das Rennen abzusagen.',
 						'Sobald die Startzeit vorbei ist, kann das Rennen nicht mehr abgesagt werden. Es endet von selbst, wenn seine Zeit abgelaufen ist, oder du wählst **Rennen beenden**, um es früher zu beenden.',
 						'Die Handys der Teilnehmenden zählen nach der Serveruhr bis zum Start herunter und sagen die letzten Sekunden an, sodass alle gemeinsam starten.',
@@ -107,7 +107,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Etwa 10 Minuten vor einem geplanten LOS erhalten alle, die dabei sind, eine Push-Benachrichtigung, dass das Rennen bald startet, außer sie haben in der letzten Stunde schon eine Event-Erinnerung bekommen. Wenn du einen Start verschiebst, bekommen sie eine, die ihnen das mitteilt. Diese Hinweise werden nie per E-Mail verschickt.',
+					text: 'Etwa 10 Minuten vor einem geplanten GO erhalten alle, die dabei sind, eine Push-Benachrichtigung, dass das Rennen bald startet, außer sie haben in der letzten Stunde schon eine Event-Erinnerung bekommen. Wenn du einen Start verschiebst, bekommen sie eine, die ihnen das mitteilt. Diese Hinweise werden nie per E-Mail verschickt.',
 				},
 				{
 					type: 'p',

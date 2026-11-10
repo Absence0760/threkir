@@ -329,6 +329,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     trackOverlayPoints = state.trackOverlayPoints,
                     ambient = isAmbient,
                     raceRun = state.raceRun,
+                    raceToStartM = state.raceToStartM,
                     workoutView = state.workoutView,
                     onPause = vm::pause,
                     onResume = vm::resume,
@@ -1699,6 +1700,8 @@ private fun RunningScreen(
     /// Race mode for this run. While it is live (not ended), Stop pauses and
     /// the held button on the paused screen is "Finish race".
     raceRun: com.runapp.watchwear.RaceRunState?,
+    /// Metres to the race's start line, until the start is timed (#1307).
+    raceToStartM: Double?,
     /// The live step of today's workout; null on a free run.
     workoutView: com.runapp.watchwear.workout.WorkoutView?,
     onPause: () -> Unit,
@@ -1855,6 +1858,16 @@ private fun RunningScreen(
             if (raceRun != null) {
                 RaceCaption(raceRun = raceRun, shadow = captionShadow)
             }
+            // How far the start line is, until the start is timed: before the
+            // race binds as well as after, so the runner on the line before GO
+            // can see it (#1307).
+            if (raceToStartM != null && raceRun?.undoOpen != true) {
+                Text(
+                    stringResource(R.string.race_to_start_line, distanceLabel(raceToStartM, preferredUnit)),
+                    style = MaterialTheme.typography.caption3.copy(shadow = captionShadow),
+                    color = DuskPalette.lilac,
+                )
+            }
             Text(
                 formatElapsed(elapsedMs),
                 style = timeStyle,
@@ -1957,7 +1970,13 @@ private fun RunningScreen(
             // announces a useful label instead of the visual content
             // ("||", "Go", "Lap"). Mirrors the recording-screen Semantics
             // fix on the mobile twin (commit 6b2ef21).
-            val resumeCd = stringResource(R.string.cd_resume_run)
+            // Inside "Not finished? Resume" the resume control IS the undo, so
+            // it says so to TalkBack as well as on the caption above.
+            val resumeCd = if (raceRun?.undoOpen == true) {
+                stringResource(R.string.race_undo_resume)
+            } else {
+                stringResource(R.string.cd_resume_run)
+            }
             val pauseCd = stringResource(R.string.cd_pause_run)
             val lapCd = if (workoutView?.step != null) {
                 stringResource(R.string.cd_mark_lap_skip_step)
@@ -2170,6 +2189,21 @@ private fun RoutePickerScreen(
 /// flashing past as the phone's banner does: a glance can land at any time.
 @Composable
 private fun RaceCaption(raceRun: com.runapp.watchwear.RaceRunState, shadow: Shadow) {
+    // A line finish filed and the run held: say so, and that the resume
+    // button takes it back for the next minute (#1307 m11).
+    if (raceRun.undoOpen) {
+        Text(
+            stringResource(R.string.race_finish_recorded),
+            style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+            color = MaterialTheme.colors.primary,
+        )
+        Text(
+            stringResource(R.string.race_undo_resume),
+            style = MaterialTheme.typography.caption3.copy(shadow = shadow),
+            color = DuskPalette.warning,
+        )
+        return
+    }
     if (raceRun.ended) {
         Text(
             stringResource(R.string.race_ended),

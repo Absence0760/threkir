@@ -40,7 +40,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Les coureurs qui ont répondu **Je participe** voient alors **Course armée** dans l\'onglet Courir de leur téléphone et « COURSE PRÊTE » sur leur montre Wear OS.',
+					text: 'Les coureurs qui ont répondu **Je participe** voient alors **Course armée** dans l\'onglet Courir de leur téléphone et « COURSE ARMÉE » sur leur montre Wear OS.',
 				},
 				{
 					type: 'note',
@@ -58,7 +58,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Appuyez sur **GO** sur le web (**Lancer le Go** dans l\'app mobile) au moment où la course part.',
+					text: 'Appuyez sur **GO**, sur le web ou dans l\'app mobile, au moment où la course part.',
 				},
 				{
 					type: 'p',
@@ -115,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Vous ne pouvez annuler que tant que la course est armée : choisissez **Annuler** à côté de **GO** (**Lancer le Go** dans l\'app mobile), puis **Annuler la course**. Une fois le GO donné, la course ne peut plus qu\'être terminée.',
+					text: 'Vous ne pouvez annuler que tant que la course est armée : choisissez **Annuler** à côté de **GO**, puis **Annuler la course**. Une fois le GO donné, la course ne peut plus qu\'être terminée.',
 				},
 				{
 					type: 'p',
@@ -167,7 +167,7 @@ export const translation: GuideTranslation = {
 		's1.b2': '9b4a5aa61857cac1',
 		's1.b3': 'e8bb5e75119028d9',
 		's2.heading': 'bcda14674f57c276',
-		's2.b0': '933b20b503e29bac',
+		's2.b0': '7d9717e613d837c4',
 		's2.b1': '656cb122eaf287fc',
 		's2.b2': '65fce2c1be98450f',
 		's3.heading': 'c3c4743c28e9dcc0',
@@ -182,7 +182,7 @@ export const translation: GuideTranslation = {
 		's4.b2': 'eefbd14c075fb596',
 		's4.b3': 'b067bfb6142d262b',
 		's5.heading': '20d55e8c3373cb09',
-		's5.b0': 'df971b2d64e7ef15',
+		's5.b0': '262e1b926341a0a0',
 		's5.b1': 'ba1729be79f60bc4',
 		's5.b2': 'b10fb4196bd3e2ef',
 		's6.heading': '27e65c3d7a252fc5',

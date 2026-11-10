@@ -396,6 +396,21 @@ See [decisions.md §36](../architecture/decisions.md#36-photos-on-runs-own-table
 | Set up a Self-timed race (organiser) | Web, as a club owner or admin: `/clubs/[slug]` → New event, Group run, a route and distance; under How the race starts pick **Self-timed window**, set Window opens at / Opens on and a window length; Create event. Reopen it → Edit event → Start and finish lines; check each course shows a start and a finish line (From the route), drag or retype one and Save line | The editor shows the self-timed hints (lines required, latest app, auto-approve off by default), and saving an existing self-timed race whose course lacks a line is refused (a new one is created, then says which course needs one). Each line saves on its own and reads "Placed by an organiser"; Reset to route puts it back. The event page's race panel reads **Self-timed window** with Arm early before the server creates the session, then Opens / Open until with Delay start and Cancel (before) or Extend window and End window now (while open). Arm early with a course missing a start line shows the preflight with "Must fix:" and no Arm anyway. "How this works" in the lines section, the start-mode picker and the race panel opens `start-and-finish-lines` / `choose-how-your-race-starts`; a runner's panel opens `run-a-self-timed-race`. |
 | Self-timed attempt (runner) | Another account, phone app: open the event while the window is open → Join and attempt (choose a course first on a multi-course race); Run tab → **This run is my attempt** → Start | The Run tab banner reads Self-timed with the close time; the button becomes "Attempt ready: tap Start" and a second tap takes it back. A run started without it never joins the race. The submitted result shows PENDING on the event page until the organiser approves it (auto-approve off), and the live page lists the runner under the self-timed board. |
 
+### Field test: timing by the lines (#1307)
+
+Not yet run. Needs a real park, a course whose start and finish lines are placed on the web event editor, an organiser account and one runner account on the phone and on a Wear OS watch (run each row on both; on the watch the undo is the paused screen's resume button and the distance to the start line sits under the race clock). Record each row's result here with the date, devices and OS versions.
+
+| Scenario | Steps | Pass |
+|---|---|---|
+| 90° crossing | Arm a Host GO race, GO, run straight through the start line and later the finish line at right angles | Voice "Start line crossed, timing" and a haptic about 50 m past the start; the finish line cues and pauses the run behind Not finished? Resume; the result shows `start_detection = gate`, `finish_detection = gate`, and the server's gun time matches the organiser's stopwatch within a second or two. |
+| 30° crossing | Same, crossing both lines at about 30° | Same as above. |
+| Parallel path | Run past the finish line on a path about 20 m beside it, then on | No finish; a Stop afterwards opens Resume race / Finish race. |
+| Loop with warm-up | A course whose start and finish lines coincide; jog a warm-up lap through both before GO, then race | No early finish: the warm-up crossings are before GO, and the race finishes only after the course's distance. |
+| On the start line at GO | Stand on or just past the start line when GO fires | No start cue (nobody crossed); the result's `start_at` is GO and `start_detection = gate`. |
+| Phone in a pocket | Run the whole race with the screen off and the phone in a pocket | Cues heard and felt; the finish files; the run saves after 60 s. |
+| Undo after a false finish | Trigger a finish (for example cross the finish line early on a lap course flagged differently), tap Not finished? Resume | The result disappears from the event's results; recording continues; Stop then Finish race files a manual finish. |
+| Offline | Open the race once with signal, then turn on airplane mode before the start | Distance to the start line shows, the start and finish are detected and cued, and the result is queued and lands when signal returns. |
+
 (Live race recording on the watch is roadmap-pending in some cells; see [parity.md "Live race mode"](../product/parity.md).)
 
 ---

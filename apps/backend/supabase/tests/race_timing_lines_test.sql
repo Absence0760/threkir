@@ -1,4 +1,4 @@
--- Pins migrations 20271212000001-000002 (#1307, timing lines phase 4): the
+-- Pins migrations 20271213001307-001308 (#1307, timing lines phase 4): the
 -- server derives a gun-mode result's times from the crossings the device
 -- claims, the normaliser clears them, the CHECKs hold, and the redacted view
 -- shows the organiser how each result was timed and nobody else anything new.
@@ -14,10 +14,12 @@
 --          reads the clock offset.
 --   12-13. A DNF keeps no crossings or detections, and keeps the offset.
 --   14.    A host edit clears the crossings, the detections and review.
---   15-17. The detection CHECKs, and finish_detection only beside 'auto'.
+--   15.    A Self-timed span of 1200.5 s is 1200, truncated like the gun
+--          mode, not rounded up as before.
+--   16-18. The detection CHECKs, and finish_detection only beside 'auto'.
 
 begin;
-select plan(17);
+select plan(18);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -209,7 +211,42 @@ select ok(
   'a host edit clears the crossings, the detections and the review flag'
 );
 
--- ── 15-17: CHECKs (the service role skips the normaliser) ───────────────────
+-- ── 15: the Self-timed span truncates ───────────────────────────────────────
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
+
+insert into events (id, club_id, title, starts_at, author_id, is_public,
+                    race_start_mode, race_scheduled_offset_s, race_window_open_offset_s,
+                    race_window_length_s, race_auto_approve)
+values ('e7307000-0000-0000-0000-0000000000e2', 'e7307000-0000-0000-0000-0000000000c1',
+        'Line time trial', '2026-09-03 08:00+00', 'e7307000-0000-0000-0000-000000000001', true,
+        'self_timed', null, 0, 86400, true);
+
+insert into race_sessions (event_id, instance_start, status)
+values ('e7307000-0000-0000-0000-0000000000e2', '2026-09-03 08:00+00', 'armed');
+
+update race_sessions set status = 'running', started_at = '2026-09-03 08:00:00+00'
+ where event_id = 'e7307000-0000-0000-0000-0000000000e2';
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"e7307000-0000-0000-0000-000000000004","role":"authenticated"}';
+
+-- round() made this 1201; every device truncates the same span to 1200.
+insert into event_results (event_id, instance_start, user_id, duration_s, distance_m,
+                           chip_time_s, finish_method,
+                           start_at, finish_at, start_detection, finish_detection)
+values ('e7307000-0000-0000-0000-0000000000e2', '2026-09-03 08:00+00',
+        'e7307000-0000-0000-0000-000000000004', 1201, 5000, 1201, 'auto',
+        '2026-09-03 08:10:00+00', '2026-09-03 08:30:00.5+00', 'gate', 'gate');
+
+select ok(
+  (select chip_time_s = 1200 and duration_s = 1200 and gun_time_s is null
+     from event_results where event_id = 'e7307000-0000-0000-0000-0000000000e2'
+                          and user_id = 'e7307000-0000-0000-0000-000000000004'),
+  'a Self-timed span of 1200.5 s is 1200: truncated, not rounded'
+);
+
+-- ── 16-18: CHECKs (the service role skips the normaliser) ───────────────────
 set local role service_role;
 set local "request.jwt.claims" = '{"role":"service_role"}';
 

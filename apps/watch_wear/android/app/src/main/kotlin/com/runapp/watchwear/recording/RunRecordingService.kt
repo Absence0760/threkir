@@ -99,6 +99,7 @@ class RunRecordingService : Service() {
     private var distanceEstimator = GpsDistanceEstimator()
     private var bankedGpsDistanceM = 0.0
     private var bankedStepDistanceM = 0.0
+    private var bankedStepOverChordM = 0.0
     /// Live pace over the current segment's estimator distance. Sealed with
     /// every new segment, so it never spans a pause. Guarded by [distanceLock].
     private val livePace = LivePaceWindow()
@@ -298,6 +299,7 @@ class RunRecordingService : Service() {
             )
             bankedGpsDistanceM = 0.0
             bankedStepDistanceM = 0.0
+            bankedStepOverChordM = 0.0
             livePace.seal()
         }
         synchronized(fixLock) { sourceArbiter.reset() }
@@ -585,9 +587,9 @@ class RunRecordingService : Service() {
         checkpointJob?.cancel(); checkpointJob = null
         gnssStatusJob?.cancel(); gnssStatusJob = null
 
-        val (finishDistanceM, stepFilledM) = synchronized(distanceLock) {
+        val (finishDistanceM, stepFilledM, stepOverChordM) = synchronized(distanceLock) {
             closeDistanceSegment()
-            bankedDistanceM() to bankedStepDistanceM
+            Triple(bankedDistanceM(), bankedStepDistanceM, bankedStepOverChordM)
         }
         val durationAtFinish = (activeElapsedMs() / 1000).toInt()
         cues?.announceFinish(finishDistanceM, durationAtFinish, preferredUnit)
@@ -621,6 +623,7 @@ class RunRecordingService : Service() {
                 elapsedMs = finalElapsed,
                 distanceM = finishDistanceM,
                 distanceStepFilledM = stepFilledM,
+                distanceStepOverChordM = stepOverChordM,
                 locationProvider = locationProvider,
                 gnssSignal = gnssSignalSummary(),
                 finishedHr = hr,
@@ -899,7 +902,10 @@ class RunRecordingService : Service() {
         if (file.pointCount == 0 && bpmCount == 0L) return
         val savedAtMs = System.currentTimeMillis()
         val currentPauseMs = if (pausedSinceMs > 0) savedAtMs - pausedSinceMs else 0
-        val stepFilledM = synchronized(distanceLock) { bankedStepDistanceM + distanceEstimator.stepDistanceM }
+        val (stepFilledM, stepOverChordM) = synchronized(distanceLock) {
+            (bankedStepDistanceM + distanceEstimator.stepDistanceM) to
+                (bankedStepOverChordM + distanceEstimator.stepOverChordM)
+        }
         checkpoints.save(
             Checkpoint(
                 runId = runId,
@@ -918,6 +924,7 @@ class RunRecordingService : Service() {
                 pausedAccumulatedMs = pausedAccumulatedMs + currentPauseMs,
                 distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                 distanceStepFilledM = stepFilledM,
+                distanceStepOverChordM = stepOverChordM,
                 locationProvider = locationProviderForTrack(file.pointCount),
                 gnssSignal = gnssSignalSummary(),
                 trackComplete = file.pointCount > 0,
@@ -992,6 +999,7 @@ class RunRecordingService : Service() {
         segment.finish(realtimeS())
         bankedGpsDistanceM += segment.gpsDistanceM
         bankedStepDistanceM += segment.stepDistanceM
+        bankedStepOverChordM += segment.stepOverChordM
         distanceEstimator = segment.nextSegment(learnStride)
         livePace.seal()
     }

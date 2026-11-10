@@ -49,11 +49,13 @@ data class QueuedRun(
     /// pre-change behaviour for runs queued before this field
     /// existed (kotlinx-serialization fills the default on decode).
     val isPublic: Boolean? = null,
-    /// `metadata.distance_estimator` / `metadata.distance_step_filled_m`.
+    /// `metadata.distance_estimator` / `metadata.distance_step_filled_m` /
+    /// `metadata.distance_step_over_chord_m`.
     /// Null on a run queued by a build that summed raw hops, so it uploads
     /// without claiming an estimator it never ran.
     val distanceEstimator: String? = null,
     val distanceStepFilledM: Double? = null,
+    val distanceStepOverChordM: Double? = null,
     /// `metadata.location_provider`. Null on a run queued before the watch
     /// recorded on the receiver, or with no track, and the key is omitted.
     val locationProvider: String? = null,

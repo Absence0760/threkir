@@ -146,6 +146,16 @@ class DistanceEstimatorWiringTest {
     fun `the finished run carries the step-filled share to the queue`() {
         val stop = body(serviceSrc, "private fun stopRecording()")
         assertTrue(stop.contains("distanceStepFilledM = stepFilledM"))
+        assertTrue(stop.contains("distanceStepOverChordM = stepOverChordM"))
+    }
+
+    /// A pause or source switch banks each segment's step-over-chord metres
+    /// beside its step metres, so the run total covers every segment (v1.7).
+    @Test
+    fun `every segment's step-over-chord metres are banked`() {
+        val close = body(serviceSrc, CLOSE_SEGMENT)
+        assertTrue(close.contains("bankedStepOverChordM += segment.stepOverChordM"))
+        assertTrue(serviceSrc.contains("bankedStepOverChordM + distanceEstimator.stepOverChordM"))
     }
 
     private companion object {

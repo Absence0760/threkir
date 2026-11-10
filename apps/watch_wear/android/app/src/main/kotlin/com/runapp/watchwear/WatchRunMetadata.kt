@@ -33,6 +33,7 @@ fun buildRunMetadata(
     lastModifiedAtIso: String,
     distanceEstimator: String? = null,
     distanceStepFilledM: Double? = null,
+    distanceStepOverChordM: Double? = null,
     locationProvider: String? = null,
     gnssSignal: GnssSignalSummary? = null,
     trackComplete: Boolean = false,
@@ -55,6 +56,12 @@ fun buildRunMetadata(
     if (distanceEstimator != null) put("distance_estimator", distanceEstimator)
     if (distanceEstimator != null && distanceStepFilledM != null && distanceStepFilledM > 0) {
         put("distance_step_filled_m", distanceStepFilledM)
+        // The part of those metres the gaps' chords would not have credited,
+        // which the server's stepless replay needs per run to match the watch
+        // (docs/features/gps_distance.md § Server recompute).
+        if (distanceStepOverChordM != null && distanceStepOverChordM.isFinite() && distanceStepOverChordM >= 0) {
+            put("distance_step_over_chord_m", distanceStepOverChordM)
+        }
     }
     if (locationProvider != null) put("location_provider", locationProvider)
     if (gnssSignal != null) put("gnss_signal", gnssSignal.toJson())

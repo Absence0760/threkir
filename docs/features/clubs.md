@@ -177,6 +177,14 @@ is in [provenance.md](provenance.md). In short:
 Mobile shows the owner and admins a read-only status card
 (`club_verification_status_card.dart`) and points to the web for the request.
 
+A verified club's owner or admin can report another club, route, library plan
+or routine, challenge or claimed race listing as impersonating them or copying
+their content ("Report as your organisation", and the report sheet on mobile
+clubs and routes). Nothing is hidden automatically; a site admin hides it,
+sends a rename notice with a deadline, or dismisses it from `/admin/reports`,
+and both sides read the outcome on `/disputes`. See
+[official_content.md § Name disputes](official_content.md) (decisions § 2441).
+
 The badge is still writable by `service_role` and by a migration, and the
 legacy `clubs_protect_is_verified` trigger is gone (it keyed on the JWT role and
 would have reverted the admin's own approval inside the definer RPC). An

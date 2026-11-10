@@ -67,7 +67,38 @@ Web is the whole flow. Mobile (Android and the iOS twin) shows the owner and adm
 
 The provenance labels (official / verified source / traced / community) on content, race listings and their courses, and organiser course alerts, are specified in [provenance.md](provenance.md) (decisions § 2406 / § 2407).
 
+## Name disputes (migrations `20271202000001`..`004`, decisions § 2441)
+
+A fan club can take "Comrades Marathon" and keep it, and a copied plan or course can sit beside the real one. The verified organiser now has a way to say so, through the existing report flow.
+
+### Filing
+
+An active owner or admin of a verified, public, unhidden club opens **Report as your organisation** on a club, a public route, a plan or routine in the public library, a public challenge, or a race listing another club has claimed. They pick the club they speak for (when they run more than one), say what is copied, and send. `submit_organiser_dispute` is the gate (`private.is_official_publisher`, the same derivation as "official"), so an unverified club, a plain member or anon is refused at the database, not just hidden in the UI. The report lands in `reports` with reason `organiser_dispute` and `organiser_club_id`. The general `submit_report` refuses that reason. An organiser cannot dispute its own club, its own content, or content it cannot have seen (a private plan, an unclaimed race, which it can simply claim). Filing shares the general report's rate limit (10 an hour) and its one-pending-report-per-target rule, and notifies nobody.
+
+### No automation
+
+A dispute never hides anything by itself, however many verified organisers file one: the auto-hide trigger skips it and the vetted-reporter count leaves it out, so disputes never tip a general report over the threshold either. A person decides, as in the verification review (§ 2398).
+
+### Review
+
+Disputed targets sort first on `/admin/reports`, with an **Organiser dispute** badge, the reporting clubs (and whether each is still verified), and any rename deadline. The detail panel offers, each behind a confirm:
+
+| Action | What happens |
+|---|---|
+| **Hide** (`takedown`) | A club or route gets `shadow_hidden`, the same hide auto-hide uses. A library plan or routine and a challenge are unpublished, and a trigger refuses republishing that row until an admin restores it. A race listing's claim is released (organiser club, course link and course stamps cleared) so the rightful organiser can claim it. The dispute reports are marked reviewed. |
+| **Send rename notice** | The owner is asked to rename or change it within a deadline (14 days by default, 1 to 60). The reports stay pending and the target stays at the top of the queue showing the deadline. Nothing happens automatically at the deadline; the reviewer then hides or dismisses. |
+| **Dismiss dispute** | The dispute reports are dismissed and nothing changes. |
+
+Only the dispute reports are touched, and the general Dismiss / Mark reviewed buttons now leave dispute reports alone, so a dispute closes only with its log entry and its notices. **Restore** (`admin_unhide_target`) lifts a plan, routine or challenge takedown; the owner republishes when they choose. A takedown cannot stop someone making a new copy; the organiser files again.
+
+### Audit and notices
+
+Every filing and action is a row in the append-only `organiser_dispute_actions` with the reviewer's id, readable only through admin RPCs. Both sides get an `organiser_dispute` notification (in-app, push and email) naming the reporting club, never the reviewer, and read the outcome on `/disputes`: the owner sees reviewed disputes about their content (with the deadline and the reviewer's note), and the reporting club's owner and admins see their filings and what became of them. Both legs are in the data export.
+
+### Platforms
+
+Web is the whole flow. On Android and iOS the report sheet on a club or a route adds the dispute reason for a verified organiser, and the notice opens the web disputes page. Plans, routines, challenges and race listings have no report menu on mobile, so they are disputed from the web.
+
 ## Not built yet
 
-- Name dispute / takedown path tied to the report flow.
 - Trusted verifiers (a federation verifying its member races) — later, not v1.

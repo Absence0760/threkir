@@ -24,7 +24,8 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
 | Badges (`park_courses` / `park_complete` / `park_passport`), passport challenge metric, recap entries, course share sticker | Shipped (migration `20271123002404`, decisions § 2404 / § 2405); see *Collections* |
 | "Report a problem with this course" (issue #1346, migrations `20271213000001`..`005`, decisions § 2449): signed in or signed out, on web and mobile, reviewed and acted on from `/admin/reports`. See *Reports and closures* | Shipped |
-| NPS closures job | Not built (Phase 6) |
+| NPS closures job (`park-closures-sweep`, migrations `20271214131302` + `20271214131303`, decisions § 2453): a daily read of NPS alerts that flags courses for operator review at `/admin/park-alerts`, never closing one itself. Inert until `NPS_API_KEY` is set and the schedule is armed. See *Reports and closures* | Shipped (code); waits on the NPS key |
+| Run detail park course chips: the owner sees each park course the run completed, its time and its place on that season's board, linking to the course (web + mobile) | Shipped |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
 | Indexable park pages | Not built; see *SEO* |
 | Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
@@ -57,6 +58,8 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
   show it once under the description; the `/share/course` lookup carries it with
   `laps`.
 - **Parks:** `slug`, `name`, `agency` (`nps` / `state` / `county` / `other`),
+  `nps_park_code` (the NPS Data API `parkCode`, `shen`; only on an `nps` park,
+  required there by the catalogue check, which the closures sweep reads),
   `region_code` (ISO 3166-2, `US-VA`; the URL segment is its lower case),
   `country_code`, `timezone` (IANA, validated against `pg_timezone_names` by a
   trigger), `website_url`, centroid and bounding box, `is_active`.
@@ -348,6 +351,36 @@ account. The reporter picks a reason (`course_hazard`, `course_closure`,
   are in their data export (`reports.json`). Threkir sends a reporter no email:
   the acknowledgement is the operator's hand reply.
 
+**NPS alerts.** Phase 6 (decisions § 2453). `park-closures-sweep`, a daily
+pg_cron Edge Function, reads `developer.nps.gov/api/v1/alerts` for every active
+`nps` park with an `nps_park_code` and a course not closed (ten parks a request,
+the key in the `X-Api-Key` header, a second between requests) and records each
+alert that may affect a course as a row in `park_course_nps_alerts`. It never
+changes a course: alerts are free text written for visitors.
+
+- **The match** (`park-closures-sweep/lib.ts`): an alert *names* a course when
+  its title or description holds the course name, or the name without a
+  trailing Trail / Loop / Course / Path / Route ("Big Meadows" for "Big Meadows
+  Loop"), on word boundaries; an `Information` alert must also say something is
+  closed, rerouted or hazardous. An alert saying the whole park or every trail
+  is closed flags every course (`park_wide`), the ones it names as `named`. NPS
+  files partial closures (a parking lot, a climbing area) as `Park Closure` too,
+  so the category alone flags nothing.
+- **The record** (`record_park_nps_alerts`, service role only): one row per
+  course and alert; an alert whose text changed goes back to pending; one NPS
+  stopped listing is stamped `gone_at` and kept. A park whose request failed
+  is not recorded at all, so an outage never reads as an alert gone.
+- **Review** at `/admin/park-alerts` (web, admins; linked from `/admin/reports`
+  with the pending count): *Close course* closes it with the note the course
+  page shows, through `admin_set_park_course_status` (logged in
+  `park_course_status_actions`), and marks every pending flag on the course
+  reviewed, in one call (`admin_review_park_nps_alert`); *Mark reviewed* and
+  *Dismiss* file the flag. No admin notice is sent; the count on the reports
+  queue is the signal.
+- **Fail closed:** with `NPS_API_KEY` unset the function asks NPS nothing,
+  records nothing, logs why and answers `{ "configured": false }`; with its
+  Vault URL unset the schedule calls nothing.
+
 ## Loading courses
 
 A course needs a route owned by an official publisher, which no migration can
@@ -526,6 +559,14 @@ rank, and a closed course drops out of the "every" counts while it is closed.
   park courses card when there are any; the owner's page also lists the parks
   run with a course count each. A published recap snapshot holds the two
   counts and no park.
+- **Run detail chips**: the owner's run detail shows a chip per park course
+  the run completed (`RunParkCourseChips`, web and mobile): the course, the
+  time and, when ranked, "#3 in 2027" (the season is the park's year of the
+  effort, so a past season never reads as this one). The chip opens the course
+  page. Nothing shows while loading or for a run with no course; a failed read
+  is a quiet line with Retry, never a broken page. On web the chips read again
+  once run detail's own scorer has run, so a course timed during that view
+  appears.
 - **Share image**: a run that completed a park course offers the **Park
   course** occasion sticker (photo and sticker styles): the course, its park,
   the time and, when the run is the runner's best this season and inside the
@@ -559,8 +600,12 @@ These gate going live, not the code:
       `TRUSTED_CLIENT_IP_HEADER` is right for the production edge, or every
       signed-out reporter shares one bucket.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
-- [ ] NPS API key provisioned before the closures job is built; it must do
-      nothing without one.
+- [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
+      secret, and `park_closures_sweep` added to `cron_urls`, before the
+      closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).
+      The code is built and fail-closed: without the key it asks NPS nothing
+      and logs why. Respect the NPS API terms (key in a header, one request per
+      ten parks a day).
 - [ ] After `20271122002402` reaches production and the `segment-match`
       function carrying the line matcher is deployed, run
       `select enqueue_segment_backfill(id) from global_segments where is_active;`
@@ -681,6 +726,30 @@ These gate going live, not the code:
   `recap_screen_test.dart`, `run_share_card_test.dart`,
   `challenge_detail_screen_test.dart` and `api_client`
   `park_course_reads_test.dart`.
+
+- NPS closures: Deno `supabase/functions/park-closures-sweep/lib.test.ts`
+  (the match against a recorded NPS answer, `fixtures/nps_alerts_2026-11-10.json`,
+  and written alerts: named and short names, Information without a closure,
+  partial closures filed as Park Closure, whole-park closures, word
+  boundaries, clipping, no key in the URL) and `handler.test.ts` (the cron
+  gate, no key asking nothing, one request per ten parks with a pause, paging,
+  a failed chunk recording nothing, the schedule and the gate); pgTAP
+  `park_course_nps_alerts_test.sql` (the code's CHECK and its load, grants, the
+  targets, created / seen / changed / gone, each refusal, the admin queue,
+  close from a flag and dismiss); `node --test
+  scripts/parks/lib/catalogue_payload.test.mjs` (the code required for an
+  `nps` park and refused for any other); Playwright
+  `parks/park-nps-alerts.spec.ts` (a runner refused, the link from the reports
+  queue, close with a note, dismiss).
+- Run detail chips: Playwright `parks/run-park-course-chips.spec.ts` (time,
+  season place and link; a failed read with Retry; no chips for a run with no
+  course; never asked for by anyone else); Flutter
+  `test/run_park_course_chips_test.dart`; `api_client`
+  `park_course_reads_test.dart` (`fetchParkCourseBySlugs`).
+- Official passport board: `node --test scripts/official/lib/official_catalogue.test.mjs`
+  (the region required and validated for `park_courses`, refused elsewhere,
+  the fixture `fixtures/virginia-park-passport.json`); pgTAP
+  `official_catalogue_park_region_test.sql`.
 
 ## Owner decisions taken as the issue's recommended default
 

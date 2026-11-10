@@ -847,6 +847,14 @@ Migration `20271120000004` schedules `club-verification-recheck` hourly ([decisi
 
 The email proof needs no new credential: it rides the worker's existing SMTP transport and `APP_BASE_URL`.
 
+### NPS park closures — an NPS key, then arm the schedule (one Vault entry)
+
+Migration `20271214131303` schedules `park-closures-sweep` daily at 11:41 UTC ([decisions § 2453](../architecture/decisions.md)): it reads NPS alerts for every active National Park Service park with a course and flags courses for review at `/admin/park-alerts`. It never closes a course. Two gates, both fail-closed: the invoker calls nothing until its Vault URL exists, and the function asks NPS nothing (and logs `NPS_API_KEY is not set`) until the key exists.
+
+1. **Pre-deploy (going live, not the code):** request an NPS Data API key at <https://www.nps.gov/subjects/developer/get-started.htm> under the operator's account, and set it as a function secret (`supabase secrets set NPS_API_KEY=...`); it is a credential, so it stays out of `prod_config.json`. NPS allows 1,000 requests an hour per key; the sweep makes one request per ten parks a day.
+2. Add `"park_closures_sweep"` to `cron_urls` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. The next release creates `park_closures_sweep_url`, invokes the sweep once and fails the step unless it answers 2xx (it does without the key too: `{ "configured": false }`). Its `parks` / `requests` / `alerts` / `flagged` / `failed_parks` counts are in the function's logs; a 502 means NPS failed for some parks and nothing was recorded for them.
+3. Nothing reaches the sweep until a park with `agency: "nps"` and its `nps_park_code` is loaded (none is yet; Pocahontas is a state park).
+
 ### Lambda secrets — one apply, before the next web deploy
 
 [decisions § 1671](../architecture/decisions.md) moved the coach and

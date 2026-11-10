@@ -2,7 +2,7 @@
 // Fail loudly when a migration takes a validating full-table scan on a
 // high-volume table under a lock that blocks writers.
 //
-// Two shapes do that, and the guard grades both.
+// Three shapes do that, and the guard grades each.
 //
 // (a) The single step. A CHECK or FK added in one `ALTER TABLE ... ADD
 // CONSTRAINT ...` holds a strong lock while Postgres scans every existing row
@@ -24,6 +24,11 @@
 // step block writers for the identical duration. Only splitting the `VALIDATE`
 // into a LATER migration, in its own transaction, buys anything, and that is
 // what docs/backend/migration_locks.md now says.
+//
+// (c) The index under a held lock. A non-concurrent CREATE INDEX reads the
+// heap under SHARE, which lets readers through, but not when the same file
+// already took ACCESS EXCLUSIVE on that table: the stronger lock is still held
+// for the whole scan, so readers wait too (`index_under_exclusive`).
 //
 // The full pattern + worked examples live in docs/backend/migration_locks.md.
 //
@@ -161,6 +166,25 @@ export const GRANDFATHERED_VIOLATIONS = [
   { filename: '20270705000004_never_bounded_integer_columns.sql', kind: 'same_txn_validate', table: 'runs', constraint: 'runs_fastest_10k_s_check' },
   { filename: '20270705000004_never_bounded_integer_columns.sql', kind: 'same_txn_validate', table: 'runs', constraint: 'runs_fastest_half_marathon_s_check' },
   { filename: '20270705000004_never_bounded_integer_columns.sql', kind: 'same_txn_validate', table: 'runs', constraint: 'runs_fastest_marathon_s_check' },
+
+  // The `index_under_exclusive` half: fourteen shipped files that built an
+  // index on a guarded table after taking ACCESS EXCLUSIVE on it in the same
+  // transaction, so readers waited for the heap scan too. `constraint` holds
+  // the index's name for this kind. All are applied (<= backend@1.0.37).
+  { filename: '20260413_001_public_runs.sql', kind: 'index_under_exclusive', table: 'runs', constraint: 'runs_public' },
+  { filename: '20260424_001_event_results.sql', kind: 'index_under_exclusive', table: 'runs', constraint: 'runs_event_id_idx' },
+  { filename: '20260528000003_runs_external_id_per_user_unique.sql', kind: 'index_under_exclusive', table: 'runs', constraint: 'runs_user_external_id' },
+  { filename: '20260826_001_run_photo_thumbnails.sql', kind: 'index_under_exclusive', table: 'run_photos', constraint: 'run_photos_thumb_512_path' },
+  { filename: '20260903_001_notify_event_rsvp.sql', kind: 'index_under_exclusive', table: 'notifications', constraint: 'notifications_event_rsvp_uniq' },
+  { filename: '20261025_001_event_photo_gallery.sql', kind: 'index_under_exclusive', table: 'run_photos', constraint: 'run_photos_by_event' },
+  { filename: '20261101_001_notify_club_post_run_completed.sql', kind: 'index_under_exclusive', table: 'notifications', constraint: 'notifications_run_completed_uniq' },
+  { filename: '20261130_001_notification_email_channel.sql', kind: 'index_under_exclusive', table: 'notifications', constraint: 'notifications_event_reminder_uniq' },
+  { filename: '20261212_001_notifications_polymorphic_activity_ref.sql', kind: 'index_under_exclusive', table: 'notifications', constraint: 'notifications_activity' },
+  { filename: '20270214_001_race_calendar.sql', kind: 'index_under_exclusive', table: 'runs', constraint: 'runs_race_listing_idx' },
+  { filename: '20270302_001_challenge_vert_metric.sql', kind: 'index_under_exclusive', table: 'runs', constraint: 'runs_elevation_gain' },
+  { filename: '20270401_001_safety_overdue_escalation.sql', kind: 'index_under_exclusive', table: 'runs', constraint: 'runs_live_in_progress_idx' },
+  { filename: '20270719000001_distance_recompute.sql', kind: 'index_under_exclusive', table: 'jobs', constraint: 'jobs_dedupe_distance_recompute' },
+  { filename: '20270807000001_event_occurrence_photos.sql', kind: 'index_under_exclusive', table: 'run_photos', constraint: 'run_photos_hidden_by' },
 ];
 
 const ALTER_PREFIX =
@@ -235,6 +259,39 @@ const CREATE_INDEX_ON =
 const CREATE_TRIGGER_ON =
   /^create\s+(?:or\s+replace\s+)?(?:constraint\s+)?trigger\s+.*?\bon\s+(?:public\.)?([a-z0-9_]+)/;
 
+// The name an index is created under, or null for an unnamed or quoted one.
+const CREATE_INDEX_NAME =
+  /^create\s+(?:unique\s+)?index\s+(?:concurrently\s+)?(?:if\s+not\s+exists\s+)?([a-z0-9_]+)\s+on\b/;
+
+// Statements other than ALTER TABLE that take ACCESS EXCLUSIVE on a table and
+// hold it to commit. DROP TRIGGER takes it even when IF EXISTS finds nothing:
+// the relation is locked before the trigger is looked up.
+const POLICY_ON =
+  /^(?:create|drop|alter)\s+policy\s+(?:if\s+exists\s+)?[a-z0-9_"]+\s+on\s+(?:public\.)?([a-z0-9_]+)/;
+const DROP_TRIGGER_ON =
+  /^drop\s+trigger\s+(?:if\s+exists\s+)?[a-z0-9_"]+\s+on\s+(?:public\.)?([a-z0-9_]+)/;
+
+/**
+ * @param {string} statement
+ * @returns {string | null}
+ */
+function exclusiveByStatement(statement) {
+  return POLICY_ON.exec(statement)?.[1] ?? DROP_TRIGGER_ON.exec(statement)?.[1] ?? null;
+}
+
+// Every ALTER TABLE action takes ACCESS EXCLUSIVE except VALIDATE CONSTRAINT
+// (SHARE UPDATE EXCLUSIVE) and an ADD FOREIGN KEY (SHARE ROW EXCLUSIVE). Both
+// of those still block writers, but not readers, so an index build after them
+// costs what it would cost alone.
+/**
+ * @param {string} action
+ * @returns {boolean}
+ */
+function takesAccessExclusive(action) {
+  if (validateAction(action) !== null) return false;
+  return !/^add\s+(?:constraint\s+[a-z0-9_"]+\s+)?foreign\s+key\b/.test(action);
+}
+
 /**
  * @param {string} statement
  * @returns {string | null}
@@ -284,10 +341,12 @@ export class UnlexableMigration extends Error {
   }
 }
 
-/** @typedef {'blocking_add' | 'same_txn_validate'} ViolationKind */
-/** @typedef {{ kind: ViolationKind, table: string, constraint: string | null, statement: string }} ConstraintFinding */
+/** @typedef {'blocking_add' | 'same_txn_validate' | 'index_under_exclusive'} ViolationKind */
+// For `index_under_exclusive`, `constraint` holds the INDEX's name and `held`
+// the earlier statement that took ACCESS EXCLUSIVE on the same table.
+/** @typedef {{ kind: ViolationKind, table: string, constraint: string | null, statement: string, held?: string }} ConstraintFinding */
 /** @typedef {{ filename: string, sql: string }} MigrationSource */
-/** @typedef {{ filename: string, kind: ViolationKind, table: string, constraint: string | null, statement: string }} ConstraintViolation */
+/** @typedef {{ filename: string, kind: ViolationKind, table: string, constraint: string | null, statement: string, held?: string }} ConstraintViolation */
 /** @typedef {{ scanned: string[], violations: ConstraintViolation[], unmatched: Grandfathered[] }} Audit */
 
 // Returns the guarded-table lock violations in one migration's SQL: the
@@ -306,14 +365,35 @@ export function findOnlineSafetyViolations(sql) {
   const findings = [];
   /** @type {Set<string>} */
   const held = new Set();
+  // Guarded table -> the first statement in this file that took ACCESS
+  // EXCLUSIVE on it. A non-concurrent CREATE INDEX after it scans the whole
+  // heap while that lock is still held, so readers wait for the scan as well
+  // as writers.
+  /** @type {Map<string, string>} */
+  const exclusive = new Map();
   // Literals are blanked as well as split correctly: a `check (note <> 'not
   // valid')` otherwise reads as a statement that carries the escape hatch.
   const statements = splitSqlStatements(sql, { blankLiterals: true });
   for (const raw of statements) {
     const statement = raw.replace(/\s+/g, ' ').trim().toLowerCase();
     if (!statement.startsWith('alter table')) {
+      const indexed = CREATE_INDEX_ON.exec(statement)?.[1] ?? null;
+      if (indexed !== null && GUARDED_TABLES.has(indexed) && exclusive.has(indexed)) {
+        findings.push({
+          kind: 'index_under_exclusive',
+          table: indexed,
+          constraint: CREATE_INDEX_NAME.exec(statement)?.[1] ?? null,
+          statement: statement.slice(0, 120),
+          held: exclusive.get(indexed),
+        });
+      }
       const created = lockedByCreate(statement);
       if (created !== null && GUARDED_TABLES.has(created)) held.add(created);
+      const locked = exclusiveByStatement(statement);
+      if (locked !== null && GUARDED_TABLES.has(locked)) {
+        held.add(locked);
+        if (!exclusive.has(locked)) exclusive.set(locked, statement.slice(0, 120));
+      }
       continue;
     }
     const table = alterTargetTable(statement);
@@ -346,6 +426,9 @@ export function findOnlineSafetyViolations(sql) {
       }
     }
     if (escalatesHere) held.add(table);
+    if (actions.some(takesAccessExclusive) && !exclusive.has(table)) {
+      exclusive.set(table, statement.slice(0, 120));
+    }
   }
   return findings;
 }
@@ -456,7 +539,22 @@ function main() {
     process.exit(1);
   }
 
-  for (const { filename, kind, table, constraint, statement } of audit.violations) {
+  for (const { filename, kind, table, constraint, statement, held } of audit.violations) {
+    if (kind === 'index_under_exclusive') {
+      const index = constraint ? `the index "${constraint}"` : 'an unnamed index';
+      console.error(
+        `::error file=apps/backend/supabase/migrations/${filename}::${filename} builds ${index} ` +
+          `on the high-volume table "${table}" without CONCURRENTLY: "${statement}", after the ` +
+          `same file already took ACCESS EXCLUSIVE on "${table}" with "${held}". Each migration ` +
+          `file is applied inside one transaction, so that lock is still held while the build ` +
+          `scans the whole heap, and READERS wait for the scan as well as writers. Move the ` +
+          `CREATE INDEX into its own LATER migration file (\`create index if not exists\`), where ` +
+          `it holds only SHARE: writers wait for one heap read, readers do not. See ` +
+          `docs/backend/migration_locks.md § Index builds. ` +
+          GRANDFATHER_ADVICE,
+      );
+      continue;
+    }
     const named = constraint ? `the constraint "${constraint}"` : 'an unnamed CHECK/FK';
     console.error(
       kind === 'blocking_add'
@@ -490,7 +588,8 @@ function main() {
   if (audit.violations.length > 0 || audit.unmatched.length > 0) process.exit(1);
   console.log(
     `OK: ${audit.scanned.length} migrations scanned, no guarded-table CHECK/FK added without ` +
-      `NOT VALID and no VALIDATE scanning under a lock its own file already held, beyond the ` +
+      `NOT VALID, no VALIDATE scanning under a lock its own file already held and no index ` +
+      `built under an ACCESS EXCLUSIVE its own file already held, beyond the ` +
       `${GRANDFATHERED_VIOLATIONS.length} grandfathered by name.`,
   );
 }

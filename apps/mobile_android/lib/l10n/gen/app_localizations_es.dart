@@ -21301,6 +21301,79 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parksBrowseLink => 'Recorridos de parques';
 
   @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n vueltas',
+      one: '$n vuelta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '$elevation de subida';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed =>
+      'No se pudo abrir el sitio web del parque.';
+
+  @override
+  String get parksElevationProfile => 'Perfil de elevación';
+
+  @override
+  String get parksBoardEmptyTitle => 'Sé el primero en esta clasificación';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Corre este recorrido grabando con Threkir. En cuanto la carrera se sincronice, tu tiempo aparecerá aquí automáticamente.';
+
+  @override
+  String get parksLegendTitle => 'Leyenda del mapa';
+
+  @override
+  String get parksLegendStart => 'Salida';
+
+  @override
+  String get parksLegendFinish => 'Meta';
+
+  @override
+  String get parksLegendStartFinish => 'Salida y meta';
+
+  @override
+  String get parksLegendCheckpoints => 'Puntos de control, en orden';
+
+  @override
+  String get parksLegendDirection => 'Sentido de carrera';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Mapa del recorrido con $n puntos de control. La leyenda de abajo explica cada marca.',
+      one:
+          'Mapa del recorrido con 1 punto de control. La leyenda de abajo explica cada marca.',
+      zero: 'Mapa del recorrido. La leyenda de abajo explica cada marca.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Mapa de los $n recorridos del parque',
+      one: 'Mapa del recorrido del parque',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get eventCourseLinesMapBoth =>
       'Mapa de las líneas de salida y meta del recorrido';
 

@@ -34337,6 +34337,90 @@ abstract class AppLocalizations {
   /// **'Park courses'**
   String get parksBrowseLink;
 
+  /// Laps chip on a park course (#1352): a course run more than once round its loop for one time.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {{n} lap} other {{n} laps}}'**
+  String parksCourseLaps(int n);
+
+  /// Pill on a park course card (#1352): its elevation gain, already formatted with its unit.
+  ///
+  /// In en, this message translates to:
+  /// **'{elevation} climb'**
+  String parksCourseClimb(String elevation);
+
+  /// Banner when the park website link cannot be opened (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the park website.'**
+  String get parksWebsiteOpenFailed;
+
+  /// Heading over a park course's elevation chart (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Elevation profile'**
+  String get parksElevationProfile;
+
+  /// Title of a park course board nobody has a time on yet; replaces the filters (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Be the first on this board'**
+  String get parksBoardEmptyTitle;
+
+  /// Body under parksBoardEmptyTitle: how a time gets onto the board (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Run this course with Threkir recording. Once the run syncs, your time appears here automatically.'**
+  String get parksBoardEmptyBody;
+
+  /// Screen-reader name of the key under a park course map (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Map key'**
+  String get parksLegendTitle;
+
+  /// Map key item: the green start marker (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get parksLegendStart;
+
+  /// Map key item: the red finish marker (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get parksLegendFinish;
+
+  /// Map key item: one marker for a course that starts and finishes in the same place (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Start and finish'**
+  String get parksLegendStartFinish;
+
+  /// Map key item: the numbered checkpoint markers (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Checkpoints, in order'**
+  String get parksLegendCheckpoints;
+
+  /// Map key item: the arrows along the course line (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'Direction to run'**
+  String get parksLegendDirection;
+
+  /// Screen-reader label of a park course map (#1352); n is its checkpoint count.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, =0 {Course map. The key below names each mark.} one {Course map with 1 checkpoint. The key below names each mark.} other {Course map with {n} checkpoints. The key below names each mark.}}'**
+  String parksMapCourseLabel(int n);
+
+  /// Screen-reader label of the map of every course line in a park (#1352).
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one {Map of the park\'s course} other {Map of the park\'s {n} courses}}'**
+  String parksMapParkLabel(int n);
+
   /// Accessible label of the event course map showing start and finish timing lines (#1305)
   ///
   /// In en, this message translates to:

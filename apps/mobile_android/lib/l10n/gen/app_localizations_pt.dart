@@ -21304,6 +21304,79 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parksBrowseLink => 'Percursos de parques';
 
   @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n voltas',
+      one: '$n volta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '$elevation de subida';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed =>
+      'Não foi possível abrir o site do parque.';
+
+  @override
+  String get parksElevationProfile => 'Perfil de altitude';
+
+  @override
+  String get parksBoardEmptyTitle => 'Seja o primeiro nesta classificação';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Corra este percurso a gravar com o Threkir. Assim que a corrida sincronizar, o seu tempo aparece aqui automaticamente.';
+
+  @override
+  String get parksLegendTitle => 'Legenda do mapa';
+
+  @override
+  String get parksLegendStart => 'Partida';
+
+  @override
+  String get parksLegendFinish => 'Meta';
+
+  @override
+  String get parksLegendStartFinish => 'Partida e meta';
+
+  @override
+  String get parksLegendCheckpoints => 'Pontos de controlo, por ordem';
+
+  @override
+  String get parksLegendDirection => 'Sentido da corrida';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Mapa do percurso com $n pontos de controlo. A legenda abaixo explica cada marca.',
+      one:
+          'Mapa do percurso com 1 ponto de controlo. A legenda abaixo explica cada marca.',
+      zero: 'Mapa do percurso. A legenda abaixo explica cada marca.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Mapa dos $n percursos do parque',
+      one: 'Mapa do percurso do parque',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get eventCourseLinesMapBoth =>
       'Mapa das linhas de partida e de chegada do percurso';
 
@@ -42912,6 +42985,79 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parksBrowseLink => 'Percursos de parques';
+
+  @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n voltas',
+      one: '$n volta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '$elevation de subida';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed =>
+      'Não foi possível abrir o site do parque.';
+
+  @override
+  String get parksElevationProfile => 'Perfil de elevação';
+
+  @override
+  String get parksBoardEmptyTitle => 'Seja o primeiro nesta classificação';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Corra este percurso gravando com o Threkir. Assim que a corrida sincronizar, o seu tempo aparece aqui automaticamente.';
+
+  @override
+  String get parksLegendTitle => 'Legenda do mapa';
+
+  @override
+  String get parksLegendStart => 'Largada';
+
+  @override
+  String get parksLegendFinish => 'Chegada';
+
+  @override
+  String get parksLegendStartFinish => 'Largada e chegada';
+
+  @override
+  String get parksLegendCheckpoints => 'Pontos de controle, em ordem';
+
+  @override
+  String get parksLegendDirection => 'Sentido da corrida';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Mapa do percurso com $n pontos de controle. A legenda abaixo explica cada marca.',
+      one:
+          'Mapa do percurso com 1 ponto de controle. A legenda abaixo explica cada marca.',
+      zero: 'Mapa do percurso. A legenda abaixo explica cada marca.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Mapa dos $n percursos do parque',
+      one: 'Mapa do percurso do parque',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get eventCourseLinesMapBoth =>

@@ -21074,6 +21074,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parksBrowseLink => 'Park courses';
 
   @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n laps',
+      one: '$n lap',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '$elevation climb';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed => 'Couldn\'t open the park website.';
+
+  @override
+  String get parksElevationProfile => 'Elevation profile';
+
+  @override
+  String get parksBoardEmptyTitle => 'Be the first on this board';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Run this course with Threkir recording. Once the run syncs, your time appears here automatically.';
+
+  @override
+  String get parksLegendTitle => 'Map key';
+
+  @override
+  String get parksLegendStart => 'Start';
+
+  @override
+  String get parksLegendFinish => 'Finish';
+
+  @override
+  String get parksLegendStartFinish => 'Start and finish';
+
+  @override
+  String get parksLegendCheckpoints => 'Checkpoints, in order';
+
+  @override
+  String get parksLegendDirection => 'Direction to run';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Course map with $n checkpoints. The key below names each mark.',
+      one: 'Course map with 1 checkpoint. The key below names each mark.',
+      zero: 'Course map. The key below names each mark.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Map of the park\'s $n courses',
+      one: 'Map of the park\'s course',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get eventCourseLinesMapBoth =>
       'Map of the course\'s start and finish lines';
 

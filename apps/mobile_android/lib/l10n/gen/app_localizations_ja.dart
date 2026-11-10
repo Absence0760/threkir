@@ -20265,6 +20265,69 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parksBrowseLink => '公園コース';
 
   @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n周');
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '登り$elevation';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed => '公園のウェブサイトを開けませんでした。';
+
+  @override
+  String get parksElevationProfile => '高低図';
+
+  @override
+  String get parksBoardEmptyTitle => 'このランキングの最初の記録になろう';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Threkirで記録しながらこのコースを走ってください。ランが同期されると、タイムが自動的にここに表示されます。';
+
+  @override
+  String get parksLegendTitle => '地図の凡例';
+
+  @override
+  String get parksLegendStart => 'スタート';
+
+  @override
+  String get parksLegendFinish => 'フィニッシュ';
+
+  @override
+  String get parksLegendStartFinish => 'スタート・フィニッシュ';
+
+  @override
+  String get parksLegendCheckpoints => 'チェックポイント（順番）';
+
+  @override
+  String get parksLegendDirection => '走る方向';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'チェックポイント$nか所のコースマップ。下の凡例で各マークを説明しています。',
+      zero: 'コースマップ。下の凡例で各マークを説明しています。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '公園の$nコースの地図',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get eventCourseLinesMapBoth => 'コースのスタートラインとフィニッシュラインの地図';
 
   @override

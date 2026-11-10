@@ -21327,6 +21327,80 @@ class AppLocalizationsDe extends AppLocalizations {
   String get parksBrowseLink => 'Parkstrecken';
 
   @override
+  String parksCourseLaps(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Runden',
+      one: '$n Runde',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksCourseClimb(String elevation) {
+    return '$elevation Anstieg';
+  }
+
+  @override
+  String get parksWebsiteOpenFailed =>
+      'Die Website des Parks ließ sich nicht öffnen.';
+
+  @override
+  String get parksElevationProfile => 'Höhenprofil';
+
+  @override
+  String get parksBoardEmptyTitle =>
+      'Sei als Erste oder Erster auf dieser Liste';
+
+  @override
+  String get parksBoardEmptyBody =>
+      'Lauf diese Strecke mit Threkir-Aufzeichnung. Sobald der Lauf synchronisiert ist, erscheint deine Zeit automatisch hier.';
+
+  @override
+  String get parksLegendTitle => 'Kartenlegende';
+
+  @override
+  String get parksLegendStart => 'Start';
+
+  @override
+  String get parksLegendFinish => 'Ziel';
+
+  @override
+  String get parksLegendStartFinish => 'Start und Ziel';
+
+  @override
+  String get parksLegendCheckpoints => 'Kontrollpunkte, der Reihe nach';
+
+  @override
+  String get parksLegendDirection => 'Laufrichtung';
+
+  @override
+  String parksMapCourseLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other:
+          'Streckenkarte mit $n Kontrollpunkten. Die Legende darunter erklärt jede Markierung.',
+      one:
+          'Streckenkarte mit 1 Kontrollpunkt. Die Legende darunter erklärt jede Markierung.',
+      zero: 'Streckenkarte. Die Legende darunter erklärt jede Markierung.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String parksMapParkLabel(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Karte der $n Strecken im Park',
+      one: 'Karte der Strecke im Park',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get eventCourseLinesMapBoth =>
       'Karte mit Start- und Ziellinie der Strecke';
 

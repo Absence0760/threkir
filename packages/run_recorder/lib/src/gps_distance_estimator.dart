@@ -603,7 +603,10 @@ class GpsDistanceEstimator {
     final gaps = List.of(_gaps);
     _gaps.clear();
     final stride = _strideM;
-    if (d <= 0 || stride == null) return;
+    if (d <= 0 || stride == null) {
+      _gaps.addAll(gaps.where((gap) => gap.endT > t));
+      return;
+    }
     final rate = math.min(d * stride / (t - prevT), maxSpeedMps);
     final fixT = _t;
     final lo = fixT == null ? prevT : math.max(prevT, fixT);
@@ -611,16 +614,28 @@ class GpsDistanceEstimator {
     final records = _records;
     for (final gap in gaps) {
       final from = math.max(prevT, gap.startT);
-      if (gap.endT <= from) continue;
-      final late = rate * (gap.endT - from);
-      _stepDistanceM += late;
-      final take = math.min(late, gap.topUpM);
-      _gpsDistanceM -= take;
-      final k = gap.record;
-      if (records == null || k == null) continue;
-      if (take > 0) records[k].chord = records[k].chord! - take;
-      for (var j = k; j < records.length; j++) {
-        records[j].stepDistanceM += late;
+      final to = math.min(gap.endT, t);
+      var take = 0.0;
+      if (to > from) {
+        final late = rate * (to - from);
+        _stepDistanceM += late;
+        take = math.min(late, gap.topUpM);
+        _gpsDistanceM -= take;
+        final k = gap.record;
+        if (records != null && k != null) {
+          if (take > 0) records[k].chord = records[k].chord! - take;
+          for (var j = k; j < records.length; j++) {
+            records[j].stepDistanceM += late;
+          }
+        }
+      }
+      if (gap.endT > t) {
+        _gaps.add(_ClosedGap(
+          startT: gap.startT,
+          endT: gap.endT,
+          topUpM: gap.topUpM - take,
+          record: gap.record,
+        ));
       }
     }
   }

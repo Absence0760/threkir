@@ -171,4 +171,39 @@ class GpsDistanceEstimatorTest {
         est.addFix(2.0, 40.00003, -75.0, 51.0, 3.0, 0.3, 0.0)
         assertEquals(0.0, est.distanceM, 0.0)
     }
+
+    private val eastMPerDeg = 111195.0 * Math.cos(40.0 * Math.PI / 180.0)
+
+    private fun eastward(): GpsDistanceEstimator {
+        val est = GpsDistanceEstimator(initialStrideM = 0.5, learnStride = false)
+        for (i in 0..25) {
+            est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            est.addSteps(i + 0.5, 4L * i + 2)
+        }
+        return est
+    }
+
+    @Test
+    fun `a late step batch tops a gap up without counting its chord twice`() {
+        // Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+        // lower bound wins. The batch after the resuming fix moves 10 m of
+        // that credit from the chord to the steps and adds nothing (v1.6).
+        val est = eastward()
+        est.addSteps(50.0, 202)
+        est.addFix(55.0, 40.0, -75.0 + 220.0 / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+        val before = est.distanceM
+        val steps = est.stepDistanceM
+        est.addSteps(56.5, 228)
+        assertEquals(before, est.distanceM, 1e-9)
+        assertEquals(10.0, est.stepDistanceM - steps, 1e-9)
+    }
+
+    @Test
+    fun `a stretch credits no steps taken before its first fix`() {
+        val est = GpsDistanceEstimator(initialStrideM = 1.0, learnStride = false)
+        for (i in 0 until 30) est.addSteps(i + 0.5, 4L * i)
+        est.addFix(30.0, 40.0, -75.0, 3.0)
+        est.finish(31.0)
+        assertEquals(0.0, est.distanceM, 0.0)
+    }
 }

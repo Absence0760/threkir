@@ -624,23 +624,31 @@ export class GpsDistanceEstimator {
 	private attributeSteps(prevT: number, t: number, d: number): void {
 		const gaps = this.gaps;
 		this.gaps = [];
-		if (d <= 0 || this.strideM === null) return;
+		if (d <= 0 || this.strideM === null) {
+			this.gaps = gaps.filter((gap) => gap.endT > t);
+			return;
+		}
 		const rate = Math.min((d * this.strideM) / (t - prevT), this.maxSpeedMps);
 		const lo = this.t === null ? prevT : Math.max(prevT, this.t);
 		if (t > lo) this.pendingStepM += rate * (t - lo);
 		for (const gap of gaps) {
 			const from = Math.max(prevT, gap.startT);
-			if (gap.endT <= from) continue;
-			const late = rate * (gap.endT - from);
-			this.stepDistanceM += late;
-			const take = Math.min(late, gap.topUpM);
-			this.gpsDistanceM -= take;
-			if (this.records === null || gap.record === null) continue;
-			if (take > 0) {
-				const rec = this.records[gap.record];
-				rec.chord = (rec.chord as number) - take;
+			const to = Math.min(gap.endT, t);
+			let take = 0;
+			if (to > from) {
+				const late = rate * (to - from);
+				this.stepDistanceM += late;
+				take = Math.min(late, gap.topUpM);
+				this.gpsDistanceM -= take;
+				if (this.records !== null && gap.record !== null) {
+					if (take > 0) {
+						const rec = this.records[gap.record];
+						rec.chord = (rec.chord as number) - take;
+					}
+					for (let k = gap.record; k < this.records.length; k++) this.records[k].stepDistanceM += late;
+				}
 			}
-			for (let k = gap.record; k < this.records.length; k++) this.records[k].stepDistanceM += late;
+			if (gap.endT > t) this.gaps.push({ ...gap, topUpM: gap.topUpM - take });
 		}
 	}
 

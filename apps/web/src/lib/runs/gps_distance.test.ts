@@ -85,7 +85,7 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 test('fixture is spec v1.6 with a non-trivial scenario set', () => {
 	assert.equal(fixture.spec, 'gps-distance-estimator v1.6');
 	assert.equal(SPEC_VERSION, '1.6');
-	assert.ok(fixture.scenarios.length >= 41, `only ${fixture.scenarios.length} scenarios`);
+	assert.ok(fixture.scenarios.length >= 43, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);
 });
@@ -271,4 +271,37 @@ test('a fused pocket walk with 15 s step batches is not read as stopped (v1.5)',
 	}
 	assert.ok(est.zuptFixes <= 9, `zuptFixes ${est.zuptFixes}`);
 	assert.ok(Math.abs(est.distanceM - 390) <= 390 * 0.05, `distance ${est.distanceM}`);
+});
+
+const EAST_M_PER_DEG = 111195 * Math.cos((40 * Math.PI) / 180);
+
+function eastward(): GpsDistanceEstimator {
+	const est = new GpsDistanceEstimator(10, 1, 0.5, false, false);
+	for (let i = 0; i <= 25; i++) {
+		est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	return est;
+}
+
+test('a late step batch tops a gap up without counting its chord twice (v1.6)', () => {
+	// Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+	// lower bound wins. The batch after the resuming fix moves 10 m of that
+	// credit from the chord to the steps and adds nothing.
+	const est = eastward();
+	est.addSteps(50, 202);
+	est.addFix(55, 40, -75 + 220 / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+	const before = est.distanceM;
+	const steps = est.stepDistanceM;
+	est.addSteps(56.5, 228);
+	assert.ok(Math.abs(est.distanceM - before) < 1e-9, `distance ${est.distanceM}`);
+	assert.ok(Math.abs(est.stepDistanceM - steps - 10) < 1e-9, `steps ${est.stepDistanceM}`);
+});
+
+test('a stretch credits no steps taken before its first fix (v1.6)', () => {
+	const est = new GpsDistanceEstimator(10, 1, 1.0, false, false);
+	for (let i = 0; i < 30; i++) est.addSteps(i + 0.5, 4 * i);
+	est.addFix(30, 40, -75, 3);
+	est.finish(31);
+	assert.equal(est.distanceM, 0);
 });

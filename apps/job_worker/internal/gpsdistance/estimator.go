@@ -664,6 +664,11 @@ func (e *Estimator) attributeSteps(prevT, t float64, d int) {
 	gaps := e.gaps
 	e.gaps = nil
 	if d <= 0 || e.StrideM == nil {
+		for _, gap := range gaps {
+			if gap.endT > t {
+				e.gaps = append(e.gaps, gap)
+			}
+		}
 		return
 	}
 	rate := math.Min(float64(d)*(*e.StrideM)/(t-prevT), e.MaxSpeedMps)
@@ -676,21 +681,25 @@ func (e *Estimator) attributeSteps(prevT, t float64, d int) {
 	}
 	for _, gap := range gaps {
 		from := math.Max(prevT, gap.startT)
-		if gap.endT <= from {
-			continue
+		to := math.Min(gap.endT, t)
+		take := 0.0
+		if to > from {
+			late := rate * (to - from)
+			e.StepDistanceM += late
+			take = math.Min(late, gap.topUpM)
+			e.GpsDistanceM -= take
+			if gap.record >= 0 {
+				if take > 0 {
+					e.records[gap.record].chord -= take
+				}
+				for k := gap.record; k < len(e.records); k++ {
+					e.records[k].stepDistanceM += late
+				}
+			}
 		}
-		late := rate * (gap.endT - from)
-		e.StepDistanceM += late
-		take := math.Min(late, gap.topUpM)
-		e.GpsDistanceM -= take
-		if gap.record < 0 {
-			continue
-		}
-		if take > 0 {
-			e.records[gap.record].chord -= take
-		}
-		for k := gap.record; k < len(e.records); k++ {
-			e.records[k].stepDistanceM += late
+		if gap.endT > t {
+			gap.topUpM -= take
+			e.gaps = append(e.gaps, gap)
 		}
 	}
 }

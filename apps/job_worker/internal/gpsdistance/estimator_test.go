@@ -404,3 +404,50 @@ func TestNoStrideLearningKeepsTheSeed(t *testing.T) {
 		}
 	}
 }
+
+var eastMPerDeg = 111195 * math.Cos(40*math.Pi/180)
+
+func eastwardV16() *Estimator {
+	stride := 0.5
+	e := NewWithOptions(Options{InitialStrideM: &stride, NoStrideLearning: true})
+	for i := 0; i <= 25; i++ {
+		acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+		e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+			AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		e.AddSteps(float64(i)+0.5, 4*i+2)
+	}
+	return e
+}
+
+// Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord lower
+// bound wins. The batch after the resuming fix moves 10 m of that credit from
+// the chord to the steps and adds nothing (v1.6).
+func TestALateStepBatchTopsAGapUpWithoutCountingItsChordTwice(t *testing.T) {
+	e := eastwardV16()
+	e.AddSteps(50, 202)
+	acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+	e.AddFix(Fix{T: 55, Lat: 40, Lng: -75 + 220/eastMPerDeg,
+		AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+	before, steps := e.DistanceM(), e.StepDistanceM
+	e.AddSteps(56.5, 228)
+	if math.Abs(e.DistanceM()-before) > 1e-9 {
+		t.Errorf("distance %v, want %v", e.DistanceM(), before)
+	}
+	if math.Abs(e.StepDistanceM-steps-10) > 1e-9 {
+		t.Errorf("step distance grew %v, want 10", e.StepDistanceM-steps)
+	}
+}
+
+func TestAStretchCreditsNoStepsTakenBeforeItsFirstFix(t *testing.T) {
+	stride := 1.0
+	e := NewWithOptions(Options{InitialStrideM: &stride, NoStrideLearning: true})
+	for i := 0; i < 30; i++ {
+		e.AddSteps(float64(i)+0.5, 4*i)
+	}
+	acc := 3.0
+	e.AddFix(Fix{T: 30, Lat: 40, Lng: -75, AccuracyM: &acc})
+	e.Finish(31)
+	if e.DistanceM() != 0 {
+		t.Errorf("distance %v, want 0", e.DistanceM())
+	}
+}

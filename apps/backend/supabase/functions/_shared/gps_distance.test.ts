@@ -79,7 +79,7 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 Deno.test('the port implements the spec v1.6 fixture: version, scenario set and every constant', () => {
 	assertEquals(fixture.spec, 'gps-distance-estimator v1.6');
 	assertEquals(SPEC_VERSION, '1.6');
-	assert(fixture.scenarios.length >= 41, `only ${fixture.scenarios.length} scenarios`);
+	assert(fixture.scenarios.length >= 43, `only ${fixture.scenarios.length} scenarios`);
 	assert(TOL > 0 && TOL <= 0.001);
 	assert(POS_TOL > 0 && POS_TOL <= 1e-8);
 	const port = gps as unknown as Record<string, unknown>;
@@ -231,4 +231,37 @@ Deno.test('learnStride false never learns a stride, and keeps a seeded one', () 
 		}
 		assertEquals(est.strideM, seed);
 	}
+});
+
+const EAST_M_PER_DEG = 111195 * Math.cos((40 * Math.PI) / 180);
+
+function eastward(): GpsDistanceEstimator {
+	const est = new GpsDistanceEstimator(10, 1, 0.5, false, false);
+	for (let i = 0; i <= 25; i++) {
+		est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	return est;
+}
+
+Deno.test('a late step batch tops a gap up without counting its chord twice (v1.6)', () => {
+	// Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+	// lower bound wins. The batch after the resuming fix moves 10 m of that
+	// credit from the chord to the steps and adds nothing.
+	const est = eastward();
+	est.addSteps(50, 202);
+	est.addFix(55, 40, -75 + 220 / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+	const before = est.distanceM;
+	const steps = est.stepDistanceM;
+	est.addSteps(56.5, 228);
+	assert(Math.abs(est.distanceM - before) < 1e-9, `distance ${est.distanceM}`);
+	assert(Math.abs(est.stepDistanceM - steps - 10) < 1e-9, `steps ${est.stepDistanceM}`);
+});
+
+Deno.test('a stretch credits no steps taken before its first fix (v1.6)', () => {
+	const est = new GpsDistanceEstimator(10, 1, 1.0, false, false);
+	for (let i = 0; i < 30; i++) est.addSteps(i + 0.5, 4 * i);
+	est.addFix(30, 40, -75, 3);
+	est.finish(31);
+	assertEquals(est.distanceM, 0);
 });

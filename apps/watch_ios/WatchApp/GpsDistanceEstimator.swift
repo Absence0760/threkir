@@ -549,16 +549,24 @@ final class GpsDistanceEstimator {
     private func attributeSteps(prevT: Double, t: Double, d: Int) {
         let closed = gaps
         gaps.removeAll()
-        guard d > 0, let stride = strideM else { return }
+        guard d > 0, let stride = strideM else {
+            gaps = closed.filter { $0.endT > t }
+            return
+        }
         let rate = min(Double(d) * stride / (t - prevT), maxSpeedMps)
         let lo = self.t.map { max(prevT, $0) } ?? prevT
         if t > lo { pendingStepM += rate * (t - lo) }
         for gap in closed {
             let from = max(prevT, gap.startT)
-            guard gap.endT > from else { continue }
-            let late = rate * (gap.endT - from)
-            stepDistanceM += late
-            gpsDistanceM -= min(late, gap.topUpM)
+            let to = min(gap.endT, t)
+            var take = 0.0
+            if to > from {
+                let late = rate * (to - from)
+                stepDistanceM += late
+                take = min(late, gap.topUpM)
+                gpsDistanceM -= take
+            }
+            if gap.endT > t { gaps.append((startT: gap.startT, endT: gap.endT, topUpM: gap.topUpM - take)) }
         }
     }
 

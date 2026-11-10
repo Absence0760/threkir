@@ -410,18 +410,26 @@ class GpsDistanceEstimator(
     private fun attributeSteps(prevT: Double, t: Double, d: Long) {
         val closed = gaps.toList()
         gaps.clear()
-        val stride = strideM ?: return
-        if (d <= 0) return
+        val stride = strideM
+        if (stride == null || d <= 0) {
+            closed.filterTo(gaps) { it.second > t }
+            return
+        }
         val rate = min(d * stride / (t - prevT), maxSpeedMps)
         val fixT = lastT
         val lo = if (fixT == null) prevT else max(prevT, fixT)
         if (t > lo) pendingStepM += rate * (t - lo)
         for ((startT, endT, topUpM) in closed) {
             val from = max(prevT, startT)
-            if (endT <= from) continue
-            val late = rate * (endT - from)
-            stepDistanceM += late
-            gpsDistanceM -= min(late, topUpM)
+            val to = min(endT, t)
+            var take = 0.0
+            if (to > from) {
+                val late = rate * (to - from)
+                stepDistanceM += late
+                take = min(late, topUpM)
+                gpsDistanceM -= take
+            }
+            if (endT > t) gaps.addLast(Triple(startT, endT, topUpM - take))
         }
     }
 

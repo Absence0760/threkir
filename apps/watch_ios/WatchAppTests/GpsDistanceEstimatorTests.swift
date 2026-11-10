@@ -197,4 +197,37 @@ final class GpsDistanceEstimatorTests: XCTestCase {
         XCTAssertEqual(estimator.strideM, 0.95)
         XCTAssertFalse(estimator.nextSegment().learnStride)
     }
+
+    private let eastMPerDeg = 111195 * cos(40 * Double.pi / 180)
+
+    private func eastward() -> GpsDistanceEstimator {
+        let estimator = GpsDistanceEstimator(initialStrideM: 0.5, learnStride: false)
+        for i in 0...25 {
+            estimator.addFix(t: Double(i), lat: 40, lng: -75 + 4 * Double(i) / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+            estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i + 2)
+        }
+        return estimator
+    }
+
+    func testLateStepBatchTopsAGapUpWithoutCountingItsChordTwice() {
+        // Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+        // lower bound wins. The batch after the resuming fix moves 10 m of
+        // that credit from the chord to the steps and adds nothing (v1.6).
+        let estimator = eastward()
+        estimator.addSteps(t: 50, cumulativeSteps: 202)
+        estimator.addFix(t: 55, lat: 40, lng: -75 + 220 / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+        let before = estimator.distanceM
+        let steps = estimator.stepDistanceM
+        estimator.addSteps(t: 56.5, cumulativeSteps: 228)
+        XCTAssertEqual(estimator.distanceM, before, accuracy: 1e-9)
+        XCTAssertEqual(estimator.stepDistanceM - steps, 10, accuracy: 1e-9)
+    }
+
+    func testStretchCreditsNoStepsTakenBeforeItsFirstFix() {
+        let estimator = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false)
+        for i in 0..<30 { estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i) }
+        estimator.addFix(t: 30, lat: 40, lng: -75, accuracyM: 3)
+        estimator.finish(t: 31)
+        XCTAssertEqual(estimator.distanceM, 0)
+    }
 }

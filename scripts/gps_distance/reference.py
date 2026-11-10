@@ -463,10 +463,12 @@ class GpsDistanceEstimator:
         """v1.6: a sample's d steps were taken across (prev_t, t], so each part of that
         interval gets its share. The part after the last fix is buffered; the part
         inside each gap a re-anchor closed since the previous sample tops that gap's
-        credit up to its steps."""
+        credit up to its steps. A gap that ends after t stays open, less what this
+        sample took from its GPS credit, so the next sample shares the rest of it."""
         gaps, self._gaps = self._gaps, []
         stride = self.stride_m
         if d <= 0 or stride is None:
+            self._gaps = [g for g in gaps if g[1] > t]
             return
         rate = min(d * stride / (t - prev_t), self.max_speed_mps)
         lo = prev_t if self._t is None else max(prev_t, self._t)
@@ -474,17 +476,20 @@ class GpsDistanceEstimator:
             self._pending_step_m += rate * (t - lo)
         for g0, g1, top_up, rec in gaps:
             lo = max(prev_t, g0)
-            if g1 <= lo:
-                continue
-            late = rate * (g1 - lo)
-            self.step_distance_m += late
-            take = min(late, top_up)
-            self.gps_distance_m -= take
-            if rec is not None:
-                if take > 0:
-                    self.records[rec]["chord"] -= take
-                for k in range(rec, len(self.records)):
-                    self.records[k]["step_distance_m"] += late
+            hi = min(g1, t)
+            take = 0.0
+            if hi > lo:
+                late = rate * (hi - lo)
+                self.step_distance_m += late
+                take = min(late, top_up)
+                self.gps_distance_m -= take
+                if rec is not None:
+                    if take > 0:
+                        self.records[rec]["chord"] -= take
+                    for k in range(rec, len(self.records)):
+                        self.records[k]["step_distance_m"] += late
+            if g1 > t:
+                self._gaps.append([g0, g1, top_up - take, rec])
 
     def finish(self, t):
         """End of run: commit buffered steps if the trailing gap exceeds the gap window."""

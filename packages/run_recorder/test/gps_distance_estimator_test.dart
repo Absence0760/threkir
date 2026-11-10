@@ -62,7 +62,7 @@ void main() {
   test('fixture is spec v1.6 and carries every scenario', () {
     expect(vectors['spec'], 'gps-distance-estimator v1.6');
     expect(GpsDistanceEstimator.specVersion, '1.6');
-    expect(scenarios.length, greaterThanOrEqualTo(41));
+    expect(scenarios.length, greaterThanOrEqualTo(43));
   });
 
   test('constants match the fixture', () {

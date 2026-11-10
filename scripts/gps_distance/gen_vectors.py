@@ -207,6 +207,22 @@ add("gap_step_batch_after_resume", "v1.6: the gap's step count arrives in 5 s ba
 add("gap_steps_two_gaps_one_batch", "v1.6: a canopy fix at t=40 splits the 30 s stall into two gaps and a single step batch at 56.5 covers both; each gap gets its own share, so the steps still credit 120 m",
     line(list(range(26)) + [40, 55, 56, 57], [t + 0.5 for t in range(26)] + [56.5],
          east_at={40: 60.0, 55: 110.0, 56: 114.0, 57: 118.0}), stride=1.0, learn_stride=False)
+def late_steps(ev, t, after_fix):
+    """Move the step sample stamped t to just after the fix at after_fix: a batch the
+    pedometer stamped inside a gap but delivered after the fix that closed it."""
+    smp = next(e for e in ev if e["type"] == "steps" and e["t"] == t)
+    ev.remove(smp)
+    i = next(i for i, e in enumerate(ev) if e["type"] == "fix" and e["t"] == after_fix)
+    ev.insert(i + 1, smp)
+    return ev
+
+
+add("gap_step_stamped_inside_delivered_late", "v1.6: 5 s step batches across a 30 s stall the runner loops back across; the 1 s batch stamped at 51 arrives after the fix at 55 closes the gap, so it claims only its own (50, 51] share (4 m, not the 20 m to the gap's end), the gap stays open, and the sample at 57.5 shares the rest (51, 55]: the steps credit all 120 m of the gap",
+    late_steps(line(list(range(26)) + [55, 56, 57], [t + 0.5 for t in range(26)] + [30, 35, 40, 45, 50, 51, 57.5],
+                    east_at={55: 110.0, 56: 114.0, 57: 118.0}), 51.0, 55.0), stride=1.0, learn_stride=False)
+add("gap_steps_open_gap_cap", "v1.6: nine 12 s gaps whose fixes zigzag 10 m apart, with no step sample until one after the ninth; only MAX_OPEN_GAPS = 8 gaps can still claim a share, so the oldest keeps its chord credit and its 46 m of steps after the 25.5 sample are dropped (the cap only under-credits)",
+    line(list(range(26)) + [25 + 12 * k for k in range(1, 10)], [t + 0.5 for t in range(26)] + [133.5],
+         east_at={25 + 12 * k: (110.0 if k % 2 else 100.0) for k in range(1, 10)} | {25: 100.0}), stride=1.0, learn_stride=False)
 add("steps_without_any_fix", "v1.6: initialStrideM 1.0 and steps but no fix at all; steps before a stretch's first fix are never credited, which leaves a run GPS never reached to the pedometer's indoor estimate",
     line([], [t + 0.5 for t in range(30)], finish=30.0), stride=1.0, learn_stride=False)
 

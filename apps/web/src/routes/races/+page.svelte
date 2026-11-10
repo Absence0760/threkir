@@ -28,6 +28,8 @@
 	import { orderAnyTimeCourses } from '#lib/parks/any_time_courses.ts';
 	import { regionName, regionSlug } from '#lib/parks/park_courses.ts';
 	import { SHAPE_LABEL, STATUS_LABEL, labelKey } from '#lib/parks/park_labels.ts';
+	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
+	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
 
 	let query = $state('');
 	let distance = $state<'' | RaceDistanceBand>('');
@@ -498,7 +500,8 @@
 			{/if}
 			<ul class="course-list" data-testid="races-any-time-list">
 				{#each orderedCourses as { course, awayM } (course.id)}
-					{@const shapeKey = labelKey(SHAPE_LABEL, course.course_shape)}
+					{@const shapeKey = courseShapeShown(course.course_shape) ? labelKey(SHAPE_LABEL, course.course_shape) : null}
+					{@const laps = courseLapsChip(course.laps)}
 					{@const statusKey = labelKey(STATUS_LABEL, course.status)}
 					{@const record = records.get(course.id)}
 					<li>
@@ -509,8 +512,8 @@
 						>
 							<span class="course-name">{course.segment.name}</span>
 							<span class="course-park">{course.park.name}, {regionName(course.park.region_code)}</span>
-							<span class="course-meta">
-								{fmtDist(Number(course.segment.distance_m), 2)}{#if shapeKey}&nbsp;·&nbsp;{m(shapeKey)}{/if}{#if awayM !== null}&nbsp;·&nbsp;{m('races.anyTimeAway', { distance: fmtDist(awayM, 1) })}{/if}
+							<span class="course-meta" data-testid="races-any-time-meta">
+								<span data-testid="races-any-time-distance">{fmtCourseDistance(course.segment.distance_m)}</span>{#if laps}&nbsp;·&nbsp;<span data-testid="races-any-time-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}{#if shapeKey}&nbsp;·&nbsp;{m(shapeKey)}{/if}{#if awayM !== null}&nbsp;·&nbsp;{m('races.anyTimeAway', { distance: fmtDist(awayM, 1) })}{/if}
 							</span>
 							{#if !recordsFailed}
 								<span class="course-record" data-testid="races-any-time-record">

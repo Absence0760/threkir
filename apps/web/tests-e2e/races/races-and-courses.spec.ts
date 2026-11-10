@@ -148,8 +148,11 @@ test.describe('races & courses', () => {
 			const card = anyTime.getByTestId('races-any-time-course').first();
 			await expect(card).toContainText(planted.courseName, { timeout: 10_000 });
 			await expect(card).toContainText(`${planted.parkName}, Alaska`);
-			await expect(card).toContainText(/5\.00 (km|mi)|3\.11 mi/);
-			await expect(card).toContainText('Loop');
+			const meta = card.getByTestId('races-any-time-meta');
+			await expect(card.getByTestId('races-any-time-distance')).toHaveText(/^(5 km|3\.1 mi)$/);
+			await expect(meta).not.toContainText(/\d\.\d\d/);
+			await expect(meta).not.toContainText('Loop');
+			await expect(card.getByTestId('races-any-time-laps')).toHaveCount(0);
 			await expect(card.getByTestId('races-any-time-record')).toHaveText(
 				new RegExp(`^\\d{4} record: 9:10 by ${holder?.display_name ?? ''}$`),
 			);

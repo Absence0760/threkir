@@ -2529,6 +2529,20 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 			name: "club_verification_audit.json", table: schema.TableClubVerificationAudit,
 			filter: "actor_id=eq." + uid, sel: "*",
 		},
+		// organiser_dispute_actions — the naming disputes the subject filed
+		// for a verified club and, as a site admin, the reviews they made
+		// (migration 20271202000003).
+		{
+			name: "organiser_dispute_actions.json", table: schema.TableOrganiserDisputeActions,
+			filter: "actor_id=eq." + uid, sel: "*",
+		},
+		// organiser_dispute_notices — the reviewed disputes about content the
+		// subject owns, without the reviewer.
+		{
+			name: "organiser_dispute_notices.json", table: schema.TableOrganiserDisputeActions,
+			filter: "target_owner_id=eq." + uid,
+			sel:    "id,target_kind,target_id,organiser_club_id,organiser_club_name,action,deadline_at,note,created_at",
+		},
 		// course_alerts — the course alerts the subject posted as a verified
 		// organiser club's admin (migration 20271124002407).
 		{

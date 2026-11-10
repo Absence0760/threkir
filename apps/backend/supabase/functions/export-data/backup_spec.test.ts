@@ -66,8 +66,9 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 	// added club_verification_requests + club_verification_audit.
 	// global_segment_efforts was in the Go worker's list and missing here
 	// until park course times (issue #1313) made it load-bearing. Course alerts (migration 20271124002407) added
-	// course_alerts.
-	assertEquals(specs.length, 85, `expected 85 specs, got ${specs.length}`);
+	// course_alerts. Organiser disputes (migration 20271202000003) added
+	// both legs of organiser_dispute_actions.
+	assertEquals(specs.length, 87, `expected 87 specs, got ${specs.length}`);
 	const entries = new Set(specs.map((s) => s.entry));
 	for (const expected of [
 		'coach_messages.json',
@@ -122,6 +123,8 @@ Deno.test('buildBackupSpecs covers the Go worker table set', () => {
 		'race_listing_audit.json',
 		'club_verification_requests.json',
 		'club_verification_audit.json',
+		'organiser_dispute_actions.json',
+		'organiser_dispute_notices.json',
 		'course_alerts.json',
 		'user_blocks.json',
 		'club_posts.json',

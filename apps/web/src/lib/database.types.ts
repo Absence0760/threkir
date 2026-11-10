@@ -3464,6 +3464,63 @@ export type Database = {
         }
         Relationships: []
       }
+      organiser_dispute_actions: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          deadline_at: string | null
+          id: number
+          note: string | null
+          organiser_club_id: string | null
+          organiser_club_name: string
+          target_id: string
+          target_kind: string
+          target_owner_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          deadline_at?: string | null
+          id?: never
+          note?: string | null
+          organiser_club_id?: string | null
+          organiser_club_name: string
+          target_id: string
+          target_kind: string
+          target_owner_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          deadline_at?: string | null
+          id?: never
+          note?: string | null
+          organiser_club_id?: string | null
+          organiser_club_name?: string
+          target_id?: string
+          target_kind?: string
+          target_owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organiser_dispute_actions_organiser_club_id_fkey"
+            columns: ["organiser_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organiser_dispute_actions_organiser_club_id_fkey"
+            columns: ["organiser_club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
+        ]
+      }
       park_courses: {
         Row: {
           attribution: string | null
@@ -4630,6 +4687,7 @@ export type Database = {
           id: string
           legal_hold: boolean
           notes: string | null
+          organiser_club_id: string | null
           reason: string
           reporter_id: string | null
           resolution: string | null
@@ -4648,6 +4706,7 @@ export type Database = {
           id?: string
           legal_hold?: boolean
           notes?: string | null
+          organiser_club_id?: string | null
           reason: string
           reporter_id?: string | null
           resolution?: string | null
@@ -4666,6 +4725,7 @@ export type Database = {
           id?: string
           legal_hold?: boolean
           notes?: string | null
+          organiser_club_id?: string | null
           reason?: string
           reporter_id?: string | null
           resolution?: string | null
@@ -4679,7 +4739,22 @@ export type Database = {
           target_id?: string
           target_kind?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "reports_organiser_club_id_fkey"
+            columns: ["organiser_club_id"]
+            isOneToOne: false
+            referencedRelation: "clubs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_organiser_club_id_fkey"
+            columns: ["organiser_club_id"]
+            isOneToOne: false
+            referencedRelation: "public_race_listings"
+            referencedColumns: ["organiser_club_id"]
+          },
+        ]
       }
       route_conditions: {
         Row: {
@@ -7901,8 +7976,11 @@ export type Database = {
         Args: never
         Returns: {
           latest_at: string
+          organiser_clubs: Json
+          organiser_dispute: boolean
           page_id: string
           reasons: Json
+          rename_deadline_at: string
           report_count: number
           reporter_count: number
           shadow_hidden: boolean
@@ -7917,6 +7995,10 @@ export type Database = {
           id: string
           legal_hold: boolean
           notes: string
+          organiser_club_id: string
+          organiser_club_name: string
+          organiser_club_slug: string
+          organiser_club_verified: boolean
           purge_after: string
           reason: string
           reporter_id: string
@@ -8452,6 +8534,22 @@ export type Database = {
         }[]
       }
       my_discoverable_area: { Args: never; Returns: string }
+      my_organiser_disputes: {
+        Args: never
+        Returns: {
+          acted_at: string
+          action: string
+          deadline_at: string
+          note: string
+          organiser_club_id: string
+          organiser_club_name: string
+          organiser_club_slug: string
+          side: string
+          target_id: string
+          target_kind: string
+          target_label: string
+        }[]
+      }
       my_pending_safety_requests: {
         Args: never
         Returns: {
@@ -8533,6 +8631,20 @@ export type Database = {
       notify_data_export_ready: {
         Args: { p_export_job_id: string }
         Returns: boolean
+      }
+      organiser_dispute_history: {
+        Args: { p_target_id: string; p_target_kind: string }
+        Returns: {
+          action: string
+          actor_id: string
+          created_at: string
+          deadline_at: string
+          id: number
+          note: string
+          organiser_club_id: string
+          organiser_club_name: string
+          target_owner_id: string
+        }[]
       }
       park_course_records: {
         Args: never
@@ -8826,6 +8938,16 @@ export type Database = {
       reset_event_course_gate: {
         Args: { p_course_id: string; p_which: string }
         Returns: undefined
+      }
+      resolve_organiser_dispute: {
+        Args: {
+          p_action: string
+          p_deadline_days?: number
+          p_note?: string
+          p_target_id: string
+          p_target_kind: string
+        }
+        Returns: number
       }
       resolve_target_reports: {
         Args: {
@@ -9348,6 +9470,15 @@ export type Database = {
       }
       submit_club_verification: {
         Args: { p_club_id: string; p_note?: string; p_organisation: string }
+        Returns: string
+      }
+      submit_organiser_dispute: {
+        Args: {
+          p_club_id: string
+          p_notes?: string
+          p_target_id: string
+          p_target_kind: string
+        }
         Returns: string
       }
       submit_report: {

@@ -72,6 +72,7 @@ const (
 	TableClubVerificationRequests = "club_verification_requests"
 	TableClubVerificationAudit    = "club_verification_audit"
 	TableCourseAlerts             = "course_alerts"
+	TableOrganiserDisputeActions  = "organiser_dispute_actions"
 	TableCheckpointCrossings      = "checkpoint_crossings"
 	TableEventExceptions          = "event_exceptions"
 	TableClubMembers              = "club_members"

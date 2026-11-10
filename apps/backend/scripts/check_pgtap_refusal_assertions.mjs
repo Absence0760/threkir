@@ -1808,6 +1808,86 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'organiser_disputes_test.sql',
+    description: "the verified club's owner files against the fan club",
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'the owner files against a copied plan template',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'the owner files against a copied routine',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'the owner files against a race claimed by another club',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: "a verified club's admin files too",
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'a second organiser files against the fan club',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'a third organiser files against the fan club',
+    columns: ['organiser_dispute_actions.target_owner_id'],
+    readBack: "each filing records who answers for the target (a claimed race: the claiming club's owner)",
+    reason:
+      'submit_organiser_dispute derives the target owner from the target row rather than storing an ' +
+      'argument; the read-back compares every stored owner of the first organiser\'s filings, so a server ' +
+      'that wrote the wrong owner or none fails there.',
+  },
+  {
+    file: 'organiser_disputes_test.sql',
+    description: 'a site admin sends a rename notice',
+    columns: ['reports.status'],
+    readBack: 'a rename notice leaves the disputes pending',
+    reason:
+      'resolve_organiser_dispute derives each report\'s status from the action; the read-back counts the ' +
+      'target\'s dispute reports still pending through the admin read, so a server that resolved them on a ' +
+      'rename notice fails there.',
+  },
+  {
     file: 'segment_match_jobs_test.sql',
     description: 'an admin can start a backfill',
     columns: ['jobs.payload'],

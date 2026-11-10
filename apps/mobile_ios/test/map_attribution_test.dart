@@ -332,12 +332,13 @@ void main() {
   });
 
   group('every map surface carries the credit and the failure treatment', () {
-    // The seven `FlutterMap`s in lib/. Attribution is a licence obligation,
+    // The `FlutterMap`s in lib/. Attribution is a licence obligation,
     // not a per-screen nicety, so this list is the whole set by construction
     // — a new map that forgets it fails here.
     const mapFiles = [
       'lib/widgets/course_lines_map.dart',
       'lib/widgets/live_run_map.dart',
+      'lib/widgets/park_course_map.dart',
       'lib/widgets/route_share_card.dart',
       'lib/widgets/run_share_card.dart',
       'lib/screens/route_builder_screen.dart',

@@ -102,6 +102,10 @@ other{{count} …}}`; web: `{n, plural, one {# …} other {# …}}`.
 | save / settings / feed | Speichern / Einstellungen / Feed | |
 | chat message | **Chatnachricht** (closed compound, Duden) | settled 2026-10-21; never "Chat-Nachricht" |
 | social | Sozial (mobile `navSocial`) / Community (web `nav.social`) | inconsistency 7 |
+| arm / armed (race control) | **scharfstellen** (closed: "Rennen scharfstellen", "Stell das Rennen scharf", "scharfgestellt", "Scharfstellen", "Trotzdem scharfstellen", "Früher scharfstellen"); state label **Bereit** / "Rennen bereit", "Nicht scharfgestellt" | settled 2026-11-10; never "scharf schalten" / "scharfschalten" / "aktivieren"; the Wear watch shows "RENNEN BEREIT" |
+| GO (the start signal) | **GO** in every string and guide: "GO durch Veranstalter", "Geplanter GO", "nach GO", "bei GO"; the web button is **GO**, the phone's *Fire Go* is **GO geben** | settled 2026-11-10; never "LOS" / "Los" / "START" / "Startschuss" for it. The Wear pause screen's "Los" (resume) is a different control |
+| self-timed (race) | **selbstgestoppt** ("selbstgestopptes Rennen", "Selbstgestoppter Zeitraum") | settled 2026-11-10; never "selbst gezeitet" / "selbst gestoppt" |
+| set up (a race created automatically before its start) | **angelegt** ("Das Rennen wird einen Tag vor dem Start angelegt") | keeps it apart from *arm* |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

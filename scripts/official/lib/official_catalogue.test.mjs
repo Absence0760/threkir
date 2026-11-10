@@ -174,12 +174,17 @@ test('the catalogue refuses a repeated slug and a missing list', () => {
 	assert.throws(() => checkCatalogue(/** @type {any} */ ({ plans: [], gym_routines: [], challenges: [] })), /race_courses: must be a list/);
 });
 
-test('the catalogue files are named by their slug, under a known kind', () => {
+test('the catalogue files are named by their slug, under every known kind', () => {
 	const root = fs.mkdtempSync(path.join(tmpdir(), 'official-catalogue-'));
 	try {
 		fs.mkdirSync(path.join(root, 'challenges'));
 		fs.writeFileSync(path.join(root, 'challenges', 'c.json'), JSON.stringify(challenge()));
-		assert.deepEqual(readCatalogue(root), { ...empty(), challenges: [challenge()] }, 'a kind with no directory is empty');
+		assert.throws(() => readCatalogue(root), /catalogue\/plans is missing/, 'a missing kind is refused, not read as empty');
+		for (const kind of ['plans', 'gym_routines', 'race_courses']) {
+			fs.mkdirSync(path.join(root, kind));
+			fs.writeFileSync(path.join(root, kind, '.gitkeep'), '');
+		}
+		assert.deepEqual(readCatalogue(root), { ...empty(), challenges: [challenge()] }, 'an empty kind keeps a .gitkeep');
 		fs.writeFileSync(path.join(root, 'challenges', 'other.json'), JSON.stringify(challenge()));
 		assert.throws(() => readCatalogue(root), /holds the slug c; name the file <slug>\.json/);
 		fs.rmSync(path.join(root, 'challenges', 'other.json'));

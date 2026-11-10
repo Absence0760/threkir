@@ -28,8 +28,10 @@ export const CATALOGUE_ROOT = path.join(HERE, 'catalogue');
 
 /**
  * Every `<kind>/<slug>.json` under the root, sorted by file name so the load
- * order is stable. A kind with no directory is an empty list; a file whose
- * name is not its slug is refused, so a rename cannot load a second copy.
+ * order is stable. Every kind needs its directory (an empty kind keeps a
+ * `.gitkeep`), so a checkout missing one is refused rather than read as an
+ * empty list the load would retire everything from; a file whose name is not
+ * its slug is refused, so a rename cannot load a second copy.
  *
  * @param {string} root
  * @returns {import('./lib/official_catalogue.mjs').Catalogue}
@@ -44,7 +46,8 @@ export function readCatalogue(root = CATALOGUE_ROOT) {
 	}
 	for (const kind of KINDS) {
 		const dir = path.join(root, kind);
-		const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => !f.startsWith('.')).sort() : [];
+		if (!fs.existsSync(dir)) throw new Error(`catalogue/${kind} is missing; an empty kind keeps a .gitkeep`);
+		const files = fs.readdirSync(dir).filter((f) => !f.startsWith('.')).sort();
 		catalogue[kind] = files.map((file) => {
 			if (!file.endsWith('.json')) throw new Error(`catalogue/${kind}/${file} is not a .json item`);
 			const item = JSON.parse(fs.readFileSync(path.join(dir, file), 'utf8'));

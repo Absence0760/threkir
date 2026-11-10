@@ -2219,6 +2219,7 @@ class EventResultRow {
   static const String colStartDetection = 'start_detection';
   static const String colFinishDetection = 'finish_detection';
   static const String colNeedsReview = 'needs_review';
+  static const String colClockOffsetMs = 'clock_offset_ms';
 
   final String eventId;
   final DateTime instanceStart;
@@ -2247,6 +2248,7 @@ class EventResultRow {
   final String? startDetection;
   final String? finishDetection;
   final bool needsReview;
+  final int? clockOffsetMs;
 
   const EventResultRow({
     required this.eventId,
@@ -2276,6 +2278,7 @@ class EventResultRow {
     this.startDetection,
     this.finishDetection,
     required this.needsReview,
+    this.clockOffsetMs,
   });
 
   factory EventResultRow.fromJson(Map<String, dynamic> json) => EventResultRow(
@@ -2306,6 +2309,7 @@ class EventResultRow {
     startDetection: json['start_detection'] as String?,
     finishDetection: json['finish_detection'] as String?,
     needsReview: (json['needs_review'] as bool?) ?? false,
+    clockOffsetMs: (json['clock_offset_ms'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -2336,6 +2340,7 @@ class EventResultRow {
     colStartDetection: startDetection,
     colFinishDetection: finishDetection,
     colNeedsReview: needsReview,
+    colClockOffsetMs: clockOffsetMs,
   };
 
   EventResultRow copyWith({
@@ -2366,6 +2371,7 @@ class EventResultRow {
     String? startDetection,
     String? finishDetection,
     bool? needsReview,
+    int? clockOffsetMs,
   }) => EventResultRow(
     eventId: eventId ?? this.eventId,
     instanceStart: instanceStart ?? this.instanceStart,
@@ -2394,6 +2400,7 @@ class EventResultRow {
     startDetection: startDetection ?? this.startDetection,
     finishDetection: finishDetection ?? this.finishDetection,
     needsReview: needsReview ?? this.needsReview,
+    clockOffsetMs: clockOffsetMs ?? this.clockOffsetMs,
   );
 }
 

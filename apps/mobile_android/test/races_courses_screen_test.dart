@@ -81,6 +81,7 @@ ParkCourseListing _course(
   String parkId,
   String name, {
   double distanceM = 5000,
+  int? laps,
   required double lat,
 }) =>
     ParkCourseListing(
@@ -93,6 +94,7 @@ ParkCourseListing _course(
         status: 'open',
         geometrySource: 'osm',
         checkpoints: const [],
+        laps: laps,
         createdAt: _created,
       ),
       segment: GlobalSegmentRow(
@@ -135,7 +137,7 @@ class _ParksApi extends ApiClient {
     if (failCourses) throw StateError('courses down');
     return [
       _course('far', 'p1', 'Far Loop', lat: 38.5),
-      _course('near', 'p2', 'Near Loop', distanceM: 10000, lat: 37.51),
+      _course('near', 'p2', 'Near Loop', distanceM: 10000, laps: 2, lat: 37.51),
       // A course whose park the reader cannot see is not listed.
       _course('hidden', 'p-gone', 'Hidden Loop', lat: 37.5),
     ];
@@ -220,6 +222,14 @@ void main() {
     expect(anyTime(find.text('Hidden Loop')), findsNothing);
     expect(anyTime(find.text('2026 record: 25:00 by Bea')), findsOneWidget);
     expect(anyTime(find.text('2026 record: 45:00')), findsOneWidget);
+    // A course distance reads as its name (#1352): no "10.00 km", and no
+    // "Loop" on a loop.
+    expect(anyTime(find.textContaining('10 km')), findsOneWidget);
+    expect(anyTime(find.textContaining('10.00')), findsNothing);
+    expect(anyTime(find.textContaining(' · Loop')), findsNothing);
+    expect(find.byKey(const ValueKey('races-any-time-laps-near')), findsOneWidget);
+    expect(find.byKey(const ValueKey('races-any-time-laps-far')), findsNothing);
+    expect(anyTime(find.text('2 laps')), findsOneWidget);
     // Upcoming races leads, as on web.
     expect(tester.getTopLeft(find.text('Upcoming races')).dy,
         lessThan(tester.getTopLeft(find.text('Run any time')).dy));

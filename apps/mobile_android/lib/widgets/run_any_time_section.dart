@@ -9,6 +9,7 @@ import 'package:ui_kit/ui_kit.dart' show ListSkeleton;
 import '../any_time_courses.dart';
 import '../backend_timeout.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../park_course_distance.dart' show courseLapsChip, courseShapeShown;
 import '../park_courses.dart' show regionName;
 import '../preferences.dart' show formatDistanceForPref, formatEffortTime;
 import '../quiet_location.dart';
@@ -261,9 +262,19 @@ class _CourseCard extends StatelessWidget {
     final park = entry.park.park;
     final course = entry.course.course;
     final segment = entry.course.segment;
+    final laps = courseLapsChip(course.laps);
+    final pills = [
+      if (laps != null)
+        courseFactPill(
+          context,
+          l10n.parksCourseLaps(laps),
+          key: ValueKey('races-any-time-laps-${course.id}'),
+        ),
+      if (courseShapeShown(course.courseShape))
+        courseFactPill(context, courseShapeLabel(l10n, course.courseShape)),
+    ];
     final meta = [
-      formatDistanceForPref(segment.distanceM),
-      courseShapeLabel(l10n, course.courseShape),
+      courseDistanceForPref(segment.distanceM),
       if (awayM case final away?)
         l10n.racesAnyTimeAway(formatDistanceForPref(away)),
     ].join(' · ');
@@ -290,6 +301,11 @@ class _CourseCard extends StatelessWidget {
           children: [
             Text('${park.name}, ${regionName(park.regionCode)}', style: muted),
             Text(meta, style: muted),
+            if (pills.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Wrap(spacing: 6, runSpacing: 4, children: pills),
+              ),
             if (recordLine != null) Text(recordLine),
           ],
         ),

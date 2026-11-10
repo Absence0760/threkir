@@ -23,6 +23,7 @@ class ElevationChart extends StatefulWidget {
   /// the matching marker on `LiveRunMap` — Nike/Strava-style brushing.
   final ValueChanged<int?>? onHoverIdx;
   const ElevationChart({
+    super.key,
     required this.track,
     required this.theme,
     required this.unit,

@@ -62,7 +62,7 @@ void main() {
   test('fixture is spec v1.6 and carries every scenario', () {
     expect(vectors['spec'], 'gps-distance-estimator v1.6');
     expect(GpsDistanceEstimator.specVersion, '1.6');
-    expect(scenarios.length, greaterThanOrEqualTo(46));
+    expect(scenarios.length, greaterThanOrEqualTo(49));
   });
 
   test('constants match the fixture', () {
@@ -488,6 +488,28 @@ void main() {
       e.addSteps(51, 204);
       expect(e.distanceM - before, closeTo(1, 1e-9));
       expect(e.stepDistanceM - steps, closeTo(1, 1e-9));
+    });
+
+    test('a fix bridging a short stall teaches no stride from its credit', () {
+      // 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+      // whose samples emptied the window; feeding its 28 m to the window
+      // learns 1.092 m, and letting the sample at 36.5 refill it 0.985 m.
+      final e = GpsDistanceEstimator();
+      for (var i = 0; i <= 60; i++) {
+        if (i < 30 || i >= 36) {
+          e.addFix(
+            t: i.toDouble(),
+            lat: 40,
+            lng: -75 + 4.0 * i / (111195 * math.cos(40 * math.pi / 180)),
+            accuracyM: 3,
+            speedMps: 4,
+            speedAccuracyMps: 0.3,
+            bearingDeg: 90,
+          );
+        }
+        e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      expect(e.strideM, closeTo(1.0, 1e-9));
     });
 
     test('a stretch credits no steps taken before its first fix', () {

@@ -79,7 +79,7 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 Deno.test('the port implements the spec v1.6 fixture: version, scenario set and every constant', () => {
 	assertEquals(fixture.spec, 'gps-distance-estimator v1.6');
 	assertEquals(SPEC_VERSION, '1.6');
-	assert(fixture.scenarios.length >= 46, `only ${fixture.scenarios.length} scenarios`);
+	assert(fixture.scenarios.length >= 49, `only ${fixture.scenarios.length} scenarios`);
 	assert(TOL > 0 && TOL <= 0.001);
 	assert(POS_TOL > 0 && POS_TOL <= 1e-8);
 	const port = gps as unknown as Record<string, unknown>;
@@ -270,6 +270,18 @@ Deno.test('a late sample stamped inside a gap shares only its own interval (v1.6
 	est.addSteps(51, 204);
 	assert(Math.abs(est.distanceM - before - 1) < 1e-9, `distance ${est.distanceM}`);
 	assert(Math.abs(est.stepDistanceM - steps - 1) < 1e-9, `steps ${est.stepDistanceM}`);
+});
+
+Deno.test('a fix bridging a short stall teaches no stride from its credit (v1.6)', () => {
+	// 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+	// whose samples emptied the window; feeding its 28 m to the window learns
+	// 1.092 m, and letting the sample at 36.5 refill it 0.985 m.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		if (i < 30 || i >= 36) est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert(Math.abs((est.strideM ?? 0) - 1) < 1e-9, `stride ${est.strideM}`);
 });
 
 Deno.test('a stretch credits no steps taken before its first fix (v1.6)', () => {

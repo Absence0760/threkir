@@ -169,6 +169,8 @@ class GpsDistanceEstimator:
         self._t = None
         self._win_steps = 0
         self._win_m = 0.0
+        self._win_from_t = -math.inf      # v1.6: the fix that last emptied the stride window
+        self._win_stale = False           # v1.6: a stale step sample emptied the window since the last fix
         self._last_steps = None
         self._last_step_t = None
         self._pending_step_m = 0.0
@@ -265,9 +267,10 @@ class GpsDistanceEstimator:
                 if len(self._gaps) > MAX_OPEN_GAPS:
                     self._gaps.pop(0)
             self._pending_step_m = 0.0
+            self._win_stale = False
             self._stride_ok = self._stride_grade(accuracy_m, dop, sa)
             if not self._stride_ok:
-                self._win_steps, self._win_m = 0, 0.0
+                self._empty_window(t)
             self._x, self._y = _Axis(zx, r), _Axis(zy, r)
             self._t = t
             self._xc_last = (zx, zy, t)
@@ -409,13 +412,22 @@ class GpsDistanceEstimator:
             inc = 0.0 if speed < floor else min(speed, self.max_speed_mps) * dt
         self.gps_distance_m += inc
         self._stride_ok = self._stride_grade(accuracy_m, dop if use_dop is not None and chord is None else None, sa)
-        if self._stride_ok:
+        # A step sample that fell stale since the last fix emptied the window inside this
+        # fix's interval, so the window no longer holds the steps its metres cover.
+        if self._stride_ok and not self._win_stale:
             self._win_m += inc
         else:
-            self._win_steps, self._win_m = 0, 0.0
+            self._empty_window(t)
+        self._win_stale = False
         self._record(t=t, anchor=False, chain_break=chain_break, dt=dt, pred=pred,
                      zupt=zupt, dop=use_dop, chord=chord)
         return inc
+
+    def _empty_window(self, t):
+        """Empty the stride window at the fix at t. Its metres start after t, so a step
+        sample whose interval reaches back before t must not refill it."""
+        self._win_steps, self._win_m = 0, 0.0
+        self._win_from_t = t
 
     def _stride_grade(self, accuracy_m, dop, sa):
         """Whether a fix may teach stride. dop: the Doppler speed the fix was credited
@@ -448,7 +460,8 @@ class GpsDistanceEstimator:
             self._zupt_released = False
         # A sample whose interval reaches into a gap, or stamped before the last fix,
         # holds steps GPS measured no metres for, so it must not teach stride.
-        if self._t is not None and not in_gap and 0.0 <= t - self._t <= self._fresh_fix_s:
+        if (self._t is not None and not in_gap and prev_t >= self._win_from_t
+                and 0.0 <= t - self._t <= self._fresh_fix_s):
             if not self._stride_ok:
                 return
             self._win_steps += d
@@ -459,6 +472,8 @@ class GpsDistanceEstimator:
                         (1 - STRIDE_EMA_ALPHA) * self.stride_m + STRIDE_EMA_ALPHA * stride
                 self._win_steps, self._win_m = 0, 0.0
             return
+        if self._t is not None and t - self._t > self._fresh_fix_s:
+            self._win_stale = True
         self._win_steps, self._win_m = 0, 0.0
 
     def _attribute_steps(self, prev_t, t, d):

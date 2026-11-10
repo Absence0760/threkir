@@ -238,6 +238,23 @@ def lag_every_tenth():
 
 add("steps_stamped_before_last_fix_no_stride", "v1.6: 60 s at 4 m/s with 1 Hz fixes and steps, no gap, learning on and no seed; every tenth sample is delivered after the next fix, so it is stamped before the last fix and empties the stride window, which then never reaches 50 steps: no stride is learned (feeding those samples learns 0.997 m); the distance is the same 240 m either way",
     lag_every_tenth())
+add("short_gap_stride_window_paired", "v1.6: 4 m/s with 1 Hz fixes and steps (a true 1 m stride), learning on and no seed; a 7 s fix stall the filter bridges (fix at 36 after 29, six fixes missing), then a 30 s gap the steps fill; the samples inside the stall emptied the window as stale, so the bridging fix's 28 m have no steps to pair with and the fix empties it too and the sample reaching back across it does not refill it: the stride learns 1 m and the second gap's steps credit 120 m (420.00 m, the true path); feeding the bridged metres learned 1.074 m and read 428.86 m, and dropping them but letting the sample at 36.5 refill learned 0.988 m",
+    line(list(range(30)) + list(range(36, 71)) + list(range(100, 106)), [t + 0.5 for t in range(106)], finish=106.0))
+add("batched_steps_short_holes_keep_learning", "v1.6: 4 m/s with 1 Hz fixes, steps in 15 s batches stamped half a second after a fix, learning on and no seed; every batch's interval holds a 3-fix hole the filter bridges, but no sample lands inside a hole, so the window's metres and steps still cover the same interval and the stride learns 1 m; a 30 s gap the runner loops back across is then filled by steps (620.00 m, the true path). Emptying the window at every fix that bridges more than the fresh-fix window learns no stride and reads 505.41 m",
+    line([t for t in range(121) if t % 15 not in (8, 9, 10)] + list(range(150, 156)),
+         [0.5] + [15.0 * k + 0.5 for k in range(1, 9)] + [150.5, 155.5],
+         east_at={t: 470.0 + 4 * (t - 150) for t in range(150, 156)}, finish=156.0))
+def untrusted(ev, ts):
+    for e in ev:
+        if e["type"] == "fix" and e["t"] in ts:
+            e["speedAcc"] = 1.2
+    return ev
+
+
+add("batched_steps_untrusted_fix_stride_paired", "v1.6: the batched run of batched_steps_short_holes_keep_learning with no holes and two fixes stating speedAcc 1.2 (too poor to teach stride) inside a batch; each empties the window, and the next batch, whose interval starts before it, empties it again instead of adding 15 s of steps to 8 s of metres: the stride learns 1 m and the loop-back gap reads 620.00 m (the true path); letting that batch refill the window learns 0.910 m and reads 609.12 m",
+    untrusted(line(list(range(121)) + list(range(150, 156)),
+                   [0.5] + [15.0 * k + 0.5 for k in range(1, 9)] + [150.5, 155.5],
+                   east_at={t: 470.0 + 4 * (t - 150) for t in range(150, 156)}, finish=156.0), (37.0, 82.0)))
 add("gap_steps_open_gap_cap", "v1.6: nine 12 s gaps whose fixes zigzag 10 m apart, with no step sample until one after the ninth; only MAX_OPEN_GAPS = 8 gaps can still claim a share, so the oldest keeps its chord credit and its 46 m of steps after the 25.5 sample are dropped (the cap only under-credits)",
     line(list(range(26)) + [25 + 12 * k for k in range(1, 10)], [t + 0.5 for t in range(26)] + [133.5],
          east_at={25 + 12 * k: (110.0 if k % 2 else 100.0) for k in range(1, 10)} | {25: 100.0}), stride=1.0, learn_stride=False)

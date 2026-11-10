@@ -69,6 +69,10 @@ class GpsDistanceEstimator(
     private var lastT: Double? = null
     private var winSteps = 0L
     private var winM = 0.0
+    /// v1.6: the fix that last emptied the stride window.
+    private var winFromT = Double.NEGATIVE_INFINITY
+    /// v1.6: a stale step sample emptied the stride window since the last fix.
+    private var winStale = false
     private var lastSteps: Long? = null
     private var lastStepT: Double? = null
     private var pendingStepM = 0.0
@@ -168,10 +172,8 @@ class GpsDistanceEstimator(
             }
             pendingStepM = 0.0
             strideOk = strideGrade(accuracyM, doppler?.second)
-            if (!strideOk) {
-                winSteps = 0
-                winM = 0.0
-            }
+            winStale = false
+            if (!strideOk) emptyWindow(t)
             x = Axis(zx, r)
             y = Axis(zy, r)
             lastT = t
@@ -345,13 +347,24 @@ class GpsDistanceEstimator(
         }
         gpsDistanceM += inc
         strideOk = strideGrade(accuracyM, if (useDop != null && chord == null) doppler!!.second else null)
-        if (strideOk) {
+        // A step sample that fell stale since the last fix emptied the window
+        // inside this fix's interval, so the window no longer holds the steps its
+        // metres cover.
+        if (strideOk && !winStale) {
             winM += inc
         } else {
-            winSteps = 0
-            winM = 0.0
+            emptyWindow(t)
         }
+        winStale = false
         return inc
+    }
+
+    /// Empty the stride window at the fix at [t]. Its metres start after [t], so
+    /// a step sample whose interval reaches back before [t] must not refill it.
+    private fun emptyWindow(t: Double) {
+        winSteps = 0
+        winM = 0.0
+        winFromT = t
     }
 
     /// Whether a fix may teach stride: by its Doppler sigma when its credit
@@ -383,7 +396,7 @@ class GpsDistanceEstimator(
         val fixT = lastT
         // A sample whose interval reaches into a gap, or stamped before the last
         // fix, holds steps GPS measured no metres for, so it must not teach stride.
-        if (fixT != null && !inGap && t - fixT >= 0 && t - fixT <= freshFixS) {
+        if (fixT != null && !inGap && prevT >= winFromT && t - fixT >= 0 && t - fixT <= freshFixS) {
             if (!strideOk) return
             winSteps += d
             if (winSteps >= STRIDE_WINDOW_STEPS) {
@@ -401,6 +414,7 @@ class GpsDistanceEstimator(
             }
             return
         }
+        if (fixT != null && t - fixT > freshFixS) winStale = true
         winSteps = 0
         winM = 0.0
     }

@@ -172,6 +172,10 @@ final class GpsDistanceEstimator {
     private var t: Double?
     private var winSteps = 0
     private var winM: Double = 0
+    /// v1.6: the fix that last emptied the stride window.
+    private var winFromT = -Double.infinity
+    /// v1.6: a stale step sample emptied the stride window since the last fix.
+    private var winStale = false
     private var lastSteps: Int?
     private var lastStepT: Double?
     private var pendingStepM: Double = 0
@@ -316,10 +320,8 @@ final class GpsDistanceEstimator {
             }
             pendingStepM = 0
             strideOk = strideGrade(accuracyM, doppler?.sa)
-            if !strideOk {
-                winSteps = 0
-                winM = 0
-            }
+            winStale = false
+            if !strideOk { emptyWindow(at: t) }
             x = Axis(p: zx, posVar: r)
             y = Axis(p: zy, posVar: r)
             self.t = t
@@ -481,13 +483,24 @@ final class GpsDistanceEstimator {
         }
         gpsDistanceM += inc
         strideOk = strideGrade(accuracyM, chord == nil ? useDop?.sa : nil)
-        if strideOk {
+        // A step sample that fell stale since the last fix emptied the window
+        // inside this fix's interval, so the window no longer holds the steps its
+        // metres cover.
+        if strideOk && !winStale {
             winM += inc
         } else {
-            winSteps = 0
-            winM = 0
+            emptyWindow(at: t)
         }
+        winStale = false
         return inc
+    }
+
+    /// Empty the stride window at the fix at `t`. Its metres start after `t`, so
+    /// a step sample whose interval reaches back before `t` must not refill it.
+    private func emptyWindow(at t: Double) {
+        winSteps = 0
+        winM = 0
+        winFromT = t
     }
 
     /// Whether a fix may teach stride: by its Doppler sigma when its credit
@@ -523,7 +536,7 @@ final class GpsDistanceEstimator {
         }
         // A sample whose interval reaches into a gap, or stamped before the last
         // fix, holds steps GPS measured no metres for, so it must not teach stride.
-        if let fixT = self.t, !inGap, t - fixT >= 0, t - fixT <= freshFixWindowS {
+        if let fixT = self.t, !inGap, prevT >= winFromT, t - fixT >= 0, t - fixT <= freshFixWindowS {
             if !strideOk { return }
             winSteps += d
             if winSteps >= Self.strideWindowSteps {
@@ -540,6 +553,7 @@ final class GpsDistanceEstimator {
             }
             return
         }
+        if let fixT = self.t, t - fixT > freshFixWindowS { winStale = true }
         winSteps = 0
         winM = 0
     }

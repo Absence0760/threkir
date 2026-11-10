@@ -239,6 +239,8 @@ type Estimator struct {
 
 	winSteps     int
 	winM         float64
+	winFromT     float64 // v1.6: the fix that last emptied the stride window
+	winStale     bool    // v1.6: a stale step sample emptied the window since the last fix
 	hasLastSteps bool
 	lastSteps    int
 	lastStepT    float64
@@ -312,6 +314,7 @@ func NewWithOptions(o Options) *Estimator {
 	e := &Estimator{
 		MaxSpeedMps: maxSpeedMps, gapS: GapS * scale, freshFixS: FreshFixS * scale,
 		RScale: 1.0, DopplerTrusted: true, DopplerScale: 1.0, learnStride: !o.NoStrideLearning,
+		winFromT: math.Inf(-1),
 	}
 	if validPtr(o.InitialStrideM) && *o.InitialStrideM >= MinStrideM && *o.InitialStrideM <= MaxStrideM {
 		stride := *o.InitialStrideM
@@ -411,8 +414,9 @@ func (e *Estimator) AddFix(f Fix) float64 {
 		}
 		e.pendingStepM = 0
 		e.strideOK = e.strideGrade(f.AccuracyM, dopOK, sa)
+		e.winStale = false
 		if !e.strideOK {
-			e.winSteps, e.winM = 0, 0
+			e.emptyWindow(f.T)
 		}
 		e.x, e.y = newAxis(zx, r), newAxis(zy, r)
 		e.t, e.hasT = f.T, true
@@ -578,11 +582,15 @@ func (e *Estimator) AddFix(f Fix) float64 {
 	}
 	e.GpsDistanceM += inc
 	e.strideOK = e.strideGrade(f.AccuracyM, useDop && !hasChord, sa)
-	if e.strideOK {
+	// A step sample that fell stale since the last fix emptied the window
+	// inside this fix's interval, so the window no longer holds the steps its
+	// metres cover.
+	if e.strideOK && !e.winStale {
 		e.winM += inc
 	} else {
-		e.winSteps, e.winM = 0, 0
+		e.emptyWindow(f.T)
 	}
+	e.winStale = false
 	e.record(record{dt: dt, chainBreak: chainBreak, predX: predX, predY: predY, zupt: zupt,
 		hasDop: useDop, dop: sdop, hasChord: hasChord, chord: chord})
 	return inc
@@ -595,6 +603,14 @@ func (e *Estimator) setDsLast(x, y, t float64, hasDop bool, dop float64, bearing
 	if e.dsLastHasBearing {
 		e.dsLastBearing = *bearing
 	}
+}
+
+// emptyWindow empties the stride window at the fix at t. Its metres start
+// after t, so a step sample whose interval reaches back before t must not
+// refill it.
+func (e *Estimator) emptyWindow(t float64) {
+	e.winSteps, e.winM = 0, 0
+	e.winFromT = t
 }
 
 // strideGrade says whether a fix may teach stride: by its Doppler sigma sa
@@ -637,7 +653,7 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 	}
 	// A sample whose interval reaches into a gap, or stamped before the last
 	// fix, holds steps GPS measured no metres for, so it must not teach stride.
-	if e.hasT && !inGap && t-e.t >= 0 && t-e.t <= e.freshFixS {
+	if e.hasT && !inGap && prevT >= e.winFromT && t-e.t >= 0 && t-e.t <= e.freshFixS {
 		if !e.strideOK {
 			return
 		}
@@ -654,6 +670,9 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 			e.winSteps, e.winM = 0, 0
 		}
 		return
+	}
+	if e.hasT && t-e.t > e.freshFixS {
+		e.winStale = true
 	}
 	e.winSteps, e.winM = 0, 0
 }

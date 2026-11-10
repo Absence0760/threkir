@@ -214,6 +214,19 @@ class GpsDistanceEstimatorTest {
     }
 
     @Test
+    fun `a fix bridging a short stall teaches no stride from its credit`() {
+        // 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+        // whose samples emptied the window; feeding its 28 m to the window
+        // learns 1.092 m, and letting the sample at 36.5 refill it 0.985 m (v1.6).
+        val est = GpsDistanceEstimator()
+        for (i in 0..60) {
+            if (i < 30 || i >= 36) est.addFix(i.toDouble(), 40.0, -75.0 + 4.0 * i / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+            est.addSteps(i + 0.5, 4L * i + 2)
+        }
+        assertEquals(1.0, est.strideM!!, 1e-9)
+    }
+
+    @Test
     fun `a stretch credits no steps taken before its first fix`() {
         val est = GpsDistanceEstimator(initialStrideM = 1.0, learnStride = false)
         for (i in 0 until 30) est.addSteps(i + 0.5, 4L * i)

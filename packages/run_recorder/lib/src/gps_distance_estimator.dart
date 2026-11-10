@@ -113,6 +113,10 @@ class GpsDistanceEstimator {
   double? _t;
   int _winSteps = 0;
   double _winM = 0.0;
+  // v1.6: the fix that last emptied the stride window.
+  double _winFromT = double.negativeInfinity;
+  // v1.6: a stale step sample emptied the stride window since the last fix.
+  bool _winStale = false;
   int? _lastSteps;
   double? _lastStepT;
   double _pendingStepM = 0.0;
@@ -303,10 +307,8 @@ class GpsDistanceEstimator {
       }
       _pendingStepM = 0.0;
       _strideOk = _strideGrade(accuracyM, dop != null, doppler?.sa);
-      if (!_strideOk) {
-        _winSteps = 0;
-        _winM = 0.0;
-      }
+      _winStale = false;
+      if (!_strideOk) _emptyWindow(t);
       _x = _Axis(zx, r);
       _y = _Axis(zy, r);
       _t = t;
@@ -520,12 +522,15 @@ class GpsDistanceEstimator {
       useDop != null && chord == null,
       doppler?.sa,
     );
-    if (_strideOk) {
+    // A step sample that fell stale since the last fix emptied the window
+    // inside this fix's interval, so the window no longer holds the steps its
+    // metres cover.
+    if (_strideOk && !_winStale) {
       _winM += inc;
     } else {
-      _winSteps = 0;
-      _winM = 0.0;
+      _emptyWindow(t);
     }
+    _winStale = false;
     _record(
       anchor: false,
       chainBreak: chainBreak,
@@ -537,6 +542,15 @@ class GpsDistanceEstimator {
       chord: chord,
     );
     return inc;
+  }
+
+  /// Empty the stride window at the fix at [t]. Its metres start after [t],
+  /// so a step sample whose interval reaches back before [t] must not refill
+  /// it.
+  void _emptyWindow(double t) {
+    _winSteps = 0;
+    _winM = 0.0;
+    _winFromT = t;
   }
 
   /// Whether a fix may teach stride: [fromDoppler] when its credit came from
@@ -577,7 +591,11 @@ class GpsDistanceEstimator {
     final fixT = _t;
     // A sample whose interval reaches into a gap, or stamped before the last
     // fix, holds steps GPS measured no metres for, so it must not teach stride.
-    if (fixT != null && !inGap && t - fixT >= 0 && t - fixT <= _freshFixS) {
+    if (fixT != null &&
+        !inGap &&
+        prevT >= _winFromT &&
+        t - fixT >= 0 &&
+        t - fixT <= _freshFixS) {
       if (!_strideOk) return;
       _winSteps += d;
       if (_winSteps >= strideWindowSteps) {
@@ -593,6 +611,7 @@ class GpsDistanceEstimator {
       }
       return;
     }
+    if (fixT != null && t - fixT > _freshFixS) _winStale = true;
     _winSteps = 0;
     _winM = 0.0;
   }

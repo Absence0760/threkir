@@ -237,6 +237,20 @@ final class GpsDistanceEstimatorTests: XCTestCase {
         XCTAssertEqual(estimator.stepDistanceM - steps, 1, accuracy: 1e-9)
     }
 
+    func testFixBridgingAShortStallTeachesNoStrideFromItsCredit() {
+        // 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+        // whose samples emptied the window; feeding its 28 m to the window
+        // learns 1.092 m, and letting the sample at 36.5 refill it 0.985 m (v1.6).
+        let estimator = GpsDistanceEstimator()
+        for i in 0...60 {
+            if i < 30 || i >= 36 {
+                estimator.addFix(t: Double(i), lat: 40, lng: -75 + 4 * Double(i) / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+            }
+            estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i + 2)
+        }
+        XCTAssertEqual(estimator.strideM ?? 0, 1, accuracy: 1e-9)
+    }
+
     func testStretchCreditsNoStepsTakenBeforeItsFirstFix() {
         let estimator = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false)
         for i in 0..<30 { estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i) }

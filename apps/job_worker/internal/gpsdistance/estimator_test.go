@@ -457,6 +457,24 @@ func TestALateSampleStampedInsideAGapSharesOnlyItsOwnInterval(t *testing.T) {
 	}
 }
 
+// 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall whose
+// samples emptied the window; feeding its 28 m to the window learns 1.092 m,
+// and letting the sample at 36.5 refill it 0.985 m (v1.6).
+func TestAFixBridgingAShortStallTeachesNoStrideFromItsCredit(t *testing.T) {
+	e := NewWithOptions(Options{})
+	for i := 0; i <= 60; i++ {
+		if i < 30 || i >= 36 {
+			acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+			e.AddFix(Fix{T: float64(i), Lat: 40, Lng: -75 + 4*float64(i)/eastMPerDeg,
+				AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+		}
+		e.AddSteps(float64(i)+0.5, 4*i+2)
+	}
+	if e.StrideM == nil || math.Abs(*e.StrideM-1) > 1e-9 {
+		t.Errorf("stride %v, want 1", e.StrideM)
+	}
+}
+
 func TestAStretchCreditsNoStepsTakenBeforeItsFirstFix(t *testing.T) {
 	stride := 1.0
 	e := NewWithOptions(Options{InitialStrideM: &stride, NoStrideLearning: true})

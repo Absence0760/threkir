@@ -209,6 +209,10 @@ export class GpsDistanceEstimator {
 	private t: number | null = null;
 	private winSteps = 0;
 	private winM = 0;
+	/** v1.6: the fix that last emptied the stride window. */
+	private winFromT = -Infinity;
+	/** v1.6: a stale step sample emptied the stride window since the last fix. */
+	private winStale = false;
 	private lastSteps: number | null = null;
 	private lastStepT: number | null = null;
 	private pendingStepM = 0;
@@ -355,10 +359,8 @@ export class GpsDistanceEstimator {
 			}
 			this.pendingStepM = 0;
 			this.strideOk = this.strideGrade(accuracyM, dop !== null, doppler === null ? null : doppler.sa);
-			if (!this.strideOk) {
-				this.winSteps = 0;
-				this.winM = 0;
-			}
+			this.winStale = false;
+			if (!this.strideOk) this.emptyWindow(t);
 			this.x = new Axis(zx, r);
 			this.y = new Axis(zy, r);
 			this.t = t;
@@ -555,14 +557,27 @@ export class GpsDistanceEstimator {
 			useDop !== null && chord === null,
 			doppler === null ? null : doppler.sa,
 		);
-		if (this.strideOk) {
+		// A step sample that fell stale since the last fix emptied the window
+		// inside this fix's interval, so the window no longer holds the steps its
+		// metres cover.
+		if (this.strideOk && !this.winStale) {
 			this.winM += inc;
 		} else {
-			this.winSteps = 0;
-			this.winM = 0;
+			this.emptyWindow(t);
 		}
+		this.winStale = false;
 		this.record({ anchor: false, chainBreak, dt, pred, zupt, dop: useDop, chord }, x, y);
 		return inc;
+	}
+
+	/**
+	 * Empty the stride window at the fix at t. Its metres start after t, so a
+	 * step sample whose interval reaches back before t must not refill it.
+	 */
+	private emptyWindow(t: number): void {
+		this.winSteps = 0;
+		this.winM = 0;
+		this.winFromT = t;
 	}
 
 	/** Whether a fix may teach stride: by its Doppler sigma when its credit came from Doppler, else by its position accuracy. */
@@ -598,7 +613,13 @@ export class GpsDistanceEstimator {
 		}
 		// A sample whose interval reaches into a gap, or stamped before the last
 		// fix, holds steps GPS measured no metres for, so it must not teach stride.
-		if (this.t !== null && !inGap && t - this.t >= 0 && t - this.t <= this.freshFixS) {
+		if (
+			this.t !== null &&
+			!inGap &&
+			prevT >= this.winFromT &&
+			t - this.t >= 0 &&
+			t - this.t <= this.freshFixS
+		) {
 			if (!this.strideOk) return;
 			this.winSteps += d;
 			if (this.winSteps >= STRIDE_WINDOW_STEPS) {
@@ -614,6 +635,7 @@ export class GpsDistanceEstimator {
 			}
 			return;
 		}
+		if (this.t !== null && t - this.t > this.freshFixS) this.winStale = true;
 		this.winSteps = 0;
 		this.winM = 0;
 	}

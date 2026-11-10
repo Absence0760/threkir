@@ -195,6 +195,10 @@ pub struct GpsDistanceEstimator {
     t: Option<f64>,
     win_steps: i64,
     win_m: f64,
+    /// v1.6: the fix that last emptied the stride window.
+    win_from_t: f64,
+    /// v1.6: a stale step sample emptied the stride window since the last fix.
+    win_stale: bool,
     last_steps: Option<i64>,
     last_step_t: Option<f64>,
     pending_step_m: f64,
@@ -234,11 +238,11 @@ pub struct GpsDistanceEstimator {
 /// the pin is about noticing growth rather than a hard ceiling. Measured at
 /// spec v1.2: v1.1's 248 B plus 112 B for the gate, adaptive-R, cross-check
 /// and ZUPT state; spec v1.3 adds 88 B for the Doppler scale; spec v1.4's two
-/// stride-learning flags spill one more 8 B word; spec v1.5's step-batch span adds 8 B; spec v1.6's eight open gaps and their `u32` count add 192 B. The state stays `f64`: the projection and the covariance
+/// stride-learning flags spill one more 8 B word; spec v1.5's step-batch span adds 8 B; spec v1.6's eight open gaps and their `u32` count add 192 B, and the time the stride window was last emptied 8 B (its stale flag fits beside the other `bool`s). The state stays `f64`: the projection and the covariance
 /// recursion over a run of thousands of fixes do not hold the vectors' 1e-3 m
 /// in `f32`. Identical on both targets because every field is 8-aligned
 /// scalars, `u32`s and `bool`s.
-const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 656);
+const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 664);
 
 impl Default for GpsDistanceEstimator {
     fn default() -> Self {
@@ -282,6 +286,8 @@ impl GpsDistanceEstimator {
             t: None,
             win_steps: 0,
             win_m: 0.0,
+            win_from_t: f64::NEG_INFINITY,
+            win_stale: false,
             last_steps: None,
             last_step_t: None,
             pending_step_m: 0.0,
@@ -477,9 +483,9 @@ impl GpsDistanceEstimator {
                 }
                 self.pending_step_m = 0.0;
                 self.stride_ok = self.stride_grade(accuracy_m, doppler.map(|(_, sa)| sa));
+                self.win_stale = false;
                 if !self.stride_ok {
-                    self.win_steps = 0;
-                    self.win_m = 0.0;
+                    self.empty_window(t);
                 }
                 self.axes = Some((Axis::new(zx, r), Axis::new(zy, r)));
                 self.t = Some(t);
@@ -656,13 +662,25 @@ impl GpsDistanceEstimator {
             _ => None,
         };
         self.stride_ok = self.stride_grade(accuracy_m, credit_sa);
-        if self.stride_ok {
+        // A step sample that fell stale since the last fix emptied the window
+        // inside this fix's interval, so the window no longer holds the steps its
+        // metres cover.
+        if self.stride_ok && !self.win_stale {
             self.win_m += inc;
         } else {
-            self.win_steps = 0;
-            self.win_m = 0.0;
+            self.empty_window(t);
         }
+        self.win_stale = false;
         inc
+    }
+
+    /// Empty the stride window at the fix at `t`. Its metres start after `t`,
+    /// so a step sample whose interval reaches back before `t` must not refill
+    /// it.
+    fn empty_window(&mut self, t: f64) {
+        self.win_steps = 0;
+        self.win_m = 0.0;
+        self.win_from_t = t;
     }
 
     /// Cumulative pedometer count. Learns a stride while GPS is good and
@@ -698,7 +716,11 @@ impl GpsDistanceEstimator {
         // A sample whose interval reaches into a gap, or stamped before the last
         // fix, holds steps GPS measured no metres for, so it must not teach stride.
         if let Some(fix_t) = self.t {
-            if !in_gap && t - fix_t >= 0.0 && t - fix_t <= self.fresh_fix_s {
+            if !in_gap
+                && prev_t >= self.win_from_t
+                && t - fix_t >= 0.0
+                && t - fix_t <= self.fresh_fix_s
+            {
                 if !self.stride_ok {
                     return;
                 }
@@ -715,6 +737,9 @@ impl GpsDistanceEstimator {
                     self.win_m = 0.0;
                 }
                 return;
+            }
+            if t - fix_t > self.fresh_fix_s {
+                self.win_stale = true;
             }
         }
         self.win_steps = 0;
@@ -1135,6 +1160,30 @@ mod tests {
             "{}",
             e.step_distance_m()
         );
+    }
+
+    #[test]
+    fn a_fix_bridging_a_short_stall_teaches_no_stride_from_its_credit() {
+        // 4 m/s at 4 steps/s is a 1 m stride. The fix at 36 bridges a 7 s stall
+        // whose samples emptied the window; feeding its 28 m to the window
+        // learns 1.092 m, and letting the sample at 36.5 refill it 0.985 m (v1.6).
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if !(30..36).contains(&i) {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            e.add_steps(i as f64 + 0.5, 4 * i + 2);
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-9, "{stride}");
     }
 
     #[test]

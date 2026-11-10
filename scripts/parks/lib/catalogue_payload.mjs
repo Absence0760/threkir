@@ -265,19 +265,30 @@ export function cataloguePayload(manifest, readGeojson) {
 }
 
 /**
- * The one statement the operator runs as the service role.
+ * The `private.load_park_catalogue(...)` call for one park, without the
+ * `select` around it, so the sync can insert its rows into a table.
  *
  * @param {CataloguePayload} payload
  * @param {{ clubId: string, authorId: string, enqueueBackfill?: boolean }} opts
  */
-export function loadSql(payload, { clubId, authorId, enqueueBackfill = false }) {
+export function loadCall(payload, { clubId, authorId, enqueueBackfill = false }) {
 	check(UUID.test(clubId), `--club-id ${clubId} is not a uuid`);
 	check(UUID.test(authorId), `--author-id ${authorId} is not a uuid`);
 	const json = JSON.stringify(payload);
 	let tag = '$park_catalogue$';
 	for (let n = 1; json.includes(tag); n++) tag = `$park_catalogue_${n}$`;
 	return (
-		`select * from private.load_park_catalogue(\n  ${tag}${json}${tag}::jsonb,\n` +
-		`  '${clubId.toLowerCase()}'::uuid,\n  '${authorId.toLowerCase()}'::uuid,\n  ${enqueueBackfill}\n);\n`
+		`private.load_park_catalogue(\n  ${tag}${json}${tag}::jsonb,\n` +
+		`  '${clubId.toLowerCase()}'::uuid,\n  '${authorId.toLowerCase()}'::uuid,\n  ${enqueueBackfill}\n)`
 	);
+}
+
+/**
+ * The one statement the operator runs as the service role.
+ *
+ * @param {CataloguePayload} payload
+ * @param {{ clubId: string, authorId: string, enqueueBackfill?: boolean }} opts
+ */
+export function loadSql(payload, opts) {
+	return `select * from ${loadCall(payload, opts)};\n`;
 }

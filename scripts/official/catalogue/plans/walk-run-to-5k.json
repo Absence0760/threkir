@@ -1,6 +1,6 @@
 {
-	"slug": "couch-to-5k",
-	"name": "Couch to 5K (walk-run, 9 weeks)",
+	"slug": "walk-run-to-5k",
+	"name": "Walk-run to 5K (9 weeks)",
 	"preset": {
 		"goalEvent": "distance_5k",
 		"weeks": 9,

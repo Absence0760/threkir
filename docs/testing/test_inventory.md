@@ -298,7 +298,7 @@ Covers the universal-bag and device-bag overlay logic on `SettingsSyncService` v
 
 **Sign-out account reset (3 tests):** issue #231 — bag-mirrored `Preferences` reset to defaults, the prior user's cached bags dropped when the id is known, idempotent with no cache / no prior id.
 
-### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 65 tests
+### `apps/mobile_android/test/run_screen_recording_flow_test.dart` — 69 tests
 
 Drives the full RunScreen UI flow on top of the existing data-pipeline integration test. Adds a mock-everything setUp that closes every platform-channel surface RunScreen touches when transitioning out of idle:
 
@@ -319,6 +319,8 @@ Precise location (decisions § 1985), one more: an approximate-only grant still 
 No-GPS start and no-distance stop (issue #1300 BUG-012, decisions § 2369), six more: a denied location stops START at the Start without GPS? dialog and Cancel starts nothing; Open settings on a denied start opens the app settings and starts nothing; with Location off it opens the location settings; Record time only starts the run and saves it with `metadata.indoor` and no Stop prompt; and a GPS run that ends with no fix asks at Stop, Discard saving nothing (and clearing the recovery file) while Save as time-only saves it with `metadata.indoor`. The GPS-unavailable start case now passes through Record time only and asserts the banner stays quiet.
 
 Standing still (issue #1300, decisions § 2370), three more: 60 s at 3 m/s then 20 s on one spot shows the **Stopped** chip and leaves the live Avg pace exactly where the running left it (it divides by moving time, so it is ready even though the widget-test wall clock has barely moved), and moving again clears the chip; the spoken split average at a 100 m interval divides by the same moving time (~333 s/km at 3 m/s, null before the fix); and 30 s of 30 m canopy fixes kept off the line still count as moving time (333 s/km, not the 167 the line alone gives).
+
+Timing by the lines (#1307), four more, on a 100 m course with a start line at 6 m and a finish line at 90 m: before the start line the screen shows the distance to it, and the committed crossing hides it, speaks "Start line crossed, timing" and plays the `step_work` haptic; a finish-line crossing files the auto finish at once, plays `workout_complete` and holds the run open behind Not finished? Resume, and when the 60 s window closes the run saves and files the same finish again with its run; the ordinary Resume control inside the window is the undo, so the window no longer stops the run; tapping Resume deletes the filed row, records on past the window, and a later Stop opens Resume race / Finish race and files a manual finish.
 
 ### `apps/mobile_android/test/run_screen_idle_setup_test.dart` — 14 tests
 

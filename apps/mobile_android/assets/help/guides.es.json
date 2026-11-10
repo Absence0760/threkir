@@ -417,7 +417,7 @@
             "type": "steps",
             "items": [
               "En la web, abre [[route:/settings/privacy|Privacidad y uso compartido]] en Configuración y elige una **Visibilidad predeterminada para nuevas carreras**. En la app móvil, es **Privacidad predeterminada de las carreras**, en **Preferencias** de la pestaña **Tú**.",
-              "Para cambiar una sola carrera más tarde, ábrela y usa **Hacer pública** o **Hacer privada**."
+              "Para cambiar una sola carrera más tarde, ábrela y toca **Privado** o **Público** debajo de su título. Antes de hacer pública una carrera, te lo preguntamos y te mostramos lo que ocultarán tus zonas de privacidad."
             ]
           },
           {

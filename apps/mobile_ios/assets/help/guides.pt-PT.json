@@ -417,7 +417,7 @@
             "type": "steps",
             "items": [
               "Na web, abra [[route:/settings/privacy|Privacidade e partilha]] nas Definições e escolha uma **Visibilidade predefinida para novas corridas**. Na app do telemóvel, é **Privacidade predefinida das corridas** em **Preferências**, no separador **Tu**.",
-              "Para alterar uma única corrida mais tarde, abra-a e use **Tornar pública** ou **Tornar privada**."
+              "Para alterar uma única corrida mais tarde, abra-a e toque em **Privado** ou **Público** por baixo do título. Antes de tornar uma corrida pública, pedimos confirmação e mostramos o que as suas zonas de privacidade vão esconder."
             ]
           },
           {

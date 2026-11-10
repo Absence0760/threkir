@@ -66,6 +66,7 @@ export const messages = {
 	'runSurface.tabRuns': 'Corridas',
 	'runSurface.tabRoutes': 'Rotas',
 	'runSurface.tabSegments': 'Segmentos',
+	'runSurface.tabParks': 'Parques',
 	'runSurface.tabPlans': 'Planos',
 	'runSurface.tabRaces': 'Corridas',
 	'shell.offline':

@@ -22273,6 +22273,10 @@
   "@runSurfaceTabSegments": {
     "description": "Run-surface peer strip entry for the famous-segment catalogue"
   },
+  "runSurfaceTabParks": "Parks",
+  "@runSurfaceTabParks": {
+    "description": "Run-surface peer strip entry for the park-course index (park time-trial courses with season boards)"
+  },
   "rateLimitCreateClub": "You're creating clubs too quickly — please wait {wait} and try again.",
   "@rateLimitCreateClub": {
     "description": "Rate-limit refusal when the create_club bucket is spent",

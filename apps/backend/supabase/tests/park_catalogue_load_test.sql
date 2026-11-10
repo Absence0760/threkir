@@ -1,7 +1,8 @@
 -- The operator load of a park catalogue (migration 20271126002425, issue
 -- #1342, decisions § 2425): private.load_park_catalogue creates a park, its
 -- courses' catalogue segments, park_courses rows and official routes; a
--- re-run updates them in place, so ids and efforts survive; a course's curated
+-- re-run updates them in place, so ids and efforts survive, and reports a
+-- course that already matches as unchanged (§ 2429, park_catalogue_sync_test); a course's curated
 -- start_gate / end_gate is written as a curator line and survives a re-load,
 -- and an end the manifest drops it for goes back to derived; it refuses an
 -- author who is not an official publisher, and no client role can call it.
@@ -181,8 +182,8 @@ set local "request.jwt.claims" = '{}';
 
 select is(
   (select array_agg(course_slug || ':' || action order by course_slug) from load2),
-  array['pcl-5k:updated', 'pcl-loop:updated'],
-  'a second load updates both courses');
+  array['pcl-5k:unchanged', 'pcl-loop:unchanged'],
+  'a second load of the same payload reports both courses unchanged');
 select ok(
   (select bool_and(a.park_course_id = b.park_course_id and a.global_segment_id = b.global_segment_id
                    and a.route_id = b.route_id)
@@ -253,8 +254,8 @@ select is(
   (select array_agg(j.payload ->> 'segment_id' order by j.payload ->> 'segment_id')
      from load4 l join jobs j on j.id = l.backfill_job_id
     where j.kind = 'segment_match'),
-  (select array_agg(global_segment_id::text order by global_segment_id::text) from load4),
-  'the backfill flag queues one segment_match backfill per course');
+  (select array_agg(global_segment_id::text) from load4 where course_slug = 'pcl-loop'),
+  'the backfill flag queues a segment_match backfill only for the course whose line changed');
 
 -- ── Curated lines ──
 -- v3: the 5K carries a curated start and end line, and a new course is created

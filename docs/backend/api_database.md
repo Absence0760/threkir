@@ -709,6 +709,8 @@ Park courses (issue #1313, migration `20271115002383`, [decisions § 2383](../ar
 - `park_season(parks)` — computed field, SECURITY INVOKER: the calendar year it is now in the park's timezone. Anon-callable; clients pass it back as `p_season`.
 - `global_segment_completions(p_segment_id, p_season, p_limit)` — SECURITY DEFINER, `set search_path = public, private`, 42501 for a null caller and revoked from anon. One row per athlete with `completions` = distinct local days (park timezone) with an effort the caller may see; same `is_run_visible_to`, block and shadow-hidden rules as the time board, no demographic filters. Ordered by completions desc, then earliest last completion; `p_limit` clamped to 1..200. pgTAP `park_courses_test.sql`.
 - `run_park_course_times(p_run_id)` — SECURITY INVOKER, authenticated only (EXECUTE revoked from anon). The park courses the caller's OWN run completed (rows only where the effort's `user_id` is the caller): course and park names and slugs, `region_code`, `time_seconds`, the `season` (calendar year in the park's timezone) and `season_rank`, the effort's place on `global_segment_leaderboard(..., p_season)` read through that RPC with ordinality (top 100, and only when the effort is the runner's best that season), so it applies the board's own visibility, block and consent rules. Feeds the share image's course sticker (migration `20271123002404`, [decisions § 2405](../architecture/decisions.md)). pgTAP `park_course_badges_test.sql`.
+- `private.load_park_catalogue(p_manifest, p_club_id, p_author_id, p_enqueue_backfill default false)` — SECURITY DEFINER, service role only, `timezone = UTC` (migrations `20271126002425` + `20271127002429`, [decisions § 2425](../architecture/decisions.md) / [§ 2429](../architecture/decisions.md)). Upserts one park and, per course, its catalogue segment, `park_courses` row and public official route; refuses (`42501`) an author who is not an active owner or admin of a verified public club. Returns `(course_slug, park_course_id, global_segment_id, route_id, action, backfill_job_id)`, `action` one of `created` / `updated` / `unchanged` / `closed`. Every write is guarded by `is distinct from` against the stored row, so `unchanged` means nothing was written. `p_enqueue_backfill` queues `enqueue_segment_backfill` only for a `created` course or changed matching geometry (line, curated start / end line, checkpoints). A course of the park the payload omits is set `closed` with the note `Removed from the park catalogue.` (reported once, never deleted), and reopens when named again; any other status is never written. Called by the release's "Sync production state" step (`scripts/parks/sync.mjs`). pgTAP `park_catalogue_load_test.sql` + `park_catalogue_sync_test.sql`.
+- `private.resolve_club_publisher(p_club_slug, p_club_id)` → uuid — SECURITY DEFINER, STABLE, service role only (migration `20271127100001`, [decisions § 2429](../architecture/decisions.md)). The account the release sync loads parks as: the club's active owner, else its active admin with the earliest `joined_at`, then the lowest user id; the same rule as `private.is_official_publisher`, so `load_park_catalogue` accepts it. Refuses an unknown slug (`P0002`), a slug whose club is not `p_club_id` (`22023`), a club that is not verified, public and visible, or one with no active owner or admin (`42501`). pgTAP `resolve_club_publisher_test.sql`.
 - **Badge triggers** (`20271123002404`, [decisions § 2404](../architecture/decisions.md)): `global_segment_efforts_award_park_achievements` (AFTER INSERT, statement level) and `park_courses_award_achievements_insert` / `_update` call `private.award_park_course_achievements`, which runs `award_achievements_for_user` and re-checks the runner's open `park_courses` challenges, each failure a warning that never fails the write. The three park families live in `achievement_tiers_met`.
 
 ---
@@ -1963,6 +1965,21 @@ Pinned by `data_export_jobs_test.sql` (19 assertions) + `data_export_ready_notif
 
 ---
 
+#### Production config sync — `private.ops_task_runs` + the sync functions (migration `20271128002430`, [decisions § 2430](../architecture/decisions.md))
+
+What the backend release's "Sync production state" calls to apply `apps/backend/ops/prod_config.json` and `apps/backend/ops/tasks/` (issue #1350). Every function is SECURITY DEFINER, `search_path = ''`, and service role only.
+
+- `private.ops_task_runs (name text pk, sha256 text, ran_at timestamptz, result jsonb)` — one row per one-off task the release ran; `name` is the task file's stem (`<14-digit timestamp>_<snake_name>`), `sha256` the file it ran, `result` a JSON object. RLS on with no policy; service role only. A BEFORE UPDATE trigger (`ops_task_runs_keep_sha`) refuses rewriting `name` or `sha256` (`55000`).
+- `private.begin_ops_task(p_name, p_sha256)` → text — records the task and returns `run`, or `already ran` when the ledger holds it with the same sha256; refuses (`55000`) one whose file changed after it ran. Names the task for the rest of the transaction.
+- `private.set_ops_task_result(p_result jsonb)` — stores the running task's result on its row; refuses outside a running task (`55000`) or for a non-object (`22023`).
+- `private.apply_feature_flag(p_name, p_enabled)` → text — upserts one `private.feature_flags` row: `created` / `updated` / `unchanged`, and an unchanged flag writes nothing. Service role has no grant on the table itself.
+- `private.arm_cron_url(p_function, p_url)` → text — creates or updates the `<fn>_url` Vault entry `public.invoke_<fn>()` reads, by name: `created` / `updated` / `unchanged`. Refuses a function with no invoker (`P0002`), a URL that is not `https://<20-char ref>.supabase.co/functions/v1/<fn with dashes>` (`22023`), and a project with no `cron_secret` entry, checked by name only (`55000`).
+- `private.cron_invoke_outcome(p_request_id, p_timeout_seconds default 30)` → text — polls `net._http_response` for one request (at most 120 s) and returns its status code, or `timed out` / `error` / `no status` / `pending` / `not sent`. Never a body.
+
+Pinned by `prod_config_sync_test.sql` (37 assertions).
+
+---
+
 #### pg_cron schedules
 
 | Job | Schedule | What it does | Migration |
@@ -2509,10 +2526,10 @@ grant  execute on function public.<fn>(<args>) to authenticated;   -- and/or ser
 
 Add `authenticated` to the revoke list when no client role should hold it at all
 (the `cleanup_*` / `enqueue_*` cron family, and helpers only a SECURITY DEFINER
-trigger calls). 189 migrations write a function-level `from public, anon` revoke
-today (169 as `revoke execute`, 27 as `revoke all`); it is the house form for
+trigger calls). 192 migrations write a function-level `from public, anon` revoke
+today (172 as `revoke execute`, 27 as `revoke all`); it is the house form for
 exactly this reason, and `check_migration_function_revoke_noop.mjs` is what
-keeps it — it replays all 690 migrations in version order and fails the PR on
+keeps it — it replays all 693 migrations in version order and fails the PR on
 any EXECUTE revoke that leaves the other channel at its image-dependent
 default, in either direction. **Those four figures are derived, not typed**: the
 guard prints them and `check_migration_function_revoke_noop.test.mjs` asserts

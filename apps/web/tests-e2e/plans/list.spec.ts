@@ -101,6 +101,9 @@ test.describe('/plans', () => {
 		await expect(strip).toBeVisible({ timeout: 10_000 });
 		await expect(strip.getByRole('link', { name: 'Runs' })).toBeVisible();
 		await expect(strip.getByRole('link', { name: 'Routes' })).toBeVisible();
+		// Park courses sit on the strip too (issue #1342), so the index is
+		// one tap from every run surface rather than only from /segments.
+		await expect(strip.getByRole('link', { name: 'Parks' })).toHaveAttribute('href', '/parks');
 		const plansLink = strip.getByRole('link', { name: 'Plans' });
 		await expect(plansLink).toBeVisible();
 

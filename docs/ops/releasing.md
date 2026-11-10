@@ -147,7 +147,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 | `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight, then App Store review; on approval it releases itself as a 7-day phased release ([§ 2040](../architecture/decisions.md)) | — |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
 | `web@*` | ubuntu-latest | — | AWS S3 + CloudFront + Lambda (`prod` env at `threkir.com` / `www.threkir.com`) | build zip |
-| `backend@*` | ubuntu-latest | — | Supabase (migrations + functions on linked project) | — |
+| `backend@*` | ubuntu-latest | — | Supabase (migrations, then the production state sync, then functions on linked project) | — |
 | `worker@*` | ubuntu-latest | — | Fly.io `job_worker` app via `flyctl deploy --remote-only` | — |
 | `osrm@*` | ubuntu-latest | — | Fly.io `osrm` app (image only — graph on the volume rides along) | — |
 | `graph-cycle@*` | ubuntu-latest | — | Fly.io `graph-cycle` app (image only — OSM PBF stays on the `graph_cycle_data` volume; reparsed on boot) | — |
@@ -180,6 +180,36 @@ which also means it is no longer a signed production binary anyone on the
 internet can download from a public repo. `mobile_android@*` and `watch_wear@*`
 still attach their `.aab`, so the table above is the authority per tag, not this
 paragraph generalised.
+
+**What a backend release does last.** After the migrations and the Edge
+Functions, the "Sync production state" step (`apps/backend/scripts/sync-production-state.sh`, stages in
+`scripts/prod_sync/run.mjs`, [decisions § 2429](../architecture/decisions.md))
+runs over the migration step's connection, with no secret of its own. Its
+first stage loads every committed park catalogue through
+`private.load_park_catalogue` and writes a created / updated / unchanged /
+closed row per course to the job's step summary; read it on the release run.
+An unchanged catalogue writes nothing. The rest apply
+[`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md)
+([decisions § 2430](../architecture/decisions.md)): feature flags, allow-listed
+Edge Function toggles (`supabase secrets set`, compared by digest), cron URL
+entries in Vault (each newly armed one invoked once and required to answer
+2xx), and the one-off tasks in `apps/backend/ops/tasks/`, each run once
+against the `private.ops_task_runs` ledger. The file's `web_env` flags are
+applied by the next `web@*` release instead, when `release-web.yml` writes
+`apps/web/.env`. An entry absent from the file is left untouched, so a release
+with nothing declared changes nothing. The config is guarded before any stage
+runs, and the cron and Edge Function stages commit as they go, so a failure
+there says what was already applied. It runs last so a sync failure can
+never leave migrations applied and functions undeployed: each stage is one
+transaction, and a failed stage rolls back and fails the job loudly, with
+the schema and functions already live; fix the cause and re-run the sync
+with a dispatch. To preview it without releasing, run **Release Backend** by hand
+(Actions, Run workflow): that runs only the sync, behind the `production`
+approval, with `dry_run` on by default (every stage rolled back). A dispatch
+with `dry_run` off commits, and is refused anywhere but `main`; it is how a
+merged `prod_config.json` change goes live without cutting a release. A dry
+run never sets a function secret or sends a cron request; it runs pending ops
+tasks and rolls them back, so their results preview in the summary.
 
 Promoting Android + Wear from the Internal track to Beta or Production
 is done manually in the Play Console after you've smoke-tested the
@@ -323,7 +353,8 @@ For the AWS-side deploy + rotation flows (preflight, orchestrated apply, sops bo
 |---|---|
 | `SUPABASE_ACCESS_TOKEN` | CLI personal access token |
 | `SUPABASE_PROJECT_REF` | target project's ref (e.g. `abcd1234xyz`) |
-| `SUPABASE_DB_PASSWORD` | Postgres password for `supabase db push` |
+| `SUPABASE_DB_URL` | Session-pooler connection string; the migration apply and the production state sync both use it, with its password stripped |
+| `SUPABASE_DB_PASSWORD` | Postgres password the migration apply and the production state sync authenticate with (`PGPASSWORD`) |
 | `SENTRY_DSN` | Sentry backend project DSN. Set via `supabase secrets set` against the linked project; the EFs' `_shared/sentry.ts` no-ops when unset. |
 | `APP_RELEASE` | `backend@<version>` tag for Sentry release tagging. Set alongside `SENTRY_DSN` via `supabase secrets set`. |
 

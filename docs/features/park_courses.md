@@ -13,10 +13,10 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
-| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` | Shipped |
-| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the segment catalogue's app bar) | Shipped |
+| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the index is the **Parks** tab on the run-surface strip, after Segments; decisions § 2431) | Shipped |
+| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the **Parks** peer on the Fitness hub's Runs strip, and the segment catalogue's app bar) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
-| Geometry pipeline (`scripts/parks/`) and the operator load (`scripts/parks/load.mjs` → `private.load_park_catalogue`, migration `20271126002425`, decisions § 2425) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) is built and ready; **not yet loaded in production**. See *Loading courses* |
+| Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
@@ -160,10 +160,21 @@ These follow the owner-approved permit conditions (memo
 ## Loading courses
 
 A course needs a route owned by an official publisher, which no migration can
-create, and reviewed geometry, so real courses are an operator load. The
+create, and reviewed geometry, so real courses are not a migration. The
 geometry is built and reviewed under `scripts/parks/` (its README has the
-pipeline); the load is one call of `private.load_park_catalogue` (migration
-`20271126002425`, decisions § 2425), which only the service role can execute.
+pipeline), and **every backend release loads it**: the "Sync production state"
+step of `release-backend.yml` runs last, after the migrations and the Edge
+Functions, and calls
+`private.load_park_catalogue` (migration `20271126002425`, made idempotent by
+`20271127002429`; decisions § 2425, § 2429) once per committed
+`scripts/parks/catalogue/<region>/<park>/manifest.json`. The club is
+committed in `scripts/parks/publisher.json` (slug, with its id as a
+cross-check); the author is resolved at run time by
+`private.resolve_club_publisher` (migration `20271127100001`) as the club's
+active owner, else its earliest-joined active admin, so a change of club
+ownership never breaks a release. Only the service role can execute either
+function. Nobody runs SQL in production to ship a course: merge the built
+park, then publish a `backend@*` release.
 
 The function refuses unless the author is an active owner or admin of the
 verified, public club (`private.is_official_publisher`). In one transaction it
@@ -171,9 +182,15 @@ upserts the park by slug, with its centroid and bounding box taken from every
 course line, and per course, keyed by park and course slug, the catalogue
 segment, the `park_courses` row and the public official route. A re-run updates
 all three in place, so their ids and every effort survive changed geometry; a
-course whose route was deleted gets a new one. It never writes a course's
-`status` or a row's `is_active`, and leaves alone a course the manifest no
-longer names. Every description ends with the manifest's attribution. The
+course whose route was deleted gets a new one. Every write is guarded by a
+comparison with what is stored, so a course that already matches the manifest
+writes nothing and reports `unchanged`, which is what makes the load safe on
+every release. A course of the park the manifest no longer names is set
+`status = 'closed'` with the note "Removed from the park catalogue.", never
+deleted, so its segment and efforts stay; it is reported `closed` on the load
+that closes it and not again. If the manifest names it again it reopens
+(`updated`). Any other status, an operator's closure included, is never
+written, and `is_active` is never written. Every description ends with the manifest's attribution. The
 segment's start and end lines follow the manifest: an end the course carries a
 curated `start_gate` / `end_gate` for is written as a curator line, on insert
 and on every re-load (the build emits one where the derived line would face
@@ -182,7 +199,11 @@ written source `derived`, so the gates trigger derives it from the new line and
 a curated line the manifest has dropped goes back to the derived one. For a
 loaded course the manifest is the record: a line placed by hand is replaced by
 the next load. It returns one row per course: slug, the
-three ids, `created` or `updated`, and the backfill job when asked for one.
+three ids, `created`, `updated`, `unchanged` or `closed`, and the backfill job.
+With the backfill flag (the release sync always passes it) a backfill is queued
+only for a `created` course or one whose matching geometry changed: the line,
+a start or end line, or the checkpoints. A name, description, difficulty or
+source change queues none, because every run would score the same.
 
 Race courses (`race_courses` in the manifest, the Swift Creek 5K to 50K) load
 as standing park courses with calendar-year boards, not as self-timed races.
@@ -191,25 +212,33 @@ lead-in: the start line faces out along the lead-in and the end line faces
 back in (on the 10K both are curated, its line sitting 14 m before a bend), and the matcher never lets the crossing that ends a pass start
 the next. Its route carries the race distance as `official_distance_m`.
 
-Operator steps, once per park and again whenever its built files change:
+Shipping a park, or a change to one:
 
-1. Find the official club's id and the publishing account's id (an active
-   owner or admin of that verified club) in Studio.
-2. Generate the statement on a checkout of `main`:
-   `node scripts/parks/load.mjs scripts/parks/catalogue/us-va/pocahontas --club-id <club uuid> --author-id <author uuid> > pocahontas.sql`.
-   It validates the manifest and GeoJSON (slugs, every CHECK vocabulary,
-   checkpoint count, coordinate ranges, a stale or unclosed line, a race
-   course off its distance) and prints one statement; stderr names the
-   courses.
-3. Run the file as the service role: paste it into the production project's
-   Studio SQL editor, or `psql` on the service-role connection. Check the
-   returned rows: six on a first Pocahontas load, all `created`.
-4. Queue the launch backfill for each course, so existing runs show on the
-   boards the day the course opens (see *Matching*):
-   `select enqueue_segment_backfill(global_segment_id) from park_courses pc join parks p on p.id = pc.park_id where p.slug = 'pocahontas';`
-   (or pass `--enqueue-backfill` in step 2 to queue it from the load itself).
-5. Check each course page and its GPX export for the attribution (the
+1. Build and review it under `scripts/parks/` and merge it. The official club
+   (`threkir`) is committed in `scripts/parks/publisher.json`; the sync picks
+   its active owner (else its earliest-joined active admin) as the author when
+   it runs. It fails, rolled back, only when the club is not the committed id,
+   is not verified, public and visible, or has no active owner or admin. A
+   change of owner re-authors the official routes to the new account on the
+   next release (`updated`, with no backfill), which keeps them official.
+2. Preview it, optionally: run the Release Backend workflow by hand
+   (`workflow_dispatch`) with `dry_run` left on. It runs only the sync, behind
+   the `production` environment approval, and rolls every stage back after
+   printing each course's action to the step summary.
+3. Publish a `backend@*` release. After the migrations and functions, "Sync production
+   state" loads every committed park, queues the backfills a created or
+   redrawn course needs (existing runs show on its boards the day it opens; see
+   *Matching*), and writes a created / updated / unchanged / closed table per
+   course to the job summary. A dispatch with `dry_run` off does the same
+   without a release, from `main` only.
+4. Check each new course page and its GPX export for the attribution (the
    pre-deploy checklist below).
+
+Fallback, only if the workflow cannot run: `node scripts/parks/sync.mjs >
+sync.sql` prints the same transaction (`--dry-run` ends it in a rollback), to
+run with `psql` on the service-role connection. `node scripts/parks/load.mjs
+<park dir> --club-id … --author-id … [--enqueue-backfill]` still prints one
+park's single call.
 
 The pilot loads the first ten courses and keeps the rest staged (owner
 decision 4's recommended default). The fixture park in `seed.sql` is fictional
@@ -331,13 +360,26 @@ These gate going live, not the code:
 ## Tests
 
 - Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
-  (creation, an idempotent re-run, changed geometry in place with efforts
+  (creation, an unchanged re-run, changed geometry in place with efforts
   kept, status untouched, a deleted route recreated, the backfill flag, the
   derived lines, curated lines stored as curator lines on insert and update,
   kept across a re-load and a redraw, reset to derived when dropped, the
   official route, every refusal); `node --test
   scripts/parks/lib/catalogue_payload.test.mjs` (the Pocahontas manifest maps
   to six courses, validation, the printed SQL).
+- Author resolution: pgTAP `apps/backend/supabase/tests/resolve_club_publisher_test.sql`
+  (owner over an earlier admin, earliest admin without an owner, a tie by
+  user id, each refusal, no client role can call it).
+- Release sync: pgTAP `apps/backend/supabase/tests/park_catalogue_sync_test.sql`
+  (a second identical load is `unchanged` and rewrites no row, measured by
+  xmin; a backfill on create, a redrawn line, a turned curated line and new
+  checkpoints, none on a rename; a dropped course closed once with its effort
+  kept, reopened when re-added; an operator's closure untouched; the refusal);
+  `node --test scripts/parks/lib/catalogue_sync.test.mjs
+  scripts/prod_sync/lib/stages.test.mjs` (the publisher config, the stage SQL,
+  the transaction and dry-run rollback, the step summary, and the entry point
+  against a stub psql: the password never on psql's command line or in any
+  output).
 - pgTAP `apps/backend/supabase/tests/park_courses_test.sql`: catalogue RLS,
   admin-only writes, timezone and vocabulary refusals, the season boundary in
   the park's timezone, completions counting days, block and private-run rules.

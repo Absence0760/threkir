@@ -49,7 +49,7 @@ Issue #1273 item 4: a creator posts "Run 50 km with me in November", followers t
 **Pre-deploy checklist (privacy boundary, § 150).** Who can see and join a non-public challenge changes, so the token path ships closed: no migration writes the `challenge_invite_links` row of `private.feature_flags`; `seed.sql` opens it for local and CI. While it is closed the token RPCs return null, the preview is empty, `join_challenge_by_token` raises `challenge_invite_links_disabled`, and both clients hide the invite card and show the join page's dead-link state. Before prod:
 
 - [ ] CISO / Security Analyst review of `20271103000001` (token storage, the anon-callable preview's projection, the rate limit) and the web/mobile join surfaces.
-- [ ] Then, in the prod SQL editor: `insert into private.feature_flags (name, enabled) values ('challenge_invite_links', true) on conflict (name) do update set enabled = true, updated_at = now();` Closing it again is the same statement with `false`.
+- [ ] Then add `"challenge_invite_links": { "enabled": true, "signoff": "<link>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR, and the next backend release applies it (decisions § 2430). Closing it again is the same edit with `"enabled": false`.
 
 The public share page needs no flag: a public challenge and its board were already anon-readable. The creator's own copy of it carries their `?ref=` and its visits, sign-ups and joins are counted for them under the separate `share_attribution` gate (decisions § 2268).
 

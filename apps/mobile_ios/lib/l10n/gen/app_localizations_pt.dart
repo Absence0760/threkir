@@ -17072,6 +17072,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runSurfaceTabSegments => 'Segmentos';
 
   @override
+  String get runSurfaceTabParks => 'Parques';
+
+  @override
   String rateLimitCreateClub(String wait) {
     return 'Está a criar clubes demasiado depressa — aguarde $wait e tente novamente.';
   }
@@ -38653,6 +38656,9 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runSurfaceTabSegments => 'Segmentos';
+
+  @override
+  String get runSurfaceTabParks => 'Parques';
 
   @override
   String rateLimitCreateClub(String wait) {

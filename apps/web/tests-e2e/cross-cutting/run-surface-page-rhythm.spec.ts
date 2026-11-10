@@ -5,9 +5,9 @@ import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
- * The five run-surface tabs (Runs / Routes / Segments / Plans / Races) are one
+ * The six run-surface tabs (Runs / Routes / Segments / Parks / Plans / Races) are one
  * strip the user walks left to right, so the strip itself must not move or
- * resize as they walk it. That holds only while every one of the five pages
+ * resize as they walk it. That holds only while every one of the six pages
  * wraps its content in the shared `.page` rhythm — `padding: var(--page-padding-y)
  * var(--page-padding-x)` and nothing else. `/segments` wrapped itself in a
  * 900 px centred `.catalogue` column instead, which shifted the strip 118 px
@@ -16,11 +16,11 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *
  * Measured as an equality across the five, not against pixel literals: the
  * gutter is a token that narrows at 40rem (app.css), so a literal would pin the
- * token's value rather than the thing that matters, which is that all five
+ * token's value rather than the thing that matters, which is that all six
  * agree.
  */
 
-const RUN_SURFACES = ['/runs', '/routes', '/segments', '/plans', '/races'];
+const RUN_SURFACES = ['/runs', '/routes', '/segments', '/parks', '/plans', '/races'];
 
 /**
  * `/segments` is world-readable and renders before auth resolves, so for one
@@ -46,7 +46,7 @@ test.describe('run-surface pages share one page rhythm', () => {
 		await acceptCookieConsent(context);
 	});
 
-	test('the surface-tab strip has the same geometry on all five tabs', async ({ page }) => {
+	test('the surface-tab strip has the same geometry on all six tabs', async ({ page }) => {
 		const [first, ...rest] = RUN_SURFACES;
 		const baseline = await stripRect(page, first);
 		expect(baseline.width, `${first} laid out no strip to compare against`).toBeGreaterThan(0);
@@ -79,11 +79,11 @@ test.describe('run-surface pages share one page rhythm', () => {
 
 	test('the page title renders at the same size on every tab that has one', async ({ page }) => {
 		// /runs, /routes and /plans carry their title in the tab strip and have
-		// no visible h1 of their own (/runs' is visually-hidden), so only the two
+		// no visible h1 of their own (/runs' is visually-hidden), so only the three
 		// that render one are compared.
 		const sizes: Record<string, string> = {};
 
-		for (const route of ['/segments', '/races']) {
+		for (const route of ['/segments', '/parks', '/races']) {
 			await page.goto(route);
 			const h1 = page.locator('h1').first();
 			await expect(h1).toBeVisible({ timeout: 10_000 });
@@ -91,5 +91,6 @@ test.describe('run-surface pages share one page rhythm', () => {
 		}
 
 		expect(sizes['/segments']).toBe(sizes['/races']);
+		expect(sizes['/parks']).toBe(sizes['/races']);
 	});
 });

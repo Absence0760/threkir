@@ -4809,6 +4809,7 @@
   "segmentCatalogueStatSurface": "Untergrund",
   "segmentCatalogueLeaderboard": "Bestenliste",
   "runSurfaceTabSegments": "Segmente",
+  "runSurfaceTabParks": "Parks",
   "rateLimitCreateClub": "Du erstellst zu schnell Vereine – bitte warte {wait} und versuche es erneut.",
   "rateLimitCreateRoute": "Du erstellst zu schnell Routen – bitte warte {wait} und versuche es erneut.",
   "rateLimitCreateReport": "Du meldest zu schnell Inhalte – bitte warte {wait} und versuche es erneut.",

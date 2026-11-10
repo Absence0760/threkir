@@ -346,6 +346,14 @@ values ('e8000000-0000-0000-0000-0000000000d4', 'e8000000-0000-0000-0000-0000000
         'backup', 'ready', 'e8000000-0000-0000-0000-0000000000a5/archive.zip',
         now() - interval '9 days');
 
+-- The live pg_cron schedule `enqueue-export-blob-reap` (13 4 * * *) runs in
+-- this database too, so a suite that crossed 04:13 UTC found the scheduler's
+-- own reap already committed (CI, 2026-11-10). Hold `jobs` against other
+-- writers until the rollback, and clear the reaps committed before it, so the
+-- counts below are this transaction's alone.
+lock table jobs in share row exclusive mode;
+delete from jobs where kind = 'export_blob_reap';
+
 -- (18) Nothing has queued a reap yet, so what follows is this call's work and
 -- not the seed's. Every assertion below reads only this kind.
 select is(

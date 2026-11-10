@@ -25,6 +25,12 @@ name: Release Backend
 # loads every committed park catalogue through private.load_park_catalogue,
 # which reports each course created / updated / unchanged / closed and writes
 # nothing for an unchanged one. The table lands in the job's step summary.
+# Then it applies apps/backend/ops/prod_config.json (issue #1350, decisions
+# § 2430): feature flags, allow-listed Edge Function toggles (supabase secrets
+# set, compared by digest, so it needs the CLI, SUPABASE_ACCESS_TOKEN and
+# SUPABASE_PROJECT_REF), cron URL entries in Vault (invoked once when armed,
+# 2xx required), and the one-off tasks in apps/backend/ops/tasks/. An entry
+# absent from the file is left untouched.
 #
 # There is no "internal track" for a backend — once migrations and
 # functions deploy they're live for every client. Roll forward with a
@@ -39,7 +45,7 @@ name: Release Backend
 # `production` environment: no migration, no function deploy. Its `dry_run`
 # input defaults to true, which runs every stage and rolls it back; a real
 # (dry_run false) dispatch is refused off `main`, so an unreviewed branch's
-# catalogue can only ever be previewed.
+# catalogue or prod_config.json can only ever be previewed.
 on:
   release:
     types: [published]
@@ -90,8 +96,9 @@ jobs:
           VERSION="${TAG#backend@}"
           echo "name=$VERSION" >> "$GITHUB_OUTPUT"
 
+      # A dispatch needs the CLI too: the sync's Edge Function env stage
+      # sets toggles with `supabase secrets set`.
       - uses: ./.github/actions/setup-supabase-cli
-        if: github.event_name == 'release'
         with:
           version: 2.109.1
 
@@ -169,6 +176,11 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          # The cron URL stage builds each Vault URL from the ref (through
+          # psql's \getenv, never printed); the Edge Function env stage passes
+          # it and the token to the CLI. Neither is set from anything else.
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
           EVENT_NAME: ${{ github.event_name }}
         run: |

@@ -479,6 +479,18 @@ jobs:
             echo "Reproduce with: node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs scripts/parks/lib/catalogue_payload.test.mjs scripts/parks/lib/catalogue_sync.test.mjs scripts/prod_sync/lib/stages.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
             exit 1
           fi
+      # Production config as code (issue #1350): the release applies
+      # apps/backend/ops/prod_config.json and runs apps/backend/ops/tasks/ in
+      # the same sync, and refuses a config that fails this guard before any
+      # stage runs. Failing here keeps that refusal off the release.
+      - name: Production config is well-formed and matches the repo
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/prod_sync/lib/prod_config.test.mjs scripts/prod_sync/lib/config_stages.test.mjs || ! node scripts/prod_sync/check_prod_config.mjs; then
+            echo "::error::apps/backend/ops/prod_config.json, apps/backend/ops/tasks/ or the stages that apply them (scripts/prod_sync/) regressed: an entry with a bad shape, an enabled entry with no signoff, a flag no migration defines, a function_env key off the allow-list, a web flag the build does not read, paired flags that disagree, a cron function with no invoker, or a malformed task file. See apps/backend/ops/README.md. Nothing here touches the network."
+            echo "Reproduce with: node --test scripts/prod_sync/lib/prod_config.test.mjs scripts/prod_sync/lib/config_stages.test.mjs && node scripts/prod_sync/check_prod_config.mjs"
+            exit 1
+          fi
       # The stack-start wait loop is shell inside a composite action, so it
       # runs in no job's test suite. Its accounting (a wall-clock deadline the
       # error string can be trusted to report) and its failure forensics are

@@ -160,7 +160,7 @@
 
 <style>
 	/* Canonical .modal-* classes live in app.css. */
-	.report-body {
+	:global(.report-body) {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;

@@ -580,7 +580,13 @@ test.describe('/runs/[id]', () => {
 			await page.getByRole('button', { name: 'Private. Make this run public' }).click();
 			const consent = page.getByTestId('share-confirm-dialog');
 			await expect(consent).toBeVisible({ timeout: 10_000 });
-			await consent.getByRole('button', { name: 'Cancel', exact: true }).click();
+			// The actions sat flush under the message: ConfirmDialog's spacing
+			// rule targeted a class on Modal's element and never applied.
+			const messageBox = await consent.locator('p').first().boundingBox();
+			const cancel = consent.getByRole('button', { name: 'Cancel', exact: true });
+			const cancelBox = await cancel.boundingBox();
+			expect(cancelBox!.y - (messageBox!.y + messageBox!.height)).toBeGreaterThanOrEqual(12);
+			await cancel.click();
 			await expect(consent).toHaveCount(0);
 
 			const row = await readRow(

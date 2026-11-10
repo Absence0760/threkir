@@ -146,7 +146,7 @@
 {/if}
 
 <style>
-	.dispute-body {
+	:global(.dispute-body) {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;

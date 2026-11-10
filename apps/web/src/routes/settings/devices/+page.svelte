@@ -840,7 +840,7 @@
 	}
 
 	/* Add-override reuses canonical .modal-* classes from app.css. */
-	.add-dialog-body {
+	:global(.add-dialog-body) {
 		display: grid;
 		gap: 0.9rem;
 	}

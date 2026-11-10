@@ -3798,7 +3798,7 @@
 
 	/* Goal editor reuses the canonical .modal-* classes from app.css.
 	   Only field-level styling stays local. */
-	.goal-editor-body { display: grid; gap: var(--space-md); }
+	:global(.goal-editor-body) { display: grid; gap: var(--space-md); }
 	.field { display: grid; gap: var(--space-xs); }
 	.field-label {
 		font-size: 0.75rem;

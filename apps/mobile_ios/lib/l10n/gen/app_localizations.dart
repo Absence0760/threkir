@@ -35224,6 +35224,360 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not save that. Try again.'**
   String get coachAssistConsentFailed;
+
+  /// Park course route guide (#1344, web parks.guide.title).
+  ///
+  /// In en, this message translates to:
+  /// **'Route guide'**
+  String get parkGuideTitle;
+
+  /// Park course route guide (#1344, web parks.guide.pending).
+  ///
+  /// In en, this message translates to:
+  /// **'Drafted from map data, not yet checked on the ground.'**
+  String get parkGuidePending;
+
+  /// Park course route guide (#1344, web parks.guide.checked).
+  ///
+  /// In en, this message translates to:
+  /// **'Checked on the ground on {date}.'**
+  String parkGuideChecked(String date);
+
+  /// Park course route guide (#1344, web parks.guide.gettingThere).
+  ///
+  /// In en, this message translates to:
+  /// **'Getting there'**
+  String get parkGuideGettingThere;
+
+  /// Park course route guide (#1344, web parks.guide.startNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on {name}.'**
+  String parkGuideStartNamed(String name);
+
+  /// Park course route guide (#1344, web parks.guide.startFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the fire road.'**
+  String get parkGuideStartFireRoad;
+
+  /// Park course route guide (#1344, web parks.guide.startRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the park road.'**
+  String get parkGuideStartRoad;
+
+  /// Park course route guide (#1344, web parks.guide.startPath).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the path.'**
+  String get parkGuideStartPath;
+
+  /// Park course route guide (#1344, web parks.guide.clockwise).
+  ///
+  /// In en, this message translates to:
+  /// **'Run the loop clockwise.'**
+  String get parkGuideClockwise;
+
+  /// Park course route guide (#1344, web parks.guide.counterclockwise).
+  ///
+  /// In en, this message translates to:
+  /// **'Run the loop counterclockwise.'**
+  String get parkGuideCounterclockwise;
+
+  /// Park course route guide (#1344, web parks.guide.keepLeft).
+  ///
+  /// In en, this message translates to:
+  /// **'Keep {landmark} on your left.'**
+  String parkGuideKeepLeft(String landmark);
+
+  /// Park course route guide (#1344, web parks.guide.keepRight).
+  ///
+  /// In en, this message translates to:
+  /// **'Keep {landmark} on your right.'**
+  String parkGuideKeepRight(String landmark);
+
+  /// Park course route guide (#1344, web parks.guide.passCheckpoints).
+  ///
+  /// In en, this message translates to:
+  /// **'Pass every checkpoint in order, or the run is not timed.'**
+  String get parkGuidePassCheckpoints;
+
+  /// Park course route guide (#1344, web parks.guide.leftNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto {name}.'**
+  String parkGuideLeftNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.rightNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto {name}.'**
+  String parkGuideRightNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.straightNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight onto {name}.'**
+  String parkGuideStraightNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.leftFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the fire road.'**
+  String parkGuideLeftFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the fire road.'**
+  String parkGuideRightFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the fire road.'**
+  String parkGuideStraightFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.leftRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the park road.'**
+  String parkGuideLeftRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the park road.'**
+  String parkGuideRightRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the park road.'**
+  String parkGuideStraightRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.leftPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the path.'**
+  String parkGuideLeftPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the path.'**
+  String parkGuideRightPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the path.'**
+  String parkGuideStraightPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.bridge).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross the bridge.'**
+  String parkGuideBridge(String at);
+
+  /// Park course route guide (#1344, web parks.guide.ford).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross the ford. There is no bridge, so expect water.'**
+  String parkGuideFord(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfacePaved).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: paved from here.'**
+  String parkGuideSurfacePaved(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceGravel).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: gravel from here.'**
+  String parkGuideSurfaceGravel(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceDirt).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: dirt trail from here.'**
+  String parkGuideSurfaceDirt(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceUnpaved).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: unpaved from here.'**
+  String parkGuideSurfaceUnpaved(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceBoardwalk).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: boardwalk from here.'**
+  String parkGuideSurfaceBoardwalk(String at);
+
+  /// Park course route guide (#1344, web parks.guide.climb).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: a climb of {gain} over {length}.'**
+  String parkGuideClimb(String at, String gain, String length);
+
+  /// Park course route guide (#1344, web parks.guide.checkpoint).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: checkpoint {n} of {total}.'**
+  String parkGuideCheckpoint(String at, int n, int total);
+
+  /// Park course route guide (#1344, web parks.guide.lap).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: start lap {n} of {total} and repeat the loop.'**
+  String parkGuideLap(String at, int n, int total);
+
+  /// Park course route guide (#1344, web parks.guide.finish).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: finish.'**
+  String parkGuideFinish(String at);
+
+  /// Park course page: opens the sheet to report a hazard, closure, off-trail line or land-manager request (also the sheet title)
+  ///
+  /// In en, this message translates to:
+  /// **'Report a problem with this course'**
+  String get parkCourseReportAction;
+
+  /// Report sheet: what a report is for and that a person reviews it; a report never closes the course by itself
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us about a hazard, a closure or a line that leaves the trail. A person at Threkir reviews every report. A report does not close the course by itself.'**
+  String get parkCourseReportExplainer;
+
+  /// Report sheet: heading over the reason choices
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s the problem?'**
+  String get parkCourseReportReasonLegend;
+
+  /// Report reason: a hazard on the course
+  ///
+  /// In en, this message translates to:
+  /// **'A hazard on the course'**
+  String get parkCourseReportReasonHazard;
+
+  /// Report reason: the course or trail is closed
+  ///
+  /// In en, this message translates to:
+  /// **'The course or trail is closed'**
+  String get parkCourseReportReasonClosure;
+
+  /// Report reason: the published line leaves the designated trail
+  ///
+  /// In en, this message translates to:
+  /// **'The line leaves the designated trail'**
+  String get parkCourseReportReasonOffTrail;
+
+  /// Report reason: the park or agency managing the land asks for the course to come down
+  ///
+  /// In en, this message translates to:
+  /// **'A request from the land manager'**
+  String get parkCourseReportReasonLandManager;
+
+  /// Hint under the land-manager reason: the two-business-day promise
+  ///
+  /// In en, this message translates to:
+  /// **'For park or agency staff. Ask us to take the course down and we close it within two business days.'**
+  String get parkCourseReportReasonLandManagerHint;
+
+  /// Report reason: anything else
+  ///
+  /// In en, this message translates to:
+  /// **'Something else'**
+  String get parkCourseReportReasonOther;
+
+  /// Report sheet: label of the required free-text note
+  ///
+  /// In en, this message translates to:
+  /// **'What should we know?'**
+  String get parkCourseReportNotesLabel;
+
+  /// Report sheet: hint inside the note field
+  ///
+  /// In en, this message translates to:
+  /// **'Where on the course, what you saw and when.'**
+  String get parkCourseReportNotesHint;
+
+  /// Report sheet: label of the optional contact email field
+  ///
+  /// In en, this message translates to:
+  /// **'Your email (optional)'**
+  String get parkCourseReportEmailLabel;
+
+  /// Report sheet: what the contact email is used for and when it is deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Only if you\'d like a reply. We use it to answer this report and delete it 30 days after we resolve it.'**
+  String get parkCourseReportEmailHint;
+
+  /// Report sheet: cancel button
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get parkCourseReportCancel;
+
+  /// Report sheet: send button
+  ///
+  /// In en, this message translates to:
+  /// **'Send report'**
+  String get parkCourseReportSubmit;
+
+  /// Banner after a report was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks. Your report is with the Threkir team.'**
+  String get parkCourseReportSent;
+
+  /// Report sheet error: sending failed for an unknown reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the report. Try again.'**
+  String get parkCourseReportErrorFailed;
+
+  /// Report sheet error: too many reports right now
+  ///
+  /// In en, this message translates to:
+  /// **'Too many reports right now. Try again later.'**
+  String get parkCourseReportErrorRateLimited;
+
+  /// Report sheet error: this person already has an open report on this course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve already reported this course, and that report is still open.'**
+  String get parkCourseReportErrorAlreadyReported;
+
+  /// Report sheet error: the course is no longer listed
+  ///
+  /// In en, this message translates to:
+  /// **'This course is no longer listed.'**
+  String get parkCourseReportErrorNotFound;
+
+  /// Report sheet error: the server refused the report as invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Check the report and try again.'**
+  String get parkCourseReportErrorInvalid;
+
+  /// Report sheet: the contact email is not shaped like an address
+  ///
+  /// In en, this message translates to:
+  /// **'That email address doesn\'t look right.'**
+  String get parkCourseReportErrorEmail;
+
+  /// Notification text, app admins only: someone reported a problem with a park course
+  ///
+  /// In en, this message translates to:
+  /// **'A park course was reported'**
+  String get profileNotifParkCourseReport;
 }
 
 class _AppLocalizationsDelegate

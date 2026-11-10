@@ -163,6 +163,8 @@
 				return item.club_name
 					? m('notificationBell.organiserDisputeNamed', { club: item.club_name })
 					: m('notificationBell.organiserDispute');
+			case 'park_course_report':
+				return m('notificationBell.parkCourseReport');
 			case 'race_starting_soon':
 				return item.event_title
 					? m('notificationBell.raceStartingSoonTitled', { title: item.event_title })

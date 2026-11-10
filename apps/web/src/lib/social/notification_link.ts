@@ -111,6 +111,10 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			// The stable-id resolver opens the race or route the alert is on
 			// (decisions § 2407); the row carries only the alert's id.
 			return r.course_alert_id ? `/course-alerts/${r.course_alert_id}` : null;
+		case 'park_course_report':
+			// Sent to app admins only; the queue sorts land-manager requests by
+			// their deadline (decisions § 2449).
+			return '/admin/reports';
 		case 'organiser_dispute':
 			// Both sides read the decision, and any rename deadline, on the
 			// disputes page; the row names only the reporting club.

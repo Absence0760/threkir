@@ -1,4 +1,4 @@
-/// Report a problem with a park course (issue #1346, decisions § 2447):
+/// Report a problem with a park course (issue #1346, decisions § 2449):
 ///   POST /functions/v1/park-course-report
 ///   { course_id, reason, notes, contact_email?, website? }
 ///

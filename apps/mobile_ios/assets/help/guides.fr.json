@@ -3798,7 +3798,8 @@
             "items": [
               "C'est un contre-la-montre, pas une course. Le sentier reste ouvert à tous et personne ne l'encadre : respectez le règlement du parc et cédez le passage aux autres usagers du sentier.",
               "Chaque page de parcours indique la distance, le dénivelé positif, la forme, le revêtement et la difficulté, l'origine du tracé et si le parcours est ouvert.",
-              "Sélectionnez **Suivre ce parcours** pour suivre le parcours comme un itinéraire. Cette option n'est pas proposée tant que le parcours est fermé."
+              "Sélectionnez **Suivre ce parcours** pour suivre le parcours comme un itinéraire. Cette option n'est pas proposée tant que le parcours est fermé.",
+              "La rubrique **Description du parcours** de la page du parcours indique où se garer et chaque changement de direction dans l'ordre, par nom de sentier, avec les ponts, les gués, les changements de revêtement et les montées. Elle est rédigée à partir des données cartographiques ; tant que personne ne l'a vérifiée sur place, c'est indiqué au-dessus de la liste. La même description figure dans le fichier GPX du parcours."
             ]
           },
           {

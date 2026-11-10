@@ -7,6 +7,7 @@ Phase 3 of the park courses plan ([#1313](https://github.com/Absence0760/threkir
 ```
 scripts/parks/
   lib/course_geometry.mjs        pure geometry: trace, measure, simplify, checkpoints
+  lib/route_guide.mjs            pure: the course's route guide steps, and their validator
   fetch_snapshot.mjs             network step: OSM ways + USGS elevations -> snapshot.json
   build.mjs                      offline step: spec + snapshot -> <course>.geojson + manifest.json
   lib/catalogue_payload.mjs      pure: manifest + GeoJSON -> the load payload and its SQL
@@ -34,6 +35,57 @@ scripts/parks/
 `node scripts/parks/build.mjs --check <dir>` fails when a committed output no longer matches its spec and snapshot.
 
 Only loop courses are built so far. Out-and-back and point-to-point courses (the rail trails) are added when the first one is specced.
+
+## Route guides
+
+Every course's manifest entry carries a `route_guide` the build generates
+(`lib/route_guide.mjs`, decisions § 2448): ordered steps (start, direction,
+lap, junction, crossing, surface, climb, checkpoint, finish) from the ways the
+course walks, their OSM names and tags, the snapshot's elevations and the
+checkpoints. Clients render the steps in each locale, so nothing in it is
+prose except the course's `getting_there` note. `--check` covers it like the
+rest of the manifest.
+
+Per course in `park.json`:
+
+```json
+"route_guide": {
+  "getting_there": "Park at the boat-ramp lot. The start line is on ...",
+  "ground_checked_at": null
+}
+```
+
+- `getting_there` is free text in English (the guide's `lang`), at most 500
+  characters: where to park and how to reach the start line. Write only what
+  the park's own map or the spec's `start_note` supports.
+- `ground_checked_at` stays `null` until a person has walked the guide at the
+  park. While it is null, every surface says the guide is drafted from map
+  data and not yet checked on the ground.
+
+Checking a guide (an owner step, done at the park):
+
+1. `node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>` and
+   read the course's `route_guide.steps` in `manifest.json`, or open the
+   course page on a preview deploy.
+2. Walk or run the course with the steps in hand. At each junction check the
+   turn and the trail name against the signs; check each bridge, ford and
+   surface change, and that each climb is where it says.
+3. If a step is wrong, the cause is the data: fix the OSM way (name, `surface`,
+   `bridge`, `ford`) upstream and re-run `fetch_snapshot.mjs`, or change the
+   course's ways in `park.json`. Never edit `manifest.json` by hand; `--check`
+   would fail it.
+4. When every step matches, set `ground_checked_at` to the date you walked it
+   (`YYYY-MM-DD`), rebuild, and commit `park.json` with `manifest.json`. The
+   next backend release writes it as `park_courses.route_guide_checked_at`.
+5. A later rebuild that changes the course's steps means the check no longer
+   covers them: walk the changed steps again before keeping the date.
+
+What the generator will not do: name a landmark the snapshot does not hold
+(`loopLandmark` needs a named water feature inside the loop, and
+`fetch_snapshot.mjs` does not fetch water yet), or call a split between two
+unnamed ways a junction unless the snapshot shows a branch there. Thresholds
+(`SHORT_RUN_M`, `SURFACE_MIN_RUN_M`, `CLIMB_MIN_GAIN_M`, `CLIMB_MIN_GRADE`) are
+at the top of `lib/route_guide.mjs`.
 
 ## Race courses
 
@@ -84,6 +136,9 @@ summary lists every course as `created`, `updated`, `unchanged` or `closed`.
 - `park_courses.laps` is a race course's `laps`. A trail course takes its
   entry's `laps` if it has one, else 1 for a `loop` and null for an
   `out_and_back` or `point_to_point` course (decisions § 2438).
+- Each course's `route_guide` and `route_guide_checked_at` are written to the
+  `park_courses` columns of those names (migration `20271212001344`). A change
+  to either reports the course `updated` with no backfill.
 - The manifest's `attribution` is written to `park_courses.attribution` on
   every course, and only there: the segment's and route's description is the
   course's own text. The first sync after migration `20271130002438` reports

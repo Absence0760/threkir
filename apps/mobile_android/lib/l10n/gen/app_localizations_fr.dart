@@ -21932,4 +21932,254 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get coachAssistConsentFailed =>
       'Impossible d\'enregistrer. Réessayez.';
+
+  @override
+  String get parkGuideTitle => 'Description du parcours';
+
+  @override
+  String get parkGuidePending =>
+      'Rédigé à partir des données cartographiques, pas encore vérifié sur le terrain.';
+
+  @override
+  String parkGuideChecked(String date) {
+    return 'Vérifié sur le terrain le $date.';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'Accès';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return 'Départ sur $name.';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => 'Départ sur le chemin forestier.';
+
+  @override
+  String get parkGuideStartRoad => 'Départ sur la route du parc.';
+
+  @override
+  String get parkGuideStartPath => 'Départ sur le sentier.';
+
+  @override
+  String get parkGuideClockwise =>
+      'Courez la boucle dans le sens des aiguilles d\'une montre.';
+
+  @override
+  String get parkGuideCounterclockwise =>
+      'Courez la boucle dans le sens inverse des aiguilles d\'une montre.';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return 'Gardez $landmark sur votre gauche.';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return 'Gardez $landmark sur votre droite.';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'Passez par chaque point de contrôle dans l\'ordre, sinon la course n\'est pas chronométrée.';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at : tournez à gauche sur $name.';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at : tournez à droite sur $name.';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at : continuez tout droit sur $name.';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at : tournez à gauche sur le chemin forestier.';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at : tournez à droite sur le chemin forestier.';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at : continuez tout droit sur le chemin forestier.';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at : tournez à gauche sur la route du parc.';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at : tournez à droite sur la route du parc.';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at : continuez tout droit sur la route du parc.';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at : tournez à gauche sur le sentier.';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at : tournez à droite sur le sentier.';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at : continuez tout droit sur le sentier.';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at : traversez le pont.';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at : traversez le gué. Il n\'y a pas de pont, attendez-vous à avoir les pieds dans l\'eau.';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at : revêtement goudronné à partir d\'ici.';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at : gravier à partir d\'ici.';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at : sentier en terre à partir d\'ici.';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at : chemin non revêtu à partir d\'ici.';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at : passerelle en bois à partir d\'ici.';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at : montée de $gain sur $length.';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at : point de contrôle $n sur $total.';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at : début du tour $n sur $total, refaites la boucle.';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at : arrivée.';
+  }
+
+  @override
+  String get parkCourseReportAction => 'Signaler un problème sur ce parcours';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Signalez-nous un danger, une fermeture ou un tracé qui quitte le sentier. Une personne chez Threkir examine chaque signalement. Un signalement ne ferme pas le parcours à lui seul.';
+
+  @override
+  String get parkCourseReportReasonLegend => 'Quel est le problème ?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'Un danger sur le parcours';
+
+  @override
+  String get parkCourseReportReasonClosure =>
+      'Le parcours ou le sentier est fermé';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'Le tracé quitte le sentier balisé';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'Une demande du gestionnaire du site';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'Pour le personnel du parc ou de l\'organisme gestionnaire. Demandez-nous de retirer le parcours et nous le fermons sous deux jours ouvrés.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Autre chose';
+
+  @override
+  String get parkCourseReportNotesLabel => 'Que devons-nous savoir ?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Où sur le parcours, ce que vous avez vu et quand.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Votre e-mail (facultatif)';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Seulement si vous souhaitez une réponse. Nous l\'utilisons pour répondre à ce signalement et le supprimons 30 jours après son traitement.';
+
+  @override
+  String get parkCourseReportCancel => 'Annuler';
+
+  @override
+  String get parkCourseReportSubmit => 'Envoyer le signalement';
+
+  @override
+  String get parkCourseReportSent =>
+      'Merci. Votre signalement a été transmis à l\'équipe Threkir.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'Impossible d\'envoyer le signalement. Réessayez.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Trop de signalements en ce moment. Réessayez plus tard.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'Vous avez déjà signalé ce parcours, et ce signalement est toujours en cours.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'Ce parcours n\'est plus disponible.';
+
+  @override
+  String get parkCourseReportErrorInvalid =>
+      'Vérifiez le signalement et réessayez.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'Cette adresse e-mail ne semble pas valide.';
+
+  @override
+  String get profileNotifParkCourseReport =>
+      'Un parcours de parc a été signalé';
 }

@@ -9,6 +9,7 @@
  */
 
 import { toRouteGpxWithMarkers, type GpxAttribution } from '../routes/route_gpx.ts';
+import { routeGuideEnglish, type RouteGuide } from './route_guide.ts';
 
 export const PARK_AGENCIES = ['nps', 'state', 'county', 'other'] as const;
 export type ParkAgency = (typeof PARK_AGENCIES)[number];
@@ -232,15 +233,18 @@ export function courseAttribution(
 
 /**
  * The GPX a course page downloads: the course line, one `<wpt>` per
- * checkpoint in order (so a watch shows the points a run must pass), and the
- * geometry credit in `<metadata>`. A checkpoint list that could not be read
- * (null) writes no waypoints rather than a partial set.
+ * checkpoint in order (so a watch shows the points a run must pass), the
+ * geometry credit in `<metadata>`, and the route guide as the track's
+ * `<desc>`, in canonical English and led by whether it has been checked on
+ * the ground. A checkpoint list that could not be read (null) writes no
+ * waypoints rather than a partial set.
  */
 export function parkCourseGpx(input: {
 	name: string;
 	waypoints: readonly { lat: number; lng: number; ele?: number | null }[];
 	checkpoints: readonly CourseCheckpoint[] | null;
 	attribution: GpxAttribution | null;
+	guide?: { guide: RouteGuide; checkedAt: string | null } | null;
 }): string {
 	return toRouteGpxWithMarkers(
 		input.name,
@@ -254,6 +258,7 @@ export function parkCourseGpx(input: {
 			meta: {},
 		})),
 		input.attribution,
+		input.guide ? routeGuideEnglish(input.guide.guide, input.guide.checkedAt).join('\n') : null,
 	);
 }
 

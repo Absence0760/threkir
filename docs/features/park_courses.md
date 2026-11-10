@@ -23,11 +23,13 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
 | Badges (`park_courses` / `park_complete` / `park_passport`), passport challenge metric, recap entries, course share sticker | Shipped (migration `20271123002404`, decisions § 2404 / § 2405); see *Collections* |
+| "Report a problem with this course" (issue #1346, migrations `20271212000001`..`005`, decisions § 2449): signed in or signed out, on web and mobile, reviewed and acted on from `/admin/reports`. See *Reports and closures* | Shipped |
 | NPS closures job | Not built (Phase 6) |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
 | Indexable park pages | Not built; see *SEO* |
 | Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
 | Help guide `park-courses`, Learn page `/learn/park-courses-how-timing-works` | Shipped |
+| Route guide per course (`park_courses.route_guide`, migration `20271212001344`, decisions § 2448): generated with the geometry, shown on the course page, the share page, its search text and the GPX, web + mobile | Shipped; every Pocahontas guide is still a draft awaiting the owner's ground check. See *Route guide* |
 
 ## Model
 
@@ -208,6 +210,59 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
   map key (without checkpoints, which the public lookup does not carry),
   elevation profile and notices callout.
 
+## Route guide
+
+Issue #1344, [decisions § 2448](../architecture/decisions.md). Each course has
+a short guide a newcomer can follow: where to park, which way round, and every
+turn in order by trail name, with the bridges, fords, surface changes and
+climbs on the way, the checkpoints and the laps.
+
+- **Structured, not prose.** `park_courses.route_guide` is
+  `{ version: 1, lang, getting_there?, steps }`. A step is one of `start`
+  (`name` or `way`), `direction` (`rotation`: `clockwise` /
+  `counterclockwise`, with an optional `keep_on` + `landmark`), `lap` (`lap`,
+  `of`), `junction` (`turn`: `left` / `right` / `straight`, and `name` or
+  `way`: `fire_road` / `road` / `path`), `crossing` (`bridge` / `ford`),
+  `surface` (`paved` / `gravel` / `dirt` / `unpaved` / `boardwalk`), `climb`
+  (`gain_m`, `length_m`), `checkpoint` (`order`, `of`) and `finish`, each with
+  its whole-metre `at_m` along the course. The CHECK
+  `private.park_course_route_guide_ok` holds that shape; the generator's
+  `routeGuideRefusal` and the payload refuse the same before a release
+  connects.
+- **Rendered per locale.** Web `parks/route_guide.ts` and mobile
+  `route_guide.dart` (a parity pair over `fixtures/route_guide_cases.json`)
+  turn each step into one full-sentence template (`parks.guide.*` /
+  `parkGuide*`) in all seven locales, so no course needs a translated copy.
+  Trail names stay as OSM has them; `getting_there` is free text in the
+  guide's `lang` (English today) and is shown with that `lang` attribute. A
+  guide any part of which cannot be read is hidden whole, never shown with a
+  step missing.
+- **Generated, never invented.** `scripts/parks/lib/route_guide.mjs` derives
+  the steps from the ordered OSM ways: a junction where the trail name changes
+  (a short unnamed bridge or split inside one trail is not one), a junction
+  between unnamed ways only where the snapshot shows a branch and the course
+  turns, crossings from `bridge` / `ford` tags, surfaces from `surface` tags
+  (stretches under 150 m ignored), climbs of at least 12 m at 3.5 %, the
+  checkpoints where the build placed them, and the rotation of the loop. A
+  lapped race writes lap 1 in full and then only its lap markers, checkpoints
+  and what differs (the turn off the loop on the last lap). A landmark ("keep
+  Swift Creek Lake on your right") appears only when the snapshot holds a named
+  water feature inside the loop; `fetch_snapshot.mjs` does not fetch water
+  yet, so today's guides say only which way round.
+- **Draft until walked.** `route_guide_checked_at` is null until the owner
+  walks the guide at the park and sets `route_guide.ground_checked_at` in
+  `park.json`. Until then the course page and the share page show "Drafted
+  from map data, not yet checked on the ground." above the steps, the share
+  page's meta description says so, and the GPX `<desc>` opens with it. Once
+  set, they say "Checked on the ground on <date>." How to check one is in
+  [scripts/parks/README.md § Route guides](../../scripts/parks/README.md#route-guides).
+- **Where it shows.** The course page (between the actions and the Before you
+  run notice), the share page (the same component, `ParkCourseRouteGuide`),
+  the share page's JSON-LD description in canonical English (`GUIDE_EN`, held
+  to `locales/en.ts` by a test), the course GPX's track `<desc>` in the same
+  English, mobile `ParkCourseScreen`, and a line in the `park-courses` help
+  guide.
+
 ## Wording and safety
 
 The surfaces say *course* and *time trial*, never *race*, *compete* or
@@ -240,6 +295,57 @@ These follow the owner-approved permit conditions (memo
   planning information, not organised or supervised events; Threkir does not
   inspect, maintain or mark the trails; the runner follows the land's rules,
   hours, closures and fees and stays on designated trails.
+
+## Reports and closures
+
+**Closures.** A course is closed only by a person: the catalogue sync when a
+park's manifest stops naming it (note "Removed from the park catalogue."), or a
+site admin from `/admin/reports` with a note the course page shows beside the
+closed banner. A report never closes or hides a course by itself. A
+land-manager request is honoured by closing the course within two business
+days (the condition recorded on #1097). The sync never touches an admin's
+closure, and an admin cannot reopen a catalogue closure (it would be closed
+again on the next release; put the course back in the manifest instead).
+
+**Reporting.** Every course page has "Report a problem with this course" with
+its notices, away from Navigate (web: under `ParkCourseNotices`; mobile: at the
+foot of `ParkCourseScreen`). It works signed out, so park staff need no
+account. The reporter picks a reason (`course_hazard`, `course_closure`,
+`course_off_trail`, `land_manager_request` or `other`), writes a note of up to
+1000 characters and may leave an email for a reply.
+
+- **One door.** The `park-course-report` Edge Function (`verify_jwt = false`)
+  verifies a JWT when one is sent and files as that user, or signed out. It
+  validates the body (8 KB cap), drops a filled honeypot with the same answer a
+  filed report gets, rate-limits 10 an hour per user or per hashed client
+  address (`check_rate_limit`, fail closed), and calls
+  `submit_park_course_report`, which only the service role may execute.
+- **The database's own caps,** which rotating addresses does not get round:
+  25 pending reports per course and 60 signed-out reports an hour across all
+  courses (SQLSTATE `PT429`); one pending report per course per signed-in
+  reporter, or per contact email when signed out; at most two links in a note.
+- **The row** is a `reports` row (`target_kind = 'park_course'`) carrying
+  `contact_email` and `signed_out`, so it shares the moderation queue, the
+  legal hold and the retention purge. Anon and authenticated can neither write
+  nor read anyone's report.
+- **Notices.** Every app admin gets a `park_course_report` notice (in-app,
+  email, push; it links to `/admin/reports`) on the first pending report on a
+  course and on every land-manager request.
+- **Review.** `/admin/reports` sorts land-manager targets after disputes,
+  oldest first, with the request's age and its deadline (`landManagerDueAt`:
+  two business days, Monday to Friday in UTC, holidays not counted out). The
+  detail says "Not signed in" for a signed-out reporter, links the contact
+  email for a reply by hand, and opens a course panel that closes the course
+  with its note (`admin_set_park_course_status`, which also marks the course's
+  pending reports reviewed) or reopens it, logged in
+  `park_course_status_actions` and read through `park_course_status_history`.
+  Mark reviewed and Dismiss work on course reports as on any other.
+- **Personal data.** The contact email goes with a signed-in reporter's
+  account (a trigger clears it when `reporter_id` is set null) and 30 days
+  after the report is resolved (`private.purge_stale_reports`), unless the
+  report is on legal hold. A signed-in reporter's own reports, email included,
+  are in their data export (`reports.json`). Threkir sends a reporter no email:
+  the acknowledgement is the operator's hand reply.
 
 ## Loading courses
 
@@ -436,6 +542,16 @@ These gate going live, not the code:
       before the sync creates it. Park courses without a race block need none
       (reviews/legal-park-course-permit.md).
 - [ ] Attribution checked on each loaded course's page and GPX export.
+- [ ] Owner step: walk each course's route guide at the park (Swift Creek
+      first), fix what the map data got wrong, and set its
+      `route_guide.ground_checked_at` in `park.json`
+      ([scripts/parks/README.md § Route guides](../../scripts/parks/README.md#route-guides)).
+      Until then every guide ships marked as a draft, which is honest but not
+      the end state.
+- [ ] Owner check of the park course report defaults (decisions § 2449): the
+      30-day contact-email retention, the hand reply in place of an
+      acknowledgement email, and the caps (10 an hour per user or address,
+      25 pending a course, 60 signed-out an hour).
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
 - [ ] NPS API key provisioned before the closures job is built; it must do
       nothing without one.
@@ -447,6 +563,24 @@ These gate going live, not the code:
       § 2403). Until then their boards show the "measured the old way" note.
 
 ## Tests
+
+- Reports and closures: pgTAP
+  `apps/backend/supabase/tests/park_course_reports_test.sql` (anon and
+  authenticated refused the filing RPC and the table, the insert path signed
+  out and in, validation, the per-course and signed-out caps, the admin notices,
+  a report never closing a course, the admin close and reopen and their log,
+  the contact email cleared on account deletion and 30 days after resolution);
+  Deno `apps/backend/supabase/functions/park-course-report/handler.test.ts`
+  (validation before any rate-limit spend, the honeypot, the two buckets, the
+  reporter passed through, each refusal mapped); web unit
+  `apps/web/src/lib/parks/course_report.test.ts` (the deadline, the email
+  check, the refusal copy); Playwright
+  `apps/web/tests-e2e/parks/park-course-report.spec.ts` (a signed-out
+  land-manager request, a signed-in hazard report and its duplicate refusal,
+  the admin closing the course from the queue); Flutter
+  `apps/mobile_android/test/park_courses_screen_test.dart` group *report a
+  problem with this course* (placement, a filed land-manager request, a worded
+  refusal).
 
 - Run any time: `apps/web/src/lib/parks/any_time_courses.test.ts` (stable
   order, nearest first with the distance away, unmeasured courses after
@@ -491,6 +625,17 @@ These gate going live, not the code:
   `handler_segment_match_test.go`; `segments/edge_matcher_bundle.test.ts` and
   `segments/track_extent.test.ts` on web.
 - Parity pair: `parks/park_courses.test.ts` ↔ `test/park_courses_test.dart`.
+- Route guide (#1344): `node --test scripts/parks/lib/route_guide.test.mjs`
+  (turns, surfaces, climbs, landmarks, junction rules, laps, offsets,
+  determinism, the validator, every committed guide);
+  `parks/route_guide.test.ts` ↔ `test/route_guide_test.dart` over
+  `fixtures/route_guide_cases.json` (template per step, fail-closed reading,
+  `GUIDE_EN` against the English catalogue); pgTAP
+  `park_course_route_guide_test.sql` (the shape predicate, the CHECKs, the load
+  writing the guide and its date with no backfill, each refusal); Playwright
+  `tests-e2e/parks/park-course-route-guide.spec.ts` (the list and the draft
+  note on the course and share pages, the checked date, the GPX `<desc>`);
+  a widget test in `test/park_courses_screen_test.dart`.
 - Pages (#1352): `parks/park_course_distance.test.ts` ↔
   `test/park_course_distance_test.dart` (labels, range, order, shape, laps);
   `parks/course_map.test.ts` (shared starts, a closing loop); Playwright

@@ -21891,4 +21891,255 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get coachAssistConsentFailed =>
       'No se pudo guardar. Inténtalo de nuevo.';
+
+  @override
+  String get parkGuideTitle => 'Guía del recorrido';
+
+  @override
+  String get parkGuidePending =>
+      'Redactada con datos del mapa, aún sin comprobar sobre el terreno.';
+
+  @override
+  String parkGuideChecked(String date) {
+    return 'Comprobada sobre el terreno el $date.';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'Cómo llegar';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return 'Sal por $name.';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => 'Sal por la pista forestal.';
+
+  @override
+  String get parkGuideStartRoad => 'Sal por la carretera del parque.';
+
+  @override
+  String get parkGuideStartPath => 'Sal por el sendero.';
+
+  @override
+  String get parkGuideClockwise =>
+      'Corre el circuito en el sentido de las agujas del reloj.';
+
+  @override
+  String get parkGuideCounterclockwise =>
+      'Corre el circuito en sentido contrario a las agujas del reloj.';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return 'Deja $landmark a tu izquierda.';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return 'Deja $landmark a tu derecha.';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'Pasa por todos los puntos de control en orden, o la carrera no se cronometra.';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at: gira a la izquierda hacia $name.';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at: gira a la derecha hacia $name.';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at: sigue recto hacia $name.';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at: gira a la izquierda por la pista forestal.';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at: gira a la derecha por la pista forestal.';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at: sigue recto por la pista forestal.';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at: gira a la izquierda por la carretera del parque.';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at: gira a la derecha por la carretera del parque.';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at: sigue recto por la carretera del parque.';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at: gira a la izquierda por el sendero.';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at: gira a la derecha por el sendero.';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at: sigue recto por el sendero.';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at: cruza el puente.';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at: cruza el vado. No hay puente, así que cuenta con mojarte.';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at: asfaltado desde aquí.';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at: grava desde aquí.';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at: sendero de tierra desde aquí.';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at: sin asfaltar desde aquí.';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at: pasarela de madera desde aquí.';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at: subida de $gain en $length.';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at: punto de control $n de $total.';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at: empieza la vuelta $n de $total y repite el circuito.';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at: meta.';
+  }
+
+  @override
+  String get parkCourseReportAction =>
+      'Informar de un problema con este recorrido';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Cuéntanos si hay un peligro, un cierre o un trazado que se sale del sendero. Una persona de Threkir revisa cada aviso. Un aviso no cierra el recorrido por sí solo.';
+
+  @override
+  String get parkCourseReportReasonLegend => '¿Cuál es el problema?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'Un peligro en el recorrido';
+
+  @override
+  String get parkCourseReportReasonClosure =>
+      'El recorrido o el sendero está cerrado';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'El trazado se sale del sendero señalizado';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'Una solicitud de la administración del parque';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'Para el personal del parque o del organismo gestor. Pídenos que retiremos el recorrido y lo cerramos en un plazo de dos días hábiles.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Otra cosa';
+
+  @override
+  String get parkCourseReportNotesLabel => '¿Qué debemos saber?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Dónde en el recorrido, qué viste y cuándo.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Tu correo (opcional)';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Solo si quieres una respuesta. Lo usamos para responder a este aviso y lo borramos 30 días después de resolverlo.';
+
+  @override
+  String get parkCourseReportCancel => 'Cancelar';
+
+  @override
+  String get parkCourseReportSubmit => 'Enviar aviso';
+
+  @override
+  String get parkCourseReportSent =>
+      'Gracias. Tu aviso ya está con el equipo de Threkir.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'No se pudo enviar el aviso. Inténtalo de nuevo.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Hay demasiados avisos ahora mismo. Inténtalo más tarde.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'Ya informaste de este recorrido y ese aviso sigue abierto.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'Este recorrido ya no está disponible.';
+
+  @override
+  String get parkCourseReportErrorInvalid =>
+      'Revisa el aviso e inténtalo de nuevo.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'Esa dirección de correo no parece correcta.';
+
+  @override
+  String get profileNotifParkCourseReport =>
+      'Se informó de un problema en un recorrido de parque';
 }

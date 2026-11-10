@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+	buildCourseGuideText,
 	buildCourseJsonLd,
 	buildCourseShareCanonical,
 	buildCourseShareDescription,
@@ -9,6 +10,17 @@ import {
 	renderShareCourseHeadTags,
 } from './share_course_meta';
 import { courseShareKey, parseCourseKey, type SharedCourse } from './share_course_lookup';
+import { parseRouteGuide } from '../parks/route_guide';
+
+const GUIDE = parseRouteGuide({
+	version: 1,
+	lang: 'en',
+	steps: [
+		{ kind: 'start', at_m: 0, name: 'Lake Trail' },
+		{ kind: 'direction', at_m: 0, rotation: 'clockwise' },
+		{ kind: 'finish', at_m: 5120 },
+	],
+});
 
 function c(over: Partial<SharedCourse> = {}): SharedCourse {
 	return {
@@ -20,6 +32,8 @@ function c(over: Partial<SharedCourse> = {}): SharedCourse {
 		difficulty: 'moderate',
 		laps: 1,
 		attribution: '© OpenStreetMap contributors (ODbL)',
+		route_guide: null,
+		route_guide_checked_at: null,
 		segment: {
 			name: 'Lake Loop',
 			description: 'Around the lake.',
@@ -136,4 +150,26 @@ test('buildShareCourseHead — canonical comes from the row, and the head names 
 	assert.match(tags, /<link rel="canonical" href="https:\/\/threkir\.com\/share\/course\/us-va\/fixture-state-park\/lake-loop">/);
 	assert.match(tags, /<script type="application\/ld\+json">/);
 	assert.doesNotMatch(tags, /leaderboard entry|display_name|athlete/i);
+});
+
+test('a draft route guide says so in the description, a checked one does not', () => {
+	assert.match(
+		buildCourseShareDescription(c({ route_guide: GUIDE })),
+		/ Route guide: drafted from map data, not yet checked on the ground\.$/,
+	);
+	assert.doesNotMatch(
+		buildCourseShareDescription(c({ route_guide: GUIDE, route_guide_checked_at: '2026-12-01' })),
+		/Route guide/,
+	);
+	assert.doesNotMatch(buildCourseShareDescription(c()), /Route guide/);
+});
+
+test('the route guide is the JSON-LD description\'s indexable text, in English', () => {
+	assert.equal(buildCourseGuideText(c()), '');
+	assert.equal(
+		buildCourseGuideText(c({ route_guide: GUIDE })),
+		'Drafted from map data, not yet checked on the ground. Start on Lake Trail. Run the loop clockwise. 5.1 km: finish.',
+	);
+	const ld = JSON.parse(buildCourseJsonLd(c({ route_guide: GUIDE }), { key: KEY, base: SITE }));
+	assert.match(ld.description, /Start on Lake Trail\. Run the loop clockwise\./);
 });

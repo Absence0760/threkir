@@ -101,6 +101,12 @@ Two rows above are easy to misread, and both were wrong in this table before:
   That is what puts it on the club side of the people-directory line rather
   than the segment side (`/segments/[id]` is a board of named runners). The
   course map is behind `requireExplicitConsent`, as on the route share page.
+  Its written text is the course's **route guide** (issue #1344, decisions
+  § 2448): the page body lists it in the reader's language, the JSON-LD
+  `description` carries it in canonical English (`buildCourseGuideText`, from
+  `GUIDE_EN`), and while nobody has checked it at the park the meta
+  description ends "Route guide: drafted from map data, not yet checked on the
+  ground." so search text never presents a draft as verified.
   The `/parks` index and the park pages stay CSR and out of the sitemap for
   now; a park page is the next surface if search traffic says so.
 - **`/share/session/[id]` + `/share/workout/[id]` are NOT in the sitemap**,

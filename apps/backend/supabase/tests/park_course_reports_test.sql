@@ -1,5 +1,5 @@
 -- Pins 20271212000001..4: park course problem reports (issue #1346,
--- decisions § 2447).
+-- decisions § 2449).
 --
 -- Only the service role files a report (the park-course-report Edge Function
 -- is the one door), signed in or signed out; anon and authenticated can

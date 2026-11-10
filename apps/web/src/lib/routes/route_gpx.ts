@@ -86,7 +86,8 @@ export function toRouteGpxWithMarkers(
 	coordinates: [number, number][],
 	elevations: number[],
 	markers: RouteGpxMarker[],
-	attribution: GpxAttribution | null = null
+	attribution: GpxAttribution | null = null,
+	trackDesc: string | null = null
 ): string {
 	const waypoints = markers.flatMap((m) => renderWaypoint(m) ?? []).join('\n');
 
@@ -113,7 +114,7 @@ export function toRouteGpxWithMarkers(
 ${gpxAttributionMetadata(attribution)}  </metadata>
 ${waypoints ? waypoints + '\n' : ''}  <trk>
     <name>${escapeXml(name)}</name>
-    <trkseg>
+${trackDesc ? `    <desc>${escapeXml(trackDesc)}</desc>\n` : ''}    <trkseg>
 ${trackpoints}
     </trkseg>
   </trk>

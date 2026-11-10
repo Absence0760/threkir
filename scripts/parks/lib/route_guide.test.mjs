@@ -17,6 +17,7 @@ import {
 	loopLandmark,
 	pointInRing,
 	rotationOf,
+	routeGuideRefusal,
 	surfaceClass,
 	turnAt,
 	wayKind,
@@ -250,6 +251,41 @@ test('every committed manifest carries a guide that starts, finishes and stays i
 			assert.ok(Math.abs(steps.at(-1).at_m - course.distance_m) <= 1, course.slug);
 			for (let i = 1; i < steps.length; i++) assert.ok(steps[i].at_m >= steps[i - 1].at_m, course.slug);
 			assert.ok(course.route_guide_checked_at === null || /^\d{4}-\d{2}-\d{2}$/.test(course.route_guide_checked_at));
+		}
+	}
+});
+
+test('routeGuideRefusal accepts what the CHECK accepts and names what it refuses', () => {
+	const ok = guide({ gettingThere: 'Park by the lake.' });
+	assert.equal(routeGuideRefusal(ok), null);
+	const bad = (/** @type {(g: any) => void} */ edit) => {
+		const g = structuredClone(ok);
+		edit(g);
+		return routeGuideRefusal(g);
+	};
+	assert.match(String(bad((g) => (g.steps[2].kind = 'waypoint'))), /unknown kind waypoint/);
+	assert.match(String(bad((g) => (g.steps[3].turn = 'uturn'))), /turn uturn/);
+	assert.match(String(bad((g) => (g.steps[3].way = 'path'))), /a name or a way, not both/);
+	assert.match(String(bad((g) => (g.steps[3].at_m = 1))), /in order/);
+	assert.match(String(bad((g) => (g.steps[0].at_m = 5))), /in order|at 0/);
+	assert.match(String(bad((g) => g.steps.pop())), /finish step/);
+	assert.match(String(bad((g) => (g.steps[4].surface = 'lava'))), /surface lava/);
+	assert.match(String(bad((g) => (g.steps[1].landmark = 'Lake'))), /keep_on and landmark go together/);
+	assert.match(String(bad((g) => (g.lang = 'English'))), /lang/);
+	assert.match(String(bad((g) => (g.notes = 'x'))), /unknown field notes/);
+	assert.match(String(bad((g) => (g.getting_there = ' '))), /getting_there/);
+	assert.match(String(bad((g) => (g.steps[5].of = 0))), /checkpoint order/);
+	assert.equal(routeGuideRefusal([]), 'it is not an object');
+});
+
+test('every committed guide passes routeGuideRefusal', () => {
+	const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'catalogue');
+	for (const region of fs.readdirSync(root)) {
+		for (const park of fs.readdirSync(path.join(root, region))) {
+			const manifest = JSON.parse(fs.readFileSync(path.join(root, region, park, 'manifest.json'), 'utf8'));
+			for (const course of [...manifest.courses, ...(manifest.race_courses ?? [])]) {
+				assert.equal(routeGuideRefusal(course.route_guide), null, course.slug);
+			}
 		}
 	}
 });

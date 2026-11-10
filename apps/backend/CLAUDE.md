@@ -41,6 +41,7 @@ apps/backend/
         ├── clip-public-track/index.ts
         ├── delete-account/index.ts
         ├── export-data/index.ts
+        ├── park-course-report/{index,handler,lib}.ts   # signed-in or signed-out park course reports (§ 2449)
         ├── parkrun-import/index.ts
         ├── plan-calendar/{index,handler,lib}.ts   # subscribable plan .ics behind a revocable URL token
         ├── refresh-tokens/index.ts

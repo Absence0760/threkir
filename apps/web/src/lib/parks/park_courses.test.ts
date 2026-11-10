@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
+import { parseRouteGuide } from './route_guide';
 import {
 	COURSE_SHAPES,
 	courseAttribution,
@@ -177,6 +178,33 @@ test('parkCourseGpx: the line, one waypoint per checkpoint in order, and the cre
 	assert.ok(first > 0 && second > first);
 	assert.ok(xml.includes('<wpt lat="37.11" lon="-77.51"><name>Checkpoint 1</name><type>checkpoint</type></wpt>'));
 	assert.ok(xml.includes('<copyright author="OpenStreetMap contributors">'));
+});
+
+test('parkCourseGpx: the route guide is the track desc, in English, led by its ground-check status', () => {
+	const guide = parseRouteGuide({
+		version: 1,
+		lang: 'en',
+		getting_there: 'Park by the boathouse.',
+		steps: [
+			{ kind: 'start', at_m: 0, name: 'Lake Trail' },
+			{ kind: 'junction', at_m: 400, turn: 'left', name: 'Ridge Trail' },
+			{ kind: 'finish', at_m: 1990 },
+		],
+	});
+	assert.ok(guide);
+	const xml = parkCourseGpx({
+		name: 'Lake Loop',
+		waypoints: [{ lat: 37.1, lng: -77.5 }],
+		checkpoints: [],
+		attribution: null,
+		guide: { guide, checkedAt: null },
+	});
+	assert.ok(
+		xml.includes(
+			'<desc>Drafted from map data, not yet checked on the ground.\nPark by the boathouse.\nStart on Lake Trail.\n' +
+				'400 m: turn left onto Ridge Trail.\n2.0 km: finish.</desc>',
+		),
+	);
 });
 
 test('parkCourseGpx: an unreadable checkpoint list writes no waypoints, never a partial set', () => {

@@ -231,6 +231,7 @@ You enforce the "TS↔Dart parity helper" invariant. Several pure-logic modules 
 | `apps/web/src/lib/parks/park_courses.ts` | `apps/mobile_android/lib/park_courses.dart` | `parks/park_courses.test.ts` ↔ `test/park_courses_test.dart` |
 | `apps/web/src/lib/parks/any_time_courses.ts` | `apps/mobile_android/lib/any_time_courses.dart` | `parks/any_time_courses.test.ts` ↔ `test/any_time_courses_test.dart` |
 | `apps/web/src/lib/parks/park_course_distance.ts` | `apps/mobile_android/lib/park_course_distance.dart` | `parks/park_course_distance.test.ts` ↔ `test/park_course_distance_test.dart` |
+| `apps/web/src/lib/parks/route_guide.ts` | `apps/mobile_android/lib/route_guide.dart` | `parks/route_guide.test.ts` ↔ `test/route_guide_test.dart`, both reading `fixtures/route_guide_cases.json` |
 
 
 > The embedded factor tables `apps/web/src/lib/runs/age_grade_tables.ts` ↔ `apps/mobile_android/lib/age_grade_tables.dart` are part of the `age_grade` pair but are **generated** from `scripts/age_grade/` and stay identical by construction — never hand-edit them.

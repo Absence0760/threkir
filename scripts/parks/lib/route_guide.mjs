@@ -515,3 +515,85 @@ export function buildRouteGuide(input) {
 		steps,
 	};
 }
+
+const STEP_FIELDS = Object.freeze({
+	start: ['kind', 'at_m', 'name', 'way'],
+	direction: ['kind', 'at_m', 'rotation', 'keep_on', 'landmark'],
+	lap: ['kind', 'at_m', 'lap', 'of'],
+	junction: ['kind', 'at_m', 'turn', 'name', 'way'],
+	crossing: ['kind', 'at_m', 'crossing'],
+	surface: ['kind', 'at_m', 'surface'],
+	climb: ['kind', 'at_m', 'gain_m', 'length_m'],
+	checkpoint: ['kind', 'at_m', 'order', 'of'],
+	finish: ['kind', 'at_m'],
+});
+
+/** @param {unknown} v */
+const isWhole = (v) => typeof v === 'number' && Number.isInteger(v);
+/** @param {unknown} v */
+const isLabel = (v) => typeof v === 'string' && v.trim().length >= 1 && v.trim().length <= MAX_NAME_LENGTH;
+
+/**
+ * Why a route guide is not one the database's CHECK accepts, or null when it
+ * is. Mirrors `private.park_course_route_guide_ok` (migration 20271212001344)
+ * rule for rule, so a bad manifest fails before a release connects.
+ *
+ * @param {any} guide
+ * @returns {string | null}
+ */
+export function routeGuideRefusal(guide) {
+	if (guide === null || typeof guide !== 'object' || Array.isArray(guide)) return 'it is not an object';
+	for (const k of Object.keys(guide)) {
+		if (!['version', 'lang', 'getting_there', 'steps'].includes(k)) return `unknown field ${k}`;
+	}
+	if (guide.version !== ROUTE_GUIDE_VERSION) return `version must be ${ROUTE_GUIDE_VERSION}`;
+	if (typeof guide.lang !== 'string' || !/^[a-z]{2,3}(-[A-Z]{2})?$/.test(guide.lang)) return 'lang is not a language tag';
+	if (
+		'getting_there' in guide &&
+		(typeof guide.getting_there !== 'string' ||
+			guide.getting_there.trim().length < 1 ||
+			guide.getting_there.trim().length > MAX_GETTING_THERE_LENGTH)
+	) {
+		return `getting_there must be 1-${MAX_GETTING_THERE_LENGTH} characters`;
+	}
+	const steps = guide.steps;
+	if (!Array.isArray(steps) || steps.length < 2 || steps.length > MAX_STEPS) return `steps must be 2-${MAX_STEPS} entries`;
+	let prev = 0;
+	for (let i = 0; i < steps.length; i++) {
+		const s = steps[i];
+		const where = `step ${i + 1}`;
+		if (s === null || typeof s !== 'object' || Array.isArray(s)) return `${where} is not an object`;
+		const fields = /** @type {Record<string, readonly string[]>} */ (STEP_FIELDS)[s.kind];
+		if (!fields) return `${where} has an unknown kind ${s.kind}`;
+		for (const k of Object.keys(s)) if (!fields.includes(k)) return `${where} (${s.kind}) has an unknown field ${k}`;
+		if ((i === 0) !== (s.kind === 'start')) return 'the guide must open with its one start step';
+		if ((i === steps.length - 1) !== (s.kind === 'finish')) return 'the guide must close with its one finish step';
+		if (!isWhole(s.at_m) || s.at_m < prev || s.at_m > 1_000_000) return `${where} at_m is not a whole metre in order`;
+		if (s.kind === 'start' && s.at_m !== 0) return 'the start step must be at 0';
+		prev = s.at_m;
+		if ('name' in s && !isLabel(s.name)) return `${where} name must be 1-${MAX_NAME_LENGTH} characters`;
+		if ('way' in s && !WAY_KINDS.includes(s.way)) return `${where} way ${s.way} is not one of ${WAY_KINDS.join(', ')}`;
+		if ((s.kind === 'start' || s.kind === 'junction') && ('name' in s) === ('way' in s)) {
+			return `${where} must carry a name or a way, not both`;
+		}
+		if (s.kind === 'direction') {
+			if (!ROTATIONS.includes(s.rotation)) return `${where} rotation ${s.rotation} is not one of ${ROTATIONS.join(', ')}`;
+			if (('keep_on' in s) !== ('landmark' in s)) return `${where} keep_on and landmark go together`;
+			if ('keep_on' in s && !SIDES.includes(s.keep_on)) return `${where} keep_on must be left or right`;
+			if ('landmark' in s && !isLabel(s.landmark)) return `${where} landmark must be 1-${MAX_NAME_LENGTH} characters`;
+		}
+		if (s.kind === 'junction' && !TURNS.includes(s.turn)) return `${where} turn ${s.turn} is not one of ${TURNS.join(', ')}`;
+		if (s.kind === 'crossing' && !CROSSINGS.includes(s.crossing)) return `${where} crossing ${s.crossing} is not one of ${CROSSINGS.join(', ')}`;
+		if (s.kind === 'surface' && !SURFACES.includes(s.surface)) return `${where} surface ${s.surface} is not one of ${SURFACES.join(', ')}`;
+		if (s.kind === 'climb' && !(isWhole(s.gain_m) && s.gain_m >= 1 && s.gain_m <= 10_000 && isWhole(s.length_m) && s.length_m >= 1 && s.length_m <= 1_000_000)) {
+			return `${where} climb needs whole gain_m and length_m`;
+		}
+		if (s.kind === 'lap' && !(isWhole(s.lap) && isWhole(s.of) && s.lap >= 2 && s.lap <= s.of && s.of <= 1000)) {
+			return `${where} lap must be 2..of, of at most 1000`;
+		}
+		if (s.kind === 'checkpoint' && !(isWhole(s.order) && isWhole(s.of) && s.order >= 1 && s.order <= s.of && s.of <= 50)) {
+			return `${where} checkpoint order must be 1..of, of at most 50`;
+		}
+	}
+	return null;
+}

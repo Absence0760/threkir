@@ -1,5 +1,5 @@
 -- Park course problem reports, part 3: filing, the operator's close and
--- reopen, the audit log and the reads (issue #1346, decisions § 2447). Part 1
+-- reopen, the audit log and the reads (issue #1346, decisions § 2449). Part 1
 -- (20271212000001) widened `reports`; part 2 (20271212000002) added the
 -- `park_course_report` notification kind.
 --
@@ -221,7 +221,7 @@ revoke execute on function submit_park_course_report(uuid, text, text, text, uui
 grant execute on function submit_park_course_report(uuid, text, text, text, uuid) to service_role;
 
 comment on function submit_park_course_report(uuid, text, text, text, uuid) is
-  'Files a park course problem report (issue #1346, decisions § 2447). Service '
+  'Files a park course problem report (issue #1346, decisions § 2449). Service '
   'role only: the park-course-report Edge Function is the one caller. Validates '
   'the course, reason, notes and contact email; caps pending reports per course '
   '(25) and signed-out reports an hour (60), refusing with PT429; notifies every '
@@ -538,7 +538,7 @@ revoke execute on function private.report_contact_retention() from public, anon,
 
 comment on function private.report_contact_retention() is
   'How long a resolved report keeps the contact email its reporter gave '
-  '(decisions § 2447): long enough for the operator to answer, then cleared by '
+  '(decisions § 2449): long enough for the operator to answer, then cleared by '
   'purge_stale_reports(). The report itself keeps report_retention_window().';
 
 -- Body from 20271021000040 plus the contact-email step, which runs before the
@@ -598,4 +598,4 @@ comment on function private.purge_stale_reports() is
   'private.report_contact_retention() has. Never touches a pending or '
   'legal_hold report. Gated on private.feature_flags reports_retention_purge '
   '(absent = off), seeded on by 20271022000001. Scheduled by pg_cron '
-  '`purge-stale-reports` (03:59 UTC daily). decisions § 2231, § 2234, § 2447.';
+  '`purge-stale-reports` (03:59 UTC daily). decisions § 2231, § 2234, § 2449.';

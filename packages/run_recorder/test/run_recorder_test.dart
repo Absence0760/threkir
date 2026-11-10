@@ -584,6 +584,60 @@ void main() {
       expect(r.debugDistanceMetres, closeTo(20, 1e-9));
       expect(r.debugTrack.length, 1);
     });
+
+    test('a gap inside a batched delivery is timed by GPS time', () {
+      // Four fixes arrive live, 50 m per 10 s. Delivery then stalls (a
+      // Dart-side or main-looper stall, OS batching) and the next two fixes,
+      // taken at 40 s and 52 s with a 12 s dropout between them, arrive
+      // together at 60 s. The stopwatch reads ~0 s between those two, so
+      // timing the gap by it fed the estimator no interval at all and the
+      // 150 m was lost. Both fixes were taken before they arrived, so their
+      // GPS interval is consistent with real time and is the gap's clock:
+      // the same 320.0 m (spec v1.4 chord bound, capped at 10 m/s x 12 s)
+      // that calculate_pace_test pins for the live delivery.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      addTearDown(r.dispose);
+      r.begin();
+      for (var i = 0; i <= 3; i++) {
+        if (i > 0) clock.advance(const Duration(seconds: 10));
+        r.debugInjectPosition(makePosition(
+            metresEast: 50.0 * i, secondsFromStart: 10 * i, speed: 5));
+      }
+      clock.advance(const Duration(seconds: 30));
+      r.debugInjectPosition(
+          makePosition(metresEast: 200, secondsFromStart: 40, speed: 5));
+      r.debugInjectPosition(
+          makePosition(metresEast: 350, secondsFromStart: 52, speed: 5));
+      expect(r.debugDistanceMetres, closeTo(320.0, 0.01));
+    });
+
+    test('a GPS interval longer than the real time elapsed is not trusted',
+        () {
+      // The protection the arrival bound keeps: a fix claiming 12 s (a
+      // device clock stepping forward) that arrives 1 s after the last is
+      // timed by the stopwatch, so it is integrated over the 1 s the runner
+      // actually moved instead of re-anchoring on a gap that never happened.
+      // Likewise a one-hour step.
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      addTearDown(r.dispose);
+      r.begin();
+      for (var i = 0; i <= 4; i++) {
+        if (i > 0) clock.advance(const Duration(seconds: 10));
+        r.debugInjectPosition(makePosition(
+            metresEast: 50.0 * i, secondsFromStart: 10 * i, speed: 5));
+      }
+      expect(r.debugDistanceMetres, closeTo(200, 0.01));
+      clock.advance(const Duration(seconds: 1));
+      r.debugInjectPosition(
+          makePosition(metresEast: 205, secondsFromStart: 52, speed: 5));
+      expect(r.debugDistanceMetres, closeTo(205, 0.01));
+      clock.advance(const Duration(seconds: 1));
+      r.debugInjectPosition(
+          makePosition(metresEast: 210, secondsFromStart: 3653, speed: 5));
+      expect(r.debugDistanceMetres, closeTo(210, 0.01));
+    });
   });
 
   group('snapshot fix provenance', () {

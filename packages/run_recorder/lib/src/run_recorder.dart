@@ -1522,15 +1522,24 @@ class RunRecorder {
   static double _seconds(Duration d) =>
       (d.inMicroseconds * 1024 / 1e6).roundToDouble() / 1024;
 
+  static final double _fixIntervalS = _seconds(_fixInterval);
+
   /// Estimator time for a fix, seconds, strictly monotonic within a stretch.
   ///
   /// Advances by the GPS-reported interval when it is positive and no longer
-  /// than the real elapsed time or [GpsDistanceEstimator.gapS], whichever is
-  /// larger, and by the [_stopwatch] interval otherwise. The GPS interval is
-  /// what keeps a burst of queued fixes (Android Doze batching, a CPU stall)
-  /// one second apart instead of crediting them nothing; the stopwatch is
-  /// what a backwards, stalled or leaping device clock falls back to, so a
-  /// wall-clock jump can neither freeze the distance nor credit an hour.
+  /// than the largest of: the real time since the previous fix arrived,
+  /// [GpsDistanceEstimator.gapS], and the interval that would put this fix's
+  /// time at its own arrival plus one [_fixInterval] of delivery jitter. By
+  /// the [_stopwatch] interval otherwise.
+  ///
+  /// The GPS interval keeps a burst of queued fixes (a delivery stall) one
+  /// second apart instead of crediting them nothing. The arrival bound times
+  /// a gap INSIDE such a burst: its fixes arrive microseconds apart, so the
+  /// time since the previous delivery says nothing about how far apart they
+  /// were taken, while a fix cannot have been taken after it arrived
+  /// (decisions § 2434). The stopwatch is what a backwards, stalled or
+  /// leaping device clock falls back to, so a wall-clock jump can neither
+  /// freeze the distance nor credit an hour.
   double _estimatorFixTime(DateTime gpsTime) {
     final mono = _stopwatch.elapsed;
     final lastT = _estFixT;
@@ -1542,8 +1551,10 @@ class RunRecorder {
     } else {
       final monoGap = _seconds(mono - lastMono);
       final gpsGap = _seconds(gpsTime.difference(lastGps));
-      final useGps =
-          gpsGap > 0 && gpsGap <= max(monoGap, GpsDistanceEstimator.gapS);
+      final arrivalBoundS = _seconds(mono) + _fixIntervalS - lastT;
+      final useGps = gpsGap > 0 &&
+          gpsGap <=
+              max(max(monoGap, GpsDistanceEstimator.gapS), arrivalBoundS);
       t = lastT + (useGps ? gpsGap : monoGap);
     }
     _estFixT = t;

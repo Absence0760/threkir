@@ -2096,7 +2096,9 @@
 								? m('runDetail.copyShareLink')
 								: audienceSharingOn && audienceLevel !== 'private'
 									? m('audience.copyLink')
-									: m('runDetail.shareLink')}
+									: audienceSharingOn
+										? m('runDetail.shareLink')
+										: m('runDetail.makePublicCopyLink')}
 							onclick={handleShare}
 							disabled={shareBusy}
 							data-testid="run-share-btn"
@@ -2145,8 +2147,8 @@
 						</button>
 						<button
 							class="icon-btn"
-							aria-label={m('runDetail.shareAsImage')}
-							title={m('runDetail.shareAsImage')}
+							aria-label={m('runDetail.shareImageAria')}
+							title={m('runDetail.shareImage')}
 							onclick={() => handleShareImage()}
 							disabled={generatingImage}
 						>
@@ -2894,6 +2896,7 @@
 		open={showShareImage}
 		onclose={() => (showShareImage = false)}
 		run={run}
+		linkHint={run.is_public ? null : m('runShare.linkHint')}
 		title={shareImageTitle}
 		line={shareCardLine}
 		captureCard={captureShareCard}

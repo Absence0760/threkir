@@ -29,7 +29,7 @@ test.describe('detail surface — runs', () => {
 		await page.goto(`/runs/${RUNNER_PUBLIC_RUN_ID}`);
 		// Share-as-image icon button.
 		await expect(
-			page.locator('button[title="Share as image"]')
+			page.locator('button[title="Share image"]')
 		).toBeVisible({ timeout: 10_000 });
 	});
 

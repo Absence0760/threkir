@@ -76,6 +76,8 @@
 		open: boolean;
 		onclose: () => void;
 		run: ShareableRun;
+		/// Shown on a run nobody else can open yet: an image shares no link.
+		linkHint?: string | null;
 		title: string;
 		/// The clipped share line (`shareCardTrack`), never a raw track.
 		line: TrackPoint[];
@@ -112,6 +114,7 @@
 		open,
 		onclose,
 		run,
+		linkHint = null,
 		title,
 		line,
 		captureCard,
@@ -642,6 +645,9 @@
 
 <Modal {open} {onclose} title={m('runShare.title')} wide data-testid="run-share-image-dialog">
 	<div class="share-editor">
+		{#if linkHint}
+			<p class="hint" data-testid="share-image-link-hint">{linkHint}</p>
+		{/if}
 		<div class="chip-row" role="radiogroup" aria-label={m('runShare.style')}>
 			{#each styles as s (s.value)}
 				<button

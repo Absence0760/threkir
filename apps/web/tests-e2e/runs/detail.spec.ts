@@ -325,7 +325,7 @@ test.describe('/runs/[id]', () => {
 		}
 	});
 
-	test('Share and Share as image refuse when the privacy zones cannot be loaded', async ({
+	test('Share and Share image refuse when the privacy zones cannot be loaded', async ({
 		page,
 		mockRoute
 	}) => {
@@ -365,7 +365,7 @@ test.describe('/runs/[id]', () => {
 			const zonesUnknown = page.locator('.toast', {
 				hasText: /Couldn't load your privacy zones/
 			});
-			await page.locator('button[title="Share as image"]').click();
+			await page.locator('button[title="Share image"]').click();
 			await expect(zonesUnknown).toBeVisible({ timeout: 15_000 });
 			await expect(zonesUnknown).toHaveCount(0, { timeout: 10_000 });
 
@@ -588,6 +588,44 @@ test.describe('/runs/[id]', () => {
 				getAdminClient().from('runs').select('is_public').eq('id', planted).single()
 			);
 			expect(row.is_public).toBe(false);
+		} finally {
+			await deleteRun(planted);
+		}
+	});
+
+	test('the image and link icons say which is which, and the image dialog points at the chip', async ({
+		page,
+		mockRoute
+	}) => {
+		// Two header icons both read as "share": the image one opened a dialog
+		// titled "Share run" that can neither share a link nor make the run
+		// public. The image icon and its dialog now say image, the link icon on
+		// a private run says it makes the run public, and the dialog says how.
+		await mockRoute(page, '**/rest/v1/rpc/audience_sharing_enabled*', (route) =>
+			route.fulfill({ status: 200, contentType: 'application/json', body: 'false' })
+		);
+		const planted = await insertRun({
+			user_id: USER_A.id,
+			distance_m: 5_000,
+			duration_s: 1_500,
+			is_public: false
+		});
+		try {
+			await page.goto(`/runs/${planted}`);
+			await expect(page.getByTestId('run-share-btn')).toHaveAttribute(
+				'title',
+				'Make public and copy share link',
+				{ timeout: 10_000 }
+			);
+			const image = page.getByRole('button', { name: 'Make a share image' });
+			await expect(image).toHaveAttribute('title', 'Share image');
+			await image.click();
+			const dialog = page.getByTestId('run-share-image-dialog');
+			await expect(dialog).toBeVisible({ timeout: 10_000 });
+			await expect(page.getByRole('dialog', { name: 'Share image' })).toBeVisible();
+			await expect(dialog.getByTestId('share-image-link-hint')).toContainText(
+				'An image shares no link'
+			);
 		} finally {
 			await deleteRun(planted);
 		}

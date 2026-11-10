@@ -143,7 +143,7 @@ test.describe('head-to-head card', () => {
 			}),
 		);
 		await page.goto(`/runs/${runIds[0]}`);
-		await page.locator('button[title="Share as image"]').click();
+		await page.locator('button[title="Share image"]').click();
 		const dialog = page.getByTestId('run-share-image-dialog');
 		await expect(dialog).toBeVisible({ timeout: 15_000 });
 		await dialog.getByTestId('share-style-versus').click();

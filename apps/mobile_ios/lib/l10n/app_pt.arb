@@ -5414,6 +5414,7 @@
   "planNewStarterSummary": "{weeks} semanas · {days} dias por semana",
   "planNewStarterSummaryTimed": "{weeks} semanas · {days} dias por semana · {min}–{max} min por sessão",
   "plansStarterStarts": "Começa a {date}",
+  "plansStarterStart": "Começar este plano",
   "planNewStartDateHint": "A semana 1 começa aqui. As semanas do plano vão de domingo a sábado, por isso só é possível escolher um domingo.",
   "planNewStartDatePickerHelp": "Escolha um domingo",
   "planNewStartDatePickerHelpWalkRun": "Escolha qualquer dia",

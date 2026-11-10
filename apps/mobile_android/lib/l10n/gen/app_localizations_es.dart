@@ -19354,6 +19354,9 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get plansStarterStart => 'Empezar este plan';
+
+  @override
   String get planNewStartDateHint =>
       'Aquí empieza la semana 1. Las semanas del plan van de domingo a sábado, así que solo se puede elegir un domingo.';
 

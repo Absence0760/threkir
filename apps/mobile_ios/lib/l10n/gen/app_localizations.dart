@@ -31375,6 +31375,12 @@ abstract class AppLocalizations {
   /// **'Starts {date}'**
   String plansStarterStarts(String date);
 
+  /// Call to action at the foot of each built-in starter-plan tile on the empty plans list; tapping the tile creates the plan. Same wording as web plansNew.createStarter
+  ///
+  /// In en, this message translates to:
+  /// **'Start this plan'**
+  String get plansStarterStart;
+
   /// Helper under the start date: why only Sundays can be picked
   ///
   /// In en, this message translates to:

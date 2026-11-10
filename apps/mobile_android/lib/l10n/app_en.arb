@@ -25412,6 +25412,10 @@
       }
     }
   },
+  "plansStarterStart": "Start this plan",
+  "@plansStarterStart": {
+    "description": "Call to action at the foot of each built-in starter-plan tile on the empty plans list; tapping the tile creates the plan. Same wording as web plansNew.createStarter"
+  },
   "planNewStartDateHint": "Week 1 begins here. The plan's weeks run Sunday to Saturday, so only a Sunday can be picked.",
   "@planNewStartDateHint": {
     "description": "Helper under the start date: why only Sundays can be picked"

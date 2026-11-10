@@ -5414,6 +5414,7 @@
   "planNewStarterSummary": "{weeks}週間・週{days}日",
   "planNewStarterSummaryTimed": "{weeks}週間・週{days}日・1回{min}〜{max}分",
   "plansStarterStarts": "{date}開始",
+  "plansStarterStart": "このプランを始める",
   "planNewStartDateHint": "ここから第1週が始まります。プランの週は日曜日から土曜日までのため、選べるのは日曜日だけです。",
   "planNewStartDatePickerHelp": "日曜日を選んでください",
   "planNewStartDatePickerHelpWalkRun": "好きな日を選んでください",

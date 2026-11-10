@@ -23,6 +23,7 @@
 	import type { Exercise } from '#lib/types.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import { formatWeight } from '#lib/format/units.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import GymEditor from '#lib/components/GymEditor.svelte';
@@ -295,15 +296,19 @@
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>
 	{:else if workouts.length === 0}
-		<div class="card-elevated empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">fitness_center</span>
-			<p class="empty-title empty-text">{t('gym.empty.title')}</p>
-			<p class="empty-text empty-body">{t('gym.empty.body')}</p>
-			<button class="btn btn-primary" onclick={() => (showCreate = true)}>
-				<span class="material-symbols" aria-hidden="true">add</span>
-				{t('gym.log')}
-			</button>
-		</div>
+		<EmptyState
+			icon="fitness_center"
+			title={t('gym.empty.title')}
+			text={t('gym.empty.body')}
+			data-testid="gym-empty"
+		>
+			{#snippet actions()}
+				<button class="btn btn-primary" onclick={() => (showCreate = true)}>
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{t('gym.log')}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="workout-list">
 			{#each workouts as w (w.id)}
@@ -480,45 +485,6 @@
 	}
 	.draft-actions .btn {
 		text-decoration: none;
-	}
-
-	/* Empty-state card — same shape as /routes, /history, /dashboard. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
-	}
-	.empty-title {
-		margin: 0;
-		padding: 0;
-		font-size: 1.05rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-body {
-		max-width: 32rem;
-		margin: 0;
-		padding: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-card .btn {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--space-2xs);
-		margin-top: var(--space-sm);
-	}
-	.empty-card .material-symbols {
-		font-size: 1.1rem;
 	}
 
 	.workout-list {

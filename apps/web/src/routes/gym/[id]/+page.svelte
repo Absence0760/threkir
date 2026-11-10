@@ -32,6 +32,7 @@
 	import { formatDate } from '#lib/format/time.ts';
 	import { formatWeight, weightUnitLabel } from '#lib/format/units.svelte.ts';
 	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import GymEditor from '#lib/components/GymEditor.svelte';
 	import RoutineEditor from '#lib/components/RoutineEditor.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
@@ -385,17 +386,23 @@
 		{/each}
 		<p class="visually-hidden" role="status">{t('shell.loading')}</p>
 	{:else if loadError !== null}
-		<div class="card-elevated empty-card" role="alert" data-testid="gym-detail-load-error">
-			<span class="material-symbols empty-icon" aria-hidden="true">error</span>
-			<p class="empty-text">{t('gym.loadError')}</p>
-			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
-		</div>
+		<EmptyState
+			icon="error"
+			tone="danger"
+			title={t('gym.loadError')}
+			role="alert"
+			data-testid="gym-detail-load-error"
+		>
+			{#snippet actions()}
+				<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
+			{/snippet}
+		</EmptyState>
 	{:else if notFound}
-		<div class="card-elevated empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">search_off</span>
-			<p class="empty-text">{t('gym.notFound')}</p>
-			<a href="/gym" class="btn btn-outline">{t('gym.back')}</a>
-		</div>
+		<EmptyState icon="search_off" title={t('gym.notFound')}>
+			{#snippet actions()}
+				<a href="/gym" class="btn btn-outline">{t('gym.back')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else if data}
 		<header class="page-header">
 			<div class="head-text">
@@ -839,28 +846,6 @@
 
 	/* Empty / not-found card — composes .card-elevated; only the centered
 	   layout lives here. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		margin: 0;
-		padding: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-	}
-	.empty-card .btn {
-		margin-top: var(--space-xs);
-	}
 
 	/* Skeletons mirror the head + exercise-card heights. */
 	.skel-head {

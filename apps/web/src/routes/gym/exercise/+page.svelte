@@ -11,6 +11,7 @@
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 
 	const back = smartBack();
 	const name = $derived(page.url.searchParams.get('name') ?? '');
@@ -115,11 +116,11 @@
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>
 	{:else if !progress}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">monitoring</span>
-			<p class="empty-text">{t('gym.exercise.empty')}</p>
-			<a href="/gym/records" class="btn btn-outline" onclick={back.handle}>{t('gym.exercise.back')}</a>
-		</div>
+		<EmptyState icon="monitoring" title={t('gym.exercise.empty')}>
+			{#snippet actions()}
+				<a href="/gym/records" class="btn btn-outline" onclick={back.handle}>{t('gym.exercise.back')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<header class="head">
 			<h1>{progress.exerciseName}</h1>
@@ -327,31 +328,6 @@
 		font-size: 0.85rem;
 		color: var(--color-text);
 		font-variant-numeric: tabular-nums;
-	}
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-	}
-	.empty-card .btn {
-		margin-top: var(--space-xs);
 	}
 
 	.skel-head {

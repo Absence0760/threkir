@@ -8,6 +8,7 @@
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import MetricLabel from '#lib/components/MetricLabel.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 
 	let records = $state<ExerciseRecord[]>([]);
 	let loading = $state(true);
@@ -74,11 +75,11 @@
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>
 	{:else if records.length === 0}
-		<div class="empty-card">
-			<span class="material-symbols empty-icon" aria-hidden="true">trophy</span>
-			<p class="empty-text">{t('gym.records.empty')}</p>
-			<a href="/gym" class="btn btn-outline">{t('gym.back')}</a>
-		</div>
+		<EmptyState icon="trophy" title={t('gym.records.empty')}>
+			{#snippet actions()}
+				<a href="/gym" class="btn btn-outline">{t('gym.back')}</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="record-grid">
 			{#each records as r (r.exerciseName)}
@@ -221,33 +222,6 @@
 		gap: 0.35rem;
 		font-size: 0.8rem;
 		color: var(--color-text-tertiary);
-	}
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 32rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-card .btn {
-		margin-top: var(--space-xs);
 	}
 
 	/* Skeleton card — the blocks are SkeletonBlock. */

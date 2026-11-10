@@ -4,6 +4,7 @@
 	import { fetchGymRoutinesWithError, type GymRoutineSummary } from '#lib/core/data.ts';
 	import { formatDate } from '#lib/format/time.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 
@@ -76,11 +77,12 @@
 			<button class="btn btn-outline" onclick={load}>{t('gym.routine.retry')}</button>
 		</div>
 	{:else if routines.length === 0}
-		<div class="card-elevated empty-card" data-testid="routine-empty">
-			<span class="material-symbols empty-icon" aria-hidden="true">list_alt</span>
-			<p class="empty-title empty-text">{t('gym.routine.empty.title')}</p>
-			<p class="empty-text empty-body">{t('gym.routine.empty.body')}</p>
-		</div>
+		<EmptyState
+			icon="list_alt"
+			title={t('gym.routine.empty.title')}
+			text={t('gym.routine.empty.body')}
+			data-testid="routine-empty"
+		/>
 	{:else}
 		<ul class="routine-list" data-testid="routine-list">
 			{#each routines as r (r.id)}
@@ -177,21 +179,6 @@
 	}
 	.chevron {
 		color: var(--color-text-tertiary);
-	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-2xs);
-		padding: var(--space-2xl);
-		text-align: center;
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-	}
-	.empty-title {
-		font-weight: 600;
 	}
 	.error-banner {
 		display: flex;

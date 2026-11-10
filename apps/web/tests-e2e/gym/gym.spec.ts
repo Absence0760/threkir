@@ -121,7 +121,7 @@ test.describe('/gym — log, PR badge, detail, delete', () => {
 		await page.goto('/gym');
 		// Error state, not an empty card masquerading as "no workouts".
 		await expect(page.locator('.error-banner')).toBeVisible({ timeout: 10_000 });
-		await expect(page.locator('.empty-card')).toHaveCount(0);
+		await expect(page.getByTestId('gym-empty')).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Retry' }).click();
 		// Retry re-fetches (now unblocked) → the real empty-or-list state renders.

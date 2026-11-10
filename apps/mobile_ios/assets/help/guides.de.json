@@ -417,7 +417,7 @@
             "type": "steps",
             "items": [
               "Öffne im Web in den Einstellungen [[route:/settings/privacy|Datenschutz & Teilen]] und wähle eine **Standardsichtbarkeit für neue Läufe**. In der Handy-App ist es **Standard-Datenschutz für Läufe** unter **Voreinstellungen** im Tab **Du**.",
-              "Um einen einzelnen Lauf später zu ändern, öffne ihn und nutze **Öffentlich machen** oder **Privat machen**."
+              "Um einen einzelnen Lauf später zu ändern, öffne ihn und tippe unter seinem Titel auf **Privat** oder **Öffentlich**. Bevor ein Lauf öffentlich wird, fragen wir nach und zeigen dir, was deine Datenschutzzonen verbergen."
             ]
           },
           {

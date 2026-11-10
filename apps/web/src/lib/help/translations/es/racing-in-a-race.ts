@@ -38,16 +38,16 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Carrera lista y Carrera EN VIVO',
+			heading: 'Carrera preparada y Carrera EN VIVO',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Cuando el organizador prepara la carrera, la pestaña Correr de la app del móvil muestra **Carrera lista** con «esperando la salida». El reloj Wear OS muestra «CARRERA LISTA» encima de su botón Empezar. Cuando el organizador da la salida, cambia a **Carrera EN VIVO** («CARRERA EN VIVO» en el reloj) con el tiempo transcurrido y «toca Iniciar».',
+					text: 'Cuando el organizador prepara la carrera, la pestaña Correr de la app del móvil muestra **Carrera preparada** con «esperando la salida». El reloj Wear OS muestra «CARRERA LISTA» encima de su botón Empezar. Cuando el organizador da la salida, cambia a **Carrera EN VIVO** («CARRERA EN VIVO» en el reloj) con el tiempo transcurrido y «toca Iniciar».',
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera lista**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar.',
+					text: 'Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera preparada**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar.',
 				},
 				{
 					type: 'p',

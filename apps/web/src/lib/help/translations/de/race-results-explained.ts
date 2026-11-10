@@ -11,9 +11,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Brutto-Zeit** wird von dem Moment, in dem der Veranstalter LOS gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. LOS wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.',
+						'**Brutto-Zeit** wird von dem Moment, in dem der Veranstalter GO gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. GO wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.',
 						'**Netto-Zeit** wird von dem Moment, in dem du auf deinem eigenen Gerät auf Start gedrückt hast, bis zu deinem Zieleinlauf gemessen, einschließlich aller Pausen.',
-						'Die große Zeit in der Liste ist deine Brutto-Zeit, wenn es im Rennen ein LOS gab, sonst deine Netto-Zeit. Die Platzierungen werden aus dieser großen Zeit ermittelt.',
+						'Die große Zeit in der Liste ist deine Brutto-Zeit, wenn es im Rennen ein GO gab, sonst deine Netto-Zeit. Die Platzierungen werden aus dieser großen Zeit ermittelt.',
 					],
 				},
 				{

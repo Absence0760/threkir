@@ -1826,7 +1826,7 @@
           {
             "type": "list",
             "items": [
-              "**GO durch Veranstalter**: Du stellst das Rennen scharf und gibst an der Linie LOS. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.",
+              "**GO durch Veranstalter**: Du stellst das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.",
               "**Geplanter GO**: Das Rennen startet zur eingestellten Zeit von selbst. Nutze das, wenn die Startzeit feststeht, du aber vielleicht nicht an der Linie bist oder selbst mitlaufen möchtest. Bis dahin kannst du den Start verschieben oder das Rennen absagen.",
               "**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Brutto-Zeit."
             ]
@@ -1843,7 +1843,7 @@
           {
             "type": "list",
             "items": [
-              "Geplanter GO: Lege **Startzeit** und **Starttag** fest (am Tag des Events, am Vortag oder am Tag danach). Unter **Endet nach, Tage** und **Stunden** legst du fest, wie lange nach LOS das Rennen von selbst endet, außer du beendest es vorher.",
+              "Geplanter GO: Lege **Startzeit** und **Starttag** fest (am Tag des Events, am Vortag oder am Tag danach). Unter **Endet nach, Tage** und **Stunden** legst du fest, wie lange nach GO das Rennen von selbst endet, außer du beendest es vorher.",
               "Selbstgestoppter Zeitraum: Lege **Zeitraum öffnet um** und **Öffnet am** fest (vom Tag vor dem Event bis eine Woche danach) und unter **Dauer des Zeitraums, Tage** und **Stunden**, wie lange er offen bleibt, von 1 Minute bis 7 Tagen."
             ]
           },
@@ -1863,7 +1863,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Du stellst das Rennen scharf, gibst LOS und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
+            "text": "Du stellst das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
           }
         ]
       },
@@ -1874,7 +1874,7 @@
             "type": "list",
             "items": [
               "Du musst nichts tun. Das Rennen wird etwa einen Tag vor dem Start angelegt und startet zur geplanten Zeit von selbst.",
-              "Um die Linien der Strecken früher zu prüfen, wähle **Früher scharf schalten**.",
+              "Um die Linien der Strecken früher zu prüfen, wähle **Früher scharfstellen**.",
               "Vor dem Start zeigt der Rennbereich **Start um** mit der Uhrzeit und einem Countdown. Um den Start nach hinten zu verschieben, gib die Minuten ein und wähle **Start verschieben**; alle, die dabei sind, erfahren, dass der Start verschoben wurde. Wähle **Abbrechen**, um das Rennen abzusagen.",
               "Sobald die Startzeit vorbei ist, kann das Rennen nicht mehr abgesagt werden. Es endet von selbst, wenn seine Zeit abgelaufen ist, oder du wählst **Rennen beenden**, um es früher zu beenden.",
               "Die Handys der Teilnehmenden zählen nach der Serveruhr bis zum Start herunter und sagen die letzten Sekunden an, sodass alle gemeinsam starten."
@@ -1922,7 +1922,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Etwa 10 Minuten vor einem geplanten LOS erhalten alle, die dabei sind, eine Push-Benachrichtigung, dass das Rennen bald startet, außer sie haben in der letzten Stunde schon eine Event-Erinnerung bekommen. Wenn du einen Start verschiebst, bekommen sie eine, die ihnen das mitteilt. Diese Hinweise werden nie per E-Mail verschickt."
+            "text": "Etwa 10 Minuten vor einem geplanten GO erhalten alle, die dabei sind, eine Push-Benachrichtigung, dass das Rennen bald startet, außer sie haben in der letzten Stunde schon eine Event-Erinnerung bekommen. Wenn du einen Start verschiebst, bekommen sie eine, die ihnen das mitteilt. Diese Hinweise werden nie per E-Mail verschickt."
           },
           {
             "type": "p",
@@ -2154,7 +2154,7 @@
     "id": "race-day-for-hosts",
     "lang": "de",
     "title": "Renntag für Veranstalter",
-    "summary": "Stell das Rennen scharf, gib LOS, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.",
+    "summary": "Stell das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2186,7 +2186,7 @@
           {
             "type": "illustration",
             "id": "race-day-for-hosts",
-            "alt": "Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, LOS geben, live verfolgen und es dann im Ziel beenden."
+            "alt": "Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, GO geben, live verfolgen und es dann im Ziel beenden."
           },
           {
             "type": "p",
@@ -2212,7 +2212,7 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du LOS gibst."
+            "text": "Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst."
           },
           {
             "type": "p",
@@ -2221,11 +2221,11 @@
         ]
       },
       {
-        "heading": "2. LOS geben",
+        "heading": "2. GO geben",
         "blocks": [
           {
             "type": "p",
-            "text": "Drücke im Web **LOS** (in der Handy-App **Los**) genau in dem Moment, in dem das Rennen startet."
+            "text": "Drücke im Web **GO** (in der Handy-App **GO geben**) genau in dem Moment, in dem das Rennen startet."
           },
           {
             "type": "p",
@@ -2234,7 +2234,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "LOS startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharfgestellt ist (die Aufzeichnung wird bei LOS mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten."
+            "text": "GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharfgestellt ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten."
           }
         ]
       },
@@ -2282,7 +2282,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **LOS** (in der Handy-App **Los**) und dann **Rennen abbrechen**. Sobald du LOS gegeben hast, kann das Rennen nur noch beendet werden."
+            "text": "Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** (in der Handy-App **GO geben**) und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden."
           },
           {
             "type": "p",
@@ -2353,9 +2353,9 @@
           {
             "type": "list",
             "items": [
-              "**Brutto-Zeit** wird von dem Moment, in dem der Veranstalter LOS gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. LOS wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.",
+              "**Brutto-Zeit** wird von dem Moment, in dem der Veranstalter GO gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. GO wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.",
               "**Netto-Zeit** wird von dem Moment, in dem du auf deinem eigenen Gerät auf Start gedrückt hast, bis zu deinem Zieleinlauf gemessen, einschließlich aller Pausen.",
-              "Die große Zeit in der Liste ist deine Brutto-Zeit, wenn es im Rennen ein LOS gab, sonst deine Netto-Zeit. Die Platzierungen werden aus dieser großen Zeit ermittelt."
+              "Die große Zeit in der Liste ist deine Brutto-Zeit, wenn es im Rennen ein GO gab, sonst deine Netto-Zeit. Die Platzierungen werden aus dieser großen Zeit ermittelt."
             ]
           },
           {
@@ -2445,7 +2445,7 @@
     "id": "racing-in-a-race",
     "lang": "de",
     "title": "Bei einem Live-Rennen mitlaufen",
-    "summary": "Melde dich an, wähle deine Strecke, starte die Aufzeichnung an der Startlinie oder nach LOS und lass dein Handy oder deine Uhr deine Zeit an der Ziellinie nehmen.",
+    "summary": "Melde dich an, wähle deine Strecke, starte die Aufzeichnung an der Startlinie oder nach GO und lass dein Handy oder deine Uhr deine Zeit an der Ziellinie nehmen.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2500,12 +2500,12 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Wenn der Veranstalter das Rennen scharfstellt, zeigt der Lauf-Tab der Handy-App **Rennen bereit** mit „warten auf START“. Die Wear-OS-Uhr zeigt „RENNEN BEREIT“ über ihrer Start-Taste. Wenn der Veranstalter LOS gibt, wechselt die Anzeige zu **Rennen LIVE** („RENNEN LÄUFT“ auf der Uhr) mit der verstrichenen Zeit und „auf Start tippen“."
+            "text": "Wenn der Veranstalter das Rennen scharfstellt, zeigt der Lauf-Tab der Handy-App **Rennen bereit** mit „warten auf GO“. Die Wear-OS-Uhr zeigt „RENNEN BEREIT“ über ihrer Start-Taste. Wenn der Veranstalter GO gibt, wechselt die Anzeige zu **Rennen LIVE** („RENNEN LÄUFT“ auf der Uhr) mit der verstrichenen Zeit und „auf Start tippen“."
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei LOS mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Netto-Zeit zählt dann ab LOS statt ab dem Moment, in dem du auf Start gedrückt hast."
+            "text": "Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei GO mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Netto-Zeit zählt dann ab GO statt ab dem Moment, in dem du auf Start gedrückt hast."
           },
           {
             "type": "p",
@@ -2579,9 +2579,9 @@
           {
             "type": "list",
             "items": [
-              "**Brutto-Zeit** läuft ab dem Moment, in dem der Veranstalter LOS gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.",
-              "**Netto-Zeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor LOS auf Start gedrückt, läuft sie ab LOS, sodass sie nie länger als deine Brutto-Zeit ist.",
-              "Startest du mehr als 5 Minuten nach LOS oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Brutto-Zeit zählt trotzdem ab LOS, sodass ein später Start sie länger macht als deine Netto-Zeit."
+              "**Brutto-Zeit** läuft ab dem Moment, in dem der Veranstalter GO gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.",
+              "**Netto-Zeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor GO auf Start gedrückt, läuft sie ab GO, sodass sie nie länger als deine Brutto-Zeit ist.",
+              "Startest du mehr als 5 Minuten nach GO oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Brutto-Zeit zählt trotzdem ab GO, sodass ein später Start sie länger macht als deine Netto-Zeit."
             ]
           },
           {
@@ -2728,7 +2728,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfstellen, LOS, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
+            "text": "Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfstellen, GO, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
           },
           {
             "type": "p",

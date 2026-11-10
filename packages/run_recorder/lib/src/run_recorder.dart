@@ -1486,8 +1486,9 @@ class RunRecorder {
   }
 
   // The estimator re-anchors across a fix interval longer than this, crediting
-  // none of it, so the pace window must not span it either. Mirrors the
-  // estimator's own scaling of [GpsDistanceEstimator.gapS].
+  // only a lower bound for it (its chord, or the steps), so the pace window
+  // must not span it either. Mirrors the estimator's own scaling of
+  // [GpsDistanceEstimator.gapS].
   static final double _estimatorGapS = GpsDistanceEstimator.gapS *
       max(1.0, _fixInterval.inMilliseconds / 1000);
 
@@ -1955,23 +1956,23 @@ class RunRecorder {
             monotonicGapSec >= _gpsReanchorAfterSeconds) {
           // Real GPS gap: the hop failed the < 100 m cap (the runner genuinely
           // moved away while fixes were dropped) but a genuine interval has
-          // elapsed. Rebase the anchor to this fresh fix WITHOUT crediting the
-          // un-sampled gap distance — exactly how resume() nulls the anchor so
-          // the first post-resume fix re-anchors. Without this the anchor stays
-          // stale, every later delta only grows past 100 m, and distance is
-          // frozen for the rest of the run (#330). Both gates must agree the
-          // gap is short for a hop to fail closed, so a zero/near-zero-dt
-          // duplicate arriving immediately is still rejected as a teleport.
+          // elapsed. Rebase the track anchor to this fresh fix, exactly how
+          // resume() nulls the anchor so the first post-resume fix
+          // re-anchors. Without this the anchor stays stale, every later
+          // delta only grows past 100 m, and the line is frozen for the rest
+          // of the run (#330). The rebase credits nothing: the estimator
+          // re-anchors on its own gap rule and credits the gap its chord lower
+          // bound (spec v1.4). Both gates must agree the gap is short for a
+          // hop to fail closed, so a zero/near-zero-dt duplicate arriving
+          // immediately is still rejected as a teleport.
           //
           // Seal the pace window at the same time, exactly as resume() and
-          // _beginResumed() do — this branch creates the identical
-          // discontinuity. A window spanning a gap whose metres were not
-          // credited times the wrong distance against the gap's clock: when
-          // pace was the track hop-sum, 5 clean fixes at 200 s/km followed by
-          // a 12 s Doze batch 150 m on measured 128 s/km. That value feeds the
-          // pace-alert and cut-off catch-up voice cues and live_cutoff_eta's
-          // projection, so the error ran in the direction that SUPPRESSES a
-          // safety warning.
+          // _beginResumed() do. Across the gap there is no sampled path to
+          // time, only a lower bound: when pace was the track hop-sum, 5 clean
+          // fixes at 200 s/km followed by a 12 s Doze batch 150 m on measured
+          // 128 s/km. That value feeds the pace-alert and cut-off catch-up
+          // voice cues and live_cutoff_eta's projection, so the error ran in
+          // the direction that SUPPRESSES a safety warning.
           _sealPaceWindow();
           _lastTrackedPosition = pos;
           _lastTrackedPositionAt = pos.timestamp;
@@ -2267,11 +2268,12 @@ class RunRecorder {
   /// workout band share.
   ///
   /// The window never reaches back across a pause, a process-kill resume or a
-  /// re-anchored GPS gap (see [_sealPaceWindow]): those gaps' wall-clock time
-  /// carries no credited distance, so a window spanning one read a pace
-  /// hundreds of times too slow after a resume, and one spanning the #330 gap
-  /// re-anchor read far too fast. The run screen feeds this to the pace-alert
-  /// and cut-off catch-up voice cues and to the cut-off ETA projection.
+  /// re-anchored GPS gap (see [_sealPaceWindow]): none of those has a sampled
+  /// path to time (a pause and a kill credit nothing, a gap only a lower
+  /// bound), so a window spanning a resume read a pace hundreds of times too
+  /// slow, and one spanning the #330 gap re-anchor read far too fast. The run
+  /// screen feeds this to the pace-alert and cut-off catch-up voice cues and
+  /// to the cut-off ETA projection.
   double? _calculatePace() {
     if (_paceSamplesSinceSeal < _paceMinSamples || _paceSamples.length < 2) {
       return null;

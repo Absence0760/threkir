@@ -78,8 +78,9 @@ pub const MAX_SPEED_MPS: f64 = 10.0;
 
 /// A rejected hop that spans at least this many seconds is a real GPS gap
 /// (canyon, tunnel, dense cover — fixes stopped while the runner kept
-/// moving), not a corrupt teleport: the anchor is rebased to the fresh fix
-/// WITHOUT crediting the un-sampled gap distance. Without this the anchor
+/// moving), not a corrupt teleport: the anchor is rebased to the fresh fix,
+/// and the rebase itself credits nothing (the headline estimator credits the
+/// gap its chord lower bound, spec v1.4). Without this the anchor
 /// stays stale after any 1 Hz dropout that displaced the runner past
 /// [`MAX_JUMP_M`], every later delta only grows, and distance is frozen for
 /// the rest of the run. `_gpsReanchorAfterSeconds` in `run_recorder`

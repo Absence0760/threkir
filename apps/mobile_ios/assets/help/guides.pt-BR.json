@@ -3285,7 +3285,8 @@
             "items": [
               "É um contrarrelógio, não uma corrida. A trilha continua aberta a todos e ninguém faz o controle, então siga as regras do parque e dê passagem às outras pessoas na trilha.",
               "Cada página de percurso mostra a distância, o ganho de elevação, o formato, o piso e a dificuldade, de onde veio a linha do percurso e se ele está aberto.",
-              "Selecione **Navegar neste percurso** para seguir o percurso como uma rota. A opção não aparece enquanto o percurso estiver fechado."
+              "Selecione **Navegar neste percurso** para seguir o percurso como uma rota. A opção não aparece enquanto o percurso estiver fechado.",
+              "O **Guia do percurso** na página do percurso mostra onde estacionar e cada conversão na ordem, com o nome da trilha, além das pontes, vaus, mudanças de piso e subidas. Ele é feito a partir de dados do mapa; enquanto ninguém o conferir no parque, isso aparece acima da lista. O mesmo guia vai no arquivo GPX do percurso."
             ]
           },
           {

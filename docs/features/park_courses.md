@@ -352,13 +352,23 @@ These gate going live, not the code:
 ## Tests
 
 - Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
-  (creation, an idempotent re-run, changed geometry in place with efforts
+  (creation, an unchanged re-run, changed geometry in place with efforts
   kept, status untouched, a deleted route recreated, the backfill flag, the
   derived lines, curated lines stored as curator lines on insert and update,
   kept across a re-load and a redraw, reset to derived when dropped, the
   official route, every refusal); `node --test
   scripts/parks/lib/catalogue_payload.test.mjs` (the Pocahontas manifest maps
   to six courses, validation, the printed SQL).
+- Release sync: pgTAP `apps/backend/supabase/tests/park_catalogue_sync_test.sql`
+  (a second identical load is `unchanged` and rewrites no row, measured by
+  xmin; a backfill on create, a redrawn line, a turned curated line and new
+  checkpoints, none on a rename; a dropped course closed once with its effort
+  kept, reopened when re-added; an operator's closure untouched; the refusal);
+  `node --test scripts/parks/lib/catalogue_sync.test.mjs
+  scripts/prod_sync/lib/stages.test.mjs` (the publisher config, the stage SQL,
+  the transaction and dry-run rollback, the step summary, and the entry point
+  against a stub psql: the password never on psql's command line or in any
+  output).
 - pgTAP `apps/backend/supabase/tests/park_courses_test.sql`: catalogue RLS,
   admin-only writes, timezone and vocabulary refusals, the season boundary in
   the park's timezone, completions counting days, block and private-run rules.

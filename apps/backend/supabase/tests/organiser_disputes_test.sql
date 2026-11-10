@@ -253,7 +253,7 @@ set local "request.jwt.claims" = '{"sub":"d15e0000-0000-0000-0000-000000000001",
 select throws_ok(
   $$ select * from fetch_pending_reports() $$, '42501', null, 'a non-admin cannot read the queue');
 select throws_ok(
-  $$ select resolve_organiser_dispute('club', 'd15e1111-0000-0000-0000-000000000003', 'hide') $$,
+  $$ select resolve_organiser_dispute('club', 'd15e1111-0000-0000-0000-000000000003', 'takedown') $$,
   '42501', null, 'a verified organiser cannot act on its own dispute');
 select throws_ok(
   $$ select * from organiser_dispute_history('club', 'd15e1111-0000-0000-0000-000000000003') $$,
@@ -295,7 +295,7 @@ select throws_ok(
   $$ select resolve_organiser_dispute('club', 'd15e1111-0000-0000-0000-000000000003', 'rename_notice', null, 90) $$,
   '22023', null, 'a deadline past 60 days is refused');
 select throws_ok(
-  $$ select resolve_organiser_dispute('route', 'd15e2222-0000-0000-0000-000000000001', 'hide') $$,
+  $$ select resolve_organiser_dispute('route', 'd15e2222-0000-0000-0000-000000000001', 'takedown') $$,
   'P0002', null, 'a target with no pending dispute cannot be acted on');
 
 -- The general triage closes the member's report and leaves the disputes.
@@ -323,15 +323,15 @@ select ok(
 
 -- Hide the copied plan: unpublished, and the owner cannot republish it.
 select is(
-  resolve_organiser_dispute('training_plan', 'd15e3333-0000-0000-0000-000000000001', 'hide', 'Copied verbatim.'),
+  resolve_organiser_dispute('training_plan', 'd15e3333-0000-0000-0000-000000000001', 'takedown', 'Copied verbatim.'),
   1, 'hiding the plan resolves its dispute report');
 -- Release the race claim.
 select is(
-  resolve_organiser_dispute('race_listing', 'd15e6666-0000-0000-0000-000000000001', 'hide'),
+  resolve_organiser_dispute('race_listing', 'd15e6666-0000-0000-0000-000000000001', 'takedown'),
   1, 'hiding the race listing resolves its dispute report');
 -- Hide the copied challenge.
 select is(
-  resolve_organiser_dispute('challenge', 'd15e5555-0000-0000-0000-000000000001', 'hide'),
+  resolve_organiser_dispute('challenge', 'd15e5555-0000-0000-0000-000000000001', 'takedown'),
   1, 'hiding the challenge resolves its dispute report');
 -- Dismiss the routine dispute.
 select is(
@@ -391,7 +391,7 @@ set local "request.jwt.claims" = '{"sub":"d15e0000-0000-0000-0000-000000000002",
 select is(
   (select action from my_organiser_disputes()
     where side = 'organiser' and target_kind = 'training_plan'),
-  'hide', 'the reporting club''s admin reads the outcome');
+  'takedown', 'the reporting club''s admin reads the outcome');
 select is(
   (select count(*)::int from notifications where kind = 'organiser_dispute'
     and club_id = 'd15e1111-0000-0000-0000-000000000001' and actor_id is null),

@@ -29,7 +29,7 @@
 -- ── Review (site admins only) ───────────────────────────────────────────────
 --
 -- resolve_organiser_dispute(kind, id, action, note, deadline_days):
---   * 'hide': the existing hide path. A club or route gets shadow_hidden (the
+--   * 'takedown': the existing hide path. A club or route gets shadow_hidden (the
 --     flag auto-hide and admin_unhide_target already use). A plan or routine
 --     template and a challenge have no such flag, so they are unpublished
 --     (is_public_template / is_public false) and a trigger refuses a
@@ -88,7 +88,7 @@ create table organiser_dispute_actions (
   constraint organiser_dispute_actions_kind_check
     check (target_kind in ('club', 'route', 'training_plan', 'gym_routine', 'challenge', 'race_listing')),
   constraint organiser_dispute_actions_action_check
-    check (action in ('filed', 'hide', 'rename_notice', 'dismiss', 'unhide')),
+    check (action in ('filed', 'takedown', 'rename_notice', 'dismiss', 'unhide')),
   constraint organiser_dispute_actions_deadline_check
     check ((action = 'rename_notice') = (deadline_at is not null)),
   constraint organiser_dispute_actions_note_len
@@ -205,11 +205,11 @@ security definer
 set search_path = public, pg_temp
 as $$
   select coalesce((
-    select a.action = 'hide'
+    select a.action = 'takedown'
       from organiser_dispute_actions a
      where a.target_kind = p_kind
        and a.target_id = p_id
-       and a.action in ('hide', 'unhide')
+       and a.action in ('takedown', 'unhide')
      order by a.created_at desc, a.id desc
      limit 1
   ), false);
@@ -473,7 +473,7 @@ begin
   if not private.is_admin(v_admin) then
     raise exception 'resolve_organiser_dispute: not authorized' using errcode = '42501';
   end if;
-  if p_action is null or p_action not in ('hide', 'rename_notice', 'dismiss') then
+  if p_action is null or p_action not in ('takedown', 'rename_notice', 'dismiss') then
     raise exception 'resolve_organiser_dispute: invalid action %', p_action using errcode = '22023';
   end if;
   if v_note is not null and char_length(v_note) > 1000 then
@@ -543,7 +543,7 @@ begin
     ) x
    order by x.first_at;
 
-  if p_action = 'hide' then
+  if p_action = 'takedown' then
     if p_target_kind = 'club' then
       update clubs set shadow_hidden = true where id = p_target_id and shadow_hidden = false;
     elsif p_target_kind = 'route' then
@@ -566,9 +566,9 @@ begin
     end if;
   end if;
 
-  if p_action in ('hide', 'dismiss') then
+  if p_action in ('takedown', 'dismiss') then
     update reports
-       set status      = case p_action when 'hide' then 'reviewed' else 'dismissed' end,
+       set status      = case p_action when 'takedown' then 'reviewed' else 'dismissed' end,
            resolution  = v_note,
            reviewed_by = v_admin,
            reviewed_at = now()
@@ -639,7 +639,7 @@ begin
     select a.target_kind, a.target_id, a.organiser_club_id, a.organiser_club_name,
            private.organiser_dispute_target_owner(p_target_kind, p_target_id), v_admin, 'unhide'
       from organiser_dispute_actions a
-     where a.target_kind = p_target_kind and a.target_id = p_target_id and a.action = 'hide'
+     where a.target_kind = p_target_kind and a.target_id = p_target_id and a.action = 'takedown'
      order by a.created_at desc, a.id desc
      limit 1;
   end if;

@@ -20801,4 +20801,167 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachAssistConsentFailed => '保存できませんでした。もう一度お試しください。';
+
+  @override
+  String get parkGuideTitle => 'ルートガイド';
+
+  @override
+  String get parkGuidePending => '地図データから作成したもので、まだ現地で確認していません。';
+
+  @override
+  String parkGuideChecked(String date) {
+    return '$dateに現地で確認済み。';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'アクセス';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return '$nameからスタート。';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => '林道からスタート。';
+
+  @override
+  String get parkGuideStartRoad => '園内道路からスタート。';
+
+  @override
+  String get parkGuideStartPath => '小道からスタート。';
+
+  @override
+  String get parkGuideClockwise => 'ループを時計回りに走ります。';
+
+  @override
+  String get parkGuideCounterclockwise => 'ループを反時計回りに走ります。';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return '$landmarkを左手に見て進みます。';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return '$landmarkを右手に見て進みます。';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'すべてのチェックポイントを順に通過してください。通過しないとタイムが記録されません。';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at：左折して$nameへ。';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at：右折して$nameへ。';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at：直進して$nameへ。';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at：左折して林道へ。';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at：右折して林道へ。';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at：林道を直進。';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at：左折して園内道路へ。';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at：右折して園内道路へ。';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at：園内道路を直進。';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at：左折して小道へ。';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at：右折して小道へ。';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at：小道を直進。';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at：橋を渡ります。';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at：浅瀬を渡ります。橋はないので、足が濡れる覚悟を。';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at：ここから舗装路。';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at：ここから砂利道。';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at：ここから土の道。';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at：ここから未舗装路。';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at：ここから木道。';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at：$lengthで$gainの上り。';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at：チェックポイント $n/$total。';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at：$n/$total周目を開始し、ループをもう一度走ります。';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at：フィニッシュ。';
+  }
 }

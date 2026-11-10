@@ -35206,6 +35206,222 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not save that. Try again.'**
   String get coachAssistConsentFailed;
+
+  /// Park course route guide (#1344, web parks.guide.title).
+  ///
+  /// In en, this message translates to:
+  /// **'Route guide'**
+  String get parkGuideTitle;
+
+  /// Park course route guide (#1344, web parks.guide.pending).
+  ///
+  /// In en, this message translates to:
+  /// **'Drafted from map data, not yet checked on the ground.'**
+  String get parkGuidePending;
+
+  /// Park course route guide (#1344, web parks.guide.checked).
+  ///
+  /// In en, this message translates to:
+  /// **'Checked on the ground on {date}.'**
+  String parkGuideChecked(String date);
+
+  /// Park course route guide (#1344, web parks.guide.gettingThere).
+  ///
+  /// In en, this message translates to:
+  /// **'Getting there'**
+  String get parkGuideGettingThere;
+
+  /// Park course route guide (#1344, web parks.guide.startNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on {name}.'**
+  String parkGuideStartNamed(String name);
+
+  /// Park course route guide (#1344, web parks.guide.startFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the fire road.'**
+  String get parkGuideStartFireRoad;
+
+  /// Park course route guide (#1344, web parks.guide.startRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the park road.'**
+  String get parkGuideStartRoad;
+
+  /// Park course route guide (#1344, web parks.guide.startPath).
+  ///
+  /// In en, this message translates to:
+  /// **'Start on the path.'**
+  String get parkGuideStartPath;
+
+  /// Park course route guide (#1344, web parks.guide.clockwise).
+  ///
+  /// In en, this message translates to:
+  /// **'Run the loop clockwise.'**
+  String get parkGuideClockwise;
+
+  /// Park course route guide (#1344, web parks.guide.counterclockwise).
+  ///
+  /// In en, this message translates to:
+  /// **'Run the loop counterclockwise.'**
+  String get parkGuideCounterclockwise;
+
+  /// Park course route guide (#1344, web parks.guide.keepLeft).
+  ///
+  /// In en, this message translates to:
+  /// **'Keep {landmark} on your left.'**
+  String parkGuideKeepLeft(String landmark);
+
+  /// Park course route guide (#1344, web parks.guide.keepRight).
+  ///
+  /// In en, this message translates to:
+  /// **'Keep {landmark} on your right.'**
+  String parkGuideKeepRight(String landmark);
+
+  /// Park course route guide (#1344, web parks.guide.passCheckpoints).
+  ///
+  /// In en, this message translates to:
+  /// **'Pass every checkpoint in order, or the run is not timed.'**
+  String get parkGuidePassCheckpoints;
+
+  /// Park course route guide (#1344, web parks.guide.leftNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto {name}.'**
+  String parkGuideLeftNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.rightNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto {name}.'**
+  String parkGuideRightNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.straightNamed).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight onto {name}.'**
+  String parkGuideStraightNamed(String at, String name);
+
+  /// Park course route guide (#1344, web parks.guide.leftFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the fire road.'**
+  String parkGuideLeftFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the fire road.'**
+  String parkGuideRightFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightFireRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the fire road.'**
+  String parkGuideStraightFireRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.leftRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the park road.'**
+  String parkGuideLeftRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the park road.'**
+  String parkGuideRightRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightRoad).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the park road.'**
+  String parkGuideStraightRoad(String at);
+
+  /// Park course route guide (#1344, web parks.guide.leftPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn left onto the path.'**
+  String parkGuideLeftPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.rightPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: turn right onto the path.'**
+  String parkGuideRightPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.straightPath).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: continue straight along the path.'**
+  String parkGuideStraightPath(String at);
+
+  /// Park course route guide (#1344, web parks.guide.bridge).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross the bridge.'**
+  String parkGuideBridge(String at);
+
+  /// Park course route guide (#1344, web parks.guide.ford).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: cross the ford. There is no bridge, so expect water.'**
+  String parkGuideFord(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfacePaved).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: paved from here.'**
+  String parkGuideSurfacePaved(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceGravel).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: gravel from here.'**
+  String parkGuideSurfaceGravel(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceDirt).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: dirt trail from here.'**
+  String parkGuideSurfaceDirt(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceUnpaved).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: unpaved from here.'**
+  String parkGuideSurfaceUnpaved(String at);
+
+  /// Park course route guide (#1344, web parks.guide.surfaceBoardwalk).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: boardwalk from here.'**
+  String parkGuideSurfaceBoardwalk(String at);
+
+  /// Park course route guide (#1344, web parks.guide.climb).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: a climb of {gain} over {length}.'**
+  String parkGuideClimb(String at, String gain, String length);
+
+  /// Park course route guide (#1344, web parks.guide.checkpoint).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: checkpoint {n} of {total}.'**
+  String parkGuideCheckpoint(String at, int n, int total);
+
+  /// Park course route guide (#1344, web parks.guide.lap).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: start lap {n} of {total} and repeat the loop.'**
+  String parkGuideLap(String at, int n, int total);
+
+  /// Park course route guide (#1344, web parks.guide.finish).
+  ///
+  /// In en, this message translates to:
+  /// **'{at}: finish.'**
+  String parkGuideFinish(String at);
 }
 
 class _AppLocalizationsDelegate

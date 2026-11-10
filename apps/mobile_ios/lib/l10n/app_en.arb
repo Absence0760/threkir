@@ -28748,5 +28748,403 @@
   "coachAssistConsentFailed": "Could not save that. Try again.",
   "@coachAssistConsentFailed": {
     "description": "Error when saving the coach-assist consent switch fails; the switch reverts"
+  },
+  "parkGuideTitle": "Route guide",
+  "@parkGuideTitle": {
+    "description": "Park course route guide (#1344, web parks.guide.title)."
+  },
+  "parkGuidePending": "Drafted from map data, not yet checked on the ground.",
+  "@parkGuidePending": {
+    "description": "Park course route guide (#1344, web parks.guide.pending)."
+  },
+  "parkGuideChecked": "Checked on the ground on {date}.",
+  "@parkGuideChecked": {
+    "description": "Park course route guide (#1344, web parks.guide.checked).",
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideGettingThere": "Getting there",
+  "@parkGuideGettingThere": {
+    "description": "Park course route guide (#1344, web parks.guide.gettingThere)."
+  },
+  "parkGuideStartNamed": "Start on {name}.",
+  "@parkGuideStartNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.startNamed).",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStartFireRoad": "Start on the fire road.",
+  "@parkGuideStartFireRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.startFireRoad)."
+  },
+  "parkGuideStartRoad": "Start on the park road.",
+  "@parkGuideStartRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.startRoad)."
+  },
+  "parkGuideStartPath": "Start on the path.",
+  "@parkGuideStartPath": {
+    "description": "Park course route guide (#1344, web parks.guide.startPath)."
+  },
+  "parkGuideClockwise": "Run the loop clockwise.",
+  "@parkGuideClockwise": {
+    "description": "Park course route guide (#1344, web parks.guide.clockwise)."
+  },
+  "parkGuideCounterclockwise": "Run the loop counterclockwise.",
+  "@parkGuideCounterclockwise": {
+    "description": "Park course route guide (#1344, web parks.guide.counterclockwise)."
+  },
+  "parkGuideKeepLeft": "Keep {landmark} on your left.",
+  "@parkGuideKeepLeft": {
+    "description": "Park course route guide (#1344, web parks.guide.keepLeft).",
+    "placeholders": {
+      "landmark": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideKeepRight": "Keep {landmark} on your right.",
+  "@parkGuideKeepRight": {
+    "description": "Park course route guide (#1344, web parks.guide.keepRight).",
+    "placeholders": {
+      "landmark": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuidePassCheckpoints": "Pass every checkpoint in order, or the run is not timed.",
+  "@parkGuidePassCheckpoints": {
+    "description": "Park course route guide (#1344, web parks.guide.passCheckpoints)."
+  },
+  "parkGuideLeftNamed": "{at}: turn left onto {name}.",
+  "@parkGuideLeftNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.leftNamed).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRightNamed": "{at}: turn right onto {name}.",
+  "@parkGuideRightNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.rightNamed).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStraightNamed": "{at}: continue straight onto {name}.",
+  "@parkGuideStraightNamed": {
+    "description": "Park course route guide (#1344, web parks.guide.straightNamed).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideLeftFireRoad": "{at}: turn left onto the fire road.",
+  "@parkGuideLeftFireRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.leftFireRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRightFireRoad": "{at}: turn right onto the fire road.",
+  "@parkGuideRightFireRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.rightFireRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStraightFireRoad": "{at}: continue straight along the fire road.",
+  "@parkGuideStraightFireRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.straightFireRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideLeftRoad": "{at}: turn left onto the park road.",
+  "@parkGuideLeftRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.leftRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRightRoad": "{at}: turn right onto the park road.",
+  "@parkGuideRightRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.rightRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStraightRoad": "{at}: continue straight along the park road.",
+  "@parkGuideStraightRoad": {
+    "description": "Park course route guide (#1344, web parks.guide.straightRoad).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideLeftPath": "{at}: turn left onto the path.",
+  "@parkGuideLeftPath": {
+    "description": "Park course route guide (#1344, web parks.guide.leftPath).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideRightPath": "{at}: turn right onto the path.",
+  "@parkGuideRightPath": {
+    "description": "Park course route guide (#1344, web parks.guide.rightPath).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideStraightPath": "{at}: continue straight along the path.",
+  "@parkGuideStraightPath": {
+    "description": "Park course route guide (#1344, web parks.guide.straightPath).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideBridge": "{at}: cross the bridge.",
+  "@parkGuideBridge": {
+    "description": "Park course route guide (#1344, web parks.guide.bridge).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideFord": "{at}: cross the ford. There is no bridge, so expect water.",
+  "@parkGuideFord": {
+    "description": "Park course route guide (#1344, web parks.guide.ford).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfacePaved": "{at}: paved from here.",
+  "@parkGuideSurfacePaved": {
+    "description": "Park course route guide (#1344, web parks.guide.surfacePaved).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfaceGravel": "{at}: gravel from here.",
+  "@parkGuideSurfaceGravel": {
+    "description": "Park course route guide (#1344, web parks.guide.surfaceGravel).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfaceDirt": "{at}: dirt trail from here.",
+  "@parkGuideSurfaceDirt": {
+    "description": "Park course route guide (#1344, web parks.guide.surfaceDirt).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfaceUnpaved": "{at}: unpaved from here.",
+  "@parkGuideSurfaceUnpaved": {
+    "description": "Park course route guide (#1344, web parks.guide.surfaceUnpaved).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideSurfaceBoardwalk": "{at}: boardwalk from here.",
+  "@parkGuideSurfaceBoardwalk": {
+    "description": "Park course route guide (#1344, web parks.guide.surfaceBoardwalk).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideClimb": "{at}: a climb of {gain} over {length}.",
+  "@parkGuideClimb": {
+    "description": "Park course route guide (#1344, web parks.guide.climb).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "gain": {
+        "type": "String"
+      },
+      "length": {
+        "type": "String"
+      }
+    }
+  },
+  "parkGuideCheckpoint": "{at}: checkpoint {n} of {total}.",
+  "@parkGuideCheckpoint": {
+    "description": "Park course route guide (#1344, web parks.guide.checkpoint).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideLap": "{at}: start lap {n} of {total} and repeat the loop.",
+  "@parkGuideLap": {
+    "description": "Park course route guide (#1344, web parks.guide.lap).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      },
+      "n": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "parkGuideFinish": "{at}: finish.",
+  "@parkGuideFinish": {
+    "description": "Park course route guide (#1344, web parks.guide.finish).",
+    "placeholders": {
+      "at": {
+        "type": "String"
+      }
+    }
+  },
+  "parkCourseReportAction": "Report a problem with this course",
+  "@parkCourseReportAction": {
+    "description": "Park course page: opens the sheet to report a hazard, closure, off-trail line or land-manager request (also the sheet title)"
+  },
+  "parkCourseReportExplainer": "Tell us about a hazard, a closure or a line that leaves the trail. A person at Threkir reviews every report. A report does not close the course by itself.",
+  "@parkCourseReportExplainer": {
+    "description": "Report sheet: what a report is for and that a person reviews it; a report never closes the course by itself"
+  },
+  "parkCourseReportReasonLegend": "What's the problem?",
+  "@parkCourseReportReasonLegend": {
+    "description": "Report sheet: heading over the reason choices"
+  },
+  "parkCourseReportReasonHazard": "A hazard on the course",
+  "@parkCourseReportReasonHazard": {
+    "description": "Report reason: a hazard on the course"
+  },
+  "parkCourseReportReasonClosure": "The course or trail is closed",
+  "@parkCourseReportReasonClosure": {
+    "description": "Report reason: the course or trail is closed"
+  },
+  "parkCourseReportReasonOffTrail": "The line leaves the designated trail",
+  "@parkCourseReportReasonOffTrail": {
+    "description": "Report reason: the published line leaves the designated trail"
+  },
+  "parkCourseReportReasonLandManager": "A request from the land manager",
+  "@parkCourseReportReasonLandManager": {
+    "description": "Report reason: the park or agency managing the land asks for the course to come down"
+  },
+  "parkCourseReportReasonLandManagerHint": "For park or agency staff. Ask us to take the course down and we close it within two business days.",
+  "@parkCourseReportReasonLandManagerHint": {
+    "description": "Hint under the land-manager reason: the two-business-day promise"
+  },
+  "parkCourseReportReasonOther": "Something else",
+  "@parkCourseReportReasonOther": {
+    "description": "Report reason: anything else"
+  },
+  "parkCourseReportNotesLabel": "What should we know?",
+  "@parkCourseReportNotesLabel": {
+    "description": "Report sheet: label of the required free-text note"
+  },
+  "parkCourseReportNotesHint": "Where on the course, what you saw and when.",
+  "@parkCourseReportNotesHint": {
+    "description": "Report sheet: hint inside the note field"
+  },
+  "parkCourseReportEmailLabel": "Your email (optional)",
+  "@parkCourseReportEmailLabel": {
+    "description": "Report sheet: label of the optional contact email field"
+  },
+  "parkCourseReportEmailHint": "Only if you'd like a reply. We use it to answer this report and delete it 30 days after we resolve it.",
+  "@parkCourseReportEmailHint": {
+    "description": "Report sheet: what the contact email is used for and when it is deleted"
+  },
+  "parkCourseReportCancel": "Cancel",
+  "@parkCourseReportCancel": {
+    "description": "Report sheet: cancel button"
+  },
+  "parkCourseReportSubmit": "Send report",
+  "@parkCourseReportSubmit": {
+    "description": "Report sheet: send button"
+  },
+  "parkCourseReportSent": "Thanks. Your report is with the Threkir team.",
+  "@parkCourseReportSent": {
+    "description": "Banner after a report was sent"
+  },
+  "parkCourseReportErrorFailed": "Couldn't send the report. Try again.",
+  "@parkCourseReportErrorFailed": {
+    "description": "Report sheet error: sending failed for an unknown reason"
+  },
+  "parkCourseReportErrorRateLimited": "Too many reports right now. Try again later.",
+  "@parkCourseReportErrorRateLimited": {
+    "description": "Report sheet error: too many reports right now"
+  },
+  "parkCourseReportErrorAlreadyReported": "You've already reported this course, and that report is still open.",
+  "@parkCourseReportErrorAlreadyReported": {
+    "description": "Report sheet error: this person already has an open report on this course"
+  },
+  "parkCourseReportErrorNotFound": "This course is no longer listed.",
+  "@parkCourseReportErrorNotFound": {
+    "description": "Report sheet error: the course is no longer listed"
+  },
+  "parkCourseReportErrorInvalid": "Check the report and try again.",
+  "@parkCourseReportErrorInvalid": {
+    "description": "Report sheet error: the server refused the report as invalid"
+  },
+  "parkCourseReportErrorEmail": "That email address doesn't look right.",
+  "@parkCourseReportErrorEmail": {
+    "description": "Report sheet: the contact email is not shaped like an address"
+  },
+  "profileNotifParkCourseReport": "A park course was reported",
+  "@profileNotifParkCourseReport": {
+    "description": "Notification text, app admins only: someone reported a problem with a park course"
   }
 }

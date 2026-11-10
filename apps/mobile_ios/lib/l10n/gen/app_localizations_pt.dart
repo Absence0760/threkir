@@ -21882,6 +21882,172 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get coachAssistConsentFailed =>
       'Não foi possível guardar. Tente novamente.';
+
+  @override
+  String get parkGuideTitle => 'Guia do percurso';
+
+  @override
+  String get parkGuidePending =>
+      'Elaborado a partir de dados do mapa, ainda não verificado no terreno.';
+
+  @override
+  String parkGuideChecked(String date) {
+    return 'Verificado no terreno a $date.';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'Como chegar';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return 'Comece em $name.';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => 'Comece no caminho florestal.';
+
+  @override
+  String get parkGuideStartRoad => 'Comece na estrada do parque.';
+
+  @override
+  String get parkGuideStartPath => 'Comece no trilho.';
+
+  @override
+  String get parkGuideClockwise =>
+      'Corra o circuito no sentido dos ponteiros do relógio.';
+
+  @override
+  String get parkGuideCounterclockwise =>
+      'Corra o circuito no sentido contrário aos ponteiros do relógio.';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return 'Mantenha $landmark à sua esquerda.';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return 'Mantenha $landmark à sua direita.';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'Passe por todos os pontos de controlo pela ordem, ou a corrida não é cronometrada.';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at: vire à esquerda para $name.';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at: vire à direita para $name.';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at: siga em frente para $name.';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at: vire à esquerda para o caminho florestal.';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at: vire à direita para o caminho florestal.';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at: siga em frente pelo caminho florestal.';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at: vire à esquerda para a estrada do parque.';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at: vire à direita para a estrada do parque.';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at: siga em frente pela estrada do parque.';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at: vire à esquerda para o trilho.';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at: vire à direita para o trilho.';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at: siga em frente pelo trilho.';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at: atravesse a ponte.';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at: atravesse o vau. Não há ponte, conte com água.';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at: piso asfaltado a partir daqui.';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at: gravilha a partir daqui.';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at: trilho de terra a partir daqui.';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at: piso não pavimentado a partir daqui.';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at: passadiço de madeira a partir daqui.';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at: subida de $gain em $length.';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at: ponto de controlo $n de $total.';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at: comece a volta $n de $total e repita o circuito.';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at: meta.';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -43746,4 +43912,169 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachAssistConsentFailed =>
       'Não foi possível salvar. Tente novamente.';
+
+  @override
+  String get parkGuideTitle => 'Guia do percurso';
+
+  @override
+  String get parkGuidePending =>
+      'Feito a partir de dados do mapa, ainda não conferido no local.';
+
+  @override
+  String parkGuideChecked(String date) {
+    return 'Conferido no local em $date.';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'Como chegar';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return 'Comece em $name.';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => 'Comece na estrada de terra florestal.';
+
+  @override
+  String get parkGuideStartRoad => 'Comece na estrada do parque.';
+
+  @override
+  String get parkGuideStartPath => 'Comece na trilha.';
+
+  @override
+  String get parkGuideClockwise => 'Corra o circuito no sentido horário.';
+
+  @override
+  String get parkGuideCounterclockwise =>
+      'Corra o circuito no sentido anti-horário.';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return 'Mantenha $landmark à sua esquerda.';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return 'Mantenha $landmark à sua direita.';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'Passe por todos os pontos de controle na ordem, ou a corrida não é cronometrada.';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at: vire à esquerda em $name.';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at: vire à direita em $name.';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at: siga em frente para $name.';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at: vire à esquerda na estrada de terra florestal.';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at: vire à direita na estrada de terra florestal.';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at: siga em frente pela estrada de terra florestal.';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at: vire à esquerda na estrada do parque.';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at: vire à direita na estrada do parque.';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at: siga em frente pela estrada do parque.';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at: vire à esquerda na trilha.';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at: vire à direita na trilha.';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at: siga em frente pela trilha.';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at: atravesse a ponte.';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at: atravesse o vau. Não há ponte, então espere água.';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at: asfaltado a partir daqui.';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at: cascalho a partir daqui.';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at: trilha de terra a partir daqui.';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at: sem pavimento a partir daqui.';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at: passarela de madeira a partir daqui.';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at: subida de $gain em $length.';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at: ponto de controle $n de $total.';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at: comece a volta $n de $total e repita o circuito.';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at: chegada.';
+  }
 }

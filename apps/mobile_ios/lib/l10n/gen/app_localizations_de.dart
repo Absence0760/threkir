@@ -21906,4 +21906,169 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachAssistConsentFailed =>
       'Das konnte nicht gespeichert werden. Versuche es erneut.';
+
+  @override
+  String get parkGuideTitle => 'Streckenbeschreibung';
+
+  @override
+  String get parkGuidePending =>
+      'Aus Kartendaten erstellt, noch nicht vor Ort geprüft.';
+
+  @override
+  String parkGuideChecked(String date) {
+    return 'Am $date vor Ort geprüft.';
+  }
+
+  @override
+  String get parkGuideGettingThere => 'Anfahrt';
+
+  @override
+  String parkGuideStartNamed(String name) {
+    return 'Start: $name.';
+  }
+
+  @override
+  String get parkGuideStartFireRoad => 'Start auf dem Forstweg.';
+
+  @override
+  String get parkGuideStartRoad => 'Start auf der Parkstraße.';
+
+  @override
+  String get parkGuideStartPath => 'Start auf dem Pfad.';
+
+  @override
+  String get parkGuideClockwise => 'Lauf die Runde im Uhrzeigersinn.';
+
+  @override
+  String get parkGuideCounterclockwise =>
+      'Lauf die Runde gegen den Uhrzeigersinn.';
+
+  @override
+  String parkGuideKeepLeft(String landmark) {
+    return '$landmark bleibt links von dir.';
+  }
+
+  @override
+  String parkGuideKeepRight(String landmark) {
+    return '$landmark bleibt rechts von dir.';
+  }
+
+  @override
+  String get parkGuidePassCheckpoints =>
+      'Passiere alle Kontrollpunkte der Reihe nach, sonst wird der Lauf nicht gewertet.';
+
+  @override
+  String parkGuideLeftNamed(String at, String name) {
+    return '$at: links abbiegen auf $name.';
+  }
+
+  @override
+  String parkGuideRightNamed(String at, String name) {
+    return '$at: rechts abbiegen auf $name.';
+  }
+
+  @override
+  String parkGuideStraightNamed(String at, String name) {
+    return '$at: geradeaus weiter auf $name.';
+  }
+
+  @override
+  String parkGuideLeftFireRoad(String at) {
+    return '$at: links auf den Forstweg abbiegen.';
+  }
+
+  @override
+  String parkGuideRightFireRoad(String at) {
+    return '$at: rechts auf den Forstweg abbiegen.';
+  }
+
+  @override
+  String parkGuideStraightFireRoad(String at) {
+    return '$at: geradeaus weiter auf dem Forstweg.';
+  }
+
+  @override
+  String parkGuideLeftRoad(String at) {
+    return '$at: links auf die Parkstraße abbiegen.';
+  }
+
+  @override
+  String parkGuideRightRoad(String at) {
+    return '$at: rechts auf die Parkstraße abbiegen.';
+  }
+
+  @override
+  String parkGuideStraightRoad(String at) {
+    return '$at: geradeaus weiter auf der Parkstraße.';
+  }
+
+  @override
+  String parkGuideLeftPath(String at) {
+    return '$at: links auf den Pfad abbiegen.';
+  }
+
+  @override
+  String parkGuideRightPath(String at) {
+    return '$at: rechts auf den Pfad abbiegen.';
+  }
+
+  @override
+  String parkGuideStraightPath(String at) {
+    return '$at: geradeaus weiter auf dem Pfad.';
+  }
+
+  @override
+  String parkGuideBridge(String at) {
+    return '$at: über die Brücke.';
+  }
+
+  @override
+  String parkGuideFord(String at) {
+    return '$at: durch die Furt. Hier gibt es keine Brücke, rechne mit Wasser.';
+  }
+
+  @override
+  String parkGuideSurfacePaved(String at) {
+    return '$at: ab hier asphaltiert.';
+  }
+
+  @override
+  String parkGuideSurfaceGravel(String at) {
+    return '$at: ab hier Schotter.';
+  }
+
+  @override
+  String parkGuideSurfaceDirt(String at) {
+    return '$at: ab hier Erdweg.';
+  }
+
+  @override
+  String parkGuideSurfaceUnpaved(String at) {
+    return '$at: ab hier unbefestigt.';
+  }
+
+  @override
+  String parkGuideSurfaceBoardwalk(String at) {
+    return '$at: ab hier Holzsteg.';
+  }
+
+  @override
+  String parkGuideClimb(String at, String gain, String length) {
+    return '$at: Anstieg von $gain auf $length.';
+  }
+
+  @override
+  String parkGuideCheckpoint(String at, int n, int total) {
+    return '$at: Kontrollpunkt $n von $total.';
+  }
+
+  @override
+  String parkGuideLap(String at, int n, int total) {
+    return '$at: Runde $n von $total beginnen, die Schleife noch einmal laufen.';
+  }
+
+  @override
+  String parkGuideFinish(String at) {
+    return '$at: Ziel.';
+  }
 }

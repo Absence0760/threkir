@@ -1451,6 +1451,7 @@ var orderByTable = map[string]string{
 	schema.TableChallengeParticipants:    "challenge_id,user_id",
 	schema.TableClubMembers:              "club_id,user_id",
 	schema.TableConversationParticipants: "conversation_id,user_id",
+	schema.TableDirectMessageReactions:   "message_id,user_id",
 	schema.TableEventAttendees:           "event_id,user_id,instance_start",
 	schema.TableEventExceptions:          "event_id,instance_start",
 	schema.TableEventPricing:             "event_id,instance_start",
@@ -2440,11 +2441,26 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "direct_messages_sent.json", table: schema.TableDirectMessages,
 			filter: "sender_id=eq." + uid,
-			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id",
+			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id",
 		},
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,
 			filter: "recipient_id=eq." + uid, sel: "*",
+		},
+		// direct_message_reactions — the reactions the subject put on
+		// messages (migration 20271213121602). Only their own: the partner's
+		// reactions are the partner's data.
+		{
+			name: "direct_message_reactions.json", table: schema.TableDirectMessageReactions,
+			filter: "user_id=eq." + uid, sel: "message_id,reaction,created_at",
+		},
+		// direct_message_images — the photos the subject sent (migration
+		// 20271213121604). The re-encoded bytes ship under
+		// storage/dm-images/; the paths are left out because the object
+		// keys already carry them.
+		{
+			name: "direct_message_images.json", table: schema.TableDirectMessageImages,
+			filter: "owner_id=eq." + uid, sel: "id,message_id,status,width,height,created_at,processed_at",
 		},
 		// conversation_participants — the subject's own view of each
 		// conversation (joined, deleted-for-me, muted, archived, marked

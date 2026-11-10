@@ -108,6 +108,18 @@ type Backend interface {
 	// `paths` is the 24-hour-graced backstop, non-nil restricts it to those
 	// paths. Empty while the server-side gate is off.
 	RoutePhotoOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error)
+	// Direct-message image path — kind='dm_image_process' and
+	// kind='dm_image_orphan_sweep' (migration 20271213121604, issue #1216).
+	// FetchDmImage returns (nil, nil) for a row that no longer exists.
+	// DownloadDmImage reads at most maxBytes and returns ErrDmImageTooLarge
+	// past that. Every method reports errors without the object path, which
+	// names the sender.
+	FetchDmImage(ctx context.Context, imageID string) (*DmImage, error)
+	DownloadDmImage(ctx context.Context, path string, maxBytes int64) ([]byte, error)
+	UploadDmImage(ctx context.Context, path string, body []byte) error
+	MarkDmImageReady(ctx context.Context, imageID string, width, height int) error
+	MarkDmImageRejected(ctx context.Context, imageID string) error
+	DmImageOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error)
 	DownloadClubPhoto(ctx context.Context, path string) (body []byte, contentType string, err error)
 	UploadClubPhoto(ctx context.Context, path string, body []byte, contentType string) error
 	UpdateClubPhotoThumb512Path(ctx context.Context, photoID, path string) error
@@ -544,6 +556,10 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleExportBlobReap(ctx, job)
 	case "route_photo_orphan_sweep":
 		return w.handleRoutePhotoOrphanSweep(ctx, job)
+	case "dm_image_process":
+		return w.handleDmImageProcess(ctx, job)
+	case "dm_image_orphan_sweep":
+		return w.handleDmImageOrphanSweep(ctx, job)
 	case "distance_recompute":
 		return w.handleDistanceRecompute(ctx, job)
 	case "segment_match":

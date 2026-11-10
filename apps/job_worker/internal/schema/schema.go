@@ -80,6 +80,8 @@ const (
 	TableClubPhotos               = "club_photos"
 	TableReports                  = "reports"
 	TableDirectMessages           = "direct_messages"
+	TableDirectMessageImages      = "direct_message_images"
+	TableDirectMessageReactions   = "direct_message_reactions"
 	TableConversationParticipants = "conversation_participants"
 	TableGymWorkouts              = "gym_workouts"
 	TableExercises                = "exercises"
@@ -124,7 +126,11 @@ const (
 	BucketRunPhotos   = "run-photos"
 	BucketRoutePhotos = "route-photos"
 	BucketClubPhotos  = "club-photos"
-	BucketAvatars     = "avatars"
+	// BucketDmImages holds direct-message photos (issue #1216):
+	// `{owner}/{image}/upload` is the client's raw upload, which only the
+	// worker reads, and `{owner}/{image}.jpg` the re-encode it writes.
+	BucketDmImages = "dm-images"
+	BucketAvatars  = "avatars"
 	// BucketExports holds Art 20 export artifacts (migration
 	// 20270602_001). Separate from `runs` because `file_size_limit` is
 	// per bucket: `runs` caps an object at 25 MB, which is right for a

@@ -356,6 +356,9 @@ var importantKinds = map[string]bool{
 	// A verified organiser's reroute or closure on a race the recipient is
 	// training for changes their race day (decisions § 2407).
 	"course_alert": true,
+	// A reviewer acted on a naming dispute: the owner may have a deadline to
+	// rename, and the organiser is waiting on the outcome (decisions § 2441).
+	"organiser_dispute": true,
 }
 
 // pushImportantKinds are carried by the default "important" PUSH mode but not
@@ -606,6 +609,10 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// coach_plan_access) see the request with its approve and decline
 		// (decisions § 2382).
 		return planPath(base, n)
+	case "organiser_dispute":
+		// Both sides read the decision and any rename deadline on the disputes
+		// page; the row carries only the reporting club (decisions § 2441).
+		return base + "/disputes"
 	case "course_alert":
 		// The stable-id resolver, which opens the race or route the alert is
 		// on; the projection carries only the alert's id (decisions § 2407).

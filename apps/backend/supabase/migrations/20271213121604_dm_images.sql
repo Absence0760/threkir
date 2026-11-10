@@ -86,11 +86,11 @@
 -- ── Locks ───────────────────────────────────────────────────────────────
 --
 -- direct_messages: ADD COLUMN (catalogue-only), a CHECK swapped NOT VALID
--- and validated by 20271212000005, a policy expression, grants, triggers
+-- and validated by 20271213121605, a policy expression, grants, triggers
 -- (SHARE ROW EXCLUSIVE, no scan). No index on direct_messages: the image link
 -- of record is direct_message_images.message_id, on the new table. reports:
 -- ADD COLUMN, a NOT VALID CHECK and FK (validated, and the column indexed,
--- by 20271212000005), triggers. jobs: the kind CHECK widened NOT VALID with no VALIDATE, the
+-- by 20271213121605), triggers. jobs: the kind CHECK widened NOT VALID with no VALIDATE, the
 -- guarded-table precedent (decisions § 1148).
 
 -- ─── the gate ───────────────────────────────────────────────────────────

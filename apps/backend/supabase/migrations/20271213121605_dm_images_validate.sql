@@ -1,4 +1,4 @@
--- Validates what 20271212000004 added NOT VALID, each in this file's own
+-- Validates what 20271213121604 added NOT VALID, each in this file's own
 -- transaction so the scans run under SHARE UPDATE EXCLUSIVE, which neither
 -- readers nor writers wait on, and indexes reports.snapshot_image_id alone
 -- here rather than under that file's ACCESS EXCLUSIVE on reports

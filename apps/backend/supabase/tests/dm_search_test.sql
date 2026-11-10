@@ -1,4 +1,4 @@
--- Pins migration 20271212000003 — searching direct messages (issue #1216):
+-- Pins migration 20271213121603 — searching direct messages (issue #1216):
 -- the function runs under the caller's own RLS, so nobody finds a message in
 -- a conversation they are not in; unsent, deleted-for-me, Requests and
 -- blocked-by-me conversations are left out; the query is a literal.

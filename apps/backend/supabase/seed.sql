@@ -3202,7 +3202,7 @@ insert into private.feature_flags (name, enabled) values ('display_name_from_pro
 insert into private.feature_flags (name, enabled) values ('coach_share', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
 
--- ─────────────────── Photos in direct messages gate (20271212000004) ───────────────────
+-- ─────────────────── Photos in direct messages gate (20271213121604) ───────────────────
 --
 -- Sending a photo in a direct message is fail-closed behind a
 -- private.feature_flags row no migration writes, so prod stays off until the

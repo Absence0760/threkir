@@ -1,4 +1,4 @@
--- Pins migration 20271212000001 — a runner can turn message requests off
+-- Pins migration 20271213121601 — a runner can turn message requests off
 -- (issue #1216): the switch is enforced by the INSERT policy, a follow edge
 -- and an accepted conversation still admit sends, a pending request takes no
 -- more messages, the refusal is the one 42501, and nobody else can read the

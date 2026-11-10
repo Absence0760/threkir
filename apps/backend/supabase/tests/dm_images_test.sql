@@ -1,4 +1,4 @@
--- Pins migrations 20271212000004/5 — photos in direct messages (issue
+-- Pins migrations 20271213121604/5 — photos in direct messages (issue
 -- #1216): the gate, the owner-only upload path, sending only inside an
 -- established conversation, the link and the processing job, who can read
 -- the bytes (only a ready, re-encoded copy, only by who can read the

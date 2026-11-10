@@ -1,4 +1,4 @@
--- Pins migration 20271212000002 — reactions on direct messages (issue
+-- Pins migration 20271213121602 — reactions on direct messages (issue
 -- #1216): only participants react, only through the RPC, only on a live
 -- message they can see, never across a block or inside an unaccepted
 -- request, from the fixed set; reads follow the message's own visibility;

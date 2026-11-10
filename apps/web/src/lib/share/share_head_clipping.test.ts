@@ -152,6 +152,8 @@ const builders: Array<{ name: string; head: () => Record<string, unknown> }> = [
 					status_note: HUGE,
 					geometry_source: 'osm',
 					difficulty: null,
+					laps: null,
+					attribution: HUGE,
 					segment: {
 						name: HUGE,
 						description: HUGE,

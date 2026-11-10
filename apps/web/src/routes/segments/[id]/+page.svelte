@@ -7,6 +7,7 @@
 	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
 	import {
 		fetchGlobalSegment,
+		fetchParkCourseCredit,
 		fetchGlobalSegmentLeaderboard,
 		SEGMENT_AGE_BANDS,
 		type GlobalSegment,
@@ -31,6 +32,10 @@
 	let genderFilter = $state<SegmentGenderFilter | null>(null);
 	let ageFilter = $state<SegmentAgeBand | null>(null);
 	let showHeadToHead = $state(false);
+	// A park course's segment carries its source credit in its own column, not
+	// in the description (decisions § 2438). A failed read shows none; the
+	// credit is auxiliary to the page.
+	let courseCredit = $state<string | null>(null);
 
 	// The catalogue geometry is public curated data (world-readable table),
 	// NOT any athlete's GPS track — safe to render directly. The leaderboard
@@ -71,6 +76,11 @@
 		loadFailed = false;
 		try {
 			segment = await fetchGlobalSegment(data.id);
+			if (segment) {
+				fetchParkCourseCredit({ segmentId: segment.id })
+					.then((credit) => (courseCredit = credit))
+					.catch((e) => console.warn('fetchParkCourseCredit failed', e));
+			}
 		} catch (e) {
 			console.error('fetchGlobalSegment failed', e);
 			loadFailed = true;
@@ -163,6 +173,9 @@
 			</div>
 			{#if segment.description}
 				<p class="description">{segment.description}</p>
+			{/if}
+			{#if courseCredit}
+				<p class="course-credit" data-testid="segment-course-credit">{courseCredit}</p>
 			{/if}
 		</header>
 
@@ -385,6 +398,11 @@
 		max-width: 48rem;
 		color: var(--color-text-secondary);
 		line-height: 1.5;
+	}
+	.course-credit {
+		margin: var(--space-sm) 0 0;
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
 	}
 	.section {
 		margin-top: var(--space-lg);

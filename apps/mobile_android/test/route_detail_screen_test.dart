@@ -24,6 +24,7 @@ cm.Route _route({
   List<cm.Waypoint> waypoints = const [],
   String userId = 'test-user',
   double? officialDistanceMetres,
+  bool official = false,
 }) =>
     cm.Route(
       id: 'r1',
@@ -32,11 +33,31 @@ cm.Route _route({
       waypoints: waypoints,
       distanceMetres: 8500,
       officialDistanceMetres: officialDistanceMetres,
+      official: official,
       elevationGainMetres: 45,
       isPublic: isPublic,
       description: description,
       tags: tags,
     );
+
+/// A viewer of a park course's official route: the course row holds the
+/// credit (decisions § 2438). Counts the credit reads.
+class _CourseCreditApi extends ApiClient {
+  int creditReads = 0;
+  @override
+  String? get userId => 'viewer';
+  @override
+  Future<Set<String>> fetchParkCourseRouteIds(List<String> routeIds) async =>
+      {'r1'};
+  @override
+  Future<String?> fetchParkCourseCredit({
+    String? routeId,
+    String? segmentId,
+  }) async {
+    creditReads++;
+    return routeId == 'r1' ? '© OpenStreetMap contributors (ODbL)' : null;
+  }
+}
 
 /// Owner ApiClient whose tag write fails — drives the remove-failure banner.
 class _ThrowingTagsApi extends ApiClient {
@@ -688,6 +709,37 @@ void main() {
       await tester.pump();
       expect(
           find.text('Out-and-back along the canal, flat.'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a park course route shows its credit once, beside a description '
+        'that no longer carries it', (tester) async {
+      final api = _CourseCreditApi();
+      await _pump(
+        tester,
+        _route(description: 'Run it clockwise.', official: true),
+        apiClient: api,
+      );
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await pumpUntil(
+        tester,
+        () => find.byKey(const Key('route-course-credit')).evaluate().isNotEmpty,
+        describe: 'the course credit',
+      );
+      expect(find.text('Run it clockwise.'), findsOneWidget);
+      expect(find.text('© OpenStreetMap contributors (ODbL)'), findsOneWidget);
+      expect(api.creditReads, 1);
+    });
+
+    testWidgets('an ordinary route never asks for a course credit',
+        (tester) async {
+      final api = _CourseCreditApi();
+      await _pump(tester, _route(description: 'Run it clockwise.'),
+          apiClient: api);
+      await tester.drag(find.byType(ListView), const Offset(0, -400));
+      await tester.pump();
+      expect(api.creditReads, 0);
+      expect(find.byKey(const Key('route-course-credit')), findsNothing);
     });
 
     testWidgets('omits the description row when null', (tester) async {

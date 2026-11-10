@@ -11774,6 +11774,25 @@ export async function fetchRouteCourseAttribution(routeId: string): Promise<GpxA
 	);
 }
 
+/// The geometry credit of the park course built on this official route or
+/// catalogue segment (`park_courses.attribution`, decisions § 2438), for the
+/// route and segment pages, which show the course outside its own page. Null
+/// when it is no park course's, or the course predates the column. Throws on
+/// a failed read.
+export async function fetchParkCourseCredit(
+	of: { routeId: string } | { segmentId: string },
+): Promise<string | null> {
+	const query = supabase.from(TABLES.park_courses).select('attribution');
+	const { data, error } = await ('routeId' in of
+		? query.eq('route_id', of.routeId)
+		: query.eq('global_segment_id', of.segmentId)
+	)
+		.limit(1)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.attribution?.trim() || null;
+}
+
 /// Checkpoints per catalogue segment that is a park course, for the scorer.
 /// A segment absent from the map has no checkpoints; one mapped to null has a
 /// list that cannot be read and must not be scored. Null overall when the

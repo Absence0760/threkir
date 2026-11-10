@@ -18,6 +18,8 @@ function c(over: Partial<SharedCourse> = {}): SharedCourse {
 		status_note: null,
 		geometry_source: 'osm',
 		difficulty: 'moderate',
+		laps: 1,
+		attribution: '© OpenStreetMap contributors (ODbL)',
 		segment: {
 			name: 'Lake Loop',
 			description: 'Around the lake.',

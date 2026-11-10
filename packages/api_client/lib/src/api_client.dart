@@ -5979,6 +5979,34 @@ class ApiClient {
     );
   }
 
+  /// The source credit of the park course built on this official route or
+  /// catalogue segment (`park_courses.attribution`, decisions § 2438), for
+  /// the route and segment screens, which show the course outside its own
+  /// screen. Pass exactly one of [routeId] and [segmentId]. Null when it is
+  /// no park course's, or the course predates the column. Mirrors web
+  /// `fetchParkCourseCredit`. Throws on a failed read.
+  Future<String?> fetchParkCourseCredit({
+    String? routeId,
+    String? segmentId,
+  }) async {
+    if ((routeId == null) == (segmentId == null)) {
+      throw ArgumentError('pass exactly one of routeId and segmentId');
+    }
+    final row = await _client
+        .from(ParkCourseRow.table)
+        .select(ParkCourseRow.colAttribution)
+        .eq(
+          routeId != null
+              ? ParkCourseRow.colRouteId
+              : ParkCourseRow.colGlobalSegmentId,
+          (routeId ?? segmentId)!,
+        )
+        .limit(1)
+        .maybeSingle();
+    final credit = (row?[ParkCourseRow.colAttribution] as String?)?.trim();
+    return credit == null || credit.isEmpty ? null : credit;
+  }
+
   /// The most-completions board on a catalogue segment
   /// (`global_segment_completions`): one row per athlete, distinct local days
   /// in the park's timezone. [season] null is all time. Tied counts share a

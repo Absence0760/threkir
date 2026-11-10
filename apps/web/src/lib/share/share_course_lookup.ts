@@ -33,6 +33,10 @@ export interface SharedCourse {
 	status_note: string | null;
 	geometry_source: string;
 	difficulty: string | null;
+	/** Laps of the loop in one timed effort; null when laps do not apply. */
+	laps: number | null;
+	/** The source credit, verbatim (`park_courses.attribution`, decisions § 2438). */
+	attribution: string | null;
 	segment: {
 		name: string;
 		description: string | null;
@@ -114,7 +118,7 @@ export async function lookupSharedCourse(
 		const { data, error } = await supabase
 			.from(TABLES.park_courses)
 			.select(
-				'slug, course_shape, status, status_note, geometry_source, difficulty, ' +
+				'slug, course_shape, status, status_note, geometry_source, difficulty, laps, attribution, ' +
 					'global_segments!inner(name, description, distance_m, elevation_m, surface, waypoints), ' +
 					'parks!inner(slug, name, region_code, country_code, agency, website_url)',
 			)
@@ -139,6 +143,9 @@ export async function lookupSharedCourse(
 				status_note: (r.status_note as string | null) ?? null,
 				geometry_source: r.geometry_source as string,
 				difficulty: (r.difficulty as string | null) ?? null,
+				laps: typeof r.laps === 'number' && Number.isInteger(r.laps) && r.laps >= 1 ? r.laps : null,
+				attribution:
+					typeof r.attribution === 'string' && r.attribution.trim() ? r.attribution.trim() : null,
 				segment: {
 					name: (seg.name as string) ?? '',
 					description: (seg.description as string | null) ?? null,

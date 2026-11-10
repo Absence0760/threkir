@@ -222,6 +222,8 @@ test('course: a row maps onto the course, its segment geometry and its park', as
 					status_note: null,
 					geometry_source: 'osm',
 					difficulty: null,
+					laps: 2,
+					attribution: '  © OpenStreetMap contributors (ODbL)  ',
 					global_segments: {
 						name: 'Lake Loop',
 						description: null,
@@ -250,4 +252,6 @@ test('course: a row maps onto the course, its segment geometry and its park', as
 		{ lat: 37.2, lng: -77.6, ele: 3 },
 	]);
 	assert.equal(course?.park.name, 'Fixture State Park');
+	assert.equal(course?.laps, 2);
+	assert.equal(course?.attribution, '© OpenStreetMap contributors (ODbL)');
 });

@@ -155,6 +155,12 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     return api.fetchParkCourseRouteIds(ids);
   });
 
+  /// A park course's official route carries its source credit in the
+  /// course row, not in the description (decisions § 2438). Null until read,
+  /// and when the read fails: the credit is auxiliary on this screen (an
+  /// export still refuses to go out uncredited, § 2395).
+  String? _courseCredit;
+
   late bool _isPublic = widget.route.isPublic;
   late bool _isStarred = widget.route.isStarred;
   late bool _isOfflinePinned =
@@ -256,7 +262,22 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
     _loadBookmarkState();
     _resolveDisplayWaypoints();
     _resolveAppleWatchAvailability();
-    if (widget.route.official) unawaited(_parkCourses.check([widget.route.id]));
+    if (widget.route.official) {
+      unawaited(_parkCourses.check([widget.route.id]));
+      unawaited(_loadCourseCredit());
+    }
+  }
+
+  Future<void> _loadCourseCredit() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final credit = await api.fetchParkCourseCredit(routeId: widget.route.id);
+      if (!mounted || credit == null) return;
+      setState(() => _courseCredit = credit);
+    } catch (e) {
+      debugPrint('fetchParkCourseCredit failed: $e');
+    }
   }
 
   Future<void> _resolveAppleWatchAvailability() async {
@@ -1433,6 +1454,17 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
                   child: _describeBlock(theme, l10n),
+                ),
+              if (_courseCredit != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+                  child: Text(
+                    _courseCredit!,
+                    key: const Key('route-course-credit'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
 
               // Surface + run-count + featured metadata. Left-aligned

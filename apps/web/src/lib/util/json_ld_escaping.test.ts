@@ -135,6 +135,8 @@ const REGISTER: Record<string, Record<string, () => string>> = {
 					status_note: INJ,
 					geometry_source: 'osm',
 					difficulty: null,
+					laps: null,
+					attribution: INJ,
 					segment: {
 						name: INJ,
 						description: INJ,

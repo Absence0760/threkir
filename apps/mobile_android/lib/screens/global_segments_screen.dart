@@ -393,10 +393,30 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
   String? _gender;
   String? _ageBand;
 
+  /// A park course's segment carries its source credit in its own column,
+  /// not in the description (decisions § 2438). Null until read, and when
+  /// the read fails: the credit is auxiliary on this screen.
+  String? _courseCredit;
+
   @override
   void initState() {
     super.initState();
     _loadSegment();
+    _loadCourseCredit();
+  }
+
+  Future<void> _loadCourseCredit() async {
+    final api = widget.api;
+    if (api == null) return;
+    try {
+      final credit = await api.fetchParkCourseCredit(
+        segmentId: widget.segmentId,
+      );
+      if (!mounted || credit == null) return;
+      setState(() => _courseCredit = credit);
+    } catch (e) {
+      debugPrint('fetchParkCourseCredit failed: $e');
+    }
   }
 
   Future<void> _loadSegment() async {
@@ -549,6 +569,16 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
             segment.description!.trim().isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(segment.description!, style: theme.textTheme.bodyMedium),
+        ],
+        if (_courseCredit != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _courseCredit!,
+            key: const Key('segment-course-credit'),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
         ],
         if (geometry.length >= 2) ...[
           const SizedBox(height: 16),

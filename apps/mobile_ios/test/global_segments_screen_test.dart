@@ -54,10 +54,21 @@ final _catalogue = [
 ];
 
 class _CatalogueApi extends ApiClient {
-  _CatalogueApi(this.segments, {this.viewer = 'viewer-1'});
+  _CatalogueApi(this.segments, {this.viewer = 'viewer-1', this.credit});
 
   final List<GlobalSegmentRow> segments;
   final String? viewer;
+
+  /// The park course credit (`park_courses.attribution`) every segment
+  /// reads as; null for a segment no park course is built on.
+  final String? credit;
+
+  @override
+  Future<String?> fetchParkCourseCredit({
+    String? routeId,
+    String? segmentId,
+  }) async =>
+      credit;
 
   @override
   String? get userId => viewer;
@@ -350,6 +361,35 @@ void main() {
       expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Elevation gain'), findsOneWidget);
       expect(find.text('Road'), findsOneWidget);
+    });
+
+    testWidgets(
+        'a park course segment shows its credit once, beside a description '
+        'that no longer carries it', (tester) async {
+      final api = _CatalogueApi(
+        [_segment(id: 'a', name: 'Beaver Lake Trail', description: 'Run it clockwise.')],
+        credit: '© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP',
+      );
+      await tester.pumpWidget(
+        _host(GlobalSegmentDetailScreen(api: api, segmentId: 'a')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Run it clockwise.'), findsOneWidget);
+      expect(
+        find.text('© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('segment-course-credit')), findsOneWidget);
+    });
+
+    testWidgets('a segment no park course is built on shows no credit',
+        (tester) async {
+      final api = _CatalogueApi([_segment(id: 'a', name: 'Harlem Hill')]);
+      await tester.pumpWidget(
+        _host(GlobalSegmentDetailScreen(api: api, segmentId: 'a')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('segment-course-credit')), findsNothing);
     });
 
     testWidgets('a segment with geometry lays its preview out in a bounded box',

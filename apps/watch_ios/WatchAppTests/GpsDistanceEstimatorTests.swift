@@ -223,6 +223,20 @@ final class GpsDistanceEstimatorTests: XCTestCase {
         XCTAssertEqual(estimator.stepDistanceM - steps, 10, accuracy: 1e-9)
     }
 
+    func testLateSampleStampedInsideAGapSharesOnlyItsOwnInterval() {
+        // 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest
+        // of the gap, which the fix at 55 closed before the sample arrived, at
+        // the sample's rate would credit 5 m (v1.6).
+        let estimator = eastward()
+        estimator.addSteps(t: 50, cumulativeSteps: 202)
+        estimator.addFix(t: 55, lat: 40, lng: -75 + 110 / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+        let before = estimator.distanceM
+        let steps = estimator.stepDistanceM
+        estimator.addSteps(t: 51, cumulativeSteps: 204)
+        XCTAssertEqual(estimator.distanceM - before, 1, accuracy: 1e-9)
+        XCTAssertEqual(estimator.stepDistanceM - steps, 1, accuracy: 1e-9)
+    }
+
     func testStretchCreditsNoStepsTakenBeforeItsFirstFix() {
         let estimator = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false)
         for i in 0..<30 { estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i) }

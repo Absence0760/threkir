@@ -62,7 +62,7 @@ void main() {
   test('fixture is spec v1.6 and carries every scenario', () {
     expect(vectors['spec'], 'gps-distance-estimator v1.6');
     expect(GpsDistanceEstimator.specVersion, '1.6');
-    expect(scenarios.length, greaterThanOrEqualTo(43));
+    expect(scenarios.length, greaterThanOrEqualTo(44));
   });
 
   test('constants match the fixture', () {
@@ -465,6 +465,29 @@ void main() {
       e.addSteps(56.5, 228);
       expect(e.distanceM, closeTo(before, 1e-9));
       expect(e.stepDistanceM - steps, closeTo(10, 1e-9));
+    });
+
+    test('a late sample stamped inside a gap shares only its own interval',
+        () {
+      // 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest
+      // of the gap, which the fix at 55 closed before the sample arrived, at
+      // the sample's rate would credit 5 m.
+      final e = eastward();
+      e.addSteps(50, 202);
+      e.addFix(
+        t: 55,
+        lat: 40,
+        lng: -75 + 110 / (111195 * math.cos(40 * math.pi / 180)),
+        accuracyM: 3,
+        speedMps: 4,
+        speedAccuracyMps: 0.3,
+        bearingDeg: 90,
+      );
+      final before = e.distanceM;
+      final steps = e.stepDistanceM;
+      e.addSteps(51, 204);
+      expect(e.distanceM - before, closeTo(1, 1e-9));
+      expect(e.stepDistanceM - steps, closeTo(1, 1e-9));
     });
 
     test('a stretch credits no steps taken before its first fix', () {

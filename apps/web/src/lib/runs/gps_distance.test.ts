@@ -85,7 +85,7 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 test('fixture is spec v1.6 with a non-trivial scenario set', () => {
 	assert.equal(fixture.spec, 'gps-distance-estimator v1.6');
 	assert.equal(SPEC_VERSION, '1.6');
-	assert.ok(fixture.scenarios.length >= 43, `only ${fixture.scenarios.length} scenarios`);
+	assert.ok(fixture.scenarios.length >= 44, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);
 });
@@ -296,6 +296,20 @@ test('a late step batch tops a gap up without counting its chord twice (v1.6)', 
 	est.addSteps(56.5, 228);
 	assert.ok(Math.abs(est.distanceM - before) < 1e-9, `distance ${est.distanceM}`);
 	assert.ok(Math.abs(est.stepDistanceM - steps - 10) < 1e-9, `steps ${est.stepDistanceM}`);
+});
+
+test('a late sample stamped inside a gap shares only its own interval (v1.6)', () => {
+	// 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest of
+	// the gap, which the fix at 55 closed before the sample arrived, at the
+	// sample's rate would credit 5 m.
+	const est = eastward();
+	est.addSteps(50, 202);
+	est.addFix(55, 40, -75 + 110 / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+	const before = est.distanceM;
+	const steps = est.stepDistanceM;
+	est.addSteps(51, 204);
+	assert.ok(Math.abs(est.distanceM - before - 1) < 1e-9, `distance ${est.distanceM}`);
+	assert.ok(Math.abs(est.stepDistanceM - steps - 1) < 1e-9, `steps ${est.stepDistanceM}`);
 });
 
 test('a stretch credits no steps taken before its first fix (v1.6)', () => {

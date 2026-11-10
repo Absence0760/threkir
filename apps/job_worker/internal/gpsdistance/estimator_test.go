@@ -438,6 +438,25 @@ func TestALateStepBatchTopsAGapUpWithoutCountingItsChordTwice(t *testing.T) {
 	}
 }
 
+// 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest of the
+// gap, which the fix at 55 closed before the sample arrived, at the sample's
+// rate would credit 5 m (v1.6).
+func TestALateSampleStampedInsideAGapSharesOnlyItsOwnInterval(t *testing.T) {
+	e := eastwardV16()
+	e.AddSteps(50, 202)
+	acc, sp, sa, b := 3.0, 4.0, 0.3, 90.0
+	e.AddFix(Fix{T: 55, Lat: 40, Lng: -75 + 110/eastMPerDeg,
+		AccuracyM: &acc, SpeedMps: &sp, SpeedAccuracyMps: &sa, BearingDeg: &b})
+	before, steps := e.DistanceM(), e.StepDistanceM
+	e.AddSteps(51, 204)
+	if math.Abs(e.DistanceM()-before-1) > 1e-9 {
+		t.Errorf("distance grew %v, want 1", e.DistanceM()-before)
+	}
+	if math.Abs(e.StepDistanceM-steps-1) > 1e-9 {
+		t.Errorf("step distance grew %v, want 1", e.StepDistanceM-steps)
+	}
+}
+
 func TestAStretchCreditsNoStepsTakenBeforeItsFirstFix(t *testing.T) {
 	stride := 1.0
 	e := NewWithOptions(Options{InitialStrideM: &stride, NoStrideLearning: true})

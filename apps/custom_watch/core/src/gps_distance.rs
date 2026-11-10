@@ -1100,6 +1100,33 @@ mod tests {
     }
 
     #[test]
+    fn a_late_sample_stamped_inside_a_gap_shares_only_its_own_interval() {
+        // 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest
+        // of the gap, which the fix at 55 closed before the sample arrived, at
+        // the sample's rate would credit 5 m (v1.6).
+        let mut e = eastward();
+        e.add_steps(50.0, 202);
+        e.add_fix(
+            55.0,
+            40.0,
+            -75.0 + 110.0 / east_m_per_deg(),
+            Some(3.0),
+            Some(4.0),
+            Some(0.3),
+            Some(90.0),
+        );
+        let before = e.distance_m();
+        let steps = e.step_distance_m();
+        e.add_steps(51.0, 204);
+        assert!((e.distance_m() - before - 1.0).abs() < 1e-9, "{}", e.distance_m());
+        assert!(
+            (e.step_distance_m() - steps - 1.0).abs() < 1e-9,
+            "{}",
+            e.step_distance_m()
+        );
+    }
+
+    #[test]
     fn a_stretch_credits_no_steps_taken_before_its_first_fix() {
         let mut e = GpsDistanceEstimator::with_config(DEFAULT_MAX_SPEED_MPS, 1.0, Some(1.0))
             .without_stride_learning();

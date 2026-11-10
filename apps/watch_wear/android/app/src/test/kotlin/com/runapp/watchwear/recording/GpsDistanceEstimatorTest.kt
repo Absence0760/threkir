@@ -199,6 +199,21 @@ class GpsDistanceEstimatorTest {
     }
 
     @Test
+    fun `a late sample stamped inside a gap shares only its own interval`() {
+        // 2 steps over (50, 51] at a 0.5 m stride credit 1 m; sharing the rest
+        // of the gap, which the fix at 55 closed before the sample arrived, at
+        // the sample's rate would credit 5 m (v1.6).
+        val est = eastward()
+        est.addSteps(50.0, 202)
+        est.addFix(55.0, 40.0, -75.0 + 110.0 / eastMPerDeg, 3.0, 4.0, 0.3, 90.0)
+        val before = est.distanceM
+        val steps = est.stepDistanceM
+        est.addSteps(51.0, 204)
+        assertEquals(1.0, est.distanceM - before, 1e-9)
+        assertEquals(1.0, est.stepDistanceM - steps, 1e-9)
+    }
+
+    @Test
     fun `a stretch credits no steps taken before its first fix`() {
         val est = GpsDistanceEstimator(initialStrideM = 1.0, learnStride = false)
         for (i in 0 until 30) est.addSteps(i + 0.5, 4L * i)

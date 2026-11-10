@@ -181,10 +181,11 @@ add("zupt_batched_steps_stop", "v1.5 ZUPT window: the same 15 s batches with a 6
 
 # v1.6 scenarios: a step sample's steps are attributed across the interval they were
 # taken in, so every step the pedometer counted while no fix covered it is credited.
-def line(fix_ts, step_ts, v=4.0, cadence=4.0, east_at=None, finish=None):
+def line(fix_ts, step_ts, v=4.0, cadence=4.0, east_at=None, finish=None, count_at=None):
     """Fixes at fix_ts heading east at v m/s (Doppler, 3 m stated accuracy); the step
     count, at cadence per second, sampled at step_ts. east_at overrides a fix's
-    position (metres east), for a runner who loops back during a gap."""
+    position (metres east), for a runner who loops back during a gap; count_at
+    overrides a sample's cumulative count."""
     mlng = MLAT * math.cos(math.radians(LAT0))
     ev = []
     for t in fix_ts:
@@ -192,7 +193,7 @@ def line(fix_ts, step_ts, v=4.0, cadence=4.0, east_at=None, finish=None):
         ev.append({"type": "fix", "t": float(t), "lat": LAT0, "lng": round(LNG0 + east / mlng, 9),
                    "acc": 3.0, "speed": v, "speedAcc": 0.3, "bearing": 90.0})
     for t in step_ts:
-        ev.append({"type": "steps", "t": float(t), "count": int(round(cadence * t))})
+        ev.append({"type": "steps", "t": float(t), "count": (count_at or {}).get(t, int(round(cadence * t)))})
     ev.sort(key=lambda e: (e["t"], e["type"] != "steps"))
     if finish is not None:
         ev.append({"type": "finish", "t": float(finish)})
@@ -220,6 +221,9 @@ def late_steps(ev, t, after_fix):
 add("gap_step_stamped_inside_delivered_late", "v1.6: 5 s step batches across a 30 s stall the runner loops back across; the 1 s batch stamped at 51 arrives after the fix at 55 closes the gap, so it claims only its own (50, 51] share (4 m, not the 20 m to the gap's end), the gap stays open, and the sample at 57.5 shares the rest (51, 55]: the steps credit all 120 m of the gap",
     late_steps(line(list(range(26)) + [55, 56, 57], [t + 0.5 for t in range(26)] + [30, 35, 40, 45, 50, 51, 57.5],
                     east_at={55: 110.0, 56: 114.0, 57: 118.0}), 51.0, 55.0), stride=1.0, learn_stride=False)
+add("gap_step_late_sample_faster_than_runner", "v1.6: the late batch of gap_step_stamped_inside_delivered_late counts 8 steps in its 1 s, twice the runner's rate; bounded to its own (50, 51] it credits 8 m and the sample at 57.5 shares (51, 55], so the steps credit 121.54 m of the 120 m gap (229.54 m); the unbounded share would credit the rest of the gap at 8 m/s, 140 m (248.00 m)",
+    late_steps(line(list(range(26)) + [55, 56, 57], [t + 0.5 for t in range(26)] + [30, 35, 40, 45, 50, 51, 57.5],
+                    east_at={55: 110.0, 56: 114.0, 57: 118.0}, count_at={51: 208}), 51.0, 55.0), stride=1.0, learn_stride=False)
 add("gap_steps_open_gap_cap", "v1.6: nine 12 s gaps whose fixes zigzag 10 m apart, with no step sample until one after the ninth; only MAX_OPEN_GAPS = 8 gaps can still claim a share, so the oldest keeps its chord credit and its 46 m of steps after the 25.5 sample are dropped (the cap only under-credits)",
     line(list(range(26)) + [25 + 12 * k for k in range(1, 10)], [t + 0.5 for t in range(26)] + [133.5],
          east_at={25 + 12 * k: (110.0 if k % 2 else 100.0) for k in range(1, 10)} | {25: 100.0}), stride=1.0, learn_stride=False)

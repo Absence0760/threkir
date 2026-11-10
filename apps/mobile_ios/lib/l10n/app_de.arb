@@ -6036,5 +6036,16 @@
   "coachShareCardFromMe": "Du hast dies aus deinem KI-Coach geteilt",
   "coachShareCardFromAthlete": "{name} hat dies aus dem eigenen KI-Coach geteilt",
   "coachShareOpenSource": "Im KI-Coach öffnen",
-  "coachShareUnavailable": "Das Teilen mit deinem Coach ist noch nicht verfügbar."
+  "coachShareUnavailable": "Das Teilen mit deinem Coach ist noch nicht verfügbar.",
+  "coachConsentBulletCoachAssist": "Für Coaches, die den Coach-Assistenten nutzen: was du ihn fragst und, nur bei Athleten, die es für deine Coaching-Verknüpfung erlaubt haben, deren letzte Nachrichten mit dir, deren Plan und anstehende Einheiten sowie deren letzte Läufe, nur verwendet, um eine Nachricht zu entwerfen, die nur du siehst. Du bearbeitest und sendest sie selbst, und sie wird als KI-gestützt gekennzeichnet.",
+  "coachAssistMarker": "KI-gestützt",
+  "coachAssistMarkerTitle": "Vom Coach mithilfe eines KI-Entwurfs geschrieben",
+  "coachAssistConsentToggle": "{name} KI-Unterstützung nutzen lassen",
+  "coachAssistConsentWhat": "Was dabei geteilt wird",
+  "coachAssistConsentIntro": "Wenn {name} den Coach-Assistenten um einen Entwurf bittet, sendet Threkir Folgendes an Anthropic, den KI-Anbieter, damit er ihn verfasst:",
+  "coachAssistConsentBulletThread": "Deine letzten Nachrichten mit diesem Coach (der Text und wann er gesendet wurde).",
+  "coachAssistConsentBulletPlan": "Der Plan, dem du folgst: sein Name, Zielrennen und Zielzeit, seine Datumsangaben und deine Einheiten für die nächsten zwei Wochen (Datum, Art, Distanz oder Dauer, Tempo und ob du sie absolviert oder übersprungen hast).",
+  "coachAssistConsentBulletRuns": "Deine letzten 10 Aktivitäten: Datum, Distanz, Zeit und Aktivitätstyp. Niemals deine Herzfrequenz, deine Route oder etwas, das du über einen Lauf geschrieben hast.",
+  "coachAssistConsentOutro": "Nur {name} sieht die Entwürfe. Der Coach bearbeitet und sendet jede Nachricht selbst, und sie wird als KI-gestützt gekennzeichnet. Solange dies ausgeschaltet ist, wird nichts gesendet, und du kannst es jederzeit ausschalten.",
+  "coachAssistConsentFailed": "Das konnte nicht gespeichert werden. Versuche es erneut."
 }

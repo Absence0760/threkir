@@ -21825,4 +21825,49 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get coachShareUnavailable =>
       'Todavía no se puede compartir con tu entrenador.';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'Para entrenadores que usan el asistente para entrenadores: lo que le pides y, solo de un atleta que lo haya permitido en su vínculo de entrenamiento contigo, sus mensajes recientes contigo, su plan y sus próximos entrenamientos, y sus carreras recientes, usados solo para redactar un mensaje que solo ves tú. Tú lo editas y lo envías, y se marca como asistido por IA.';
+
+  @override
+  String get coachAssistMarker => 'Asistido por IA';
+
+  @override
+  String get coachAssistMarkerTitle =>
+      'Escrito por el entrenador con ayuda de un borrador de IA';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return 'Permitir que $name use la asistencia de IA';
+  }
+
+  @override
+  String get coachAssistConsentWhat => 'Qué se comparte';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return 'Cuando $name pide un borrador al asistente para entrenadores, Threkir envía esto a Anthropic, el proveedor de IA, para que lo redacte:';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread =>
+      'Tus mensajes recientes con este entrenador (el texto y cuándo se envió).';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      'El plan que sigues: su nombre, la carrera objetivo y el tiempo objetivo, sus fechas y tus entrenamientos de las próximas dos semanas (fecha, tipo, distancia o tiempo, ritmo, y si los has completado u omitido).';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      'Tus 10 actividades más recientes: la fecha, la distancia, la duración y el tipo de actividad. Nunca tu frecuencia cardíaca, tu ruta ni nada que hayas escrito sobre una carrera.';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return 'Solo $name ve los borradores. Edita y envía personalmente cualquier mensaje, y este se marca como asistido por IA. No se envía nada mientras esta opción esté desactivada, y puedes desactivarla en cualquier momento.';
+  }
+
+  @override
+  String get coachAssistConsentFailed =>
+      'No se pudo guardar. Inténtalo de nuevo.';
 }

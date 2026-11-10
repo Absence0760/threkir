@@ -162,6 +162,22 @@ DirectMessageRow _share(
   coachMessageId: from == _me ? coachMessageId : null,
 );
 
+DirectMessageRow _assisted(
+  String id, {
+  required String from,
+  String body = 'Easy week, then the long run.',
+  bool unsent = false,
+}) => DirectMessageRow(
+  kind: 'ai_assisted',
+  id: id,
+  conversationId: 'c-1',
+  senderId: from,
+  recipientId: from == _me ? _coach : _me,
+  body: unsent ? null : body,
+  createdAt: DateTime.now().toUtc().subtract(const Duration(minutes: 1)),
+  unsentAt: unsent ? DateTime.utc(2026, 10, 14, 11) : null,
+);
+
 late AppLocalizations l10n;
 
 Widget _app(Widget home) => MaterialApp(
@@ -500,6 +516,81 @@ void main() {
         return true;
       });
       expect(recognizers, 0);
+    });
+  });
+
+  group('MessageThreadScreen ai_assisted', () {
+    Future<void> pumpThread(WidgetTester tester, _Api api) async {
+      await tester.pumpWidget(
+        _app(
+          MessageThreadScreen(
+            api: api,
+            partnerId: _coach,
+            partnerName: 'Kim',
+            pollInterval: const Duration(hours: 1),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+    }
+
+    for (final from in [_me, _coach]) {
+      testWidgets(
+        'marks the message AI-assisted for ${from == _me ? 'the sender' : 'the recipient'}',
+        (tester) async {
+          final semantics = tester.ensureSemantics();
+          final api = _Api()..thread = [_assisted('dm-1', from: from)];
+          await pumpThread(tester, api);
+
+          expect(find.text('Easy week, then the long run.'), findsOneWidget);
+          final marker = find.byKey(const ValueKey('dm-ai-assisted'));
+          expect(marker, findsOneWidget);
+          expect(
+            find.descendant(
+              of: marker,
+              matching: find.text(l10n.coachAssistMarker),
+            ),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: marker,
+              matching: find.byIcon(Icons.auto_awesome),
+            ),
+            findsOneWidget,
+          );
+          expect(
+            tester.widget<Semantics>(marker).properties.label,
+            l10n.coachAssistMarkerTitle,
+          );
+          final announced = tester.getSemantics(marker).label;
+          expect(announced, contains(l10n.coachAssistMarkerTitle));
+          expect(announced, isNot(contains('\n${l10n.coachAssistMarker}')));
+          semantics.dispose();
+        },
+      );
+    }
+
+    testWidgets('an unsent AI-assisted message shows no marker', (
+      tester,
+    ) async {
+      final api = _Api()..thread = [_assisted('dm-1', from: _me, unsent: true)];
+      await pumpThread(tester, api);
+
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-ai-assisted')), findsNothing);
+    });
+
+    testWidgets('a plain text or shared message shows no marker', (
+      tester,
+    ) async {
+      final api = _Api()
+        ..thread = [_share('dm-1', from: _me, body: 'Rest on Friday.')];
+      await pumpThread(tester, api);
+
+      expect(find.byKey(const ValueKey('dm-coach-share')), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-ai-assisted')), findsNothing);
     });
   });
 

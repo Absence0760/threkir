@@ -28677,5 +28677,64 @@
   "coachShareUnavailable": "Sharing with your coach is not available yet.",
   "@coachShareUnavailable": {
     "description": "Error when sharing an AI Coach answer with a coach is switched off on the server"
+  },
+  "coachConsentBulletCoachAssist": "For coaches using the coach assistant: what you ask it, and, only for an athlete who has allowed it on your coaching link, their recent messages with you, their plan and upcoming workouts, and their recent runs, used only to draft a message only you see. You edit and send it yourself, and it is marked AI-assisted.",
+  "@coachConsentBulletCoachAssist": {
+    "description": "AI-disclosure bullet (v7) describing what the coach assistant sends to the AI provider when a coach uses it"
+  },
+  "coachAssistMarker": "AI-assisted",
+  "@coachAssistMarker": {
+    "description": "Marker in a direct message's meta row when the coach wrote it with help from an AI draft"
+  },
+  "coachAssistMarkerTitle": "Written by the coach with help from an AI draft",
+  "@coachAssistMarkerTitle": {
+    "description": "Accessibility label for the AI-assisted message marker"
+  },
+  "coachAssistConsentToggle": "Let {name} use AI assistance",
+  "@coachAssistConsentToggle": {
+    "description": "Athlete's per-coach switch on the coaching screen allowing that coach to use the AI coach assistant. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachAssistConsentWhat": "What this shares",
+  "@coachAssistConsentWhat": {
+    "description": "Expandable heading under the coach-assist switch listing what data the coach assistant sends"
+  },
+  "coachAssistConsentIntro": "When {name} asks the coach assistant for a draft, Threkir sends this to Anthropic, the AI provider, to write it:",
+  "@coachAssistConsentIntro": {
+    "description": "Intro to the list of what the coach assistant shares. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachAssistConsentBulletThread": "Your recent messages with this coach (the text and when it was sent).",
+  "@coachAssistConsentBulletThread": {
+    "description": "Coach-assist consent bullet: the message thread"
+  },
+  "coachAssistConsentBulletPlan": "The plan you are on: its name, goal race and target time, its dates, and your workouts for the next two weeks (date, type, distance or time, pace, and whether you did or skipped them).",
+  "@coachAssistConsentBulletPlan": {
+    "description": "Coach-assist consent bullet: the training plan"
+  },
+  "coachAssistConsentBulletRuns": "Your 10 most recent activities: the date, distance, time and activity type. Never your heart rate, your route or anything you wrote about a run.",
+  "@coachAssistConsentBulletRuns": {
+    "description": "Coach-assist consent bullet: recent activities"
+  },
+  "coachAssistConsentOutro": "Only {name} sees the drafts. They edit and send any message themselves, and it is marked AI-assisted. Nothing is sent while this is off, and you can turn it off at any time.",
+  "@coachAssistConsentOutro": {
+    "description": "Closing note under the coach-assist consent bullets. {name} is the coach's display name",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "coachAssistConsentFailed": "Could not save that. Try again.",
+  "@coachAssistConsentFailed": {
+    "description": "Error when saving the coach-assist consent switch fails; the switch reverts"
   }
 }

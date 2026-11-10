@@ -9365,7 +9365,8 @@ class ApiClient {
     if (uid == null) return const [];
     final rows = await _client
         .from(CoachAthleteRow.table)
-        .select('id, status, note, created_at, accepted_at, athlete_id')
+        .select(
+            'id, status, note, created_at, accepted_at, athlete_id, ai_assist_consent_version')
         .eq(CoachAthleteRow.colCoachId, uid)
         .eq(CoachAthleteRow.colStatus, 'active')
         .order(CoachAthleteRow.colAcceptedAt, ascending: false);
@@ -9379,7 +9380,8 @@ class ApiClient {
     if (uid == null) return const [];
     final rows = await _client
         .from(CoachAthleteRow.table)
-        .select('id, status, note, created_at, accepted_at, coach_id')
+        .select(
+            'id, status, note, created_at, accepted_at, coach_id, ai_assist_consent_version')
         .eq(CoachAthleteRow.colAthleteId, uid)
         .eq(CoachAthleteRow.colStatus, 'active')
         .order(CoachAthleteRow.colAcceptedAt, ascending: false);
@@ -9536,9 +9538,13 @@ class ApiClient {
         userId: otherId,
         displayName: prof?.displayName,
         avatarUrl: prof?.avatarUrl,
+        aiAssistConsentVersion: _consentVersion(r['ai_assist_consent_version']),
       );
     }).toList();
   }
+
+  static int? _consentVersion(Object? raw) =>
+      raw is int && raw >= 1 ? raw : null;
 
   /// Unredeemed invites the signed-in coach has minted, newest first.
   Future<List<PendingCoachInvite>> fetchPendingCoachInvites() async {
@@ -9566,6 +9572,29 @@ class ApiClient {
   Future<String> redeemCoachInvite(String token) async {
     final res = await _client.rpc('redeem_coach_invite', params: {'token': token});
     return res as String;
+  }
+
+  /// The athlete allows ([version]) or withdraws (null) the coach assistant
+  /// on one of their active coaching links, through the
+  /// `set_coach_ai_assist_consent` RPC (issue #1215 Phase 4, migration
+  /// 20271210001217). Returns the version the server stored. A link that is
+  /// not the caller's as athlete or not active (P0002) and a version the
+  /// server does not know (22023) throw [CoachAssistConsentRefused]; anything
+  /// else is rethrown as it is. Mirrors web `setCoachAiAssistConsent`.
+  Future<int?> setCoachAiAssistConsent(String linkId, int? version) async {
+    try {
+      final row = await _client.rpc('set_coach_ai_assist_consent', params: {
+        'p_link_id': linkId,
+        'p_version': version,
+      });
+      if (row is! Map) throw const CoachAssistConsentRefused();
+      return _consentVersion(row['ai_assist_consent_version']);
+    } on PostgrestException catch (e) {
+      if (e.code == 'P0002' || e.code == '22023') {
+        throw const CoachAssistConsentRefused();
+      }
+      rethrow;
+    }
   }
 
   /// End an active link (either party may call). Goes through the
@@ -10430,6 +10459,11 @@ class CoachAthleteLink {
   final String? displayName;
   final String? avatarUrl;
 
+  /// The athlete's consent to the coach assistant on this link, at a version
+  /// of `coach_assist_consent_current_version()`'s ladder; null is no consent
+  /// (issue #1215 Phase 4).
+  final int? aiAssistConsentVersion;
+
   const CoachAthleteLink({
     required this.id,
     required this.status,
@@ -10439,7 +10473,31 @@ class CoachAthleteLink {
     required this.userId,
     required this.displayName,
     required this.avatarUrl,
+    this.aiAssistConsentVersion,
   });
+
+  CoachAthleteLink withAiAssistConsentVersion(int? version) =>
+      CoachAthleteLink(
+        id: id,
+        status: status,
+        note: note,
+        createdAt: createdAt,
+        acceptedAt: acceptedAt,
+        userId: userId,
+        displayName: displayName,
+        avatarUrl: avatarUrl,
+        aiAssistConsentVersion: version,
+      );
+}
+
+/// `set_coach_ai_assist_consent` refused: the link is not the caller's as
+/// athlete or is no longer active (P0002), or the version is one the server
+/// does not know (22023). Clients say one sentence for both.
+class CoachAssistConsentRefused implements Exception {
+  const CoachAssistConsentRefused();
+
+  @override
+  String toString() => 'CoachAssistConsentRefused';
 }
 
 /// One row of the multi-athlete coach roster (coach_roster.md) — the bespoke

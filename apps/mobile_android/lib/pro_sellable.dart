@@ -42,12 +42,19 @@ class ProPerks {
   /// on its own either.
   final bool platePhoto;
 
+  /// The coach assistant is live (web's `coachAssistEnabled()`, issue #1215
+  /// Phase 4). Mobile has no drafting panel; it decides only whether an
+  /// athlete is offered the per-coach AI-assistance consent switch. Rides on
+  /// the Coach key, so it never makes Pro sellable on its own.
+  final bool coachAssist;
+
   const ProPerks({
     required this.coach,
     required this.routeGen,
     this.webCheckout = false,
     this.aiPlan = false,
     this.platePhoto = false,
+    this.coachAssist = false,
   });
 
   static const ProPerks none = ProPerks(coach: false, routeGen: false);
@@ -57,6 +64,8 @@ class ProPerks {
   bool get aiPlanAvailable => coach && aiPlan;
 
   bool get platePhotoAvailable => coach && platePhoto;
+
+  bool get coachAssistAvailable => coach && coachAssist;
 }
 
 /// Whether this build can offer Pro for sale right now: a perk must be live,
@@ -91,6 +100,7 @@ ProPerks parseProPerks(String raw) {
       webCheckout: json['web_checkout'] == true,
       aiPlan: json['ai_plan'] == true,
       platePhoto: json['plate_photo'] == true,
+      coachAssist: json['coach_assist'] == true,
     );
   } catch (_) {
     return ProPerks.none;
@@ -125,3 +135,8 @@ Future<bool> fetchAiPlanAvailable() async =>
 /// throws; unknown reads as off.
 Future<bool> fetchPlatePhotoAvailable() async =>
     (await fetchProPerks()).platePhotoAvailable;
+
+/// Whether the coaching screen should offer an athlete the per-coach
+/// AI-assistance consent switch. Never throws; unknown reads as off.
+Future<bool> fetchCoachAssistAvailable() async =>
+    (await fetchProPerks()).coachAssistAvailable;

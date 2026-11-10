@@ -21826,6 +21826,51 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get coachShareUnavailable =>
       'A partilha com o seu treinador ainda não está disponível.';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'Para treinadores que utilizam o assistente de treinador: o que lhe pede e, apenas no caso de um atleta que o tenha permitido no vínculo de treino consigo, as mensagens recentes que esse atleta trocou consigo, o plano e os próximos treinos dele e as corridas recentes dele, usados apenas para redigir uma mensagem que mais ninguém vê. Edita-a e envia-a pessoalmente, e a mensagem é marcada como assistida por IA.';
+
+  @override
+  String get coachAssistMarker => 'Assistida por IA';
+
+  @override
+  String get coachAssistMarkerTitle =>
+      'Escrita pelo treinador com a ajuda de um rascunho de IA';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return 'Permitir que $name use a assistência de IA';
+  }
+
+  @override
+  String get coachAssistConsentWhat => 'O que isto partilha';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return 'Quando $name pede um rascunho ao assistente de treinador, o Threkir envia isto para a Anthropic, o fornecedor de IA, para redigir o rascunho:';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread =>
+      'As suas mensagens recentes com este treinador (o texto e quando cada uma foi enviada).';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      'O plano que está a seguir: o nome, a prova-alvo e o tempo-alvo, as datas e os seus treinos das próximas duas semanas (data, tipo, distância ou tempo, ritmo e se os concluiu ou ignorou).';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      'As suas 10 atividades mais recentes: a data, a distância, o tempo e o tipo de atividade. Nunca a sua frequência cardíaca, a sua rota nem nada do que escreveu sobre uma corrida.';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return 'Só $name vê os rascunhos. É essa pessoa que edita e envia qualquer mensagem, e a mensagem é marcada como assistida por IA. Nada é enviado enquanto isto estiver desativado, e pode desativá-lo a qualquer momento.';
+  }
+
+  @override
+  String get coachAssistConsentFailed =>
+      'Não foi possível guardar. Tente novamente.';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -43634,4 +43679,49 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get coachShareUnavailable =>
       'O compartilhamento com seu treinador ainda não está disponível.';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'Para treinadores que usam o assistente de treinador: o que você pede a ele e, apenas no caso de um atleta que tenha permitido isso no vínculo de treino com você, as mensagens recentes que esse atleta trocou com você, o plano e os próximos treinos dele e as corridas recentes dele, usados apenas para redigir uma mensagem que só você vê. Você mesmo edita e envia a mensagem, e ela é marcada como assistida por IA.';
+
+  @override
+  String get coachAssistMarker => 'Assistida por IA';
+
+  @override
+  String get coachAssistMarkerTitle =>
+      'Escrita pelo treinador com a ajuda de um rascunho de IA';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return 'Permitir que $name use a assistência de IA';
+  }
+
+  @override
+  String get coachAssistConsentWhat => 'O que isso compartilha';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return 'Quando $name pede um rascunho ao assistente de treinador, o Threkir envia isto para a Anthropic, o provedor de IA, para redigir o rascunho:';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread =>
+      'Suas mensagens recentes com este treinador (o texto e quando cada uma foi enviada).';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      'O plano que você está seguindo: o nome, a prova-alvo e o tempo-alvo, as datas e seus treinos das próximas duas semanas (data, tipo, distância ou tempo, ritmo e se você os concluiu ou ignorou).';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      'Suas 10 atividades mais recentes: a data, a distância, o tempo e o tipo de atividade. Nunca sua frequência cardíaca, sua rota nem nada que você tenha escrito sobre uma corrida.';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return 'Só $name vê os rascunhos. É essa pessoa que edita e envia qualquer mensagem, e ela é marcada como assistida por IA. Nada é enviado enquanto isso estiver desativado, e você pode desativar a qualquer momento.';
+  }
+
+  @override
+  String get coachAssistConsentFailed =>
+      'Não foi possível salvar. Tente novamente.';
 }

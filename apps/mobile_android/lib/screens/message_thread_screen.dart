@@ -1094,6 +1094,10 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           editedLabel: m.editedAt != null && m.unsentAt == null
               ? l10n.messagesEdited
               : null,
+          aiAssisted: m.unsentAt == null &&
+                  parseDmKind(m.kind) == 'ai_assisted'
+              ? (label: l10n.coachAssistMarker, title: l10n.coachAssistMarkerTitle)
+              : null,
           onLongPress: m.unsentAt == null ? () => _showOptions(m) : null,
           longPressHint: l10n.messagesOptionsHint,
           attachment: m.unsentAt == null && m.body != null && _isCoachShare(m)
@@ -1276,6 +1280,7 @@ class _Bubble extends StatelessWidget {
     this.unsentLabel,
     this.seenLabel,
     this.editedLabel,
+    this.aiAssisted,
     this.onLongPress,
     this.longPressHint,
   });
@@ -1295,6 +1300,11 @@ class _Bubble extends StatelessWidget {
 
   /// "Edited", beside the time, once the sender edited the message.
   final String? editedLabel;
+
+  /// The AI-assisted marker beside the time, on a message the coach wrote
+  /// from an AI draft (issue #1215 Phase 4). [title] is what a screen reader
+  /// announces in place of the short [label].
+  final ({String label, String title})? aiAssisted;
   final VoidCallback? onLongPress;
   final String? longPressHint;
 
@@ -1346,6 +1356,33 @@ class _Bubble extends StatelessWidget {
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: fg.withValues(alpha: 0.7)),
               ),
+              if (aiAssisted != null) ...[
+                const SizedBox(width: 6),
+                Semantics(
+                  key: const ValueKey('dm-ai-assisted'),
+                  label: aiAssisted!.title,
+                  excludeSemantics: true,
+                  child: Tooltip(
+                    message: aiAssisted!.title,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome,
+                            size: AppIconSize.dense,
+                            color: fg.withValues(alpha: 0.7)),
+                        const SizedBox(width: 2),
+                        Text(
+                          aiAssisted!.label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: fg.withValues(alpha: 0.7),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               if (editedLabel != null) ...[
                 const SizedBox(width: 6),
                 Text(

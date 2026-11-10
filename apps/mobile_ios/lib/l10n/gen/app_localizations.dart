@@ -35122,6 +35122,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sharing with your coach is not available yet.'**
   String get coachShareUnavailable;
+
+  /// AI-disclosure bullet (v7) describing what the coach assistant sends to the AI provider when a coach uses it
+  ///
+  /// In en, this message translates to:
+  /// **'For coaches using the coach assistant: what you ask it, and, only for an athlete who has allowed it on your coaching link, their recent messages with you, their plan and upcoming workouts, and their recent runs, used only to draft a message only you see. You edit and send it yourself, and it is marked AI-assisted.'**
+  String get coachConsentBulletCoachAssist;
+
+  /// Marker in a direct message's meta row when the coach wrote it with help from an AI draft
+  ///
+  /// In en, this message translates to:
+  /// **'AI-assisted'**
+  String get coachAssistMarker;
+
+  /// Accessibility label for the AI-assisted message marker
+  ///
+  /// In en, this message translates to:
+  /// **'Written by the coach with help from an AI draft'**
+  String get coachAssistMarkerTitle;
+
+  /// Athlete's per-coach switch on the coaching screen allowing that coach to use the AI coach assistant. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Let {name} use AI assistance'**
+  String coachAssistConsentToggle(String name);
+
+  /// Expandable heading under the coach-assist switch listing what data the coach assistant sends
+  ///
+  /// In en, this message translates to:
+  /// **'What this shares'**
+  String get coachAssistConsentWhat;
+
+  /// Intro to the list of what the coach assistant shares. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'When {name} asks the coach assistant for a draft, Threkir sends this to Anthropic, the AI provider, to write it:'**
+  String coachAssistConsentIntro(String name);
+
+  /// Coach-assist consent bullet: the message thread
+  ///
+  /// In en, this message translates to:
+  /// **'Your recent messages with this coach (the text and when it was sent).'**
+  String get coachAssistConsentBulletThread;
+
+  /// Coach-assist consent bullet: the training plan
+  ///
+  /// In en, this message translates to:
+  /// **'The plan you are on: its name, goal race and target time, its dates, and your workouts for the next two weeks (date, type, distance or time, pace, and whether you did or skipped them).'**
+  String get coachAssistConsentBulletPlan;
+
+  /// Coach-assist consent bullet: recent activities
+  ///
+  /// In en, this message translates to:
+  /// **'Your 10 most recent activities: the date, distance, time and activity type. Never your heart rate, your route or anything you wrote about a run.'**
+  String get coachAssistConsentBulletRuns;
+
+  /// Closing note under the coach-assist consent bullets. {name} is the coach's display name
+  ///
+  /// In en, this message translates to:
+  /// **'Only {name} sees the drafts. They edit and send any message themselves, and it is marked AI-assisted. Nothing is sent while this is off, and you can turn it off at any time.'**
+  String coachAssistConsentOutro(String name);
+
+  /// Error when saving the coach-assist consent switch fails; the switch reverts
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save that. Try again.'**
+  String get coachAssistConsentFailed;
 }
 
 class _AppLocalizationsDelegate

@@ -20750,4 +20750,46 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get coachShareUnavailable => 'コーチへの共有はまだ利用できません。';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'コーチアシスタント利用時（コーチ向け）: コーチアシスタントへの依頼内容。また、あなたとのコーチングのつながりで許可したアスリートに限り、そのアスリートとあなたの最近のメッセージ、プランと今後のワークアウト、最近のラン。これらは、あなただけに表示されるメッセージの下書きを作成するためにのみ使用されます。メッセージの編集と送信はあなた自身が行い、メッセージにはAIアシストの表示が付きます。';
+
+  @override
+  String get coachAssistMarker => 'AIアシスト';
+
+  @override
+  String get coachAssistMarkerTitle => 'AIの下書きをもとにコーチが作成';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return '$nameさんにAIアシストの利用を許可';
+  }
+
+  @override
+  String get coachAssistConsentWhat => '共有される内容';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return '$nameさんがコーチアシスタントに下書きを依頼すると、Threkirは下書きを作成するために、AIプロバイダーであるAnthropicに次の情報を送信します：';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread => 'このコーチとの最近のメッセージ（本文と送信日時）。';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      '取り組んでいるプラン: プラン名、目標レースと目標タイム、期間、今後2週間のワークアウト（日付、種類、距離または時間、ペース、完了したかスキップしたか）。';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      '直近10件のアクティビティ: 日付、距離、時間、アクティビティの種類。心拍数、ルート、ランについて書いた内容は一切送信しません。';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return '下書きを見られるのは$nameさんだけです。メッセージの編集と送信はコーチ本人が行い、メッセージにはAIアシストの表示が付きます。この設定がオフの間は何も送信されません。また、いつでもオフにできます。';
+  }
+
+  @override
+  String get coachAssistConsentFailed => '保存できませんでした。もう一度お試しください。';
 }

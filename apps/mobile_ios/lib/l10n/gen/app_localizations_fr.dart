@@ -21866,4 +21866,49 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get coachShareUnavailable =>
       'Le partage avec votre coach n\'est pas encore disponible.';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'Pour les coachs qui utilisent l\'assistant de coaching : ce que vous lui demandez et, uniquement pour un athlète qui l\'a autorisé sur votre lien de coaching, ses messages récents avec vous, son plan et ses prochaines séances, et ses courses récentes, utilisés uniquement pour rédiger un message visible par vous seul. Vous le modifiez et l\'envoyez vous-même, et il est marqué comme assisté par IA.';
+
+  @override
+  String get coachAssistMarker => 'Assisté par IA';
+
+  @override
+  String get coachAssistMarkerTitle =>
+      'Rédigé par le coach à l\'aide d\'un brouillon d\'IA';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return 'Autoriser $name à utiliser l\'assistance IA';
+  }
+
+  @override
+  String get coachAssistConsentWhat => 'Ce qui est partagé';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return 'Lorsque $name demande un brouillon à l\'assistant de coaching, Threkir envoie ceci à Anthropic, le fournisseur d\'IA, pour le rédiger :';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread =>
+      'Vos messages récents avec ce coach (le texte et le moment de son envoi).';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      'Le plan que vous suivez : son nom, la course visée et le temps visé, ses dates, et vos séances des deux prochaines semaines (date, type, distance ou durée, allure, et si vous les avez effectuées ou ignorées).';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      'Vos 10 activités les plus récentes : la date, la distance, le temps et le type d\'activité. Jamais votre fréquence cardiaque, votre itinéraire ni rien de ce que vous avez écrit sur une course.';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return 'Les brouillons ne sont visibles que par $name. Le coach modifie et envoie lui-même chaque message, qui est marqué comme assisté par IA. Rien n\'est envoyé tant que cette option est désactivée, et vous pouvez la désactiver à tout moment.';
+  }
+
+  @override
+  String get coachAssistConsentFailed =>
+      'Impossible d\'enregistrer. Réessayez.';
 }

@@ -6036,5 +6036,16 @@
   "coachShareCardFromMe": "Você compartilhou isto do seu Coach de IA",
   "coachShareCardFromAthlete": "{name} compartilhou isto do próprio Coach de IA",
   "coachShareOpenSource": "Abrir no Coach de IA",
-  "coachShareUnavailable": "O compartilhamento com seu treinador ainda não está disponível."
+  "coachShareUnavailable": "O compartilhamento com seu treinador ainda não está disponível.",
+  "coachConsentBulletCoachAssist": "Para treinadores que usam o assistente de treinador: o que você pede a ele e, apenas no caso de um atleta que tenha permitido isso no vínculo de treino com você, as mensagens recentes que esse atleta trocou com você, o plano e os próximos treinos dele e as corridas recentes dele, usados apenas para redigir uma mensagem que só você vê. Você mesmo edita e envia a mensagem, e ela é marcada como assistida por IA.",
+  "coachAssistMarker": "Assistida por IA",
+  "coachAssistMarkerTitle": "Escrita pelo treinador com a ajuda de um rascunho de IA",
+  "coachAssistConsentToggle": "Permitir que {name} use a assistência de IA",
+  "coachAssistConsentWhat": "O que isso compartilha",
+  "coachAssistConsentIntro": "Quando {name} pede um rascunho ao assistente de treinador, o Threkir envia isto para a Anthropic, o provedor de IA, para redigir o rascunho:",
+  "coachAssistConsentBulletThread": "Suas mensagens recentes com este treinador (o texto e quando cada uma foi enviada).",
+  "coachAssistConsentBulletPlan": "O plano que você está seguindo: o nome, a prova-alvo e o tempo-alvo, as datas e seus treinos das próximas duas semanas (data, tipo, distância ou tempo, ritmo e se você os concluiu ou ignorou).",
+  "coachAssistConsentBulletRuns": "Suas 10 atividades mais recentes: a data, a distância, o tempo e o tipo de atividade. Nunca sua frequência cardíaca, sua rota nem nada que você tenha escrito sobre uma corrida.",
+  "coachAssistConsentOutro": "Só {name} vê os rascunhos. É essa pessoa que edita e envia qualquer mensagem, e ela é marcada como assistida por IA. Nada é enviado enquanto isso estiver desativado, e você pode desativar a qualquer momento.",
+  "coachAssistConsentFailed": "Não foi possível salvar. Tente novamente."
 }

@@ -21586,4 +21586,48 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get coachShareUnavailable =>
       'Sharing with your coach is not available yet.';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'For coaches using the coach assistant: what you ask it, and, only for an athlete who has allowed it on your coaching link, their recent messages with you, their plan and upcoming workouts, and their recent runs, used only to draft a message only you see. You edit and send it yourself, and it is marked AI-assisted.';
+
+  @override
+  String get coachAssistMarker => 'AI-assisted';
+
+  @override
+  String get coachAssistMarkerTitle =>
+      'Written by the coach with help from an AI draft';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return 'Let $name use AI assistance';
+  }
+
+  @override
+  String get coachAssistConsentWhat => 'What this shares';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return 'When $name asks the coach assistant for a draft, Threkir sends this to Anthropic, the AI provider, to write it:';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread =>
+      'Your recent messages with this coach (the text and when it was sent).';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      'The plan you are on: its name, goal race and target time, its dates, and your workouts for the next two weeks (date, type, distance or time, pace, and whether you did or skipped them).';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      'Your 10 most recent activities: the date, distance, time and activity type. Never your heart rate, your route or anything you wrote about a run.';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return 'Only $name sees the drafts. They edit and send any message themselves, and it is marked AI-assisted. Nothing is sent while this is off, and you can turn it off at any time.';
+  }
+
+  @override
+  String get coachAssistConsentFailed => 'Could not save that. Try again.';
 }

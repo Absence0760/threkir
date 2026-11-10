@@ -21850,4 +21850,49 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachShareUnavailable =>
       'Das Teilen mit deinem Coach ist noch nicht verfügbar.';
+
+  @override
+  String get coachConsentBulletCoachAssist =>
+      'Für Coaches, die den Coach-Assistenten nutzen: was du ihn fragst und, nur bei Athleten, die es für deine Coaching-Verknüpfung erlaubt haben, deren letzte Nachrichten mit dir, deren Plan und anstehende Einheiten sowie deren letzte Läufe, nur verwendet, um eine Nachricht zu entwerfen, die nur du siehst. Du bearbeitest und sendest sie selbst, und sie wird als KI-gestützt gekennzeichnet.';
+
+  @override
+  String get coachAssistMarker => 'KI-gestützt';
+
+  @override
+  String get coachAssistMarkerTitle =>
+      'Vom Coach mithilfe eines KI-Entwurfs geschrieben';
+
+  @override
+  String coachAssistConsentToggle(String name) {
+    return '$name KI-Unterstützung nutzen lassen';
+  }
+
+  @override
+  String get coachAssistConsentWhat => 'Was dabei geteilt wird';
+
+  @override
+  String coachAssistConsentIntro(String name) {
+    return 'Wenn $name den Coach-Assistenten um einen Entwurf bittet, sendet Threkir Folgendes an Anthropic, den KI-Anbieter, damit er ihn verfasst:';
+  }
+
+  @override
+  String get coachAssistConsentBulletThread =>
+      'Deine letzten Nachrichten mit diesem Coach (der Text und wann er gesendet wurde).';
+
+  @override
+  String get coachAssistConsentBulletPlan =>
+      'Der Plan, dem du folgst: sein Name, Zielrennen und Zielzeit, seine Datumsangaben und deine Einheiten für die nächsten zwei Wochen (Datum, Art, Distanz oder Dauer, Tempo und ob du sie absolviert oder übersprungen hast).';
+
+  @override
+  String get coachAssistConsentBulletRuns =>
+      'Deine letzten 10 Aktivitäten: Datum, Distanz, Zeit und Aktivitätstyp. Niemals deine Herzfrequenz, deine Route oder etwas, das du über einen Lauf geschrieben hast.';
+
+  @override
+  String coachAssistConsentOutro(String name) {
+    return 'Nur $name sieht die Entwürfe. Der Coach bearbeitet und sendet jede Nachricht selbst, und sie wird als KI-gestützt gekennzeichnet. Solange dies ausgeschaltet ist, wird nichts gesendet, und du kannst es jederzeit ausschalten.';
+  }
+
+  @override
+  String get coachAssistConsentFailed =>
+      'Das konnte nicht gespeichert werden. Versuche es erneut.';
 }

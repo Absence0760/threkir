@@ -302,7 +302,7 @@ class EventCourseView {
 /// upsert keeps an omitted column, and the server derives the gun and chip
 /// time from `finish_at` when it is set, so a time filed without crossings
 /// must clear any left from an earlier write. The offset is a device fact a
-/// re-time needs, so it is only ever written, never cleared.
+/// re-time needs, so a write without crossings leaves it alone.
 class RaceCrossings {
   const RaceCrossings({
     this.startAt,
@@ -325,7 +325,10 @@ class RaceCrossings {
         'finish_at': finishAt?.toUtc().toIso8601String(),
         'start_detection': startDetection,
         'finish_detection': finishDetection,
-        if (clockOffsetMs != null) 'clock_offset_ms': clockOffsetMs,
+        // The offset belongs to the crossings it converted: written beside
+        // them (null included), never cleared by a write that has none.
+        if (startAt != null || finishAt != null || clockOffsetMs != null)
+          'clock_offset_ms': clockOffsetMs,
       };
 }
 

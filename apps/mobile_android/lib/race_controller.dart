@@ -33,6 +33,13 @@ const kActiveRaceCacheKey = 'race_active_cache';
 /// offline): one entry, keyed to its account and race.
 const kRaceCourseCacheKey = 'race_course_cache';
 
+/// SharedPreferences key holding the automatic finishes an undo could not
+/// delete with no signal, as `{user_id, event_id, instance_start}` entries.
+/// Each is deleted before any result for its race is sent again, so a hand
+/// finish after the undo never lands beside, or under the lock rule of, the
+/// finish the runner withdrew.
+const kPendingRaceVoidsKey = 'race_pending_voids';
+
 /// How long "Not finished? Resume" is offered after a line finish (#1307
 /// m11).
 const Duration kRaceUndoWindow = Duration(seconds: 60);
@@ -125,6 +132,7 @@ Future<void> clearPendingRaceResults() async {
   try {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(kPendingRaceResultsKey);
+    await prefs.remove(kPendingRaceVoidsKey);
   } catch (e) {
     debugPrint('[clearPendingRaceResults] ${safeErrorLabel(e)}');
   }
@@ -140,7 +148,7 @@ class PendingRaceResult {
     required this.userId,
     required this.eventId,
     required this.instanceStart,
-    required this.runId,
+    this.runId,
     required this.durationS,
     required this.distanceM,
     this.finisherStatus = 'finished',
@@ -156,7 +164,9 @@ class PendingRaceResult {
   final String userId;
   final String eventId;
   final DateTime instanceStart;
-  final String runId;
+  /// Null for a finish filed at the line, before the run is saved: Stop
+  /// files it again with the run.
+  final String? runId;
   final int durationS;
   final double distanceM;
   final String finisherStatus;
@@ -173,7 +183,7 @@ class PendingRaceResult {
         'user_id': userId,
         'event_id': eventId,
         'instance_start': instanceStartKey(instanceStart),
-        'run_id': runId,
+        if (runId != null) 'run_id': runId,
         'duration_s': durationS,
         'distance_m': distanceM,
         'finisher_status': finisherStatus,
@@ -201,7 +211,7 @@ class PendingRaceResult {
         userId.isEmpty ||
         eventId is! String ||
         instance is! String ||
-        runId is! String ||
+        runId is! String? ||
         durationS is! num ||
         distanceM is! num) {
       return null;
@@ -588,6 +598,10 @@ class RaceController extends ChangeNotifier {
 
   /// The runner said "Not finished? Resume": this recording finishes by hand.
   bool _autoFinishVoided = false;
+
+  /// The start the voided finish was measured from: the hand finish after an
+  /// undo is still timed from the start line, not the Start press.
+  RaceStart? _keptStart;
 
   /// The outcome already filed by [fileOutcomeNow], so Stop does not file it
   /// twice, and the write in flight that a void must wait for.
@@ -1102,6 +1116,7 @@ class RaceController extends ChangeNotifier {
     _finish = null;
     _pendingFinish = null;
     _autoFinishVoided = false;
+    _keptStart = null;
     _filedOutcome = null;
     _filing = null;
     _startCued = false;
@@ -1317,6 +1332,18 @@ class RaceController extends ChangeNotifier {
   /// the memory cache, the device cache or the network, in that order.
   Future<void> _loadDetectionCourse(String eventId, DateTime instance) async {
     final key = _raceKey(eventId, instance);
+    if (!_courseLoads.add(key)) return;
+    try {
+      await _loadDetectionCourseOnce(key, eventId, instance);
+    } finally {
+      _courseLoads.remove(key);
+    }
+  }
+
+  final Set<String> _courseLoads = {};
+
+  Future<void> _loadDetectionCourseOnce(
+      String key, String eventId, DateTime instance) async {
     var course = _courseCache[key] ?? await _readCachedCourse(key);
     if (course == null) {
       try {
@@ -1631,11 +1658,10 @@ class RaceController extends ChangeNotifier {
       detachRecorder();
       return;
     }
-    if (identical(outcome, _filedOutcome)) {
-      await _filing;
-      detachRecorder();
-      return;
-    }
+    // A finish filed at the line went without its run, which did not exist
+    // yet; filing it again with the run links it. The timing is unchanged,
+    // so the race guard treats it as no timing write at all.
+    if (identical(outcome, _filedOutcome)) await _filing;
     await _file(_resultFor(
       owner: owner,
       eventId: eid,
@@ -1652,7 +1678,6 @@ class RaceController extends ChangeNotifier {
   /// "Not finished? Resume" (#1307 m11): the result reaches the leaderboard
   /// at the line, and a Stop later in the window files nothing again.
   Future<void> fileOutcomeNow({
-    required String runId,
     required int durationS,
     required double distanceM,
   }) {
@@ -1668,7 +1693,7 @@ class RaceController extends ChangeNotifier {
       owner: owner,
       eventId: eid,
       instance: inst,
-      runId: runId,
+      runId: null,
       durationS: durationS,
       distanceM: distanceM,
       outcome: outcome,
@@ -1694,6 +1719,7 @@ class RaceController extends ChangeNotifier {
     }
     final filed = _filedOutcome != null;
     final filing = _filing;
+    _keptStart = _finish?.start ?? _detector?.start;
     _outcome = null;
     _finish = null;
     _pendingFinish = null;
@@ -1703,20 +1729,33 @@ class RaceController extends ChangeNotifier {
     _autoFinishVoided = true;
     notifyListeners();
     if (!filed) return true;
-    try {
-      await filing;
-    } catch (e) {
-      debugPrint('[RaceController.voidAutoFinish filing] ${safeErrorLabel(e)}');
-    }
     final owner = _hostingUserId ?? _signedInUserId;
-    if (owner != null) await _dequeuePendingResult(owner, eid, inst);
+    _voiding = true;
     try {
-      await _social.deleteOwnAutoEventResult(eventId: eid, instance: inst);
-    } catch (e) {
-      debugPrint('[RaceController.voidAutoFinish] ${safeErrorLabel(e)}');
+      try {
+        await filing;
+      } catch (e) {
+        debugPrint('[RaceController.voidAutoFinish filing] ${safeErrorLabel(e)}');
+      }
+      // A replay in flight could send the queued finish again after the
+      // delete; let it land first, and start no other until this is done.
+      await _drainFuture;
+      if (owner != null) await _dequeuePendingResult(owner, eid, inst);
+      try {
+        await _social.deleteOwnAutoEventResult(eventId: eid, instance: inst);
+      } catch (e) {
+        debugPrint('[RaceController.voidAutoFinish] ${safeErrorLabel(e)}');
+        if (owner != null && isRetryableRaceResultFailure(e)) {
+          await _addPendingVoid(owner, eid, inst);
+        }
+      }
+    } finally {
+      _voiding = false;
     }
     return true;
   }
+
+  bool _voiding = false;
 
   /// The row a race recording files for [outcome]: the timing columns from
   /// [raceResultTiming], and the crossings (#1307) on the server clock — the
@@ -1728,25 +1767,38 @@ class RaceController extends ChangeNotifier {
     required String owner,
     required String eventId,
     required DateTime instance,
-    required String runId,
+    required String? runId,
     required int durationS,
     required double distanceM,
     required RaceOutcome outcome,
   }) {
     final auto = outcome.method == RaceFinishMethod.auto;
     final finish = auto ? _finish : null;
-    final start = outcome.finished ? (finish?.start ?? _detector?.start) : null;
+    final start = outcome.finished
+        ? (finish?.start ?? _detector?.start ?? _keptStart)
+        : null;
+    // One offset, in whole milliseconds, for every instant filed and for the
+    // offset filed beside them, so the server's derivation and a re-time
+    // from the track (both in ms) reproduce the device's own gun time.
+    final offset = Duration(milliseconds: clockOffset.offset.inMilliseconds);
+    final gun = _gunAt;
+    // A start at GO is GO itself: re-expressed under today's offset, not
+    // the one the detector saw GO under, or a refined offset would put the
+    // chip time a fraction under the gun time.
+    final startDevice = !outcome.finished
+        ? null
+        : start != null && start.kind == RaceStartKind.go && gun != null
+            ? gun.subtract(offset)
+            : (start?.at ?? _recordingStartedAt);
+    final finishDevice = outcome.finished ? outcome.finishAt : null;
     final timing = raceResultTiming(
       outcome: outcome,
-      gunAt: _gunAt,
-      clockOffset: clockOffset.offset,
+      gunAt: gun,
+      clockOffset: offset,
       recordingStartedAt: _recordingStartedAt,
-      startAt: start?.at,
+      startAt: start == null ? null : startDevice,
       elapsedS: durationS,
     );
-    final offset = clockOffset.offset;
-    final startDevice = outcome.finished ? (start?.at ?? _recordingStartedAt) : null;
-    final finishDevice = outcome.finished ? outcome.finishAt : null;
     return PendingRaceResult(
       userId: owner,
       eventId: eventId,
@@ -1801,10 +1853,11 @@ class RaceController extends ChangeNotifier {
   /// The upsert writes whoever is signed in, so a result is only ever sent
   /// while its own account is; otherwise it throws, which the callers read
   /// as retryable and keep on disk for that account's return.
-  Future<void> _submitPending(PendingRaceResult r) {
+  Future<void> _submitPending(PendingRaceResult r) async {
     if (_signedInUserId != r.userId) {
       throw StateError('race result belongs to another account');
     }
+    await _flushPendingVoid(r.userId, r.eventId, r.instanceStart);
     return _social.submitEventResult(
       eventId: r.eventId,
       instance: r.instanceStart,
@@ -1820,41 +1873,128 @@ class RaceController extends ChangeNotifier {
     );
   }
 
-  bool _draining = false;
+  Future<void>? _drainFuture;
 
   /// Replay every finisher time [submitResult] couldn't deliver. Runs off
   /// the session poll (and therefore also off [start]), so a result queued
   /// in a dead spot lands as soon as the phone is back on the network or
   /// the app is next opened. A result the server refuses outright is
   /// dropped ([isRetryableRaceResultFailure]). Only the signed-in account's
-  /// entries are sent; another account's stay queued, untouched.
-  Future<void> drainPendingResults() async {
-    if (_draining) return;
+  /// entries are sent; another account's stay queued, untouched. An undo's
+  /// pending delete goes first, and no replay starts while an undo runs.
+  Future<void> drainPendingResults() {
+    if (_voiding) return Future<void>.value();
+    return _drainFuture ??= _drain().whenComplete(() => _drainFuture = null);
+  }
+
+  Future<void> _drain() async {
     final uid = _signedInUserId;
     if (uid == null) return;
+    for (final v in await _readPendingVoids()) {
+      if (v.userId != uid) continue;
+      try {
+        await _flushPendingVoid(v.userId, v.eventId, v.instance);
+      } catch (e) {
+        debugPrint('[RaceController.drainPendingResults void] ${safeErrorLabel(e)}');
+      }
+    }
     final queued = await _readPendingResults();
     if (queued.isEmpty) return;
-    _draining = true;
+    final remaining = <PendingRaceResult>[];
+    for (final r in queued) {
+      if (r.userId != uid) {
+        remaining.add(r);
+        continue;
+      }
+      try {
+        await _submitPending(r);
+      } catch (e) {
+        final keep = isRetryableRaceResultFailure(e);
+        debugPrint('[RaceController.drainPendingResults] '
+            '${keep ? 'kept' : 'dropped'}: ${safeErrorLabel(e)}');
+        if (keep) remaining.add(r);
+      }
+    }
+    await _writePendingResults(remaining);
+  }
+
+  Future<List<({String userId, String eventId, DateTime instance})>>
+      _readPendingVoids() async {
     try {
-      final remaining = <PendingRaceResult>[];
-      for (final r in queued) {
-        if (r.userId != uid) {
-          remaining.add(r);
-          continue;
-        }
-        try {
-          await _submitPending(r);
-        } catch (e) {
-          final keep = isRetryableRaceResultFailure(e);
-          debugPrint('[RaceController.drainPendingResults] '
-              '${keep ? 'kept' : 'dropped'}: ${safeErrorLabel(e)}');
-          if (keep) remaining.add(r);
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(kPendingRaceVoidsKey);
+      if (raw == null) return [];
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return [];
+      final out = <({String userId, String eventId, DateTime instance})>[];
+      for (final e in decoded.whereType<Map>()) {
+        final u = e['user_id'];
+        final ev = e['event_id'];
+        final inst = parseIsoStrictValue(e['instance_start']);
+        if (u is String && ev is String && inst != null) {
+          out.add((userId: u, eventId: ev, instance: inst));
         }
       }
-      await _writePendingResults(remaining);
-    } finally {
-      _draining = false;
+      return out;
+    } catch (e) {
+      debugPrint('[RaceController._readPendingVoids] $e');
+      return [];
     }
+  }
+
+  Future<void> _writePendingVoids(
+      List<({String userId, String eventId, DateTime instance})> voids) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (voids.isEmpty) {
+      await prefs.remove(kPendingRaceVoidsKey);
+      return;
+    }
+    await prefs.setString(
+        kPendingRaceVoidsKey,
+        jsonEncode([
+          for (final v in voids)
+            {
+              'user_id': v.userId,
+              'event_id': v.eventId,
+              'instance_start': instanceStartKey(v.instance),
+            }
+        ]));
+  }
+
+  Future<void> _addPendingVoid(
+      String userId, String eventId, DateTime instance) async {
+    try {
+      final voids = await _readPendingVoids();
+      voids.removeWhere((v) =>
+          v.userId == userId &&
+          v.eventId == eventId &&
+          v.instance.isAtSameMomentAs(instance));
+      voids.add((userId: userId, eventId: eventId, instance: instance));
+      await _writePendingVoids(voids);
+    } catch (e) {
+      debugPrint('[RaceController._addPendingVoid] $e');
+    }
+  }
+
+  /// Delete the withdrawn finish for this race, if one is waiting. Throws
+  /// when the delete fails for a reason worth retrying, so the result
+  /// behind it waits too; a refusal drops the entry.
+  Future<void> _flushPendingVoid(
+      String userId, String eventId, DateTime instance) async {
+    final voids = await _readPendingVoids();
+    bool same(({String userId, String eventId, DateTime instance}) v) =>
+        v.userId == userId &&
+        v.eventId == eventId &&
+        v.instance.isAtSameMomentAs(instance);
+    if (!voids.any(same)) return;
+    try {
+      await _social.deleteOwnAutoEventResult(
+          eventId: eventId, instance: instance);
+    } catch (e) {
+      if (isRetryableRaceResultFailure(e)) rethrow;
+    }
+    voids.removeWhere(same);
+    await _writePendingVoids(voids);
   }
 
   /// Returns whether the result is now on disk. A `false` means the finisher

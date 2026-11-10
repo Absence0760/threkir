@@ -1101,16 +1101,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
     _showTopBanner(message, duration: const Duration(seconds: 6));
     _announceA11yState(message);
-    final runId = _runId;
-    if (rc == null ||
-        runId == null ||
-        finish.detection != RaceFinishDetection.gate) {
+    if (rc == null || finish.detection != RaceFinishDetection.gate) {
       await _stop();
       return;
     }
     if (!_manualPaused) _toggleManualPause();
     unawaited(rc.fileOutcomeNow(
-      runId: runId,
       durationS: _elapsed.inSeconds,
       distanceM: _distanceMetres,
     ));
@@ -3945,6 +3941,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
 
   void _toggleManualPause() {
     if (_recorder == null) return;
+    // Resuming a run held open after a line finish IS "Not finished?
+    // Resume", from whichever control: a plain resume would leave the
+    // finish filed and the window's timer about to stop the run.
+    if (_manualPaused && _raceUndoOpen) {
+      unawaited(_onRaceUndo());
+      return;
+    }
     if (_manualPaused) {
       _recorder!.resume();
       setState(() {

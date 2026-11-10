@@ -219,6 +219,30 @@ void main() {
       expect(run.metadata![MetadataKeys.distanceStepFilledM], 105.7);
     });
 
+    test('forwards the step-over-chord metres only beside the step-filled ones',
+        () {
+      final both = runFromWatchPayload(_basePayload()
+        ..['distance_estimator'] = 'kalman_v1'
+        ..['distance_step_filled_m'] = 104.0
+        ..['distance_step_over_chord_m'] = 48.6);
+      expect(both.metadata![MetadataKeys.distanceStepOverChordM], 48.6);
+      final zero = runFromWatchPayload(_basePayload()
+        ..['distance_step_filled_m'] = 57.6
+        ..['distance_step_over_chord_m'] = 0);
+      expect(zero.metadata![MetadataKeys.distanceStepOverChordM], 0.0);
+      for (final bad in <Object>[-1, 'x', double.nan]) {
+        final run = runFromWatchPayload(_basePayload()
+          ..['distance_step_filled_m'] = 57.6
+          ..['distance_step_over_chord_m'] = bad);
+        expect(run.metadata!.containsKey(MetadataKeys.distanceStepOverChordM),
+            isFalse,
+            reason: '$bad');
+      }
+      final alone = runFromWatchPayload(
+          _basePayload()..['distance_step_over_chord_m'] = 48.6);
+      expect(alone.metadata, isNull);
+    });
+
     test('keeps an off-track fix flagged, in order, and forwards track_complete',
         () {
       final raw = _basePayload()

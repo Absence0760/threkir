@@ -639,6 +639,7 @@ import WatchConnectivity
         if let v = metadata["is_public"] { payload["is_public"] = v }
         if let v = metadata["distance_estimator"] { payload["distance_estimator"] = v }
         if let v = metadata["distance_step_filled_m"] { payload["distance_step_filled_m"] = v }
+        if let v = metadata["distance_step_over_chord_m"] { payload["distance_step_over_chord_m"] = v }
         if let v = metadata["track_complete"] { payload["track_complete"] = v }
         // The planned-vs-actual trail of a run started from a pushed workout.
         // `plan_workout_id` is what the database matcher links the workout by

@@ -36,6 +36,7 @@ type Scenario = {
 		distanceAfterEachEventM: number[];
 		gpsDistanceM: number;
 		stepDistanceM: number;
+		stepOverChordM: number;
 		strideM: number | null;
 		rejectedFixes: number;
 		zuptFixes: number;
@@ -48,6 +49,7 @@ type Scenario = {
 		distanceM: number;
 		gpsDistanceM: number;
 		stepDistanceM: number;
+		stepOverChordM: number;
 		stoppedFixes: number;
 		positions: Array<[number, number] | null>;
 	};
@@ -82,10 +84,10 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-test('fixture is spec v1.6 with a non-trivial scenario set', () => {
-	assert.equal(fixture.spec, 'gps-distance-estimator v1.6');
-	assert.equal(SPEC_VERSION, '1.6');
-	assert.ok(fixture.scenarios.length >= 52, `only ${fixture.scenarios.length} scenarios`);
+test('fixture is spec v1.7 with a non-trivial scenario set', () => {
+	assert.equal(fixture.spec, 'gps-distance-estimator v1.7');
+	assert.equal(SPEC_VERSION, '1.7');
+	assert.ok(fixture.scenarios.length >= 53, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);
 });
@@ -113,6 +115,10 @@ for (const s of fixture.scenarios) {
 		assert.ok(
 			Math.abs(est.stepDistanceM - s.expected.stepDistanceM) <= TOL,
 			`steps ${est.stepDistanceM}`,
+		);
+		assert.ok(
+			Math.abs(est.stepOverChordM - s.expected.stepOverChordM) <= TOL,
+			`over chord ${est.stepOverChordM}`,
 		);
 		if (s.expected.strideM === null) {
 			assert.equal(est.strideM, null);
@@ -151,6 +157,7 @@ for (const s of fixture.scenarios) {
 		assert.ok(Math.abs(sm.distanceM - want.distanceM) <= TOL, `distance ${sm.distanceM}`);
 		assert.ok(Math.abs(sm.gpsDistanceM - want.gpsDistanceM) <= TOL, `gps ${sm.gpsDistanceM}`);
 		assert.ok(Math.abs(sm.stepDistanceM - want.stepDistanceM) <= TOL, `steps ${sm.stepDistanceM}`);
+		assert.ok(Math.abs(sm.stepOverChordM - want.stepOverChordM) <= TOL, `over chord ${sm.stepOverChordM}`);
 		assert.equal(sm.stoppedFixes, want.stoppedFixes);
 		assert.equal(sm.positions.length, want.positions.length);
 		sm.positions.forEach((got, i) => {
@@ -360,6 +367,37 @@ test('the first fix of a stretch starts the stride window (v1.6)', () => {
 		if (i % 15 === 0) est.addSteps(i + 0.5, 4 * i + 2);
 	}
 	assert.ok(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
+});
+
+test('a step baseline delivered after a later fix keeps its steps out of the stride window (v1.7)', () => {
+	// The baseline, stamped 15.5, arrives after the fix at 18, so the window's
+	// metres start at 18; the sample at 30.5, whose steps start at 15.5, must
+	// empty the window rather than pair 15 s of steps with 12 s of metres,
+	// which learned 0.8 m.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		if (i === 18) est.addSteps(15.5, 62);
+		if (i > 15 && i % 15 === 0) est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert.ok(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
+});
+
+test('stepOverChordM counts only the steps a gap credited beyond its chord (v1.7)', () => {
+	// A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose 104 m
+	// of steps the resuming fix puts beside no chord (the runner looped back), a
+	// 55.39 m one, and one longer than the steps.
+	for (const [eastM, want] of [[24, 104], [80, 48.612667], [160, 0]]) {
+		const est = new GpsDistanceEstimator(10, 1, 1.0, false, false);
+		for (let i = 0; i <= 30; i++) {
+			if (i <= 5) est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+			est.addSteps(i + 0.5, 4 * i + 2);
+		}
+		est.addFix(31, 40, -75 + eastM / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		est.addSteps(31.5, 126);
+		assert.ok(Math.abs(est.stepDistanceM - 104) < 1e-9, `steps ${est.stepDistanceM}`);
+		assert.ok(Math.abs(est.stepOverChordM - want) < 1e-6, `resume ${eastM} m: over chord ${est.stepOverChordM}`);
+	}
 });
 
 test('a stretch credits no steps taken before its first fix (v1.6)', () => {

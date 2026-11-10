@@ -1114,6 +1114,10 @@
   "@dashboardHeroRestDayBody": {
     "description": "Line under the rest-day title in the Today hero"
   },
+  "dashboardHeroRestDayGrisnir": "Back by morning, like Thor's goats.",
+  "@dashboardHeroRestDayGrisnir": {
+    "description": "Grisnir the mascot's one dry line beside his resting art on a plan rest day; Norse lore: Thor's goats are eaten every night and are back by morning"
+  },
   "dashboardHeroReadiness": "Readiness {score}",
   "@dashboardHeroReadiness": {
     "description": "One-line readiness score in the Today hero; {score} is 0-100",
@@ -13517,6 +13521,14 @@
   "prefsShowCaloriesHint": "Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.",
   "@prefsShowCaloriesHint": {
     "description": "Subtitle of the show-calories toggle"
+  },
+  "prefsShowMascot": "Show Grisnir",
+  "@prefsShowMascot": {
+    "description": "Title of the switch that shows or hides Grisnir, the Threkir mascot"
+  },
+  "prefsShowMascotHint": "Threkir's goat. He rests with you on rest days and sits in a corner of your share images.",
+  "@prefsShowMascotHint": {
+    "description": "Subtitle of the show-Grisnir switch: where the mascot appears"
   },
   "prefsDefaultRunPrivacy": "Default run privacy",
   "@prefsDefaultRunPrivacy": {

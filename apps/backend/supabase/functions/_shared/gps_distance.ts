@@ -1,4 +1,4 @@
-// GPS distance estimator, spec v1.6. docs/features/gps_distance.md is the spec
+// GPS distance estimator, spec v1.7. docs/features/gps_distance.md is the spec
 // and scripts/gps_distance/reference.py the reference; every port must
 // reproduce fixtures/gps_distance_vectors.json to 1e-3 m, so keep the
 // formulas in the reference's order. A copy of apps/web/src/lib/runs/gps_distance.ts
@@ -9,7 +9,7 @@
 // screen runs; smoothDistance is the saved / recomputed figure, a forward pass
 // plus a Rauch-Tung-Striebel backward pass over the whole run.
 
-export const SPEC_VERSION = '1.6';
+export const SPEC_VERSION = '1.7';
 
 export const EARTH_RADIUS_M = 6371008.8;
 export const Q_ACCEL = 0.6;
@@ -193,6 +193,12 @@ export class GpsDistanceEstimator {
 	private readonly freshFixS: number;
 	gpsDistanceM = 0;
 	stepDistanceM = 0;
+	/**
+	 * v1.7: what the steps credited the gaps over their chord lower bounds,
+	 * summed: per gap max(chord, steps) - chord, exactly what a replay with no
+	 * steps lacks.
+	 */
+	stepOverChordM = 0;
 	strideM: number | null = null;
 	rScale = 1.0;
 	rejectedFixes = 0;
@@ -349,6 +355,7 @@ export class GpsDistanceEstimator {
 					gapM = lower - this.pendingStepM;
 					this.gpsDistanceM += gapM;
 				}
+				this.stepOverChordM += Math.max(0, this.pendingStepM - Math.max(lower, 0));
 				this.gaps.push({
 					startT: this.t,
 					endT: t,
@@ -606,8 +613,15 @@ export class GpsDistanceEstimator {
 			// have no steps: start the window here, as a learn does. A stale one also
 			// marks the window, as any stale sample does, so the next fix empties it.
 			if (this.t !== null && t - this.t > this.freshFixS) this.winStale = true;
-			this.winSteps = 0;
-			this.winM = 0;
+			if (this.t !== null && t < this.t) {
+				// v1.7: stamped before the last fix, so the window's metres already
+				// start after this stamp; the next sample's steps reach back before
+				// them and must not refill it.
+				this.emptyWindow(this.t);
+			} else {
+				this.winSteps = 0;
+				this.winM = 0;
+			}
 			return;
 		}
 		const d = cumulativeSteps - prev;
@@ -678,6 +692,7 @@ export class GpsDistanceEstimator {
 				this.stepDistanceM += late;
 				take = Math.min(late, gap.topUpM);
 				this.gpsDistanceM -= take;
+				this.stepOverChordM += late - take;
 				if (this.records !== null && gap.record !== null) {
 					if (take > 0) {
 						const rec = this.records[gap.record];
@@ -695,6 +710,7 @@ export class GpsDistanceEstimator {
 	finish(t: MaybeNumber): void {
 		if (this.t !== null && valid(t) && t - this.t > this.gapS) {
 			this.stepDistanceM += this.pendingStepM;
+			this.stepOverChordM += this.pendingStepM;
 		}
 		this.pendingStepM = 0;
 	}
@@ -719,6 +735,8 @@ export type SmoothedDistance = {
 	distanceM: number;
 	gpsDistanceM: number;
 	stepDistanceM: number;
+	/** v1.7: the estimator's stepOverChordM over the same events. */
+	stepOverChordM: number;
 	/** Per event: smoothed GPS credit through it plus the step distance committed by then. */
 	cumulativeM: number[];
 	/** Per event: the smoothed [lat, lng] of a fix the filter took, else null. */
@@ -926,6 +944,7 @@ export function smoothDistance(
 		distanceM: gps + est.stepDistanceM,
 		gpsDistanceM: gps,
 		stepDistanceM: est.stepDistanceM,
+		stepOverChordM: est.stepOverChordM,
 		cumulativeM,
 		positions,
 		stoppedFixes: hints.size,

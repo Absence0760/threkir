@@ -59,10 +59,10 @@ void main() {
   final posTolerance = (vectors['position_tolerance_deg'] as num).toDouble();
   final scenarios = (vectors['scenarios'] as List).cast<Map<String, dynamic>>();
 
-  test('fixture is spec v1.6 and carries every scenario', () {
-    expect(vectors['spec'], 'gps-distance-estimator v1.6');
-    expect(GpsDistanceEstimator.specVersion, '1.6');
-    expect(scenarios.length, greaterThanOrEqualTo(52));
+  test('fixture is spec v1.7 and carries every scenario', () {
+    expect(vectors['spec'], 'gps-distance-estimator v1.7');
+    expect(GpsDistanceEstimator.specVersion, '1.7');
+    expect(scenarios.length, greaterThanOrEqualTo(53));
   });
 
   test('constants match the fixture', () {
@@ -175,6 +175,10 @@ void main() {
           e.stepDistanceM,
           closeTo(_num(expected, 'stepDistanceM')!, tolerance),
         );
+        expect(
+          e.stepOverChordM,
+          closeTo(_num(expected, 'stepOverChordM')!, tolerance),
+        );
         final stride = _num(expected, 'strideM');
         if (stride == null) {
           expect(e.strideM, isNull);
@@ -225,6 +229,10 @@ void main() {
         expect(
           got.stepDistanceM,
           closeTo(_num(want, 'stepDistanceM')!, tolerance),
+        );
+        expect(
+          got.stepOverChordM,
+          closeTo(_num(want, 'stepOverChordM')!, tolerance),
         );
         expect(got.stoppedFixes, want['stoppedFixes']);
         final positions = want['positions'] as List;
@@ -587,6 +595,51 @@ void main() {
       e.addFix(t: 30, lat: 40, lng: -75, accuracyM: 3);
       e.finish(31);
       expect(e.distanceM, 0);
+    });
+  });
+
+  group('v1.7', () {
+    final eastMPerDeg = 111195 * math.cos(40 * math.pi / 180);
+
+    void fix(GpsDistanceEstimator e, double t, double eastM) => e.addFix(
+          t: t,
+          lat: 40,
+          lng: -75 + eastM / eastMPerDeg,
+          accuracyM: 3,
+          speedMps: 4,
+          speedAccuracyMps: 0.3,
+          bearingDeg: 90,
+        );
+
+    test('a step baseline delivered after a later fix keeps its steps out of the stride window', () {
+      // The baseline, stamped 15.5, arrives after the fix at 18, so the
+      // window's metres start at 18; the sample at 30.5, whose steps start at
+      // 15.5, must empty the window rather than pair 15 s of steps with 12 s
+      // of metres, which learned 0.8 m.
+      final e = GpsDistanceEstimator();
+      for (var i = 0; i <= 60; i++) {
+        fix(e, i.toDouble(), 4.0 * i);
+        if (i == 18) e.addSteps(15.5, 62);
+        if (i > 15 && i % 15 == 0) e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      expect(e.strideM, closeTo(1.0, 1e-6));
+    });
+
+    test('stepOverChordM counts only the steps a gap credited beyond its chord', () {
+      // A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose
+      // 104 m of steps the resuming fix puts beside no chord (the runner
+      // looped back), a 55.39 m one, and one longer than the steps.
+      for (final (eastM, want) in [(24.0, 104.0), (80.0, 48.612667), (160.0, 0.0)]) {
+        final e = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false);
+        for (var i = 0; i <= 30; i++) {
+          if (i <= 5) fix(e, i.toDouble(), 4.0 * i);
+          e.addSteps(i + 0.5, 4 * i + 2);
+        }
+        fix(e, 31, eastM);
+        e.addSteps(31.5, 126);
+        expect(e.stepDistanceM, closeTo(104, 1e-9));
+        expect(e.stepOverChordM, closeTo(want, 1e-6), reason: 'resume $eastM m');
+      }
     });
   });
 }

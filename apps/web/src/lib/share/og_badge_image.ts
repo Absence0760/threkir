@@ -10,6 +10,7 @@ import { formatDateStable } from './share_meta';
 import { escapeXml } from '../util/html_escape';
 import { OG_CARD_LIGHT } from './og_card_palette';
 import { OG_FONT_STACK } from './og_card_font';
+import { OG_GRISNIR_HEIGHT, grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
@@ -50,6 +51,8 @@ export function buildBadgeOgSvg(input: BadgeImageInput): string {
 	parts.push(
 		`<text x="${PAD}" y="${PAD + 36}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="700" fill="${BRAND}">Threkir</text>`,
 	);
+	// Grisnir, top-right under the tier bar, clear of the centred badge name.
+	parts.push(grisnirBadgeSvg(W - PAD - grisnirBadgeWidth(OG_GRISNIR_HEIGHT), PAD + 12));
 
 	const heroText = resolved?.label || 'Achievement';
 	parts.push(

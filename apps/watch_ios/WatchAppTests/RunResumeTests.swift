@@ -34,7 +34,9 @@ final class RunResumeTests: XCTestCase {
         laps: [LapMark]? = nil,
         distance: Double = 61_000,
         trackFileURL: URL? = nil,
-        trackComplete: Bool? = nil
+        trackComplete: Bool? = nil,
+        stepFilled: Double? = nil,
+        stepOverChord: Double? = nil
     ) -> RunCheckpoint {
         RunCheckpoint(
             id: id,
@@ -49,6 +51,8 @@ final class RunResumeTests: XCTestCase {
             steps: steps,
             laps: laps,
             activityType: RunActivityType.hike.rawValue,
+            distanceStepFilledMetres: stepFilled,
+            distanceStepOverChordMetres: stepOverChord,
             pausedAt: pausedAt,
             hrMeanUngraded: hrMeanUngraded,
             hrCoveredSeconds: hrCoveredSeconds,
@@ -432,6 +436,23 @@ final class RunResumeTests: XCTestCase {
         XCTAssertFalse(wm.storedTrackComplete)
         wm.stop()
         XCTAssertEqual(wm.finishedRun?.trackComplete, false)
+    }
+
+    /// A continued run carries the checkpoint's step-over-chord metres on, and
+    /// claims none when an older checkpoint had filled a gap without saying
+    /// how much of it the chords would not have credited (v1.7).
+    func testAContinuedRunKeepsItsStepOverChordMetresOnlyWhenTheCheckpointKnewThem() {
+        for (filled, over, want) in [(104.0, 48.6, 48.6), (104.0, nil, nil), (0.0, nil, 0.0)] as [(Double, Double?, Double?)] {
+            let wm = WorkoutManager()
+            wm.announcer = silentAnnouncer()
+            let cp = checkpoint(stepFilled: filled, stepOverChord: over)
+            wm.restoreRun(from: cp, plan: RunResumePlan.make(
+                checkpoint: cp, now: checkpointedAt(cp), workoutSessionSurvived: false
+            ))
+            wm.stop()
+            XCTAssertEqual(wm.finishedRun?.distanceStepFilledMetres ?? -1, filled, accuracy: 1e-9)
+            XCTAssertEqual(wm.finishedRun?.distanceStepOverChordMetres, want, "filled \(filled), over \(String(describing: over))")
+        }
     }
 
     func testAContinuedRunStopsAsOneRun() {

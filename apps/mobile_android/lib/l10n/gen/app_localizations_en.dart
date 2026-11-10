@@ -818,6 +818,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dashboardHeroRestDayBody => 'Nothing on the plan today.';
 
   @override
+  String get dashboardHeroRestDayGrisnir =>
+      'Back by morning, like Thor\'s goats.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Readiness $score';
   }
@@ -9988,6 +9992,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get prefsShowCaloriesHint =>
       'Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.';
+
+  @override
+  String get prefsShowMascot => 'Show Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'Threkir\'s goat. He rests with you on rest days and sits in a corner of your share images.';
 
   @override
   String get prefsDefaultRunPrivacy => 'Default run privacy';

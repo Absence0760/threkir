@@ -245,6 +245,8 @@ void main() {
         );
         expect(_inHero(find.byKey(const Key('dashboardHeroRestDay'))),
             findsOneWidget);
+        expect(_inHero(find.byKey(const Key('dashboardHeroRestGrisnir'))),
+            findsOneWidget);
         _expectHeroFirst(tester);
         expect(tester.takeException(), isNull);
       });
@@ -281,6 +283,50 @@ void main() {
       });
     });
   }
+
+  // Grisnir rests on a scheduled rest workout too, never on a run day, and
+  // the runner's `show_mascot` off leaves him out (#1360).
+  testWidgets('a scheduled rest workout shows Grisnir resting',
+      (tester) async {
+    await _mount(
+      tester,
+      runs: _pastRuns,
+      training: _FakeTraining(_overview(today: _workout('rest'))),
+      ready: () =>
+          _hero.evaluate().isNotEmpty &&
+          _state(tester) == TodayHeroState.restDay,
+    );
+    expect(_inHero(find.byKey(const Key('dashboardHeroRestGrisnir'))),
+        findsOneWidget);
+    expect(find.text("Back by morning, like Thor's goats."), findsOneWidget);
+  });
+
+  testWidgets('a run day has no Grisnir', (tester) async {
+    await _mount(
+      tester,
+      runs: _pastRuns,
+      training: _FakeTraining(_overview(today: _workout('easy'))),
+      ready: () =>
+          _hero.evaluate().isNotEmpty &&
+          _state(tester) == TodayHeroState.planToday,
+    );
+    expect(find.byKey(const Key('dashboardHeroRestGrisnir')), findsNothing);
+  });
+
+  testWidgets('show_mascot off keeps him off the rest day', (tester) async {
+    await _mount(
+      tester,
+      runs: _pastRuns,
+      bag: const {'show_mascot': false},
+      training: _FakeTraining(_overview()),
+      ready: () =>
+          _hero.evaluate().isNotEmpty &&
+          _state(tester) == TodayHeroState.restDay,
+    );
+    expect(_inHero(find.byKey(const Key('dashboardHeroRestDay'))),
+        findsOneWidget);
+    expect(find.byKey(const Key('dashboardHeroRestGrisnir')), findsNothing);
+  });
 
   testWidgets('race day puts the race first in the hero', (tester) async {
     await _mount(

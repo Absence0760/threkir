@@ -248,6 +248,7 @@ class QueuedRunSerializationTest {
         val decoded = json.decodeFromString(QueuedRun.serializer(), preEstimator)
         assertNull(decoded.distanceEstimator)
         assertNull(decoded.distanceStepFilledM)
+        assertNull(decoded.distanceStepOverChordM)
     }
 
     @Test

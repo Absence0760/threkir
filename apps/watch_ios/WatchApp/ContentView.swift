@@ -175,6 +175,9 @@ struct ContentView: View {
             if let estimator = run.distanceEstimator { metadata["distance_estimator"] = estimator }
             if run.distanceStepFilledMetres > 0 {
                 metadata["distance_step_filled_m"] = run.distanceStepFilledMetres
+                if let over = run.distanceStepOverChordMetres, over.isFinite, over >= 0 {
+                    metadata["distance_step_over_chord_m"] = over
+                }
             }
             // The track holds every fix the estimator took, off-track ones
             // flagged, so the server's replay sees the watch's own input.

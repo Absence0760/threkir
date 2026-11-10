@@ -173,3 +173,6 @@ flutter:
     # scripts/gen_help_guides.mjs (docs/features/help.md). Never hand-edit.
     - assets/help/
     - assets/help/illustrations/
+    # Grisnir, rendered from the mascot model by scripts/brand/render_mascot.sh
+    # (apps/web/static/brand/grisnir/README.md). Never hand-edit.
+    - assets/brand/grisnir/

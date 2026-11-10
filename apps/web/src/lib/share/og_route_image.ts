@@ -14,6 +14,7 @@ import { OG_FONT_STACK } from './og_card_font';
 import { escapeXml } from '../util/html_escape';
 import { clipToWidthPx } from './svg_text_width';
 import { formatOfficialKmStable } from './share_meta';
+import { grisnirBadgeSvg } from './grisnir_badge';
 
 const W = 1200;
 const H = 630;
@@ -58,6 +59,10 @@ export function buildRouteOgSvg(input: RouteImageInput): string {
 	parts.push(
 		`<text x="${PAD}" y="${PAD + 24}" font-family="${OG_FONT_STACK}" font-size="28" font-weight="700" fill="${FG}">Threkir</text>`,
 	);
+
+	// Grisnir under the wordmark: the left column above the title is the one
+	// corner the track's viewport never reaches.
+	parts.push(grisnirBadgeSvg(PAD, PAD + 48));
 
 	// Track polyline — projected into the lower-right 800×500 viewport.
 	if (input.track.length >= 2) {

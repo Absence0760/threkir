@@ -85,7 +85,7 @@ class DistanceEstimatorWiringTest {
     @Test
     fun `a pause closes the segment so the paused span is never credited`() {
         assertTrue(body(serviceSrc, "private fun pauseRecording()").contains("closeDistanceSegment()"))
-        assertTrue(body(serviceSrc, "private fun stopRecording()").contains("closeDistanceSegment()"))
+        assertTrue(body(serviceSrc, "private fun stopRecording()").contains("closeDistanceSegment(endOfRun = true)"))
         val close = body(serviceSrc, CLOSE_SEGMENT)
         assertTrue("finish() commits steps buffered across a trailing gap", close.contains(".finish("))
         assertTrue(
@@ -146,6 +146,31 @@ class DistanceEstimatorWiringTest {
     fun `the finished run carries the step-filled share to the queue`() {
         val stop = body(serviceSrc, "private fun stopRecording()")
         assertTrue(stop.contains("distanceStepFilledM = stepFilledM"))
+        assertTrue(stop.contains("distanceStepOverChordM = stepOverChordM"))
+    }
+
+    /// A pause or source switch banks each segment's step-over-chord metres
+    /// beside its step metres, so the run total covers every segment (v1.7).
+    @Test
+    fun `every segment's step-over-chord metres are banked`() {
+        val close = body(serviceSrc, CLOSE_SEGMENT)
+        assertTrue(close.contains("bankedStepOverChordM += segment.stepOverChordM + heldBoundaryStepM"))
+        assertTrue(serviceSrc.contains("bankedStepOverChordM + distanceEstimator.stepOverChordM"))
+    }
+
+    /// The steps a pause or source switch commits across an open gap stay out
+    /// of the bank until the run ends with no fix after them: the stored track
+    /// has no segment marks, so the replay credits that gap's chord (v1.7).
+    @Test
+    fun `a mid-run segment close holds its trailing gap's steps out of the bank`() {
+        val close = body(serviceSrc, CLOSE_SEGMENT)
+        val reset = close.indexOf("if (segment.lastFixT != null) heldBoundaryStepM = 0.0")
+        val before = close.indexOf("val overBeforeFinish = segment.stepOverChordM")
+        val finish = close.indexOf("segment.finish(")
+        assertTrue("held steps are dropped once a segment takes a fix", reset >= 0)
+        assertTrue("the over-chord metres are read before finish commits the trailing gap", before in 0 until finish)
+        assertTrue(close.contains("bankedStepOverChordM += overBeforeFinish"))
+        assertTrue(close.contains("heldBoundaryStepM += segment.stepOverChordM - overBeforeFinish"))
     }
 
     private companion object {

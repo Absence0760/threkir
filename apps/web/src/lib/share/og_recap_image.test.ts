@@ -62,7 +62,8 @@ test('xml-escapes a display name with special characters', () => {
 });
 
 test('zeroed / missing fields stay valid (no NaN, no throw)', () => {
-	const svg = buildRecapOgSvg({});
+	// The inlined mascot PNG is base64, which can spell anything.
+	const svg = buildRecapOgSvg({}).replace(/href="data:[^"]*"/g, '');
 	assert.ok(svg.includes('0 km'));
 	assert.ok(svg.includes('across 0 runs'));
 	assert.ok(svg.includes('MY YEAR IN RUNNING'));

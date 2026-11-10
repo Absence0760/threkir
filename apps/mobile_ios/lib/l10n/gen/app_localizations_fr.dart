@@ -826,6 +826,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboardHeroRestDayBody => 'Rien au programme aujourd\'hui.';
 
   @override
+  String get dashboardHeroRestDayGrisnir =>
+      'De retour au matin, comme les boucs de Thor.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Forme $score';
   }
@@ -10117,6 +10121,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get prefsShowCaloriesHint =>
       'Estimées à partir de la distance et du poids corporel (70 kg par défaut si non renseigné). Désactivez pour masquer les calories sur les pages de course.';
+
+  @override
+  String get prefsShowMascot => 'Afficher Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'Le bouc de Threkir. Il se repose avec vous les jours de repos et se tient dans un coin de vos images partagées.';
 
   @override
   String get prefsDefaultRunPrivacy => 'Confidentialité par défaut des courses';

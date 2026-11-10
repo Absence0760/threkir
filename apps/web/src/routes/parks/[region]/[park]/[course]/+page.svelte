@@ -48,6 +48,8 @@
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ParkCourseNotices from '#lib/components/parks/ParkCourseNotices.svelte';
+	import ParkCourseRouteGuide from '#lib/components/parks/ParkCourseRouteGuide.svelte';
+	import { parseRouteGuide } from '#lib/parks/route_guide.ts';
 	import ParkCourseReportDialog from '#lib/components/parks/ParkCourseReportDialog.svelte';
 	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
@@ -171,6 +173,7 @@
 				name: park.name,
 				websiteUrl: park.website_url,
 			}),
+			guide: routeGuide ? { guide: routeGuide, checkedAt: course.route_guide_checked_at } : null,
 		});
 		const base = course.segment.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
 		downloadFile(gpx, `${base || 'course'}.gpx`, 'application/gpx+xml');
@@ -178,6 +181,7 @@
 
 	const shapeKey = $derived(courseShapeShown(course?.course_shape) ? labelKey(SHAPE_LABEL, course?.course_shape) : null);
 	const laps = $derived(courseLapsChip(course?.laps));
+	const routeGuide = $derived(parseRouteGuide(course?.route_guide));
 	const difficultyKey = $derived(labelKey(DIFFICULTY_LABEL, course?.difficulty));
 	const statusKey = $derived(labelKey(STATUS_LABEL, course?.status));
 	const credit = $derived(courseCredit(course?.attribution, course?.geometry_source));
@@ -384,6 +388,16 @@
 						</div>
 					{/if}
 				</section>
+			{/if}
+
+			{#if routeGuide}
+				<div class="guide-slot">
+					<ParkCourseRouteGuide
+						guide={routeGuide}
+						checkedAt={course.route_guide_checked_at}
+						testidPrefix="park-course"
+					/>
+				</div>
 			{/if}
 
 			<div class="notices-slot">
@@ -656,7 +670,7 @@
 		color: var(--color-warning-text);
 	}
 	/* One column on a phone, in reading order. From 72rem the map and the board
-	   take the wide column and the summary, actions and notices the narrow
+	   take the wide column and the summary, actions, route guide and notices the narrow
 	   one, so every block in a column shares that column's width. */
 	.course-layout {
 		display: grid;
@@ -667,7 +681,7 @@
 	@media (min-width: 72rem) {
 		.course-layout.with-map {
 			grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
-			grid-template-rows: auto auto auto 1fr;
+			grid-template-rows: auto auto auto auto 1fr;
 			column-gap: var(--space-xl);
 		}
 		.with-map .map-block {
@@ -682,13 +696,17 @@
 			grid-column: 2;
 			grid-row: 2;
 		}
+		.with-map .guide-slot {
+			grid-column: 2;
+			grid-row: 3;
+		}
 		.with-map .notices-slot {
 			grid-column: 2;
-			grid-row: 3 / span 2;
+			grid-row: 4 / span 2;
 		}
 		.with-map .board {
 			grid-column: 1;
-			grid-row: 4;
+			grid-row: 4 / span 2;
 		}
 		.with-map .map-wrap {
 			height: 26rem;

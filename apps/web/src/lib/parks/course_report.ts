@@ -40,6 +40,15 @@ export function courseReportEmailOk(raw: string): boolean {
 	return e.length === 0 || (e.length <= COURSE_REPORT_EMAIL_MAX && EMAIL_SHAPE.test(e));
 }
 
+/**
+ * The admin's reply link to a reporter's address. The whole address is
+ * percent-encoded, which RFC 6068 allows, so a `?` or `&` a reporter typed
+ * stays part of the address and cannot add a BCC or a body to the draft.
+ */
+export function courseReportMailto(email: string): string {
+	return `mailto:${encodeURIComponent(email)}`;
+}
+
 /** The copy for each code the Edge Function refuses with; null for the rest,
  *  which take the generic failure line. */
 export function courseReportErrorKey(code: string | null): MessageKey | null {

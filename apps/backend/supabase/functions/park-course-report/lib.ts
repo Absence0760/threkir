@@ -1,7 +1,7 @@
 /// Pure input validation and error mapping for park-course-report.
 ///
 /// The database re-checks every rule here (submit_park_course_report, migration
-/// 20271212000003); these run first so a malformed request spends no rate-limit
+/// 20271213000003); these run first so a malformed request spends no rate-limit
 /// slot and no database round trip.
 
 import { isValidUuid } from '../_shared/input_validation.ts';

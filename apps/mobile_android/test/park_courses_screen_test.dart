@@ -945,6 +945,7 @@ void main() {
       await tester.pump();
       await tester.tap(submit);
       await _settle(tester);
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(api.reports, [
         {

@@ -1,4 +1,4 @@
--- Pins 20271212000001..4: park course problem reports (issue #1346,
+-- Pins 20271213000001..5: park course problem reports (issue #1346,
 -- decisions § 2449).
 --
 -- Only the service role files a report (the park-course-report Edge Function
@@ -11,7 +11,7 @@
 -- reporter's account and 30 days after resolution.
 
 begin;
-select plan(54);
+select plan(56);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -230,7 +230,15 @@ set local role service_role;
 select throws_ok(
   $$select submit_park_course_report('c0c03333-0000-0000-0000-000000000002', 'course_hazard', 'One more.', null, null)$$,
   'PT429', null, 'a course with 25 pending reports takes no more');
+select lives_ok(
+  $$select submit_park_course_report('c0c03333-0000-0000-0000-000000000002', 'land_manager_request',
+      'Please close this course.', 'office2@pcr-park.example', null)$$,
+  'a land-manager request still gets into a full course''s queue');
 reset role;
+select is(
+  (select count(*)::int from reports where target_id = 'c0c03333-0000-0000-0000-000000000002'
+     and reason = 'land_manager_request' and signed_out and status = 'pending'),
+  1, 'the land-manager request on the full course is stored');
 
 -- The hourly signed-out cap counts every course: 2 signed-out reports on the
 -- first course this hour, so 58 more reach 60.

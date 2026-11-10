@@ -5,6 +5,7 @@ import {
 	COURSE_REPORT_REASON_LABELS,
 	courseReportEmailOk,
 	courseReportErrorKey,
+	courseReportMailto,
 	landManagerDueAt,
 } from './course_report.ts';
 
@@ -45,4 +46,11 @@ test('a weekday request is due at the same time two business days later', () => 
 test('a weekend request is due at the end of Tuesday', () => {
 	assert.equal(landManagerDueAt('2027-03-06T10:00:00Z').toISOString(), '2027-03-09T23:59:59.999Z');
 	assert.equal(landManagerDueAt('2027-03-07T23:00:00Z').toISOString(), '2027-03-09T23:59:59.999Z');
+});
+
+test('a reply link cannot be given headers by the address', () => {
+	assert.equal(courseReportMailto('ranger@park.example'), 'mailto:ranger%40park.example');
+	const crafted = courseReportMailto('a@b.co?bcc=x@evil.example&body=hi');
+	assert.equal(crafted.includes('?'), false);
+	assert.equal(crafted.includes('&'), false);
 });

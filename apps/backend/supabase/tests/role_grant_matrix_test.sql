@@ -68,7 +68,7 @@ select plan(12);
 -- it names the reviewing site admin, whom neither side may learn, so it is
 -- read only through definer RPCs that project the reviewer away
 -- (organiser_disputes_test.sql pins that side).
--- park_course_status_actions (20271212000003) is the operator's park course
+-- park_course_status_actions (20271213000003) is the operator's park course
 -- close and reopen log; it names the site admin and is read only through the
 -- admin-gated park_course_status_history (park_course_reports_test.sql pins
 -- that side).

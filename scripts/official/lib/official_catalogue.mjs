@@ -39,6 +39,8 @@ export const RACE_PROVIDERS = ['runsignup', 'parkrun', 'manual', 'chronotrack', 
 const SHORTEST_WINDOW_DAYS = { monthly: 28, yearly: 365 };
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+/** ISO 3166-2, as `challenges_park_region_code_ck` and `parks.region_code` hold it. */
+const REGION_CODE = /^[A-Z]{2}-[A-Z0-9]{1,3}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** The columns the stage's result set carries, in order. */
@@ -245,7 +247,11 @@ export function checkRoutine(routine) {
 /** @param {any} challenge */
 export function checkChallenge(challenge) {
 	const where = `challenge ${challenge?.slug ?? '?'}`;
-	keys(where, challenge, ['slug', 'recurrence', 'title', 'metric', 'goal_value'], ['description', 'activity_type']);
+	keys(where, challenge, ['slug', 'recurrence', 'title', 'metric', 'goal_value'], [
+		'description',
+		'activity_type',
+		'park_region_code',
+	]);
 	slugOf(where, challenge.slug);
 	oneOf(`${where} recurrence`, challenge.recurrence, RECURRENCES);
 	if (typeof challenge.title !== 'string' || !challenge.title.includes('{period}')) {
@@ -255,7 +261,13 @@ export function checkChallenge(challenge) {
 	text(`${where} title`, longest, 1, 120);
 	optionalText(`${where} description`, challenge.description, 2000);
 	oneOf(`${where} metric`, challenge.metric, CHALLENGE_METRICS);
-	if (challenge.metric === 'park_courses') fail(where, 'park_courses boards need a park region, which the catalogue does not carry');
+	if (challenge.metric === 'park_courses') {
+		if (typeof challenge.park_region_code !== 'string' || !REGION_CODE.test(challenge.park_region_code)) {
+			fail(where, 'a park_courses board needs a park_region_code, an ISO 3166-2 code such as US-VA');
+		}
+	} else if (challenge.park_region_code !== undefined) {
+		fail(where, 'only a park_courses board takes a park_region_code');
+	}
 	optionalNumber(`${where} goal_value`, challenge.goal_value, Number.MIN_VALUE);
 	if (challenge.goal_value == null) fail(where, 'needs a goal_value, so a runner can finish it');
 	if (challenge.metric === 'streak_days') {

@@ -150,11 +150,25 @@ test('a challenge item names its period, has a goal, and a streak fits its short
 	assert.throws(() => checkChallenge({ ...challenge(), title: 'Run 50 km' }), /\{period\}/);
 	assert.throws(() => checkChallenge({ ...challenge(), recurrence: 'weekly' }), /recurrence/);
 	assert.throws(() => checkChallenge({ ...challenge(), goal_value: null }), /goal_value/);
-	assert.throws(() => checkChallenge({ ...challenge(), metric: 'park_courses' }), /park region/);
+	assert.throws(() => checkChallenge({ ...challenge(), metric: 'park_courses' }), /needs a park_region_code/);
 	assert.throws(() => checkChallenge({ ...challenge(), metric: 'streak_days', goal_value: 29 }), /shortest window/);
 	assert.doesNotThrow(() => checkChallenge({ ...challenge(), metric: 'streak_days', goal_value: 28 }));
 	assert.throws(() => checkChallenge({ ...challenge(), title: `${'x'.repeat(110)} {period}` }), /title/);
 	assert.throws(() => checkChallenge({ ...challenge(), activity_type: 'swim' }), /activity_type/);
+});
+
+test('a park_courses board carries an ISO 3166-2 region, and no other board takes one', () => {
+	const passport = JSON.parse(fs.readFileSync(new URL('./fixtures/virginia-park-passport.json', import.meta.url), 'utf8'));
+	assert.doesNotThrow(() => checkChallenge(passport));
+	assert.equal(payloadOf({ ...empty(), challenges: [passport] }).challenges[0].park_region_code, 'US-VA');
+	assert.match(officialCatalogueSql({ ...empty(), challenges: [passport] }, PUBLISHER), /"park_region_code":"US-VA"/);
+	for (const bad of ['us-va', 'US', 'USA-VA', 'US-VAXX', 'US_VA', '', 7, null]) {
+		assert.throws(() => checkChallenge({ ...passport, park_region_code: bad }), /needs a park_region_code/, String(bad));
+	}
+	const { park_region_code: _region, ...noRegion } = passport;
+	assert.throws(() => checkChallenge(noRegion), /needs a park_region_code/);
+	assert.throws(() => checkChallenge({ ...challenge(), park_region_code: 'US-VA' }), /only a park_courses board/);
+	assert.throws(() => checkChallenge({ ...challenge(), park_region_code: null }), /only a park_courses board/);
 });
 
 test('a race course names its race once, its published source, and real geometry', () => {

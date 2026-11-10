@@ -514,9 +514,12 @@ rank, and a closed course drops out of the "every" counts while it is closed.
 - **Passport challenge**: the `park_courses` challenge metric counts distinct
   courses (not closed, active park) completed inside the window, optionally
   narrowed by `challenges.park_region_code` (`US-VA`). The yearly official
-  passport ("Run 10 Virginia park courses in 2027") is created by the official
-  club with that region set; the create forms offer the metric without a
-  region. A new effort re-checks the runner's open park challenges, and the
+  passport ("Run 10 Virginia park courses in 2027") is published by the
+  official catalogue, whose challenge items carry `park_region_code`
+  (migration `20271214131301`; [official_content.md § The catalogue](official_content.md#the-catalogue)).
+  It is not committed yet: only six Virginia courses are loaded, so a goal of
+  ten could not be met. Add it once enough are. The create forms offer the
+  metric without a region. A new effort re-checks the runner's open park challenges, and the
   daily sweep is the backstop.
 - **Recap**: the year and month recaps carry `parkCourseCount` and
   `parkCount` (`recapParkSummary` in the `park_courses` pair) and show a

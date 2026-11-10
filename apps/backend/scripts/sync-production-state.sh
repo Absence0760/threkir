@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Sync production state (issue #1349, decisions § 2429): the release step that
-# brings committed, reviewed state into the database after the migrations,
-# so nobody runs SQL in production by hand. Its stages live in
+# brings committed, reviewed state into the database after the migrations
+# and the Edge Functions, so nobody runs SQL in production by hand. Its stages live in
 # scripts/prod_sync/run.mjs; the park catalogue is the first.
 #
 # Usage (from apps/backend, like apply-pending-migrations.sh):

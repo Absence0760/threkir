@@ -181,16 +181,18 @@ internet can download from a public repo. `mobile_android@*` and `watch_wear@*`
 still attach their `.aab`, so the table above is the authority per tag, not this
 paragraph generalised.
 
-**What a backend release does after its migrations.** The "Sync production
-state" step (`apps/backend/scripts/sync-production-state.sh`, stages in
+**What a backend release does last.** After the migrations and the Edge
+Functions, the "Sync production state" step (`apps/backend/scripts/sync-production-state.sh`, stages in
 `scripts/prod_sync/run.mjs`, [decisions § 2429](../architecture/decisions.md))
 runs over the migration step's connection, with no secret of its own. Its one
 stage today loads every committed park catalogue through
 `private.load_park_catalogue` and writes a created / updated / unchanged /
 closed row per course to the job's step summary; read it on the release run.
-An unchanged catalogue writes nothing. Each stage is one transaction, and a
-failed stage rolls back and fails the release before any Edge Function
-deploys. To preview it without releasing, run **Release Backend** by hand
+An unchanged catalogue writes nothing. It runs last so a sync failure can
+never leave migrations applied and functions undeployed: each stage is one
+transaction, and a failed stage rolls back and fails the job loudly, with
+the schema and functions already live; fix the cause and re-run the sync
+with a dispatch. To preview it without releasing, run **Release Backend** by hand
 (Actions, Run workflow): that runs only the sync, behind the `production`
 approval, with `dry_run` on by default (every stage rolled back). A dispatch
 with `dry_run` off commits, and is refused anywhere but `main`. More

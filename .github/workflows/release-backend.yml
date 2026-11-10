@@ -18,7 +18,8 @@ name: Release Backend
 #                                 special characters (%, !, ^) don't break psql's
 #                                 URI percent-decoding.
 #
-# After the migrations, "Sync production state" brings committed state into
+# After the migrations and the functions, "Sync production state" brings
+# committed state into
 # the database (apps/backend/scripts/sync-production-state.sh, stages in
 # scripts/prod_sync/run.mjs; issue #1349, decisions § 2429). Its first stage
 # loads every committed park catalogue through private.load_park_catalogue,
@@ -116,34 +117,6 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: ./scripts/apply-pending-migrations.sh
 
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24.20.0
-          # setup-node turns its npm cache on by itself when package.json
-          # names a packageManager. A release must not restore a cache any
-          # default-branch run can write; the sync needs no install.
-          package-manager-cache: false
-
-      # Same connection as the migrations (lib/db_url.sh): no new secret, and
-      # the URL is never printed. Each stage is one transaction; a failed stage
-      # rolls back whole and fails the release before any function deploys.
-      - name: Sync production state
-        working-directory: apps/backend
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          args=()
-          if [ "$DRY_RUN" = "true" ]; then
-            args+=(--dry-run)
-          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "::error::A sync that commits runs only from main; this dispatch is on ${GITHUB_REF}. Re-run it with dry_run, or from main."
-            exit 1
-          fi
-          ./scripts/sync-production-state.sh "${args[@]}"
-
       - name: Deploy Edge Functions
         if: github.event_name == 'release'
         working-directory: apps/backend
@@ -177,3 +150,33 @@ jobs:
             echo "::error::no edge functions found to deploy — the glob is wrong"
             exit 1
           fi
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.20.0
+          # setup-node turns its npm cache on by itself when package.json
+          # names a packageManager. A release must not restore a cache any
+          # default-branch run can write; the sync needs no install.
+          package-manager-cache: false
+
+      # Last, after the functions: a sync failure must never leave a release
+      # with its migrations applied and its functions not deployed. It still
+      # fails the job. Same connection as the migrations (lib/db_url.sh): no
+      # new secret, and the URL is never printed. Each stage is one
+      # transaction, rolled back whole on failure.
+      - name: Sync production state
+        working-directory: apps/backend
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::A sync that commits runs only from main; this dispatch is on ${GITHUB_REF}. Re-run it with dry_run, or from main."
+            exit 1
+          fi
+          ./scripts/sync-production-state.sh "${args[@]}"

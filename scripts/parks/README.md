@@ -50,7 +50,7 @@ Finding a loop that fits is a search over the park's trail graph. For L the loop
 
 Every backend release loads the catalogue; nobody runs SQL in production. The
 "Sync production state" step of `.github/workflows/release-backend.yml` runs
-after the migrations (`apps/backend/scripts/sync-production-state.sh`, stages in
+last, after the migrations and the Edge Functions (`apps/backend/scripts/sync-production-state.sh`, stages in
 `scripts/prod_sync/run.mjs`, decisions § 2429). Its park stage, `sync.mjs`,
 finds every `catalogue/<region>/<park>/manifest.json`, validates it as below,
 and calls `private.load_park_catalogue` (migrations `20271126002425` +

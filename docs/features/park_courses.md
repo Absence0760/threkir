@@ -163,7 +163,8 @@ A course needs a route owned by an official publisher, which no migration can
 create, and reviewed geometry, so real courses are not a migration. The
 geometry is built and reviewed under `scripts/parks/` (its README has the
 pipeline), and **every backend release loads it**: the "Sync production state"
-step of `release-backend.yml` runs after the migrations and calls
+step of `release-backend.yml` runs last, after the migrations and the Edge
+Functions, and calls
 `private.load_park_catalogue` (migration `20271126002425`, made idempotent by
 `20271127002429`; decisions § 2425, § 2429) once per committed
 `scripts/parks/catalogue/<region>/<park>/manifest.json`, as the publisher in
@@ -217,7 +218,7 @@ Shipping a park, or a change to one:
    (`workflow_dispatch`) with `dry_run` left on. It runs only the sync, behind
    the `production` environment approval, and rolls every stage back after
    printing each course's action to the step summary.
-3. Publish a `backend@*` release. After the migrations, "Sync production
+3. Publish a `backend@*` release. After the migrations and functions, "Sync production
    state" loads every committed park, queues the backfills a created or
    redrawn course needs (existing runs show on its boards the day it opens; see
    *Matching*), and writes a created / updated / unchanged / closed table per

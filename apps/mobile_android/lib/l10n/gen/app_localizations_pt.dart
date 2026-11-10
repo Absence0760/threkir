@@ -828,6 +828,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardHeroRestDayBody => 'Nada no plano para hoje.';
 
   @override
+  String get dashboardHeroRestDayGrisnir =>
+      'De volta de manhã, como os bodes de Thor.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Prontidão $score';
   }
@@ -10094,6 +10098,13 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get prefsShowCaloriesHint =>
       'Estimadas a partir da distância e do peso corporal (predefinição de 70 kg quando não definido). Desative para ocultar as calorias nas páginas de corrida.';
+
+  @override
+  String get prefsShowMascot => 'Mostrar o Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'O bode do Threkir. Descansa consigo nos dias de descanso e fica num canto das suas imagens partilhadas.';
 
   @override
   String get prefsDefaultRunPrivacy => 'Privacidade predefinida das corridas';
@@ -22698,6 +22709,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get dashboardHeroRestDayBody => 'Nada no plano para hoje.';
 
   @override
+  String get dashboardHeroRestDayGrisnir =>
+      'De volta pela manhã, como os bodes de Thor.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Prontidão $score';
   }
@@ -31954,6 +31969,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get prefsShowCaloriesHint =>
       'Estimadas a partir da distância e do peso corporal (padrão de 70 kg quando não definido). Desative para ocultar as calorias nas páginas de corrida.';
+
+  @override
+  String get prefsShowMascot => 'Mostrar o Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'O bode do Threkir. Ele descansa com você nos dias de descanso e fica num canto das suas imagens compartilhadas.';
 
   @override
   String get prefsDefaultRunPrivacy => 'Privacidade padrão das corridas';

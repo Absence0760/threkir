@@ -674,13 +674,17 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   recompute, plus `distM`, the run's credited distance through that fix
   (`TrackWriter.append(point, distM)`, written after the estimator has
   taken it), which splits and moving time measure on (decisions § 1997). Uploads stamp `metadata.distance_estimator = "kalman_v1"` and,
-  when > 0, `distance_step_filled_m`; a run queued or checkpointed by an
-  older hop-summing build carries neither. The stamp is what queues the
+  when > 0, `distance_step_filled_m` with, beside it,
+  `distance_step_over_chord_m` (the estimator's `stepOverChordM`, banked per
+  segment, spec v1.7); a run queued or checkpointed by an older hop-summing
+  build carries neither. The stamp is what queues the
   server's smoother: once the row has its `track_url`, the
   `runs_enqueue_watch_distance_recompute` trigger queues a
   `distance_recompute` job, which replays this track and replaces
   `distance_m` with the smoothed figure (its gaps credited the larger of
-  their chords and the step-filled metres),
+  `distance_step_over_chord_m` and the run-total rule, or on an older run
+  the larger of their chords and the step-filled metres; a pause or source
+  switch inside a gap holds that close's trailing steps out of the key),
   keeping the wrist's figure as `distance_recorded_m`
   ([gps_distance.md § Server recompute](../../docs/features/gps_distance.md#server-recompute),
   decisions § 1991).

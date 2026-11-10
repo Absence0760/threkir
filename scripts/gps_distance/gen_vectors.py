@@ -89,6 +89,9 @@ def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None, learn_str
     # max(its chord, its steps): the per-gap split the server recompute cannot see.
     gap_steps = sum(s for _, s in sm["gap_credits"])
     assert abs(gap_steps - sm["step_distance_m"]) < 1e-6, (name, gap_steps, sm["step_distance_m"])
+    # v1.7: the steps' credit over the chords is that split's only part a replay lacks.
+    over = sum(max(c, s) - c for c, s in sm["gap_credits"])
+    assert abs(over - sm["step_over_chord_m"]) < 1e-6, (name, over, sm["step_over_chord_m"])
     smoothed_gaps = {"gapCreditsM": [[round(c, 6), round(s, 6)] for c, s in sm["gap_credits"]]} \
         if sm["step_distance_m"] > 0 else {}
     scen.append({"name": name, "description": desc, "maxSpeedMps": max_speed,
@@ -97,6 +100,7 @@ def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None, learn_str
                  "expected": {"distanceAfterEachEventM": out,
                               "gpsDistanceM": round(e.gps_distance_m, 6),
                               "stepDistanceM": round(e.step_distance_m, 6),
+                              "stepOverChordM": round(e.step_over_chord_m, 6),
                               "strideM": None if e.stride_m is None else round(e.stride_m, 6),
                               "rejectedFixes": e.rejected_fixes,
                               "zuptFixes": e.zupt_fixes,
@@ -107,6 +111,7 @@ def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None, learn_str
                               "distanceM": round(sm["distance_m"], 6),
                               "gpsDistanceM": round(sm["gps_distance_m"], 6),
                               "stepDistanceM": round(sm["step_distance_m"], 6),
+                              "stepOverChordM": round(sm["step_over_chord_m"], 6),
                               "stoppedFixes": sm["stopped_fixes"],
                               "positions": [None if p is None else [round(p[0], 9), round(p[1], 9)]
                                             for p in sm["positions"]],
@@ -274,6 +279,10 @@ add("batched_steps_baseline_before_first_fix", "v1.6: 15 s step batches from 0.5
     line(list(range(20, 121)) + list(range(150, 156)),
          [15.0 * k + 0.5 for k in range(9)] + [150.5, 155.5],
          east_at={t: 470.0 + 4 * (t - 150) for t in range(150, 156)}, finish=156.0))
+add("batched_steps_baseline_delivered_late", "v1.7: the batched run of batched_steps_no_baseline_first_window with its baseline, stamped 15.5, delivered after the fix at 18; the window's metres then start at 18, so the sample at 30.5, whose steps start at 15.5, empties it instead of pairing 15 s of steps with 12 s of metres: the stride learns 1 m and the loop-back gap reads 620.00 m (the true path); letting that sample refill the window learned 0.8 m at 30.5 and 0.948 m by the gap, reading 613.68 m",
+    late_steps(line(list(range(121)) + list(range(150, 156)),
+                    [15.0 * k + 0.5 for k in range(1, 9)] + [150.5, 155.5],
+                    east_at={t: 470.0 + 4 * (t - 150) for t in range(150, 156)}, finish=156.0), 15.5, 18.0))
 add("gap_steps_open_gap_cap", "v1.6: nine 12 s gaps whose fixes zigzag 10 m apart, with no step sample until one after the ninth; only MAX_OPEN_GAPS = 8 gaps can still claim a share, so the oldest keeps its chord credit and its 46 m of steps after the 25.5 sample are dropped (the cap only under-credits)",
     line(list(range(26)) + [25 + 12 * k for k in range(1, 10)], [t + 0.5 for t in range(26)] + [133.5],
          east_at={25 + 12 * k: (110.0 if k % 2 else 100.0) for k in range(1, 10)} | {25: 100.0}), stride=1.0, learn_stride=False)

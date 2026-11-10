@@ -1,5 +1,5 @@
 // Package gpsdistance is the Go port of the GPS distance estimator,
-// spec v1.6 (docs/features/gps_distance.md). The reference implementation
+// spec v1.7 (docs/features/gps_distance.md). The reference implementation
 // is scripts/gps_distance/reference.py and this file follows it
 // operation for operation; every port replays
 // fixtures/gps_distance_vectors.json to 1e-3 m, so a change here without
@@ -15,7 +15,7 @@ package gpsdistance
 import "math"
 
 // SpecVersion is the spec this port implements.
-const SpecVersion = "1.6"
+const SpecVersion = "1.7"
 
 const (
 	EarthRadiusM              = 6371008.8
@@ -215,6 +215,10 @@ type Estimator struct {
 	MaxSpeedMps   float64
 	GpsDistanceM  float64
 	StepDistanceM float64
+	// StepOverChordM is what the steps credited the gaps beyond their chord
+	// lower bounds, summed (spec v1.7): per gap max(chord, steps) - chord,
+	// exactly what a replay with no steps lacks.
+	StepOverChordM float64
 	// StrideM is nil until a stride has been learned.
 	StrideM *float64
 	// Diagnostics (spec v1.2 and v1.3).
@@ -403,6 +407,7 @@ func (e *Estimator) AddFix(f Fix) float64 {
 				hasGap, gapM = true, lower-e.pendingStepM
 				e.GpsDistanceM += gapM
 			}
+			e.StepOverChordM += math.Max(0, e.pendingStepM-math.Max(lower, 0))
 			rec := -1
 			if e.recording {
 				rec = len(e.records)
@@ -645,7 +650,14 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		if e.hasT && t-e.t > e.freshFixS {
 			e.winStale = true
 		}
-		e.winSteps, e.winM = 0, 0
+		if e.hasT && t < e.t {
+			// v1.7: stamped before the last fix, so the window's metres
+			// already start after this stamp; the next sample's steps reach
+			// back before them and must not refill it.
+			e.emptyWindow(e.t)
+		} else {
+			e.winSteps, e.winM = 0, 0
+		}
 		return
 	}
 	d := cumulativeSteps - prev
@@ -728,6 +740,7 @@ func (e *Estimator) attributeSteps(prevT, t float64, d int) bool {
 			e.StepDistanceM += late
 			take = math.Min(late, gap.topUpM)
 			e.GpsDistanceM -= take
+			e.StepOverChordM += late - take
 			if gap.record >= 0 {
 				if take > 0 {
 					e.records[gap.record].chord -= take
@@ -750,6 +763,7 @@ func (e *Estimator) attributeSteps(prevT, t float64, d int) bool {
 func (e *Estimator) Finish(t float64) {
 	if e.hasT && finite(t) && t-e.t > e.gapS {
 		e.StepDistanceM += e.pendingStepM
+		e.StepOverChordM += e.pendingStepM
 	}
 	e.pendingStepM = 0
 }

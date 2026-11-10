@@ -341,7 +341,7 @@ class WatchRunMetadataTest {
         assertNull(md["laps"])
     }
 
-    private fun withEstimator(estimator: String?, stepFilledM: Double?) = buildRunMetadata(
+    private fun withEstimator(estimator: String?, stepFilledM: Double?, overChordM: Double? = null) = buildRunMetadata(
         activityType = "run",
         avgBpm = null,
         hrCoverage = null,
@@ -350,6 +350,7 @@ class WatchRunMetadataTest {
         lastModifiedAtIso = isoStamp,
         distanceEstimator = estimator,
         distanceStepFilledM = stepFilledM,
+        distanceStepOverChordM = overChordM,
     )
 
     @Test
@@ -363,6 +364,21 @@ class WatchRunMetadataTest {
         assertEquals(105.7, withEstimator("kalman_v1", 105.7)["distance_step_filled_m"]!!.jsonPrimitive.double, 1e-9)
         assertFalse(withEstimator("kalman_v1", 0.0).containsKey("distance_step_filled_m"))
         assertFalse(withEstimator("kalman_v1", null).containsKey("distance_step_filled_m"))
+    }
+
+    @Test
+    fun `distance_step_over_chord_m rides with distance_step_filled_m, zero included`() {
+        assertEquals(
+            48.6,
+            withEstimator("kalman_v1", 104.0, 48.6)["distance_step_over_chord_m"]!!.jsonPrimitive.double,
+            1e-9,
+        )
+        assertEquals(0.0, withEstimator("kalman_v1", 57.6, 0.0)["distance_step_over_chord_m"]!!.jsonPrimitive.double, 0.0)
+        assertFalse(withEstimator("kalman_v1", 57.6, null).containsKey("distance_step_over_chord_m"))
+        assertFalse(withEstimator("kalman_v1", 57.6, Double.NaN).containsKey("distance_step_over_chord_m"))
+        assertFalse(withEstimator("kalman_v1", 57.6, -1.0).containsKey("distance_step_over_chord_m"))
+        assertFalse(withEstimator("kalman_v1", 0.0, 0.0).containsKey("distance_step_over_chord_m"))
+        assertFalse(withEstimator(null, 57.6, 10.0).containsKey("distance_step_over_chord_m"))
     }
 
     @Test

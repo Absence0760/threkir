@@ -1325,6 +1325,12 @@ abstract class AppLocalizations {
   /// **'Nothing on the plan today.'**
   String get dashboardHeroRestDayBody;
 
+  /// Grisnir the mascot's one dry line beside his resting art on a plan rest day; Norse lore: Thor's goats are eaten every night and are back by morning
+  ///
+  /// In en, this message translates to:
+  /// **'Back by morning, like Thor\'s goats.'**
+  String get dashboardHeroRestDayGrisnir;
+
   /// One-line readiness score in the Today hero; {score} is 0-100
   ///
   /// In en, this message translates to:
@@ -16035,6 +16041,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.'**
   String get prefsShowCaloriesHint;
+
+  /// Title of the switch that shows or hides Grisnir, the Threkir mascot
+  ///
+  /// In en, this message translates to:
+  /// **'Show Grisnir'**
+  String get prefsShowMascot;
+
+  /// Subtitle of the show-Grisnir switch: where the mascot appears
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir\'s goat. He rests with you on rest days and sits in a corner of your share images.'**
+  String get prefsShowMascotHint;
 
   /// Tile title for the default run privacy
   ///

@@ -9,7 +9,7 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/// GPS distance estimator, spec v1.6 (forward filter) — the Wear OS port of
+/// GPS distance estimator, spec v1.7 (forward filter) — the Wear OS port of
 /// `scripts/gps_distance/reference.py`, which is the spec. Read
 /// `docs/features/gps_distance.md` before changing anything here: every port
 /// replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so a change to one
@@ -39,6 +39,11 @@ class GpsDistanceEstimator(
     var gpsDistanceM = 0.0
         private set
     var stepDistanceM = 0.0
+        private set
+    /// v1.7: what the steps credited the gaps over their chord lower bounds,
+    /// summed: per gap max(chord, steps) - chord, exactly what a replay with
+    /// no steps lacks. Saved as `metadata.distance_step_over_chord_m`.
+    var stepOverChordM = 0.0
         private set
     var strideM: Double? = initialStrideM?.takeIf { it.isFinite() && it >= MIN_STRIDE_M && it <= MAX_STRIDE_M }
         private set
@@ -167,6 +172,7 @@ class GpsDistanceEstimator(
                     gapM = lower - pendingStepM
                     gpsDistanceM += gapM
                 }
+                stepOverChordM += max(0.0, pendingStepM - max(lower, 0.0))
                 gaps.addLast(Triple(prevT, t, gapM))
                 if (gaps.size > MAX_OPEN_GAPS) gaps.removeFirst()
             }
@@ -390,8 +396,15 @@ class GpsDistanceEstimator(
             // empties it.
             val lastFixT = lastT
             if (lastFixT != null && t - lastFixT > freshFixS) winStale = true
-            winSteps = 0
-            winM = 0.0
+            if (lastFixT != null && t < lastFixT) {
+                // v1.7: stamped before the last fix, so the window's metres
+                // already start after this stamp; the next sample's steps reach
+                // back before them and must not refill it.
+                emptyWindow(lastFixT)
+            } else {
+                winSteps = 0
+                winM = 0.0
+            }
             return
         }
         val d = cumulativeSteps - prev
@@ -460,6 +473,7 @@ class GpsDistanceEstimator(
                 stepDistanceM += late
                 take = min(late, topUpM)
                 gpsDistanceM -= take
+                stepOverChordM += late - take
             }
             if (endT > t) gaps.addLast(Triple(startT, endT, topUpM - take))
         }
@@ -475,7 +489,10 @@ class GpsDistanceEstimator(
 
     fun finish(t: Double) {
         val fixT = lastT
-        if (fixT != null && valid(t) && t - fixT > gapS) stepDistanceM += pendingStepM
+        if (fixT != null && valid(t) && t - fixT > gapS) {
+            stepDistanceM += pendingStepM
+            stepOverChordM += pendingStepM
+        }
         pendingStepM = 0.0
     }
 
@@ -535,7 +552,7 @@ class GpsDistanceEstimator(
 
     companion object {
         const val SPEC_ID = "kalman_v1"
-        const val SPEC_VERSION = "1.6"
+        const val SPEC_VERSION = "1.7"
 
         private const val EARTH_RADIUS_M = 6371008.8
         private const val Q_ACCEL = 0.6

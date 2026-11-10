@@ -192,6 +192,64 @@ void main() {
       expect(find.byType(ThrekirShareBrand), findsNothing);
     });
 
+    // Grisnir (#1360) signs the stats panel's top-right corner, beside the
+    // title: the long title ellipsises short of him and the card still fits.
+    testWidgets('Grisnir sits beside the title, clear of the map and stats',
+        (tester) async {
+      final prefs = await _makePrefs();
+      await _pumpCanvas(
+        tester,
+        SizedBox.fromSize(
+          size: RunShareCard.canvas,
+          child: RunShareCard(
+            run: _run(
+              distanceMetres: 162000,
+              duration: const Duration(hours: 31, minutes: 12, seconds: 9),
+            ),
+            preferences: prefs,
+            title: 'A very long ultra across three valleys and a pass',
+            privacyZones: const [],
+          ),
+        ),
+      );
+      expect(tester.takeException(), isNull);
+      final goat = find.byKey(const ValueKey('share-card-grisnir'));
+      expect(goat, findsOneWidget);
+      final card = tester.getRect(find.byType(RunShareCard));
+      final g = tester.getRect(goat);
+      final title = tester.getRect(
+          find.text('A very long ultra across three valleys and a pass'));
+      final distance = tester.getRect(find.text('DISTANCE'));
+      expect(g.height, 48);
+      expect(g.right, lessThanOrEqualTo(card.right));
+      expect(g.top, greaterThanOrEqualTo(card.top + card.height * 3 / 5),
+          reason: 'below the map, which takes the top three fifths');
+      expect(title.right, lessThanOrEqualTo(g.left));
+      expect(g.bottom, lessThanOrEqualTo(distance.top));
+    });
+
+    testWidgets('Grisnir leaves with the mark, and when the runner hides him',
+        (tester) async {
+      final prefs = await _makePrefs();
+      for (final (mark, mascot) in [(false, true), (true, false)]) {
+        await tester.pumpWidget(_app(SizedBox(
+          width: 400,
+          height: 500,
+          child: RunShareCard(
+            run: _run(),
+            preferences: prefs,
+            title: 'Morning run',
+            privacyZones: const [],
+            mark: mark,
+            mascot: mascot,
+          ),
+        )));
+        await tester.pump();
+        expect(find.byKey(const ValueKey('share-card-grisnir')), findsNothing,
+            reason: 'mark $mark, mascot $mascot');
+      }
+    });
+
     testWidgets(
         'renders directions_run icon instead of a map when track has fewer '
         'than 2 points', (tester) async {

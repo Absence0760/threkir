@@ -58,6 +58,30 @@ test.describe('run share map card capture', () => {
 		expect(r).toBeGreaterThan(b);
 	});
 
+	test('Grisnir signs the bottom-right corner under the stats and leaves with the mark', async ({ page }) => {
+		await page.goto(`/runs/${runId}`);
+		await page.locator('button[title="Share image"]').click();
+		const dialog = page.getByTestId('run-share-image-dialog');
+		await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+
+		const grisnir = page.getByTestId('share-card-grisnir');
+		await expect(grisnir).toBeAttached();
+		const rects = await page.evaluate(() => {
+			const r = (sel: string) => document.querySelector(sel)!.getBoundingClientRect().toJSON() as DOMRect;
+			const img = document.querySelector<HTMLImageElement>('[data-testid="share-card-grisnir"]')!;
+			return { card: r('[data-testid="share-card"]'), stats: r('.share-card-stats'), goat: r('[data-testid="share-card-grisnir"]'), loaded: img.naturalWidth };
+		});
+		expect(rects.loaded).toBeGreaterThan(0);
+		expect(rects.goat.top).toBeGreaterThanOrEqual(rects.stats.bottom);
+		expect(rects.goat.bottom).toBeLessThanOrEqual(rects.card.bottom);
+		expect(rects.goat.right).toBeLessThanOrEqual(rects.card.right);
+		expect(rects.goat.left).toBeGreaterThan(rects.card.left + rects.card.width / 2);
+
+		await dialog.getByTestId('share-mark').uncheck();
+		await expect(dialog.getByTestId('share-image-download')).toBeEnabled({ timeout: 15_000 });
+		await expect(grisnir).toHaveCount(0);
+	});
+
 	test('a card drawn outside its frame shows an error with a retry, and Download stays off', async ({ page }) => {
 		await page.goto(`/runs/${runId}`);
 		await expect(page.getByTestId('share-card')).toBeAttached();

@@ -143,6 +143,10 @@ class SettingsKeys {
   /// can opt out entirely). Display-only opt-out; mirrors web's
   /// `show_calories` read on `/runs/[id]`.
   static const showCalories = 'show_calories';
+  /// Show Grisnir, the Threkir mascot — default `true`. When `false`, Home's
+  /// rest-day card and the run share card leave him out. Mirrors web's
+  /// `show_mascot` on `/dashboard` and the run share card.
+  static const showMascot = 'show_mascot';
   /// Activity multiplier for the Mifflin-St Jeor nutrition target
   /// (`nutrition_targets.ts`/`.dart`) — `'sedentary' | 'light' | 'moderate'
   /// (default) | 'active' | 'very_active'`. An effort label, not a body

@@ -791,6 +791,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardHeroRestDayBody => '今日はプランに予定がありません。';
 
   @override
+  String get dashboardHeroRestDayGrisnir => 'トールのヤギのように、朝には元どおり。';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return '準備度 $score';
   }
@@ -9548,6 +9551,12 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get prefsShowCaloriesHint =>
       '距離と体重から推定します（未設定の場合は70 kgを使用）。オフにするとラン詳細ページのカロリー表示を非表示にします。';
+
+  @override
+  String get prefsShowMascot => 'Grisnirを表示';
+
+  @override
+  String get prefsShowMascotHint => 'Threkirのヤギです。休養日には一緒に休み、シェア画像の隅に小さく載ります。';
 
   @override
   String get prefsDefaultRunPrivacy => 'ランのデフォルトプライバシー';

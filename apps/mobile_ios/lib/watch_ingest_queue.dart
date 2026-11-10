@@ -428,6 +428,13 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   final stepFilled = raw['distance_step_filled_m'];
   if (stepFilled is num && stepFilled.toDouble().isFinite && stepFilled > 0) {
     metadata[cm.MetadataKeys.distanceStepFilledM] = stepFilled.toDouble();
+    // What of those metres the gaps' chords would not have credited, which
+    // the server's stepless replay needs to credit the gaps as the wrist did.
+    // Meaningless without the step-filled figure, so forwarded only beside it.
+    final overChord = raw['distance_step_over_chord_m'];
+    if (overChord is num && overChord.toDouble().isFinite && overChord >= 0) {
+      metadata[cm.MetadataKeys.distanceStepOverChordM] = overChord.toDouble();
+    }
   }
   final eventId = raw['event_id'];
   if (eventId is String && eventId.isNotEmpty) {

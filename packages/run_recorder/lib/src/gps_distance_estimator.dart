@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-/// GPS distance estimator, spec v1.6 — a port of
+/// GPS distance estimator, spec v1.7 — a port of
 /// `scripts/gps_distance/reference.py`, which is the spec. See
 /// `docs/features/gps_distance.md`. Every operation mirrors the reference so
 /// `fixtures/gps_distance_vectors.json` replays to 1e-3 m; do not tune a
@@ -39,7 +39,7 @@ class GpsDistanceEstimator {
            : null,
        _records = record ? <_FixRecord>[] : null;
 
-  static const String specVersion = '1.6';
+  static const String specVersion = '1.7';
 
   static const double earthRadiusM = 6371008.8;
   static const double qAccel = 0.6;
@@ -105,6 +105,7 @@ class GpsDistanceEstimator {
 
   double _gpsDistanceM = 0.0;
   double _stepDistanceM = 0.0;
+  double _stepOverChordM = 0.0;
   double? _strideM;
   double? _lat0;
   double? _lng0;
@@ -159,6 +160,11 @@ class GpsDistanceEstimator {
   double get distanceM => _gpsDistanceM + _stepDistanceM;
   double get gpsDistanceM => _gpsDistanceM;
   double get stepDistanceM => _stepDistanceM;
+
+  /// v1.7: what the steps credited the gaps over their chord lower bounds,
+  /// summed: per gap max(chord, steps) - chord, exactly what a replay with
+  /// no steps lacks.
+  double get stepOverChordM => _stepOverChordM;
   double? get strideM => _strideM;
   double get rScale => _rScale;
   int get rejectedFixes => _rejectedFixes;
@@ -297,6 +303,8 @@ class GpsDistanceEstimator {
           gapM = lower - _pendingStepM;
           _gpsDistanceM += gapM;
         }
+        _stepOverChordM +=
+            math.max(0.0, _pendingStepM - math.max(lower, 0.0));
         _gaps.add(_ClosedGap(
           startT: prevT,
           endT: t,
@@ -580,8 +588,15 @@ class GpsDistanceEstimator {
       // empties it.
       final lastFixT = _t;
       if (lastFixT != null && t - lastFixT > _freshFixS) _winStale = true;
-      _winSteps = 0;
-      _winM = 0.0;
+      if (lastFixT != null && t < lastFixT) {
+        // v1.7: stamped before the last fix, so the window's metres already
+        // start after this stamp; the next sample's steps reach back before
+        // them and must not refill it.
+        _emptyWindow(lastFixT);
+      } else {
+        _winSteps = 0;
+        _winM = 0.0;
+      }
       return;
     }
     final d = cumulativeSteps - prev;
@@ -658,6 +673,7 @@ class GpsDistanceEstimator {
         _stepDistanceM += late;
         take = math.min(late, gap.topUpM);
         _gpsDistanceM -= take;
+        _stepOverChordM += late - take;
         final k = gap.record;
         if (records != null && k != null) {
           if (take > 0) records[k].chord = records[k].chord! - take;
@@ -683,6 +699,7 @@ class GpsDistanceEstimator {
     final fixT = _t;
     if (fixT != null && _valid(t) && t - fixT > _gapS) {
       _stepDistanceM += _pendingStepM;
+      _stepOverChordM += _pendingStepM;
     }
     _pendingStepM = 0.0;
   }
@@ -758,6 +775,7 @@ class SmoothedDistance {
     required this.distanceM,
     required this.gpsDistanceM,
     required this.stepDistanceM,
+    required this.stepOverChordM,
     required this.cumulativeM,
     required this.positions,
     required this.stoppedFixes,
@@ -766,6 +784,10 @@ class SmoothedDistance {
   final double distanceM;
   final double gpsDistanceM;
   final double stepDistanceM;
+
+  /// v1.7: the estimator's [GpsDistanceEstimator.stepOverChordM] over the
+  /// same events.
+  final double stepOverChordM;
 
   /// Per event: smoothed GPS credit through it plus the step distance
   /// committed by then.
@@ -985,6 +1007,7 @@ SmoothedDistance smoothDistance(
     distanceM: gps + est.stepDistanceM,
     gpsDistanceM: gps,
     stepDistanceM: est.stepDistanceM,
+    stepOverChordM: est.stepOverChordM,
     cumulativeM: cumulative,
     positions: positions,
     stoppedFixes: hints.length,

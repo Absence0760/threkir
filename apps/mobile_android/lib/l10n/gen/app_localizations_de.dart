@@ -829,6 +829,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dashboardHeroRestDayBody => 'Heute steht nichts im Plan.';
 
   @override
+  String get dashboardHeroRestDayGrisnir =>
+      'Morgen früh wieder da, wie Thors Böcke.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Bereitschaft $score';
   }
@@ -10107,6 +10111,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get prefsShowCaloriesHint =>
       'Geschätzt aus Distanz und Körpergewicht (Standard 70 kg, wenn nicht gesetzt). Deaktivieren, um die Kalorienangabe auf Laufseiten auszublenden.';
+
+  @override
+  String get prefsShowMascot => 'Grisnir anzeigen';
+
+  @override
+  String get prefsShowMascotHint =>
+      'Threkirs Ziegenbock. Er ruht an Ruhetagen mit dir und sitzt in einer Ecke deiner geteilten Bilder.';
 
   @override
   String get prefsDefaultRunPrivacy => 'Standard-Datenschutz für Läufe';

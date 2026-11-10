@@ -39,9 +39,12 @@ type SmoothResult struct {
 	DistanceM     float64
 	GpsDistanceM  float64
 	StepDistanceM float64
-	CumulativeM   []float64
-	Positions     []*LatLng
-	StoppedFixes  int
+	// StepOverChordM is the estimator's StepOverChordM over the same events
+	// (spec v1.7).
+	StepOverChordM float64
+	CumulativeM    []float64
+	Positions      []*LatLng
+	StoppedFixes   int
 	// PositionOnly: no accepted fix carried a finite Doppler speed, so
 	// post-hoc stop detection ran.
 	PositionOnly       bool
@@ -283,6 +286,7 @@ func SmoothDistance(events []Event, o Options) SmoothResult {
 	}
 	out.GpsDistanceM = gps
 	out.StepDistanceM = est.StepDistanceM
+	out.StepOverChordM = est.StepOverChordM
 	out.DistanceM = gps + est.StepDistanceM
 	return out
 }

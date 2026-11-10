@@ -194,7 +194,12 @@ An unchanged catalogue writes nothing. The rest apply
 Edge Function toggles (`supabase secrets set`, compared by digest), cron URL
 entries in Vault (each newly armed one invoked once and required to answer
 2xx), and the one-off tasks in `apps/backend/ops/tasks/`, each run once
-against the `private.ops_task_runs` ledger. The file's `web_env` flags are
+against the `private.ops_task_runs` ledger. Last, it publishes the official
+content catalogue (`scripts/official/`, [decisions § 2446](../architecture/decisions.md),
+[official_content.md](../features/official_content.md)) through
+`private.load_official_catalogue`: library plans, gym routines and challenge
+boards as the official club, a created / updated / unchanged / retired / held
+row each, race courses `gated` while `official_race_courses` is off. The file's `web_env` flags are
 applied by the next `web@*` release instead, when `release-web.yml` writes
 `apps/web/.env`. An entry absent from the file is left untouched, so a release
 with nothing declared changes nothing. The config is guarded before any stage

@@ -81,14 +81,14 @@ test('the Pocahontas manifest maps to six loop courses with their distances', ()
 	assert.equal(payload.park.slug, 'pocahontas');
 	assert.equal(payload.region, 'Pocahontas State Park, Virginia');
 	assert.deepEqual(
-		payload.courses.map((c) => [c.slug, c.course_shape, c.distance_m, c.official_distance_m, c.checkpoints.length]),
+		payload.courses.map((c) => [c.slug, c.course_shape, c.distance_m, c.official_distance_m, c.checkpoints.length, c.laps]),
 		[
-			['beaver-lake-trail', 'loop', 3595, null, 3],
-			['swift-creek-5k', 'loop', 5000, 5000, 3],
-			['swift-creek-10k', 'loop', 10000, 10000, 6],
-			['swift-creek-half', 'loop', 21097.5, 21097.5, 6],
-			['swift-creek-marathon', 'loop', 42195, 42195, 12],
-			['swift-creek-50k', 'loop', 50000, 50000, 12],
+			['beaver-lake-trail', 'loop', 3595, null, 3, 1],
+			['swift-creek-5k', 'loop', 5000, 5000, 3, 1],
+			['swift-creek-10k', 'loop', 10000, 10000, 6, 2],
+			['swift-creek-half', 'loop', 21097.5, 21097.5, 6, 1],
+			['swift-creek-marathon', 'loop', 42195, 42195, 12, 2],
+			['swift-creek-50k', 'loop', 50000, 50000, 12, 2],
 		],
 	);
 	assert.ok(payload.courses.every((c) => c.surface === 'trail' && c.geometry_source === 'osm'));
@@ -142,12 +142,49 @@ test('a valid manifest maps every field the load writes', () => {
 		elevation_m: 2,
 		official_distance_m: null,
 		description: 'Run it clockwise.',
+		laps: 1,
 		checkpoints: [{ lat: 0.001, lng: 0.001 }],
 		waypoints: SQUARE.map(([lng, lat, ele]) => ({ lat, lng, ele })),
 		start_gate: null,
 		end_gate: null,
 	});
 	assert.equal(payload.attribution, '© OpenStreetMap contributors (ODbL)');
+});
+
+test('the description is the course\'s own text: the credit travels only as the payload attribution', () => {
+	const payload = readPayload(POCAHONTAS);
+	assert.equal(payload.attribution, '© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP');
+	for (const c of payload.courses) {
+		assert.ok(c.description === null || !/OpenStreetMap|ODbL|3DEP/.test(c.description), c.slug);
+	}
+});
+
+test('a trail course is one lap of a loop, and has no lap count when it is not a loop', () => {
+	const line = [
+		[0, 0],
+		[0.004, 0],
+	];
+	const lineM = 445;
+	const lineCourse = {
+		...manifest().courses[0],
+		slug: 'line',
+		course_shape: 'point_to_point',
+		geojson: 'line.geojson',
+		distance_m: lineM,
+		waypoint_count: 2,
+		checkpoints: [],
+	};
+	const files = reader({ 'square.geojson': geojson(SQUARE), 'line.geojson': geojson(line) });
+	const payload = cataloguePayload(manifest({ courses: [manifest().courses[0], lineCourse] }), files);
+	assert.deepEqual(
+		payload.courses.map((c) => [c.slug, c.laps]),
+		[
+			['square', 1],
+			['line', null],
+		],
+	);
+	const twice = cataloguePayload(manifest({ courses: [{ ...manifest().courses[0], laps: 2 }] }), squareOnly);
+	assert.equal(twice.courses[0].laps, 2);
 });
 
 test('a curated start or end line passes through as the gate the load writes', () => {
@@ -196,6 +233,10 @@ test('the manifest is refused where the database would refuse it', () => {
 	assert.throws(refused((m) => (m.park.region_code = 'Virginia')), /region_code/);
 	assert.throws(refused((m) => (m.park.website_url = 'http://example.org')), /https/);
 	assert.throws(refused((m) => (m.attribution = ' ')), /no attribution/);
+	assert.throws(refused((m) => (m.attribution = 'x'.repeat(301))), /attribution is longer than 300 characters/);
+	assert.throws(refused((m) => (m.courses[0].laps = 0)), /square: laps must be a whole number from 1 to 1000/);
+	assert.throws(refused((m) => (m.courses[0].laps = 1.5)), /square: laps must be a whole number/);
+	assert.throws(refused((m) => (m.courses[0].laps = '2')), /square: laps must be a whole number/);
 	assert.throws(refused((m) => (m.courses[0].slug = 'Square')), /course slug Square/);
 	assert.throws(refused((m) => (m.courses[0].course_shape = 'lollipop')), /course_shape lollipop/);
 	assert.throws(refused((m) => (m.courses[0].surface = 'gravel')), /surface gravel/);

@@ -54,7 +54,7 @@ last, after the migrations and the Edge Functions (`apps/backend/scripts/sync-pr
 `scripts/prod_sync/run.mjs`, decisions § 2429). Its park stage, `sync.mjs`,
 finds every `catalogue/<region>/<park>/manifest.json`, validates it as below,
 and calls `private.load_park_catalogue` (migrations `20271126002425` +
-`20271127002429`, decisions § 2425) once per park as the official club in
+`20271127002429` + `20271130002438`, decisions § 2425) once per park as the official club in
 `publisher.json`, with the backfill flag on, in one transaction. The job's step
 summary lists every course as `created`, `updated`, `unchanged` or `closed`.
 
@@ -81,11 +81,20 @@ summary lists every course as `created`, `updated`, `unchanged` or `closed`.
 - Every `courses` entry and every `race_courses` entry becomes a park course. A
   race course is a `loop` (its start and finish are one line on the lead-in),
   and its route's `official_distance_m` is the race distance.
+- `park_courses.laps` is a race course's `laps`. A trail course takes its
+  entry's `laps` if it has one, else 1 for a `loop` and null for an
+  `out_and_back` or `point_to_point` course (decisions § 2438).
+- The manifest's `attribution` is written to `park_courses.attribution` on
+  every course, and only there: the segment's and route's description is the
+  course's own text. The first sync after migration `20271130002438` reports
+  every course loaded before it `updated` (the credit leaves the description,
+  laps and attribution are written), with no backfill.
 - It refuses what the database would, before connecting: a bad slug or
   vocabulary value, more than 50 checkpoints, a coordinate out of range, a
   GeoJSON whose line no longer matches the manifest (point count, or length
   more than 1 % off), a loop whose ends are more than 25 m apart, a race course
-  that does not measure its race distance.
+  that does not measure its race distance, laps that are not a whole number
+  from 1 to 1000, an attribution over 300 characters.
 
 To preview a change against production, run the Release Backend workflow by
 hand with `dry_run` on (the default): it runs only the sync, behind the

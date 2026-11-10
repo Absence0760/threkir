@@ -90,5 +90,7 @@ test('routeGuideEnglish leads with the ground-check status and the getting-there
 	assert.equal(pending[0], 'Drafted from map data, not yet checked on the ground.');
 	assert.equal(pending[1], 'Park by the boathouse.');
 	assert.equal(pending[2], 'Start on Lake Trail.');
+	assert.equal(pending[5], '400 m: turn left onto Ridge Trail.', 'under a kilometre reads in metres');
+	assert.equal(pending.at(-1), '2.0 km: finish.');
 	assert.equal(routeGuideEnglish(guide, '2026-12-01')[0], 'Checked on the ground on 2026-12-01.');
 });

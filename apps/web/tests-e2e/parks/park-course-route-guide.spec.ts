@@ -115,7 +115,7 @@ test.describe('park course route guide (web)', () => {
 		expect(gpx).toContain(
 			'<desc>Drafted from map data, not yet checked on the ground.\nPark by the boathouse.\nStart on Lake Trail.\n',
 		);
-		expect(gpx).toContain('0.4 km: turn left onto Ridge Trail.');
+		expect(gpx).toContain('400 m: turn left onto Ridge Trail.');
 	});
 
 	test('the share page shows the same guide', async ({ page }) => {

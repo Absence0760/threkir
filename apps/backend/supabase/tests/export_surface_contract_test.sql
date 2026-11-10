@@ -37,7 +37,7 @@
 
 begin;
 
-select plan(33);
+select plan(34);
 
 -- ── the exports bucket ──────────────────────────────────────────────────────
 
@@ -78,8 +78,18 @@ select is(
   (select coalesce(string_agg(id, ', ' order by id), '')
      from storage.buckets
     where exists (select 1 from unnest(allowed_mime_types) t where t like 'image/%')),
-  'avatars, club-photos, route-photos, run-photos',
-  'exactly four buckets accept images — a new one is held to the strippable set or it is not created');
+  'avatars, club-photos, dm-images, route-photos, run-photos',
+  'exactly five buckets accept images — a new one is held to the strippable set or it is not created');
+
+-- (3b) dm-images (20271212000004, issue #1216) is the one image bucket held
+-- to a NARROWER set than (4): both clients re-encode a picked photo to JPEG
+-- before upload, and the worker decodes and re-encodes it again before any
+-- reader is admitted, so the bucket takes exactly image/jpeg and nothing an
+-- upload could hide metadata in survives either way.
+select is(
+  (select array_to_string(allowed_mime_types, ',') from storage.buckets where id = 'dm-images'),
+  'image/jpeg',
+  'the dm-images bucket accepts exactly image/jpeg — the format both clients re-encode to');
 
 -- (4) And each accepts exactly the strippable set, in both directions. `@>`
 -- alone would pass a bucket narrowed to `['image/png']`, which breaks every

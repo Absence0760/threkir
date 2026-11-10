@@ -289,7 +289,7 @@ Until step 4 lands, treat the secret as compromised-if-logs-are: the channel is 
 
 ---
 
-## Merge gates — what protects `main`, and the one scanner that does not
+## Merge gates — what protects `main`, and the scanners that do not
 
 Every deploy starts with a merge, so the merge gate is the first production
 control. Branch protection on `main` requires **exactly one status context**:
@@ -367,8 +367,9 @@ way a hand-maintained duplicate does -- a name here that the register has
 dropped, or an entry there this list never mentions, fails `workflow-lint`.
 
 - `security.yml` -- CodeQL's `analyze` declares no severity threshold, so a
-  fold would gate on the analysis completing rather than on what it found. The
-  section below is entirely about this one.
+  fold would gate on the analysis completing rather than on what it found. A
+  CodeQL finding gates through the code-scanning ruleset instead, which the
+  section below is about.
 - `pr-title-lint.yml` -- it triggers on `edited`, which is how a corrected
   title re-lints. `ci.yml` carries no `types:` and deliberately not that one,
   since `edited` rebuilds every job on a description typo.
@@ -392,12 +393,18 @@ dropped, or an entry there this list never mentions, fails `workflow-lint`.
   (every lockfile) report to code scanning and the job summary and exit clean
   on a finding, so a fold would gate on the scanners completing, which an OSV
   database or GitHub API outage can stop, rather than on what they found.
-  Blocking on a finding is a later policy change, after the baseline is fixed
-  and the CISO / Security Analyst sign off, made through the code-scanning
-  ruleset ([§ 2412](../architecture/decisions.md)).
+  A **zizmor** finding gates through the code-scanning ruleset, beside CodeQL
+  (section below, [§ 2452](../architecture/decisions.md)). **osv-scanner stays
+  advisory**: its SARIF results carry no line region, so GitHub files every one
+  at line 1 of the lockfile, and merge protection counts only an alert whose
+  lines are all in the PR diff. Required, it would almost never block on a real
+  finding but would block every PR whenever its upload went missing. A
+  diff-aware dependency gate is a separate follow-up
+  ([§ 2412](../architecture/decisions.md), [§ 2452](../architecture/decisions.md)).
 
 The register carries each reason in full; the list above is the operator's
-index into it. All six go red on a finding and the PR merges anyway, so a red
+index into it. Apart from the CodeQL and zizmor findings the ruleset blocks on,
+all of them go red on a finding and the PR merges anyway, so a red
 row from any of them is read rather than waited for. The root `CLAUDE.md` says
 the same about `pr-title-lint.yml`'s `lint title` in the words a contributor
 meets it in, and rule 8 pins that sentence too.
@@ -415,17 +422,41 @@ red row and fixed with a retitle; that is the trade
 ([§ 1585](../architecture/decisions.md)).
 
 
-### CodeQL is the exception, and it is a repo setting
+### CodeQL and zizmor are the exception, and it is a repo setting
 
-`security.yml`'s four CodeQL analyses and two Trivy jobs are **not** in the
-gate. Since 2026-10-14 a CodeQL **finding** blocks the merge anyway, through the
-repository ruleset **Code scanning gate** on the default branch (id `25104920`):
-it requires code scanning results from the `CodeQL` tool and refuses the merge
-when the PR introduces a security alert of **high or higher** or any alert at
-**error** level; lower-severity notes do not block. Repository admins can
-bypass it, which is the escape hatch for a CodeQL outage -- the alternative,
-flipping the ruleset to *evaluate*, keeps the record without the lock
-([§ 1908](../architecture/decisions.md)). The required status-check set is still
+`security.yml`'s four CodeQL analyses and two Trivy jobs, and
+`supply-chain-scan.yml`'s zizmor job, are **not** in the gate. A **finding**
+from CodeQL (since 2026-10-14, [§ 1908](../architecture/decisions.md)) or from
+zizmor (since 2026-11-10, [§ 2452](../architecture/decisions.md)) blocks the
+merge anyway, through the repository ruleset **Code scanning gate** on the
+default branch (id `25104920`). It requires code scanning results from both the
+`CodeQL` and the `zizmor` tool, each at `alerts_threshold: errors` and
+`security_alerts_threshold: high_or_higher`, and refuses the merge when the PR
+introduces a security alert of **high or higher** or any alert at **error**
+level on lines the PR changed; lower-severity warnings and notes do not block.
+zizmor sets no `security-severity` and maps its High findings to `error`, so for
+zizmor only High findings block. osv-scanner is deliberately not in the ruleset
+(see its bullet above). Repository admins can bypass the ruleset -- the
+alternative, flipping it to *evaluate*, keeps the record without the lock.
+
+**Conditions the zizmor gate was approved under** ([§ 2452](../architecture/decisions.md)):
+
+- (a) A throwaway draft PR with a zizmor High finding in its diff shows the
+  merge as blocked; the PR is then closed and its branch deleted.
+- (b) The next real PR's merge box lists the zizmor results as satisfied.
+  A required tool whose analysis has not uploaded counts as in progress and
+  the merge waits with no timeout; fork PRs hit this, since their upload is
+  skipped.
+- (c) **If the zizmor (or CodeQL) analysis is missing, re-run the workflow.
+  Bypass only for a hotfix, and record every bypass on the PR** (who, why, and
+  the run that failed to upload).
+- (d) **Monthly, review the ruleset's version history
+  (`gh api repos/Absence0760/threkir/rulesets/25104920/history`) and its rule
+  insights for bypasses (`.../rulesets/rule-suites`)**, against the bypass
+  records on the PRs. The owner is the only admin, so this review is the
+  compensating control for the segregation-of-duties gap.
+- (e) A diff-aware dependency gate (new advisories in the head only, CVSS
+  >= 7.0) is a separate follow-up issue with its own sign-off. The required status-check set is still
 exactly `CI gate`. Before that ruleset, a CodeQL alert did not block a merge,
 and the reason why is kept below because it is why the gate is a ruleset and
 not a status check. The
@@ -437,10 +468,10 @@ of them is a severity threshold (re-read against the action's own `action.yml`
 it would re-key every analysis in the Security tab, because the action derives
 its analysis key from the *run's* workflow path.
 
-What actually gates a CodeQL finding is a repo setting, and only a repo
-setting -- the ruleset above. In **Settings -> Rules -> Rulesets** it is the
-**code scanning results** requirement with the `CodeQL` tool at the thresholds
-stated there. Leave the required *status check* set at exactly
+What actually gates a CodeQL or zizmor finding is a repo setting, and only a
+repo setting -- the ruleset above. In **Settings -> Rules -> Rulesets** it is
+the **code scanning results** requirement with the `CodeQL` and `zizmor` tools
+at the thresholds stated there. Leave the required *status check* set at exactly
 `CI gate`; do **not** add the four `analyze` job names to it as a substitute,
 because that gates on the scan running rather than on what it found. Adding
 them is still worth doing if the worry is a scanner that silently stops
@@ -763,6 +794,10 @@ The server-side sweep of route-photo bytes no `route_photos` row references ([re
 ### Coach run map — after the CISO / Security Analyst review
 
 A linked coach's clipped view of the athlete's run map ([coach_roster.md § Coach run map](../features/coach_roster.md#coach-run-map-decisions--1968), decisions § 1968) ships closed: no migration writes the `coach_run_map` row of `private.feature_flags`, so a coach keeps run rows and stats only, as before. Open it only after the CISO / Security Analyst has reviewed the `coached_runs` view and the coach branch of `clip-public-track` — then add `"coach_run_map": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR; the next `backend@*` release (or a Release Backend dispatch from `main`) applies it and reports `created` / `updated` in its step summary. Closing it again is the same edit with `"enabled": false`; both clients stop drawing the map and the view empties at once.
+
+### Photos in direct messages — after the CISO / Security Analyst reviews the image path
+
+Photos in direct messages (issue #1216, migration `20271213121604`, [direct_messages.md § Photos](../features/direct_messages.md#photos)) ship closed: no migration writes the `dm_images` row of `private.feature_flags` (`seed.sql` opens it for local and CI), so `create_dm_image_upload` answers 0A000, the INSERT policy refuses an `image_id`, and neither client offers the attach button. Before opening it: (1) the CISO / Security Analyst reviews the path end to end — the client re-encode, the owner-only upload path, the worker's decode-and-re-encode (no metadata survives, 40-megapixel decode guard), the read policy that admits only the re-encoded copy, 10-minute signed URLs, and the row-driven erasure that keeps a report-held photo; (2) the job worker running in prod is the release that handles `dm_image_process` and `dm_image_orphan_sweep` (otherwise photos stay "Preparing" and deleted bytes wait for a worker that never comes); (3) the Privacy Policy names photos in messages and how long they are kept (retention.md). Then add `"dm_images": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. Closing it again is the same edit with `"enabled": false`; photos already sent stay readable and are erased on their normal schedule.
 
 ### Share with coach — after the CISO / Security Analyst confirms the AI labelling
 

@@ -42,6 +42,7 @@ class DmThread {
     this.archived = false,
     this.markedUnread = false,
     this.request = false,
+    this.lastImage = false,
   }) : assert(partnerId != null || deletedPartnerKey != null);
 
   /// The conversation the mute, archive and delete-for-me actions act on.
@@ -80,6 +81,10 @@ class DmThread {
   /// requester learns nothing until it is accepted.
   final bool request;
 
+  /// The latest message carries a photo (migration 20271213121604), so a
+  /// preview with no caption can say so.
+  final bool lastImage;
+
   /// Unique per conversation, for keys and the opened-at map.
   String get threadKey => partnerId ?? deletedPartnerKey!;
 
@@ -110,6 +115,7 @@ class DmThread {
     archived: archived ?? this.archived,
     markedUnread: markedUnread ?? this.markedUnread,
     request: request ?? this.request,
+    lastImage: lastImage,
   );
 }
 
@@ -164,4 +170,76 @@ class CoachShareUnavailable implements Exception {
 
   @override
   String toString() => 'CoachShareUnavailable';
+}
+
+/// `set_direct_message_reaction` refused (migration 20271213121602): an
+/// unsent or hidden message, a block either way, an unaccepted request
+/// (55000), or a message outside the viewer's conversations (P0002). One
+/// sentence for all of them, so a block is never told apart.
+class DmReactionRefused implements Exception {
+  const DmReactionRefused();
+
+  @override
+  String toString() => 'DmReactionRefused';
+}
+
+/// `create_dm_image_upload` refused because photos in messages are not
+/// switched on (SQLSTATE 0A000, the server's `dm_images` gate, migration
+/// 20271213121604).
+class DmImageUnavailable implements Exception {
+  const DmImageUnavailable();
+
+  @override
+  String toString() => 'DmImageUnavailable';
+}
+
+/// One reaction on a direct message, as the SELECT policy hands it out.
+typedef DmReactionRecord = ({String messageId, String userId, String reaction});
+
+/// One message that matched a search of the viewer's own conversations
+/// (migration 20271213121603). Mirrors web's `DmSearchHit`.
+class DmSearchHit {
+  const DmSearchHit({
+    required this.id,
+    required this.conversationId,
+    required this.partnerId,
+    required this.deletedPartnerKey,
+    required this.body,
+    required this.createdAt,
+    required this.fromMe,
+    this.partnerName,
+  });
+
+  final String id;
+  final String conversationId;
+
+  /// Null when the partner deleted their account; [deletedPartnerKey] names
+  /// the conversation then.
+  final String? partnerId;
+  final String? deletedPartnerKey;
+  final String? partnerName;
+  final String body;
+  final DateTime createdAt;
+  final bool fromMe;
+
+  DmThreadTarget get target => partnerId != null
+      ? DmPartnerThread(partnerId!)
+      : DmDeletedPartnerThread(deletedPartnerKey!);
+}
+
+/// One message photo: its processing state and, once the server has
+/// re-encoded it, a short-lived signed URL. Mirrors web's `DmImageView`.
+class DmImageView {
+  const DmImageView({
+    required this.status,
+    this.width,
+    this.height,
+    this.url,
+  });
+
+  /// `pending`, `ready` or `rejected`; anything else reads as `pending`.
+  final String status;
+  final int? width;
+  final int? height;
+  final String? url;
 }

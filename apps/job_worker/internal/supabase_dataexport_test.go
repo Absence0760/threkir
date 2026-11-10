@@ -976,6 +976,11 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 	if !strings.Contains(dmSentQ, "kind") || !strings.Contains(dmSentQ, "coach_message_id") {
 		t.Errorf("direct_messages (sent) select must carry kind and coach_message_id; got %q", dmSentQ)
 	}
+	// A photo (20271213121604) is named by image_id; the image's own row and
+	// bytes are in direct_message_images.json and storage/dm-images/.
+	if !strings.Contains(dmSentQ, "image_id") {
+		t.Errorf("direct_messages (sent) select must carry image_id; got %q", dmSentQ)
+	}
 	// Where a message request to or from the subject stands is their own
 	// conversation state (20271115002384).
 	if !strings.Contains(convQ, "request_state") || !strings.Contains(convQ, "requested_at") {

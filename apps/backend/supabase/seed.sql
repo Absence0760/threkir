@@ -3204,3 +3204,12 @@ insert into private.feature_flags (name, enabled) values ('display_name_from_pro
 -- specs exercise it.
 insert into private.feature_flags (name, enabled) values ('coach_share', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Photos in direct messages gate (20271213121604) ───────────────────
+--
+-- Sending a photo in a direct message is fail-closed behind a
+-- private.feature_flags row no migration writes, so prod stays off until the
+-- pre-deploy review in docs/ops/deployment.md (issue #1216). Local stacks and
+-- CI open it so both clients and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('dm_images', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

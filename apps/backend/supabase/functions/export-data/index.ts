@@ -695,17 +695,19 @@ async function writeBackupZip(
 		},
 	);
 
-	// Prefix-walk the user's folders in the runs + run-photos buckets so
-	// every object under {userId}/ lands in the zip even without a DB
-	// row — the row-driven loops above miss CAS-orphaned matched tracks,
-	// legacy tracks whose run row is gone, and worker-generated photo
-	// thumbnails. Deduped against the row-driven entries via
+	// Prefix-walk the user's folders in the runs, run-photos and dm-images
+	// buckets so every object under {userId}/ lands in the zip even without
+	// a DB row — the row-driven loops above miss CAS-orphaned matched
+	// tracks, legacy tracks whose run row is gone, and worker-generated
+	// photo thumbnails; the direct-message photos the subject sent ship
+	// only this way. Deduped against the row-driven entries via
 	// orphanStorageEntries; a per-bucket list failure is tolerated so the
 	// row-driven export still ships. Mirrors the Go builder's walk.
 	let orphansAdded = 0;
 	for (const { bucket, archived } of [
 		{ bucket: 'runs', archived: archivedRunObjects },
 		{ bucket: 'run-photos', archived: archivedPhotoObjects },
+		{ bucket: 'dm-images', archived: new Set<string>() },
 	]) {
 		try {
 			const keys = await listAllObjects(supabase, bucket, userId);

@@ -257,6 +257,10 @@ func (f *fakeBackend) DownloadPhoto(_ context.Context, path string) ([]byte, str
 	return b, "image/jpeg", nil
 }
 
+func (f *fakeBackend) DownloadDmImage(_ context.Context, path string, _ int64) ([]byte, error) {
+	return nil, fmt.Errorf("dm image not found: %s", path)
+}
+
 func (f *fakeBackend) DownloadAvatar(_ context.Context, path string) ([]byte, string, error) {
 	b, ok := f.avatarBytes[path]
 	if !ok {
@@ -2080,5 +2084,68 @@ func TestBuildArtifact_ShortSectionMakesTheBuildIncomplete(t *testing.T) {
 	}
 	if built.Complete {
 		t.Error("a section short of the database must be disclosed on the build, not only in manifest.json")
+	}
+}
+
+// The subject's sent direct-message photos ship from the dm-images prefix
+// walk; a raw upload ({uid}/{image}/upload) and another user's folder do not.
+func TestBuildBackupZip_PrefixWalkCarriesOwnDmImagesOnly(t *testing.T) {
+	jpg := []byte{0xFF, 0xD8, 0x01, 0xFF, 0xD9}
+	var fetched []string
+	dmFetch := func(_ context.Context, p string) ([]byte, error) {
+		fetched = append(fetched, p)
+		return jpg, nil
+	}
+	lister := func(_ context.Context, bucket, prefix string) ([]string, error) {
+		if bucket != "dm-images" {
+			return nil, nil
+		}
+		if prefix != "uid" {
+			t.Errorf("lister prefix=%q, want uid", prefix)
+		}
+		return []string{
+			"uid/img-1.jpg",
+			"uid/img-2/upload",
+			"uid/../other/img-9.jpg",
+			"other/img-3.jpg",
+		}, nil
+	}
+	body, err := buildBackupZip(context.Background(), BuildBackupZipInput{
+		Runs: runSource(nil), UserID: "uid", ExportedFrom: "test",
+	}, BackupFetchers{DmImage: dmFetch, ListObjects: lister})
+	if err != nil {
+		t.Fatal(err)
+	}
+	zr, _ := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	entries := map[string][]byte{}
+	for _, f := range zr.File {
+		rc, _ := f.Open()
+		b, _ := io.ReadAll(rc)
+		rc.Close()
+		entries[f.Name] = b
+	}
+	if got := entries["storage/dm-images/img-1.jpg"]; !bytes.Equal(got, jpg) {
+		t.Errorf("own re-encoded photo missing; entries=%v", keysOf(entries))
+	}
+	for name := range entries {
+		if strings.HasPrefix(name, "storage/dm-images/") && name != "storage/dm-images/img-1.jpg" {
+			t.Errorf("unexpected dm-images entry %s", name)
+		}
+	}
+	if len(fetched) != 1 || fetched[0] != "uid/img-1.jpg" {
+		t.Errorf("fetched %v; a raw upload or a foreign object must not even be downloaded", fetched)
+	}
+}
+
+func TestSkipDmImageUpload(t *testing.T) {
+	for rel, want := range map[string]bool{
+		"img.jpg":        false,
+		"img/upload":     true,
+		"img/nested/x":   true,
+		"img.jpg/upload": true,
+	} {
+		if got := skipDmImageUpload(rel); got != want {
+			t.Errorf("skipDmImageUpload(%q) = %v, want %v", rel, got, want)
+		}
 	}
 }

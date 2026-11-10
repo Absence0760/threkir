@@ -14,6 +14,11 @@
 	import PlanChangeRequests from '#lib/components/PlanChangeRequests.svelte';
 	import CoachShareCard from '#lib/components/CoachShareCard.svelte';
 	import CoachAssistPanel from '#lib/components/CoachAssistPanel.svelte';
+	import DmMessageText from '#lib/components/DmMessageText.svelte';
+	import DmReactions from '#lib/components/DmReactions.svelte';
+	import DmImage from '#lib/components/DmImage.svelte';
+	import { parseDmReaction, withMyDmReaction, type DmReaction, type DmReactionRow } from '#lib/social/dm_reactions.ts';
+	import { DmImageEncodeError, encodeDmImage } from '#lib/social/dm_image_encode.ts';
 	import { coachAssistEnabled } from '#lib/coach/coach_assist_flag.ts';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
 	import {
@@ -37,10 +42,30 @@
 		unblockUser,
 		isBlockedByViewer,
 		isActiveCoachOf,
+		fetchDmReactions,
+		setDmReaction,
+		fetchDmImagesEnabled,
+		uploadDmImage,
 		type DirectMessage
 	} from '#lib/core/data.ts';
 
 	let messages = $state<DirectMessage[]>([]);
+	// Reactions on the messages on screen (migration 20271213121602), re-read
+	// with every thread read so a reaction from the other side appears on the
+	// next poll.
+	let reactions = $state<DmReactionRow[]>([]);
+	let reactionsFor = '';
+	// A read that started before another read, or before a reaction the viewer
+	// set, would put an older picture back; both are dropped.
+	let reactionReadSeq = 0;
+	let reactionWrites = 0;
+	// Photos (migration 20271213121604): offered only while the server's gate
+	// is open; one picked photo at a time, shown only in the conversation it
+	// was picked in.
+	let photosEnabled = $state(false);
+	let photoDraft = $state<{ thread: string; blob: Blob; preview: string } | null>(null);
+	let photoInput = $state<HTMLInputElement | null>(null);
+	let preparingPhoto = $state(false);
 	// Drafts are PER THREAD. A single top-level draft followed the viewer into
 	// whichever conversation they clicked next — the composer lives inside the
 	// `{#if !activeId}{:else}` branch, so switching threads never tears it down
@@ -197,6 +222,7 @@
 			if (id === activeId) loadingThread = false;
 		}
 		void scrollToNewest();
+		void loadReactions(id);
 		await markThreadRead(id);
 	}
 
@@ -237,6 +263,78 @@
 	// flight is dropped rather than putting an unsent message's text back.
 	let localWrites = 0;
 
+	async function loadReactions(id: string) {
+		const ids = messages.filter((m) => m.unsent_at === null).map((m) => m.id);
+		const seq = ++reactionReadSeq;
+		const writes = reactionWrites;
+		try {
+			const rows = await fetchDmReactions(ids);
+			if (id !== activeId || seq !== reactionReadSeq || writes !== reactionWrites) return;
+			reactions = rows;
+			reactionsFor = id;
+		} catch (e) {
+			console.warn('message reactions read failed', e);
+			if (reactionsFor !== id) reactions = [];
+		}
+	}
+
+	async function react(m: DirectMessage, next: DmReaction | null) {
+		const id = activeId;
+		if (!id || !me) return;
+		const previous = reactions.find((r) => r.message_id === m.id && r.user_id === me)?.reaction ?? null;
+		const write = ++reactionWrites;
+		const mine = (reaction: DmReaction) => ({ message_id: m.id, user_id: me, reaction });
+		reactions = withMyDmReaction(reactions, m.id, me, next, mine);
+		actionError = null;
+		try {
+			await setDmReaction(m.id, next);
+		} catch (e) {
+			if (id === activeId) {
+				if (write === reactionWrites) {
+					reactions = withMyDmReaction(reactions, m.id, me, parseDmReaction(previous), mine);
+				}
+				actionError = errorCopy(e, tr, 'messages.reactionRefused', 'messages.reactionRefused');
+			}
+		}
+	}
+
+	$effect(() => {
+		if (!auth.user) return;
+		void fetchDmImagesEnabled().then((on) => (photosEnabled = on));
+	});
+
+	$effect(() => () => {
+		if (photoDraft) URL.revokeObjectURL(photoDraft.preview);
+	});
+
+	function clearPhotoDraft() {
+		if (photoDraft) URL.revokeObjectURL(photoDraft.preview);
+		photoDraft = null;
+		if (photoInput) photoInput.value = '';
+	}
+
+	async function pickPhoto(e: Event & { currentTarget: HTMLInputElement }) {
+		const file = e.currentTarget.files?.[0];
+		const id = activeId;
+		if (!file || !id) return;
+		preparingPhoto = true;
+		sendError = null;
+		try {
+			const blob = await encodeDmImage(file);
+			if (id !== activeId) return;
+			clearPhotoDraft();
+			photoDraft = { thread: id, blob, preview: URL.createObjectURL(blob) };
+		} catch (err) {
+			sendError =
+				err instanceof DmImageEncodeError && err.kind === 'too_large'
+					? tr('messages.photoTooLarge')
+					: tr('messages.photoUnreadable');
+		} finally {
+			preparingPhoto = false;
+			if (photoInput) photoInput.value = '';
+		}
+	}
+
 	function atBottom(): boolean {
 		if (!scroller) return true;
 		return scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 32;
@@ -257,6 +355,7 @@
 			// A reader scrolled up stays where they are: new messages append
 			// below, so leaving scrollTop alone keeps what they are reading.
 			if (follow || next.gap) void scrollToNewest();
+			void loadReactions(id);
 			await markThreadRead(id);
 		} catch (e) {
 			console.warn('message thread poll failed', e);
@@ -517,6 +616,7 @@
 			hasMore = result.hasMore;
 			await tick();
 			if (scroller) scroller.scrollTop = scroller.scrollHeight - fromBottom;
+			void loadReactions(id);
 		} catch {
 			if (id === activeId) earlierError = true;
 		} finally {
@@ -527,12 +627,18 @@
 	async function send() {
 		const id = activeId;
 		const partnerId = activePartnerId;
-		if (!id || !partnerId || blockedByMe || !draft.trim() || sending) return;
+		const photo = photoDraft?.thread === id ? photoDraft : null;
+		if (!id || !partnerId || blockedByMe || (!draft.trim() && !photo) || sending) return;
 		sending = true;
 		sendError = null;
 		try {
 			const body = drafts[id] ?? '';
-			const msg = await sendDm(partnerId, body, undefined, { aiAssisted: assistedDrafts[id] === true });
+			const imageId = photo ? await uploadDmImage(photo.blob) : undefined;
+			const msg = await sendDm(partnerId, body, undefined, {
+				aiAssisted: assistedDrafts[id] === true,
+				imageId
+			});
+			if (photo && photoDraft === photo) clearPhotoDraft();
 			localWrites++;
 			messages = mergeDmMessages(messages, [msg]);
 			void scrollToNewest();
@@ -748,7 +854,7 @@
 				{@const attached = m.route_id}
 				{@const mine = m.sender_id === me}
 				<div class="bubble" class:mine class:unsent={m.unsent_at !== null} data-testid="dm-bubble">
-					{#if m.unsent_at !== null || m.body === null}
+					{#if m.unsent_at !== null || (m.body === null && m.image_id === null)}
 						<span class="text placeholder">{tr('messages.unsentPlaceholder')}</span>
 					{:else if editingId === m.id}
 						<div class="edit" data-testid="dm-edit-form">
@@ -772,15 +878,20 @@
 								>{tr('messages.editSave')}</button>
 							</div>
 						</div>
-					{:else if m.kind === 'coach_share'}
+					{:else if m.kind === 'coach_share' && m.body !== null}
 						<CoachShareCard body={m.body} {mine} coachMessageId={m.coach_message_id} {partnerName} />
 					{:else if hasDmRouteAttachment(attached)}
 						<DmRouteAttachment routeId={attached} />
-						{#if !bodyRestatesAttachment(m.body, attached)}
-							<span class="text">{m.body}</span>
+						{#if m.body !== null && !bodyRestatesAttachment(m.body, attached)}
+							<DmMessageText body={m.body} />
 						{/if}
 					{:else}
-						<span class="text">{m.body}</span>
+						{#if m.image_id !== null}
+							<DmImage imageId={m.image_id} />
+						{/if}
+						{#if m.body !== null}
+							<DmMessageText body={m.body} />
+						{/if}
 					{/if}
 					<span class="meta">
 						<span class="when">{fmtTime(m.created_at)}</span>
@@ -816,6 +927,15 @@
 							{/if}
 						{/if}
 					</span>
+					{#if m.unsent_at === null && editingId !== m.id}
+						<DmReactions
+							messageId={m.id}
+							rows={reactions}
+							{me}
+							canReact={!!activePartnerId && !blockedByMe && !isRequest && !deleted}
+							onset={(r) => void react(m, r)}
+						/>
+					{/if}
 				</div>
 				{#if seen?.id === m.id && seen.seen_at}
 					<p class="seen" data-testid="dm-seen">
@@ -883,7 +1003,43 @@
 		{#if draftAssisted}
 			<p class="assisted-note" data-testid="dm-assisted-note">{tr('coachAssist.composerNote')}</p>
 		{/if}
+		{#if photoDraft && photoDraft.thread === activeId}
+			<div class="photo-draft" data-testid="dm-photo-draft">
+				<img src={photoDraft.preview} alt={tr('messages.photoDraftAlt')} />
+				<button
+					type="button"
+					class="btn btn-secondary btn-sm"
+					onclick={clearPhotoDraft}
+					aria-label={tr('messages.photoRemove')}
+					data-testid="dm-photo-remove"
+				>
+					<span class="material-symbols" aria-hidden="true">close</span>
+				</button>
+			</div>
+		{/if}
 		<div class="composer">
+			{#if photosEnabled}
+				<input
+					bind:this={photoInput}
+					type="file"
+					accept="image/*"
+					class="visually-hidden"
+					tabindex="-1"
+					onchange={(e) => void pickPhoto(e)}
+					data-testid="dm-photo-input"
+				/>
+				<button
+					type="button"
+					class="btn btn-secondary attach"
+					aria-label={tr('messages.photoAttach')}
+					title={tr('messages.photoAttach')}
+					disabled={sending || preparingPhoto}
+					onclick={() => photoInput?.click()}
+					data-testid="dm-attach-photo"
+				>
+					<span class="material-symbols" aria-hidden="true">add_photo_alternate</span>
+				</button>
+			{/if}
 			<textarea
 				value={draft}
 				oninput={(e) => {
@@ -896,7 +1052,11 @@
 				rows="1"
 				maxlength="4000"
 			></textarea>
-			<button class="btn btn-primary" onclick={send} disabled={sending || !draft.trim()}>
+			<button
+				class="btn btn-primary"
+				onclick={send}
+				disabled={sending || preparingPhoto || (!draft.trim() && photoDraft?.thread !== activeId)}
+			>
 				{sending ? '…' : tr('messages.send')}
 			</button>
 		</div>
@@ -1164,6 +1324,22 @@
 		font: inherit;
 		background: var(--color-bg);
 		color: var(--color-text);
+	}
+	.composer .attach {
+		flex: 0 0 auto;
+		min-width: 2.75rem;
+	}
+	.photo-draft {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.5rem;
+		padding: var(--space-sm) var(--space-lg) 0;
+	}
+	.photo-draft img {
+		max-height: 6rem;
+		max-width: 10rem;
+		border-radius: var(--radius-md);
+		object-fit: cover;
 	}
 	/* The layout shows one pane at a time on narrow screens; this is the
 	   way back to the list. */

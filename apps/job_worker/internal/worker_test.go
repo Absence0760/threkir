@@ -115,6 +115,9 @@ type fakeBackend struct {
 	// segment_match state; nil fails every call. Methods live in
 	// handler_segment_match_test.go.
 	segmentMatch *fakeSegmentMatch
+	// dm_image_process / dm_image_orphan_sweep state; nil fails every
+	// call. Methods live in handler_dm_image_process_test.go.
+	dm *fakeDmImages
 
 	// downloadDelay, when non-zero, makes DownloadTrack block for
 	// that duration OR until the caller's context is cancelled.

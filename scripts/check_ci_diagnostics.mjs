@@ -432,10 +432,11 @@ export const PR_ADVISORY = new Map([
 		'zizmor (SARIF mode) and osv-scanner both exit clean on a finding by design, so a fold ' +
 			'would gate on the scanners COMPLETING, not on what they found — and completion ' +
 			'depends on the OSV database download and the GitHub API, so an outage there would ' +
-			'block every merge while catching nothing. Making a finding block is a policy change ' +
-			'that needs the current baseline fixed and CISO / Security Analyst sign-off first; ' +
-			'the mechanism then is the code-scanning ruleset naming these tools (as it names ' +
-			'CodeQL, decisions § 1908), not a needs: entry.',
+			'block every merge while catching nothing. What gates a zizmor finding is the Code ' +
+			'scanning gate ruleset, which names zizmor beside CodeQL (decisions § 1908, § 2452, ' +
+			'docs/ops/deployment.md § Merge gates). osv-scanner stays advisory: its SARIF results ' +
+			'carry no line region, so every alert sits at line 1 of a lockfile and merge ' +
+			'protection cannot attribute it to a PR, while a missing upload would block every PR.',
 	],
 ]);
 

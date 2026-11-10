@@ -1,11 +1,14 @@
 // ignore_for_file: avoid_relative_lib_imports
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart' hide Route;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 import 'package:supabase_flutter/supabase_flutter.dart' show PostgrestException;
 
 import '../lib/dm_pending_hides.dart';
@@ -16,10 +19,12 @@ import '../lib/screens/message_thread_screen.dart';
 import '../lib/screens/messages_screen.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/undo_queue.dart';
+import '../lib/widgets/dm_photo.dart';
 import '../lib/widgets/dm_route_attachment.dart';
 import '../lib/widgets/error_state.dart';
 import '../lib/widgets/sign_in_required_state.dart';
 import '../lib/widgets/undo_bar.dart';
+import 'pump_until.dart';
 
 const _me = 'me';
 const _partner = 'p-1';
@@ -225,17 +230,91 @@ class _FakeApi extends ApiClient {
     return DmThreadPage(messages: newest, hasMore: newestHasMore);
   }
 
+  final List<String?> sentImages = [];
+
   @override
   Future<DirectMessageRow> sendDm(
     String recipientId,
     String body, {
     String? routeId,
+    String? imageId,
   }) async {
     sent.add(body);
+    sentImages.add(imageId);
     final gate = sendGate;
     if (gate != null) return gate.future;
     if (sendError != null) throw sendError!;
-    return _msg('sent-${sent.length}', from: _me, minute: 59, body: body);
+    final row = _msg('sent-${sent.length}', from: _me, minute: 59, body: body);
+    return imageId == null
+        ? row
+        : DirectMessageRow(
+            kind: 'text',
+            id: row.id,
+            conversationId: row.conversationId,
+            senderId: row.senderId,
+            recipientId: row.recipientId,
+            body: body.trim().isEmpty ? null : body,
+            createdAt: row.createdAt,
+            imageId: imageId,
+          );
+  }
+
+  List<DmReactionRecord> reactions = [];
+  final List<List<String>> reactionReads = [];
+  final List<(String, String?)> reactionSets = [];
+  Object? reactionError;
+
+  @override
+  Future<List<DmReactionRecord>> fetchDmReactions(
+      List<String> messageIds) async {
+    reactionReads.add(messageIds);
+    return [
+      for (final r in reactions)
+        if (messageIds.contains(r.messageId)) r,
+    ];
+  }
+
+  @override
+  Future<void> setDmReaction(String messageId, String? reaction) async {
+    reactionSets.add((messageId, reaction));
+    if (reactionError != null) throw reactionError!;
+  }
+
+  bool imagesEnabled = false;
+  final Map<String, DmImageView?> images = {};
+  final List<String> imageReads = [];
+  final List<Uint8List> uploads = [];
+  Object? uploadError;
+
+  @override
+  Future<bool> fetchDmImagesEnabled() async => imagesEnabled;
+
+  @override
+  Future<DmImageView?> fetchDmImage(String imageId) async {
+    imageReads.add(imageId);
+    return images[imageId];
+  }
+
+  @override
+  Future<String> uploadDmImage(Uint8List jpeg) async {
+    uploads.add(jpeg);
+    if (uploadError != null) throw uploadError!;
+    return 'img-up-${uploads.length}';
+  }
+
+  List<DmSearchHit> searchHits = [];
+  final List<String> searches = [];
+  final Map<String, Completer<List<DmSearchHit>>> searchGates = {};
+  final Map<String, Object> searchErrors = {};
+
+  @override
+  Future<List<DmSearchHit>> searchDms(String query) async {
+    searches.add(query);
+    final error = searchErrors[query];
+    if (error != null) throw error;
+    final gate = searchGates[query];
+    if (gate != null) return gate.future;
+    return searchHits;
   }
 
   @override
@@ -2240,6 +2319,498 @@ void main() {
           find.byType(MessageThreadScreen));
       expect(thread.partnerId, 'p-7');
       expect(thread.partnerName, 'Grace');
+    });
+  });
+
+  group('photos, links and reactions (issue #1216)', () {
+    DirectMessageRow photoMsg(String id, String imageId, {String? body}) =>
+        DirectMessageRow(
+          kind: 'text',
+          id: id,
+          conversationId: 'c-1',
+          senderId: _partner,
+          recipientId: _me,
+          body: body,
+          createdAt: DateTime.utc(2026, 10, 14, 8),
+          imageId: imageId,
+        );
+
+    Future<void> pumpWith(
+      WidgetTester tester,
+      _FakeApi api, {
+      Future<Uint8List?> Function()? pickPhoto,
+      Future<bool> Function(Uri)? openLink,
+    }) async {
+      await tester.pumpWidget(_app(MessageThreadScreen(
+        api: api,
+        partnerId: _partner,
+        partnerName: 'Ada',
+        pollInterval: _quiet,
+        pickPhoto: pickPhoto,
+        openLink: openLink,
+      )));
+      await tester.pump();
+      await tester.pump();
+    }
+
+    testWidgets('a photo with no caption is not drawn as an unsent message',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [photoMsg('m1', 'img-1')]
+        ..images['img-1'] = const DmImageView(status: 'pending');
+      await pumpWith(tester, api);
+
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsNothing);
+      expect(find.byKey(const ValueKey('dm-photo-pending')), findsOneWidget);
+      expect(find.text(l10n.messagesPhotoProcessing), findsOneWidget);
+    });
+
+    testWidgets('a pending photo is checked again until it is ready',
+        (tester) async {
+      final api = _FakeApi()
+        ..newest = [photoMsg('m1', 'img-1', body: 'from the summit')]
+        ..images['img-1'] = const DmImageView(status: 'pending');
+      await pumpWith(tester, api);
+      expect(find.byKey(const ValueKey('dm-photo-pending')), findsOneWidget);
+      expect(find.text('from the summit'), findsOneWidget);
+      expect(api.imageReads, ['img-1']);
+
+      api.images['img-1'] = const DmImageView(
+        status: 'ready',
+        width: 400,
+        height: 300,
+        url: 'https://storage.invalid/sign/img-1.jpg?token=t',
+      );
+      await tester.pump(kDmPhotoPendingRecheck);
+      await tester.pump();
+
+      expect(api.imageReads, ['img-1', 'img-1']);
+      expect(find.byKey(const ValueKey('dm-photo-pending')), findsNothing);
+      expect(find.byKey(const ValueKey('dm-photo')), findsOneWidget);
+    });
+
+    testWidgets('a photo the server rejected, or one that cannot be read, '
+        'says so', (tester) async {
+      final api = _FakeApi()
+        ..newest = [photoMsg('m1', 'img-1'), photoMsg('m2', 'img-2')]
+        ..images['img-1'] = const DmImageView(status: 'rejected')
+        ..images['img-2'] = null;
+      await pumpWith(tester, api);
+
+      expect(find.text(l10n.messagesPhotoRejected), findsOneWidget);
+      expect(find.text(l10n.messagesPhotoUnavailableToView), findsOneWidget);
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsNothing);
+    });
+
+    testWidgets('a link shows its domain and opens only on a tap; markup '
+        'stays text', (tester) async {
+      final opened = <Uri>[];
+      final api = _FakeApi()
+        ..newest = [
+          _msg('m1',
+              body: 'look <b>here</b> https://www.example.com/route?id=1. '
+                  'not javascript:alert(1) or https://user@evil.com/'),
+        ];
+      await pumpWith(tester, api, openLink: (uri) async {
+        opened.add(uri);
+        return true;
+      });
+
+      expect(find.byKey(const ValueKey('dm-link-domain-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-link-domain-1')), findsNothing);
+      expect(find.text('example.com'), findsOneWidget);
+      expect(find.textContaining('<b>here</b>', findRichText: true),
+          findsOneWidget);
+      expect(find.textContaining('javascript:alert(1)', findRichText: true),
+          findsOneWidget);
+      expect(opened, isEmpty);
+
+      await tester.tap(find.byKey(const ValueKey('dm-link-0')));
+      await tester.pump();
+      expect(opened, [Uri.parse('https://www.example.com/route?id=1')]);
+    });
+
+    testWidgets('a link that cannot open says so', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1', body: 'https://a.example/x')];
+      await pumpWith(tester, api, openLink: (_) async => false);
+
+      await tester.tap(find.byKey(const ValueKey('dm-link-0')));
+      await tester.pump();
+      expect(find.text(l10n.messagesLinkOpenFailed), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    Finder chip(String reaction) =>
+        find.byKey(ValueKey('dm-reaction-chip-$reaction'));
+    Finder countIn(String reaction, String count) =>
+        find.descendant(of: chip(reaction), matching: find.text(count));
+
+    testWidgets('a reaction chip toggles the viewer\'s own and rolls back on a '
+        'refusal', (tester) async {
+      final api = _FakeApi()
+        ..newest = [_msg('m1', body: 'nice run')]
+        ..reactions = [
+          (messageId: 'm1', userId: _partner, reaction: 'heart'),
+        ];
+      await pumpWith(tester, api);
+      expect(api.reactionReads, [
+        ['m1']
+      ]);
+      expect(countIn('heart', '1'), findsOneWidget);
+
+      await tester.tap(chip('heart'));
+      await tester.pump();
+      expect(api.reactionSets, [('m1', 'heart')]);
+      expect(countIn('heart', '2'), findsOneWidget);
+
+      api.reactionError = const DmReactionRefused();
+      await tester.tap(chip('heart'));
+      await tester.pump();
+      await tester.pump();
+      expect(api.reactionSets, [('m1', 'heart'), ('m1', null)]);
+      expect(countIn('heart', '2'), findsOneWidget,
+          reason: 'the refused clear puts the viewer\'s heart back');
+      expect(find.text(l10n.messagesReactionRefused), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('a poll re-reads the reactions on screen', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1', body: 'nice run')];
+      await tester.pumpWidget(_app(MessageThreadScreen(
+        api: api,
+        partnerId: _partner,
+        partnerName: 'Ada',
+        pollInterval: const Duration(seconds: 10),
+      )));
+      await tester.pump();
+      await tester.pump();
+      expect(chip('fire'), findsNothing);
+
+      api.reactions = [(messageId: 'm1', userId: _partner, reaction: 'fire')];
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump();
+      expect(api.reactionReads.length, 2);
+      expect(countIn('fire', '1'), findsOneWidget);
+    });
+
+    testWidgets('React in the options picks one of the six', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1', body: 'nice run')];
+      await pumpWith(tester, api);
+
+      await tester.longPress(find.text('nice run'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('message-action-react')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('dm-reaction-picker')), findsOneWidget);
+      await tester.ensureVisible(
+          find.byKey(const ValueKey('dm-reaction-option-fire')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('dm-reaction-option-fire')));
+      await tester.pumpAndSettle();
+
+      expect(api.reactionSets, [('m1', 'fire')]);
+      expect(countIn('fire', '1'), findsOneWidget);
+    });
+
+    for (final (label, setUp) in <(String, void Function(_FakeApi))>[
+      (
+        'a message request',
+        (api) => api.conversationState = (
+              muted: false,
+              archivedAt: null,
+              markedUnread: false,
+              request: true
+            ),
+      ),
+      ('a partner the viewer blocked', (api) => api.blocked = true),
+    ]) {
+      testWidgets('no reacting in $label', (tester) async {
+        final api = _FakeApi()
+          ..newest = [_msg('m1', body: 'nice run')]
+          ..reactions = [
+            (messageId: 'm1', userId: _partner, reaction: 'heart'),
+          ];
+        setUp(api);
+        await pumpWith(tester, api);
+        await tester.pump();
+
+        await tester.tap(chip('heart'));
+        await tester.pump();
+        expect(api.reactionSets, isEmpty);
+
+        await tester.longPress(find.text('nice run'));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('message-action-react')), findsNothing);
+        expect(
+            find.byKey(const ValueKey('message-action-report')), findsOneWidget);
+      });
+    }
+
+    testWidgets('no attach button while the photo gate is off', (tester) async {
+      final api = _FakeApi()..newest = [_msg('m1')];
+      await pumpWith(tester, api);
+      expect(find.byKey(const ValueKey('message-composer')), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-attach-photo')), findsNothing);
+    });
+
+    testWidgets('no attach button on a request even with the gate open',
+        (tester) async {
+      final api = _FakeApi()
+        ..imagesEnabled = true
+        ..newest = [_msg('m1')]
+        ..conversationState =
+            (muted: false, archivedAt: null, markedUnread: false, request: true);
+      await pumpWith(tester, api);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('message-request-bar')), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-attach-photo')), findsNothing);
+    });
+
+    Uint8List geotaggedJpeg() {
+      final src = img.Image(width: 64, height: 48)
+        ..clear(img.ColorRgb8(10, 120, 30));
+      src.exif.gpsIfd.setGpsLocation(latitude: 51.5, longitude: -0.12);
+      return img.encodeJpg(src);
+    }
+
+    bool hasExif(Uint8List bytes) {
+      final needle = ascii.encode('Exif');
+      outer:
+      for (var i = 0; i + needle.length <= bytes.length; i++) {
+        for (var j = 0; j < needle.length; j++) {
+          if (bytes[i + j] != needle[j]) continue outer;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    Future<void> attach(WidgetTester tester, _FakeApi api) async {
+      final picked = geotaggedJpeg();
+      expect(hasExif(picked), isTrue);
+      await pumpWith(tester, api, pickPhoto: () async => picked);
+      await tester.tap(find.byKey(const ValueKey('dm-attach-photo')));
+      await pumpUntil(
+        tester,
+        () => find.byKey(const ValueKey('dm-photo-draft')).evaluate().isNotEmpty,
+        describe: 'the picked photo to be re-encoded beside the composer',
+      );
+    }
+
+    testWidgets('a photo is re-encoded without its metadata, uploaded, then '
+        'sent with its id and no caption', (tester) async {
+      final api = _FakeApi()
+        ..imagesEnabled = true
+        ..newest = [_msg('m1')];
+      await attach(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(api.uploads, hasLength(1));
+      expect(api.uploads.single.sublist(0, 3), [0xFF, 0xD8, 0xFF]);
+      expect(hasExif(api.uploads.single), isFalse);
+      expect(api.sent, ['']);
+      expect(api.sentImages, ['img-up-1']);
+      expect(find.byKey(const ValueKey('dm-photo-draft')), findsNothing);
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsNothing);
+    });
+
+    testWidgets('a refused photo send says the photo rule and keeps the photo',
+        (tester) async {
+      final api = _FakeApi()
+        ..imagesEnabled = true
+        ..newest = [_msg('m1')]
+        ..sendError = const DmSendNotPermitted();
+      await attach(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(l10n.messagesPhotoSendNotAllowed), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-photo-draft')), findsOneWidget);
+      await _drainBanner(tester);
+    });
+
+    testWidgets('the remove control drops the picked photo', (tester) async {
+      final api = _FakeApi()
+        ..imagesEnabled = true
+        ..newest = [_msg('m1')];
+      await attach(tester, api);
+
+      await tester.tap(find.byKey(const ValueKey('dm-photo-remove')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('dm-photo-draft')), findsNothing);
+      expect(_sendButton(tester).onPressed, isNull);
+    });
+  });
+
+  group('inbox search and photo preview (issue #1216)', () {
+    DmSearchHit hit(String id, String body,
+            {String? partnerId = 'p-1', String? name = 'Ada', bool mine = false}) =>
+        DmSearchHit(
+          id: id,
+          conversationId: 'c-$partnerId',
+          partnerId: partnerId,
+          deletedPartnerKey: partnerId == null ? 'k-1' : null,
+          partnerName: name,
+          body: body,
+          createdAt: DateTime.utc(2026, 10, 14, 8),
+          fromMe: mine,
+        );
+
+    Future<void> pumpInbox(WidgetTester tester, _FakeApi api) async {
+      await tester.pumpWidget(_app(MessagesScreen(
+        api: api,
+        pollInterval: _quiet,
+        threadPollInterval: _quiet,
+      )));
+      await tester.pump();
+    }
+
+    Future<void> type(WidgetTester tester, String text) async {
+      await tester.enterText(find.byKey(const ValueKey('inbox-search')), text);
+      await tester.pump();
+    }
+
+    testWidgets('a query shows its matches after a pause in typing',
+        (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada')]
+        ..searchHits = [
+          hit('m1', 'see you at the track on Tuesday'),
+          hit('m2', 'track session', partnerId: null, name: null, mine: true),
+        ];
+      await pumpInbox(tester, api);
+
+      await type(tester, 'tr');
+      await tester.pump(const Duration(milliseconds: 100));
+      await type(tester, 'track');
+      await tester.pump(kMessagesSearchDebounce);
+      await tester.pump();
+
+      expect(api.searches, ['track']);
+      expect(find.byKey(const ValueKey('inbox-search-hit-m1')), findsOneWidget);
+      expect(find.byKey(const ValueKey('inbox-search-hit-m2')), findsOneWidget);
+      expect(find.text(l10n.messagesDeletedAccount), findsOneWidget);
+      expect(find.byKey(const ValueKey('dm-thread-p-1')), findsNothing);
+      final snippet = tester.widget<RichText>(find.descendant(
+        of: find.byKey(const ValueKey('inbox-search-hit-m1')),
+        matching: find.textContaining('track', findRichText: true),
+      ));
+      TextSpan? match;
+      snippet.text.visitChildren((span) {
+        if (span is TextSpan && span.text == 'track') match = span;
+        return match == null;
+      });
+      expect(match?.style?.fontWeight, FontWeight.w700);
+
+      await tester.tap(find.byKey(const ValueKey('inbox-search-clear')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('dm-thread-p-1')), findsOneWidget);
+    });
+
+    testWidgets('a one-character query sends nothing and keeps the inbox',
+        (tester) async {
+      final api = _FakeApi()..threads = [_thread('p-1', name: 'Ada')];
+      await pumpInbox(tester, api);
+
+      await type(tester, 't');
+      await tester.pump(kMessagesSearchDebounce);
+      await tester.pump();
+
+      expect(api.searches, isEmpty);
+      expect(find.byKey(const ValueKey('inbox-search-results')), findsNothing);
+      expect(find.byKey(const ValueKey('dm-thread-p-1')), findsOneWidget);
+    });
+
+    testWidgets('only the newest query\'s answer is shown', (tester) async {
+      final api = _FakeApi();
+      final older = Completer<List<DmSearchHit>>();
+      final newer = Completer<List<DmSearchHit>>();
+      api.searchGates['run'] = older;
+      api.searchGates['runs'] = newer;
+      await pumpInbox(tester, api);
+
+      await type(tester, 'run');
+      await tester.pump(kMessagesSearchDebounce);
+      await type(tester, 'runs');
+      await tester.pump(kMessagesSearchDebounce);
+      expect(api.searches, ['run', 'runs']);
+
+      newer.complete([hit('new', 'long runs')]);
+      await tester.pump();
+      older.complete([hit('old', 'run club')]);
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('inbox-search-hit-new')), findsOneWidget);
+      expect(find.byKey(const ValueKey('inbox-search-hit-old')), findsNothing);
+    });
+
+    testWidgets('no match and a failed search each say so', (tester) async {
+      final api = _FakeApi();
+      api.searchErrors['oops'] = StateError('down');
+      await pumpInbox(tester, api);
+
+      await type(tester, 'none');
+      await tester.pump(kMessagesSearchDebounce);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('inbox-search-empty')), findsOneWidget);
+
+      await type(tester, 'oops');
+      await tester.pump(kMessagesSearchDebounce);
+      await tester.pump();
+      expect(find.byKey(const ValueKey('inbox-search-error')), findsOneWidget);
+    });
+
+    testWidgets('a hit opens its conversation', (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-1', name: 'Ada')]
+        ..searchHits = [hit('m1', 'track on Tuesday')];
+      await pumpInbox(tester, api);
+
+      await type(tester, 'track');
+      await tester.pump(kMessagesSearchDebounce);
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('inbox-search-hit-m1')));
+      await tester.pumpAndSettle();
+
+      final thread = tester
+          .widget<MessageThreadScreen>(find.byType(MessageThreadScreen));
+      expect(thread.partnerId, 'p-1');
+      expect(thread.conversationId, 'c-p-1');
+    });
+
+    testWidgets('the search is not offered on Requests', (tester) async {
+      final api = _FakeApi()
+        ..threads = [_thread('p-2', name: 'Grace', request: true)];
+      await pumpInbox(tester, api);
+      expect(find.byKey(const ValueKey('inbox-search')), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('inbox-show-requests')));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('inbox-search')), findsNothing);
+    });
+
+    testWidgets('a photo with no caption previews as Photo', (tester) async {
+      final api = _FakeApi()
+        ..threads = [
+          DmThread(
+            conversationId: 'c-p-1',
+            partnerId: 'p-1',
+            partnerName: 'Ada',
+            lastBody: null,
+            lastImage: true,
+            lastAt: DateTime.utc(2026, 10, 14, 8),
+            lastFromMe: false,
+            unread: 0,
+          ),
+        ];
+      await pumpInbox(tester, api);
+      expect(find.text(l10n.messagesPhotoPreview), findsOneWidget);
+      expect(find.text(l10n.messagesUnsentPlaceholder), findsNothing);
     });
   });
 }

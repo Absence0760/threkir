@@ -728,6 +728,24 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'direct_message_reactions.reaction',
+		clients: [
+			{ file: 'apps/web/src/lib/social/dm_reactions.ts', decl: 'DmReaction', shape: 'union' },
+			{ file: 'apps/web/src/lib/social/dm_reactions.ts', decl: 'DM_REACTIONS', shape: 'strings' },
+			{ file: 'apps/web/src/lib/social/dm_reactions.ts', decl: 'DM_REACTION_CODEPOINTS', shape: 'keys' },
+			{ file: 'apps/mobile_android/lib/dm_reactions.dart', decl: 'kDmReactions', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/widgets/dm_reaction_chips.dart', decl: 'dmReactionName', shape: 'switch' },
+		],
+	},
+	{
+		tableColumn: 'direct_message_images.status',
+		clients: [
+			{ file: 'apps/web/src/lib/social/dm_image.ts', decl: 'DmImageStatus', shape: 'union' },
+			{ file: 'apps/web/src/lib/social/dm_image.ts', decl: 'DM_IMAGE_STATUSES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/dm_image.dart', decl: 'kDmImageStatuses', shape: 'strings' },
+		],
+	},
+	{
 		tableColumn: 'plan_change_requests.status',
 		clients: [
 			{ file: 'apps/web/src/lib/training/plan_change.ts', decl: 'PLAN_CHANGE_STATUSES', shape: 'strings' },

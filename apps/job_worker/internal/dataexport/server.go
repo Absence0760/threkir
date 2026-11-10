@@ -242,6 +242,11 @@ type Backend interface {
 	// probes each candidate path and tolerates misses.
 	DownloadAvatar(ctx context.Context, path string) ([]byte, string, error)
 
+	// DownloadDmImage pulls a dm-images object, at most maxBytes of it
+	// (issue #1216). The backup builder's prefix walk carries the
+	// subject's own re-encoded direct-message photos.
+	DownloadDmImage(ctx context.Context, path string, maxBytes int64) ([]byte, error)
+
 	// ListStorageObjects walks a Storage bucket under `prefix` (the
 	// user's folder) and returns every object key, recursing into
 	// subfolders. The backup builder uses it to sweep CAS-orphaned
@@ -924,8 +929,19 @@ type BackupFetchers struct {
 	RawTrack    RawTrackFetcher
 	Photo       PhotoFetcher
 	Avatar      PhotoFetcher
+	DmImage     RawTrackFetcher
 	ListObjects ObjectLister
 }
+
+// DmImageExportMaxBytes is the dm-images bucket's file_size_limit, the most
+// one object can hold.
+const DmImageExportMaxBytes = 5 << 20
+
+// skipDmImageUpload drops a raw upload, `{uid}/{image}/upload`: only the
+// worker reads it, it is the client's bytes before the server re-encode
+// (issue #1216), and a sent image's re-encode `{uid}/{image}.jpg` sits at the
+// top of the folder.
+func skipDmImageUpload(rel string) bool { return strings.Contains(rel, "/") }
 
 // avatarExts enumerates the extensions the avatar uploader can write.
 // The web uploader keeps a SINGLE object at the stable
@@ -1242,8 +1258,8 @@ func WriteBackupZip(ctx context.Context, w io.Writer, in BuildBackupZipInput, f 
 		}
 	}
 
-	// Prefix-walk the user's folders in the runs + run-photos buckets
-	// so every object under {uid}/ lands in the zip even without a DB
+	// Prefix-walk the user's folders in the runs, run-photos and
+	// dm-images buckets so every object under {uid}/ lands in the zip even without a DB
 	// row — the row-driven loops above miss CAS-orphaned matched tracks
 	// ({uid}/{run_id}.matched.json.gz left behind by the re-upload race,
 	// see worker.go), legacy tracks whose run row is gone, the worker's
@@ -1252,8 +1268,9 @@ func WriteBackupZip(ctx context.Context, w io.Writer, in BuildBackupZipInput, f 
 	// entries; {uid}/exports/ is skipped (prior export artifacts —
 	// self-referential, and each is itself a copy of this data; the
 	// artifact now lands in its own bucket, but legacy ones are still
-	// under that prefix). A list failure is tolerated so the row-driven
-	// export still ships.
+	// under that prefix). In dm-images only the re-encoded photos the subject
+	// sent ship, under storage/dm-images/; raw uploads are skipped. A list
+	// failure is tolerated so the row-driven export still ships.
 	orphansAdded := 0
 	if f.ListObjects != nil && in.UserID != "" {
 		prefix := ownerPrefixOf(in.UserID)
@@ -1280,6 +1297,14 @@ func WriteBackupZip(ctx context.Context, w io.Writer, in BuildBackupZipInput, f 
 					body, _, err := f.Photo(ctx, key)
 					return body, err
 				},
+			})
+		}
+		if f.DmImage != nil {
+			walks = append(walks, bucketWalk{
+				bucket:   schema.BucketDmImages,
+				archived: map[string]bool{},
+				skipRel:  skipDmImageUpload,
+				fetch:    f.DmImage,
 			})
 		}
 		for _, wk := range walks {

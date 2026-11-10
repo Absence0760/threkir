@@ -427,10 +427,13 @@ final RegExp _placeholder = RegExp(r'\{(\w+)\}');
 String _fill(String template, Map<String, Object> params) => template
     .replaceAllMapped(_placeholder, (m) => '${params[m.group(1)] ?? ''}');
 
-/// Canonical-English formatting: kilometres to one decimal, metres whole.
+/// Canonical-English formatting: a distance under a kilometre in whole
+/// metres, otherwise kilometres to one decimal; heights in whole metres.
 final GuideFormat englishGuideFormat = GuideFormat(
   message: (key, params) => _fill(guideEn[key]!, params),
-  distance: (metres) => '${(metres / 1000).toStringAsFixed(1)} km',
+  distance: (metres) => metres < 1000
+      ? '${metres.round()} m'
+      : '${(metres / 1000).toStringAsFixed(1)} km',
   short: (metres) => '${metres.round()} m',
 );
 

@@ -13,7 +13,7 @@ scripts/parks/
   lib/catalogue_sync.mjs         pure: every park + the publisher -> the release sync's SQL
   sync.mjs                       the release sync's park stage (and its manual fallback)
   load.mjs                       fallback: one built park -> one SQL statement on stdout
-  publisher.json                 the official club and the owner the courses publish as
+  publisher.json                 the official club the courses publish as (slug + id)
   catalogue/<region>/<park>/
     park.json                    the spec, written by hand
     snapshot.json                source data, written by fetch_snapshot.mjs
@@ -54,7 +54,7 @@ last, after the migrations and the Edge Functions (`apps/backend/scripts/sync-pr
 `scripts/prod_sync/run.mjs`, decisions § 2429). Its park stage, `sync.mjs`,
 finds every `catalogue/<region>/<park>/manifest.json`, validates it as below,
 and calls `private.load_park_catalogue` (migrations `20271126002425` +
-`20271127002429`, decisions § 2425) once per park as the publisher in
+`20271127002429`, decisions § 2425) once per park as the official club in
 `publisher.json`, with the backfill flag on, in one transaction. The job's step
 summary lists every course as `created`, `updated`, `unchanged` or `closed`.
 
@@ -67,10 +67,17 @@ summary lists every course as `created`, `updated`, `unchanged` or `closed`.
   `closed` ("Removed from the park catalogue."), keeping its segment and every
   effort, and reopens if the manifest names it again. A closure an operator
   set is never touched.
-- `publisher.json` holds the official club (`club_slug`, `club_id`) and an
-  active owner or admin of it (`author_id`). They are public ids, not secrets.
-  The function refuses any pair that is not an owner or admin of a verified,
-  public club, so the routes it writes are official.
+- `publisher.json` holds the official club only: `club_slug`, and `club_id` as
+  a cross-check (a public id, not a secret). No author is committed. The stage
+  first calls `private.resolve_club_publisher` (migration `20271127100001`),
+  which returns the club's active owner, else its active admin with the
+  earliest `joined_at` (then the lowest user id), so an ownership change never
+  breaks a release. It fails the stage, rolled back, when the slug's club is
+  not the committed id, is not verified, public and visible, or has no active
+  owner or admin. The account it picks is one `load_park_catalogue` accepts,
+  so the routes it writes are official; after an ownership change they are
+  re-authored to the new account (`updated`, no backfill). The summary's
+  `published_by` column names it.
 - Every `courses` entry and every `race_courses` entry becomes a park course. A
   race course is a `loop` (its start and finish are one line on the lead-in),
   and its route's `official_distance_m` is the race distance.

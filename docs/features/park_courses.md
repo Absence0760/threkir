@@ -167,8 +167,12 @@ step of `release-backend.yml` runs last, after the migrations and the Edge
 Functions, and calls
 `private.load_park_catalogue` (migration `20271126002425`, made idempotent by
 `20271127002429`; decisions § 2425, § 2429) once per committed
-`scripts/parks/catalogue/<region>/<park>/manifest.json`, as the publisher in
-`scripts/parks/publisher.json`. Only the service role can execute the
+`scripts/parks/catalogue/<region>/<park>/manifest.json`. The club is
+committed in `scripts/parks/publisher.json` (slug, with its id as a
+cross-check); the author is resolved at run time by
+`private.resolve_club_publisher` (migration `20271127100001`) as the club's
+active owner, else its earliest-joined active admin, so a change of club
+ownership never breaks a release. Only the service role can execute either
 function. Nobody runs SQL in production to ship a course: merge the built
 park, then publish a `backend@*` release.
 
@@ -210,10 +214,13 @@ the next. Its route carries the race distance as `official_distance_m`.
 
 Shipping a park, or a change to one:
 
-1. Build and review it under `scripts/parks/` and merge it. The publisher is
-   committed in `scripts/parks/publisher.json`: the official club (`threkir`)
-   and its owner. The function refuses any pair that is not an active owner or
-   admin of a verified public club.
+1. Build and review it under `scripts/parks/` and merge it. The official club
+   (`threkir`) is committed in `scripts/parks/publisher.json`; the sync picks
+   its active owner (else its earliest-joined active admin) as the author when
+   it runs. It fails, rolled back, only when the club is not the committed id,
+   is not verified, public and visible, or has no active owner or admin. A
+   change of owner re-authors the official routes to the new account on the
+   next release (`updated`, with no backfill), which keeps them official.
 2. Preview it, optionally: run the Release Backend workflow by hand
    (`workflow_dispatch`) with `dry_run` left on. It runs only the sync, behind
    the `production` environment approval, and rolls every stage back after
@@ -360,6 +367,9 @@ These gate going live, not the code:
   official route, every refusal); `node --test
   scripts/parks/lib/catalogue_payload.test.mjs` (the Pocahontas manifest maps
   to six courses, validation, the printed SQL).
+- Author resolution: pgTAP `apps/backend/supabase/tests/resolve_club_publisher_test.sql`
+  (owner over an earlier admin, earliest admin without an owner, a tie by
+  user id, each refusal, no client role can call it).
 - Release sync: pgTAP `apps/backend/supabase/tests/park_catalogue_sync_test.sql`
   (a second identical load is `unchanged` and rewrites no row, measured by
   xmin; a backfill on create, a redrawn line, a turned curated line and new

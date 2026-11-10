@@ -73,10 +73,10 @@ class RoutesScreen extends StatefulWidget {
   /// routes go to the user's personal library (existing behaviour).
   final SocialService? social;
   /// When true, the screen renders only its body and a hosting parent owns
-  /// the Scaffold/AppBar/FAB chrome. No host uses it today — Routes is pushed
-  /// standalone from the Fitness hub's Runs peer strip since the hub redesign
-  /// relocated it out of `SocialScreen` — but the dual "Build" / "Import" FAB
-  /// column stays exposed via [RoutesScreenState.buildRouteFabs] for one.
+  /// the Scaffold/AppBar/FAB chrome. No host uses it today — the Fitness hub
+  /// mounts Routes as a tab body that keeps its own Scaffold, actions and FAB
+  /// (decisions § 2437) — but the dual "Build" / "Import" FAB column stays
+  /// exposed via [RoutesScreenState.buildRouteFabs] for one.
   /// Same pattern as `ClubsScreen.embedded`.
   final bool embedded;
 

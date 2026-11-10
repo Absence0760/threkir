@@ -33,7 +33,6 @@ import '../widgets/gym_compose_sheet.dart';
 import '../widgets/log_sheet.dart';
 import '../widgets/nutrition_log_sheet.dart';
 import '../widgets/run_list_tile.dart';
-import '../widgets/surface_peer_strip.dart';
 import 'add_run_screen.dart';
 import 'gym_detail_screen.dart';
 import 'gym_screen.dart';
@@ -78,11 +77,6 @@ class RunsScreen extends StatefulWidget {
   /// tab strip. Default true preserves the standalone History behaviour.
   final bool showKindChips;
 
-  /// When set, a labelled peer strip (Runs · Routes · Plans · Races) renders
-  /// above the list. The Fitness hub's Runs sub-tab supplies it so the run
-  /// surface's planning tools have a named home; null elsewhere.
-  final List<SurfacePeer>? surfacePeers;
-
   /// When false the cloud slot (sync-unsynced badge / refresh / offline) is
   /// suppressed. The Fitness hub passes true only to whichever run list leads
   /// its strip — History when it is there, Runs when it stands alone — since
@@ -122,7 +116,6 @@ class RunsScreen extends StatefulWidget {
     this.gymStore,
     this.foodStore,
     this.showKindChips = true,
-    this.surfacePeers,
     this.showSyncActions = true,
     this.titleText,
     this.showAddFab = true,
@@ -1024,7 +1017,6 @@ class _RunsScreenState extends State<RunsScreen>
     final l10n = AppLocalizations.of(context);
     final unit = widget.preferences.unit;
     final totalCount = widget.runStore.summaries.length;
-    final peers = widget.surfacePeers;
 
     return PopScope(
       canPop: !_selecting,
@@ -1033,14 +1025,7 @@ class _RunsScreenState extends State<RunsScreen>
       },
       child: Scaffold(
         appBar: _selecting ? _selectionAppBar(l10n) : _normalAppBar(l10n),
-        body: peers == null
-            ? _buildBody(theme, l10n, unit, totalCount)
-            : Column(
-                children: [
-                  SurfacePeerStrip(label: l10n.runSurfaceLabel, peers: peers),
-                  Expanded(child: _buildBody(theme, l10n, unit, totalCount)),
-                ],
-              ),
+        body: _buildBody(theme, l10n, unit, totalCount),
         floatingActionButtonLocation: pageFabLocation(context),
         floatingActionButton:
             (_selecting || !widget.showAddFab) ? null : _buildAddFab(l10n),

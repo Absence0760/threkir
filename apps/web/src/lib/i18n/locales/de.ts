@@ -66,6 +66,7 @@ export const messages = {
 	'runSurface.tabRuns': 'Läufe',
 	'runSurface.tabRoutes': 'Routen',
 	'runSurface.tabSegments': 'Segmente',
+	'runSurface.tabParks': 'Parks',
 	'runSurface.tabPlans': 'Pläne',
 	'runSurface.tabRaces': 'Rennen',
 	'shell.offline':

@@ -1,14 +1,16 @@
 <script lang="ts">
 	import { m } from '#lib/i18n/store.svelte.ts';
 
-	// Run-surface sub-tab strip: Runs · Routes · Segments · Plans · Races. These
+	// Run-surface sub-tab strip: Runs · Routes · Segments · Parks · Plans · Races. These
 	// are distinct surfaces at distinct URLs, so the strip is a set of links (not
 	// an ARIA tablist — tabs imply same-page panels). Routes, Plans, and the race
 	// calendar were relocated out of their own sidebar slots to live under the
 	// run surface; the segment catalogue joined them rather than take an eighth
-	// sidebar slot of its own (decisions.md § 677).
-	let { active }: { active: 'runs' | 'routes' | 'segments' | 'plans' | 'races' } =
-		$props();
+	// sidebar slot of its own (decisions.md § 677), and the park-course index
+	// followed it for the same reason.
+	let {
+		active
+	}: { active: 'runs' | 'routes' | 'segments' | 'parks' | 'plans' | 'races' } = $props();
 </script>
 
 <nav class="surface-tabs" aria-label={m('runSurface.label')}>
@@ -20,6 +22,9 @@
 	</a>
 	<a class="surface-tab" class:active={active === 'segments'} href="/segments" aria-current={active === 'segments' ? 'page' : undefined}>
 		{m('runSurface.tabSegments')}
+	</a>
+	<a class="surface-tab" class:active={active === 'parks'} href="/parks" aria-current={active === 'parks' ? 'page' : undefined}>
+		{m('runSurface.tabParks')}
 	</a>
 	<a class="surface-tab" class:active={active === 'plans'} href="/plans" aria-current={active === 'plans' ? 'page' : undefined}>
 		{m('runSurface.tabPlans')}
@@ -35,7 +40,7 @@
 		gap: 0.5rem;
 		border-bottom: 1px solid var(--color-border);
 		margin-bottom: var(--space-lg);
-		/* Five tabs on one underlined baseline can't wrap without
+		/* Six tabs on one underlined baseline can't wrap without
 		   breaking that baseline, so the strip scrolls itself rather
 		   than widening the document (WCAG 1.4.10). */
 		max-width: 100%;

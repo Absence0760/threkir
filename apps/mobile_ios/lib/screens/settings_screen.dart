@@ -1,4 +1,5 @@
 import 'package:api_client/api_client.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart' show SectionHeader;
 
@@ -21,6 +22,7 @@ import 'devices_screen.dart';
 import 'gear_screen.dart';
 import 'guided_runs_screen.dart';
 import 'help_screen.dart';
+import 'line_calibration_screen.dart';
 import 'settings_about_screen.dart';
 import 'settings_account_screen.dart';
 import 'settings_integrations_screen.dart';
@@ -297,6 +299,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: l10n.helpSettingsSubtitle,
               onTap: () => _open((_) => const HelpScreen()),
             ),
+            if (kDebugMode)
+              LineCalibrationEntry(
+                onOpen: () => _open((_) => const LineCalibrationScreen()),
+              ),
             if (localBackend) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),

@@ -360,7 +360,7 @@ var importantKinds = map[string]bool{
 	// rename, and the organiser is waiting on the outcome (decisions § 2441).
 	"organiser_dispute": true,
 	// A park course was reported to the app admins; a land manager's request
-	// is due within two business days (decisions § 2447).
+	// is due within two business days (decisions § 2449).
 	"park_course_report": true,
 }
 
@@ -614,7 +614,7 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		return planPath(base, n)
 	case "park_course_report":
 		// The admins' moderation queue, where course reports sort by the
-		// land-manager deadline; the row carries no target (decisions § 2447).
+		// land-manager deadline; the row carries no target (decisions § 2449).
 		return base + "/admin/reports"
 	case "organiser_dispute":
 		// Both sides read the decision and any rename deadline on the disputes

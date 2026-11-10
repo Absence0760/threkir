@@ -96,6 +96,7 @@ import {
 	parseDmImageStatus,
 	type DmImageStatus,
 } from '../social/dm_image';
+import { courseReportErrorKey, type CourseReportReason } from '../parks/course_report';
 import {
 	cancelledOccurrenceRefunds,
 	parseOccurrenceRefundSummary,
@@ -5619,6 +5620,14 @@ export async function submitEventResult(params: {
 			...(params.finishMethod !== undefined ? { finish_method: params.finishMethod } : {}),
 			...(params.chipTimeS !== undefined ? { chip_time_s: params.chipTimeS } : {}),
 			...(params.courseId !== undefined ? { course_id: params.courseId } : {}),
+			// A time typed here asserts no line crossings. The upsert keeps an
+			// omitted column, and the server derives the gun and chip time from
+			// a `finish_at` left by an earlier device result (#1307), so clear
+			// them; `clock_offset_ms` is a device fact and stays.
+			start_at: null,
+			finish_at: null,
+			start_detection: null,
+			finish_detection: null,
 			updated_at: new Date().toISOString(),
 		},
 		{ onConflict: 'event_id,instance_start,user_id' }
@@ -12108,7 +12117,19 @@ export type ReportReason =
 	| 'inappropriate'
 	| 'impersonation'
 	| 'other'
-	| 'organiser_dispute';
+	| 'organiser_dispute'
+	| 'course_hazard'
+	| 'course_closure'
+	| 'course_off_trail'
+	| 'land_manager_request';
+
+// The reasons the general report dialogs offer: the organiser dispute has its
+// own dialog (decisions § 2441), and the four course reasons are a park
+// course's only, filed through submitParkCourseReport (decisions § 2449).
+export type GeneralReportReason = Exclude<
+	ReportReason,
+	'organiser_dispute' | 'course_hazard' | 'course_closure' | 'course_off_trail' | 'land_manager_request'
+>;
 
 // The two RESOLVED statuses of `reports.status`. `pending` is the column's
 // third value and the default every report is inserted with, so the moderation
@@ -12119,7 +12140,7 @@ export type ReportResolution = 'reviewed' | 'dismissed';
 export async function submitReport(input: {
 	targetKind: GeneralReportTargetKind;
 	targetId: string;
-	reason: Exclude<ReportReason, 'organiser_dispute'>;
+	reason: GeneralReportReason;
 	notes?: string;
 }): Promise<string> {
 	const { data, error } = await supabase.rpc('submit_report', {
@@ -12149,6 +12170,37 @@ export async function submitReport(input: {
 		throw dbError(error);
 	}
 	return data as string;
+}
+
+// ─────────────── Park course problem reports (#1346, decisions § 2449) ───────────────
+//
+// Filed through the park-course-report Edge Function, signed in or signed out:
+// park staff need no account. The function verifies a JWT when one is sent,
+// rate-limits, and calls submit_park_course_report, which only the service role
+// may execute. `website` is the form's honeypot, sent as typed: a person leaves
+// it empty, and the function files nothing when it is not.
+
+export async function submitParkCourseReport(input: {
+	courseId: string;
+	reason: CourseReportReason;
+	notes: string;
+	contactEmail?: string | null;
+	website?: string;
+}): Promise<void> {
+	const { error } = await supabase.functions.invoke('park-course-report', {
+		body: {
+			course_id: input.courseId,
+			reason: input.reason,
+			notes: input.notes.trim(),
+			contact_email: input.contactEmail?.trim() || null,
+			website: input.website ?? '',
+		},
+	});
+	if (error) {
+		const code = await edgeFunctionErrorCode(error);
+		const key = courseReportErrorKey(code);
+		throw new AppError(key ?? 'parks.report.errorFailed', { message: code ?? 'park_course_report_failed' });
+	}
 }
 
 // ─────────────── Organiser name disputes (#1363, decisions § 2441) ───────────────
@@ -15536,6 +15588,9 @@ export interface PendingReportTarget {
 	organiser_clubs: OrganiserDisputeClub[];
 	/** The rename deadline in force, when the latest action was a notice. */
 	rename_deadline_at: string | null;
+	/** When the oldest pending land-manager request on a park course arrived;
+	 *  null on every other target. These sort after disputes, oldest first. */
+	land_manager_since: string | null;
 }
 
 export interface OrganiserDisputeClub {
@@ -15586,6 +15641,11 @@ export interface TargetReport {
 	purge_after: string | null;
 	/** The verified club a naming dispute speaks for; null otherwise. */
 	organiser_club: OrganiserDisputeClub | null;
+	/** The address a park course reporter gave for a reply; null when none,
+	 *  and once it is cleared (decisions § 2449). */
+	contact_email: string | null;
+	/** Filed without an account, so a null reporter is not a deleted one. */
+	signed_out: boolean;
 }
 
 /** Whether the current user is a moderator. Chrome gate only — the RPCs
@@ -15619,6 +15679,7 @@ export async function fetchPendingReports(): Promise<PendingReportTarget[]> {
 				}))
 			: [],
 		rename_deadline_at: (r.rename_deadline_at ?? null) as string | null,
+		land_manager_since: (r.land_manager_since ?? null) as string | null,
 	}));
 }
 
@@ -15657,6 +15718,8 @@ export async function fetchReportsForTarget(
 					is_verified: r.organiser_club_verified === true,
 				}
 			: null,
+		contact_email: (r.contact_email ?? null) as string | null,
+		signed_out: r.signed_out === true,
 	}));
 }
 
@@ -15738,6 +15801,81 @@ export async function resolveOrganiserDispute(input: {
 	});
 	if (error) throw dbError(error);
 	return Number(data ?? 0);
+}
+
+/** A park course for the admin queue's course panel: its slugs for the link,
+ *  its status and the note the course page shows. Null when RLS hides it (its
+ *  park was pulled) or it is gone. Throws on a failed read. */
+export interface AdminParkCourse {
+	id: string;
+	slug: string;
+	status: string;
+	status_note: string | null;
+	name: string;
+	park: { slug: string; name: string; region_code: string } | null;
+}
+
+export async function fetchAdminParkCourse(courseId: string): Promise<AdminParkCourse | null> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('id, slug, status, status_note, global_segments(name), parks(slug, name, region_code)')
+		.eq('id', courseId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	if (!data) return null;
+	return {
+		id: data.id,
+		slug: data.slug,
+		status: data.status,
+		status_note: data.status_note,
+		name: data.global_segments?.name ?? data.slug,
+		park: data.parks ?? null,
+	};
+}
+
+/** Close or reopen a park course from the admin queue (admin-gated at the
+ *  DB, logged in park_course_status_actions). Closing needs a note, which the
+ *  course page shows, and resolves the course's pending reports; returns how
+ *  many it resolved. */
+export async function adminSetParkCourseStatus(
+	courseId: string,
+	status: 'closed' | 'open',
+	note: string | null,
+): Promise<number> {
+	const { data, error } = await supabase.rpc('admin_set_park_course_status', {
+		p_course_id: courseId,
+		p_status: status,
+		p_note: note?.trim() || null,
+	});
+	if (error) throw dbError(error);
+	return Number(data ?? 0);
+}
+
+/** `park_course_status_actions.action`, a rail in check_constraint_unions.mjs. */
+export type ParkCourseStatusAction = 'close' | 'reopen';
+
+export interface ParkCourseStatusHistoryEntry {
+	id: number;
+	action: ParkCourseStatusAction;
+	actor_id: string | null;
+	status_before: string;
+	note: string | null;
+	reports_resolved: number;
+	created_at: string;
+}
+
+export async function fetchParkCourseStatusHistory(courseId: string): Promise<ParkCourseStatusHistoryEntry[]> {
+	const { data, error } = await supabase.rpc('park_course_status_history', { p_course_id: courseId }, { get: true });
+	if (error) throw dbError(error);
+	return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+		id: Number(r.id),
+		action: r.action === 'reopen' ? 'reopen' : 'close',
+		actor_id: (r.actor_id ?? null) as string | null,
+		status_before: String(r.status_before ?? ''),
+		note: (r.note ?? null) as string | null,
+		reports_resolved: Number(r.reports_resolved ?? 0),
+		created_at: r.created_at as string,
+	}));
 }
 
 export interface OrganiserDisputeHistoryEntry {

@@ -1550,7 +1550,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     } else if (kind == 'organiser_dispute') {
       // Both sides read the decision and any rename deadline on the web's
       // disputes page; the review is web-only (decisions § 24, § 2441).
-      await _openDisputesOnWeb();
+      await _openOnWeb('/disputes');
+    } else if (kind == 'park_course_report') {
+      // App admins review park course reports in the web queue (§ 2449).
+      await _openOnWeb('/admin/reports');
     } else if (kind == 'course_alert' && item.row.courseAlertId != null) {
       await _openCourseAlert(item.row.courseAlertId!);
     } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
@@ -1594,8 +1597,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  Future<void> _openDisputesOnWeb() async {
-    final url = '${resolveWebBaseUrl()}/disputes';
+  Future<void> _openOnWeb(String path) async {
+    final url = '${resolveWebBaseUrl()}$path';
     try {
       final ok = await launchUrl(Uri.parse(url),
           mode: LaunchMode.externalApplication);
@@ -1722,6 +1725,8 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.clubName != null
             ? l10n.profileNotifOrganiserDisputeNamed(item.clubName!)
             : l10n.profileNotifOrganiserDispute;
+      case 'park_course_report':
+        return l10n.profileNotifParkCourseReport;
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)

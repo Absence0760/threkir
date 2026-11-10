@@ -23,6 +23,8 @@ const EXPECTED: Record<ReportTargetKind, { label: string; href: string | null }>
 	gym_routine: { label: 'Gym routine', href: `/gym/routines/library/${PAGE}` },
 	challenge: { label: 'Challenge', href: `/challenges/${PAGE}` },
 	race_listing: { label: 'Race listing', href: `/races/${PAGE}` },
+	// Linked from the detail's course panel, which knows the slugs.
+	park_course: { label: 'Park course', href: null },
 };
 
 // EXPECTED is a Record over the union, which check_constraint_unions.mjs

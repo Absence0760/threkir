@@ -96,6 +96,10 @@ test('a naming dispute notice links to the disputes page, for either side', () =
 	assert.equal(notificationLinkFor(make({ kind: 'organiser_dispute' })), '/disputes');
 });
 
+test('a park course report notice links the admin to the report queue', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'park_course_report' })), '/admin/reports');
+});
+
 test('plan kinds link to the plan detail', () => {
 	for (const kind of ['plan_update', 'plan_assigned', 'plan_ai_edit', 'workout_reminder']) {
 		assert.equal(notificationLinkFor(make({ kind, plan_id: 'p3' })), '/plans/p3');

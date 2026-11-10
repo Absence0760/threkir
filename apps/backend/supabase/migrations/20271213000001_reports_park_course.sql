@@ -1,5 +1,5 @@
 -- Park course problem reports, part 1: the reports table (issue #1346,
--- decisions § 2447).
+-- decisions § 2449).
 --
 -- A runner or a land manager reports a problem with a park course: a hazard,
 -- a closure, the line leaving the designated trail, a request from the land
@@ -17,18 +17,18 @@
 --     can answer, park course reports only, shape-checked and at most 254
 --     characters. Cleared when a signed-in reporter's account is deleted
 --     (trigger below) and 30 days after the report is resolved
---     (private.purge_stale_reports, 20271212000003).
+--     (private.purge_stale_reports, 20271213000003).
 --   * signed_out: the report was filed without an account. reporter_id is
 --     then null, which already reads as "Deleted account" in the queue; the
 --     flag lets the queue say "Not signed in" instead. Only a park course
 --     report may be filed signed out.
 --
--- Filing, the admin close and reopen, and the notices are in 20271212000003.
+-- Filing, the admin close and reopen, and the notices are in 20271213000003.
 --
 -- Locks (docs/backend/migration_locks.md): one table, `reports`, which is not
 -- on the high-volume list. ADD COLUMN of a nullable column, and of a boolean
 -- with a constant default, is catalogue-only. Every CHECK is added NOT VALID
--- (brief ACCESS EXCLUSIVE, no scan) and validated in 20271212000004 under
+-- (brief ACCESS EXCLUSIVE, no scan) and validated in 20271213000004 under
 -- SHARE UPDATE EXCLUSIVE, which also builds the index the signed-out cap
 -- reads. Every existing row satisfies the widened lists, and none carries a
 -- contact email or the signed-out flag.
@@ -79,7 +79,7 @@ alter table reports
   not valid;
 
 comment on column reports.contact_email is
-  'An address a park course reporter gave for a reply (20271212000001). Personal '
+  'An address a park course reporter gave for a reply (20271213000001). Personal '
   'data: cleared when the reporter''s account is deleted and 30 days after the '
   'report is resolved (private.purge_stale_reports). Park course reports only.';
 

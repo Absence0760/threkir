@@ -30,6 +30,7 @@
 	} from '#lib/social/event_courses.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import CourseGateEditor from '#lib/components/CourseGateEditor.svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import RaceStartModeFields from '#lib/components/RaceStartModeFields.svelte';
 	import {
 		courseGate,
@@ -1033,6 +1034,7 @@
 			<section class="timing-lines" data-testid="event-timing-lines" aria-labelledby="timing-lines-title">
 				<h3 id="timing-lines-title">{m('courseLines.title')}</h3>
 				<p class="hint">{m('courseLines.hint')}</p>
+				<HelpLink guide="start-and-finish-lines" />
 				{#if courseLinesFailed}
 					<p class="hint" role="alert">{m('courseLines.loadFailed')}</p>
 				{:else}

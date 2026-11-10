@@ -290,6 +290,29 @@ class ApiClient {
     return result as String;
   }
 
+  /// Report a problem with a park course (issue #1346, decisions § 2449)
+  /// through the `park-course-report` Edge Function, which files it as the
+  /// signed-in user (or signed out, with no session). A refusal throws the
+  /// [FunctionException] the function answered with; its `details` carry
+  /// `{error: code}`. Mirrors web `submitParkCourseReport`.
+  Future<void> submitParkCourseReport({
+    required String courseId,
+    required String reason,
+    required String notes,
+    String? contactEmail,
+  }) async {
+    final email = contactEmail?.trim();
+    await _client.functions.invoke(
+      'park-course-report',
+      body: {
+        'course_id': courseId,
+        'reason': reason,
+        'notes': notes.trim(),
+        'contact_email': (email == null || email.isEmpty) ? null : email,
+      },
+    );
+  }
+
   /// File an organiser name dispute (issue #1363, decisions § 2441): the
   /// caller, an active owner or admin of the verified club [clubId], reports
   /// [targetKind] / [targetId] as impersonating that organisation or copying

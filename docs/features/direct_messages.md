@@ -78,7 +78,7 @@ The AFTER INSERT trigger `direct_messages_request_state` moves the state; `accep
 
 ### Turning requests off
 
-Since migration `20271213121601` ([decisions § 2450](../architecture/decisions.md)) a runner can turn message requests off: web Settings → Privacy → Messages (`message-requests-toggle`), mobile Settings → Preferences → Messages. The setting is `user_settings.dm_requests` ([settings.md](../backend/settings.md)), default on, owner-read.
+Since migration `20271213121601` ([decisions § 2451](../architecture/decisions.md)) a runner can turn message requests off: web Settings → Privacy → Messages (`message-requests-toggle`), mobile Settings → Preferences → Messages. The setting is `user_settings.dm_requests` ([settings.md](../backend/settings.md)), default on, owner-read.
 
 It is enforced in the send path, not by hiding a button: with it off, `private.dm_send_admitted` no longer admits the shared-context branch, so nobody without a follow edge (or an active coaching link) can message the runner first, and a request still pending takes no more messages from the requester. A follow edge and a conversation the runner already accepted are unaffected; a pending request already in their Requests list can still be accepted or declined. The refusal is the same 42501 every other refusal is, so a sender cannot tell the switch from a block, a decline or a missing follow (§ 1916), and they cannot read the setting.
 
@@ -129,7 +129,7 @@ The server decides, not the clients: `edit_direct_message(message, body)` is SEC
 
 ## Reactions
 
-Since migration `20271213121602` ([decisions § 2450](../architecture/decisions.md)) a participant can put one reaction on a message from a fixed set of six keys (`thumbs_up`, `heart`, `laugh`, `surprised`, `sad`, `fire`; CHECK on `direct_message_reactions.reaction`, registered in `check_constraint_unions.mjs`), change it, or take it off. Both sides see one chip per key with its count under the message.
+Since migration `20271213121602` ([decisions § 2451](../architecture/decisions.md)) a participant can put one reaction on a message from a fixed set of six keys (`thumbs_up`, `heart`, `laugh`, `surprised`, `sad`, `fire`; CHECK on `direct_message_reactions.reaction`, registered in `check_constraint_unions.mjs`), change it, or take it off. Both sides see one chip per key with its count under the message.
 
 **No emoji in the source.** The table stores the key, never the glyph, and each client draws the glyph from its Unicode codepoints (`DM_REACTION_CODEPOINTS` / `kDmReactionCodepoints`, the `dm_reactions` parity pair), so the no-emoji rule holds for code, docs and data while the reader still sees the emoji. Each glyph has a localized accessible name (`messages.reaction.<key>`).
 
@@ -149,7 +149,7 @@ Since migration `20271213121603` the inbox has a search box (web `inbox-search`,
 
 ## Photos
 
-Since migration `20271213121604` ([decisions § 2450](../architecture/decisions.md)) a message can carry one photo, with or without a caption.
+Since migration `20271213121604` ([decisions § 2451](../architecture/decisions.md)) a message can carry one photo, with or without a caption.
 
 1. The client re-encodes the picked file to a JPEG at most 2048 px on the long edge (web `dm_image_encode.ts` through a canvas, mobile in an isolate), which drops the camera's EXIF / XMP, GPS position included, and bakes the orientation into the pixels.
 2. `create_dm_image_upload()` makes a pending `direct_message_images` row and returns `{owner}/{image}/upload`; the client uploads there. The private `dm-images` bucket takes `image/jpeg` only, at most 5 MB, and its INSERT policy admits an object only at the upload path of the caller's own pending, unsent image. There is no UPDATE or DELETE policy, so an upload cannot be swapped after it is sent.
@@ -170,7 +170,7 @@ Since migration `20271213121604` ([decisions § 2450](../architecture/decisions.
 
 ## Links
 
-A URL in a message is drawn as its text plus a chip naming its domain, worked out on the client from the text alone (`dmTextSegments` / `dmLinkDomain`, the `dm_link` parity pair). **No preview is fetched**: there is no server-side request to aim at an internal address (no SSRF surface) and no request that tells a third party who opened the message. Only an `http(s)` URL with an ASCII host and no user-info becomes a link; a host in another script stays text (a look-alike domain is the phishing case the chip exists to expose), as does `user@host`. The anchor opens in a new tab with `rel="noopener noreferrer nofollow ugc"`; nothing is rendered as HTML. A fetched preview card was considered and not built ([decisions § 2450](../architecture/decisions.md)).
+A URL in a message is drawn as its text plus a chip naming its domain, worked out on the client from the text alone (`dmTextSegments` / `dmLinkDomain`, the `dm_link` parity pair). **No preview is fetched**: there is no server-side request to aim at an internal address (no SSRF surface) and no request that tells a third party who opened the message. Only an `http(s)` URL with an ASCII host and no user-info becomes a link; a host in another script stays text (a look-alike domain is the phishing case the chip exists to expose), as does `user@host`. The anchor opens in a new tab with `rel="noopener noreferrer nofollow ugc"`; nothing is rendered as HTML. A fetched preview card was considered and not built ([decisions § 2451](../architecture/decisions.md)).
 
 ## Unsend, report and deleted accounts
 
@@ -201,4 +201,4 @@ A conversation poll re-reads the **newest page** rather than asking for messages
 
 ## Not built yet (issue #1216)
 
-Realtime delivery and group conversations (split out to #1365). Delete-for-me, mute, archive, mark as unread, unsend, report, read receipts, edit, message requests and the switch to turn them off, reactions, search, photos and link chips are built (the sections above). A fetched link preview card is deliberately not built (§ 2450). The `conversations` model takes a group or club chat without another migration of the participant state; only `kind = 'direct'` exists, and the send path still addresses a single recipient.
+Realtime delivery and group conversations (split out to #1365). Delete-for-me, mute, archive, mark as unread, unsend, report, read receipts, edit, message requests and the switch to turn them off, reactions, search, photos and link chips are built (the sections above). A fetched link preview card is deliberately not built (§ 2451). The `conversations` model takes a group or club chat without another migration of the participant state; only `kind = 'direct'` exists, and the send path still addresses a single recipient.

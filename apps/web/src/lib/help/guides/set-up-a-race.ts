@@ -40,7 +40,11 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'The finish line racers are timed at is the last point of the course route. Draw the route so it ends exactly where your finish arch will be.'
+					text: "Each course gets a start line at the first point of its route and a finish line at the last. Draw the route so it ends exactly where your finish arch will be, or move the lines afterwards; see [[guide:start-and-finish-lines|Start and finish lines]]."
+				},
+				{
+					type: 'p',
+					text: 'Under **How the race starts**, choose **Host GO**, **Scheduled GO** or **Self-timed window**. See [[guide:choose-how-your-race-starts|Choose how your race starts]].'
 				}
 			]
 		},
@@ -72,6 +76,10 @@ export const guide: Guide = {
 					type: 'note',
 					tone: 'caution',
 					text: "Attaching a route shows its finish point to everyone who can see the event, even if the route itself is private. You can only attach routes you are allowed to see."
+				},
+				{
+					type: 'p',
+					text: 'A course with no route gets no start or finish line from a route, but once the event is saved you can place both lines for it yourself.'
 				}
 			]
 		},
@@ -99,6 +107,10 @@ export const guide: Guide = {
 				{
 					type: 'p',
 					text: 'Just before you arm the race you choose whether results go straight onto the leaderboard. **Auto-approve submitted results** is ticked by default. Untick it if you want to check every result first; each one then shows as **PENDING** until you approve it.'
+				},
+				{
+					type: 'p',
+					text: 'For a **Scheduled GO** or **Self-timed window** race, set it in the event editor instead, under **How the race starts**. For a self-timed race it starts unticked.'
 				}
 			]
 		},
@@ -121,5 +133,5 @@ export const guide: Guide = {
 			]
 		}
 	],
-	related: ['race-day-for-hosts', 'racing-in-a-race', 'follow-a-race-live', 'race-results-explained']
+	related: ['start-and-finish-lines', 'choose-how-your-race-starts', 'race-day-for-hosts', 'racing-in-a-race', 'follow-a-race-live', 'race-results-explained']
 };

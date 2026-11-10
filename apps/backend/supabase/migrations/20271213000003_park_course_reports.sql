@@ -1,6 +1,6 @@
 -- Park course problem reports, part 3: filing, the operator's close and
--- reopen, the audit log and the reads (issue #1346, decisions § 2447). Part 1
--- (20271212000001) widened `reports`; part 2 (20271212000002) added the
+-- reopen, the audit log and the reads (issue #1346, decisions § 2449). Part 1
+-- (20271213000001) widened `reports`; part 2 (20271213000002) added the
 -- `park_course_report` notification kind.
 --
 -- ── Filing ──────────────────────────────────────────────────────────────────
@@ -24,7 +24,11 @@
 --   * at most 25 pending reports per course, from anyone, and at most 60
 --     signed-out reports an hour across every course. These two caps hold
 --     however many addresses a sender rotates through; a refusal is SQLSTATE
---     PT429, which PostgREST answers as HTTP 429;
+--     PT429, which PostgREST answers as HTTP 429. A land-manager request
+--     neither counts toward nor is refused by the per-course cap, so spam
+--     filling a course's queue cannot lock out the one report that carries a
+--     two-business-day promise; it is still bounded by the signed-out hourly
+--     cap, the per-address bucket and the one-pending-per-email rule;
 --   * a signed-in reporter has one pending report per course (the existing
 --     reports_no_duplicate_pending index), and a signed-out reporter one per
 --     course per contact email.
@@ -176,8 +180,9 @@ begin
      where r.target_kind = 'park_course' and r.target_id = p_course_id and r.status = 'pending'
   ) into v_had_pending;
 
-  if (select count(*) from reports r
-       where r.target_kind = 'park_course' and r.target_id = p_course_id and r.status = 'pending')
+  if p_reason <> 'land_manager_request' and (select count(*) from reports r
+       where r.target_kind = 'park_course' and r.target_id = p_course_id and r.status = 'pending'
+         and r.reason <> 'land_manager_request')
      >= c_pending_per_course then
     raise exception 'submit_park_course_report: rate limited'
       using errcode = 'PT429', hint = 'This course already has many reports waiting for review.';
@@ -221,7 +226,7 @@ revoke execute on function submit_park_course_report(uuid, text, text, text, uui
 grant execute on function submit_park_course_report(uuid, text, text, text, uuid) to service_role;
 
 comment on function submit_park_course_report(uuid, text, text, text, uuid) is
-  'Files a park course problem report (issue #1346, decisions § 2447). Service '
+  'Files a park course problem report (issue #1346, decisions § 2449). Service '
   'role only: the park-course-report Edge Function is the one caller. Validates '
   'the course, reason, notes and contact email; caps pending reports per course '
   '(25) and signed-out reports an hour (60), refusing with PT429; notifies every '
@@ -538,11 +543,11 @@ revoke execute on function private.report_contact_retention() from public, anon,
 
 comment on function private.report_contact_retention() is
   'How long a resolved report keeps the contact email its reporter gave '
-  '(decisions § 2447): long enough for the operator to answer, then cleared by '
+  '(decisions § 2449): long enough for the operator to answer, then cleared by '
   'purge_stale_reports(). The report itself keeps report_retention_window().';
 
--- Body from 20271021000040 plus the contact-email step, which runs before the
--- delete so a report about to go is not first rewritten.
+-- Body from 20271021000040 plus the contact-email step, after the delete, so a
+-- report the delete removed is not rewritten first.
 create or replace function private.purge_stale_reports()
 returns void
 language plpgsql
@@ -598,4 +603,4 @@ comment on function private.purge_stale_reports() is
   'private.report_contact_retention() has. Never touches a pending or '
   'legal_hold report. Gated on private.feature_flags reports_retention_purge '
   '(absent = off), seeded on by 20271022000001. Scheduled by pg_cron '
-  '`purge-stale-reports` (03:59 UTC daily). decisions § 2231, § 2234, § 2447.';
+  '`purge-stale-reports` (03:59 UTC daily). decisions § 2231, § 2234, § 2449.';

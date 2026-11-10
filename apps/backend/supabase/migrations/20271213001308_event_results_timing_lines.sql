@@ -15,7 +15,7 @@
 --     A write without `finish_at` (an older client, the web form) keeps § 1850's
 --     rules. Every phone write now sends the crossing columns, null included,
 --     so an upsert cannot leave a stale `finish_at` under a fresh time.
---   * `clock_offset_ms` (20271212000001) is a device fact, not a timing claim:
+--   * `clock_offset_ms` (20271213001307) is a device fact, not a timing claim:
 --     the normaliser leaves it on a DNF and on a host edit, because a re-time
 --     replacing that DNF needs the live clock basis.
 --   * event_results_redacted appends `clock_offset_ms`, readable by the

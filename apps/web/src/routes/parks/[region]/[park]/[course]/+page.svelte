@@ -48,6 +48,9 @@
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ParkCourseNotices from '#lib/components/parks/ParkCourseNotices.svelte';
+	import ParkCourseRouteGuide from '#lib/components/parks/ParkCourseRouteGuide.svelte';
+	import { parseRouteGuide } from '#lib/parks/route_guide.ts';
+	import ParkCourseReportDialog from '#lib/components/parks/ParkCourseReportDialog.svelte';
 	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
@@ -77,6 +80,7 @@
 	let completions = $state<CompletionsEntry[] | null>(null);
 	let boardFailed = $state(false);
 	let showHeadToHead = $state(false);
+	let showReport = $state(false);
 	// Whether the course has any time at all, on any board: until it has, the
 	// board kinds, seasons and filters have nothing to switch between, so the
 	// section is an invitation instead. Read from the all-time completions
@@ -169,6 +173,7 @@
 				name: park.name,
 				websiteUrl: park.website_url,
 			}),
+			guide: routeGuide ? { guide: routeGuide, checkedAt: course.route_guide_checked_at } : null,
 		});
 		const base = course.segment.name.replace(/[^a-zA-Z0-9-_ ]/g, '').replace(/\s+/g, '_');
 		downloadFile(gpx, `${base || 'course'}.gpx`, 'application/gpx+xml');
@@ -176,6 +181,7 @@
 
 	const shapeKey = $derived(courseShapeShown(course?.course_shape) ? labelKey(SHAPE_LABEL, course?.course_shape) : null);
 	const laps = $derived(courseLapsChip(course?.laps));
+	const routeGuide = $derived(parseRouteGuide(course?.route_guide));
 	const difficultyKey = $derived(labelKey(DIFFICULTY_LABEL, course?.difficulty));
 	const statusKey = $derived(labelKey(STATUS_LABEL, course?.status));
 	const credit = $derived(courseCredit(course?.attribution, course?.geometry_source));
@@ -384,6 +390,16 @@
 				</section>
 			{/if}
 
+			{#if routeGuide}
+				<div class="guide-slot">
+					<ParkCourseRouteGuide
+						guide={routeGuide}
+						checkedAt={course.route_guide_checked_at}
+						testidPrefix="park-course"
+					/>
+				</div>
+			{/if}
+
 			<div class="notices-slot">
 				<ParkCourseNotices distanceM={Number(course.segment.distance_m)} testidPrefix="park-course" />
 				{#if credit && mapTrack.length < 2}
@@ -391,6 +407,19 @@
 						{'text' in credit ? credit.text : m(credit.key)}
 					</p>
 				{/if}
+				<!-- Kept with the notices, away from Navigate: it is for the rare
+				     runner or land manager with a problem, not a next step. -->
+				<p class="report-row">
+					<button
+						type="button"
+						class="report-link"
+						onclick={() => (showReport = true)}
+						data-testid="park-course-report"
+					>
+						<span class="material-symbols" aria-hidden="true">flag</span>
+						{m('parks.report.action')}
+					</button>
+				</p>
 			</div>
 
 			<section class="board" aria-labelledby="park-board-title">
@@ -548,6 +577,12 @@
 				{/if}
 			</section>
 		</div>
+		<ParkCourseReportDialog
+			open={showReport}
+			courseId={course.id}
+			courseName={course.segment.name}
+			onclose={() => (showReport = false)}
+		/>
 		<HeadToHeadDialog
 			open={showHeadToHead}
 			onclose={() => (showHeadToHead = false)}
@@ -596,6 +631,33 @@
 	.meta .material-symbols {
 		font-size: 1rem;
 	}
+	.report-row {
+		margin: var(--space-sm) 0 0;
+	}
+	.report-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		min-height: 1.5rem;
+		padding: 0.2rem 0;
+		border: none;
+		background: none;
+		color: var(--color-text-secondary);
+		font: inherit;
+		font-size: 0.85rem;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+	.report-link:hover {
+		color: var(--color-text);
+	}
+	.report-link:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.report-link .material-symbols {
+		font-size: 1rem;
+	}
 	.closed-banner {
 		display: flex;
 		align-items: center;
@@ -608,7 +670,7 @@
 		color: var(--color-warning-text);
 	}
 	/* One column on a phone, in reading order. From 72rem the map and the board
-	   take the wide column and the summary, actions and notices the narrow
+	   take the wide column and the summary, actions, route guide and notices the narrow
 	   one, so every block in a column shares that column's width. */
 	.course-layout {
 		display: grid;
@@ -619,7 +681,7 @@
 	@media (min-width: 72rem) {
 		.course-layout.with-map {
 			grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
-			grid-template-rows: auto auto auto 1fr;
+			grid-template-rows: auto auto auto auto 1fr;
 			column-gap: var(--space-xl);
 		}
 		.with-map .map-block {
@@ -634,13 +696,17 @@
 			grid-column: 2;
 			grid-row: 2;
 		}
+		.with-map .guide-slot {
+			grid-column: 2;
+			grid-row: 3;
+		}
 		.with-map .notices-slot {
 			grid-column: 2;
-			grid-row: 3 / span 2;
+			grid-row: 4 / span 2;
 		}
 		.with-map .board {
 			grid-column: 1;
-			grid-row: 4;
+			grid-row: 4 / span 2;
 		}
 		.with-map .map-wrap {
 			height: 26rem;

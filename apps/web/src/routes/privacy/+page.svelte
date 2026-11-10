@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-11-05';
+	const lastUpdated = '2026-11-10';
 </script>
 
 <svelte:head>
@@ -102,6 +102,13 @@
 		<li>
 			<strong>Social</strong>: kudos, comments, photos, clubs you join, people you follow, event
 			RSVPs, direct messages you exchange with other users (including photos you send in them and reactions you put on them), and any blocks or reports you file.
+		</li>
+		<li>
+			<strong>Park course reports</strong>: when you report a problem with a park course, the
+			reason and the note you write, and an email address if you give one so we can reply. You
+			can report without an account. Only Threkir's moderators see a report. To limit abuse we
+			count reports per network address using a hash of the address, never the address itself,
+			and delete that count within a day.
 		</li>
 		<li>
 			<strong>Safety contacts</strong>: email addresses of people you nominate for safety
@@ -395,6 +402,7 @@
 		<li><strong>Checkpoint medical weigh-in fields</strong> (weight, medical hold/note): scrubbed 90 days after they were recorded; the in/out split times are race results and are kept.</li>
 		<li><strong>Direct messages</strong>: 2 years from sending. Deleting your account deletes the messages you sent at once; the messages the other person sent you stay in their copy of the conversation, with your account shown as deleted, until the 2-year limit. Unsending a message removes its text, any photo in it and any reactions on it for both of you. A photo you send is re-encoded on our servers so the copy anyone sees carries no location or camera details; the photo file itself is erased by a background job shortly after its message is unsent or deleted, normally within minutes and at most within a few days, and a photo picked but never sent is deleted after a day. If the other person deletes their account, the messages they sent you are deleted with it; report a message first if you want a copy kept for moderators. "Delete conversation" hides the conversation from you and erases nothing at that moment: anyone still in the conversation keeps their copy, the messages stay in your data export, and a report's copy is untouched. Once no participant can still see a message (both of you have deleted the conversation, or the other account is gone and you have deleted it), our daily clean-up erases it.</li>
 		<li><strong>Reports you file, and reports about your content</strong>: kept while a moderator reviews them, then deleted 6 months after the report is closed with no action, or 12 months after action was taken. A report we need for a legal claim, or that a court or authority has asked us to preserve, is kept until that need ends. A reported direct message is copied into the report when it is filed, together with any photo it carried, so the copy survives the message being unsent, the sender deleting their account, and the 2-year limit on messages. If you delete your account, reports you filed are kept for the same period with your name removed, so the evidence is not lost.</li>
+		<li><strong>The email address on a park course report</strong>: deleted 30 days after the report is resolved, or at once if you filed it signed in and then delete your account. The report itself follows the rule above. If you filed one without an account and want it removed sooner, email us from that address.</li>
 		<li><strong>Coach chat history</strong>: 18 months from the message timestamp.</li>
 		<li><strong>AI-provider copies of coach prompts and AI-assistant requests</strong>: deleted by the provider within 30 days of processing (Anthropic API default retention); never used for model training.</li>
 		<li><strong>Coach usage counters</strong> (per-day message counts): 7 days.</li>

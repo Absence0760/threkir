@@ -589,9 +589,12 @@ VALUES
 -- discoverable-pin layer (clubs_in_bbox + discoverable_routes_in_bbox,
 -- migration 20260911_001) lights up. friends-of-jared keeps a NULL
 -- location_point — private clubs aren't on the discoverable map.
-UPDATE clubs SET location_point = ST_GeogFromText('SRID=4326;POINT(-77.4360 37.5407)')
+-- PostGIS calls are schema-qualified, like the pgcrypto ones above: the seed
+-- runs on the connection that applied the migrations, so an unqualified call
+-- resolves against whatever session search_path the last migration left set.
+UPDATE clubs SET location_point = extensions.ST_GeogFromText('SRID=4326;POINT(-77.4360 37.5407)')
   WHERE id = 'c1111111-0000-0000-0000-000000000001'::uuid;
-UPDATE clubs SET location_point = ST_GeogFromText('SRID=4326;POINT(-78.4767 38.0293)')
+UPDATE clubs SET location_point = extensions.ST_GeogFromText('SRID=4326;POINT(-78.4767 38.0293)')
   WHERE id = 'c2222222-0000-0000-0000-000000000002'::uuid;
 
 -- Six more public clubs across Virginia so the heatmap shows a
@@ -607,7 +610,7 @@ VALUES
    'nova-trail-crew',
    'Weekend trail runs along the Mount Vernon Trail + W&OD. We meet at the Memorial Bridge.',
    'Arlington, VA',
-   ST_GeogFromText('SRID=4326;POINT(-77.0560 38.8870)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-77.0560 38.8870)'),
    true, 'open', null),
   ('c5555555-0000-0000-0000-000000000005',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -615,7 +618,7 @@ VALUES
    'norfolk-botanical-runners',
    'Quiet morning loops through Norfolk Botanical Garden. Beginners + walk-run welcome.',
    'Norfolk, VA',
-   ST_GeogFromText('SRID=4326;POINT(-76.2030 36.8983)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-76.2030 36.8983)'),
    true, 'open', null),
   ('c6666666-0000-0000-0000-000000000006',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -623,7 +626,7 @@ VALUES
    'va-beach-boardwalk-striders',
    'Sunrise runs on the Boardwalk year-round. 5K + 10K paces; weekend long runs in the summer.',
    'Virginia Beach, VA',
-   ST_GeogFromText('SRID=4326;POINT(-75.9772 36.8385)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-75.9772 36.8385)'),
    true, 'open', null),
   ('c7777777-0000-0000-0000-000000000007',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -631,7 +634,7 @@ VALUES
    'mill-mountain-hill-climbers',
    'Tuesday hill repeats on the Mill Mountain Star greenway. If you like climbing, this is the group.',
    'Roanoke, VA',
-   ST_GeogFromText('SRID=4326;POINT(-79.9416 37.2710)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-79.9416 37.2710)'),
    true, 'request', null),
   ('c8888888-0000-0000-0000-000000000008',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -639,7 +642,7 @@ VALUES
    'richmond-marathon-trainers',
    'Fall marathon training group out of Belle Isle. 16-week plan, Saturday long runs, Wednesday workouts.',
    'Richmond, VA',
-   ST_GeogFromText('SRID=4326;POINT(-77.4500 37.5300)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-77.4500 37.5300)'),
    true, 'open', null),
   ('c9999999-0000-0000-0000-000000000009',
    'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
@@ -647,7 +650,7 @@ VALUES
    'blue-ridge-trail-society',
    'Trail running, Skyline Drive day trips, Massanutten + Shenandoah event recon. Vans depart from UVA.',
    'Charlottesville, VA',
-   ST_GeogFromText('SRID=4326;POINT(-78.5067 38.0356)'),
+   extensions.ST_GeogFromText('SRID=4326;POINT(-78.5067 38.0356)'),
    true, 'request', null)
 ON CONFLICT (id) DO NOTHING;
 

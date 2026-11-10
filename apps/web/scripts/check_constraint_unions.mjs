@@ -960,13 +960,15 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'event_results.start_detection',
-		clients: [],
-		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+		clients: [
+			{ file: 'apps/mobile_android/lib/race_controller.dart', decl: 'RaceStartDetection', shape: 'enum' },
+		],
 	},
 	{
 		tableColumn: 'event_results.finish_detection',
-		clients: [],
-		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+		clients: [
+			{ file: 'apps/mobile_android/lib/race_finish.dart', decl: 'RaceFinishDetection', shape: 'enum' },
+		],
 	},
 	{
 		tableColumn: 'recipes.meal_slot',
@@ -986,23 +988,53 @@ export const PAIRS = [
 				shape: 'records',
 				field: 'value',
 				// Filed through OrganiserDisputeAction by a verified club's owner or
-				// admin only; submit_report refuses it (decisions § 2441).
-				allowMissing: ['organiser_dispute'],
+				// admin only; submit_report refuses it (decisions § 2441). The four
+				// course reasons are a park course's only, filed through
+				// ParkCourseReportDialog (decisions § 2449).
+				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
 			},
 			{
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
 				decl: '_reasonKeys',
 				shape: 'strings',
 				// kOrganiserDisputeReason, offered below the general reasons to a
-				// verified club's owner or admin only (decisions § 2441).
-				allowMissing: ['organiser_dispute'],
+				// verified club's owner or admin only (decisions § 2441). The course
+				// reasons are offered by the park course report sheet only (§ 2449).
+				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
 			},
 			{
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
 				decl: '_reasonLabel',
 				shape: 'switch',
-				// The dispute reason has its own label next to its own radio.
-				allowMissing: ['other', 'organiser_dispute'],
+				// The dispute reason has its own label next to its own radio; the
+				// course reasons are labelled by courseReportReasonLabel.
+				allowMissing: ['other', 'organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
+			},
+			// A park course takes the four course reasons or 'other' only
+			// (reports_park_course_check, decisions § 2449).
+			{
+				file: 'apps/web/src/lib/parks/course_report.ts',
+				decl: 'COURSE_REPORT_REASONS',
+				shape: 'strings',
+				allowMissing: ['spam', 'harassment', 'inappropriate', 'impersonation', 'organiser_dispute'],
+			},
+			{
+				file: 'apps/backend/supabase/functions/park-course-report/lib.ts',
+				decl: 'COURSE_REPORT_REASONS',
+				shape: 'strings',
+				allowMissing: ['spam', 'harassment', 'inappropriate', 'impersonation', 'organiser_dispute'],
+			},
+			{
+				file: 'apps/mobile_android/lib/park_course_report.dart',
+				decl: 'kCourseReportReasons',
+				shape: 'strings',
+				allowMissing: ['spam', 'harassment', 'inappropriate', 'impersonation', 'organiser_dispute'],
+			},
+			{
+				file: 'apps/mobile_android/lib/widgets/park_course_report_sheet.dart',
+				decl: 'courseReportReasonLabel',
+				shape: 'switch',
+				allowMissing: ['spam', 'harassment', 'inappropriate', 'impersonation', 'organiser_dispute'],
 			},
 		],
 	},
@@ -1013,6 +1045,10 @@ export const PAIRS = [
 	{
 		tableColumn: 'organiser_dispute_actions.action',
 		clients: [{ file: DATA_TS, decl: 'OrganiserDisputeAction', shape: 'union' }],
+	},
+	{
+		tableColumn: 'park_course_status_actions.action',
+		clients: [{ file: DATA_TS, decl: 'ParkCourseStatusAction', shape: 'union' }],
 	},
 	{
 		// `pending` is the insert default every report starts at, and the
@@ -1034,8 +1070,9 @@ export const PAIRS = [
 				decl: '_title',
 				shape: 'switch',
 				// These four take only an organiser dispute, and mobile has no
-				// report menu on them; they are reported from the web (§ 2441).
-				allowMissing: ['training_plan', 'gym_routine', 'challenge', 'race_listing'],
+				// report menu on them; they are reported from the web (§ 2441). A
+				// park course has its own sheet, park_course_report_sheet.dart (§ 2449).
+				allowMissing: ['training_plan', 'gym_routine', 'challenge', 'race_listing', 'park_course'],
 			},
 		],
 	},

@@ -328,10 +328,10 @@ export const GUIDE_EN: Readonly<Record<GuideLineKey | 'pending' | 'checked', str
 const fill = (template: string, params: Record<string, string | number>) =>
 	template.replace(/\{(\w+)\}/g, (_, p: string) => String(params[p] ?? ''));
 
-/** Canonical-English formatting: kilometres to one decimal, metres whole. */
+/** Canonical-English formatting: whole metres under a kilometre, else kilometres to one decimal. */
 export const ENGLISH_GUIDE_FORMAT: GuideFormat = {
 	message: (key, params) => fill(GUIDE_EN[key], params),
-	distance: (metres) => `${(metres / 1000).toFixed(1)} km`,
+	distance: (metres) => (metres < 1000 ? `${Math.round(metres)} m` : `${(metres / 1000).toFixed(1)} km`),
 	short: (metres) => `${Math.round(metres)} m`,
 };
 

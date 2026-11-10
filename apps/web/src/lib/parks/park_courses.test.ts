@@ -202,7 +202,7 @@ test('parkCourseGpx: the route guide is the track desc, in English, led by its g
 	assert.ok(
 		xml.includes(
 			'<desc>Drafted from map data, not yet checked on the ground.\nPark by the boathouse.\nStart on Lake Trail.\n' +
-				'0.4 km: turn left onto Ridge Trail.\n2.0 km: finish.</desc>',
+				'400 m: turn left onto Ridge Trail.\n2.0 km: finish.</desc>',
 		),
 	);
 });

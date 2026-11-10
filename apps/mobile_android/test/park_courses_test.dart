@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_android/park_courses.dart';
+import 'package:mobile_android/route_guide.dart';
 
 class _Park {
   final String regionCode;
@@ -231,6 +232,32 @@ void main() {
       contains('<wpt lat="37.11" lon="-77.51"><name>Checkpoint 1</name><type>checkpoint</type></wpt>'),
     );
     expect(xml, contains('<copyright author="OpenStreetMap contributors">'));
+  });
+
+  test('parkCourseGpx: the route guide is the track desc, in English, led by its ground-check status', () {
+    final guide = parseRouteGuide({
+      'version': 1,
+      'lang': 'en',
+      'getting_there': 'Park by the boathouse.',
+      'steps': [
+        {'kind': 'start', 'at_m': 0, 'name': 'Lake Trail'},
+        {'kind': 'junction', 'at_m': 400, 'turn': 'left', 'name': 'Ridge Trail'},
+        {'kind': 'finish', 'at_m': 1990},
+      ],
+    });
+    expect(guide, isNotNull);
+    final xml = parkCourseGpx(
+      name: 'Lake Loop',
+      waypoints: const [(lat: 37.1, lng: -77.5, ele: null)],
+      checkpoints: const [],
+      attribution: null,
+      guide: (guide: guide!, checkedAt: null),
+    );
+    expect(
+      xml,
+      contains('<desc>Drafted from map data, not yet checked on the ground.\nPark by the boathouse.\nStart on Lake Trail.\n'
+          '0.4 km: turn left onto Ridge Trail.\n2.0 km: finish.</desc>'),
+    );
   });
 
   test('parkCourseGpx: an unreadable checkpoint list writes no waypoints, never a partial set', () {

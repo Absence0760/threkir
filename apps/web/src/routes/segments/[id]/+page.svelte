@@ -20,6 +20,7 @@
 	import RunMap from '#lib/components/RunMap.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import OldMatchNote from '#lib/components/OldMatchNote.svelte';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
 
 	let { data } = $props();
@@ -146,6 +147,7 @@
 		</a>
 		<header class="detail-header">
 			<h1>{segment.name}</h1>
+			<HelpLink route="/segments/[id]" />
 			{#if segment.region}
 				<p class="region">
 					<span class="material-symbols">place</span>

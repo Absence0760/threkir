@@ -3466,6 +3466,7 @@ export type Database = {
       }
       park_courses: {
         Row: {
+          attribution: string | null
           checkpoints: Json
           course_shape: string
           created_at: string
@@ -3473,6 +3474,7 @@ export type Database = {
           geometry_source: string
           global_segment_id: string
           id: string
+          laps: number | null
           park_id: string
           route_id: string | null
           slug: string
@@ -3483,6 +3485,7 @@ export type Database = {
           status_note: string | null
         }
         Insert: {
+          attribution?: string | null
           checkpoints?: Json
           course_shape: string
           created_at?: string
@@ -3490,6 +3493,7 @@ export type Database = {
           geometry_source: string
           global_segment_id: string
           id?: string
+          laps?: number | null
           park_id: string
           route_id?: string | null
           slug: string
@@ -3500,6 +3504,7 @@ export type Database = {
           status_note?: string | null
         }
         Update: {
+          attribution?: string | null
           checkpoints?: Json
           course_shape?: string
           created_at?: string
@@ -3507,6 +3512,7 @@ export type Database = {
           geometry_source?: string
           global_segment_id?: string
           id?: string
+          laps?: number | null
           park_id?: string
           route_id?: string | null
           slug?: string

@@ -116,12 +116,14 @@ select is(
 select is(
   (select gs.description from load1 l join global_segments gs on gs.id = l.global_segment_id
     where l.course_slug = 'pcl-loop'),
-  E'Run it clockwise.\n\n© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP',
-  'the segment description ends with the attribution');
+  'Run it clockwise.',
+  'the segment description is the course''s own text, without the attribution (§ 2438)');
 select is(
-  (select r.description from load1 l join routes r on r.id = l.route_id where l.course_slug = 'pcl-5k'),
-  '© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP',
-  'a course with no description of its own still carries the attribution');
+  (select array[coalesce(r.description, '<null>'), pc.attribution]
+     from load1 l join routes r on r.id = l.route_id join park_courses pc on pc.id = l.park_course_id
+    where l.course_slug = 'pcl-5k'),
+  array['<null>', '© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP'],
+  'a course with no description of its own has none, and its credit is in park_courses.attribution');
 select is(
   (select array[gs.start_gate_source, gs.end_gate_source]
      from load1 l join global_segments gs on gs.id = l.global_segment_id where l.course_slug = 'pcl-loop'),

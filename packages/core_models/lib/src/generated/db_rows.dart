@@ -5002,6 +5002,8 @@ class ParkCourseRow {
   static const String colDifficulty = 'difficulty';
   static const String colCheckpoints = 'checkpoints';
   static const String colCreatedAt = 'created_at';
+  static const String colLaps = 'laps';
+  static const String colAttribution = 'attribution';
 
   final String id;
   final String parkId;
@@ -5018,6 +5020,8 @@ class ParkCourseRow {
   final String? difficulty;
   final dynamic checkpoints;
   final DateTime createdAt;
+  final int? laps;
+  final String? attribution;
 
   const ParkCourseRow({
     required this.id,
@@ -5035,6 +5039,8 @@ class ParkCourseRow {
     this.difficulty,
     required this.checkpoints,
     required this.createdAt,
+    this.laps,
+    this.attribution,
   });
 
   factory ParkCourseRow.fromJson(Map<String, dynamic> json) => ParkCourseRow(
@@ -5053,6 +5059,8 @@ class ParkCourseRow {
     difficulty: json['difficulty'] as String?,
     checkpoints: json['checkpoints'],
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    laps: (json['laps'] as num?)?.toInt(),
+    attribution: json['attribution'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5071,6 +5079,8 @@ class ParkCourseRow {
     colDifficulty: difficulty,
     colCheckpoints: checkpoints,
     colCreatedAt: createdAt.toIso8601String(),
+    colLaps: laps,
+    colAttribution: attribution,
   };
 
   ParkCourseRow copyWith({
@@ -5089,6 +5099,8 @@ class ParkCourseRow {
     String? difficulty,
     dynamic checkpoints,
     DateTime? createdAt,
+    int? laps,
+    String? attribution,
   }) => ParkCourseRow(
     id: id ?? this.id,
     parkId: parkId ?? this.parkId,
@@ -5105,6 +5117,8 @@ class ParkCourseRow {
     difficulty: difficulty ?? this.difficulty,
     checkpoints: checkpoints ?? this.checkpoints,
     createdAt: createdAt ?? this.createdAt,
+    laps: laps ?? this.laps,
+    attribution: attribution ?? this.attribution,
   );
 }
 

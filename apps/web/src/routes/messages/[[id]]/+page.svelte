@@ -12,6 +12,7 @@
 	import { messagesInbox } from '#lib/stores/messages_inbox.svelte.ts';
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
 	import PlanChangeRequests from '#lib/components/PlanChangeRequests.svelte';
+	import CoachShareCard from '#lib/components/CoachShareCard.svelte';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
 	import {
 		DM_THREAD_POLL_MS,
@@ -737,6 +738,8 @@
 								>{tr('messages.editSave')}</button>
 							</div>
 						</div>
+					{:else if m.kind === 'coach_share'}
+						<CoachShareCard body={m.body} {mine} coachMessageId={m.coach_message_id} {partnerName} />
 					{:else if hasDmRouteAttachment(attached)}
 						<DmRouteAttachment routeId={attached} />
 						{#if !bodyRestatesAttachment(m.body, attached)}

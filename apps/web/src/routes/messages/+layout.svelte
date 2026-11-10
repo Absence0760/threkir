@@ -223,7 +223,7 @@
 												{#if unread > 0}<span class="badge" class:quiet={t.muted} data-testid="inbox-unread-count">{unread}</span>{/if}
 											</span>
 											<span class="preview" class:unsent={t.lastUnsent}
-												>{t.lastFromMe ? m('messages.youPrefix') : ''}{t.lastUnsent
+												>{#if t.lastKind === 'coach_share' && !t.lastUnsent}<AiTag />&nbsp;{/if}{t.lastFromMe ? m('messages.youPrefix') : ''}{t.lastUnsent
 													? m('messages.unsentPlaceholder')
 													: t.lastBody}</span
 											>

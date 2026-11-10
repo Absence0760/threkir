@@ -86,6 +86,7 @@ import { parseStartMode } from '../races/race_start_modes';
 import type { Gate } from '../geo/gate_crossing';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
+import { parseDmKind, type DmKind } from '../social/coach_share';
 import {
 	cancelledOccurrenceRefunds,
 	parseOccurrenceRefundSummary,
@@ -12239,12 +12240,23 @@ export interface DirectMessage {
 	/// When the sender last edited it (migration 20271114000210); null when
 	/// never edited. Both sides show an "edited" mark while it is set.
 	edited_at: string | null;
+	/// `coach_share` for an AI Coach answer the sender shared with their coach
+	/// (migration 20271210001215), drawn as an AI-labelled quote; else `text`.
+	kind: DmKind;
+	/// The sender's own Coach answer a `coach_share` quoted; only the sender
+	/// can read that row. Null on every other message, and once unsent.
+	coach_message_id: string | null;
+}
+
+/// A direct_messages row with its `kind` narrowed at the read boundary.
+function asDirectMessage(row: Omit<DirectMessage, 'kind'> & { kind: string }): DirectMessage {
+	return { ...row, kind: parseDmKind(row.kind) };
 }
 
 /// Every column a client may select on direct_messages: `read_at` is withheld
 /// by a column grant (migration 20271113000001), so `*` is refused.
 const DM_COLUMNS =
-	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at';
+	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id';
 
 export interface DmThread {
 	/// The conversation the mute, archive and delete-for-me actions act on.
@@ -12272,6 +12284,9 @@ export interface DmThread {
 	/// 20271115002384): listed under Requests, left out of the nav badge, and
 	/// the requester learns nothing until it is accepted.
 	request: boolean;
+	/// What the newest message is: a shared AI Coach answer previews with the
+	/// AI tag (migration 20271210001215).
+	lastKind: DmKind;
 }
 
 /// The newest message of the runner's current (not archived) Coach
@@ -12360,6 +12375,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		archived: boolean;
 		marked_unread: boolean;
 		request: boolean;
+		last_kind: string;
 	}[]).map((r) => ({
 		conversationId: r.conversation_id,
 		partnerId: r.partner_id,
@@ -12375,6 +12391,7 @@ export async function fetchDmThreads(): Promise<DmThread[]> {
 		archived: r.archived === true,
 		markedUnread: r.marked_unread === true,
 		request: r.request === true,
+		lastKind: parseDmKind(r.last_kind),
 	}));
 	const byPartner = new Map(
 		threads.flatMap((t) => (t.partnerId ? [[t.partnerId, t] as const] : [])),
@@ -12432,7 +12449,7 @@ export async function fetchDmThread(
 	// transient failure (network blip, RLS denial, dead session) from a
 	// genuinely empty conversation.
 	if (error) throw new Error(`fetchDmThread failed: ${error.message}`);
-	return dmPageFromRows((data ?? []) as DirectMessage[], limit);
+	return dmPageFromRows((data ?? []).map(asDirectMessage), limit);
 }
 
 /// Send a message. RLS enforces the no-block + audience gate (a follow edge,
@@ -12477,7 +12494,7 @@ export async function sendDm(
 		if (limited) throw limited;
 		throw error ? dbError(error) : new Error('Send failed');
 	}
-	return data as DirectMessage;
+	return asDirectMessage(data);
 }
 
 /// Unsend one of the viewer's own messages: the server nulls its body and
@@ -12490,7 +12507,7 @@ export async function unsendDm(messageId: string): Promise<DirectMessage> {
 		p_message_id: messageId,
 	});
 	if (error || !data) throw error ? dbError(error) : new Error('Unsend failed');
-	return data as DirectMessage;
+	return asDirectMessage(data);
 }
 
 /// Replace the text of one of the viewer's own messages (migration
@@ -12514,7 +12531,64 @@ export async function editDm(messageId: string, body: string): Promise<DirectMes
 		if (limited) throw limited;
 		throw error ? dbError(error) : new Error('Edit failed');
 	}
-	return data as DirectMessage;
+	return asDirectMessage(data);
+}
+
+/// Share paragraphs (0-based, as `coachAnswerParagraphs` splits the answer)
+/// of one of the viewer's own AI Coach answers with their active coach
+/// (migration 20271210001215). The server copies the text, so the card holds
+/// exactly what the answer said. A recipient who is not the viewer's coach, a
+/// block either way, or a coach who declined their messages all answer 42501
+/// and surface as `messages.sendNotAllowed`; the closed gate (0A000) as
+/// `coachShare.unavailable`.
+export async function shareCoachMessage(
+	coachMessageId: string,
+	coachId: string,
+	paragraphs: number[],
+): Promise<DirectMessage> {
+	const { data, error } = await supabase.rpc('share_coach_message', {
+		p_coach_message_id: coachMessageId,
+		p_coach_id: coachId,
+		p_paragraphs: paragraphs,
+	});
+	if (error || !data) {
+		if (error?.code === '42501') {
+			throw new AppError('messages.sendNotAllowed', { message: m('messages.sendNotAllowed') });
+		}
+		if (error?.code === '0A000') {
+			throw new AppError('coachShare.unavailable', { message: m('coachShare.unavailable') });
+		}
+		if (error?.code === '54000') {
+			throw new AppError('messages.requestCapReached', { message: m('messages.requestCapReached') });
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		throw error ? dbError(error) : new Error('Share failed');
+	}
+	return asDirectMessage(data);
+}
+
+/// The plan a Coach answer belongs to, for the link back from a card the
+/// viewer shared. Owner-only by RLS, so it answers only for the sender.
+export async function fetchCoachMessagePlanId(coachMessageId: string): Promise<string | null> {
+	const { data, error } = await supabase
+		.from('coach_messages')
+		.select('plan_id')
+		.eq('id', coachMessageId)
+		.maybeSingle();
+	if (error) throw dbError(error);
+	return data?.plan_id ?? null;
+}
+
+/// Whether sharing an AI Coach answer with a coach is live (the server's
+/// `coach_share` flag). Fail-closed: a failed read hides the action.
+export async function fetchCoachShareEnabled(): Promise<boolean> {
+	const { data, error } = await supabase.rpc('coach_share_enabled', undefined, { get: true });
+	if (error) {
+		console.error('coach_share_enabled failed', error.message);
+		return false;
+	}
+	return data === true;
 }
 
 /// Deletes a conversation for the viewer only (migration 20271105000010):
@@ -15716,6 +15790,9 @@ export async function cloneGymRoutineTemplate(templateId: string): Promise<strin
 
 export type PublicGymRoutineEntry = GymRoutineSummary & {
 	author_handle: string | null;
+	/// Published by a verified organiser (`public_gym_routines.is_official`,
+	/// migration 20271211000002).
+	is_official: boolean;
 };
 
 /// Browse the public gym-routine library — routines published as public
@@ -15733,16 +15810,20 @@ export async function fetchPublicGymRoutineLibrary(
 	// 20270319_001); created_at stands in for the required summary field.
 	let q = supabase
 		.from('public_gym_routines')
-		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, created_at')
+		.select('id, author_id, club_id, is_public_template, title, notes, exercise_count, created_at, is_official')
 		.order('created_at', { ascending: false })
 		.limit(limit);
 	const trimmed = query.trim();
 	if (trimmed) q = q.regexIMatch('title', literalSubstringPattern(trimmed));
 	const { data, error } = await q;
 	if (error) return { routines: [], error: dbError(error) };
-	const rows = ((data ?? []) as Array<Omit<GymRoutineSummary, 'last_modified_at'>>).map(
-		(r) => ({ ...r, last_modified_at: r.created_at }) as GymRoutineSummary
-	);
+	const rows = (
+		(data ?? []) as Array<Omit<GymRoutineSummary, 'last_modified_at'> & { is_official: boolean | null }>
+	).map(({ is_official, ...r }) => ({
+		...(r as Omit<GymRoutineSummary, 'last_modified_at'>),
+		last_modified_at: r.created_at,
+		is_official: is_official === true,
+	}));
 	const authorIds = [...new Set(rows.map((r) => r.author_id))];
 	const byId = new Map<string, string | null>();
 	if (authorIds.length > 0) {

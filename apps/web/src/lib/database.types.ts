@@ -3599,6 +3599,8 @@ export type Database = {
           id: string
           laps: number | null
           park_id: string
+          route_guide: Json | null
+          route_guide_checked_at: string | null
           route_id: string | null
           slug: string
           source_checked_at: string | null
@@ -3618,6 +3620,8 @@ export type Database = {
           id?: string
           laps?: number | null
           park_id: string
+          route_guide?: Json | null
+          route_guide_checked_at?: string | null
           route_id?: string | null
           slug: string
           source_checked_at?: string | null
@@ -3637,6 +3641,8 @@ export type Database = {
           id?: string
           laps?: number | null
           park_id?: string
+          route_guide?: Json | null
+          route_guide_checked_at?: string | null
           route_id?: string | null
           slug?: string
           source_checked_at?: string | null

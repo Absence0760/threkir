@@ -453,6 +453,27 @@ void _parseAlterTable(String stmt, Map<String, Map<String, _Column>> schema) {
   // `alter table ... enable row level security` and other forms ignored.
 }
 
+/// [text] with every `check (...)` group removed, parentheses balanced.
+String _withoutCheckBodies(String text) {
+  final out = StringBuffer();
+  final check = RegExp(r'\bcheck\s*\(', caseSensitive: false);
+  var i = 0;
+  for (final m in check.allMatches(text)) {
+    if (m.start < i) continue;
+    out.write(text.substring(i, m.start));
+    var depth = 1;
+    var j = m.end;
+    while (j < text.length && depth > 0) {
+      if (text[j] == '(') depth++;
+      if (text[j] == ')') depth--;
+      j++;
+    }
+    i = j;
+  }
+  out.write(text.substring(i));
+  return out.toString();
+}
+
 /// Parse a single column definition: `name type [constraints]`.
 _Column? _parseColumn(String line) {
   final trimmed = line.trim();
@@ -474,8 +495,10 @@ _Column? _parseColumn(String line) {
   final isArray =
       RegExp(r'\[\s*\]', caseSensitive: false).hasMatch(remainder);
 
+  // A CHECK body can say `other_col is not null`, which says nothing about
+  // this column's own nullability.
   final hasNotNull = RegExp(r'\bnot\s+null\b', caseSensitive: false)
-      .hasMatch(remainder);
+      .hasMatch(_withoutCheckBodies(remainder));
   // Primary keys are implicitly NOT NULL in Postgres.
   final isPrimaryKey = RegExp(r'\bprimary\s+key\b', caseSensitive: false)
       .hasMatch(remainder);

@@ -14,6 +14,7 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { formatDistance } from '#lib/format/units.svelte.ts';
 	import { coachEnabled } from '#lib/coach/coach_flag.ts';
 	import { aiPlanEnabled } from '#lib/training/ai_plan_flag.ts';
@@ -306,24 +307,28 @@
 	<RunSurfaceTabs active="plans" />
 	<header class="page-header">
 		<div class="toolbar">
-			<div class="activity-group" role="group" aria-label={m('plansPage.filterGroupLabel')}>
-				{#each statusFilters as f}
-					<button
-						class="activity-btn"
-						class:active={statusFilter === f.value}
-						onclick={() => (statusFilter = f.value)}
-						aria-label={f.label()}
-						aria-pressed={statusFilter === f.value}
-						type="button"
-					>
-						<span class="material-symbols" aria-hidden="true">{f.icon}</span>
-						<span class="activity-label">{f.label()}</span>
-						{#if counts[f.value] > 0}
-							<span class="count-pill">{counts[f.value]}</span>
-						{/if}
-					</button>
-				{/each}
-			</div>
+			<!-- A filter over nothing is noise: with no plans every bucket is 0.
+			     Shown while loading so a populated list doesn't shift on arrival. -->
+			{#if loading || plans.length > 0}
+				<div class="activity-group" role="group" aria-label={m('plansPage.filterGroupLabel')}>
+					{#each statusFilters as f}
+						<button
+							class="activity-btn"
+							class:active={statusFilter === f.value}
+							onclick={() => (statusFilter = f.value)}
+							aria-label={f.label()}
+							aria-pressed={statusFilter === f.value}
+							type="button"
+						>
+							<span class="material-symbols" aria-hidden="true">{f.icon}</span>
+							<span class="activity-label">{f.label()}</span>
+							{#if counts[f.value] > 0}
+								<span class="count-pill">{counts[f.value]}</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
 
 			<div class="toolbar-actions">
 				<a class="add-btn add-btn-outline" href="/plans/library">
@@ -373,44 +378,53 @@
 			<button class="btn btn-outline" onclick={load}>{m('plansPage.retry')}</button>
 		</div>
 	{:else if plans.length === 0}
-		<section class="empty">
-			<span class="material-symbols empty-icon" aria-hidden="true">calendar_month</span>
-			<h2>{m('plansPage.emptyTitle')}</h2>
-			<p class="empty-lead">
-				{m('plansPage.emptyLead')}
-			</p>
-			<button class="btn-primary" type="button" onclick={() => (showPlanModal = true)}>
-				<span class="material-symbols" aria-hidden="true">add</span>
-				{m('plansPage.createFirst')}
-			</button>
-			{#if showAiPlan}
-				<a href={AI_PLAN_HREF}>{m('plansPage.describeWithAi')}</a>
-			{/if}
+		<EmptyState
+			icon="calendar_month"
+			title={m('plansPage.emptyTitle')}
+			text={m('plansPage.emptyLead')}
+		>
+			{#snippet actions()}
+				<button class="btn btn-primary" type="button" onclick={() => (showPlanModal = true)}>
+					<span class="material-symbols" aria-hidden="true">add</span>
+					{m('plansPage.createFirst')}
+				</button>
+				{#if showAiPlan}
+					<a class="btn btn-outline" href={AI_PLAN_HREF}>
+						<span class="material-symbols" aria-hidden="true">auto_awesome</span>
+						{m('plansPage.describeWithAi')}
+					</a>
+				{/if}
+			{/snippet}
 			<div class="starters" role="group" aria-labelledby="starters-heading">
 				<h3 id="starters-heading">{m('plansNew.starterHeading')}</h3>
 				<ul class="starter-list">
 					{#each STARTER_PLANS as s (s.id)}
-						<li class="starter">
+						<li>
 							<button
-								class="btn btn-outline"
+								class="starter-tile"
 								type="button"
 								disabled={creatingStarterId !== null}
 								aria-busy={creatingStarterId === s.id}
+								aria-labelledby="starter-{s.id}-name"
 								aria-describedby="starter-{s.id}-summary"
 								onclick={() => createStarter(s.id)}
 							>
-								{creatingStarterId === s.id ? m('plansNew.creating') : starterName(s.id)}
+								<span class="starter-name" id="starter-{s.id}-name">{starterName(s.id)}</span>
+								<span class="starter-summary" id="starter-{s.id}-summary">
+									{starterSummaryText(s.id)} · {m('plansPage.starterStarts', {
+										date: formatDateShort(starterStartIso(s.id, todayISO()))
+									})}
+								</span>
+								<span class="starter-cta" aria-hidden="true">
+									{creatingStarterId === s.id ? m('plansNew.creating') : m('plansNew.createStarter')}
+									<span class="material-symbols">arrow_forward</span>
+								</span>
 							</button>
-							<span class="starters-hint" id="starter-{s.id}-summary">
-								{starterSummaryText(s.id)} · {m('plansPage.starterStarts', {
-									date: formatDateShort(starterStartIso(s.id, todayISO()))
-								})}
-							</span>
 						</li>
 					{/each}
 				</ul>
 			</div>
-		</section>
+		</EmptyState>
 	{:else}
 		<div class="grid">
 			{#each filteredPlans as p (p.id)}
@@ -504,15 +518,18 @@
 		</div>
 
 		{#if filteredPlans.length === 0}
-			<div class="filter-empty">
-				<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-				<p class="empty-text">{m('plansPage.noFilteredPlans', {
-						status: statusFilter === 'all' ? '' : statusLabel(statusFilter)
-					})}</p>
-				<button class="link-btn" type="button" onclick={() => (statusFilter = 'all')}>
-					{m('plansPage.showAllPlans')}
-				</button>
-			</div>
+			<EmptyState
+				icon="filter_alt_off"
+				title={m('plansPage.noFilteredPlans', {
+					status: statusFilter === 'all' ? '' : statusLabel(statusFilter)
+				})}
+			>
+				{#snippet actions()}
+					<button class="btn btn-outline" type="button" onclick={() => (statusFilter = 'all')}>
+						{m('plansPage.showAllPlans')}
+					</button>
+				{/snippet}
+			</EmptyState>
 		{/if}
 	{/if}
 </div>
@@ -655,6 +672,9 @@
 			margin-inline-start: 0;
 			width: 100%;
 			justify-content: flex-end;
+			/* Three actions outgrow a phone; flex-end without wrapping pushes
+			   the first ones off the left edge, where nothing can scroll to. */
+			flex-wrap: wrap;
 		}
 	}
 	@media (max-width: 30rem) {
@@ -875,99 +895,92 @@
 		color: var(--color-danger-text);
 	}
 
-	.empty {
-		max-width: 38rem;
-		margin: var(--space-2xl) 0;
-		padding: var(--space-2xl);
-		text-align: center;
-		background: var(--color-surface);
-		border: 1px dashed var(--color-border);
-		border-radius: var(--radius-lg);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-md);
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.7;
-	}
-	.empty h2 {
-		font-size: 1.25rem;
-		font-weight: 700;
-	}
-	.empty-lead {
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-		line-height: 1.55;
-		max-width: 32rem;
-	}
-
 	.starters {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-md);
-		padding-top: var(--space-md);
-		border-top: 1px solid var(--color-border);
-		width: 100%;
+		gap: var(--space-md);
 	}
 	.starters h3 {
+		margin: 0;
 		font-size: 1rem;
 		font-weight: 600;
+		color: var(--color-text);
 	}
-	.starters-hint {
-		color: var(--color-text-secondary);
-		font-size: 0.85rem;
-	}
+	/* Three tiles, so the cascade is 1 → 3 columns: a 2-column step would
+	   strand the third tile on a row of its own. */
 	.starter-list {
 		list-style: none;
 		margin: 0;
 		padding: 0;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: var(--space-md);
 	}
-	.starter {
+	@media (min-width: 56rem) {
+		.starter-list {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+	.starter-list li {
+		display: flex;
+	}
+	.starter-tile {
+		flex: 1;
 		display: flex;
 		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-xs);
+		min-height: var(--tap-target-min);
+		padding: var(--space-md) var(--space-lg);
+		background: var(--color-bg);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-md);
+		color: var(--color-text);
+		font: inherit;
+		text-align: start;
+		cursor: pointer;
+		transition: border-color var(--transition-fast),
+			background var(--transition-fast);
+	}
+	.starter-tile:hover:not(:disabled) {
+		border-color: var(--color-primary);
+		background: var(--color-primary-light);
+	}
+	.starter-tile:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.starter-tile:disabled {
+		cursor: default;
+		opacity: 0.6;
+	}
+	.starter-tile[aria-busy='true'] {
+		opacity: 1;
+		border-color: var(--color-primary);
+	}
+	.starter-name {
+		font-size: 0.95rem;
+		font-weight: 600;
+		overflow-wrap: anywhere;
+	}
+	.starter-summary {
+		font-size: 0.85rem;
+		line-height: 1.45;
+		color: var(--color-text-secondary);
+	}
+	.starter-cta {
+		display: inline-flex;
 		align-items: center;
 		gap: var(--space-2xs);
-		text-align: center;
-	}
-	.filter-empty {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-md);
-		color: var(--color-text-tertiary);
-	}
-	.filter-empty .empty-icon {
-		font-size: 2.25rem;
-	}
-	.filter-empty .empty-text {
-		font-size: 0.95rem;
-		color: var(--color-text);
-		padding: 0;
-	}
-	.link-btn {
-		background: transparent;
-		border: none;
-		color: var(--color-primary);
-		font: inherit;
+		margin-top: auto;
+		padding-top: var(--space-xs);
 		font-size: 0.875rem;
 		font-weight: 600;
-		cursor: pointer;
-		padding: var(--space-xs);
+		color: var(--color-primary);
 	}
-	.link-btn:hover {
-		color: var(--color-primary-hover);
+	.starter-cta .material-symbols {
+		font-size: 1.1rem;
 	}
-
 	/* Skeleton placeholders for the initial load. Layout matches the
 	   real card so the page lands at its true height immediately. */
 	.skel-card {

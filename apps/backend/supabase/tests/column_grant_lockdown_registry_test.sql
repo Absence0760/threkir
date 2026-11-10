@@ -89,6 +89,9 @@ insert into lockdown_registry (tbl, col, reason) values
   -- both participants under RLS, and a column grant cannot depend on the row.
   -- The recipient's unread count reads it through dm_threads(), SECURITY
   -- DEFINER; the sender reads seen_at, written only while both have receipts on.
+  -- direct_message_images — 20271213121604 (issue #1216). The uploader gets
+  -- their own path from create_dm_image_upload; nobody reads it back.
+  ('direct_message_images', 'upload_path',         'where the sender''s raw, not yet re-encoded upload sits; no client reads it, and the bucket never admits a read of it'),
   ('direct_messages',      'read_at',              'the recipient''s own read time; granting it shows the sender a read the recipient turned receipts off to keep private'),
   -- 20271114000210: the text as first sent, kept after an edit only so
   -- submit_report can snapshot it for moderators. Clients show the edited text.

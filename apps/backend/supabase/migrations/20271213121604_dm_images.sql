@@ -100,7 +100,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public, private
+set search_path = public, private, pg_temp
 as $$
   select coalesce(
     (select f.enabled from private.feature_flags f where f.name = 'dm_images'),
@@ -115,7 +115,7 @@ returns boolean
 language sql
 stable
 security definer
-set search_path = public, private
+set search_path = public, private, pg_temp
 as $$
   select private.dm_images_enabled();
 $$;
@@ -161,11 +161,13 @@ comment on table direct_message_images is
 alter table direct_message_images enable row level security;
 
 revoke all on direct_message_images from public, anon, authenticated;
--- Every column is readable by whoever the policy admits, so the grant is
--- table-wide (a per-column grant of every column is what
--- column_grant_lockdown_registry_test calls a table-wide grant written the
--- long way). No client holds INSERT, UPDATE or DELETE.
-grant select on direct_message_images to anon, authenticated;
+-- upload_path is withheld: no client reads it (create_dm_image_upload hands
+-- the uploader its own path once), and a recipient has no use for where the
+-- sender's raw upload sat. Registered in column_grant_lockdown_registry_test.
+-- No client holds INSERT, UPDATE or DELETE.
+grant select (
+  id, owner_id, message_id, status, storage_path, width, height, created_at, processed_at
+) on direct_message_images to anon, authenticated;
 grant all on direct_message_images to service_role;
 
 create policy "owner and participants read message images"
@@ -207,18 +209,33 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values ('dm-images', 'dm-images', false, 5242880, array['image/jpeg'])
 on conflict (id) do nothing;
 
+-- A definer helper because upload_path is withheld from clients, and a
+-- policy's subquery is held to the caller's column grants.
+create function private.dm_image_upload_allowed(p_name text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from direct_message_images i
+     where i.upload_path = p_name
+       and i.owner_id = auth.uid()
+       and i.status = 'pending'
+       and i.message_id is null
+  );
+$$;
+
+revoke execute on function private.dm_image_upload_allowed(text) from public, anon;
+grant execute on function private.dm_image_upload_allowed(text) to authenticated, service_role;
+
 create policy "dm-images upload to own pending image"
   on storage.objects for insert
   to authenticated
   with check (
     bucket_id = 'dm-images'
-    and exists (
-      select 1 from public.direct_message_images i
-       where i.upload_path = storage.objects.name
-         and i.owner_id = (select auth.uid())
-         and i.status = 'pending'
-         and i.message_id is null
-    )
+    and private.dm_image_upload_allowed(storage.objects.name)
   );
 
 create function private.dm_image_report_held(p_path text)
@@ -282,6 +299,14 @@ begin
   end if;
 
   perform enforce_create_rate_limit('dm_image_upload', v_me, 30, 3600);
+
+  -- At most 10 uploads waiting to be sent, so the bucket cannot be filled
+  -- with photos that never reach a conversation (each lives up to a day).
+  if (select count(*) from direct_message_images i
+       where i.owner_id = v_me and i.message_id is null and i.status = 'pending') >= 10 then
+    raise exception 'create_dm_image_upload: too many photos waiting to be sent'
+      using errcode = '54000';
+  end if;
 
   insert into direct_message_images (id, owner_id, upload_path, storage_path)
   values (
@@ -504,16 +529,29 @@ create trigger direct_messages_unsent_detach_image
 
 -- ─── release: a detached image no report holds goes ─────────────────────
 
+-- The row is locked first: a report being filed at the same moment holds a
+-- key-share lock on it (reports_snapshot_dm_image and the FK), so this waits
+-- for that report to commit and the re-check below then sees it, rather than
+-- deleting evidence from under it.
 create function private.dm_image_release(p_image uuid)
 returns void
-language sql
+language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
-  delete from direct_message_images i
+begin
+  perform 1 from direct_message_images i
    where i.id = p_image
      and i.message_id is null
-     and not exists (select 1 from reports r where r.snapshot_image_id = i.id);
+   for update;
+  if not found then
+    return;
+  end if;
+  if exists (select 1 from reports r where r.snapshot_image_id = p_image) then
+    return;
+  end if;
+  delete from direct_message_images where id = p_image;
+end;
 $$;
 
 revoke execute on function private.dm_image_release(uuid) from public, anon, authenticated;
@@ -662,7 +700,8 @@ begin
     select i.id into new.snapshot_image_id
       from direct_message_images i
      where i.message_id = new.target_id
-       and i.status in ('pending', 'ready');
+       and i.status in ('pending', 'ready')
+       for key share;
     if new.snapshot_image_id is not null and new.snapshot_body is null then
       new.snapshot_body := '';
     end if;

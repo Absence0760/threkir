@@ -32,6 +32,9 @@ type fakeDmImages struct {
 	downloadErr error
 	uploadErr   error
 	markErr     error
+	// rowGoneBeforeMark deletes the row as the worker marks it, as an
+	// unsend or a purge landing mid-job does.
+	rowGoneBeforeMark bool
 
 	orphans    []string
 	orphanErr  error
@@ -72,21 +75,26 @@ func (f *fakeBackend) UploadDmImage(_ context.Context, path string, body []byte)
 	return nil
 }
 
-func (f *fakeBackend) markDm(id, status string, w, h int) error {
+func (f *fakeBackend) markDm(id, status string, w, h int) (bool, error) {
 	if f.dm.markErr != nil {
-		return f.dm.markErr
+		return false, f.dm.markErr
+	}
+	if f.dm.rowGoneBeforeMark {
+		delete(f.dm.rows, id)
+		return false, nil
 	}
 	if r, ok := f.dm.rows[id]; ok && r.Status == "pending" {
 		r.Status, r.width, r.height = status, w, h
+		return true, nil
 	}
-	return nil
+	return false, nil
 }
 
-func (f *fakeBackend) MarkDmImageReady(_ context.Context, id string, w, h int) error {
+func (f *fakeBackend) MarkDmImageReady(_ context.Context, id string, w, h int) (bool, error) {
 	return f.markDm(id, "ready", w, h)
 }
 
-func (f *fakeBackend) MarkDmImageRejected(_ context.Context, id string) error {
+func (f *fakeBackend) MarkDmImageRejected(_ context.Context, id string) (bool, error) {
 	return f.markDm(id, "rejected", 0, 0)
 }
 
@@ -191,6 +199,46 @@ func TestDmImageProcess_PendingBecomesReadyWithItsSize(t *testing.T) {
 	}
 	if !uploadDeleted(be) {
 		t.Fatalf("upload not deleted; DELETEs = %v", be.storageDeleted)
+	}
+}
+
+func TestDmImageProcess_RowDeletedMidJobErasesWhatItWrote(t *testing.T) {
+	be := dmBackend("pending", dmPhoto(t, 64, 48))
+	be.dm.rowGoneBeforeMark = true
+	w := newTestWorker(be, nil)
+
+	if err := w.dispatch(context.Background(), dmJob()); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	erased := false
+	for _, call := range be.storageDeleted {
+		if slicesContains(call, dmReencode) {
+			erased = true
+		}
+	}
+	if !erased {
+		t.Fatalf("the re-encode written after the row went was not erased; DELETEs = %v", be.storageDeleted)
+	}
+}
+
+func TestDmImageProcess_DecoderPanicRejectsTheRow(t *testing.T) {
+	prev := reencodeDmImage
+	reencodeDmImage = func([]byte, int, int, int) ([]byte, int, int, error) { panic("boom") }
+	defer func() { reencodeDmImage = prev }()
+	be := dmBackend("pending", dmPhoto(t, 64, 48))
+	w := newTestWorker(be, nil)
+
+	if err := w.dispatch(context.Background(), dmJob()); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if got := be.dm.rows[dmImageID].Status; got != "rejected" {
+		t.Fatalf("status = %s, want rejected", got)
+	}
+}
+
+func TestDmImageProcess_PixelCapFitsTheClientContract(t *testing.T) {
+	if DmImageMaxPixels < DmImageMaxLongSide*DmImageMaxLongSide || DmImageMaxPixels > 10_000_000 {
+		t.Fatalf("DmImageMaxPixels = %d: must admit a 2048 x 2048 upload and stay far below the 40 MP that measured over 300 MB", DmImageMaxPixels)
 	}
 }
 
@@ -378,6 +426,9 @@ func TestSupabaseClient_DmImageRequestShapes(t *testing.T) {
 		if r.Method == http.MethodGet {
 			_, _ = rw.Write([]byte(`[{"id":"` + dmImageID + `","status":"pending","upload_path":"a","storage_path":"b"}]`))
 		}
+		if r.Method == http.MethodPatch {
+			_, _ = rw.Write([]byte(`[{"id":"` + dmImageID + `"}]`))
+		}
 	}))
 	defer srv.Close()
 	c := NewSupabaseClient(srv.URL, "service-key")
@@ -390,10 +441,10 @@ func TestSupabaseClient_DmImageRequestShapes(t *testing.T) {
 	if err := c.UploadDmImage(ctx, dmReencode, []byte("jpeg")); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.MarkDmImageReady(ctx, dmImageID, 640, 480); err != nil {
-		t.Fatal(err)
+	if matched, err := c.MarkDmImageReady(ctx, dmImageID, 640, 480); err != nil || !matched {
+		t.Fatalf("MarkDmImageReady = %v, %v", matched, err)
 	}
-	if err := c.MarkDmImageRejected(ctx, dmImageID); err != nil {
+	if _, err := c.MarkDmImageRejected(ctx, dmImageID); err != nil {
 		t.Fatal(err)
 	}
 

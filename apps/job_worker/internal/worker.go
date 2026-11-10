@@ -117,8 +117,8 @@ type Backend interface {
 	FetchDmImage(ctx context.Context, imageID string) (*DmImage, error)
 	DownloadDmImage(ctx context.Context, path string, maxBytes int64) ([]byte, error)
 	UploadDmImage(ctx context.Context, path string, body []byte) error
-	MarkDmImageReady(ctx context.Context, imageID string, width, height int) error
-	MarkDmImageRejected(ctx context.Context, imageID string) error
+	MarkDmImageReady(ctx context.Context, imageID string, width, height int) (bool, error)
+	MarkDmImageRejected(ctx context.Context, imageID string) (bool, error)
 	DmImageOrphanPaths(ctx context.Context, paths []string, limit int) ([]string, error)
 	DownloadClubPhoto(ctx context.Context, path string) (body []byte, contentType string, err error)
 	UploadClubPhoto(ctx context.Context, path string, body []byte, contentType string) error

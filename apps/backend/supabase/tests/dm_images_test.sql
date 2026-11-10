@@ -6,7 +6,7 @@
 -- holds it, the report snapshot, and the orphan worklist.
 
 begin;
-select plan(34);
+select plan(37);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -258,6 +258,23 @@ select is(
   (select count(*)::int from direct_message_images where id = (select id from img where k = 'd')),
   0,
   'an upload never sent is deleted after a day');
+
+-- ── withheld column and the waiting-upload cap ──
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"aaaa1216-1a6e-0000-0000-0000000000b2","role":"authenticated"}';
+select throws_ok(
+  $$select upload_path from direct_message_images$$,
+  '42501', null,
+  'no client reads upload_path');
+select lives_ok(
+  $$select create_dm_image_upload() from generate_series(1, 10)$$,
+  'ten photos can wait to be sent');
+select throws_ok(
+  $$select * from create_dm_image_upload()$$,
+  '54000', null,
+  'an eleventh waiting upload is refused');
+reset role;
 
 -- ── the gate ──
 

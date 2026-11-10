@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -106,8 +107,9 @@ func (c *SupabaseClient) UploadDmImage(ctx context.Context, path string, body []
 }
 
 // MarkDmImageReady records the re-encode. The status=eq.pending filter makes
-// it a no-op on a row a concurrent attempt already settled.
-func (c *SupabaseClient) MarkDmImageReady(ctx context.Context, imageID string, width, height int) error {
+// it a no-op on a row a concurrent attempt already settled; false means no
+// pending row matched (settled, or deleted while the worker ran).
+func (c *SupabaseClient) MarkDmImageReady(ctx context.Context, imageID string, width, height int) (bool, error) {
 	return c.patchPendingDmImage(ctx, imageID, map[string]any{
 		"status":       "ready",
 		"width":        width,
@@ -118,30 +120,40 @@ func (c *SupabaseClient) MarkDmImageReady(ctx context.Context, imageID string, w
 
 // MarkDmImageRejected records that the upload could not be used. Filtered
 // on status=eq.pending like MarkDmImageReady, so it never demotes a ready row.
-func (c *SupabaseClient) MarkDmImageRejected(ctx context.Context, imageID string) error {
+func (c *SupabaseClient) MarkDmImageRejected(ctx context.Context, imageID string) (bool, error) {
 	return c.patchPendingDmImage(ctx, imageID, map[string]any{
 		"status":       "rejected",
 		"processed_at": time.Now().UTC().Format(time.RFC3339Nano),
 	})
 }
 
-func (c *SupabaseClient) patchPendingDmImage(ctx context.Context, imageID string, patch map[string]any) error {
+func (c *SupabaseClient) patchPendingDmImage(ctx context.Context, imageID string, patch map[string]any) (bool, error) {
 	payload, err := json.Marshal(patch)
 	if err != nil {
-		return err
+		return false, err
 	}
 	q := url.Values{}
 	q.Set("id", "eq."+imageID)
 	q.Set("status", "eq.pending")
+	q.Set("select", "id")
 	req, err := http.NewRequestWithContext(ctx, http.MethodPatch,
 		c.BaseURL+"/rest/v1/"+schema.TableDirectMessageImages+"?"+q.Encode(), bytes.NewReader(payload))
 	if err != nil {
-		return err
+		return false, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Prefer", "return=minimal")
-	_, err = c.do(ctx, req)
-	return err
+	req.Header.Set("Prefer", "return=representation")
+	body, err := c.do(ctx, req)
+	if err != nil {
+		return false, err
+	}
+	var rows []struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(body, &rows); err != nil {
+		return false, fmt.Errorf("direct_message_images patch: decode: %w", err)
+	}
+	return len(rows) > 0, nil
 }
 
 // DmImageOrphanPaths calls `dm_image_orphan_paths`, the service-role worklist

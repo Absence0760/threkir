@@ -424,6 +424,13 @@ and install from there.
 - The app compiles locally — don't rely on CI to catch build breakage.
 - Schema changes: if you deployed `backend@X`, apps that depend on the
   new schema should tag after (or at least not ahead of) `backend@X`.
+- **The job_worker that reads `distance_step_over_chord_m` ships before the
+  first watch build that writes it** (GPS distance spec v1.7, [decisions
+  § 2444](../architecture/decisions.md)). A `watch_wear@*` or `watch_ios@*`
+  release from v1.7 on is recomputed on arrival; a worker that predates the
+  key credits the run's gaps by the run-total rule, stamps it, and the run is
+  never queued again. Check the deployed worker carries `gapStepCreditM`
+  before tagging the first such watch release; after that, nothing to do.
 - **Health Connect permission changes block the Android release.** If the
   diff since the last `mobile_android@*` tag adds or removes an
   `android.permission.health.*` entry in `AndroidManifest.xml` /

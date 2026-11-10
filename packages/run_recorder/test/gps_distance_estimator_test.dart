@@ -59,10 +59,10 @@ void main() {
   final posTolerance = (vectors['position_tolerance_deg'] as num).toDouble();
   final scenarios = (vectors['scenarios'] as List).cast<Map<String, dynamic>>();
 
-  test('fixture is spec v1.5 and carries every scenario', () {
-    expect(vectors['spec'], 'gps-distance-estimator v1.5');
-    expect(GpsDistanceEstimator.specVersion, '1.5');
-    expect(scenarios.length, greaterThanOrEqualTo(35));
+  test('fixture is spec v1.6 and carries every scenario', () {
+    expect(vectors['spec'], 'gps-distance-estimator v1.6');
+    expect(GpsDistanceEstimator.specVersion, '1.6');
+    expect(scenarios.length, greaterThanOrEqualTo(41));
   });
 
   test('constants match the fixture', () {
@@ -71,6 +71,7 @@ void main() {
     expect(c['Q_ACCEL'], GpsDistanceEstimator.qAccel);
     expect(c['MIN_POS_SIGMA_M'], GpsDistanceEstimator.minPosSigmaM);
     expect(c['MAX_POS_SIGMA_M'], GpsDistanceEstimator.maxPosSigmaM);
+    expect(c['MAX_OPEN_GAPS'], GpsDistanceEstimator.maxOpenGaps);
     expect(c['INIT_VEL_VAR'], GpsDistanceEstimator.initVelVar);
     expect(c['MIN_SPEED_SIGMA_MPS'], GpsDistanceEstimator.minSpeedSigmaMps);
     expect(
@@ -137,7 +138,7 @@ void main() {
     expect(c['STOP_SPEED_MPS'], GpsDistanceEstimator.stopSpeedMps);
     expect(c['STOP_RADIUS_M'], GpsDistanceEstimator.stopRadiusM);
     // Every fixture constant is pinned above; a new one fails here until it is.
-    expect(c.length, 51);
+    expect(c.length, 52);
   });
 
   group('golden vectors', () {
@@ -423,5 +424,57 @@ void main() {
         expect(e.distanceM, closeTo(300 * 1.3, 300 * 1.3 * 0.05));
       },
     );
+  });
+
+  group('v1.6', () {
+    GpsDistanceEstimator eastward() {
+      final e = GpsDistanceEstimator(initialStrideM: 0.5, learnStride: false);
+      for (var i = 0; i <= 25; i++) {
+        e.addFix(
+          t: i.toDouble(),
+          lat: 40,
+          lng: -75 + 4.0 * i / (111195 * math.cos(40 * math.pi / 180)),
+          accuracyM: 3,
+          speedMps: 4,
+          speedAccuracyMps: 0.3,
+          bearingDeg: 90,
+        );
+        e.addSteps(i + 0.5, 4 * i + 2);
+      }
+      return e;
+    }
+
+    test('a late step batch tops a gap up without counting its chord twice',
+        () {
+      // Steps at 0.5 m credit 2 m/s, so the straight 30 s gap's 116 m chord
+      // lower bound wins. The batch after the resuming fix moves 10 m of
+      // that credit from the chord to the steps and adds nothing.
+      final e = eastward();
+      e.addSteps(50, 202);
+      e.addFix(
+        t: 55,
+        lat: 40,
+        lng: -75 + 220 / (111195 * math.cos(40 * math.pi / 180)),
+        accuracyM: 3,
+        speedMps: 4,
+        speedAccuracyMps: 0.3,
+        bearingDeg: 90,
+      );
+      final before = e.distanceM;
+      final steps = e.stepDistanceM;
+      e.addSteps(56.5, 228);
+      expect(e.distanceM, closeTo(before, 1e-9));
+      expect(e.stepDistanceM - steps, closeTo(10, 1e-9));
+    });
+
+    test('a stretch credits no steps taken before its first fix', () {
+      final e = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false);
+      for (var i = 0; i < 30; i++) {
+        e.addSteps(i + 0.5, 4 * i);
+      }
+      e.addFix(t: 30, lat: 40, lng: -75, accuracyM: 3);
+      e.finish(31);
+      expect(e.distanceM, 0);
+    });
   });
 }

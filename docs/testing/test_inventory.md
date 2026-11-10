@@ -39,7 +39,7 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 
 **Split elevation** (`computeSplitDurations`'s `RunSplit.elevationMetres`, twin of the web cases) — a barometer run whose GPS altitude disagrees in shape and level reads each split off the barometer (the series `runAltitude` gives the climb), a GPS-only copy reads GPS; a head dropout holds the first reading back to the start, a mid-run stall is bridged, an off-track fix's wild altitude is never read; a half-metre net rounds toward +infinity as `Math.round` does.
 
-### `packages/run_recorder/test/run_recorder_test.dart` — 117 tests
+### `packages/run_recorder/test/run_recorder_test.dart` — 121 tests
 
 The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hooks (see below) to bypass the real geolocator stream and inject synthetic `Position` objects directly into `_onPosition`.
 
@@ -83,6 +83,12 @@ The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hoo
 - `prepare(initialStrideM:)` seeds the stride, which survives `begin()`, and an out-of-range seed is ignored
 - A fused stretch never learns stride; the receiver stretch after it does
 - A canopy fix advances `distanceFixedAt` but not `positionFixedAt`
+
+**GPS distance spec v1.6 — steps across a location stall (4 tests, decisions § 2435):** a 30 s stall at 4 m/s with a 4/3 m stride, the runner looping back so the chord credits ~0, is credited all 120 m of its steps (except where the last case says) when
+- GPS resumes (112 m under v1.5, which lost the 2 s after the last fix)
+- the step count arrives in 5 s batches and the last batch lands after the resuming fix (100 m under v1.5)
+- the run is stopped inside the stall (112 m under v1.5)
+- the run is paused 15 s into it: the 60 m before the pause are credited (52 m under v1.5), the 880 steps taken while paused are not, and nor are the 15 s after the resume, before that stretch's first fix
 
 **Not covered (require mocking `GeolocatorPlatform.instance`):** typed errors thrown from `prepare()`, the `_gpsRetryTimer` retry loop, position-stream `onError` cleanup, `stop`/`dispose` cancelling the retry timer.
 

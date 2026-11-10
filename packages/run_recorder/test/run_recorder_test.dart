@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:run_recorder/run_recorder.dart';
 
+import 'fix_clock.dart';
+
 /// Drives the recorder's monotonic clock so the re-anchor's real-elapsed arm
 /// can be exercised without waiting out ten real seconds.
 class _FakeClock extends Stopwatch {
@@ -2142,15 +2144,16 @@ void main() {
       }
       r.debugInjectPosition(
           makePosition(metresEast: 4.0 * 46, secondsFromStart: 46, speed: 4));
-      // The steps fall 4.22 m short of the 21 s gap's chord lower bound, so
-      // the GPS credit tops them up to it (spec v1.4).
-      expect(r.stepFilledDistanceMetres, closeTo(72, 1e-6));
-      expect(r.debugDistanceMetres, closeTo(176.2203647, 1e-6));
+      // All 60 steps the stall's samples cover, (25 s, 45 s], including the
+      // two just after the last fix (spec v1.6; 72 m under v1.5). They beat
+      // the gap's 76.22 m chord lower bound, so the chord adds nothing.
+      expect(r.stepFilledDistanceMetres, closeTo(80, 1e-6));
+      expect(r.debugDistanceMetres, closeTo(180, 1e-6));
 
       final run = await r.stop();
-      expect(run.distanceMetres, closeTo(176.2203647, 1e-6));
+      expect(run.distanceMetres, closeTo(180, 1e-6));
       expect(run.metadata?['distance_estimator'], 'kalman_v4');
-      expect(run.metadata?['distance_step_filled_m'], 72);
+      expect(run.metadata?['distance_step_filled_m'], 80);
     });
 
     test('a 20-50 m fix feeds the estimator but not the line or the map',
@@ -2314,8 +2317,9 @@ void main() {
     test('a gap right after a resume is filled with the pre-pause stride',
         () {
       // The stride learned before the pause seeds the post-resume estimator,
-      // so the 18 stale-GPS step samples (3 steps x 4/3 m each) are committed
-      // when the 21 s gap closes, before the new stretch could relearn one.
+      // so the 20 step samples after the post-resume fix (3 steps x 4/3 m
+      // each) are committed when the 21 s gap closes, before the new stretch
+      // could relearn one.
       final clock = _FakeClock();
       final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
       r.begin();
@@ -2338,9 +2342,106 @@ void main() {
       clock.advance(const Duration(seconds: 1));
       r.debugInjectPosition(
           makePosition(metresEast: 188, secondsFromStart: 48, speed: 4));
-      // 72 m of steps, topped up 1.90 m to the gap's chord lower bound.
-      expect(r.stepFilledDistanceMetres, closeTo(72, 1e-6));
-      expect(r.debugDistanceMetres, closeTo(173.9009432, 1e-6));
+      // 80 m of steps, past the gap's 73.90 m chord lower bound (spec v1.6;
+      // 72 m of steps topped up to the chord under v1.5).
+      expect(r.stepFilledDistanceMetres, closeTo(80, 1e-6));
+      expect(r.debugDistanceMetres, closeTo(180, 1e-6));
+    });
+
+    group('steps counted across a location stall', () {
+      // 4 m/s at 3 steps a second teaches a 4/3 m stride over 25 s of good
+      // fixes. The location stream then stalls for 30 s while the pedometer
+      // keeps counting: 90 steps, 120 m. The runner loops back to within
+      // 10 m of where the stall began, so the chord lower bound is below the
+      // steps and the gap's credit is the steps x stride (spec v1.4 item 9).
+      DateTime at(int s) => DateTime(2026, 4, 10, 10, 0, s);
+
+      RunRecorder learnStride(FixClock clock) {
+        final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+        r.begin();
+        for (var i = 0; i <= 25; i++) {
+          clock.inject(r, makePosition(
+              metresEast: 4.0 * i, secondsFromStart: i, speed: 4));
+          r.setStepCount(3 * i);
+        }
+        expect(r.strideMetres, closeTo(4 / 3, 1e-9));
+        expect(r.debugDistanceMetres, closeTo(100, 1e-6));
+        return r;
+      }
+
+      test('every step of the stall is credited when GPS resumes', () {
+        final clock = FixClock()..start();
+        final r = learnStride(clock);
+        for (var s = 26; s <= 55; s++) {
+          clock.advanceTo(at(s));
+          r.setStepCount(3 * s);
+        }
+        clock.inject(r, makePosition(
+            metresEast: 110, secondsFromStart: 55, speed: 4));
+        expect(r.stepFilledDistanceMetres, closeTo(120, 1e-6));
+        expect(r.debugDistanceMetres, closeTo(220, 1e-6));
+      });
+
+      test('a step batch delivered after the resuming fix still fills the gap',
+          () async {
+        // Android's step counter batches while the screen is off: the batch
+        // holding the stall's last 5 s lands after the first fix past it.
+        final clock = FixClock()..start();
+        final r = learnStride(clock);
+        for (var s = 30; s <= 50; s += 5) {
+          clock.advanceTo(at(s));
+          r.setStepCount(3 * s);
+        }
+        clock.inject(r, makePosition(
+            metresEast: 110, secondsFromStart: 55, speed: 4));
+        clock.inject(r, makePosition(
+            metresEast: 114, secondsFromStart: 56, speed: 4));
+        r.setStepCount(3 * 56);
+        expect(r.stepFilledDistanceMetres, closeTo(120, 1e-6));
+        expect(r.debugDistanceMetres, closeTo(224, 1e-6));
+        // The smoother's replay gives the late share to the gap too.
+        final run = await r.stop();
+        expect(run.distanceMetres, closeTo(224, 1e-6));
+      });
+
+      test('a run stopped inside the stall credits its steps', () async {
+        final clock = FixClock()..start();
+        final r = learnStride(clock);
+        for (var s = 26; s <= 55; s++) {
+          clock.advanceTo(at(s));
+          r.setStepCount(3 * s);
+        }
+        final run = await r.stop();
+        expect(run.distanceMetres, closeTo(220, 1e-6));
+        expect(run.metadata?['distance_step_filled_m'], 120);
+      });
+
+      test('a pause inside the stall credits the steps before it, never the '
+          'paused ones', () {
+        final clock = FixClock()..start();
+        final r = learnStride(clock);
+        for (var s = 26; s <= 40; s++) {
+          clock.advanceTo(at(s));
+          r.setStepCount(3 * s);
+        }
+        r.pause();
+        r.setStepCount(1000);
+        r.resume();
+        clock.advanceTo(at(100));
+        r.setStepCount(1000);
+        for (var s = 101; s <= 115; s++) {
+          clock.advanceTo(at(s));
+          r.setStepCount(1000 + 3 * (s - 100));
+        }
+        clock.inject(r, makePosition(
+            metresEast: 130, secondsFromStart: 115, speed: 4));
+        // The 15 s before the pause (52 m under v1.5). The 880 steps taken
+        // while paused count for nothing, and nor do the 15 s after the
+        // resume: steps before a stretch's first fix are never credited, so a
+        // run GPS never reaches stays on the pedometer's indoor path.
+        expect(r.stepFilledDistanceMetres, closeTo(60, 1e-6));
+        expect(r.debugDistanceMetres, closeTo(160, 1e-6));
+      });
     });
 
     test('steps while paused are never credited', () {

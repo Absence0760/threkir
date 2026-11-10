@@ -81,13 +81,14 @@ func loadVectors(t *testing.T) vectorFile {
 
 func TestConstantsMatchTheVectorFile(t *testing.T) {
 	vf := loadVectors(t)
-	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.5" {
+	if vf.Spec != "gps-distance-estimator v"+SpecVersion || SpecVersion != "1.6" {
 		t.Fatalf("vectors are for %q; this port implements v%s", vf.Spec, SpecVersion)
 	}
 	ours := map[string]float64{
 		"DEFAULT_SPEED_SIGMA_MPS":       DefaultSpeedSigmaMps,
 		"EARTH_RADIUS_M":                EarthRadiusM,
 		"FRESH_FIX_S":                   FreshFixS,
+		"MAX_OPEN_GAPS":                 MaxOpenGaps,
 		"GAP_S":                         GapS,
 		"INIT_VEL_VAR":                  InitVelVar,
 		"MAX_SPEED_SIGMA_MPS":           MaxSpeedSigmaMps,

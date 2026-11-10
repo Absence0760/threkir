@@ -1,4 +1,4 @@
-//! GPS distance estimator, spec v1.5 forward filter — the `no_std` port of
+//! GPS distance estimator, spec v1.6 forward filter — the `no_std` port of
 //! `scripts/gps_distance/reference.py` (docs/features/gps_distance.md). The
 //! spec's smoother needs the whole run in memory and is not ported here; the
 //! phone or server re-derives a saved figure from the uploaded track.
@@ -32,6 +32,9 @@ pub const STATIONARY_SPEED_MPS: f64 = 0.4;
 pub const POS_ONLY_STATIONARY_SPEED_MPS: f64 = 0.8;
 pub const GAP_S: f64 = 10.0;
 pub const FRESH_FIX_S: f64 = 2.0;
+/// Spec v1.6: gaps a step sample can still owe a share to; past it the
+/// oldest is dropped.
+pub const MAX_OPEN_GAPS: usize = 8;
 pub const STRIDE_WINDOW_STEPS: i64 = 50;
 pub const MIN_STRIDE_M: f64 = 0.4;
 pub const MAX_STRIDE_M: f64 = 2.5;
@@ -68,7 +71,7 @@ pub const ZUPT_RELEASE_M: f64 = 40.0;
 pub const ZUPT_BATCH_MIN_CADENCE_SPS: f64 = 1.0;
 pub const ZUPT_BATCH_MARGIN: f64 = 1.5;
 pub const ZUPT_MAX_NO_STEP_S: f64 = 30.0;
-pub const SPEC_VERSION: &str = "1.5";
+pub const SPEC_VERSION: &str = "1.6";
 pub const DEFAULT_MAX_SPEED_MPS: f64 = 10.0;
 
 const DEG_TO_RAD: f64 = core::f64::consts::PI / 180.0;
@@ -195,6 +198,11 @@ pub struct GpsDistanceEstimator {
     last_steps: Option<i64>,
     last_step_t: Option<f64>,
     pending_step_m: f64,
+    /// v1.6: the gaps re-anchors closed since the last step sample (start t,
+    /// end t, their GPS top-up), owed their share of the next one; the first
+    /// `open_gaps` entries are live, oldest first.
+    gaps: [(f64, f64, f64); MAX_OPEN_GAPS],
+    open_gaps: usize,
     r_scale: f64,
     rejected_fixes: u32,
     reject_streak: u32,
@@ -226,11 +234,11 @@ pub struct GpsDistanceEstimator {
 /// the pin is about noticing growth rather than a hard ceiling. Measured at
 /// spec v1.2: v1.1's 248 B plus 112 B for the gate, adaptive-R, cross-check
 /// and ZUPT state; spec v1.3 adds 88 B for the Doppler scale; spec v1.4's two
-/// stride-learning flags spill one more 8 B word; spec v1.5's step-batch span adds 8 B. The state stays `f64`: the projection and the covariance
+/// stride-learning flags spill one more 8 B word; spec v1.5's step-batch span adds 8 B; spec v1.6's eight open gaps add 200 B. The state stays `f64`: the projection and the covariance
 /// recursion over a run of thousands of fixes do not hold the vectors' 1e-3 m
 /// in `f32`. Identical on both targets because every field is 8-aligned
 /// scalars, `u32`s and `bool`s.
-const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 464);
+const _: () = assert!(core::mem::size_of::<GpsDistanceEstimator>() == 664);
 
 impl Default for GpsDistanceEstimator {
     fn default() -> Self {
@@ -277,6 +285,8 @@ impl GpsDistanceEstimator {
             last_steps: None,
             last_step_t: None,
             pending_step_m: 0.0,
+            gaps: [(0.0, 0.0, 0.0); MAX_OPEN_GAPS],
+            open_gaps: 0,
             r_scale: 1.0,
             rejected_fixes: 0,
             reject_streak: 0,
@@ -458,6 +468,12 @@ impl GpsDistanceEstimator {
                         gap_m = lower - self.pending_step_m;
                         self.gps_distance_m += gap_m;
                     }
+                    if self.open_gaps == MAX_OPEN_GAPS {
+                        self.gaps.copy_within(1.., 0);
+                        self.open_gaps -= 1;
+                    }
+                    self.gaps[self.open_gaps] = (last, t, gap_m);
+                    self.open_gaps += 1;
                 }
                 self.pending_step_m = 0.0;
                 self.stride_ok = self.stride_grade(accuracy_m, doppler.map(|(_, sa)| sa));
@@ -650,8 +666,9 @@ impl GpsDistanceEstimator {
     }
 
     /// Cumulative pedometer count. Learns a stride while GPS is good and
-    /// buffers steps x stride while it is not; the buffer is committed only
-    /// when the gap turns out to exceed [`GAP_S`] x the expected interval.
+    /// buffers steps x stride for the time since the last fix, dropped when
+    /// the next fix integrates it and committed only if the gap exceeds
+    /// [`GAP_S`] x the expected interval (at that fix, or at [`Self::finish`]).
     pub fn add_steps(&mut self, t: f64, cumulative_steps: i64) {
         if !t.is_finite() {
             return;
@@ -666,6 +683,7 @@ impl GpsDistanceEstimator {
             return;
         }
         let d = cumulative_steps - prev;
+        self.attribute_steps(prev_t, t, d);
         if d > 0 {
             if self.steps_seen {
                 let span = t - self.last_step_inc_t;
@@ -699,10 +717,37 @@ impl GpsDistanceEstimator {
         }
         self.win_steps = 0;
         self.win_m = 0.0;
+    }
+
+    /// v1.6: a sample's `d` steps were taken across (prev_t, t], so each part
+    /// of that interval gets its share. The part after the last fix is
+    /// buffered; the part inside each gap a re-anchor closed since the
+    /// previous sample tops that gap's credit up to its steps.
+    fn attribute_steps(&mut self, prev_t: f64, t: f64, d: i64) {
+        let open = core::mem::take(&mut self.open_gaps);
         let Some(stride) = self.stride_m else {
             return;
         };
-        self.pending_step_m += (d as f64 * stride).min(self.max_speed_mps * (t - prev_t));
+        if d <= 0 {
+            return;
+        }
+        let rate = (d as f64 * stride / (t - prev_t)).min(self.max_speed_mps);
+        let lo = match self.t {
+            Some(fix_t) => prev_t.max(fix_t),
+            None => prev_t,
+        };
+        if t > lo {
+            self.pending_step_m += rate * (t - lo);
+        }
+        for &(start_t, end_t, top_up_m) in &self.gaps[..open] {
+            let from = prev_t.max(start_t);
+            if end_t <= from {
+                continue;
+            }
+            let late = rate * (end_t - from);
+            self.step_distance_m += late;
+            self.gps_distance_m -= late.min(top_up_m);
+        }
     }
 
     /// End of run: commit buffered steps if the trailing gap exceeds [`GAP_S`]
@@ -838,6 +883,7 @@ mod tests {
         );
         assert_eq!(f("GAP_S"), GAP_S);
         assert_eq!(f("FRESH_FIX_S"), FRESH_FIX_S);
+        assert_eq!(f("MAX_OPEN_GAPS"), MAX_OPEN_GAPS as f64);
         assert_eq!(f("STRIDE_WINDOW_STEPS") as i64, STRIDE_WINDOW_STEPS);
         assert_eq!(f("MIN_STRIDE_M"), MIN_STRIDE_M);
         assert_eq!(f("MAX_STRIDE_M"), MAX_STRIDE_M);
@@ -878,8 +924,8 @@ mod tests {
     #[test]
     fn the_fixture_is_this_port_s_spec_version() {
         let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
-        assert_eq!(SPEC_VERSION, "1.5");
-        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.5"));
+        assert_eq!(SPEC_VERSION, "1.6");
+        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.6"));
     }
 
     #[test]

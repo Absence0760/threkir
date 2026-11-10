@@ -1,6 +1,6 @@
 import Foundation
 
-/// GPS distance estimator, spec v1.5 forward filter — the watchOS port of
+/// GPS distance estimator, spec v1.6 forward filter — the watchOS port of
 /// `scripts/gps_distance/reference.py`. See `docs/features/gps_distance.md`.
 /// The watch runs only the causal filter; the spec's smoother is ported where
 /// a whole run's saved figure is computed (phone, web, server).
@@ -21,6 +21,7 @@ final class GpsDistanceEstimator {
     static let posOnlyStationarySpeedMps = 0.8
     static let gapS = 10.0
     static let freshFixS = 2.0
+    static let maxOpenGaps = 8
     static let strideWindowSteps = 50
     static let minStrideM = 0.4
     static let maxStrideM = 2.5
@@ -56,7 +57,7 @@ final class GpsDistanceEstimator {
     static let zuptBatchMinCadenceSps = 1.0
     static let zuptBatchMargin = 1.5
     static let zuptMaxNoStepS = 30.0
-    static let specVersion = "1.5"
+    static let specVersion = "1.6"
 
     /// Every constant by its reference name, so the vector test can hold each
     /// one to the fixture's `constants` block.
@@ -65,7 +66,7 @@ final class GpsDistanceEstimator {
         "INIT_VEL_VAR": initVelVar, "MIN_SPEED_SIGMA_MPS": minSpeedSigmaMps,
         "DEFAULT_SPEED_SIGMA_MPS": defaultSpeedSigmaMps, "MAX_SPEED_SIGMA_MPS": maxSpeedSigmaMps,
         "STATIONARY_SPEED_MPS": stationarySpeedMps, "POS_ONLY_STATIONARY_SPEED_MPS": posOnlyStationarySpeedMps,
-        "GAP_S": gapS, "FRESH_FIX_S": freshFixS, "STRIDE_WINDOW_STEPS": Double(strideWindowSteps),
+        "GAP_S": gapS, "FRESH_FIX_S": freshFixS, "MAX_OPEN_GAPS": Double(maxOpenGaps), "STRIDE_WINDOW_STEPS": Double(strideWindowSteps),
         "MIN_STRIDE_M": minStrideM, "MAX_STRIDE_M": maxStrideM, "STRIDE_EMA_ALPHA": strideEmaAlpha,
         "MAX_POS_SIGMA_M": maxPosSigmaM, "STRIDE_MAX_SPEED_SIGMA_MPS": strideMaxSpeedSigmaMps,
         "STRIDE_MAX_POS_SIGMA_M": strideMaxPosSigmaM, "CHECK_MAX_POS_SIGMA_M": checkMaxPosSigmaM,
@@ -175,6 +176,9 @@ final class GpsDistanceEstimator {
     private var lastStepT: Double?
     private var pendingStepM: Double = 0
     private var strideOk = false
+    // v1.6: the gaps re-anchors closed since the last step sample, owed their
+    // share of the next one.
+    private var gaps: [(startT: Double, endT: Double, topUpM: Double)] = []
     private var rejectStreak = 0
     private var xcDoppler: Double = 0
     private var xcPos: Double = 0
@@ -307,6 +311,8 @@ final class GpsDistanceEstimator {
                     gapM = lower - pendingStepM
                     gpsDistanceM += gapM
                 }
+                gaps.append((startT: last, endT: t, topUpM: gapM))
+                if gaps.count > Self.maxOpenGaps { gaps.removeFirst() }
             }
             pendingStepM = 0
             strideOk = strideGrade(accuracyM, doppler?.sa)
@@ -494,8 +500,9 @@ final class GpsDistanceEstimator {
     }
 
     /// Cumulative pedometer count. Learns a stride while GPS is good and
-    /// buffers steps x stride while it is not; the buffer is committed only
-    /// when the gap turns out to exceed `gapWindowS`.
+    /// buffers steps x stride for the time since the last fix, dropped when
+    /// the next fix integrates it and committed only if the gap exceeds
+    /// `gapWindowS` (at that fix, or at `finish`).
     func addSteps(t: Double, cumulativeSteps: Int) {
         guard t.isFinite else { return }
         let prev = lastSteps
@@ -504,6 +511,7 @@ final class GpsDistanceEstimator {
         lastStepT = t
         guard let prev, let prevT, cumulativeSteps >= prev, t > prevT else { return }
         let d = cumulativeSteps - prev
+        attributeSteps(prevT: prevT, t: t, d: d)
         if d > 0 {
             if stepsSeen {
                 let span = t - lastStepIncT
@@ -532,8 +540,26 @@ final class GpsDistanceEstimator {
         }
         winSteps = 0
         winM = 0
-        guard let stride = strideM else { return }
-        pendingStepM += min(Double(d) * stride, maxSpeedMps * (t - prevT))
+    }
+
+    /// v1.6: a sample's `d` steps were taken across (prevT, t], so each part
+    /// of that interval gets its share. The part after the last fix is
+    /// buffered; the part inside each gap a re-anchor closed since the
+    /// previous sample tops that gap's credit up to its steps.
+    private func attributeSteps(prevT: Double, t: Double, d: Int) {
+        let closed = gaps
+        gaps.removeAll()
+        guard d > 0, let stride = strideM else { return }
+        let rate = min(Double(d) * stride / (t - prevT), maxSpeedMps)
+        let lo = self.t.map { max(prevT, $0) } ?? prevT
+        if t > lo { pendingStepM += rate * (t - lo) }
+        for gap in closed {
+            let from = max(prevT, gap.startT)
+            guard gap.endT > from else { continue }
+            let late = rate * (gap.endT - from)
+            stepDistanceM += late
+            gpsDistanceM -= min(late, gap.topUpM)
+        }
     }
 
     /// End of run: commit buffered steps if the trailing gap exceeds `gapWindowS`.

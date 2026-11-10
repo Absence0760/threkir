@@ -112,7 +112,7 @@ add("stationary_doppler", "90 s standing still with jitter; Doppler ~0.15 m/s; e
 add("stationary_position_only", "90 s standing still, no Doppler; expect ~0 (forward drifts, smoother's stop detection does not)", walk(90, 0.0, 4, doppler=False))
 add("stop_and_go", "red-light stop mid-run with Doppler", walk(150, 2.68, 5, stops=((50, 40),)))
 add("gap_no_steps", "30 s fix gap mid-run, no pedometer: no steps to fill it, so the chord across it, less its uncertainty, is credited (v1.4)", walk(120, 2.68, 6, drop=((50, 30),)))
-add("gap_with_steps", "stride learned over 80 s, then 40 s fix gap filled by steps x stride, topped up to the chord lower bound (v1.4)", walk(160, 2.68, 7, drop=((80, 40),), steps=True))
+add("gap_with_steps", "stride learned over 80 s, then 40 s fix gap filled by steps x stride, credited at least the chord lower bound (v1.4)", walk(160, 2.68, 7, drop=((80, 40),), steps=True))
 add("short_gap_with_steps", "6 s fix gap: filter integrates it, buffered steps discarded", walk(120, 2.68, 8, drop=((80, 6),), steps=True))
 add("trailing_gap_with_steps", "fixes stop 30 s before finish: steps committed at finish", walk(140, 2.68, 9, drop=((110, 40),), steps=True))
 add("walker", "1.3 m/s walk with Doppler", walk(120, 1.3, 10), max_speed=5.0)
@@ -178,6 +178,37 @@ add("zupt_batched_steps", "v1.5 ZUPT window: a 1.3 m/s pocket walk on the fused 
     walk(300, 1.3, 50, doppler=False, steps=True, cadence=1.8, step_batch=15), max_speed=5.0, stride=0.72, learn_stride=False)
 add("zupt_batched_steps_stop", "v1.5 ZUPT window: the same 15 s batches with a 60 s stop at t=150; once the stretched window passes with no new steps the stop still zeroes distance",
     walk(300, 1.3, 51, doppler=False, steps=True, cadence=1.8, step_batch=15, stops=((150, 60),)), max_speed=5.0, stride=0.72, learn_stride=False)
+
+# v1.6 scenarios: a step sample's steps are attributed across the interval they were
+# taken in, so every step the pedometer counted while no fix covered it is credited.
+def line(fix_ts, step_ts, v=4.0, cadence=4.0, east_at=None, finish=None):
+    """Fixes at fix_ts heading east at v m/s (Doppler, 3 m stated accuracy); the step
+    count, at cadence per second, sampled at step_ts. east_at overrides a fix's
+    position (metres east), for a runner who loops back during a gap."""
+    mlng = MLAT * math.cos(math.radians(LAT0))
+    ev = []
+    for t in fix_ts:
+        east = (east_at or {}).get(t, v * t)
+        ev.append({"type": "fix", "t": float(t), "lat": LAT0, "lng": round(LNG0 + east / mlng, 9),
+                   "acc": 3.0, "speed": v, "speedAcc": 0.3, "bearing": 90.0})
+    for t in step_ts:
+        ev.append({"type": "steps", "t": float(t), "count": int(round(cadence * t))})
+    ev.sort(key=lambda e: (e["t"], e["type"] != "steps"))
+    if finish is not None:
+        ev.append({"type": "finish", "t": float(finish)})
+    return ev
+
+
+add("gap_steps_loop_back", "v1.6: a 1 m stride learned over 25 s, then a 30 s fix gap whose runner loops back to 10 m from where it began; all 120 steps of the gap are credited (120 m), including the two seconds just after the last fix and the half second before the resuming fix",
+    line(list(range(26)) + [55], [t + 0.5 for t in range(56)], east_at={55: 110.0}), stride=1.0, learn_stride=False)
+add("gap_step_batch_after_resume", "v1.6: the gap's step count arrives in 5 s batches, the last of them after the first fix past the gap; its share of the gap tops the gap's credit up to the steps",
+    line(list(range(26)) + [55, 56, 57], [t + 0.5 for t in range(26)] + [30, 35, 40, 45, 50, 56.5],
+         east_at={55: 110.0, 56: 114.0, 57: 118.0}), stride=1.0, learn_stride=False)
+add("gap_steps_two_gaps_one_batch", "v1.6: a canopy fix at t=40 splits the 30 s stall into two gaps and a single step batch at 56.5 covers both; each gap gets its own share, so the steps still credit 120 m",
+    line(list(range(26)) + [40, 55, 56, 57], [t + 0.5 for t in range(26)] + [56.5],
+         east_at={40: 60.0, 55: 110.0, 56: 114.0, 57: 118.0}), stride=1.0, learn_stride=False)
+add("steps_without_any_fix", "v1.6: initialStrideM 1.0 and steps but no fix at all; steps before a stretch's first fix are never credited, which leaves a run GPS never reached to the pedometer's indoor estimate",
+    line([], [t + 0.5 for t in range(30)], finish=30.0), stride=1.0, learn_stride=False)
 
 doc = {"spec": "gps-distance-estimator v" + ref.SPEC_VERSION,
        "reference": "docs/features/gps_distance.md",

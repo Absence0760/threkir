@@ -1,4 +1,4 @@
-// GPS distance estimator, spec v1.5. docs/features/gps_distance.md is the spec
+// GPS distance estimator, spec v1.6. docs/features/gps_distance.md is the spec
 // and scripts/gps_distance/reference.py the reference; every port must
 // reproduce fixtures/gps_distance_vectors.json to 1e-3 m, so keep the
 // formulas in the reference's order. A copy of apps/web/src/lib/runs/gps_distance.ts
@@ -9,7 +9,7 @@
 // screen runs; smoothDistance is the saved / recomputed figure, a forward pass
 // plus a Rauch-Tung-Striebel backward pass over the whole run.
 
-export const SPEC_VERSION = '1.5';
+export const SPEC_VERSION = '1.6';
 
 export const EARTH_RADIUS_M = 6371008.8;
 export const Q_ACCEL = 0.6;
@@ -23,6 +23,8 @@ export const STATIONARY_SPEED_MPS = 0.4;
 export const POS_ONLY_STATIONARY_SPEED_MPS = 0.8;
 export const GAP_S = 10.0;
 export const FRESH_FIX_S = 2.0;
+/** v1.6: gaps a step sample can still owe a share to; past it the oldest is dropped. */
+export const MAX_OPEN_GAPS = 8;
 export const STRIDE_WINDOW_STEPS = 50;
 export const MIN_STRIDE_M = 0.4;
 export const MAX_STRIDE_M = 2.5;
@@ -211,6 +213,8 @@ export class GpsDistanceEstimator {
 	private lastStepT: number | null = null;
 	private pendingStepM = 0;
 	private strideOk = false;
+	/** v1.6: the gaps re-anchors closed since the last step sample, owed their share of the next one. */
+	private gaps: Array<{ startT: number; endT: number; topUpM: number; record: number | null }> = [];
 	private rejectStreak = 0;
 	private xcDoppler = 0;
 	private xcPos = 0;
@@ -341,6 +345,13 @@ export class GpsDistanceEstimator {
 					gapM = lower - this.pendingStepM;
 					this.gpsDistanceM += gapM;
 				}
+				this.gaps.push({
+					startT: this.t,
+					endT: t,
+					topUpM: gapM ?? 0,
+					record: this.records === null ? null : this.records.length
+				});
+				if (this.gaps.length > MAX_OPEN_GAPS) this.gaps.shift();
 			}
 			this.pendingStepM = 0;
 			this.strideOk = this.strideGrade(accuracyM, dop !== null, doppler === null ? null : doppler.sa);
@@ -563,7 +574,9 @@ export class GpsDistanceEstimator {
 
 	/**
 	 * Cumulative pedometer count. Learns stride while GPS is good; buffers
-	 * steps x stride while it is not (committed only if the gap exceeds the gap window).
+	 * steps x stride for the time since the last fix, dropped when the next fix
+	 * integrates it and committed only if the gap exceeds the gap window (at
+	 * that fix, or at finish).
 	 */
 	addSteps(t: MaybeNumber, cumulativeSteps: MaybeNumber): void {
 		if (!valid(t) || cumulativeSteps === null || cumulativeSteps === undefined) return;
@@ -573,6 +586,7 @@ export class GpsDistanceEstimator {
 		this.lastStepT = t;
 		if (prev === null || cumulativeSteps < prev || prevT === null || t <= prevT) return;
 		const d = cumulativeSteps - prev;
+		this.attributeSteps(prevT, t, d);
 		if (d > 0) {
 			if (this.lastStepIncT !== null) {
 				const span = t - this.lastStepIncT;
@@ -600,8 +614,35 @@ export class GpsDistanceEstimator {
 		}
 		this.winSteps = 0;
 		this.winM = 0;
-		if (this.strideM === null) return;
-		this.pendingStepM += Math.min(d * this.strideM, this.maxSpeedMps * (t - prevT));
+	}
+
+	/**
+	 * v1.6: a sample's d steps were taken across (prevT, t], so each part of
+	 * that interval gets its share. The part after the last fix is buffered;
+	 * the part inside each gap a re-anchor closed since the previous sample
+	 * tops that gap's credit up to its steps.
+	 */
+	private attributeSteps(prevT: number, t: number, d: number): void {
+		const gaps = this.gaps;
+		this.gaps = [];
+		if (d <= 0 || this.strideM === null) return;
+		const rate = Math.min((d * this.strideM) / (t - prevT), this.maxSpeedMps);
+		const lo = this.t === null ? prevT : Math.max(prevT, this.t);
+		if (t > lo) this.pendingStepM += rate * (t - lo);
+		for (const gap of gaps) {
+			const from = Math.max(prevT, gap.startT);
+			if (gap.endT <= from) continue;
+			const late = rate * (gap.endT - from);
+			this.stepDistanceM += late;
+			const take = Math.min(late, gap.topUpM);
+			this.gpsDistanceM -= take;
+			if (this.records === null || gap.record === null) continue;
+			if (take > 0) {
+				const rec = this.records[gap.record];
+				rec.chord = (rec.chord as number) - take;
+			}
+			for (let k = gap.record; k < this.records.length; k++) this.records[k].stepDistanceM += late;
+		}
 	}
 
 	/** End of run: commit buffered steps if the trailing gap exceeds the gap window. */

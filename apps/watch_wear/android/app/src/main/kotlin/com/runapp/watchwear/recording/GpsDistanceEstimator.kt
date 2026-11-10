@@ -9,7 +9,7 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/// GPS distance estimator, spec v1.5 (forward filter) — the Wear OS port of
+/// GPS distance estimator, spec v1.6 (forward filter) — the Wear OS port of
 /// `scripts/gps_distance/reference.py`, which is the spec. Read
 /// `docs/features/gps_distance.md` before changing anything here: every port
 /// replays `fixtures/gps_distance_vectors.json` to 1e-3 m, so a change to one
@@ -73,6 +73,10 @@ class GpsDistanceEstimator(
     private var lastStepT: Double? = null
     private var pendingStepM = 0.0
     private var strideOk = false
+
+    // v1.6: the gaps re-anchors closed since the last step sample (start t,
+    // end t, their GPS top-up), owed their share of the next one.
+    private val gaps = ArrayDeque<Triple<Double, Double, Double>>()
 
     private var rejectStreak = 0
     private var xcDoppler = 0.0
@@ -159,6 +163,8 @@ class GpsDistanceEstimator(
                     gapM = lower - pendingStepM
                     gpsDistanceM += gapM
                 }
+                gaps.addLast(Triple(prevT, t, gapM))
+                if (gaps.size > MAX_OPEN_GAPS) gaps.removeFirst()
             }
             pendingStepM = 0.0
             strideOk = strideGrade(accuracyM, doppler?.second)
@@ -364,6 +370,7 @@ class GpsDistanceEstimator(
         lastStepT = t
         if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) return
         val d = cumulativeSteps - prev
+        attributeSteps(prevT, t, d)
         if (d > 0) {
             if (stepsSeen) {
                 val span = t - lastStepIncT
@@ -394,8 +401,28 @@ class GpsDistanceEstimator(
         }
         winSteps = 0
         winM = 0.0
+    }
+
+    /// v1.6: a sample's [d] steps were taken across (prevT, t], so each part
+    /// of that interval gets its share. The part after the last fix is
+    /// buffered; the part inside each gap a re-anchor closed since the
+    /// previous sample tops that gap's credit up to its steps.
+    private fun attributeSteps(prevT: Double, t: Double, d: Long) {
+        val closed = gaps.toList()
+        gaps.clear()
         val stride = strideM ?: return
-        pendingStepM += min(d * stride, maxSpeedMps * (t - prevT))
+        if (d <= 0) return
+        val rate = min(d * stride / (t - prevT), maxSpeedMps)
+        val fixT = lastT
+        val lo = if (fixT == null) prevT else max(prevT, fixT)
+        if (t > lo) pendingStepM += rate * (t - lo)
+        for ((startT, endT, topUpM) in closed) {
+            val from = max(prevT, startT)
+            if (endT <= from) continue
+            val late = rate * (endT - from)
+            stepDistanceM += late
+            gpsDistanceM -= min(late, topUpM)
+        }
     }
 
     /// A fresh estimator for the segment after a pause or a source switch:
@@ -467,7 +494,7 @@ class GpsDistanceEstimator(
 
     companion object {
         const val SPEC_ID = "kalman_v1"
-        const val SPEC_VERSION = "1.5"
+        const val SPEC_VERSION = "1.6"
 
         private const val EARTH_RADIUS_M = 6371008.8
         private const val Q_ACCEL = 0.6
@@ -481,6 +508,7 @@ class GpsDistanceEstimator(
         private const val POS_ONLY_STATIONARY_SPEED_MPS = 0.8
         private const val GAP_S = 10.0
         private const val FRESH_FIX_S = 2.0
+        private const val MAX_OPEN_GAPS = 8
         private const val STRIDE_WINDOW_STEPS = 50
         private const val MIN_STRIDE_M = 0.4
         private const val MAX_STRIDE_M = 2.5
@@ -555,6 +583,7 @@ class GpsDistanceEstimator(
             "POS_ONLY_STATIONARY_SPEED_MPS" to POS_ONLY_STATIONARY_SPEED_MPS,
             "GAP_S" to GAP_S,
             "FRESH_FIX_S" to FRESH_FIX_S,
+            "MAX_OPEN_GAPS" to MAX_OPEN_GAPS.toDouble(),
             "STRIDE_WINDOW_STEPS" to STRIDE_WINDOW_STEPS.toDouble(),
             "MIN_STRIDE_M" to MIN_STRIDE_M,
             "MAX_STRIDE_M" to MAX_STRIDE_M,

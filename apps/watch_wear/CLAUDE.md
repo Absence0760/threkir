@@ -93,7 +93,7 @@ apps/watch_wear/
             │   │   ├── RecordingRepository.kt   # process-singleton StateFlow
             │   │   ├── CheckpointStore.kt       # in-progress recovery snapshot
             │   │   ├── CheckpointRecovery.kt    # grade a survivor before offering it
-            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.5 forward Kalman distance (shared vectors)
+            │   │   ├── GpsDistanceEstimator.kt  # spec-v1.6 forward Kalman distance (shared vectors)
             │   │   ├── LocationSourceArbiter.kt # receiver-vs-fused arbitration, mirrors the phone's RunRecorder
             │   │   ├── LivePace.kt              # live pace over the estimator's last ~200 m
             │   │   ├── TrackWriter.kt           # streaming GPS to disk JSON
@@ -646,7 +646,7 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   Not yet verified on a device: one run on a Wear watch beside the Garmin,
   checking it saves `location_provider: gps`.
 - **Distance is the shared estimator, not a hop sum.**
-  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.5
+  `recording/GpsDistanceEstimator.kt` is the Kotlin port of the spec-v1.6
   forward filter in `scripts/gps_distance/reference.py` (gate, adaptive R,
   Doppler cross-check and debias, pedometer ZUPT; no smoother —
   [docs/features/gps_distance.md](../../docs/features/gps_distance.md)),

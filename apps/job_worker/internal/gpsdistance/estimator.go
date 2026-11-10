@@ -1,5 +1,5 @@
 // Package gpsdistance is the Go port of the GPS distance estimator,
-// spec v1.5 (docs/features/gps_distance.md). The reference implementation
+// spec v1.6 (docs/features/gps_distance.md). The reference implementation
 // is scripts/gps_distance/reference.py and this file follows it
 // operation for operation; every port replays
 // fixtures/gps_distance_vectors.json to 1e-3 m, so a change here without
@@ -15,7 +15,7 @@ package gpsdistance
 import "math"
 
 // SpecVersion is the spec this port implements.
-const SpecVersion = "1.5"
+const SpecVersion = "1.6"
 
 const (
 	EarthRadiusM              = 6371008.8
@@ -30,6 +30,7 @@ const (
 	PosOnlyStationarySpeedMps = 0.8
 	GapS                      = 10.0
 	FreshFixS                 = 2.0
+	MaxOpenGaps               = 8 // v1.6: gaps a step sample can still owe a share to; past it the oldest is dropped
 	StrideWindowSteps         = 50
 	MinStrideM                = 0.4
 	MaxStrideM                = 2.5
@@ -190,6 +191,11 @@ type Fix struct {
 }
 
 // record is what the smoother needs from one forward-pass fix.
+type closedGap struct {
+	startT, endT, topUpM float64
+	record               int // index into records, or -1 when not recording
+}
+
 type record struct {
 	anchor, chainBreak bool
 	dt                 float64
@@ -237,6 +243,9 @@ type Estimator struct {
 	lastSteps    int
 	lastStepT    float64
 	pendingStepM float64
+	// v1.6: the gaps re-anchors closed since the last step sample, owed
+	// their share of the next one.
+	gaps []closedGap
 
 	rejectStreak       int
 	xcDoppler, xcPos   float64
@@ -390,6 +399,14 @@ func (e *Estimator) AddFix(f Fix) float64 {
 			if lower > e.pendingStepM {
 				hasGap, gapM = true, lower-e.pendingStepM
 				e.GpsDistanceM += gapM
+			}
+			rec := -1
+			if e.recording {
+				rec = len(e.records)
+			}
+			e.gaps = append(e.gaps, closedGap{startT: e.t, endT: f.T, topUpM: gapM, record: rec})
+			if len(e.gaps) > MaxOpenGaps {
+				e.gaps = e.gaps[1:]
 			}
 		}
 		e.pendingStepM = 0
@@ -593,8 +610,9 @@ func (e *Estimator) strideGrade(accuracyM *float64, fromDoppler bool, sa float64
 }
 
 // AddSteps feeds a cumulative pedometer count. Learns a stride while GPS
-// is good; buffers steps x stride while it is not (committed only if the
-// gap exceeds the gap window).
+// is good; buffers steps x stride for the time since the last fix, dropped
+// when the next fix integrates it and committed only if the gap exceeds the
+// gap window (at that fix, or at Finish).
 func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 	if !finite(t) {
 		return
@@ -605,6 +623,7 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		return
 	}
 	d := cumulativeSteps - prev
+	e.attributeSteps(prevT, t, d)
 	if d > 0 {
 		if e.stepsSeen {
 			span := t - e.lastStepIncT
@@ -635,10 +654,45 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		return
 	}
 	e.winSteps, e.winM = 0, 0
-	if e.StrideM == nil {
+}
+
+// attributeSteps (v1.6): a sample's d steps were taken across (prevT, t],
+// so each part of that interval gets its share. The part after the last fix
+// is buffered; the part inside each gap a re-anchor closed since the
+// previous sample tops that gap's credit up to its steps.
+func (e *Estimator) attributeSteps(prevT, t float64, d int) {
+	gaps := e.gaps
+	e.gaps = nil
+	if d <= 0 || e.StrideM == nil {
 		return
 	}
-	e.pendingStepM += math.Min(float64(d)*(*e.StrideM), e.MaxSpeedMps*(t-prevT))
+	rate := math.Min(float64(d)*(*e.StrideM)/(t-prevT), e.MaxSpeedMps)
+	lo := prevT
+	if e.hasT {
+		lo = math.Max(prevT, e.t)
+	}
+	if t > lo {
+		e.pendingStepM += rate * (t - lo)
+	}
+	for _, gap := range gaps {
+		from := math.Max(prevT, gap.startT)
+		if gap.endT <= from {
+			continue
+		}
+		late := rate * (gap.endT - from)
+		e.StepDistanceM += late
+		take := math.Min(late, gap.topUpM)
+		e.GpsDistanceM -= take
+		if gap.record < 0 {
+			continue
+		}
+		if take > 0 {
+			e.records[gap.record].chord -= take
+		}
+		for k := gap.record; k < len(e.records); k++ {
+			e.records[k].stepDistanceM += late
+		}
+	}
 }
 
 // Finish ends the run: commits buffered steps if the trailing gap

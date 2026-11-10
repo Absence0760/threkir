@@ -274,7 +274,9 @@ class GpsDistanceEstimator:
             self._pending_step_m = 0.0
             self._win_stale = False
             self._stride_ok = self._stride_grade(accuracy_m, dop, sa)
-            if not self._stride_ok:
+            # The first fix also starts the window: a step sample before it counted
+            # steps no fix measured metres for.
+            if not self._stride_ok or self._t is None:
                 self._empty_window(t)
             self._x, self._y = _Axis(zx, r), _Axis(zy, r)
             self._t = t
@@ -452,6 +454,12 @@ class GpsDistanceEstimator:
         prev, prev_t = self._last_steps, self._last_step_t
         self._last_steps, self._last_step_t = cumulative_steps, t
         if prev is None or cumulative_steps < prev or prev_t is None or t <= prev_t:
+            # A baseline counts no interval, so the stride window's metres so far have
+            # no steps: start the window here, as a learn does. A stale one also marks
+            # the window, as any stale sample does, so the next fix empties it.
+            if self._t is not None and t - self._t > self._fresh_fix_s:
+                self._win_stale = True
+            self._win_steps, self._win_m = 0, 0.0
             return
         d = cumulative_steps - prev
         in_gap = self._attribute_steps(prev_t, t, d)

@@ -262,6 +262,18 @@ add("batched_steps_untrusted_fix_stride_paired", "v1.6: the batched run of batch
     untrusted(line(list(range(121)) + list(range(150, 156)),
                    [0.5] + [15.0 * k + 0.5 for k in range(1, 9)] + [150.5, 155.5],
                    east_at={t: 470.0 + 4 * (t - 150) for t in range(150, 156)}, finish=156.0), (37.0, 82.0)))
+add("batched_steps_no_baseline_first_window", "v1.6: the batched run of batched_steps_untrusted_fix_stride_paired with every fix trusted and no sample at 0.5, so the first batch at 15.5 only sets the pedometer's baseline; the stride window starts there rather than at the first fix, so its first 50 steps pair with the metres after 15.5: the stride learns 1 m and the loop-back gap reads 620.00 m (the true path); counting the window's metres from the first fix put 30 s of metres against 15 s of steps, learned 2.0 m at 30.5 and 1.262 m by 120.5, and read 651.59 m",
+    line(list(range(121)) + list(range(150, 156)),
+         [15.0 * k + 0.5 for k in range(1, 9)] + [150.5, 155.5],
+         east_at={t: 470.0 + 4 * (t - 150) for t in range(150, 156)}, finish=156.0))
+add("batched_steps_stale_baseline_first_window", "v1.6: 15 s step batches with no early sample and a 7 s fix stall (11-17) the filter bridges; the first batch, at 14.5, lands inside the stall, so it is stale as well as the baseline and the bridging fix at 18, whose interval reaches back before it, empties the window instead of feeding it: the stride learns 1 m and the loop-back gap reads 620.00 m (the true path); a stale baseline that only empties the window learns 1.267 m at 29.5 and 1.070 m by the gap, reading 628.39 m, and counting the window's metres from the first fix learns 1.245 m and reads 649.36 m",
+    line(list(range(11)) + list(range(18, 121)) + list(range(150, 156)),
+         [15.0 * k + 14.5 for k in range(8)] + [150.5, 155.5],
+         east_at={t: 470.0 + 4 * (t - 150) for t in range(150, 156)}, finish=156.0))
+add("batched_steps_baseline_before_first_fix", "v1.6: 15 s step batches from 0.5 and a first fix at 20; the first fix starts the stride window, so the sample at 30.5, whose interval began before any fix, empties it instead of pairing 15 s of steps with 10 s of metres: the stride learns 1 m and the loop-back gap reads 540.00 m (the true path); leaving the window open from the start learns 0.667 m at 30.5 and 0.913 m by the gap, reading 529.47 m",
+    line(list(range(20, 121)) + list(range(150, 156)),
+         [15.0 * k + 0.5 for k in range(9)] + [150.5, 155.5],
+         east_at={t: 470.0 + 4 * (t - 150) for t in range(150, 156)}, finish=156.0))
 add("gap_steps_open_gap_cap", "v1.6: nine 12 s gaps whose fixes zigzag 10 m apart, with no step sample until one after the ninth; only MAX_OPEN_GAPS = 8 gaps can still claim a share, so the oldest keeps its chord credit and its 46 m of steps after the 25.5 sample are dropped (the cap only under-credits)",
     line(list(range(26)) + [25 + 12 * k for k in range(1, 10)], [t + 0.5 for t in range(26)] + [133.5],
          east_at={25 + 12 * k: (110.0 if k % 2 else 100.0) for k in range(1, 10)} | {25: 100.0}), stride=1.0, learn_stride=False)

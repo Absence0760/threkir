@@ -173,7 +173,9 @@ class GpsDistanceEstimator(
             pendingStepM = 0.0
             strideOk = strideGrade(accuracyM, doppler?.second)
             winStale = false
-            if (!strideOk) emptyWindow(t)
+            // The first fix also starts the window: a step sample before it counted
+            // steps no fix measured metres for.
+            if (!strideOk || lastT == null) emptyWindow(t)
             x = Axis(zx, r)
             y = Axis(zy, r)
             lastT = t
@@ -381,7 +383,17 @@ class GpsDistanceEstimator(
         val prevT = lastStepT
         lastSteps = cumulativeSteps
         lastStepT = t
-        if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) return
+        if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) {
+            // A baseline counts no interval, so the stride window's metres so far
+            // have no steps: start the window here, as a learn does. A stale one
+            // also marks the window, as any stale sample does, so the next fix
+            // empties it.
+            val lastFixT = lastT
+            if (lastFixT != null && t - lastFixT > freshFixS) winStale = true
+            winSteps = 0
+            winM = 0.0
+            return
+        }
         val d = cumulativeSteps - prev
         val inGap = attributeSteps(prevT, t, d)
         if (d > 0) {

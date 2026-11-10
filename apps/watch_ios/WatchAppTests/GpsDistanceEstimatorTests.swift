@@ -251,6 +251,54 @@ final class GpsDistanceEstimatorTests: XCTestCase {
         XCTAssertEqual(estimator.strideM ?? 0, 1, accuracy: 1e-9)
     }
 
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only sets
+    /// the baseline; counting the window's metres from the first fix put 30 s of
+    /// metres against 15 s of steps and learned 2.0 m, then 1.64 m by 60.5.
+    func testFirstStepSampleOfAStretchStartsTheStrideWindow() {
+        let estimator = GpsDistanceEstimator()
+        for i in 0...60 {
+            estimator.addFix(t: Double(i), lat: 40, lng: -75 + 4 * Double(i) / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+            if i > 0 && i % 15 == 0 {
+                estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i + 2)
+            }
+        }
+        XCTAssertEqual(estimator.strideM ?? 0, 1, accuracy: 1e-6)
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands
+    /// inside a 7 s stall the fix at 18 bridges, so it is stale as well as the
+    /// baseline; the bridging fix must empty the window rather than feed it 28
+    /// m, which learned 1.171 m.
+    func testStaleFirstStepSampleKeepsABridgedStallOutOfTheStrideWindow() {
+        let estimator = GpsDistanceEstimator()
+        for i in 0...60 {
+            if i < 11 || i > 17 {
+                estimator.addFix(t: Double(i), lat: 40, lng: -75 + 4 * Double(i) / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+            }
+            if i % 15 == 14 {
+                estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i + 2)
+            }
+        }
+        XCTAssertEqual(estimator.strideM ?? 0, 1, accuracy: 1e-6)
+    }
+
+    /// The first sample, at 0.5, and the second, at 15.5, come before the
+    /// first fix at 20; the first fix starts the window, so the sample at
+    /// 30.5, whose interval began before it, empties the window rather than
+    /// pairing 15 s of steps with 10 s of metres, which learned 0.787 m.
+    func testFirstFixOfAStretchStartsTheStrideWindow() {
+        let estimator = GpsDistanceEstimator()
+        for i in 0...60 {
+            if i >= 20 {
+                estimator.addFix(t: Double(i), lat: 40, lng: -75 + 4 * Double(i) / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+            }
+            if i % 15 == 0 {
+                estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i + 2)
+            }
+        }
+        XCTAssertEqual(estimator.strideM ?? 0, 1, accuracy: 1e-6)
+    }
+
     func testStretchCreditsNoStepsTakenBeforeItsFirstFix() {
         let estimator = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false)
         for i in 0..<30 { estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i) }

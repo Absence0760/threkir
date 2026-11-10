@@ -321,7 +321,9 @@ final class GpsDistanceEstimator {
             pendingStepM = 0
             strideOk = strideGrade(accuracyM, doppler?.sa)
             winStale = false
-            if !strideOk { emptyWindow(at: t) }
+            // The first fix also starts the window: a step sample before it counted
+            // steps no fix measured metres for.
+            if !strideOk || self.t == nil { emptyWindow(at: t) }
             x = Axis(p: zx, posVar: r)
             y = Axis(p: zy, posVar: r)
             self.t = t
@@ -522,7 +524,16 @@ final class GpsDistanceEstimator {
         let prevT = lastStepT
         lastSteps = cumulativeSteps
         lastStepT = t
-        guard let prev, let prevT, cumulativeSteps >= prev, t > prevT else { return }
+        guard let prev, let prevT, cumulativeSteps >= prev, t > prevT else {
+            // A baseline counts no interval, so the stride window's metres so far
+            // have no steps: start the window here, as a learn does. A stale one
+            // also marks the window, as any stale sample does, so the next fix
+            // empties it.
+            if let fixT = self.t, t - fixT > freshFixWindowS { winStale = true }
+            winSteps = 0
+            winM = 0
+            return
+        }
         let d = cumulativeSteps - prev
         let inGap = attributeSteps(prevT: prevT, t: t, d: d)
         if d > 0 {

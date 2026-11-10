@@ -308,7 +308,9 @@ class GpsDistanceEstimator {
       _pendingStepM = 0.0;
       _strideOk = _strideGrade(accuracyM, dop != null, doppler?.sa);
       _winStale = false;
-      if (!_strideOk) _emptyWindow(t);
+      // The first fix also starts the window: a step sample before it counted
+      // steps no fix measured metres for.
+      if (!_strideOk || _t == null) _emptyWindow(t);
       _x = _Axis(zx, r);
       _y = _Axis(zy, r);
       _t = t;
@@ -572,6 +574,14 @@ class GpsDistanceEstimator {
     _lastSteps = cumulativeSteps;
     _lastStepT = t;
     if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) {
+      // A baseline counts no interval, so the stride window's metres so far
+      // have no steps: start the window here, as a learn does. A stale one
+      // also marks the window, as any stale sample does, so the next fix
+      // empties it.
+      final lastFixT = _t;
+      if (lastFixT != null && t - lastFixT > _freshFixS) _winStale = true;
+      _winSteps = 0;
+      _winM = 0.0;
       return;
     }
     final d = cumulativeSteps - prev;

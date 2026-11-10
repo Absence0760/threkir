@@ -484,7 +484,9 @@ impl GpsDistanceEstimator {
                 self.pending_step_m = 0.0;
                 self.stride_ok = self.stride_grade(accuracy_m, doppler.map(|(_, sa)| sa));
                 self.win_stale = false;
-                if !self.stride_ok {
+                // The first fix also starts the window: a step sample before it
+                // counted steps no fix measured metres for.
+                if !self.stride_ok || self.t.is_none() {
                     self.empty_window(t);
                 }
                 self.axes = Some((Axis::new(zx, r), Axis::new(zy, r)));
@@ -694,12 +696,21 @@ impl GpsDistanceEstimator {
         let (prev, prev_t) = (self.last_steps, self.last_step_t);
         self.last_steps = Some(cumulative_steps);
         self.last_step_t = Some(t);
-        let (Some(prev), Some(prev_t)) = (prev, prev_t) else {
-            return;
+        let (prev, prev_t) = match (prev, prev_t) {
+            (Some(prev), Some(prev_t)) if cumulative_steps >= prev && t > prev_t => (prev, prev_t),
+            _ => {
+                // A baseline counts no interval, so the stride window's metres so far
+                // have no steps: start the window here, as a learn does. A stale one
+                // also marks the window, as any stale sample does, so the next fix
+                // empties it.
+                if matches!(self.t, Some(fix_t) if t - fix_t > self.fresh_fix_s) {
+                    self.win_stale = true;
+                }
+                self.win_steps = 0;
+                self.win_m = 0.0;
+                return;
+            }
         };
-        if cumulative_steps < prev || t <= prev_t {
-            return;
-        }
         let d = cumulative_steps - prev;
         let in_gap = self.attribute_steps(prev_t, t, d);
         if d > 0 {
@@ -1184,6 +1195,84 @@ mod tests {
         }
         let stride = e.stride_m().expect("a stride is learned");
         assert!((stride - 1.0).abs() < 1e-9, "{stride}");
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only sets
+    /// the baseline; counting the window's metres from the first fix put 30 s of
+    /// metres against 15 s of steps and learned 2.0 m, then 1.64 m by 60.5.
+    #[test]
+    fn the_first_step_sample_of_a_stretch_starts_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            e.add_fix(
+                i as f64,
+                40.0,
+                -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                Some(3.0),
+                Some(4.0),
+                Some(0.3),
+                Some(90.0),
+            );
+            if i > 0 && i % 15 == 0 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands
+    /// inside a 7 s stall the fix at 18 bridges, so it is stale as well as the
+    /// baseline; the bridging fix must empty the window rather than feed it 28
+    /// m, which learned 1.171 m.
+    #[test]
+    fn a_stale_first_step_sample_keeps_a_bridged_stall_out_of_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if !(11..=17).contains(&i) {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            if i % 15 == 14 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
+    }
+
+    /// The first sample, at 0.5, and the second, at 15.5, come before the
+    /// first fix at 20; the first fix starts the window, so the sample at
+    /// 30.5, whose interval began before it, empties the window rather than
+    /// pairing 15 s of steps with 10 s of metres, which learned 0.787 m.
+    #[test]
+    fn the_first_fix_of_a_stretch_starts_the_stride_window() {
+        let mut e = GpsDistanceEstimator::new(DEFAULT_MAX_SPEED_MPS);
+        for i in 0..=60 {
+            if i >= 20 {
+                e.add_fix(
+                    i as f64,
+                    40.0,
+                    -75.0 + 4.0 * i as f64 / east_m_per_deg(),
+                    Some(3.0),
+                    Some(4.0),
+                    Some(0.3),
+                    Some(90.0),
+                );
+            }
+            if i % 15 == 0 {
+                e.add_steps(i as f64 + 0.5, 4 * i + 2);
+            }
+        }
+        let stride = e.stride_m().expect("a stride is learned");
+        assert!((stride - 1.0).abs() < 1e-6, "{stride}");
     }
 
     #[test]

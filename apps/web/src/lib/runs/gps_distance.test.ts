@@ -85,7 +85,7 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 test('fixture is spec v1.6 with a non-trivial scenario set', () => {
 	assert.equal(fixture.spec, 'gps-distance-estimator v1.6');
 	assert.equal(SPEC_VERSION, '1.6');
-	assert.ok(fixture.scenarios.length >= 49, `only ${fixture.scenarios.length} scenarios`);
+	assert.ok(fixture.scenarios.length >= 52, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);
 });
@@ -322,6 +322,44 @@ test('a fix bridging a short stall teaches no stride from its credit (v1.6)', ()
 		est.addSteps(i + 0.5, 4 * i + 2);
 	}
 	assert.ok(Math.abs((est.strideM ?? 0) - 1) < 1e-9, `stride ${est.strideM}`);
+});
+
+test('the first step sample of a stretch starts the stride window (v1.6)', () => {
+	// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 15.5, only sets
+	// the baseline; counting the window's metres from the first fix put 30 s of
+	// metres against 15 s of steps and learned 2.0 m, then 1.64 m by 60.5.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		if (i > 0 && i % 15 === 0) est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert.ok(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
+});
+
+test('a stale first step sample keeps a bridged stall out of the stride window (v1.6)', () => {
+	// 4 m/s at 4 steps/s is a 1 m stride. The first sample, at 14.5, lands inside
+	// a 7 s stall the fix at 18 bridges, so it is stale as well as the baseline;
+	// the bridging fix must empty the window rather than feed it 28 m, which
+	// learned 1.171 m.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		if (i < 11 || i > 17) est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		if (i % 15 === 14) est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert.ok(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
+});
+
+test('the first fix of a stretch starts the stride window (v1.6)', () => {
+	// The first sample, at 0.5, and the second, at 15.5, come before the first
+	// fix at 20; the first fix starts the window, so the sample at 30.5, whose
+	// interval began before it, empties the window rather than pairing 15 s of
+	// steps with 10 s of metres, which learned 0.787 m.
+	const est = new GpsDistanceEstimator();
+	for (let i = 0; i <= 60; i++) {
+		if (i >= 20) est.addFix(i, 40, -75 + (4 * i) / EAST_M_PER_DEG, 3, 4, 0.3, 90);
+		if (i % 15 === 0) est.addSteps(i + 0.5, 4 * i + 2);
+	}
+	assert.ok(Math.abs((est.strideM ?? 0) - 1) < 1e-6, `stride ${est.strideM}`);
 });
 
 test('a stretch credits no steps taken before its first fix (v1.6)', () => {

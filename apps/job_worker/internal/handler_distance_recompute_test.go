@@ -912,8 +912,8 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 			chordM += g[0]
 			stepM += g[1]
 			creditedM += math.Max(g[0], g[1])
-			chordSide = chordSide || g[1] < g[0]
-			stepSide = stepSide || g[1] > g[0]
+			chordSide = chordSide || g[1] < g[0]-1e-6
+			stepSide = stepSide || g[1] > g[0]+1e-6
 		}
 		if math.Abs(stepM-s.Smoothed.StepDistanceM) > 1e-4 {
 			t.Fatalf("%s: gapCreditsM steps sum to %.6f m, stepDistanceM is %.6f m", s.Name, stepM, s.Smoothed.StepDistanceM)

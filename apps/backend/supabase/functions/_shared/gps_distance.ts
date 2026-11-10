@@ -360,7 +360,9 @@ export class GpsDistanceEstimator {
 			this.pendingStepM = 0;
 			this.strideOk = this.strideGrade(accuracyM, dop !== null, doppler === null ? null : doppler.sa);
 			this.winStale = false;
-			if (!this.strideOk) this.emptyWindow(t);
+			// The first fix also starts the window: a step sample before it counted
+			// steps no fix measured metres for.
+			if (!this.strideOk || this.t === null) this.emptyWindow(t);
 			this.x = new Axis(zx, r);
 			this.y = new Axis(zy, r);
 			this.t = t;
@@ -599,7 +601,15 @@ export class GpsDistanceEstimator {
 		const prevT = this.lastStepT;
 		this.lastSteps = cumulativeSteps;
 		this.lastStepT = t;
-		if (prev === null || cumulativeSteps < prev || prevT === null || t <= prevT) return;
+		if (prev === null || cumulativeSteps < prev || prevT === null || t <= prevT) {
+			// A baseline counts no interval, so the stride window's metres so far
+			// have no steps: start the window here, as a learn does. A stale one also
+			// marks the window, as any stale sample does, so the next fix empties it.
+			if (this.t !== null && t - this.t > this.freshFixS) this.winStale = true;
+			this.winSteps = 0;
+			this.winM = 0;
+			return;
+		}
 		const d = cumulativeSteps - prev;
 		const inGap = this.attributeSteps(prevT, t, d);
 		if (d > 0) {

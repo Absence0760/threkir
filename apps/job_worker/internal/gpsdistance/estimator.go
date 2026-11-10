@@ -415,7 +415,9 @@ func (e *Estimator) AddFix(f Fix) float64 {
 		e.pendingStepM = 0
 		e.strideOK = e.strideGrade(f.AccuracyM, dopOK, sa)
 		e.winStale = false
-		if !e.strideOK {
+		// The first fix also starts the window: a step sample before it counted
+		// steps no fix measured metres for.
+		if !e.strideOK || !e.hasT {
 			e.emptyWindow(f.T)
 		}
 		e.x, e.y = newAxis(zx, r), newAxis(zy, r)
@@ -636,6 +638,14 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 	hadPrev, prev, prevT := e.hasLastSteps, e.lastSteps, e.lastStepT
 	e.hasLastSteps, e.lastSteps, e.lastStepT = true, cumulativeSteps, t
 	if !hadPrev || cumulativeSteps < prev || t <= prevT {
+		// A baseline counts no interval, so the stride window's metres so far
+		// have no steps: start the window here, as a learn does. A stale one
+		// also marks the window, as any stale sample does, so the next fix
+		// empties it.
+		if e.hasT && t-e.t > e.freshFixS {
+			e.winStale = true
+		}
+		e.winSteps, e.winM = 0, 0
 		return
 	}
 	d := cumulativeSteps - prev

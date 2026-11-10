@@ -206,6 +206,9 @@ data class UiState(
     val activityType: String = "run",
     val lapCount: Int = 0,
     val activeRace: ActiveRaceState? = null,
+    /// Metres to the centre of the race's start line while a recording is
+    /// being timed by the lines and its start is not yet committed (#1307).
+    val raceToStartM: Double? = null,
     /// Race mode for the run being recorded, or null for an ordinary run.
     /// Drives the running screen's gun clock and the Stop button's
     /// pause-then-finish meaning.
@@ -297,38 +300,6 @@ data class UiState(
     val lastKnownLatLng: com.runapp.watchwear.recording.RouteMath.LatLng? = null,
 )
 
-data class ActiveRaceState(
-    val eventId: String,
-    val instanceStart: String,
-    val status: String,
-    val startedAtMs: Long?,
-    val eventTitle: String?,
-    /// The course the runner picked at RSVP. Null when they picked none or it
-    /// could not be read; the race then finishes only by "Finish race".
-    val course: RaceSessionClient.RaceCourse? = null,
-    /// `host_go` | `scheduled` | `self_timed` (#1306).
-    val startMode: String = "host_go",
-    /// When the clock starts, server epoch ms: the scheduled GO or the
-    /// window's opening. Null for Host GO.
-    val startInstantMs: Long? = null,
-    /// A self-timed race binds a recording only after the runner taps
-    /// "This run is my attempt" on the watch (owner decision 4a).
-    val attemptArmed: Boolean = false,
-) {
-    val isSelfTimed: Boolean get() = startMode == "self_timed"
-    val isArmed: Boolean get() = status == "armed" && !startPassed()
-    val isRunning: Boolean get() = status == "running" || (status == "armed" && startPassed())
-
-    /// A scheduled or self-timed race whose instant has passed is live before
-    /// the next poll says so; the server judges it the same way.
-    private fun startPassed(): Boolean =
-        startMode != "host_go" && startInstantMs != null &&
-            startInstantMs <= System.currentTimeMillis()
-
-    /// GO on the server clock: the stamped start, or the instant itself.
-    val goAtMs: Long? get() = startedAtMs ?: startInstantMs.takeIf { startMode != "host_go" }
-}
-
 data class RaceRunState(
     /// The gun on the DEVICE clock (server `started_at` less the measured
     /// offset), so the running screen can tick it from `currentTimeMillis`.
@@ -344,6 +315,9 @@ data class RaceRunState(
     /// running screen; not carried on the result, as on the phone
     /// (decisions § 1843).
     val lateStart: Boolean = false,
+    /// A finish-line crossing filed the result and paused the run: "Not
+    /// finished? Resume" is open for [RACE_UNDO_WINDOW_MS] (#1307 m11).
+    val undoOpen: Boolean = false,
 )
 
 /// What the PostRun screen says about a race result this run produced.
@@ -351,51 +325,6 @@ data class RaceSummary(
     val finished: Boolean,
     val durationS: Int,
 )
-
-/// How a race run is being stopped, decided before the service is told to
-/// stop so `handleFinishedRun` builds the result from the finish, not from
-/// whenever the service got round to publishing `Finished`.
-internal data class RaceStopDecision(
-    val outcome: RaceFinish.Outcome,
-    /// The finish on the device clock; null for a DNF, which has none.
-    val finishEpochMs: Long?,
-    val coveredM: Double,
-)
-
-/// The `event_results` row a race run owes. Pure, so the gun / chip / DNF
-/// arithmetic is pinned without a ViewModel; the timing columns follow
-/// [RaceFinish.resultTiming], the fixture's `resultTiming` rule.
-internal fun buildRaceResult(
-    race: ActiveRaceState,
-    decision: RaceStopDecision,
-    userId: String,
-    runId: String,
-    runStartedAtMs: Long,
-    elapsedS: Int,
-    serverOffsetMs: Long?,
-): PendingRaceResult {
-    val timing = RaceFinish.resultTiming(
-        finished = decision.outcome.finisherStatus == "finished",
-        finishAtMs = decision.finishEpochMs,
-        gunMs = race.goAtMs,
-        serverOffsetMs = serverOffsetMs,
-        recordingStartedMs = runStartedAtMs,
-        elapsedS = elapsedS,
-    )
-    return PendingRaceResult(
-        userId = userId,
-        eventId = race.eventId,
-        instanceStart = race.instanceStart,
-        runId = runId,
-        durationS = timing.durationS,
-        distanceM = decision.coveredM,
-        finisherStatus = decision.outcome.finisherStatus,
-        finishMethod = decision.outcome.finishMethod,
-        courseId = race.course?.id,
-        gunTimeS = timing.gunTimeS,
-        chipTimeS = timing.chipTimeS,
-    )
-}
 
 data class FinishedSummary(
     val distanceM: Double,
@@ -522,6 +451,14 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         anonKey = BuildConfig.SUPABASE_ANON_KEY,
     )
     private val raceResults = RaceResultStore(application)
+    private val raceOutbox = RaceResultOutbox(
+        store = raceResults,
+        submit = { token, r -> raceClient.submitResult(token, r) },
+        deleteAuto = { token, uid, eventId, instance ->
+            raceClient.deleteOwnAutoResult(token, uid, eventId, instance)
+        },
+        onFailure = { what, e -> Log.w(TAG, what, e) },
+    )
     private val lastRunStore = com.runapp.watchwear.complications.LastRunStore(application)
 
     private val _state = MutableStateFlow(UiState())
@@ -593,7 +530,18 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private var boundRunId: String? = null
     /// A run the host ended the race under; it is never re-bound.
     private var raceEndedRunId: String? = null
-    private var raceDetector: RaceFinishDetector? = null
+    /// Timing by the lines from the recording's Start (#1307), bound to a
+    /// race or not yet.
+    private val raceTimer = RaceLineTimer().apply {
+        onStartLineCrossed = { cueRaceCrossing(RunRecordingService.RACE_CUE_START) }
+        onFailure = { what, e -> Log.w(TAG, what, e) }
+    }
+    /// The run [raceTimer] follows; a new run id starts it afresh.
+    private var raceTimerRunId: String? = null
+    /// Closes "Not finished? Resume" and stops the run when it runs out.
+    private var raceUndoJob: Job? = null
+    /// The line finish filed at the crossing, so an undo waits for it.
+    private var raceFilingJob: Job? = null
     /// The last fix offered to the detector, by its GPS time: a dedupe key.
     private var lastRaceFixKey: Long = Long.MIN_VALUE
     private var raceStopDecision: RaceStopDecision? = null
@@ -773,9 +721,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                         )
                         maybePushRacePing(m)
                         try {
+                            syncRaceTimerRun(m)
                             maybeBindRace(m)
+                            updateRaceTimer()
                             maybeNoteRaceFirstFix(m)
                             maybeAdvanceRaceFinish(m)
+                            handleRaceTimer(m)
                         } catch (e: Throwable) {
                             Log.w(TAG, "race finish tracking failed; the run records on", e)
                         }
@@ -795,6 +746,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         lastRacePingAtMs = now
         val token = supabase.currentAccessToken ?: return
         val uid = supabase.authedUserId ?: return
+        val sinceStart = raceSinceStartLineS(raceTimer.start, now)
         racePingJob = launchGuarded {
             val sample = try {
                 raceClient.pushPing(
@@ -807,6 +759,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceM = m.distanceM,
                     elapsedS = (m.elapsedMs / 1000).toInt(),
                     bpm = m.bpm,
+                    sinceStartLineS = sinceStart,
                 )
             } catch (_: Throwable) {
                 // ignore — pings are best-effort.
@@ -885,7 +838,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private suspend fun refreshRace() {
         val token = supabase.currentAccessToken ?: return
         val uid = supabase.authedUserId ?: return
-        replayPendingRaceResults(token, uid)
+        // Withdrawn finishes first, then every result this account owes.
+        raceOutbox.replay(token, uid)
         boundRace?.let { bound ->
             refreshBoundRace(token, uid, bound)
             return
@@ -921,16 +875,34 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
 
     /// The course is optional twice over: the runner may have picked none,
     /// and a read can fail. Either way the race still runs, finishing by hand.
+    /// A course read is kept on the watch, and a failed read falls back to it,
+    /// so a race found with signal times by its lines without (#1307
+    /// offline).
     private suspend fun loadRaceCourse(
         token: String,
         uid: String,
         eventId: String,
         instanceStart: String,
-    ): RaceSessionClient.RaceCourse? = try {
-        raceClient.fetchCourse(token, uid, eventId, instanceStart)
-    } catch (e: Throwable) {
-        Log.w(TAG, "race course not loaded; finish falls back to manual", e)
-        null
+    ): RaceSessionClient.RaceCourse? {
+        val fetched = try {
+            raceClient.fetchCourse(token, uid, eventId, instanceStart)
+        } catch (e: Throwable) {
+            Log.w(TAG, "race course not loaded; trying the watch's cached copy", e)
+            return try {
+                raceResults.cachedCourse(uid, eventId, instanceStart)
+            } catch (e2: Throwable) {
+                Log.w(TAG, "cached race course unreadable; finish falls back to manual", e2)
+                null
+            }
+        }
+        if (fetched != null) {
+            try {
+                raceResults.cacheCourse(CachedRaceCourse(uid, eventId, instanceStart, fetched))
+            } catch (e: Throwable) {
+                Log.w(TAG, "race course not cached; it still times this race while the app runs", e)
+            }
+        }
+        return fetched
     }
 
     /// While a race run records, the only questions are whether the host has
@@ -957,13 +929,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Throwable) {
             Log.w(TAG, "race session status poll failed", e)
         }
-        if (raceDetector == null && bound.course == null) {
+        if (bound.course == null) {
             val course = loadRaceCourse(token, uid, bound.eventId, bound.instanceStart) ?: return
             if (boundRace !== bound) return
-            val withCourse = bound.copy(course = course)
-            boundRace = withCourse
-            raceDetector =
-                RaceFinishDetector.forCourse(course.finishLat, course.finishLng, course.distanceM)
+            boundRace = bound.copy(course = course)
             evaluateRaceLateStart()
         }
     }
@@ -982,7 +951,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         raceEndedRunId = boundRunId
         boundRace = null
         boundRunId = null
-        raceDetector = null
+        // Nothing more is timed for this run: the host ended its race.
+        raceTimer.endRecording()
         _state.value = _state.value.copy(
             activeRace = null,
             raceRun = _state.value.raceRun?.copy(ended = true),
@@ -1006,10 +976,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         ) ?: return
         boundRace = race
         boundRunId = m.runId
-        raceDetector = race.course?.let {
-            RaceFinishDetector.forCourse(it.finishLat, it.finishLng, it.distanceM)
-        }
-        lastRaceFixKey = Long.MIN_VALUE
+        raceTimer.bind()
         raceStopDecision = null
         raceStoppedAtMs = null
         raceEndedAfterStop = false
@@ -1053,8 +1020,53 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         if (late) _state.value = _state.value.copy(raceRun = run.copy(lateStart = true))
     }
 
+    /// A new run starts the timer afresh; it follows the recording from its
+    /// Start, bound to a race or not (#1307 M1).
+    private fun syncRaceTimerRun(m: RecordingRepository.Metrics) {
+        val id = m.runId ?: return
+        if (id == raceTimerRunId) return
+        raceTimerRunId = id
+        lastRaceFixKey = Long.MIN_VALUE
+        raceTimer.beginRecording()
+    }
+
+    /// The race the timer follows, its course (off the bound race, the
+    /// active race, or the watch's cache) and the offset. A finish a replay
+    /// finds is acted on in [handleRaceTimer].
+    private fun updateRaceTimer() {
+        val target = raceTargetFor(boundRace, _state.value.activeRace, raceTimer.recording)
+        val course = target?.let { t ->
+            boundRace?.course
+                ?: _state.value.activeRace
+                    ?.takeIf { it.eventId == t.eventId && it.instanceStart == t.instanceStart }
+                    ?.course
+                ?: cachedRaceCourse?.takeIf { it.first == t.key }?.second
+        }
+        if (target != null && course == null) loadCachedRaceCourse(target)
+        raceTimer.update(target, course, serverClock.offsetMs)
+    }
+
+    /// The course cached on the watch for the race the timer follows, read
+    /// once per race: the course with no signal (#1307 offline).
+    private var cachedRaceCourse: Pair<String, RaceSessionClient.RaceCourse>? = null
+    private var cachedRaceCourseAsked: String? = null
+
+    private fun loadCachedRaceCourse(target: RaceTarget) {
+        if (cachedRaceCourseAsked == target.key) return
+        cachedRaceCourseAsked = target.key
+        val uid = supabase.authedUserId ?: return
+        launchGuarded {
+            val course = try {
+                raceResults.cachedCourse(uid, target.eventId, target.instanceStart)
+            } catch (e: Throwable) {
+                Log.w(TAG, "cached race course unreadable; the race finishes by hand", e)
+                null
+            } ?: return@launchGuarded
+            cachedRaceCourse = target.key to course
+        }
+    }
+
     private fun maybeAdvanceRaceFinish(m: RecordingRepository.Metrics) {
-        val detector = raceDetector ?: return
         val p = m.latestPoint ?: return
         val offerable = raceFixOfferable(
             recording = m.stage == RecordingRepository.Stage.Recording,
@@ -1069,8 +1081,98 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             nowWallMs = System.currentTimeMillis(),
             nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
         )
-        val finish = detector.offer(RaceFinish.Fix(p.lat, p.lng, atMs, m.distanceM)) ?: return
-        stopForRace(RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, finish.epochMs, finish.coveredM))
+        raceTimer.offer(RaceFinish.Fix(p.lat, p.lng, atMs, m.distanceM))
+    }
+
+    /// Publish the distance to the start line, and act on a finish the timer
+    /// found once the recording is bound to its race.
+    private fun handleRaceTimer(m: RecordingRepository.Metrics) {
+        val toStart = raceTimer.distanceToStartM
+        if (toStart != _state.value.raceToStartM) _state.value = _state.value.copy(raceToStartM = toStart)
+        if (boundRace == null || raceStopDecision != null) return
+        val finish = raceTimer.takePendingFinish() ?: return
+        onRaceAutoFinish(finish, m)
+    }
+
+    /// The runner reached the finish. A finish-line crossing files the result
+    /// at once and holds the run paused for [RACE_UNDO_WINDOW_MS] behind "Not
+    /// finished? Resume" (#1307 m11), then stops; any other automatic finish
+    /// stops the run, which files it in [handleFinishedRun].
+    private fun onRaceAutoFinish(finish: RaceFinish.Finish, m: RecordingRepository.Metrics) {
+        val race = boundRace ?: return
+        val decision = RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, finish.epochMs, finish.coveredM, finish)
+        cueRaceCrossing(RunRecordingService.RACE_CUE_FINISH)
+        if (finish.detection != RaceFinish.FinishDetection.GATE) {
+            stopForRace(decision)
+            return
+        }
+        raceStopDecision = decision
+        fileLineFinish(race, decision, m)
+        RunRecordingService.pause(getApplication())
+        _state.value = _state.value.copy(raceRun = _state.value.raceRun?.copy(undoOpen = true))
+        raceUndoJob?.cancel()
+        raceUndoJob = launchGuarded {
+            delay(RACE_UNDO_WINDOW_MS)
+            if (_state.value.raceRun?.undoOpen != true) return@launchGuarded
+            _state.value = _state.value.copy(raceRun = _state.value.raceRun?.copy(undoOpen = false))
+            RunRecordingService.stop(getApplication())
+        }
+    }
+
+    /// The line finish reaches the leaderboard at the line, without `run_id`:
+    /// the run row does not exist until Stop saves it, and Stop files the
+    /// same finish again with the run.
+    private fun fileLineFinish(race: ActiveRaceState, decision: RaceStopDecision, m: RecordingRepository.Metrics) {
+        val uid = supabase.authedUserId ?: return
+        val result = try {
+            buildRaceResult(
+                race = race,
+                decision = decision,
+                userId = uid,
+                runId = null,
+                runStartedAtMs = m.startedAtMs,
+                elapsedS = (m.elapsedMs / 1000).toInt(),
+                serverOffsetMs = serverClock.offsetMs,
+                start = raceTimer.start,
+            )
+        } catch (e: Throwable) {
+            Log.e(TAG, "line finish not built; Stop files it with the run", e)
+            return
+        }
+        raceFilingJob = launchGuarded { raceOutbox.file(supabase.currentAccessToken, result) }
+    }
+
+    /// "Not finished? Resume": void the line finish and record on. The rest
+    /// of this run finishes by hand (Stop, then Finish), from the same start:
+    /// a line that finished the runner once where they were not finishing
+    /// would do it again.
+    private fun undoRaceFinish() {
+        raceUndoJob?.cancel()
+        raceUndoJob = null
+        val race = boundRace
+        raceTimer.voidAutoFinish()
+        raceStopDecision = null
+        raceStoppedAtMs = null
+        _state.value = _state.value.copy(raceRun = _state.value.raceRun?.copy(undoOpen = false))
+        RunRecordingService.resume(getApplication())
+        val uid = supabase.authedUserId ?: return
+        if (race == null) return
+        val filing = raceFilingJob
+        launchGuarded {
+            filing?.join()
+            raceOutbox.void(supabase.currentAccessToken, uid, race.eventId, race.instanceStart)
+        }
+    }
+
+    /// The haptic and the spoken line for a start- or finish-line crossing,
+    /// played by the recording service, which owns the vibrator and the TTS
+    /// engine. L4: a cue that cannot be sent costs nothing but the cue.
+    private fun cueRaceCrossing(kind: String) {
+        try {
+            RunRecordingService.raceCue(getApplication(), kind)
+        } catch (e: Throwable) {
+            Log.w(TAG, "race $kind cue not sent; timing carries on", e)
+        }
     }
 
     private fun stopForRace(decision: RaceStopDecision) {
@@ -1081,7 +1183,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private fun finishRaceNow(race: ActiveRaceState) {
         stopForRace(
             raceFinishDecision(
-                settled = settleRaceDetector(raceDetector),
+                settled = settleRaceTimer(),
                 coveredM = _state.value.distanceM,
                 courseDistanceM = race.course?.distanceM,
                 stoppedAtMs = raceStoppedAtMs ?: System.currentTimeMillis(),
@@ -1096,52 +1198,11 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         if (raceStoppedAtMs == null) raceStoppedAtMs = System.currentTimeMillis()
     }
 
-    private fun settleRaceDetector(detector: RaceFinishDetector?): RaceFinish.Finish? = try {
-        detector?.finaliseNow()
+    private fun settleRaceTimer(): RaceFinish.Finish? = try {
+        raceTimer.settle()
     } catch (e: Throwable) {
         Log.w(TAG, "race finish detector failed to settle; judged by distance", e)
         null
-    }
-
-    /// The queue is what survives a finish line with no signal; the send
-    /// after the drain and every race poll replay from it.
-    private suspend fun persistRaceResult(result: PendingRaceResult) {
-        try {
-            raceResults.add(result)
-        } catch (e: Throwable) {
-            Log.w(TAG, "race result not persisted; it is sent once without a retry net", e)
-        }
-    }
-
-    /// A body the server will never accept is dropped, loudly.
-
-    private suspend fun sendRaceResult(token: String, result: PendingRaceResult) {
-        val sent = try {
-            raceClient.submitResult(token, result)
-            true
-        } catch (e: Throwable) {
-            if (isRetryableRaceResultFailure(e)) {
-                Log.w(TAG, "race result not sent; kept for the next race poll", e)
-                return
-            }
-            Log.e(TAG, "race result refused by the server; dropping it", e)
-            false
-        }
-        try {
-            raceResults.remove(result)
-        } catch (e: Throwable) {
-            Log.w(TAG, "race result queue not trimmed (sent=$sent); a replay is an idempotent upsert", e)
-        }
-    }
-
-    private suspend fun replayPendingRaceResults(token: String, uid: String) {
-        val pending = try {
-            raceResults.current()
-        } catch (e: Throwable) {
-            Log.w(TAG, "pending race results unreadable", e)
-            return
-        }
-        for (r in raceResultsToReplay(pending, uid)) sendRaceResult(token, r)
     }
 
     private fun bootstrapAuth() {
@@ -1605,6 +1666,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             offRouteDistanceM = null,
             routeRemainingM = null,
             raceRun = null,
+            raceToStartM = null,
             workoutView = null,
         )
         RunRecordingService.start(
@@ -1807,8 +1869,16 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
 
     /// Resuming takes back the Stop. If the host ended the race in between,
     /// the runner is now running on after End, which owes no result.
+    ///
+    /// Resuming a run held open after a line finish IS "Not finished?
+    /// Resume", from whichever control: a plain resume would leave the finish
+    /// filed and the window about to stop the run.
     fun resume() {
         if (_state.value.stage != Stage.Paused) return
+        if (_state.value.raceRun?.undoOpen == true) {
+            undoRaceFinish()
+            return
+        }
         raceStoppedAtMs = null
         if (raceEndedAfterStop) onRaceEndedByHost()
         RunRecordingService.resume(getApplication())
@@ -1824,25 +1894,32 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         // the next run starts unbound whatever happens to this one's result.
         val race = boundRace?.takeIf { boundRunId == runId }
         val decision = raceStopDecision
-        val detector = raceDetector
         val stoppedAt = raceStoppedAtMs
+        // A run that reached `Finished` without Stop or a finish (a recovered
+        // or system-stopped run) is judged as if "Finish race" had been
+        // pressed at its Stop, or now. Settled before the timer is released.
+        val settled = if (race != null && decision == null) settleRaceTimer() else null
+        val start = raceTimer.start
+        raceUndoJob?.cancel()
+        raceUndoJob = null
         boundRace = null
         boundRunId = null
-        raceDetector = null
         raceStopDecision = null
         raceStoppedAtMs = null
         raceEndedAfterStop = false
         lastRaceFixKey = Long.MIN_VALUE
+        raceTimer.endRecording()
+        raceTimerRunId = null
         val uidForRace = supabase.authedUserId
         val raceResult = if (race != null && uidForRace != null) {
             try {
                 buildRaceResult(
                     race = race,
-                    // A run that reached `Finished` without Stop or a finish
-                    // (a recovered or system-stopped run) is judged as if
-                    // "Finish race" had been pressed at its Stop, or now.
+                    // A line finish filed at the crossing is filed again here
+                    // with its run: the same timing, so the race guard treats
+                    // it as no timing write at all.
                     decision = decision ?: raceFinishDecision(
-                        settled = settleRaceDetector(detector),
+                        settled = settled,
                         coveredM = m.distanceM,
                         courseDistanceM = race.course?.distanceM,
                         stoppedAtMs = stoppedAt ?: System.currentTimeMillis(),
@@ -1852,6 +1929,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     runStartedAtMs = m.startedAtMs,
                     elapsedS = durationS,
                     serverOffsetMs = serverClock.offsetMs,
+                    start = start,
                 )
             } catch (e: Throwable) {
                 Log.e(TAG, "race result not built; the run is still saved", e)
@@ -1886,6 +1964,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         )
         _state.value = _state.value.copy(
             raceRun = null,
+            raceToStartM = null,
             stage = Stage.PostRun,
             thisRunId = runId,
             thisRunSynced = false,
@@ -1899,7 +1978,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         launchGuarded {
             // Banked before anything else in this job can throw: the result
             // is the one part of a race run that cannot be rebuilt later.
-            if (raceResult != null) persistRaceResult(raceResult)
+            if (raceResult != null) raceOutbox.file(null, raceResult)
             store.save(
                 QueuedRun(
                     id = runId,
@@ -1946,7 +2025,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             // After the drain, so the run the result points at is uploaded
             // first; a result that still loses that race stays queued.
             if (raceResult != null) {
-                supabase.currentAccessToken?.let { sendRaceResult(it, raceResult) }
+                val token = supabase.currentAccessToken
+                if (token != null) raceOutbox.replay(token, raceResult.userId)
             }
         }
     }

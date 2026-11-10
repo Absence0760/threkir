@@ -49,6 +49,9 @@ const Duration kRaceUndoWindow = Duration(seconds: 60);
 /// Past it the oldest go first.
 const int kRaceFixLogMax = 43200;
 
+/// The most `race_pings.since_start_line_s` holds (14 days, its CHECK).
+const int kRacePingSinceStartMaxS = 1209600;
+
 /// How a result's start was detected (`event_results.start_detection`):
 /// a start-line crossing or GO itself ([gate]), or the runner's own Start
 /// press ([device]).
@@ -511,6 +514,7 @@ Map<String, dynamic> racePingRow({
   double? distanceM,
   int? elapsedS,
   int? bpm,
+  int? sinceStartLineS,
 }) =>
     <String, dynamic>{
       'event_id': eventId,
@@ -521,6 +525,7 @@ Map<String, dynamic> racePingRow({
       if (distanceM != null) 'distance_m': distanceM,
       if (elapsedS != null) 'elapsed_s': elapsedS,
       if (bpm != null) 'bpm': bpm,
+      if (sinceStartLineS != null) 'since_start_line_s': sinceStartLineS,
     };
 
 class RaceController extends ChangeNotifier {
@@ -1571,7 +1576,7 @@ class RaceController extends ChangeNotifier {
     final eid = _hostingEventId;
     final inst = _hostingInstance;
     if (eid == null || inst == null) return;
-    final now = DateTime.now();
+    final now = (nowReader ?? DateTime.now)();
     if (now.difference(_lastPingAt) < const Duration(seconds: 10)) return;
     _lastPingAt = now;
     try {
@@ -1584,10 +1589,28 @@ class RaceController extends ChangeNotifier {
         distanceM: distanceM,
         elapsedS: elapsedS,
         bpm: bpm,
+        sinceStartLineS: _sinceStartLineS(now),
       ));
     } catch (e) {
       debugPrint('[RaceController.pushPing] $e');
     }
+  }
+
+  /// The device clock, as a seam: the fixes a test drives are timed on a
+  /// fixed day, and a ping's `since_start_line_s` is measured against them.
+  @visibleForTesting
+  DateTime Function()? nowReader;
+
+  /// Whole seconds from the committed start to [now] (device clock), which
+  /// the Self-timed spectator board orders by (#1306 M13). Null before a
+  /// start is committed — a Start press is no start line — and past what
+  /// the column holds.
+  int? _sinceStartLineS(DateTime now) {
+    final start = _finish?.start ?? _detector?.start ?? _keptStart;
+    if (start == null) return null;
+    final s = now.difference(start.at).inSeconds;
+    if (s < 0) return 0;
+    return s > kRacePingSinceStartMaxS ? null : s;
   }
 
   /// The `race_pings` insert, as a seam. `_c` reaches a Supabase client no

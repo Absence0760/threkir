@@ -1852,7 +1852,8 @@ void main() {
     final instance = DateTime.utc(2026, 5, 22, 18);
     final began = DateTime.utc(2026, 5, 22, 17, 58);
     final gun = DateTime.utc(2026, 5, 22, 18, 0, 0);
-    DateTime at(int s) => gun.add(Duration(seconds: s));
+    DateTime at(int s, {int ms = 0}) =>
+        gun.add(Duration(seconds: s, milliseconds: ms));
 
     /// A fix [eastM] along the course and [northM] off it, having covered
     /// [coveredM] since the Start press.
@@ -1973,6 +1974,54 @@ void main() {
       expect(c.outcome, isNull);
       expect(c.stopNeedsRaceChoice, isTrue,
           reason: 'past the zone, a Stop is a pause again');
+    });
+
+    test('a ping carries the seconds since the committed start line crossing',
+        () async {
+      final c = armed(_FakeSocial());
+      final rows = <Map<String, dynamic>>[];
+      c.pingWriter = (row) async => rows.add(row);
+      await pumpEventQueue();
+      go(c);
+      await pumpEventQueue();
+
+      // Crossed at +6 s; the start commits 50 m on, at +16 s.
+      for (var s = 0, x = -30.0; x <= 20; x += 10, s += 2) {
+        fix(c, x, s, x + 30);
+      }
+      c.nowReader = () => at(10);
+      await c.pushPing(lat: lat0, lng: lng0);
+      expect(rows.last.containsKey('since_start_line_s'), isFalse,
+          reason: 'a crossing still committing is no start yet');
+
+      for (var s = 12, x = 30.0; x <= 100; x += 10, s += 2) {
+        fix(c, x, s, x + 30);
+      }
+      c.nowReader = () => at(26, ms: 900);
+      await c.pushPing(lat: lat0, lng: lng0);
+      expect(rows.last['since_start_line_s'], 20,
+          reason: 'whole seconds from the crossing at +6 s, truncated');
+      expect(rows, hasLength(2));
+    });
+
+    test('a ping without a start line carries no since_start_line_s',
+        () async {
+      final c = armed(_FakeSocial(),
+          course: RaceCourse(
+              courseId: 'course-5k',
+              distanceM: 5000,
+              finishLat: lat0,
+              finishLng: lngAt(5000)));
+      final rows = <Map<String, dynamic>>[];
+      c.pingWriter = (row) async => rows.add(row);
+      await pumpEventQueue();
+      go(c);
+      await pumpEventQueue();
+      runTo(c, 200);
+      c.nowReader = () => at(60);
+      await c.pushPing(lat: lat0, lng: lng0);
+      expect(rows.single.containsKey('since_start_line_s'), isFalse,
+          reason: 'the Start press is not a start line');
     });
 
     test('a Stop inside the finish circle files a zone finish', () async {

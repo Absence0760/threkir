@@ -8,6 +8,7 @@
 library;
 
 import 'route_gpx.dart';
+import 'route_guide.dart';
 
 const List<String> kParkAgencies = ['nps', 'state', 'county', 'other'];
 
@@ -231,15 +232,18 @@ GpxAttribution? courseAttribution(
 }
 
 /// The GPX a course screen shares: the course line, one `<wpt>` per
-/// checkpoint in order (so a watch shows the points a run must pass), and the
-/// geometry credit in `<metadata>`. A checkpoint list that could not be read
-/// (null) writes no waypoints rather than a partial set. [waypoints] are
-/// `(lat, lng, ele)` triples.
+/// checkpoint in order (so a watch shows the points a run must pass), the
+/// geometry credit in `<metadata>`, and the route guide as the track's
+/// `<desc>`, in canonical English and led by whether it has been checked on
+/// the ground. A checkpoint list that could not be read (null) writes no
+/// waypoints rather than a partial set. [waypoints] are `(lat, lng, ele)`
+/// triples.
 String parkCourseGpx({
   required String name,
   required List<({double lat, double lng, double? ele})> waypoints,
   required List<CourseCheckpoint>? checkpoints,
   required GpxAttribution? attribution,
+  ({RouteGuide guide, String? checkedAt})? guide,
 }) {
   final cps = checkpoints ?? const <CourseCheckpoint>[];
   return toRouteGpxWithMarkers(
@@ -257,6 +261,9 @@ String parkCourseGpx({
         ),
     ],
     attribution,
+    guide == null
+        ? null
+        : routeGuideEnglish(guide.guide, guide.checkedAt).join('\n'),
   );
 }
 

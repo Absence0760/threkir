@@ -28,6 +28,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Indexable park pages | Not built; see *SEO* |
 | Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
 | Help guide `park-courses`, Learn page `/learn/park-courses-how-timing-works` | Shipped |
+| Route guide per course (`park_courses.route_guide`, migration `20271212001344`, decisions § 2448): generated with the geometry, shown on the course page, the share page, its search text and the GPX, web + mobile | Shipped; every Pocahontas guide is still a draft awaiting the owner's ground check. See *Route guide* |
 
 ## Model
 
@@ -207,6 +208,59 @@ one does now. Mobile matches it (`park_courses_screen.dart`).
 - **`/share/course/…`** takes the same distance label, laps chip, credit line,
   map key (without checkpoints, which the public lookup does not carry),
   elevation profile and notices callout.
+
+## Route guide
+
+Issue #1344, [decisions § 2448](../architecture/decisions.md). Each course has
+a short guide a newcomer can follow: where to park, which way round, and every
+turn in order by trail name, with the bridges, fords, surface changes and
+climbs on the way, the checkpoints and the laps.
+
+- **Structured, not prose.** `park_courses.route_guide` is
+  `{ version: 1, lang, getting_there?, steps }`. A step is one of `start`
+  (`name` or `way`), `direction` (`rotation`: `clockwise` /
+  `counterclockwise`, with an optional `keep_on` + `landmark`), `lap` (`lap`,
+  `of`), `junction` (`turn`: `left` / `right` / `straight`, and `name` or
+  `way`: `fire_road` / `road` / `path`), `crossing` (`bridge` / `ford`),
+  `surface` (`paved` / `gravel` / `dirt` / `unpaved` / `boardwalk`), `climb`
+  (`gain_m`, `length_m`), `checkpoint` (`order`, `of`) and `finish`, each with
+  its whole-metre `at_m` along the course. The CHECK
+  `private.park_course_route_guide_ok` holds that shape; the generator's
+  `routeGuideRefusal` and the payload refuse the same before a release
+  connects.
+- **Rendered per locale.** Web `parks/route_guide.ts` and mobile
+  `route_guide.dart` (a parity pair over `fixtures/route_guide_cases.json`)
+  turn each step into one full-sentence template (`parks.guide.*` /
+  `parkGuide*`) in all seven locales, so no course needs a translated copy.
+  Trail names stay as OSM has them; `getting_there` is free text in the
+  guide's `lang` (English today) and is shown with that `lang` attribute. A
+  guide any part of which cannot be read is hidden whole, never shown with a
+  step missing.
+- **Generated, never invented.** `scripts/parks/lib/route_guide.mjs` derives
+  the steps from the ordered OSM ways: a junction where the trail name changes
+  (a short unnamed bridge or split inside one trail is not one), a junction
+  between unnamed ways only where the snapshot shows a branch and the course
+  turns, crossings from `bridge` / `ford` tags, surfaces from `surface` tags
+  (stretches under 150 m ignored), climbs of at least 12 m at 3.5 %, the
+  checkpoints where the build placed them, and the rotation of the loop. A
+  lapped race writes lap 1 in full and then only its lap markers, checkpoints
+  and what differs (the turn off the loop on the last lap). A landmark ("keep
+  Swift Creek Lake on your right") appears only when the snapshot holds a named
+  water feature inside the loop; `fetch_snapshot.mjs` does not fetch water
+  yet, so today's guides say only which way round.
+- **Draft until walked.** `route_guide_checked_at` is null until the owner
+  walks the guide at the park and sets `route_guide.ground_checked_at` in
+  `park.json`. Until then the course page and the share page show "Drafted
+  from map data, not yet checked on the ground." above the steps, the share
+  page's meta description says so, and the GPX `<desc>` opens with it. Once
+  set, they say "Checked on the ground on <date>." How to check one is in
+  [scripts/parks/README.md § Route guides](../../scripts/parks/README.md#route-guides).
+- **Where it shows.** The course page (between the actions and the Before you
+  run notice), the share page (the same component, `ParkCourseRouteGuide`),
+  the share page's JSON-LD description in canonical English (`GUIDE_EN`, held
+  to `locales/en.ts` by a test), the course GPX's track `<desc>` in the same
+  English, mobile `ParkCourseScreen`, and a line in the `park-courses` help
+  guide.
 
 ## Wording and safety
 
@@ -436,6 +490,12 @@ These gate going live, not the code:
       before the sync creates it. Park courses without a race block need none
       (reviews/legal-park-course-permit.md).
 - [ ] Attribution checked on each loaded course's page and GPX export.
+- [ ] Owner step: walk each course's route guide at the park (Swift Creek
+      first), fix what the map data got wrong, and set its
+      `route_guide.ground_checked_at` in `park.json`
+      ([scripts/parks/README.md § Route guides](../../scripts/parks/README.md#route-guides)).
+      Until then every guide ships marked as a draft, which is honest but not
+      the end state.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
 - [ ] NPS API key provisioned before the closures job is built; it must do
       nothing without one.
@@ -491,6 +551,17 @@ These gate going live, not the code:
   `handler_segment_match_test.go`; `segments/edge_matcher_bundle.test.ts` and
   `segments/track_extent.test.ts` on web.
 - Parity pair: `parks/park_courses.test.ts` ↔ `test/park_courses_test.dart`.
+- Route guide (#1344): `node --test scripts/parks/lib/route_guide.test.mjs`
+  (turns, surfaces, climbs, landmarks, junction rules, laps, offsets,
+  determinism, the validator, every committed guide);
+  `parks/route_guide.test.ts` ↔ `test/route_guide_test.dart` over
+  `fixtures/route_guide_cases.json` (template per step, fail-closed reading,
+  `GUIDE_EN` against the English catalogue); pgTAP
+  `park_course_route_guide_test.sql` (the shape predicate, the CHECKs, the load
+  writing the guide and its date with no backfill, each refusal); Playwright
+  `tests-e2e/parks/park-course-route-guide.spec.ts` (the list and the draft
+  note on the course and share pages, the checked date, the GPX `<desc>`);
+  a widget test in `test/park_courses_screen_test.dart`.
 - Pages (#1352): `parks/park_course_distance.test.ts` ↔
   `test/park_course_distance_test.dart` (labels, range, order, shape, laps);
   `parks/course_map.test.ts` (shared starts, a closing loop); Playwright

@@ -24,7 +24,6 @@ import '../distance_recompute.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
-import '../l10n/number_format.dart';
 import '../hr_zones.dart';
 import '../run_intensity.dart';
 import '../local_route_store.dart';
@@ -1989,26 +1988,22 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final rd = _runningDynamics;
     if (rd == null) return const [];
     final rows = <Widget>[];
-    // `decimals` flags the stride-length row, the only metric formatted
-    // with two decimal places — the rest read as whole numbers.
-    void addRow(String label, Object? value, String suffix,
-        {bool decimals = false}) {
+    void addRow(String label, Object? value, String Function(num) format) {
       if (value is! num) return;
-      final formatted = decimals
-          ? formatFixed(value.toDouble(), 2, activeLocaleTag)
-          : value.toString();
       rows.add(ListTile(
         dense: true,
         title: Text(label),
-        trailing: Text('$formatted $suffix', style: theme.textTheme.titleMedium),
+        trailing: Text(format(value), style: theme.textTheme.titleMedium),
       ));
     }
 
-    addRow(l10n.runDetailDynVerticalOsc, rd['vertical_oscillation_mm'], 'mm');
-    addRow(l10n.runDetailDynGroundContact, rd['gct_ms'], 'ms');
-    addRow(l10n.runDetailDynStrideLength, rd['stride_length_m'], 'm',
-        decimals: true);
-    addRow(l10n.runDetailDynAvgPower, rd['power_w'], 'W');
+    addRow(l10n.runDetailDynVerticalOsc, rd['vertical_oscillation_mm'],
+        (v) => '$v mm');
+    addRow(l10n.runDetailDynGroundContact, rd['gct_ms'], (v) => '$v ms');
+    addRow(l10n.runDetailDynStrideLength, rd['stride_length_m'],
+        (v) => UnitFormat.strideLength(
+            v.toDouble(), widget.preferences.unit));
+    addRow(l10n.runDetailDynAvgPower, rd['power_w'], (v) => '$v W');
     return rows;
   }
 

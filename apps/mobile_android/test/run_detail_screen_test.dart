@@ -1441,6 +1441,17 @@ void main() {
       expect(find.text('290 W'), findsOneWidget);
     });
 
+    testWidgets('stride length follows the miles preference', (tester) async {
+      // 1.18 m x 3.28084 = 3.871 ft.
+      final run = _run(metadata: {
+        'activity_type': 'run',
+        'running_dynamics': {'stride_length_m': 1.18},
+      });
+      await _pump(tester, run, useMiles: true);
+      expect(find.text('3.87 ft'), findsOneWidget);
+      expect(find.text('1.18 m'), findsNothing);
+    });
+
     testWidgets('omits the Running Dynamics block when the key is absent',
         (tester) async {
       final run = _run(metadata: {'activity_type': 'run'});

@@ -6,7 +6,7 @@
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
 	import type { MetricId } from '#lib/metrics/metric_registry.ts';
 	import { onMount, tick } from 'svelte';
-	import { fmtPace, getUnit, formatPaceNoSuffix, formatElevation } from '#lib/format/units.svelte.ts';
+	import { fmtPace, getUnit, formatPaceNoSuffix, formatElevation, formatStrideLength } from '#lib/format/units.svelte.ts';
 
 	const METRES_PER_MILE = 1609.344;
 	import { PUBLIC_MAPTILER_KEY as PUBLIC_MAPTILER_KEY_ENV, PUBLIC_SITE_URL, PUBLIC_TILE_STYLE_URL as PUBLIC_TILE_STYLE_URL_ENV } from '$app/env/public';
@@ -1969,11 +1969,11 @@
 						<div class="segment-stat">
 							<span class="segment-stat-label">{m('runDetail.elev')}</span>
 							<span class="segment-stat-value">
-								{#if selectedSegment.ele_gain_m > 0}+{selectedSegment.ele_gain_m}m{/if}
+								{#if selectedSegment.ele_gain_m > 0}+{formatElevation(selectedSegment.ele_gain_m)}{/if}
 								{#if selectedSegment.ele_gain_m > 0 && selectedSegment.ele_loss_m > 0}
 									·
 								{/if}
-								{#if selectedSegment.ele_loss_m > 0}−{selectedSegment.ele_loss_m}m{/if}
+								{#if selectedSegment.ele_loss_m > 0}−{formatElevation(selectedSegment.ele_loss_m)}{/if}
 							</span>
 						</div>
 					{/if}
@@ -2627,7 +2627,7 @@
 					{/if}
 					{#if runningDynamics.stride_length_m != null}
 						<div class="key-stat">
-							<span class="key-stat-value">{runningDynamics.stride_length_m.toFixed(2)} m</span>
+							<span class="key-stat-value">{formatStrideLength(runningDynamics.stride_length_m)}</span>
 							<span class="key-stat-label">{m('runDetail.strideLength')}</span>
 						</div>
 					{/if}

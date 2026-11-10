@@ -1241,6 +1241,15 @@ class UnitFormat {
   static String elevationLabel(DistanceUnit unit) =>
       unit == DistanceUnit.mi ? 'ft' : 'm';
 
+  /// A stride length as metres or feet to two decimals: "1.18 m" /
+  /// "3.87 ft". Twin of web's `formatStrideLengthIn`.
+  static String strideLength(double metres, DistanceUnit unit,
+      [String? localeTag]) {
+    final value = unit == DistanceUnit.mi ? metres * _feetPerMetre : metres;
+    return '${formatFixed(value, 2, localeTag ?? activeLocaleTag)} '
+        '${elevationLabel(unit)}';
+  }
+
   /// The inverse of [elevation]'s conversion. An editor that collects a
   /// gain in the runner's own unit must come back through here before the
   /// value is stored, so entry and display can't drift on the factor —

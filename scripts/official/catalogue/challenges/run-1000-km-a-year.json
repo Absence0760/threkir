@@ -1,0 +1,9 @@
+{
+	"slug": "run-1000-km-a-year",
+	"recurrence": "yearly",
+	"title": "Run 1,000 km in {period}",
+	"description": "An official Threkir challenge. Runs you record from 1 January to 31 December count, in UTC.",
+	"metric": "distance",
+	"goal_value": 1000000,
+	"activity_type": "run"
+}

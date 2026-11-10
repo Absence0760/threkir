@@ -1,0 +1,788 @@
+{
+	"slug": "couch-to-5k",
+	"name": "Couch to 5K (walk-run, 9 weeks)",
+	"preset": {
+		"goalEvent": "distance_5k",
+		"weeks": 9,
+		"daysPerWeek": 3,
+		"beginnerWalkRun": true
+	},
+	"goal_event": "distance_5k",
+	"goal_distance_m": 5000,
+	"days_per_week": 3,
+	"source": "generated",
+	"end_day": 62,
+	"weeks": [
+		{
+			"week_index": 0,
+			"phase": "build",
+			"target_volume_m": 7239,
+			"workouts": [
+				{
+					"day": 0,
+					"kind": "walk_run",
+					"target_duration_seconds": 1710,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 8,
+							"duration_s": 60,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 90
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 1,
+					"kind": "rest"
+				},
+				{
+					"day": 2,
+					"kind": "walk_run",
+					"target_duration_seconds": 1710,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 8,
+							"duration_s": 60,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 90
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 3,
+					"kind": "rest"
+				},
+				{
+					"day": 4,
+					"kind": "walk_run",
+					"target_duration_seconds": 1710,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 8,
+							"duration_s": 60,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 90
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 5,
+					"kind": "rest"
+				},
+				{
+					"day": 6,
+					"kind": "rest"
+				}
+			]
+		},
+		{
+			"week_index": 1,
+			"phase": "build",
+			"target_volume_m": 8238,
+			"workouts": [
+				{
+					"day": 7,
+					"kind": "walk_run",
+					"target_duration_seconds": 1950,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 7,
+							"duration_s": 90,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 8,
+					"kind": "rest"
+				},
+				{
+					"day": 9,
+					"kind": "walk_run",
+					"target_duration_seconds": 1950,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 7,
+							"duration_s": 90,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 10,
+					"kind": "rest"
+				},
+				{
+					"day": 11,
+					"kind": "walk_run",
+					"target_duration_seconds": 1950,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 7,
+							"duration_s": 90,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 12,
+					"kind": "rest"
+				},
+				{
+					"day": 13,
+					"kind": "rest"
+				}
+			]
+		},
+		{
+			"week_index": 2,
+			"phase": "build",
+			"target_volume_m": 8094,
+			"workouts": [
+				{
+					"day": 14,
+					"kind": "walk_run",
+					"target_duration_seconds": 1920,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 6,
+							"duration_s": 120,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 15,
+					"kind": "rest"
+				},
+				{
+					"day": 16,
+					"kind": "walk_run",
+					"target_duration_seconds": 1920,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 6,
+							"duration_s": 120,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 17,
+					"kind": "rest"
+				},
+				{
+					"day": 18,
+					"kind": "walk_run",
+					"target_duration_seconds": 1920,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 6,
+							"duration_s": 120,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 19,
+					"kind": "rest"
+				},
+				{
+					"day": 20,
+					"kind": "rest"
+				}
+			]
+		},
+		{
+			"week_index": 3,
+			"phase": "build",
+			"target_volume_m": 8316,
+			"workouts": [
+				{
+					"day": 21,
+					"kind": "walk_run",
+					"target_duration_seconds": 1980,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 5,
+							"duration_s": 180,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 22,
+					"kind": "rest"
+				},
+				{
+					"day": 23,
+					"kind": "walk_run",
+					"target_duration_seconds": 1980,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 5,
+							"duration_s": 180,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 24,
+					"kind": "rest"
+				},
+				{
+					"day": 25,
+					"kind": "walk_run",
+					"target_duration_seconds": 1980,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 5,
+							"duration_s": 180,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 26,
+					"kind": "rest"
+				},
+				{
+					"day": 27,
+					"kind": "rest"
+				}
+			]
+		},
+		{
+			"week_index": 4,
+			"phase": "build",
+			"target_volume_m": 9033,
+			"workouts": [
+				{
+					"day": 28,
+					"kind": "walk_run",
+					"target_duration_seconds": 2160,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 4,
+							"duration_s": 300,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 29,
+					"kind": "rest"
+				},
+				{
+					"day": 30,
+					"kind": "walk_run",
+					"target_duration_seconds": 2160,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 4,
+							"duration_s": 300,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 31,
+					"kind": "rest"
+				},
+				{
+					"day": 32,
+					"kind": "walk_run",
+					"target_duration_seconds": 2160,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 4,
+							"duration_s": 300,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 33,
+					"kind": "rest"
+				},
+				{
+					"day": 34,
+					"kind": "rest"
+				}
+			]
+		},
+		{
+			"week_index": 5,
+			"phase": "build",
+			"target_volume_m": 9759,
+			"workouts": [
+				{
+					"day": 35,
+					"kind": "walk_run",
+					"target_duration_seconds": 2340,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 3,
+							"duration_s": 480,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 150
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 36,
+					"kind": "rest"
+				},
+				{
+					"day": 37,
+					"kind": "walk_run",
+					"target_duration_seconds": 2340,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 3,
+							"duration_s": 480,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 150
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 38,
+					"kind": "rest"
+				},
+				{
+					"day": 39,
+					"kind": "walk_run",
+					"target_duration_seconds": 2340,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 3,
+							"duration_s": 480,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 150
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 40,
+					"kind": "rest"
+				},
+				{
+					"day": 41,
+					"kind": "rest"
+				}
+			]
+		},
+		{
+			"week_index": 6,
+			"phase": "build",
+			"target_volume_m": 10977,
+			"workouts": [
+				{
+					"day": 42,
+					"kind": "walk_run",
+					"target_duration_seconds": 2640,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 3,
+							"duration_s": 600,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 43,
+					"kind": "rest"
+				},
+				{
+					"day": 44,
+					"kind": "walk_run",
+					"target_duration_seconds": 2640,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 3,
+							"duration_s": 600,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 45,
+					"kind": "rest"
+				},
+				{
+					"day": 46,
+					"kind": "walk_run",
+					"target_duration_seconds": 2640,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 3,
+							"duration_s": 600,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 120
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 47,
+					"kind": "rest"
+				},
+				{
+					"day": 48,
+					"kind": "rest"
+				}
+			]
+		},
+		{
+			"week_index": 7,
+			"phase": "build",
+			"target_volume_m": 10719,
+			"workouts": [
+				{
+					"day": 49,
+					"kind": "walk_run",
+					"target_duration_seconds": 2580,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 2,
+							"duration_s": 900,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 180
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 50,
+					"kind": "rest"
+				},
+				{
+					"day": 51,
+					"kind": "walk_run",
+					"target_duration_seconds": 2580,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 2,
+							"duration_s": 900,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 180
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 52,
+					"kind": "rest"
+				},
+				{
+					"day": 53,
+					"kind": "walk_run",
+					"target_duration_seconds": 2580,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 2,
+							"duration_s": 900,
+							"recovery_pace": "walk",
+							"recovery_duration_s": 180
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 54,
+					"kind": "rest"
+				},
+				{
+					"day": 55,
+					"kind": "rest"
+				}
+			]
+		},
+		{
+			"week_index": 8,
+			"phase": "graduation",
+			"target_volume_m": 12489,
+			"workouts": [
+				{
+					"day": 56,
+					"kind": "walk_run",
+					"target_duration_seconds": 2400,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 1,
+							"duration_s": 1800,
+							"recovery_pace": "walk"
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 57,
+					"kind": "rest"
+				},
+				{
+					"day": 58,
+					"kind": "walk_run",
+					"target_duration_seconds": 2400,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 1,
+							"duration_s": 1800,
+							"recovery_pace": "walk"
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 59,
+					"kind": "rest"
+				},
+				{
+					"day": 60,
+					"kind": "walk_run",
+					"target_distance_m": 5857,
+					"structure": {
+						"warmup": {
+							"duration_s": 300,
+							"pace": "easy"
+						},
+						"repeats": {
+							"count": 1,
+							"distance_m": 5000,
+							"recovery_pace": "walk"
+						},
+						"cooldown": {
+							"duration_s": 300,
+							"pace": "easy"
+						}
+					}
+				},
+				{
+					"day": 61,
+					"kind": "rest"
+				},
+				{
+					"day": 62,
+					"kind": "rest"
+				}
+			]
+		}
+	]
+}

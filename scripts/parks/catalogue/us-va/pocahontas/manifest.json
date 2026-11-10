@@ -42,7 +42,69 @@
           "lng": -77.590445
         }
       ],
-      "waypoint_count": 172
+      "waypoint_count": 172,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the CCC Museum lot and take the spur from the Beaver Lake trailhead. The course starts where the spur meets the loop.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "name": "Beaver Lake Trail"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 300
+          },
+          {
+            "kind": "climb",
+            "gain_m": 17,
+            "length_m": 210,
+            "at_m": 300
+          },
+          {
+            "kind": "climb",
+            "gain_m": 18,
+            "length_m": 530,
+            "at_m": 800
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 899,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1797,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1980
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2696,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "finish",
+            "at_m": 3595
+          }
+        ]
+      },
+      "route_guide_checked_at": null
     }
   ],
   "race_courses": [
@@ -79,7 +141,114 @@
           "lng": -77.569148
         }
       ],
-      "waypoint_count": 183
+      "waypoint_count": 183,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the boat-ramp lot. The start line is on the path from the lot to the Swift Creek Lake footbridge.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Forest Exploration Trail",
+            "at_m": 11
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 11
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 43
+          },
+          {
+            "kind": "climb",
+            "gain_m": 19,
+            "length_m": 210,
+            "at_m": 421
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1250,
+            "order": 1,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Loop Forest Trail",
+            "at_m": 1804
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 1804
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Co-Op Trail",
+            "at_m": 2474
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2474
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 2,
+            "of": 3
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3750,
+            "order": 3,
+            "of": 3
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Exploration Trail",
+            "at_m": 4219
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Co-op Trail",
+            "at_m": 4476
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 4924
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 4957
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
     },
     {
       "slug": "swift-creek-10k",
@@ -138,7 +307,149 @@
         "bearing_deg": 248.4,
         "half_width_m": 15
       },
-      "waypoint_count": 369
+      "waypoint_count": 369,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the boat-ramp lot. The start line is on the path from the lot to the Swift Creek Lake footbridge.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Forest Exploration Trail",
+            "at_m": 60
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 60
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 92
+          },
+          {
+            "kind": "climb",
+            "gain_m": 19,
+            "length_m": 210,
+            "at_m": 470
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1429,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Loop Forest Trail",
+            "at_m": 1853
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 1853
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Co-Op Trail",
+            "at_m": 2523
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2523
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2857,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Exploration Trail",
+            "at_m": 4268
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4286,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Co-op Trail",
+            "at_m": 4525
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Forest Exploration Trail",
+            "at_m": 4973
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 4973
+          },
+          {
+            "kind": "lap",
+            "at_m": 5000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 5714,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7143,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 8571,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 9875
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 9908
+          },
+          {
+            "kind": "finish",
+            "at_m": 10000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
     },
     {
       "slug": "swift-creek-half",
@@ -188,7 +499,272 @@
           "lng": -77.596083
         }
       ],
-      "waypoint_count": 659
+      "waypoint_count": 659,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the boat-ramp lot. The start line is on the lot's access road.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "road"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 66
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Forest Exploration Trail",
+            "at_m": 215
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 215
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Co-Op Trail",
+            "at_m": 280
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 280
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Exploration Trail",
+            "at_m": 728
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Hawkins Forest Trail",
+            "at_m": 958
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 958
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Loop Forest Trail",
+            "at_m": 1640
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3014,
+            "order": 1,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 3837
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Deerfield Forest Trail",
+            "at_m": 4441
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 5653
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 5653
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6028,
+            "order": 2,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "ford",
+            "at_m": 6699
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 7315
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powerline Forest Trail",
+            "at_m": 8058
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 8393
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9042,
+            "order": 3,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Dvorak Road",
+            "at_m": 9066
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "fire_road",
+            "at_m": 9358
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12056,
+            "order": 4,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Mosely Forest Trail",
+            "at_m": 13113
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Bottoms Forest Trail",
+            "at_m": 13514
+          },
+          {
+            "kind": "climb",
+            "gain_m": 15,
+            "length_m": 390,
+            "at_m": 14049
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15070,
+            "order": 5,
+            "of": 6
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 15790
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 16821
+          },
+          {
+            "kind": "climb",
+            "gain_m": 14,
+            "length_m": 290,
+            "at_m": 17386
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 18084,
+            "order": 6,
+            "of": 6
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 19290
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Beaver Lake Trail",
+            "at_m": 19466
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 19819
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 19844
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 19943
+          },
+          {
+            "kind": "climb",
+            "gain_m": 14,
+            "length_m": 210,
+            "at_m": 20050
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 20306
+          },
+          {
+            "kind": "climb",
+            "gain_m": 15,
+            "length_m": 420,
+            "at_m": 20487
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 20541
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 20859
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 21031
+          },
+          {
+            "kind": "finish",
+            "at_m": 21097
+          }
+        ]
+      },
+      "route_guide_checked_at": null
     },
     {
       "slug": "swift-creek-marathon",
@@ -262,7 +838,325 @@
           "lng": -77.596645
         }
       ],
-      "waypoint_count": 1306
+      "waypoint_count": 1306,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the boat-ramp lot. The start line is on the lot's access road.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "road"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 133
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Forest Exploration Trail",
+            "at_m": 281
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 281
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Co-Op Trail",
+            "at_m": 346
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 346
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Exploration Trail",
+            "at_m": 794
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Hawkins Forest Trail",
+            "at_m": 1024
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 1024
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Loop Forest Trail",
+            "at_m": 1707
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3246,
+            "order": 1,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 3903
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Deerfield Forest Trail",
+            "at_m": 4508
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 5719
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 5719
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 6492,
+            "order": 2,
+            "of": 12
+          },
+          {
+            "kind": "crossing",
+            "crossing": "ford",
+            "at_m": 6766
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 7382
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powerline Forest Trail",
+            "at_m": 8124
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 8460
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Dvorak Road",
+            "at_m": 9132
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "fire_road",
+            "at_m": 9424
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 9737,
+            "order": 3,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 12983,
+            "order": 4,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Mosely Forest Trail",
+            "at_m": 13180
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Bottoms Forest Trail",
+            "at_m": 13580
+          },
+          {
+            "kind": "climb",
+            "gain_m": 15,
+            "length_m": 390,
+            "at_m": 14115
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 15856
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 16229,
+            "order": 5,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 16887
+          },
+          {
+            "kind": "climb",
+            "gain_m": 14,
+            "length_m": 290,
+            "at_m": 17452
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 19356
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19475,
+            "order": 6,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Beaver Lake Trail",
+            "at_m": 19533
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 19886
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "way": "path",
+            "at_m": 19911
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 20010
+          },
+          {
+            "kind": "climb",
+            "gain_m": 14,
+            "length_m": 210,
+            "at_m": 20116
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 20372
+          },
+          {
+            "kind": "climb",
+            "gain_m": 15,
+            "length_m": 420,
+            "at_m": 20553
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 20607
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 20926
+          },
+          {
+            "kind": "lap",
+            "at_m": 21097,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "road",
+            "at_m": 21097
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 21097
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 22720,
+            "order": 7,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 25966,
+            "order": 8,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 29212,
+            "order": 9,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 32458,
+            "order": 10,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 35703,
+            "order": 11,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 38949,
+            "order": 12,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 42062
+          },
+          {
+            "kind": "finish",
+            "at_m": 42195
+          }
+        ]
+      },
+      "route_guide_checked_at": null
     },
     {
       "slug": "swift-creek-50k",
@@ -336,7 +1230,404 @@
           "lng": -77.590056
         }
       ],
-      "waypoint_count": 1737
+      "waypoint_count": 1737,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park at the boat-ramp lot. The start line is on the lot's access road.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "road"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "clockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 116
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Forest Exploration Trail",
+            "at_m": 264
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 264
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 296
+          },
+          {
+            "kind": "climb",
+            "gain_m": 18,
+            "length_m": 220,
+            "at_m": 674
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Hawkins Forest Trail",
+            "at_m": 876
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 876
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Forest Exploration Trail",
+            "at_m": 1064
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 1064
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Co-Op Trail",
+            "at_m": 1389
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 1389
+          },
+          {
+            "kind": "climb",
+            "gain_m": 31,
+            "length_m": 800,
+            "at_m": 1627
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Forest Exploration Trail",
+            "at_m": 1837
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Hawkins Forest Trail",
+            "at_m": 2066
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 2066
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Forest Exploration Trail",
+            "at_m": 2403
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Co-op Trail",
+            "at_m": 2859
+          },
+          {
+            "kind": "surface",
+            "surface": "dirt",
+            "at_m": 2859
+          },
+          {
+            "kind": "climb",
+            "gain_m": 21,
+            "length_m": 440,
+            "at_m": 3548
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3846,
+            "order": 1,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Loop Forest Trail",
+            "at_m": 4604
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 4604
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 6130
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "fire_road",
+            "at_m": 6735
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Fendley Station",
+            "at_m": 6927
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 7692,
+            "order": 2,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Swift Creek Forest Trail",
+            "at_m": 8578
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "fire_road",
+            "at_m": 9294
+          },
+          {
+            "kind": "surface",
+            "surface": "unpaved",
+            "at_m": 9294
+          },
+          {
+            "kind": "crossing",
+            "crossing": "ford",
+            "at_m": 10341
+          },
+          {
+            "kind": "surface",
+            "surface": "gravel",
+            "at_m": 10957
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 11538,
+            "order": 3,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Powerline Forest Trail",
+            "at_m": 11699
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "fire_road",
+            "at_m": 12035
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "name": "Dvorak Road",
+            "at_m": 12708
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "fire_road",
+            "at_m": 13000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 15385,
+            "order": 4,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "name": "Mosely Forest Trail",
+            "at_m": 16755
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Bottoms Forest Trail",
+            "at_m": 17155
+          },
+          {
+            "kind": "climb",
+            "gain_m": 15,
+            "length_m": 390,
+            "at_m": 17690
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 18935
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 19231,
+            "order": 5,
+            "of": 12
+          },
+          {
+            "kind": "climb",
+            "gain_m": 13,
+            "length_m": 220,
+            "at_m": 19429
+          },
+          {
+            "kind": "junction",
+            "turn": "straight",
+            "name": "Beaver Lake Trail",
+            "at_m": 20218
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 20232
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 22144
+          },
+          {
+            "kind": "climb",
+            "gain_m": 14,
+            "length_m": 390,
+            "at_m": 22421
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 23077,
+            "order": 6,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 23813
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 23912
+          },
+          {
+            "kind": "climb",
+            "gain_m": 14,
+            "length_m": 210,
+            "at_m": 24019
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 24275
+          },
+          {
+            "kind": "climb",
+            "gain_m": 15,
+            "length_m": 420,
+            "at_m": 24456
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 24510
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 24828
+          },
+          {
+            "kind": "lap",
+            "at_m": 25000,
+            "lap": 2,
+            "of": 2
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "road",
+            "at_m": 25000
+          },
+          {
+            "kind": "surface",
+            "surface": "paved",
+            "at_m": 25000
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 26923,
+            "order": 7,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 30769,
+            "order": 8,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 34615,
+            "order": 9,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 38462,
+            "order": 10,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 42308,
+            "order": 11,
+            "of": 12
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 46154,
+            "order": 12,
+            "of": 12
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "road",
+            "at_m": 49884
+          },
+          {
+            "kind": "finish",
+            "at_m": 50000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
     }
   ]
 }

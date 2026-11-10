@@ -1808,6 +1808,51 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'park_course_reports_test.sql',
+    description: 'a signed-out report with a contact email is filed',
+    columns: ['reports.signed_out'],
+    readBack: 'signed out, no reporter, the email and notes trimmed, control characters removed, pending',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'a signed-in report is filed with its reporter',
+    columns: ['reports.signed_out'],
+    readBack: 'a signed-in report is not marked signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'a land-manager request is filed',
+    columns: ['reports.signed_out'],
+    readBack: 'the detail carries the contact email and the signed-out flag',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'three signed-in closure reports are filed',
+    columns: ['reports.signed_out'],
+    readBack: 'a signed-in report is not marked signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
+    description: 'the signed-out cap does not hold back a signed-in reporter',
+    columns: ['reports.signed_out'],
+    readBack: 'a signed-in report is not marked signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
     file: 'organiser_disputes_test.sql',
     description: "the verified club's owner files against the fan club",
     columns: ['organiser_dispute_actions.target_owner_id'],

@@ -46,6 +46,7 @@ import {
 	trimToDistance,
 } from './lib/course_geometry.mjs';
 import { readIfExists } from './lib/read_if_exists.mjs';
+import { buildRouteGuide } from './lib/route_guide.mjs';
 
 const METERS_PER_MILE = 1609.344;
 
@@ -97,6 +98,16 @@ export function buildPark(dir) {
 			ele: p.ele ?? null,
 		}));
 		const gates = curatedGatesOrThrow(course.slug, waypoints);
+		const guide = routeGuideOrThrow(course.slug, course.route_guide, {
+			sequence,
+			nodes: snapshot.nodes,
+			ways,
+			allWays: Object.values(snapshot.ways),
+			lengthM: distanceM,
+			checkpointCount: course.checkpoint_count,
+			laps: null,
+			water: snapshot.water,
+		});
 
 		const geojson = {
 			type: 'FeatureCollection',
@@ -143,6 +154,7 @@ export function buildPark(dir) {
 			checkpoints,
 			...gates,
 			waypoint_count: waypoints.length,
+			...guide,
 		});
 	}
 
@@ -172,6 +184,17 @@ export function buildPark(dir) {
 			ele: p.ele == null ? null : Math.round(p.ele * 10) / 10,
 		}));
 		const gates = curatedGatesOrThrow(race.slug, waypoints);
+		const guide = routeGuideOrThrow(race.slug, race.route_guide, {
+			sequence,
+			nodes: snapshot.nodes,
+			ways,
+			allWays: Object.values(snapshot.ways),
+			offsetM: trimEachEndM,
+			lengthM: pathLengthM(raw),
+			checkpointCount: race.checkpoints_per_lap * race.laps,
+			laps: { count: race.laps, firstStartM: leadInM, lapM },
+			water: snapshot.water,
+		});
 		const startFinish = { lat: waypoints[0].lat, lng: waypoints[0].lng };
 
 		const geojson = {
@@ -226,6 +249,7 @@ export function buildPark(dir) {
 			checkpoints,
 			...gates,
 			waypoint_count: waypoints.length,
+			...guide,
 		});
 	}
 
@@ -262,6 +286,34 @@ function footAccessOrThrow(slug, sequence, ways) {
 function trailReviewOrThrow(slug, sequence, ways, review) {
 	try {
 		return assertTrailReview(sequence, ways, review);
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
+}
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A course's route guide and the date a person last checked it on the
+ * ground, as its manifest entry carries them. `spec` is the course's
+ * hand-written `route_guide` in `park.json`: an optional `getting_there`
+ * note in English and `ground_checked_at`, which only the person who walked
+ * the guide sets.
+ *
+ * @param {string} slug
+ * @param {{ getting_there?: string, ground_checked_at?: string | null } | undefined} spec
+ * @param {Omit<import('./lib/route_guide.mjs').GuideInput, 'lang' | 'gettingThere'>} input
+ */
+function routeGuideOrThrow(slug, spec, input) {
+	const checkedAt = spec?.ground_checked_at ?? null;
+	if (checkedAt !== null && !DATE.test(checkedAt)) {
+		throw new Error(`${slug}: route_guide.ground_checked_at must be YYYY-MM-DD, got ${checkedAt}`);
+	}
+	try {
+		return {
+			route_guide: buildRouteGuide({ ...input, lang: 'en', gettingThere: spec?.getting_there ?? null }),
+			route_guide_checked_at: checkedAt,
+		};
 	} catch (err) {
 		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
 	}

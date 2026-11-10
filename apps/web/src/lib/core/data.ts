@@ -12461,6 +12461,10 @@ export async function fetchDmThread(
 /// P0001 every other create-rate-limit does, so they go through the
 /// shared parser rather than reaching a composer as a raw exception.
 ///
+/// `aiAssisted` marks a coach's message drafted with the coach assistant
+/// (migration 20271210001217); the INSERT policy admits it only from an
+/// active coach to their athlete.
+///
 /// `routeId` attaches a route to the message (route_direct_share.md v2).
 /// The same INSERT policy also refuses an attachment the SENDER cannot see
 /// (migration 20270619_001), which surfaces through the same 42501 branch.
@@ -12468,6 +12472,7 @@ export async function sendDm(
 	recipientId: string,
 	body: string,
 	routeId?: string,
+	opts: { aiAssisted?: boolean } = {},
 ): Promise<DirectMessage> {
 	const me = auth.user?.id;
 	if (!me) throw new Error('Not signed in');
@@ -12480,6 +12485,7 @@ export async function sendDm(
 			recipient_id: recipientId,
 			body: trimmed,
 			route_id: routeId?.trim() || null,
+			...(opts.aiAssisted ? { kind: 'ai_assisted' as const } : {}),
 		})
 		.select(DM_COLUMNS)
 		.single();
@@ -12722,6 +12728,9 @@ export interface CoachAthleteLink {
 	user_id: string;
 	display_name: string | null;
 	avatar_url: string | null;
+	/// The athlete's consent to the coach assistant on this link (migration
+	/// 20271210001217); null when not given.
+	ai_assist_consent_version: number | null;
 }
 
 export interface PendingCoachInvite {
@@ -12763,7 +12772,7 @@ export async function fetchMyAthletesWithError(): Promise<{
 	if (!userId) return { athletes: [], error: null };
 	const { data: rows, error } = await supabase
 		.from(TABLES.coach_athletes)
-		.select('id, status, note, created_at, accepted_at, athlete_id')
+		.select('id, status, note, created_at, accepted_at, athlete_id, ai_assist_consent_version')
 		.eq('coach_id', userId)
 		.eq('status', 'active')
 		.order('accepted_at', { ascending: false });
@@ -12780,7 +12789,8 @@ export async function fetchMyAthletesWithError(): Promise<{
 			accepted_at: (r.accepted_at as string | null) ?? null,
 			user_id: r.athlete_id as string,
 			display_name: byId.get(r.athlete_id as string)?.display_name ?? null,
-			avatar_url: byId.get(r.athlete_id as string)?.avatar_url ?? null
+			avatar_url: byId.get(r.athlete_id as string)?.avatar_url ?? null,
+			ai_assist_consent_version: (r.ai_assist_consent_version as number | null) ?? null
 		})),
 		error: null
 	};
@@ -12995,7 +13005,7 @@ export async function fetchMyCoaches(): Promise<CoachAthleteLink[]> {
 	if (!userId) return [];
 	const { data: rows } = await supabase
 		.from(TABLES.coach_athletes)
-		.select('id, status, note, created_at, accepted_at, coach_id')
+		.select('id, status, note, created_at, accepted_at, coach_id, ai_assist_consent_version')
 		.eq('athlete_id', userId)
 		.eq('status', 'active')
 		.order('accepted_at', { ascending: false });
@@ -13010,8 +13020,21 @@ export async function fetchMyCoaches(): Promise<CoachAthleteLink[]> {
 		accepted_at: (r.accepted_at as string | null) ?? null,
 		user_id: r.coach_id as string,
 		display_name: byId.get(r.coach_id as string)?.display_name ?? null,
-		avatar_url: byId.get(r.coach_id as string)?.avatar_url ?? null
+		avatar_url: byId.get(r.coach_id as string)?.avatar_url ?? null,
+		ai_assist_consent_version: (r.ai_assist_consent_version as number | null) ?? null
 	}));
+}
+
+/// The athlete allows (`version`) or withdraws (null) the coach assistant on
+/// one of their active coaching links (migration 20271210001217). Returns the
+/// stored version.
+export async function setCoachAiAssistConsent(linkId: string, version: number | null): Promise<number | null> {
+	const { data, error } = await supabase.rpc('set_coach_ai_assist_consent', {
+		p_link_id: linkId,
+		p_version: version,
+	});
+	if (error || !data) throw error ? dbError(error) : new Error('Consent not saved');
+	return data.ai_assist_consent_version ?? null;
 }
 
 /// Redeem an invite token. Returns the coach's user id.

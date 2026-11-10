@@ -31,6 +31,10 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import CoachAssistConsent from '#lib/components/CoachAssistConsent.svelte';
+	import { coachAssistEnabled } from '#lib/coach/coach_assist_flag.ts';
+
+	const assistOn = coachAssistEnabled();
 
 	let hrPrescription = $state(false);
 	onMount(() => {
@@ -451,6 +455,17 @@
 								>
 							</div>
 						</li>
+						{#if assistOn}
+							<li class="assist-row">
+								<CoachAssistConsent
+									linkId={c.id}
+									coachName={c.display_name ?? m('coaching.coach')}
+									version={c.ai_assist_consent_version}
+									onchange={(v) =>
+										(coaches = coaches.map((x) => (x.id === c.id ? { ...x, ai_assist_consent_version: v } : x)))}
+								/>
+							</li>
+						{/if}
 					{/each}
 				</ul>
 			{/if}

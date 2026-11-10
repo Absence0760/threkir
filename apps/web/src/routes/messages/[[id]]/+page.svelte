@@ -13,6 +13,8 @@
 	import DmRouteAttachment from '#lib/components/DmRouteAttachment.svelte';
 	import PlanChangeRequests from '#lib/components/PlanChangeRequests.svelte';
 	import CoachShareCard from '#lib/components/CoachShareCard.svelte';
+	import CoachAssistPanel from '#lib/components/CoachAssistPanel.svelte';
+	import { coachAssistEnabled } from '#lib/coach/coach_assist_flag.ts';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
 	import {
 		DM_THREAD_POLL_MS,
@@ -34,6 +36,7 @@
 		blockUser,
 		unblockUser,
 		isBlockedByViewer,
+		isActiveCoachOf,
 		type DirectMessage
 	} from '#lib/core/data.ts';
 
@@ -283,6 +286,36 @@
 	// before it cannot undo what the viewer just did.
 	let blockVersion = 0;
 
+	// The coach assistant (issue #1215 Phase 4): offered only to the partner's
+	// active coach while the deploy gate is open. Every consent is checked
+	// again by the server; this only decides whether to show the panel. A
+	// draft used in the composer marks that conversation's next message
+	// AI-assisted until it is sent or the composer is emptied.
+	const assistGate = coachAssistEnabled();
+	let coachOfPartner = $state(false);
+	let assistedDrafts = $state<Record<string, boolean>>({});
+	const draftAssisted = $derived(activeId ? assistedDrafts[activeId] === true && draft.trim() !== '' : false);
+	$effect(() => {
+		const partner = activePartnerId;
+		coachOfPartner = false;
+		if (!assistGate || !partner) return;
+		let live = true;
+		isActiveCoachOf(partner)
+			.then((yes) => {
+				if (live && partner === activePartnerId) coachOfPartner = yes;
+			})
+			.catch((e) => console.warn('coach assist eligibility check failed', e));
+		return () => {
+			live = false;
+		};
+	});
+
+	function useAssistDraft(text: string) {
+		if (!activeId) return;
+		drafts[activeId] = text;
+		assistedDrafts[activeId] = true;
+	}
+
 	async function loadBlockState(partner: string) {
 		const versionAtStart = blockVersion;
 		try {
@@ -499,12 +532,13 @@
 		sendError = null;
 		try {
 			const body = drafts[id] ?? '';
-			const msg = await sendDm(partnerId, body);
+			const msg = await sendDm(partnerId, body, undefined, { aiAssisted: assistedDrafts[id] === true });
 			localWrites++;
 			messages = mergeDmMessages(messages, [msg]);
 			void scrollToNewest();
 			delete drafts[id];
 			drafts = { ...drafts };
+			delete assistedDrafts[id];
 			// The send itself succeeded and already renders; a failed list
 			// refresh must not claim "send failed".
 			await messagesInbox.refreshThreads();
@@ -750,6 +784,11 @@
 					{/if}
 					<span class="meta">
 						<span class="when">{fmtTime(m.created_at)}</span>
+						{#if m.kind === 'ai_assisted' && m.unsent_at === null}
+							<span class="ai-assisted" data-testid="dm-ai-assisted" title={tr('coachAssist.markerTitle')}>
+								<span class="material-symbols" aria-hidden="true">auto_awesome</span>{tr('coachAssist.marker')}
+							</span>
+						{/if}
 						{#if m.edited_at !== null && m.unsent_at === null}
 							<span class="edited" data-testid="dm-edited">{tr('messages.edited')}</span>
 						{/if}
@@ -838,11 +877,19 @@
 			</div>
 		</div>
 	{:else}
+		{#if assistGate && coachOfPartner && activePartnerId}
+			<CoachAssistPanel athleteId={activePartnerId} athleteName={partnerName} onuse={useAssistDraft} />
+		{/if}
+		{#if draftAssisted}
+			<p class="assisted-note" data-testid="dm-assisted-note">{tr('coachAssist.composerNote')}</p>
+		{/if}
 		<div class="composer">
 			<textarea
 				value={draft}
 				oninput={(e) => {
-					if (activeId) drafts[activeId] = e.currentTarget.value;
+					if (!activeId) return;
+					drafts[activeId] = e.currentTarget.value;
+					if (!e.currentTarget.value.trim()) delete assistedDrafts[activeId];
 				}}
 				onkeydown={onKeydown}
 				placeholder={tr('messages.composerPlaceholder')}
@@ -1124,5 +1171,20 @@
 		.back {
 			display: inline;
 		}
+	}
+	.ai-assisted {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.15rem;
+		font-weight: 600;
+	}
+	.ai-assisted .material-symbols {
+		font-size: 0.85rem;
+	}
+	.assisted-note {
+		margin: 0;
+		padding: 0 var(--space-sm);
+		font-size: 0.8rem;
+		color: var(--color-text-secondary);
 	}
 </style>

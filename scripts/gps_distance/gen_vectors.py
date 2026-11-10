@@ -85,6 +85,12 @@ scen = []
 def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None, learn_stride=True):
     e, out = evaluate(events, max_speed, interval, stride, learn_stride)
     sm = ref.smooth_distance(events, max_speed, interval, stride, learn_stride)
+    # Every step metre the recorder credited went to one gap, and each gap was credited
+    # max(its chord, its steps): the per-gap split the server recompute cannot see.
+    gap_steps = sum(s for _, s in sm["gap_credits"])
+    assert abs(gap_steps - sm["step_distance_m"]) < 1e-6, (name, gap_steps, sm["step_distance_m"])
+    smoothed_gaps = {"gapCreditsM": [[round(c, 6), round(s, 6)] for c, s in sm["gap_credits"]]} \
+        if sm["step_distance_m"] > 0 else {}
     scen.append({"name": name, "description": desc, "maxSpeedMps": max_speed,
                  "expectedIntervalS": interval, "initialStrideM": stride, "learnStride": learn_stride,
                  "events": events,
@@ -103,7 +109,8 @@ def add(name, desc, events, max_speed=10.0, interval=1.0, stride=None, learn_str
                               "stepDistanceM": round(sm["step_distance_m"], 6),
                               "stoppedFixes": sm["stopped_fixes"],
                               "positions": [None if p is None else [round(p[0], 9), round(p[1], 9)]
-                                            for p in sm["positions"]]}})
+                                            for p in sm["positions"]],
+                              **smoothed_gaps}})
 
 
 add("doppler_run", "120 s run at 2.68 m/s with Doppler speed + bearing; true distance 318.9 m", walk(120, 2.68, 1))

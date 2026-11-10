@@ -859,7 +859,12 @@ func TestDistanceRecompute_KalmanV3RecomputeIsRestampedKalmanV4(t *testing.T) {
 // alone; adding the step-filled metres on top of that counted the gap twice
 // (gap_with_steps: +104.9 m). Every shared vector whose pedometer filled a
 // gap is recomputed from its fixes alone, plus the step-filled metres it
-// saved, and must land on the smoother's figure over the full stream.
+// saved. The saved run total cannot say which gap its steps went to, so the
+// recompute credits the gaps max(chord total, step total) (gapStepTopUpM):
+// the recorder's figure exactly when every gap's steps fall on one side of
+// its chord, and short of it by sum(max(c, s)) - max(sum c, sum s) when they
+// do not. Each vector's gapCreditsM carries the reference's per-gap split, so
+// the expected figure is computed per vector rather than exempted by name.
 func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "gps_distance_vectors.json"))
 	if err != nil {
@@ -883,6 +888,8 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 			Smoothed          struct {
 				DistanceM     float64 `json:"distanceM"`
 				StepDistanceM float64 `json:"stepDistanceM"`
+				// Per gap: [chord lower bound, step metres credited].
+				GapCreditsM [][2]float64 `json:"gapCreditsM"`
 			} `json:"smoothed"`
 		} `json:"scenarios"`
 	}
@@ -891,9 +898,33 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 	}
 	t0 := time.Date(2026, 10, 15, 7, 0, 0, 0, time.UTC)
 	checked := map[string]bool{}
+	mixed := 0
 	for _, s := range vf.Scenarios {
 		if s.Smoothed.StepDistanceM <= 0 {
 			continue
+		}
+		if len(s.Smoothed.GapCreditsM) == 0 {
+			t.Fatalf("%s: step-filled vector has no gapCreditsM; regenerate the vectors", s.Name)
+		}
+		var chordM, stepM, creditedM float64
+		chordSide, stepSide := false, false
+		for _, g := range s.Smoothed.GapCreditsM {
+			chordM += g[0]
+			stepM += g[1]
+			creditedM += math.Max(g[0], g[1])
+			chordSide = chordSide || g[1] < g[0]
+			stepSide = stepSide || g[1] > g[0]
+		}
+		if math.Abs(stepM-s.Smoothed.StepDistanceM) > 1e-4 {
+			t.Fatalf("%s: gapCreditsM steps sum to %.6f m, stepDistanceM is %.6f m", s.Name, stepM, s.Smoothed.StepDistanceM)
+		}
+		want := s.Smoothed.DistanceM - creditedM + math.Max(chordM, stepM)
+		if chordSide && stepSide {
+			mixed++
+			if s.Smoothed.DistanceM-want < 0.01 {
+				t.Errorf("%s: gaps on both sides of their chords but the recompute's shortfall is %.6f m; the split no longer tests it",
+					s.Name, s.Smoothed.DistanceM-want)
+			}
 		}
 		// The recompute replays with the run cap and the track's median
 		// interval; every step-filled vector is a 1 Hz run.
@@ -925,10 +956,11 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 		if len(b.distance.updates) != 1 {
 			t.Fatalf("%s: updates = %d", s.Name, len(b.distance.updates))
 		}
-		// distance_m is written to the centimetre.
-		if got := b.distance.updates[0].DistanceM; math.Abs(got-s.Smoothed.DistanceM) > 0.006 {
-			t.Errorf("%s: recompute = %.3f m, recorder's smoothed figure = %.3f m (step-filled %.3f m)",
-				s.Name, got, s.Smoothed.DistanceM, s.Smoothed.StepDistanceM)
+		// distance_m is written to the centimetre. The recompute is never
+		// long of the recorder (want <= DistanceM holds by construction).
+		if got := b.distance.updates[0].DistanceM; math.Abs(got-want) > 0.006 {
+			t.Errorf("%s: recompute = %.3f m, want %.3f m (recorder's smoothed figure %.3f m, step-filled %.3f m)",
+				s.Name, got, want, s.Smoothed.DistanceM, s.Smoothed.StepDistanceM)
 		}
 		checked[s.Name] = true
 	}
@@ -936,6 +968,9 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 		if !checked[name] {
 			t.Errorf("vector %s no longer fills a gap from the pedometer; the test lost its case", name)
 		}
+	}
+	if mixed == 0 {
+		t.Error("no step-filled vector has gaps on both sides of their chords; the recompute's short case is untested")
 	}
 }
 

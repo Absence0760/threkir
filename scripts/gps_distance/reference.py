@@ -199,6 +199,9 @@ class GpsDistanceEstimator:
         self.zupt_fixes = 0
         self.step_batch_s = 0.0           # v1.5: longest walking span between two step increases
         self.records = [] if record else None
+        # Diagnostic only, kept with the records: per gap, {start t: [the chord lower bound a
+        # replay with no steps credits it, the step metres the recorder credited it]}.
+        self.gap_credits = {} if record else None
 
     @property
     def distance_m(self):
@@ -263,6 +266,8 @@ class GpsDistanceEstimator:
                     gap_m = lower - self._pending_step_m
                     self.gps_distance_m += gap_m
                 rec = len(self.records) if self.records is not None else None
+                if self.gap_credits is not None:
+                    self.gap_credits[self._t] = [max(lower, 0.0), self._pending_step_m]
                 self._gaps.append([self._t, t, gap_m or 0.0, rec])
                 if len(self._gaps) > MAX_OPEN_GAPS:
                     self._gaps.pop(0)
@@ -500,6 +505,8 @@ class GpsDistanceEstimator:
             if hi > lo:
                 late = rate * (hi - lo)
                 self.step_distance_m += late
+                if self.gap_credits is not None:
+                    self.gap_credits[g0][1] += late
                 take = min(late, top_up)
                 self.gps_distance_m -= take
                 if rec is not None:
@@ -515,6 +522,8 @@ class GpsDistanceEstimator:
         """End of run: commit buffered steps if the trailing gap exceeds the gap window."""
         if self._t is not None and _valid(t) and t - self._t > self._gap_s:
             self.step_distance_m += self._pending_step_m
+            if self.gap_credits is not None and self._pending_step_m > 0:
+                self.gap_credits[self._t] = [0.0, self._pending_step_m]
         self._pending_step_m = 0.0
 
 
@@ -680,4 +689,5 @@ def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial
         positions.append(pos)
     return {"distance_m": gps + est.step_distance_m, "gps_distance_m": gps,
             "step_distance_m": est.step_distance_m, "cumulative_m": cumulative,
-            "positions": positions, "stopped_fixes": len(hints)}
+            "positions": positions, "stopped_fixes": len(hints),
+            "gap_credits": list(est.gap_credits.values())}

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { fetchCourseAlertTarget } from '#lib/core/data.ts';
 
 	let { data } = $props();
@@ -38,12 +39,16 @@
 	{#if resolving}
 		<p class="muted">{m('shell.loading')}</p>
 	{:else}
-		<div class="empty-card" data-testid="course-alert-not-found">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('courseAlerts.notFoundTitle')}</h3>
-			<p class="muted">{m('courseAlerts.notFoundBody')}</p>
-			<a href="/races" class="btn btn-primary">{m('courseAlerts.browseRaces')}</a>
-		</div>
+		<EmptyState
+			icon="search_off"
+			title={m('courseAlerts.notFoundTitle')}
+			text={m('courseAlerts.notFoundBody')}
+			data-testid="course-alert-not-found"
+		>
+			{#snippet actions()}
+				<a href="/races" class="btn btn-primary">{m('courseAlerts.browseRaces')}</a>
+			{/snippet}
+		</EmptyState>
 	{/if}
 </div>
 
@@ -53,20 +58,5 @@
 	}
 	.muted {
 		color: var(--color-text-tertiary);
-	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-md);
-		text-align: center;
-		padding: var(--space-2xl);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		max-width: 32rem;
-		margin-inline: auto;
-	}
-	.empty-mark {
-		opacity: 0.5;
 	}
 </style>

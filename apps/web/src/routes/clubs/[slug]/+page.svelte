@@ -4,6 +4,7 @@
 	import { siteOrigin } from '#lib/core/site_url.ts';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { lengthLimit } from '#lib/core/column_limits.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
@@ -1312,18 +1313,14 @@
 			{/if}
 
 			{#if posts.length === 0}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyFeedTitle')}</h3>
-					<p class="empty-text">
+				<EmptyState
+					icon="chat"
+					headingLevel={3}
+					title={tr('clubHome.emptyFeedTitle')}
+					text={isMember ? tr('clubHome.emptyFeedMember') : tr('clubHome.emptyFeedNonMember')}
+				>
+					{#snippet actions()}
 						{#if isMember}
-							{tr('clubHome.emptyFeedMember')}
-						{:else}
-							{tr('clubHome.emptyFeedNonMember')}
-						{/if}
-					</p>
-					{#if isMember}
-						<div class="empty-actions">
 							<button
 								type="button"
 								class="btn btn-primary"
@@ -1335,9 +1332,9 @@
 								<span class="material-symbols" aria-hidden="true">edit</span>
 								{tr('clubHome.writeFirstPost')}
 							</button>
-						</div>
-					{/if}
-				</div>
+						{/if}
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="feed">
 					{#each posts as post (post.id)}
@@ -1476,18 +1473,14 @@
 					{/each}
 				</div>
 			{:else}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyEventsTitle')}</h3>
-					<p class="empty-text">
+				<EmptyState
+					icon="event"
+					headingLevel={3}
+					title={tr('clubHome.emptyEventsTitle')}
+					text={isAdmin ? tr('clubHome.emptyEventsAdmin') : tr('clubHome.emptyEventsNonAdmin')}
+				>
+					{#snippet actions()}
 						{#if isAdmin}
-							{tr('clubHome.emptyEventsAdmin')}
-						{:else}
-							{tr('clubHome.emptyEventsNonAdmin')}
-						{/if}
-					</p>
-					{#if isAdmin}
-						<div class="empty-actions">
 							<button
 								class="btn btn-primary"
 								type="button"
@@ -1496,9 +1489,9 @@
 								<span class="material-symbols" aria-hidden="true">add</span>
 								{tr('clubHome.createFirstEvent')}
 							</button>
-						</div>
-					{/if}
-				</div>
+						{/if}
+					{/snippet}
+				</EmptyState>
 			{/if}
 
 			{#if past.length > 0}
@@ -1539,19 +1532,16 @@
 				</div>
 			{/if}
 			{#if clubRoutes.length === 0}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyRoutesTitle')}</h3>
-					<p class="empty-text">
+				{@const clubId = club.id}
+				<EmptyState
+					icon="route"
+					headingLevel={3}
+					title={tr('clubHome.emptyRoutesTitle')}
+					text={isAdmin ? tr('clubHome.emptyRoutesAdmin') : tr('clubHome.emptyRoutesNonAdmin')}
+				>
+					{#snippet actions()}
 						{#if isAdmin}
-							{tr('clubHome.emptyRoutesAdmin')}
-						{:else}
-							{tr('clubHome.emptyRoutesNonAdmin')}
-						{/if}
-					</p>
-					{#if isAdmin}
-						<div class="empty-actions">
-							<a href="/routes/new?club={club.id}" class="btn btn-primary">
+							<a href="/routes/new?club={clubId}" class="btn btn-primary">
 								<span class="material-symbols" aria-hidden="true">add</span>
 								{tr('clubHome.buildARoute')}
 							</a>
@@ -1559,16 +1549,14 @@
 								<span class="material-symbols" aria-hidden="true">arrow_outward</span>
 								{tr('clubHome.transferOneIn')}
 							</button>
-						</div>
-					{:else}
-						<div class="empty-actions">
+						{:else}
 							<a href="/routes" class="btn btn-outline">
 								<span class="material-symbols" aria-hidden="true">route</span>
 								{tr('clubHome.browseMyRoutes')}
 							</a>
-						</div>
-					{/if}
-				</div>
+						{/if}
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="club-route-grid">
 					{#each clubRoutes as route (route.id)}
@@ -1630,11 +1618,12 @@
 			{/if}
 
 			{#if clubTemplates.length === 0 && sessionTemplates.length === 0 && gymRoutineTemplates.length === 0}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyTemplatesTitle')}</h3>
-					<p class="empty-text">{tr('clubHome.emptyTemplatesBody')}</p>
-				</div>
+				<EmptyState
+					icon="list_alt"
+					headingLevel={3}
+					title={tr('clubHome.emptyTemplatesTitle')}
+					text={tr('clubHome.emptyTemplatesBody')}
+				/>
 			{:else}
 			<!-- Training plan templates -->
 			{#if clubTemplates.length > 0}
@@ -1756,13 +1745,12 @@
 			<ClubPhotos clubId={club.id} canUpload={isMember} canModerate={isAdmin} />
 		{:else if tab === 'members'}
 			{#if members.length === 0}
-				<div class="empty-card">
-					<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-					<h3>{tr('clubHome.emptyMembersTitle')}</h3>
-					<p class="empty-text">
-						{tr('clubHome.emptyMembersBody')}
-					</p>
-				</div>
+				<EmptyState
+					icon="group"
+					headingLevel={3}
+					title={tr('clubHome.emptyMembersTitle')}
+					text={tr('clubHome.emptyMembersBody')}
+				/>
 			{:else}
 				<div class="member-list">
 					{#each members as m (m.user_id)}
@@ -2594,48 +2582,6 @@
 	.role-badge.role-race_director {
 		background: color-mix(in srgb, var(--color-warning) 18%, transparent);
 		color: color-mix(in srgb, var(--color-warning) 45%, var(--color-text));
-	}
-
-	/* Canonical empty-card pattern (mirrors /clubs, /routes, /runs, /plans).
-	   Card with brand-mark, h3, explainer, primary CTA + secondary actions. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-	.empty-actions .material-symbols {
-		font-size: 1.1rem;
 	}
 
 	.error {

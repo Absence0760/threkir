@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { formatDuration } from '#lib/format/time.ts';
 	import {
 		fetchEventById,
@@ -105,11 +106,7 @@
 	{#if loading}
 		<p class="muted">{m('checkpoint.publicLoading')}</p>
 	{:else if notFound}
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('checkpoint.publicTitle')}</h3>
-			<p class="empty-text">{m('checkpoint.publicNotFound')}</p>
-		</div>
+		<EmptyState icon="search_off" title={m('checkpoint.publicTitle')} text={m('checkpoint.publicNotFound')} />
 	{:else}
 		<header class="rp-head">
 			<h1>{event?.title}</h1>
@@ -117,7 +114,7 @@
 		</header>
 
 		{#if board.length === 0}
-			<div class="empty-card"><p class="empty-text">{m('checkpoint.publicEmpty')}</p></div>
+			<EmptyState icon="emoji_events" title={m('checkpoint.publicEmpty')} />
 		{:else}
 			<p class="rp-count">{m('checkpoint.publicFinishers', { n: board.length })}</p>
 			<div class="board-scroll">

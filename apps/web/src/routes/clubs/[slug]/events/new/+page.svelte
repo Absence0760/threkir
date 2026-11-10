@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { page } from '$app/state';
 	import { afterNavigate, goto } from '$app/navigation';
 	import { fetchClubBySlug } from '#lib/core/data.ts';
@@ -71,16 +72,11 @@
 	<p class="visually-hidden" role="status">{m('shell.loading')}</p>
 {:else if !club}
 	<div class="page">
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h3>{m('eventNew.clubNotFound')}</h3>
-			<p class="empty-text">
-				{m('eventNew.clubNotFoundBody')}
-			</p>
-			<div class="empty-actions">
+		<EmptyState icon="search_off" title={m('eventNew.clubNotFound')} text={m('eventNew.clubNotFoundBody')}>
+			{#snippet actions()}
 				<a href="/clubs" class="btn btn-primary">{m('eventNew.backToClubs')}</a>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div class="page">
@@ -150,41 +146,6 @@
 		line-height: 1.5;
 		max-width: 44rem;
 		margin: var(--space-2xs) 0 0 0;
-	}
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
 	}
 
 	.back-skel {

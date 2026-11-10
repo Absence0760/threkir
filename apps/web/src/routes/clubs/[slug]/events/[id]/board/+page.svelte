@@ -12,6 +12,7 @@
 	import { isWeighInEnabled } from '#lib/runs/weigh_in_flag.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import {
 		fetchEventById,
 		fetchEventCheckpoints,
@@ -239,10 +240,7 @@
 	{#if loading}
 		<p class="muted">{m('shell.loading')}</p>
 	{:else if denied}
-		<div class="empty-card">
-			<h3>{m('checkpoint.boardTitle')}</h3>
-			<p class="empty-text">{m('checkpoint.notOrganiser')}</p>
-		</div>
+		<EmptyState icon="lock" title={m('checkpoint.boardTitle')} text={m('checkpoint.notOrganiser')} />
 	{:else}
 		<header class="board-head">
 			<div>
@@ -256,9 +254,9 @@
 		</header>
 
 		{#if checkpoints.length === 0}
-			<div class="empty-card"><p class="empty-text">{m('checkpoint.boardNoCheckpoints')}</p></div>
+			<EmptyState icon="flag" title={m('checkpoint.boardNoCheckpoints')} />
 		{:else if board.length === 0}
-			<div class="empty-card"><p class="empty-text">{m('checkpoint.boardEmpty')}</p></div>
+			<EmptyState icon="schedule" title={m('checkpoint.boardEmpty')} />
 		{:else}
 			<div class="board-scroll">
 				<table class="board" data-testid="board-table">

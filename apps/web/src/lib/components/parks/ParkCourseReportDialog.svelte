@@ -1,5 +1,5 @@
 <script lang="ts">
-	// "Report a problem with this course" (issue #1346, decisions § 2447).
+	// "Report a problem with this course" (issue #1346, decisions § 2449).
 	// Works signed out: park staff need no account. The Edge Function is the
 	// trust boundary; this form only spares a round trip on an obvious mistake.
 	// Everything typed here is sent as text and shown back only as text.

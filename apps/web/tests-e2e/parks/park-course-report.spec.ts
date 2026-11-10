@@ -8,7 +8,7 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
 
 /**
  * "Report a problem with this course" (issue #1346, migrations
- * 20271212000001..5, decisions § 2447).
+ * 20271212000001..5, decisions § 2449).
  *
  * The filing RPC's validation, caps and grants are pinned by
  * park_course_reports_test.sql and the Edge Function's order of checks by

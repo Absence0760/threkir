@@ -646,7 +646,7 @@ export type OrganiserDisputeTargetKind =
 	| 'challenge'
 	| 'race_listing';
 // A park course is reported through ParkCourseReportDialog and the
-// park-course-report Edge Function, with reasons of its own (decisions § 2447).
+// park-course-report Edge Function, with reasons of its own (decisions § 2449).
 export type GeneralReportTargetKind = Exclude<
 	ReportTargetKind,
 	'training_plan' | 'gym_routine' | 'challenge' | 'race_listing' | 'park_course'

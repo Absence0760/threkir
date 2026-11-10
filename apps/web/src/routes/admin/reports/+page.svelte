@@ -86,7 +86,7 @@
 	let history = $state<OrganiserDisputeHistoryEntry[]>([]);
 	const deadlineValid = $derived(deadlineDaysOrNull(deadlineDays) !== null);
 
-	// Park course reports (decisions § 2447): a report never closes a course;
+	// Park course reports (decisions § 2449): a report never closes a course;
 	// the admin does, here, with the note the course page shows.
 	let course = $state<AdminParkCourse | null>(null);
 	let courseHistory = $state<ParkCourseStatusHistoryEntry[]>([]);

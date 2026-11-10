@@ -1,5 +1,5 @@
 /**
- * "Report a problem with this course" (issue #1346, decisions § 2447): the
+ * "Report a problem with this course" (issue #1346, decisions § 2449): the
  * reasons a park course report takes, the limits the form shows, the copy for
  * each refusal of the `park-course-report` Edge Function, and the
  * land-manager deadline the admin queue shows.

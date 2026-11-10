@@ -12108,7 +12108,7 @@ export type ReportReason =
 
 // The reasons the general report dialogs offer: the organiser dispute has its
 // own dialog (decisions § 2441), and the four course reasons are a park
-// course's only, filed through submitParkCourseReport (decisions § 2447).
+// course's only, filed through submitParkCourseReport (decisions § 2449).
 export type GeneralReportReason = Exclude<
 	ReportReason,
 	'organiser_dispute' | 'course_hazard' | 'course_closure' | 'course_off_trail' | 'land_manager_request'
@@ -12155,7 +12155,7 @@ export async function submitReport(input: {
 	return data as string;
 }
 
-// ─────────────── Park course problem reports (#1346, decisions § 2447) ───────────────
+// ─────────────── Park course problem reports (#1346, decisions § 2449) ───────────────
 //
 // Filed through the park-course-report Edge Function, signed in or signed out:
 // park staff need no account. The function verifies a JWT when one is sent,
@@ -15439,7 +15439,7 @@ export interface TargetReport {
 	/** The verified club a naming dispute speaks for; null otherwise. */
 	organiser_club: OrganiserDisputeClub | null;
 	/** The address a park course reporter gave for a reply; null when none,
-	 *  and once it is cleared (decisions § 2447). */
+	 *  and once it is cleared (decisions § 2449). */
 	contact_email: string | null;
 	/** Filed without an account, so a null reporter is not a deleted one. */
 	signed_out: boolean;

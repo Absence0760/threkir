@@ -970,7 +970,7 @@ export const PAIRS = [
 				// Filed through OrganiserDisputeAction by a verified club's owner or
 				// admin only; submit_report refuses it (decisions § 2441). The four
 				// course reasons are a park course's only, filed through
-				// ParkCourseReportDialog (decisions § 2447).
+				// ParkCourseReportDialog (decisions § 2449).
 				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
 			},
 			{
@@ -979,7 +979,7 @@ export const PAIRS = [
 				shape: 'strings',
 				// kOrganiserDisputeReason, offered below the general reasons to a
 				// verified club's owner or admin only (decisions § 2441). The course
-				// reasons are offered by the park course report sheet only (§ 2447).
+				// reasons are offered by the park course report sheet only (§ 2449).
 				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
 			},
 			{
@@ -991,7 +991,7 @@ export const PAIRS = [
 				allowMissing: ['other', 'organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
 			},
 			// A park course takes the four course reasons or 'other' only
-			// (reports_park_course_check, decisions § 2447).
+			// (reports_park_course_check, decisions § 2449).
 			{
 				file: 'apps/web/src/lib/parks/course_report.ts',
 				decl: 'COURSE_REPORT_REASONS',
@@ -1051,7 +1051,7 @@ export const PAIRS = [
 				shape: 'switch',
 				// These four take only an organiser dispute, and mobile has no
 				// report menu on them; they are reported from the web (§ 2441). A
-				// park course has its own sheet, park_course_report_sheet.dart (§ 2447).
+				// park course has its own sheet, park_course_report_sheet.dart (§ 2449).
 				allowMissing: ['training_plan', 'gym_routine', 'challenge', 'race_listing', 'park_course'],
 			},
 		],

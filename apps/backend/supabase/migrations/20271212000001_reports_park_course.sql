@@ -1,5 +1,5 @@
 -- Park course problem reports, part 1: the reports table (issue #1346,
--- decisions § 2447).
+-- decisions § 2449).
 --
 -- A runner or a land manager reports a problem with a park course: a hazard,
 -- a closure, the line leaving the designated trail, a request from the land

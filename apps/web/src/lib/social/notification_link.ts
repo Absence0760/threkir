@@ -113,7 +113,7 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			return r.course_alert_id ? `/course-alerts/${r.course_alert_id}` : null;
 		case 'park_course_report':
 			// Sent to app admins only; the queue sorts land-manager requests by
-			// their deadline (decisions § 2447).
+			// their deadline (decisions § 2449).
 			return '/admin/reports';
 		case 'organiser_dispute':
 			// Both sides read the decision, and any rename deadline, on the

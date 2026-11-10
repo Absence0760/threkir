@@ -30,7 +30,7 @@ export const REPORT_TARGETS: Record<ReportTargetKind, ReportTargetSpec> = {
 	challenge: { labelKey: 'admin.reports.kind.challenge', path: (id) => disputeTargetHref('challenge', id) },
 	race_listing: { labelKey: 'admin.reports.kind.raceListing', path: (id) => disputeTargetHref('race_listing', id) },
 	// A course page is keyed by region, park and course slugs, not an id, so
-	// the detail's course panel loads the course and links it (decisions § 2447).
+	// the detail's course panel loads the course and links it (decisions § 2449).
 	park_course: { labelKey: 'admin.reports.kind.parkCourse', path: null },
 };
 

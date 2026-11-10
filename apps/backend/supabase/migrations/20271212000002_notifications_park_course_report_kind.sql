@@ -1,5 +1,5 @@
 -- Park course problem reports, part 2: the `park_course_report` notification
--- kind (issue #1346, decisions § 2447).
+-- kind (issue #1346, decisions § 2449).
 --
 -- A report on a park course notifies every app admin (app_admins), so the
 -- operator sees it without watching the queue: on the first pending report on

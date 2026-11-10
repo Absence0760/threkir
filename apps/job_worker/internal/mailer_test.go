@@ -218,7 +218,7 @@ func TestRenderNotificationEmail_AllKinds(t *testing.T) {
 		{"club_verification", NotificationRow{Kind: "club_verification", ClubID: &club}, base + "/clubs/club-1"},
 		// Both sides of a naming dispute read it on one page (decisions § 2441).
 		{"organiser_dispute", NotificationRow{Kind: "organiser_dispute", ClubID: &club}, base + "/disputes"},
-		// App admins review a park course report in the queue (decisions § 2447).
+		// App admins review a park course report in the queue (decisions § 2449).
 		{"park_course_report", NotificationRow{Kind: "park_course_report"}, base + "/admin/reports"},
 		{"plan_update", NotificationRow{Kind: "plan_update"}, base + "/plans"},
 		{"plan_assigned", NotificationRow{Kind: "plan_assigned"}, base + "/plans"},

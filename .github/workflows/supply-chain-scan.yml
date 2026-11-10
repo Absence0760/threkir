@@ -8,11 +8,13 @@ name: supply-chain-scan
 #   osv-scanner  every lockfile in the repo (npm, pnpm, pub, Go, Cargo,
 #                SwiftPM, PyPI, ...) against the OSV database.
 #
-# Advisory first: findings go to code scanning (SARIF, categories `zizmor`
-# and `osv-scanner`) and to the job summary, and neither job fails on a
-# finding. Neither tool is named in a code-scanning merge ruleset, so their
-# alerts do not block a merge either. Once the current findings are fixed,
-# a follow-up makes these checks blocking. zizmor reads its waivers from
+# Findings go to code scanning (SARIF, categories `zizmor` and
+# `osv-scanner`) and to the job summary, and neither job fails on a finding.
+# zizmor IS named in the "Code scanning gate" ruleset beside CodeQL
+# (errors / high_or_higher), so a zizmor High finding on a changed line
+# blocks the merge through the ruleset, not through this job. osv-scanner
+# is not: its results carry no line region, so merge protection cannot
+# attribute them to a PR (decisions.md § 2452). zizmor reads its waivers from
 # .github/zizmor.yml, each with its reason (decisions.md § 2421).
 #
 # Data flow: osv-scanner runs with --offline-vulnerabilities, so it downloads

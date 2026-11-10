@@ -479,6 +479,18 @@ jobs:
             echo "Reproduce with: node --test scripts/parks/lib/course_geometry.test.mjs scripts/parks/lib/osm_response.test.mjs scripts/parks/lib/catalogue_payload.test.mjs scripts/parks/lib/catalogue_sync.test.mjs scripts/prod_sync/lib/stages.test.mjs && node scripts/parks/build.mjs --check scripts/parks/catalogue/*/*/"
             exit 1
           fi
+      # The official content catalogue (issue #1190): the plans, gym routines
+      # and challenges every backend release publishes as the official club.
+      # This pins each item to the database's constraints and the stage SQL
+      # the release runs, so a bad item fails here rather than mid-release.
+      - name: Official content catalogue is well-formed
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/official/lib/official_catalogue.test.mjs || ! node scripts/official/sync.mjs --dry-run > /dev/null; then
+            echo "::error::scripts/official/ regressed: a committed catalogue item under scripts/official/catalogue/ breaks a database constraint, names a file other than its slug, or carries a field the library drops; or the release stage (scripts/official/sync.mjs, scripts/official/lib/official_catalogue.mjs) or its place after the prod config in scripts/prod_sync/run.mjs changed. The plans' weeks are pinned to the generator by apps/web/src/lib/training/official_plan_catalogue.test.ts. Nothing here touches the network."
+            echo "Reproduce with: node --test scripts/official/lib/official_catalogue.test.mjs && node scripts/official/sync.mjs --dry-run > /dev/null"
+            exit 1
+          fi
       # Production config as code (issue #1350): the release applies
       # apps/backend/ops/prod_config.json and runs apps/backend/ops/tasks/ in
       # the same sync, and refuses a config that fails this guard before any

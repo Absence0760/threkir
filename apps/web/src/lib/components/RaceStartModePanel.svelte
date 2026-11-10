@@ -26,6 +26,7 @@
 	import type { SessionStartMode } from '#lib/races/course_gates.ts';
 	import { isKnownTimeZone, zoneOffsetMs } from '#lib/social/zoned_time.ts';
 	import { formatDuration } from '#lib/format/time.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 
 	interface Props {
 		eventId: string;
@@ -188,6 +189,11 @@
 			{m('clubEvent.spectatorView')}
 		</a>
 	</div>
+	{#if isDirector}
+		<HelpLink guide="choose-how-your-race-starts" />
+	{:else if mode === 'self_timed'}
+		<HelpLink guide="run-a-self-timed-race" />
+	{/if}
 
 	{#if !session}
 		<p class="muted" data-testid="race-mode-not-created">

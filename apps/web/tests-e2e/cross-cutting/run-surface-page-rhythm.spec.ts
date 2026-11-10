@@ -5,9 +5,9 @@ import { USER_A } from '../fixtures/users';
 import { acceptCookieConsent } from '../fixtures/helpers';
 
 /**
- * The six run-surface tabs (Runs / Routes / Segments / Parks / Plans / Races) are one
+ * The five run-surface tabs (Runs / Plans / Races & courses / Routes / Segments) are one
  * strip the user walks left to right, so the strip itself must not move or
- * resize as they walk it. That holds only while every one of the six pages
+ * resize as they walk it. That holds only while every one of the five pages
  * wraps its content in the shared `.page` rhythm — `padding: var(--page-padding-y)
  * var(--page-padding-x)` and nothing else. `/segments` wrapped itself in a
  * 900 px centred `.catalogue` column instead, which shifted the strip 118 px
@@ -16,11 +16,12 @@ import { acceptCookieConsent } from '../fixtures/helpers';
  *
  * Measured as an equality across the five, not against pixel literals: the
  * gutter is a token that narrows at 40rem (app.css), so a literal would pin the
- * token's value rather than the thing that matters, which is that all six
- * agree.
+ * token's value rather than the thing that matters, which is that all five
+ * agree. `/parks` left the strip for the Run any time section of `/races`
+ * (issue #1352) but keeps its title in the size comparison below.
  */
 
-const RUN_SURFACES = ['/runs', '/routes', '/segments', '/parks', '/plans', '/races'];
+const RUN_SURFACES = ['/runs', '/plans', '/races', '/routes', '/segments'];
 
 /**
  * `/segments` is world-readable and renders before auth resolves, so for one
@@ -46,7 +47,7 @@ test.describe('run-surface pages share one page rhythm', () => {
 		await acceptCookieConsent(context);
 	});
 
-	test('the surface-tab strip has the same geometry on all six tabs', async ({ page }) => {
+	test('the surface-tab strip has the same geometry on all five tabs', async ({ page }) => {
 		const [first, ...rest] = RUN_SURFACES;
 		const baseline = await stripRect(page, first);
 		expect(baseline.width, `${first} laid out no strip to compare against`).toBeGreaterThan(0);

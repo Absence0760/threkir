@@ -133,9 +133,10 @@ test.describe('park courses', () => {
 				await page.goto('/parks');
 				await expect(page.getByRole('heading', { level: 1, name: 'Park courses' })).toBeVisible();
 				await expect(page.getByText(/Run one whenever the park is open/)).toBeVisible();
-				await expect(
-					page.locator('nav.surface-tabs').getByRole('link', { name: 'Parks' }),
-				).toHaveAttribute('aria-current', 'page');
+				// The index is reached from Races & courses (issue #1352) and
+				// carries a way back there, not a run-surface strip of its own.
+				await expect(page.locator('nav.surface-tabs')).toHaveCount(0);
+				await expect(page.getByTestId('parks-back-to-races')).toHaveAttribute('href', '/races');
 				await page.getByRole('link', { name: new RegExp(planted.parkName) }).click();
 				await page.waitForURL(`**/parks/us-va/${planted.parkSlug}`);
 				await expect(page.getByRole('heading', { level: 1, name: planted.parkName })).toBeVisible();

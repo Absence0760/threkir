@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
-	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchParks, type Park } from '#lib/core/data.ts';
@@ -36,7 +35,10 @@
 <svelte:head><title>{m('parks.title')}</title></svelte:head>
 
 <div class="page">
-	<RunSurfaceTabs active="parks" />
+	<a href="/races" class="back-link" data-testid="parks-back-to-races">
+		<span class="material-symbols" aria-hidden="true">arrow_back</span>
+		{m('races.pageTitle')}
+	</a>
 	<header class="page-header">
 		<h1>{m('parks.title')}</h1>
 		<p class="subtitle">{m('parks.intro')}</p>
@@ -85,6 +87,15 @@
 <style>
 	.page {
 		padding: var(--page-padding-y) var(--page-padding-x);
+	}
+	.back-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		margin-bottom: var(--space-md);
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+		text-decoration: none;
 	}
 	.page-header h1 {
 		margin: 0 0 0.25rem;

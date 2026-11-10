@@ -11676,6 +11676,52 @@ export async function fetchParkCourses(parkId: string): Promise<ParkCourse[]> {
 	});
 }
 
+export interface ParkCourseWithPark extends ParkCourse {
+	park: Database['public']['Tables']['parks']['Row'];
+}
+
+/// Every listed park course with its segment and park, in one read, for the
+/// "Run any time" section of `/races`. A course whose park was pulled or
+/// whose segment was pulled is dropped (RLS hides them). Unordered: the page
+/// orders by `orderAnyTimeCourses`. Throws on a failed read.
+export async function fetchAllParkCourses(): Promise<ParkCourseWithPark[]> {
+	const { data, error } = await supabase
+		.from(TABLES.park_courses)
+		.select('*, global_segments(*), parks!inner(*)');
+	if (error) throw dbError(error);
+	return (data ?? []).flatMap((row) => {
+		const { parks: park, ...rest } = row;
+		const course = asParkCourse(rest);
+		return course && park ? [{ ...course, park }] : [];
+	});
+}
+
+export interface ParkCourseRecord {
+	season: number;
+	userId: string;
+	/** Null when the record holder's profile is hidden from the caller. */
+	displayName: string | null;
+	timeSeconds: number;
+}
+
+/// This season's record on every park course, keyed by course id
+/// (`park_course_records`, one call). A course with no visible effort this
+/// season is absent. Throws on a failed read.
+export async function fetchParkCourseRecords(): Promise<Map<string, ParkCourseRecord>> {
+	const { data, error } = await supabase.rpc('park_course_records', undefined, { get: true });
+	if (error) throw dbError(error);
+	const out = new Map<string, ParkCourseRecord>();
+	for (const row of data ?? []) {
+		out.set(row.course_id, {
+			season: row.season,
+			userId: row.user_id,
+			displayName: row.display_name ?? null,
+			timeSeconds: row.time_seconds,
+		});
+	}
+	return out;
+}
+
 /// The park course built on a catalogue segment, with its park, if any. The
 /// segment page uses it to link back to the course. Throws on a failed read.
 export async function fetchParkCourseForSegment(

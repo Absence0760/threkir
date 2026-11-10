@@ -150,7 +150,8 @@ insert into insert_only_registry (tbl, col, reason) values
   ('direct_messages',        'recipient_id', 'the WITH CHECK admits only a follow-graph, unblocked recipient at insert'),
   ('direct_messages',        'body',         'the message itself — written once by definition; unsend is the only later change, through unsend_direct_message'),
   ('direct_messages',        'kind',         'the sender''s own label at send (20271210001217): the WITH CHECK admits text, or ai_assisted from an active coach to their athlete; coach_share is RPC-only'),
-  ('direct_messages',        'route_id',     'the attachment; the WITH CHECK gates it on the sender seeing the route at insert');
+  ('direct_messages',        'route_id',     'the attachment; the WITH CHECK gates it on the sender seeing the route at insert'),
+  ('direct_messages',        'image_id',     'the photo (20271212000004): the WITH CHECK admits only the sender''s own pending, uploaded, unsent image outside a request, and a trigger links it to this one message; unsend clears it');
 
 -- Tables with NO client UPDATE grant at all — append-only by design, so every
 -- column is trivially insert-only and enumerating them would be noise.

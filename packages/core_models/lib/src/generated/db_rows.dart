@@ -1341,6 +1341,144 @@ class DeviceTokenRow {
   );
 }
 
+/// Row shape for the `direct_message_images` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class DirectMessageImageRow {
+  static const String table = 'direct_message_images';
+  static const String colId = 'id';
+  static const String colOwnerId = 'owner_id';
+  static const String colMessageId = 'message_id';
+  static const String colStatus = 'status';
+  static const String colUploadPath = 'upload_path';
+  static const String colStoragePath = 'storage_path';
+  static const String colWidth = 'width';
+  static const String colHeight = 'height';
+  static const String colCreatedAt = 'created_at';
+  static const String colProcessedAt = 'processed_at';
+
+  final String id;
+  final String? ownerId;
+  final String? messageId;
+  final String status;
+  final String uploadPath;
+  final String storagePath;
+  final int? width;
+  final int? height;
+  final DateTime createdAt;
+  final DateTime? processedAt;
+
+  const DirectMessageImageRow({
+    required this.id,
+    this.ownerId,
+    this.messageId,
+    required this.status,
+    required this.uploadPath,
+    required this.storagePath,
+    this.width,
+    this.height,
+    required this.createdAt,
+    this.processedAt,
+  });
+
+  factory DirectMessageImageRow.fromJson(Map<String, dynamic> json) => DirectMessageImageRow(
+    id: json['id'] as String,
+    ownerId: json['owner_id'] as String?,
+    messageId: json['message_id'] as String?,
+    status: json['status'] as String,
+    uploadPath: json['upload_path'] as String,
+    storagePath: json['storage_path'] as String,
+    width: (json['width'] as num?)?.toInt(),
+    height: (json['height'] as num?)?.toInt(),
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+    processedAt: parseIsoStrictValue(json['processed_at']),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colId: id,
+    colOwnerId: ownerId,
+    colMessageId: messageId,
+    colStatus: status,
+    colUploadPath: uploadPath,
+    colStoragePath: storagePath,
+    colWidth: width,
+    colHeight: height,
+    colCreatedAt: createdAt.toIso8601String(),
+    colProcessedAt: processedAt?.toIso8601String(),
+  };
+
+  DirectMessageImageRow copyWith({
+    String? id,
+    String? ownerId,
+    String? messageId,
+    String? status,
+    String? uploadPath,
+    String? storagePath,
+    int? width,
+    int? height,
+    DateTime? createdAt,
+    DateTime? processedAt,
+  }) => DirectMessageImageRow(
+    id: id ?? this.id,
+    ownerId: ownerId ?? this.ownerId,
+    messageId: messageId ?? this.messageId,
+    status: status ?? this.status,
+    uploadPath: uploadPath ?? this.uploadPath,
+    storagePath: storagePath ?? this.storagePath,
+    width: width ?? this.width,
+    height: height ?? this.height,
+    createdAt: createdAt ?? this.createdAt,
+    processedAt: processedAt ?? this.processedAt,
+  );
+}
+
+/// Row shape for the `direct_message_reactions` table. Mirrors the Supabase schema
+/// exactly — field names are snake_case to match the JSON wire format.
+class DirectMessageReactionRow {
+  static const String table = 'direct_message_reactions';
+  static const String colMessageId = 'message_id';
+  static const String colUserId = 'user_id';
+  static const String colReaction = 'reaction';
+  static const String colCreatedAt = 'created_at';
+
+  final String messageId;
+  final String userId;
+  final String reaction;
+  final DateTime createdAt;
+
+  const DirectMessageReactionRow({
+    required this.messageId,
+    required this.userId,
+    required this.reaction,
+    required this.createdAt,
+  });
+
+  factory DirectMessageReactionRow.fromJson(Map<String, dynamic> json) => DirectMessageReactionRow(
+    messageId: json['message_id'] as String,
+    userId: json['user_id'] as String,
+    reaction: json['reaction'] as String,
+    createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    colMessageId: messageId,
+    colUserId: userId,
+    colReaction: reaction,
+    colCreatedAt: createdAt.toIso8601String(),
+  };
+
+  DirectMessageReactionRow copyWith({
+    String? messageId,
+    String? userId,
+    String? reaction,
+    DateTime? createdAt,
+  }) => DirectMessageReactionRow(
+    messageId: messageId ?? this.messageId,
+    userId: userId ?? this.userId,
+    reaction: reaction ?? this.reaction,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
+
 /// Row shape for the `direct_messages` table. Mirrors the Supabase schema
 /// exactly — field names are snake_case to match the JSON wire format.
 class DirectMessageRow {
@@ -1360,6 +1498,7 @@ class DirectMessageRow {
   static const String colOriginalBody = 'original_body';
   static const String colKind = 'kind';
   static const String colCoachMessageId = 'coach_message_id';
+  static const String colImageId = 'image_id';
 
   final String id;
   final String senderId;
@@ -1376,6 +1515,7 @@ class DirectMessageRow {
   final String? originalBody;
   final String kind;
   final String? coachMessageId;
+  final String? imageId;
 
   const DirectMessageRow({
     required this.id,
@@ -1393,6 +1533,7 @@ class DirectMessageRow {
     this.originalBody,
     required this.kind,
     this.coachMessageId,
+    this.imageId,
   });
 
   factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
@@ -1411,6 +1552,7 @@ class DirectMessageRow {
     originalBody: json['original_body'] as String?,
     kind: json['kind'] as String,
     coachMessageId: json['coach_message_id'] as String?,
+    imageId: json['image_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1429,6 +1571,7 @@ class DirectMessageRow {
     colOriginalBody: originalBody,
     colKind: kind,
     colCoachMessageId: coachMessageId,
+    colImageId: imageId,
   };
 
   DirectMessageRow copyWith({
@@ -1447,6 +1590,7 @@ class DirectMessageRow {
     String? originalBody,
     String? kind,
     String? coachMessageId,
+    String? imageId,
   }) => DirectMessageRow(
     id: id ?? this.id,
     senderId: senderId ?? this.senderId,
@@ -1463,6 +1607,7 @@ class DirectMessageRow {
     originalBody: originalBody ?? this.originalBody,
     kind: kind ?? this.kind,
     coachMessageId: coachMessageId ?? this.coachMessageId,
+    imageId: imageId ?? this.imageId,
   );
 }
 
@@ -8678,6 +8823,7 @@ class UserSettingRow {
   static const String colDiscoverableArea = 'discoverable_area';
   static const String colDiscoverableAreaLabel = 'discoverable_area_label';
   static const String colDmReadReceipts = 'dm_read_receipts';
+  static const String colDmRequests = 'dm_requests';
 
   final String userId;
   final dynamic prefs;
@@ -8685,6 +8831,7 @@ class UserSettingRow {
   final dynamic discoverableArea;
   final String? discoverableAreaLabel;
   final bool dmReadReceipts;
+  final bool dmRequests;
 
   const UserSettingRow({
     required this.userId,
@@ -8693,6 +8840,7 @@ class UserSettingRow {
     this.discoverableArea,
     this.discoverableAreaLabel,
     required this.dmReadReceipts,
+    required this.dmRequests,
   });
 
   factory UserSettingRow.fromJson(Map<String, dynamic> json) => UserSettingRow(
@@ -8702,6 +8850,7 @@ class UserSettingRow {
     discoverableArea: json['discoverable_area'],
     discoverableAreaLabel: json['discoverable_area_label'] as String?,
     dmReadReceipts: (json['dm_read_receipts'] as bool?) ?? false,
+    dmRequests: (json['dm_requests'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -8711,6 +8860,7 @@ class UserSettingRow {
     colDiscoverableArea: discoverableArea,
     colDiscoverableAreaLabel: discoverableAreaLabel,
     colDmReadReceipts: dmReadReceipts,
+    colDmRequests: dmRequests,
   };
 
   UserSettingRow copyWith({
@@ -8720,6 +8870,7 @@ class UserSettingRow {
     dynamic discoverableArea,
     String? discoverableAreaLabel,
     bool? dmReadReceipts,
+    bool? dmRequests,
   }) => UserSettingRow(
     userId: userId ?? this.userId,
     prefs: prefs ?? this.prefs,
@@ -8727,6 +8878,7 @@ class UserSettingRow {
     discoverableArea: discoverableArea ?? this.discoverableArea,
     discoverableAreaLabel: discoverableAreaLabel ?? this.discoverableAreaLabel,
     dmReadReceipts: dmReadReceipts ?? this.dmReadReceipts,
+    dmRequests: dmRequests ?? this.dmRequests,
   );
 }
 

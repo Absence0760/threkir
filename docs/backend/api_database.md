@@ -1942,6 +1942,8 @@ create table rate_limits (
 | `create_live_overlay_token` | 10 | 3600 | `create_live_overlay_token()` |
 | `create_report` | 10 | 3600 | `submit_report()` |
 | `create_route` | 30 | 3600 | `routes_create_rate_limit_trigger()` |
+| `dm_image_upload` | 30 | 3600 | `create_dm_image_upload()` |
+| `dm_reaction` | 120 | 3600 | `set_direct_message_reaction()` (setting and clearing alike) |
 | `edit_direct_message` | 60 | 3600 | `edit_direct_message()` |
 | `join_challenge_by_token` | 30 | 3600 | `join_challenge_by_token()` (misses included) |
 | `open_message_request` | 20 | 86400 | `private.direct_messages_request_state()` (after-insert trigger; a send that opens a message request) |

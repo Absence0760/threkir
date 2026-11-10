@@ -150,6 +150,8 @@ const _tables = <String>{
   'donations',
   'race_listings',
   'direct_messages',
+  'direct_message_images',
+  'direct_message_reactions',
 };
 
 // Tables whose pluralised name doesn't follow the strip-trailing-`s` rule

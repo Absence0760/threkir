@@ -1750,6 +1750,7 @@ export type Database = {
           age_grade_pct: number | null
           bib: string | null
           chip_time_s: number | null
+          clock_offset_ms: number | null
           course_id: string | null
           created_at: string
           distance_m: number
@@ -1779,6 +1780,7 @@ export type Database = {
           age_grade_pct?: number | null
           bib?: string | null
           chip_time_s?: number | null
+          clock_offset_ms?: number | null
           course_id?: string | null
           created_at?: string
           distance_m: number
@@ -1808,6 +1810,7 @@ export type Database = {
           age_grade_pct?: number | null
           bib?: string | null
           chip_time_s?: number | null
+          clock_offset_ms?: number | null
           course_id?: string | null
           created_at?: string
           distance_m?: number
@@ -6672,6 +6675,7 @@ export type Database = {
           age_grade_pct: number | null
           bib: string | null
           chip_time_s: number | null
+          clock_offset_ms: number | null
           course_id: string | null
           created_at: string | null
           distance_m: number | null
@@ -6697,6 +6701,7 @@ export type Database = {
           age_grade_pct?: never
           bib?: string | null
           chip_time_s?: number | null
+          clock_offset_ms?: never
           course_id?: string | null
           created_at?: string | null
           distance_m?: number | null
@@ -6722,6 +6727,7 @@ export type Database = {
           age_grade_pct?: never
           bib?: string | null
           chip_time_s?: number | null
+          clock_offset_ms?: never
           course_id?: string | null
           created_at?: string | null
           distance_m?: number | null
@@ -7447,6 +7453,7 @@ export type Database = {
           age_grade_pct: number | null
           bib: string | null
           chip_time_s: number | null
+          clock_offset_ms: number | null
           course_id: string | null
           created_at: string
           distance_m: number

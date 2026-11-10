@@ -267,15 +267,21 @@ test('every [[route:]] link and routes entry is a real SvelteKit page', () => {
 	assert.deepEqual(missing, [], 'route ids must name a directory under apps/web/src/routes holding +page.svelte');
 });
 
-test('every HelpLink names a literal route that at least one guide covers', () => {
+test('every HelpLink names a literal route that at least one guide covers, or a literal guide that exists', () => {
 	const problems: string[] = [];
 	for (const file of svelteFiles(SRC)) {
 		const source = readFileSync(file, 'utf8');
 		for (const attributes of tagAttributes(source, 'HelpLink')) {
 			const route = literalAttribute(attributes, 'route');
+			const id = literalAttribute(attributes, 'guide');
 			const where = relative(SRC, file);
-			if (typeof route !== 'string') {
-				problems.push(`${where}: <HelpLink> needs a literal route="..."`);
+			if (route !== null && id !== null) {
+				problems.push(`${where}: <HelpLink> takes route="..." or guide="...", not both`);
+			} else if (id !== null) {
+				if (typeof id !== 'string') problems.push(`${where}: <HelpLink guide> must be a literal guide id`);
+				else if (!byId.has(id)) problems.push(`${where}: <HelpLink guide="${id}"> names no guide`);
+			} else if (typeof route !== 'string') {
+				problems.push(`${where}: <HelpLink> needs a literal route="..." or guide="..."`);
 			} else if (!guides.some(({ guide }) => guide.routes?.includes(route))) {
 				problems.push(`${where}: no guide lists "${route}" in its routes`);
 			}

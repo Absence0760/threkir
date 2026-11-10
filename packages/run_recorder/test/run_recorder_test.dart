@@ -612,6 +612,27 @@ void main() {
       expect(r.debugDistanceMetres, closeTo(320.0, 0.01));
     });
 
+    test('a live gap whose fix arrives up to one interval early is timed by '
+        'GPS time', () {
+      // The arrival bound's one-interval jitter slack: the fix after a 12 s
+      // dropout arrives 11 s after the previous one. Its GPS time is when it
+      // was taken, so the gap is 12 s and the chord cap is 120 m (320.0 m);
+      // timed on the stopwatch the cap would be 110 m (310.0 m).
+      final clock = _FakeClock();
+      final r = RunRecorder(clock: clock)..debugPrepareWithoutStream();
+      addTearDown(r.dispose);
+      r.begin();
+      for (var i = 0; i <= 4; i++) {
+        if (i > 0) clock.advance(const Duration(seconds: 10));
+        r.debugInjectPosition(makePosition(
+            metresEast: 50.0 * i, secondsFromStart: 10 * i, speed: 5));
+      }
+      clock.advance(const Duration(seconds: 11));
+      r.debugInjectPosition(
+          makePosition(metresEast: 350, secondsFromStart: 52, speed: 5));
+      expect(r.debugDistanceMetres, closeTo(320.0, 0.01));
+    });
+
     test('a GPS interval longer than the real time elapsed is not trusted',
         () {
       // The protection the arrival bound keeps: a fix claiming 12 s (a

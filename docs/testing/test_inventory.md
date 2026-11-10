@@ -39,7 +39,7 @@ Pure-function tests for two helpers in `lib/run_stats.dart`:
 
 **Split elevation** (`computeSplitDurations`'s `RunSplit.elevationMetres`, twin of the web cases) — a barometer run whose GPS altitude disagrees in shape and level reads each split off the barometer (the series `runAltitude` gives the climb), a GPS-only copy reads GPS; a head dropout holds the first reading back to the start, a mid-run stall is bridged, an off-track fix's wild altitude is never read; a half-metre net rounds toward +infinity as `Math.round` does.
 
-### `packages/run_recorder/test/run_recorder_test.dart` — 116 tests
+### `packages/run_recorder/test/run_recorder_test.dart` — 117 tests
 
 The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hooks (see below) to bypass the real geolocator stream and inject synthetic `Position` objects directly into `_onPosition`.
 
@@ -58,7 +58,7 @@ The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hoo
 - Speed clamp drops implausible-speed fixes (≥ `maxSpeedMps`)
 - Single-hop jump > 100 m rejected when it arrives within the 10 s gap window (a corrupt teleport)
 - **Time-based gap re-anchor (#330)** — a > 100 m hop after a ≥ 10 s gap rebases the anchor and resumes tracking without crediting the un-sampled gap; consecutive post-gap fixes don't stay stuck on the stale anchor; a short-dt (< 10 s) or zero-dt > 100 m hop still fails closed
-- **Estimator clock across a batched delivery (#1356 follow-up)** — a 12 s / 150 m dropout delivered in one burst 20 s late is timed by its GPS interval and credited the same 320.0 m chord bound as a live delivery (200.0 m before the fix); a fix claiming 12 s, or an hour, that arrives 1 s after the last is still timed by the stopwatch and integrated over that 1 s
+- **Estimator clock across a batched delivery (#1356 follow-up)** — a 12 s / 150 m dropout delivered in one burst 20 s late is timed by its GPS interval and credited the same 320.0 m chord bound as a live delivery (200.0 m before the fix); a live gap whose fix arrives 11 s after the last is timed at its 12 s GPS interval (320.0 m, not 310.0 m); a fix claiming 12 s, or an hour, that arrives 1 s after the last is still timed by the stopwatch and integrated over that 1 s
 
 **Pause / resume (3 tests):**
 - Pause drops incoming positions entirely (track doesn't grow, distance doesn't accumulate)

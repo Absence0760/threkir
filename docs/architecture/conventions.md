@@ -1512,7 +1512,7 @@ When you need an elevated panel: `class="card-elevated"` (+ a layout modifier). 
 
 ## Web empty states — `EmptyState.svelte`
 
-A whole-surface "nothing here yet" or "nothing matches these filters" state renders `apps/web/src/lib/components/EmptyState.svelte` (icon, heading, explainer as `text` or a `body` snippet, an `actions` snippet, and optional `children` inside the card), never a bare grey `<p>` or a page-local `.empty-card` rule. It spans the content width and caps only its prose; `tone="danger"` gives a failed read the same shape. The web's analogue of mobile's ui_kit `EmptyState` (§ Mobile empty states). The run-surface tabs (Runs, Routes, Segments, Plans, Races) use it; older pages still carry local copies awaiting migration.
+A whole-surface "nothing here yet" or "nothing matches these filters" state renders `apps/web/src/lib/components/EmptyState.svelte` (icon, heading, explainer as `text` or a `body` snippet, an `actions` snippet, and optional `children` inside the card), never a bare grey `<p>` or a page-local `.empty-card` rule. It spans the content width and caps only its prose; `tone="danger"` gives a failed read the same shape. The web's analogue of mobile's ui_kit `EmptyState` (§ Mobile empty states). Every whole-surface empty, not-found and failed-read card on the web renders it. An empty row inside a card that holds other content (a leaderboard, a contacts list, a chart) stays an inline hint instead, since a card inside a card doubles the border. `apps/web/src/lib/empty_state_guard.test.ts` fails a `.svelte` file other than `EmptyState.svelte` that defines or uses an `*empty-card` class.
 
 ## Web status / accent colour tokens — pick the variant for the JOB
 

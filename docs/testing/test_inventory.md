@@ -85,11 +85,13 @@ The recorder's state machine and GPS filter chain. Uses `@visibleForTesting` hoo
 
 **Not covered (require mocking `GeolocatorPlatform.instance`):** typed errors thrown from `prepare()`, the `_gpsRetryTimer` retry loop, position-stream `onError` cleanup, `stop`/`dispose` cancelling the retry timer.
 
-### `packages/run_recorder/test/calculate_pace_test.dart` — 23 tests
+### `packages/run_recorder/test/calculate_pace_test.dart` — 24 tests
 
 Tests for the rolling-pace helper exposed via `RunRecorder.debugPaceSecondsPerKm`. Pins the null returns (empty track, fewer than 5 points, total tracked distance below 50 m, a window under the shared 20 s floor, paused state; a cyclist past 10 m/s still reads a pace, decisions § 2364), pins the GPS-derived pace value (5 fixes 50 m apart at 10 s intervals → 200 s/km regardless of wall-clock), demonstrates the trailing-window slide (8 fixes with two slow opening segments + six fast trailing segments still yields a fast pace because the early slow part falls outside the ~200 m window), and asserts the snapshot stream's `currentPaceSecondsPerKm` matches `debugPaceSecondsPerKm`.
 
 When the test was first written, `_currentWaypoint.timestamp` was set from `DateTime.now()`; a tight inject loop collapsed all five waypoint timestamps to the same millisecond, and `_calculatePace` returned null because `segmentTime <= 0`. The recorder was changed to `pos.timestamp` for the waypoint timestamp (matching the speed-clamp's GPS-time policy) so the function works correctly under fix-batching / CPU contention. See § Troubleshooting.
+
+Every recorder in the file takes a `FixClock` (`test/fix_clock.dart`), a monotonic clock that advances to each injected fix's GPS time, so the estimator's gap rule sees the interval a phone would. On the real `Stopwatch` a 12 s dropout injected back to back read as microseconds, and the gap test's distance passed or failed by machine speed (#1356). With the clock the gap is credited its spec v1.4 chord lower bound, 120 m at the default 10 m/s cap (the cap binds) and 140.25 m with it lifted, and the pace window still seals across it.
 
 ### `packages/run_recorder/test/route_helpers_test.dart` — 36 tests
 

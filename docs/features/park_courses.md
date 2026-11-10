@@ -23,6 +23,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
 | Badges (`park_courses` / `park_complete` / `park_passport`), passport challenge metric, recap entries, course share sticker | Shipped (migration `20271123002404`, decisions § 2404 / § 2405); see *Collections* |
+| "Report a problem with this course" (issue #1346, migrations `20271212000001`..`005`, decisions § 2449): signed in or signed out, on web and mobile, reviewed and acted on from `/admin/reports`. See *Reports and closures* | Shipped |
 | NPS closures job | Not built (Phase 6) |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
 | Indexable park pages | Not built; see *SEO* |
@@ -295,6 +296,57 @@ These follow the owner-approved permit conditions (memo
   inspect, maintain or mark the trails; the runner follows the land's rules,
   hours, closures and fees and stays on designated trails.
 
+## Reports and closures
+
+**Closures.** A course is closed only by a person: the catalogue sync when a
+park's manifest stops naming it (note "Removed from the park catalogue."), or a
+site admin from `/admin/reports` with a note the course page shows beside the
+closed banner. A report never closes or hides a course by itself. A
+land-manager request is honoured by closing the course within two business
+days (the condition recorded on #1097). The sync never touches an admin's
+closure, and an admin cannot reopen a catalogue closure (it would be closed
+again on the next release; put the course back in the manifest instead).
+
+**Reporting.** Every course page has "Report a problem with this course" with
+its notices, away from Navigate (web: under `ParkCourseNotices`; mobile: at the
+foot of `ParkCourseScreen`). It works signed out, so park staff need no
+account. The reporter picks a reason (`course_hazard`, `course_closure`,
+`course_off_trail`, `land_manager_request` or `other`), writes a note of up to
+1000 characters and may leave an email for a reply.
+
+- **One door.** The `park-course-report` Edge Function (`verify_jwt = false`)
+  verifies a JWT when one is sent and files as that user, or signed out. It
+  validates the body (8 KB cap), drops a filled honeypot with the same answer a
+  filed report gets, rate-limits 10 an hour per user or per hashed client
+  address (`check_rate_limit`, fail closed), and calls
+  `submit_park_course_report`, which only the service role may execute.
+- **The database's own caps,** which rotating addresses does not get round:
+  25 pending reports per course and 60 signed-out reports an hour across all
+  courses (SQLSTATE `PT429`); one pending report per course per signed-in
+  reporter, or per contact email when signed out; at most two links in a note.
+- **The row** is a `reports` row (`target_kind = 'park_course'`) carrying
+  `contact_email` and `signed_out`, so it shares the moderation queue, the
+  legal hold and the retention purge. Anon and authenticated can neither write
+  nor read anyone's report.
+- **Notices.** Every app admin gets a `park_course_report` notice (in-app,
+  email, push; it links to `/admin/reports`) on the first pending report on a
+  course and on every land-manager request.
+- **Review.** `/admin/reports` sorts land-manager targets after disputes,
+  oldest first, with the request's age and its deadline (`landManagerDueAt`:
+  two business days, Monday to Friday in UTC, holidays not counted out). The
+  detail says "Not signed in" for a signed-out reporter, links the contact
+  email for a reply by hand, and opens a course panel that closes the course
+  with its note (`admin_set_park_course_status`, which also marks the course's
+  pending reports reviewed) or reopens it, logged in
+  `park_course_status_actions` and read through `park_course_status_history`.
+  Mark reviewed and Dismiss work on course reports as on any other.
+- **Personal data.** The contact email goes with a signed-in reporter's
+  account (a trigger clears it when `reporter_id` is set null) and 30 days
+  after the report is resolved (`private.purge_stale_reports`), unless the
+  report is on legal hold. A signed-in reporter's own reports, email included,
+  are in their data export (`reports.json`). Threkir sends a reporter no email:
+  the acknowledgement is the operator's hand reply.
+
 ## Loading courses
 
 A course needs a route owned by an official publisher, which no migration can
@@ -496,6 +548,10 @@ These gate going live, not the code:
       ([scripts/parks/README.md § Route guides](../../scripts/parks/README.md#route-guides)).
       Until then every guide ships marked as a draft, which is honest but not
       the end state.
+- [ ] Owner check of the park course report defaults (decisions § 2449): the
+      30-day contact-email retention, the hand reply in place of an
+      acknowledgement email, and the caps (10 an hour per user or address,
+      25 pending a course, 60 signed-out an hour).
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
 - [ ] NPS API key provisioned before the closures job is built; it must do
       nothing without one.
@@ -507,6 +563,24 @@ These gate going live, not the code:
       § 2403). Until then their boards show the "measured the old way" note.
 
 ## Tests
+
+- Reports and closures: pgTAP
+  `apps/backend/supabase/tests/park_course_reports_test.sql` (anon and
+  authenticated refused the filing RPC and the table, the insert path signed
+  out and in, validation, the per-course and signed-out caps, the admin notices,
+  a report never closing a course, the admin close and reopen and their log,
+  the contact email cleared on account deletion and 30 days after resolution);
+  Deno `apps/backend/supabase/functions/park-course-report/handler.test.ts`
+  (validation before any rate-limit spend, the honeypot, the two buckets, the
+  reporter passed through, each refusal mapped); web unit
+  `apps/web/src/lib/parks/course_report.test.ts` (the deadline, the email
+  check, the refusal copy); Playwright
+  `apps/web/tests-e2e/parks/park-course-report.spec.ts` (a signed-out
+  land-manager request, a signed-in hazard report and its duplicate refusal,
+  the admin closing the course from the queue); Flutter
+  `apps/mobile_android/test/park_courses_screen_test.dart` group *report a
+  problem with this course* (placement, a filed land-manager request, a worded
+  refusal).
 
 - Run any time: `apps/web/src/lib/parks/any_time_courses.test.ts` (stable
   order, nearest first with the distance away, unmeasured courses after

@@ -1,0 +1,13 @@
+# Throwaway: proves the Code scanning gate blocks a High zizmor finding (#1317,
+# condition a). `issues` workflows only run from the default branch, so this
+# file never executes. The PR is closed unmerged.
+name: zizmor gate check
+on:
+  issues:
+    types: [opened]
+permissions: {}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "${{ github.event.issue.title }}"

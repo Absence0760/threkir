@@ -35,7 +35,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'A linha de chegada em que os participantes são cronometrados é o último ponto da rota do percurso. Desenhe a rota para que ela termine exatamente onde vai ficar o seu pórtico de chegada.',
+					text: 'Cada percurso recebe uma linha de largada no primeiro ponto da rota e uma linha de chegada no último. Desenhe a rota para que ela termine exatamente onde vai ficar o seu pórtico de chegada, ou mova as linhas depois; veja [[guide:start-and-finish-lines|Linhas de largada e chegada]].',
+				},
+				{
+					type: 'p',
+					text: 'Em **Como a corrida começa**, escolha **GO do organizador**, **GO agendado** ou **Janela de tempo próprio**. Veja [[guide:choose-how-your-race-starts|Escolher como sua prova começa]].',
 				},
 			],
 		},
@@ -68,6 +72,10 @@ export const translation: GuideTranslation = {
 					tone: 'caution',
 					text: 'Vincular uma rota mostra o ponto de chegada dela a todos que podem ver o evento, mesmo que a própria rota seja privada. Você só pode vincular rotas que tem permissão para ver.',
 				},
+				{
+					type: 'p',
+					text: 'Um percurso sem rota não recebe linha de largada nem de chegada a partir de uma rota, mas, depois que o evento é salvo, você pode colocar as duas linhas para ele você mesmo.',
+				},
 			],
 		},
 		{
@@ -94,6 +102,10 @@ export const translation: GuideTranslation = {
 				{
 					type: 'p',
 					text: 'Logo antes de preparar a prova, você escolhe se os resultados vão direto para a classificação. **Aprovar automaticamente os resultados enviados** vem marcado por padrão. Desmarque se quiser conferir cada resultado antes; cada um então aparece como **PENDENTE** até você aprová-lo.',
+				},
+				{
+					type: 'p',
+					text: 'Para uma prova com **GO agendado** ou **Janela de tempo próprio**, defina isso no editor do evento, em **Como a corrida começa**. Em uma prova de tempo próprio, a opção começa desmarcada.',
 				},
 			],
 		},
@@ -129,7 +141,8 @@ export const translation: GuideTranslation = {
 		's1.b0.i3': '66dae8991279459e',
 		's1.b0.i4': '5dc3211a9d733e18',
 		's1.b0.i5': '9b013cf91adfef1d',
-		's1.b1': '4dedb854832fabbb',
+		's1.b1': '3902a06ca97028f7',
+		's1.b2': '424a050508e905e9',
 		's2.heading': 'aa02687fee3b093f',
 		's2.b0': '1e44be9c1cbe6aa5',
 		's2.b1.i0': '59ec7388c26ff153',
@@ -140,6 +153,7 @@ export const translation: GuideTranslation = {
 		's2.b2.i1': '614d8a4a47ff46c0',
 		's2.b2.i2': '6ba6f0661b9e166a',
 		's2.b3': '47950903add3bde2',
+		's2.b4': 'ee2f7ff41e59b09f',
 		's3.heading': '8b4ed9e415e501f7',
 		's3.b0.i0': '7366e2c6f9eafeb3',
 		's3.b0.i1': '76dc29eb1e584662',
@@ -148,6 +162,7 @@ export const translation: GuideTranslation = {
 		's3.b1': 'd636d4186f153c0f',
 		's4.heading': 'ff04ee128bd05b1f',
 		's4.b0': '8887aff2546f155b',
+		's4.b1': '4f8df39f54f69616',
 		's5.heading': '05127d2bcbe7e55c',
 		's5.b0': '632ca275dd6dbc2e',
 		's5.b1': 'd81f08a86fd29b85',

@@ -35,7 +35,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'ランナーが計時されるフィニッシュラインは、コースのルートの最終地点です。ゴールアーチを置く場所でぴったり終わるようにルートを描いてください。',
+					text: '各コースには、ルートの最初の地点にスタートライン、最後の地点にフィニッシュラインが設定されます。ゴールアーチを置く場所でぴったり終わるようにルートを描くか、あとでラインを動かしてください。[[guide:start-and-finish-lines|スタートラインとフィニッシュライン]]を参照してください。',
+				},
+				{
+					type: 'p',
+					text: '**レースの開始方法**で、**主催者のGO**、**予約GO**、**セルフタイム期間**のいずれかを選びます。[[guide:choose-how-your-race-starts|レースの開始方法を選ぶ]]を参照してください。',
 				},
 			],
 		},
@@ -68,6 +72,10 @@ export const translation: GuideTranslation = {
 					tone: 'caution',
 					text: 'ルートを付けると、そのルート自体が非公開であっても、イベントを閲覧できる全員にフィニッシュ地点が表示されます。付けられるのは、あなたが閲覧を許可されているルートだけです。',
 				},
+				{
+					type: 'p',
+					text: 'ルートのないコースには、ルートからスタートラインやフィニッシュラインが設定されませんが、イベントを保存したあとで、両方のラインを自分で設置できます。',
+				},
 			],
 		},
 		{
@@ -94,6 +102,10 @@ export const translation: GuideTranslation = {
 				{
 					type: 'p',
 					text: 'レースを準備する直前に、結果をそのままリーダーボードに載せるかどうかを選びます。**提出された結果を自動承認**には、初期設定でチェックが入っています。すべての結果を先に確認したい場合はチェックを外してください。その場合、各結果はあなたが承認するまで**保留中**と表示されます。',
+				},
+				{
+					type: 'p',
+					text: '**予約GO**または**セルフタイム期間**のレースでは、代わりにイベントエディターの**レースの開始方法**で設定します。セルフタイム方式のレースでは、最初はチェックが外れています。',
 				},
 			],
 		},
@@ -129,7 +141,8 @@ export const translation: GuideTranslation = {
 		's1.b0.i3': '66dae8991279459e',
 		's1.b0.i4': '5dc3211a9d733e18',
 		's1.b0.i5': '9b013cf91adfef1d',
-		's1.b1': '4dedb854832fabbb',
+		's1.b1': '3902a06ca97028f7',
+		's1.b2': '424a050508e905e9',
 		's2.heading': 'aa02687fee3b093f',
 		's2.b0': '1e44be9c1cbe6aa5',
 		's2.b1.i0': '59ec7388c26ff153',
@@ -140,6 +153,7 @@ export const translation: GuideTranslation = {
 		's2.b2.i1': '614d8a4a47ff46c0',
 		's2.b2.i2': '6ba6f0661b9e166a',
 		's2.b3': '47950903add3bde2',
+		's2.b4': 'ee2f7ff41e59b09f',
 		's3.heading': '8b4ed9e415e501f7',
 		's3.b0.i0': '7366e2c6f9eafeb3',
 		's3.b0.i1': '76dc29eb1e584662',
@@ -148,6 +162,7 @@ export const translation: GuideTranslation = {
 		's3.b1': 'd636d4186f153c0f',
 		's4.heading': 'ff04ee128bd05b1f',
 		's4.b0': '8887aff2546f155b',
+		's4.b1': '4f8df39f54f69616',
 		's5.heading': '05127d2bcbe7e55c',
 		's5.b0': '632ca275dd6dbc2e',
 		's5.b1': 'd81f08a86fd29b85',

@@ -26,6 +26,10 @@ export const translation: GuideTranslation = {
 						'**Annulé** : l\'organisateur a annulé la course.',
 					],
 				},
+				{
+					type: 'p',
+					text: 'Une course à départ programmé affiche **Armé** avec l\'heure à laquelle elle démarre d\'elle-même. Une course en chrono libre affiche **Fenêtre en chrono libre** avec son heure d\'ouverture, puis **Fenêtre en chrono libre ouverte** avec son heure de fermeture : chaque coureur part au moment où il franchit la ligne de départ.',
+				},
 			],
 		},
 		{
@@ -40,6 +44,10 @@ export const translation: GuideTranslation = {
 					id: 'follow-a-race-live',
 					alt: 'Un parcours sur une carte avec des coureurs, chacun représenté par un point de couleur suivi d\'une courte trace de son trajet récent, et un drapeau à l\'arrivée.',
 				},
+				{
+					type: 'p',
+					text: 'La carte trace aussi les lignes de départ et d\'arrivée de chaque parcours, celles avec lesquelles la course a été armée.',
+				},
 			],
 		},
 		{
@@ -52,6 +60,10 @@ export const translation: GuideTranslation = {
 				{
 					type: 'p',
 					text: 'Il n\'y a pas d\'étiquette « en pause » distincte. Un coureur qui s\'est arrêté (pour refaire un lacet, à un ravitaillement ou parce qu\'il a mis son enregistrement en pause) ou qui a perdu le signal cesse simplement d\'être mis à jour. Après environ 90 secondes sans mise à jour, sa ligne est marquée **RETARDÉ**. Cela ne veut pas dire qu\'il y a un problème ; souvent, il n\'y a simplement pas de réseau.',
+				},
+				{
+					type: 'p',
+					text: 'Dans une course en chrono libre, les coureurs sont classés selon le temps écoulé depuis leur franchissement de la ligne de départ, le plus long en premier. Les coureurs qui n\'ont pas encore de temps depuis la ligne de départ sont listés après eux, sous **Pas encore de temps depuis la ligne de départ**.',
 				},
 			],
 		},
@@ -98,11 +110,15 @@ export const translation: GuideTranslation = {
 		's0.b2.i2': '120d1d8d969ced75',
 		's0.b2.i3': 'fbe2e397efb8ef5e',
 		's0.b2.i4': '1709d9ad712d85d2',
+		's0.b3': '83dd516ddc912210',
 		's1.heading': 'dc711bb38f5066a7',
 		's1.b0': 'f40d0503826f0955',
+		's1.b1': '1afba2a8fcb03c42',
+		's1.b2': 'fb3cff758e366cf0',
 		's2.heading': '46db515d7f1689a7',
 		's2.b0': '3316e288511685d1',
 		's2.b1': 'cff7f7798a6785c9',
+		's2.b2': '6af38311559d85ee',
 		's3.heading': '7804f7a79a9eee32',
 		's3.b0': '4355700d3a60d89c',
 		's3.b1': 'ea613ba62f6ba84a',
@@ -111,6 +127,5 @@ export const translation: GuideTranslation = {
 		's4.b0.i1': '7cf40c647db03cc3',
 		's4.b0.i2': 'edbbe7f08d1cf63e',
 		's4.b1': '1bb7132a7305e850',
-		's1.b1': '1afba2a8fcb03c42',
 	},
 };

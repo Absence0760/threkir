@@ -591,6 +591,7 @@
       "invite-members-and-roles",
       "recurring-events",
       "set-up-a-race",
+      "choose-how-your-race-starts",
       "import-your-history"
     ]
   },
@@ -1799,6 +1800,155 @@
     ]
   },
   {
+    "id": "choose-how-your-race-starts",
+    "lang": "en",
+    "title": "Choose how your race starts",
+    "summary": "Host GO, Scheduled GO or a Self-timed window: when to use each, what you do on the day, and how results are approved.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Three ways to start",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**Host GO**: you arm the race and press GO at the line. Use it when you are at the start with everyone, for a mass start.",
+              "**Scheduled GO**: the race starts itself at the time you set. Use it when the start time is fixed but you may not be at the line, or want to run yourself. You can delay or cancel it until then.",
+              "**Self-timed window**: there is no shared start. Each runner times their own attempt between the start line and the finish line, any time the window is open. Use it for a weekly time trial, or a course people run when they can. There is no gun time."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Choose under **How the race starts** in the event editor on the web, for a group run or cycle event. The phone app can run the race on the day (arm it early, delay it, extend it or end it), but the start is chosen on the web."
+          }
+        ]
+      },
+      {
+        "heading": "Setting the times",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Scheduled GO: set the **GO time** and the **GO day** (on the day, the day before or the day after the event). Under **Ends after, days** and **Hours**, set how long after GO the race ends by itself, unless you end it first.",
+              "Self-timed window: set **Window opens at** and **Opens on** (from the day before the event to a week after it), and how long it stays open under **Window length, days** and **Hours**, from 1 minute to 7 days."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "You type and see the times on the event's own clock, in its time zone. On the event page, the race panel shows that time zone and, when yours is different, your own time beside it."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "The times are kept relative to each occurrence of the event. Move the event, or one occurrence of it, and its race times move with it. Change the times in the editor and every occurrence that has not started yet takes the new times."
+          }
+        ]
+      },
+      {
+        "heading": "On the day: Host GO",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "You arm the race, fire GO and end it yourself. See [[guide:race-day-for-hosts|Race day for hosts]]."
+          }
+        ]
+      },
+      {
+        "heading": "On the day: Scheduled GO",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "You do not need to do anything. The race is set up about a day before its start, and starts itself at the scheduled time.",
+              "To check the course lines sooner, choose **Arm early**.",
+              "Before the start, the race panel shows **GO at** with the time and a countdown. To push the start back, enter the minutes and choose **Delay start**; everyone going is told the start has moved. Choose **Cancel** to call the race off.",
+              "Once the start time has passed, the race can no longer be cancelled. It ends itself when its time is up, or choose **End race** to end it sooner.",
+              "Runners' phones count down to the start on the server's clock and speak the last seconds, so everyone starts together."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "On the day: Self-timed",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "There is nothing to press. The window opens and closes by itself.",
+              "Before it opens you can **Delay start** or **Cancel**, as for a scheduled race.",
+              "While it is open, enter the hours and choose **Extend window** to keep it open longer (up to 7 days from when it opened), or choose **End window now** to close it early.",
+              "When the window closes, a runner who started an attempt but sent no result is marked DNF, as when you end any race."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Every course needs a start line and a finish line, and they are frozen for the race when the window opens. See [[guide:start-and-finish-lines|Start and finish lines]]."
+          }
+        ]
+      },
+      {
+        "heading": "Approving self-timed results",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Nobody stands at the line in a self-timed race, so its results wait for you by default: **Auto-approve submitted results** starts off. Each result shows as **PENDING** until you choose **Approve**."
+          },
+          {
+            "type": "p",
+            "text": "Some results are held for your review even when auto-approve is on: one with no start-line crossing (from an older app or an Apple Watch), one that starts outside the window, and one whose crossings the runner's own live positions do not back up. A runner who changes their own time also goes back to pending."
+          },
+          {
+            "type": "p",
+            "text": "A runner can make several attempts. Their best finish timed by both lines counts, and a slower attempt does not replace it."
+          }
+        ]
+      },
+      {
+        "heading": "Starting soon notices",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "About 10 minutes before a scheduled GO, everyone going gets a push notice that the race starts soon, unless an event reminder reached them in the last hour. When you delay a start, they get one saying it has moved. These notices are never emailed."
+          },
+          {
+            "type": "p",
+            "text": "Runners turn both off with **Race starting soon**: on the web in [[route:/settings/notifications|Notifications]], in the phone app under **Preferences** in the **You** tab."
+          }
+        ]
+      },
+      {
+        "heading": "Runners need a recent app",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Scheduled and self-timed races need the latest app on the phone or Wear OS watch. Results from older apps and from the Apple Watch are kept for your review rather than refused."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "start-and-finish-lines",
+      "race-day-for-hosts",
+      "run-a-self-timed-race"
+    ]
+  },
+  {
     "id": "drive-a-course",
     "lang": "en",
     "title": "Drive a race course before race day",
@@ -1919,6 +2069,10 @@
               "**Finished**: the race is over.",
               "**Cancelled**: the organiser cancelled the race."
             ]
+          },
+          {
+            "type": "p",
+            "text": "A race with a scheduled start shows **Armed** with the time it starts by itself. A self-timed race shows **Self-timed window** with when it opens, then **Self-timed window open** with when it closes: each runner starts when they cross the start line."
           }
         ]
       },
@@ -1933,6 +2087,10 @@
             "type": "illustration",
             "id": "follow-a-race-live",
             "alt": "A course on a map with runners along it, each a coloured dot with a short trail of their recent path, and a flag at the finish."
+          },
+          {
+            "type": "p",
+            "text": "The map also draws each course's start and finish lines, the ones the race was armed with."
           }
         ]
       },
@@ -1946,6 +2104,10 @@
           {
             "type": "p",
             "text": "There is no separate \"paused\" label. A runner who has stopped (to tie a lace, at an aid station, or because they paused their recording) or who has lost signal simply stops updating. After about 90 seconds without an update their row is marked **DELAYED**. That does not mean anything is wrong; it often just means no signal."
+          },
+          {
+            "type": "p",
+            "text": "In a self-timed race, runners are ordered by how long ago they crossed the start line, longest first. Runners with no start-line time yet are listed after them, under **No start-line time yet**."
           }
         ]
       },
@@ -1984,6 +2146,7 @@
     "related": [
       "race-results-explained",
       "racing-in-a-race",
+      "run-a-self-timed-race",
       "race-day-for-hosts"
     ]
   },
@@ -2024,6 +2187,10 @@
             "type": "illustration",
             "id": "race-day-for-hosts",
             "alt": "Race day in four steps, from left to right: arm the race, fire GO, watch it live, then end it at the finish."
+          },
+          {
+            "type": "p",
+            "text": "These steps are for a **Host GO** race. A **Scheduled GO** race starts by itself and a **Self-timed window** needs nothing from you on the day; see [[guide:choose-how-your-race-starts|Choose how your race starts]]."
           }
         ]
       },
@@ -2046,6 +2213,10 @@
             "type": "note",
             "tone": "tip",
             "text": "Armed is a waiting state. Nothing is timed and no results can be saved until you fire GO."
+          },
+          {
+            "type": "p",
+            "text": "Before the race is armed, each course's start and finish lines are checked, and anything worth a look is listed under **Before you arm the race**. A warning lets you **Arm anyway**; see [[guide:start-and-finish-lines|Start and finish lines]]. Arming also freezes the lines for this race."
           }
         ]
       },
@@ -2139,12 +2310,18 @@
               "An edited result is marked **Host edited** so everyone can see it was changed by the host. The edit moves the racer's gun time with it.",
               "**Download results CSV** exports the boards."
             ]
+          },
+          {
+            "type": "p",
+            "text": "In a self-timed race, results wait for your approval by default, and some are held for review even with auto-approve on. See [[guide:choose-how-your-race-starts|Choose how your race starts]]."
           }
         ]
       }
     ],
     "related": [
       "set-up-a-race",
+      "choose-how-your-race-starts",
+      "start-and-finish-lines",
       "follow-a-race-live",
       "race-results-explained",
       "racing-in-a-race"
@@ -2427,7 +2604,103 @@
       "set-up-a-race",
       "race-results-explained",
       "follow-a-race-live",
+      "run-a-self-timed-race",
       "using-help"
+    ]
+  },
+  {
+    "id": "run-a-self-timed-race",
+    "lang": "en",
+    "title": "Run a self-timed race",
+    "summary": "Join a race that is open for a window of time, mark your run as your attempt, and run from the start line to the finish line whenever suits you.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "participant",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "wear"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "What a self-timed race is",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A self-timed race has no group start. The organiser opens a window, which can last up to a week, and you run the course whenever you like while it is open. Your time runs from when you cross the start line to when you cross the finish line, so there is no gun time."
+          },
+          {
+            "type": "p",
+            "text": "You record your attempt with the phone app or a Wear OS watch. The web is for joining and for seeing results; a browser cannot record a run."
+          }
+        ]
+      },
+      {
+        "heading": "Before you go",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Open the race event, on the web or in the phone app.",
+              "If there is more than one course, choose yours first.",
+              "Choose **Join and attempt**. If you have already said **I'm in**, you are already in.",
+              "Open the app once while you have signal, before you set off. It then knows about the race, so the race banner and your attempt still work where there is no signal."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Start your attempt",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "On the Run tab of the phone app, the race banner shows **Self-timed** and when the window closes.",
+              "Tap **This run is my attempt**. It changes to **Attempt ready: tap Start**; tap it again if you change your mind.",
+              "Press Start before you reach the start line, then run through the start line the way the course goes."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "On a Wear OS watch, the screen before you start shows SELF-TIMED. Tap **This run is my attempt**, then Start."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A run you do not mark as your attempt never joins the race: it sends no live position and gets no result. That way a run you did not mean to race never lands on the board."
+          }
+        ]
+      },
+      {
+        "heading": "Attempts and your result",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "You can make more than one attempt while the window is open. Tap **This run is my attempt** before each one.",
+              "Your best finish timed by both lines counts. A slower attempt does not replace it.",
+              "Your result may wait for the organiser to approve it. Until then it shows as pending and has no place.",
+              "A result with no start-line crossing, such as one sent from an Apple Watch or an older version of the app, is kept, but the organiser reviews it before it counts."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "What the times on the board mean is in [[guide:race-results-explained|Race results explained]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "racing-in-a-race",
+      "race-results-explained",
+      "follow-a-race-live"
     ]
   },
   {
@@ -2480,7 +2753,11 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "The finish line racers are timed at is the last point of the course route. Draw the route so it ends exactly where your finish arch will be."
+            "text": "Each course gets a start line at the first point of its route and a finish line at the last. Draw the route so it ends exactly where your finish arch will be, or move the lines afterwards; see [[guide:start-and-finish-lines|Start and finish lines]]."
+          },
+          {
+            "type": "p",
+            "text": "Under **How the race starts**, choose **Host GO**, **Scheduled GO** or **Self-timed window**. See [[guide:choose-how-your-race-starts|Choose how your race starts]]."
           }
         ]
       },
@@ -2512,6 +2789,10 @@
             "type": "note",
             "tone": "caution",
             "text": "Attaching a route shows its finish point to everyone who can see the event, even if the route itself is private. You can only attach routes you are allowed to see."
+          },
+          {
+            "type": "p",
+            "text": "A course with no route gets no start or finish line from a route, but once the event is saved you can place both lines for it yourself."
           }
         ]
       },
@@ -2539,6 +2820,10 @@
           {
             "type": "p",
             "text": "Just before you arm the race you choose whether results go straight onto the leaderboard. **Auto-approve submitted results** is ticked by default. Untick it if you want to check every result first; each one then shows as **PENDING** until you approve it."
+          },
+          {
+            "type": "p",
+            "text": "For a **Scheduled GO** or **Self-timed window** race, set it in the event editor instead, under **How the race starts**. For a self-timed race it starts unticked."
           }
         ]
       },
@@ -2562,10 +2847,145 @@
       }
     ],
     "related": [
+      "start-and-finish-lines",
+      "choose-how-your-race-starts",
       "race-day-for-hosts",
       "racing-in-a-race",
       "follow-a-race-live",
       "race-results-explained"
+    ]
+  },
+  {
+    "id": "start-and-finish-lines",
+    "lang": "en",
+    "title": "Start and finish lines",
+    "summary": "What a course's start and finish lines are, how they are placed for you, and how to move, turn, widen or place them yourself.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "What a line is",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Every course in a race has a start line and a finish line. A line sits across the course at one point, faces the way runners travel, and reaches a set distance to each side. A runner crosses it only by passing through it in that direction, within its reach."
+          },
+          {
+            "type": "p",
+            "text": "That is the difference from a finish point with a 30 m circle around it. A circle counts anyone who comes near: a runner on a path running alongside, or on the way out of an out-and-back course that comes home the same way. A line does not, because they never pass through it in the right direction."
+          }
+        ]
+      },
+      {
+        "heading": "Lines placed for you",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When a course has a route, it gets both lines from it. The start line sits on the route's first point, facing along the route. The finish line sits on its last point, facing the way the route arrives. Each reaches 15 m to each side. They follow the route: change the route and they move with it."
+          },
+          {
+            "type": "p",
+            "text": "Lines appear once the event is saved with at least one course. Open the event, choose **Edit event** and find **Start and finish lines**. Each course has a map and a row for each line, which says where the line came from: **From the route**, **Placed by an organiser** or **None**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "If the route's owner has a privacy zone over the start or the end of the route, that end is hidden from everyone else, so it gets no line. Place that line yourself."
+          }
+        ]
+      },
+      {
+        "heading": "Move, turn or widen a line",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Next to **Start line** or **Finish line**, choose **Edit**.",
+              "On the map, drag the middle of the line to move it, and drag its handle to turn it. If the map is off, choose **Load map**, or skip the map and type the values instead.",
+              "Or type the **Latitude**, **Longitude** and **Direction (degrees)**. The direction is the way runners cross, clockwise from north: 0 is north, 90 east, 180 south and 270 west.",
+              "Set **Reach each side**, from 5 to 100 m. Make it wide enough to cover the whole road or path, and a little more.",
+              "Choose **Save line**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Each line saves on its own, straight away; you do not need to save the event. A line you have moved shows **Placed by an organiser**. Choose **Reset to route** to put it back where the route places it."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "A line you placed stays exactly where you put it, even if you later change the course route. After changing a route, check the warnings under each line."
+          }
+        ]
+      },
+      {
+        "heading": "Warnings in the editor",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "The line is more than 100 m from the course route. Check it is in the right place.",
+              "The line faces against the route, so runners following the route would cross it backwards. Turn it round.",
+              "The route crosses its own finish line before the end, as a course of laps or a track does. Finishing by the line is then turned off for that course, and runners finish by pressing Stop or Finish."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Courses with no route",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A course with no route has no lines until you place them. Choose **Place start line** or **Place finish line**. If you have moved the map to the spot first, the line starts at the middle of the map; otherwise type its position. Then set its direction and reach and choose **Save line**. **Remove line** takes a line you placed away again."
+          }
+        ]
+      },
+      {
+        "heading": "Lines are frozen when a race starts",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "When you arm a race (for a self-timed race, when its window opens), each course's lines are copied for that race. Every runner in it then crosses the same lines, whatever changes during the race. A change you make later applies from the next race. The event page and the live race page show the lines the race was armed with."
+          }
+        ]
+      },
+      {
+        "heading": "Checks before a race",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Before a race is armed, the lines of every course are checked, on the web and in the phone app. A warning lets you **Arm anyway**; a problem marked **Must fix:** stops the race being armed until you fix it in the event editor on the web."
+          },
+          {
+            "type": "list",
+            "items": [
+              "A course with no finish line and no finish point: a warning, because its runners finish by hand. A self-timed race must fix it.",
+              "A course with no start line: a self-timed race must fix it. Other races can start without one.",
+              "A route that crosses its own finish line before the end: a warning, because finishing by the line is off for that course. A self-timed race must fix it.",
+              "A line more than 100 m from the route: a warning in every kind of race."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Which kind of race you are running is set under **How the race starts**; see [[guide:choose-how-your-race-starts|Choose how your race starts]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "choose-how-your-race-starts",
+      "race-day-for-hosts"
     ]
   },
   {
@@ -2653,6 +3073,99 @@
     "related": [
       "what-pro-includes",
       "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "how-segment-times-are-measured",
+    "lang": "en",
+    "title": "How segment times are measured",
+    "summary": "Segment and park course times run from a start line to an end line, crossed the right way, and your fastest pass counts.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/segments/[id]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "Start and end lines",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Each segment has a start line and an end line, one across the path at each end, facing the way the segment runs and reaching 15 m to each side. A park course is a segment too, so it is timed the same way."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Your time runs from the moment your run crosses the start line to the moment it crosses the end line.",
+              "Each crossing is worked out between the two GPS points either side of the line, not taken at whichever point happened to be nearest, so the time is closer to the real one.",
+              "Both lines must be crossed going the way the segment runs. Crossing one backwards does not count.",
+              "The distance you covered between the two crossings must be within 25% of the segment's length, and on a park course you must pass every checkpoint, in order, in between."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Why a path alongside does not count",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A run on a path running alongside the segment, 20 m away, comes close to both ends without ever passing through the lines, so it gets no time. Neither does the way out of an out-and-back route that only passes near the end."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Start recording a little before the start line. A run whose recording starts on the line, or past it, never crosses it, and gets no time on that segment."
+          }
+        ]
+      },
+      {
+        "heading": "More than one pass",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "If your run passes the segment more than once, your fastest pass counts.",
+              "A warm-up that loops back over the start line does not lengthen your time: the time starts from your last crossing of the start line before the end.",
+              "On a loop whose start and end are the same line, the crossing that ends one lap cannot also start the next. So only every other lap is timed (the first, the third and so on), and your fastest of those counts. A loop that starts and ends at different lines times every lap."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Segments without lines",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A segment too short at one end to place a line there has no lines. It is still timed the old way: your run must pass within 35 m of its start and then within 35 m of its end."
+          }
+        ]
+      },
+      {
+        "heading": "Older efforts",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Efforts recorded before segments had lines were measured the old way, by passing near the start and the end. Each is measured again by the lines the next time its runner opens the run on the website. Its time can change, and it can disappear if the run never crossed the lines."
+          },
+          {
+            "type": "p",
+            "text": "Until every effort on a segment has been measured again, its board says that some older efforts were measured the old way."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "park-courses",
+      "import-your-history"
     ]
   },
   {
@@ -3364,6 +3877,7 @@
       }
     ],
     "related": [
+      "how-segment-times-are-measured",
       "import-your-history",
       "record-your-first-run"
     ]

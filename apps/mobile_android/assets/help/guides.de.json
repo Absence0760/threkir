@@ -591,6 +591,7 @@
       "invite-members-and-roles",
       "recurring-events",
       "set-up-a-race",
+      "choose-how-your-race-starts",
       "import-your-history"
     ]
   },
@@ -1799,6 +1800,155 @@
     ]
   },
   {
+    "id": "choose-how-your-race-starts",
+    "lang": "de",
+    "title": "Festlegen, wie dein Rennen startet",
+    "summary": "GO durch Veranstalter, Geplanter GO oder Selbstgestoppter Zeitraum: wann du welche Art nutzt, was du am Renntag tust und wie Ergebnisse genehmigt werden.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Drei Arten zu starten",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**GO durch Veranstalter**: Du stellst das Rennen scharf und gibst an der Linie LOS. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.",
+              "**Geplanter GO**: Das Rennen startet zur eingestellten Zeit von selbst. Nutze das, wenn die Startzeit feststeht, du aber vielleicht nicht an der Linie bist oder selbst mitlaufen möchtest. Bis dahin kannst du den Start verschieben oder das Rennen absagen.",
+              "**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Brutto-Zeit."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Renntag leiten (früher scharfstellen, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt."
+          }
+        ]
+      },
+      {
+        "heading": "Die Zeiten festlegen",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Geplanter GO: Lege **Startzeit** und **Starttag** fest (am Tag des Events, am Vortag oder am Tag danach). Unter **Endet nach, Tage** und **Stunden** legst du fest, wie lange nach LOS das Rennen von selbst endet, außer du beendest es vorher.",
+              "Selbstgestoppter Zeitraum: Lege **Zeitraum öffnet um** und **Öffnet am** fest (vom Tag vor dem Event bis eine Woche danach) und unter **Dauer des Zeitraums, Tage** und **Stunden**, wie lange er offen bleibt, von 1 Minute bis 7 Tagen."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Du gibst die Zeiten nach der Uhr des Events ein und siehst sie auch so, in seiner Zeitzone. Auf der Event-Seite zeigt der Rennbereich diese Zeitzone und, wenn deine abweicht, daneben deine eigene Uhrzeit."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Die Zeiten gelten relativ zu jedem Termin des Events. Verschiebst du das Event oder einen seiner Termine, wandern die Rennzeiten mit. Änderst du die Zeiten im Editor, übernimmt jeder Termin, der noch nicht begonnen hat, die neuen Zeiten."
+          }
+        ]
+      },
+      {
+        "heading": "Am Renntag: GO durch Veranstalter",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Du stellst das Rennen scharf, gibst LOS und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
+          }
+        ]
+      },
+      {
+        "heading": "Am Renntag: Geplanter GO",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Du musst nichts tun. Das Rennen wird etwa einen Tag vor dem Start angelegt und startet zur geplanten Zeit von selbst.",
+              "Um die Linien der Strecken früher zu prüfen, wähle **Früher scharf schalten**.",
+              "Vor dem Start zeigt der Rennbereich **Start um** mit der Uhrzeit und einem Countdown. Um den Start nach hinten zu verschieben, gib die Minuten ein und wähle **Start verschieben**; alle, die dabei sind, erfahren, dass der Start verschoben wurde. Wähle **Abbrechen**, um das Rennen abzusagen.",
+              "Sobald die Startzeit vorbei ist, kann das Rennen nicht mehr abgesagt werden. Es endet von selbst, wenn seine Zeit abgelaufen ist, oder du wählst **Rennen beenden**, um es früher zu beenden.",
+              "Die Handys der Teilnehmenden zählen nach der Serveruhr bis zum Start herunter und sagen die letzten Sekunden an, sodass alle gemeinsam starten."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Am Renntag: Selbstgestoppt",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Es gibt nichts zu drücken. Der Zeitraum öffnet und schließt sich von selbst.",
+              "Bevor er öffnet, kannst du wie bei einem geplanten Rennen **Start verschieben** oder **Abbrechen** wählen.",
+              "Solange er offen ist, gib die Stunden ein und wähle **Zeitraum verlängern**, um ihn länger offen zu halten (bis zu 7 Tage ab dem Öffnen), oder wähle **Zeitraum jetzt beenden**, um ihn früher zu schließen.",
+              "Schließt der Zeitraum, wird jemand, der einen Versuch begonnen, aber kein Ergebnis gesendet hat, als DNF markiert, wie beim Beenden jedes Rennens."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Jede Strecke braucht eine Startlinie und eine Ziellinie, und sie werden für das Rennen eingefroren, wenn der Zeitraum öffnet. Siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]."
+          }
+        ]
+      },
+      {
+        "heading": "Selbstgestoppte Ergebnisse genehmigen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Bei einem selbstgestoppten Rennen steht niemand an der Linie, daher warten seine Ergebnisse standardmäßig auf dich: **Eingereichte Ergebnisse automatisch genehmigen** ist anfangs aus. Jedes Ergebnis zeigt **AUSSTEHEND**, bis du **Genehmigen** wählst."
+          },
+          {
+            "type": "p",
+            "text": "Manche Ergebnisse werden auch bei aktiver automatischer Genehmigung zur Prüfung zurückgehalten: eines ohne Überquerung der Startlinie (aus einer älteren App oder von einer Apple Watch), eines, das außerhalb des Zeitraums beginnt, und eines, dessen Überquerungen die eigenen Live-Positionen der teilnehmenden Person nicht bestätigen. Ändert jemand die eigene Zeit, ist das Ergebnis ebenfalls wieder ausstehend."
+          },
+          {
+            "type": "p",
+            "text": "Teilnehmende können mehrere Versuche machen. Es zählt ihr bester Zieleinlauf, der über beide Linien gestoppt wurde, und ein langsamerer Versuch ersetzt ihn nicht."
+          }
+        ]
+      },
+      {
+        "heading": "Hinweise zum baldigen Start",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Etwa 10 Minuten vor einem geplanten LOS erhalten alle, die dabei sind, eine Push-Benachrichtigung, dass das Rennen bald startet, außer sie haben in der letzten Stunde schon eine Event-Erinnerung bekommen. Wenn du einen Start verschiebst, bekommen sie eine, die ihnen das mitteilt. Diese Hinweise werden nie per E-Mail verschickt."
+          },
+          {
+            "type": "p",
+            "text": "Teilnehmende schalten beide mit **Rennen startet bald** aus: im Web unter [[route:/settings/notifications|Benachrichtigungen]], in der Handy-App unter **Voreinstellungen** im Tab **Du**."
+          }
+        ]
+      },
+      {
+        "heading": "Teilnehmende brauchen eine aktuelle App",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Geplante und selbstgestoppte Rennen brauchen die neueste App auf dem Handy oder der Wear-OS-Uhr. Ergebnisse aus älteren Apps und von der Apple Watch werden zu deiner Prüfung aufbewahrt statt abgelehnt."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "start-and-finish-lines",
+      "race-day-for-hosts",
+      "run-a-self-timed-race"
+    ]
+  },
+  {
     "id": "drive-a-course",
     "lang": "de",
     "title": "Eine Rennstrecke vor dem Renntag abfahren",
@@ -1919,6 +2069,10 @@
               "**Beendet**: Das Rennen ist vorbei.",
               "**Abgesagt**: Der Veranstalter hat das Rennen abgesagt."
             ]
+          },
+          {
+            "type": "p",
+            "text": "Ein Rennen mit geplantem Start zeigt **Bereit** mit der Uhrzeit, zu der es von selbst startet. Ein selbstgestopptes Rennen zeigt **Selbstgestoppter Zeitraum** mit dem Zeitpunkt, an dem er öffnet, und dann **Selbstgestoppter Zeitraum offen** mit dem Zeitpunkt, an dem er schließt: Alle starten, wenn sie die Startlinie überqueren."
           }
         ]
       },
@@ -1933,6 +2087,10 @@
             "type": "illustration",
             "id": "follow-a-race-live",
             "alt": "Eine Strecke auf einer Karte mit Läuferinnen und Läufern darauf, jede Person ein farbiger Punkt mit einer kurzen Spur ihres letzten Wegs, und eine Flagge im Ziel."
+          },
+          {
+            "type": "p",
+            "text": "Die Karte zeichnet außerdem die Start- und Ziellinien jeder Strecke ein, und zwar die, mit denen das Rennen scharfgestellt wurde."
           }
         ]
       },
@@ -1946,6 +2104,10 @@
           {
             "type": "p",
             "text": "Es gibt keine eigene Kennzeichnung für „pausiert“. Wer stehen geblieben ist (um einen Schnürsenkel zu binden, an einer Verpflegungsstelle oder weil die Aufzeichnung pausiert wurde) oder kein Signal mehr hat, wird einfach nicht mehr aktualisiert. Nach etwa 90 Sekunden ohne Aktualisierung wird die Zeile als **VERZÖGERT** markiert. Das heißt nicht, dass etwas nicht stimmt; oft fehlt einfach nur das Signal."
+          },
+          {
+            "type": "p",
+            "text": "Bei einem selbstgestoppten Rennen sind die Teilnehmenden danach sortiert, wie lange ihre Überquerung der Startlinie zurückliegt, die am längsten zurückliegende zuerst. Teilnehmende ohne Zeit ab Startlinie stehen danach unter **Noch keine Zeit ab Startlinie**."
           }
         ]
       },
@@ -1984,6 +2146,7 @@
     "related": [
       "race-results-explained",
       "racing-in-a-race",
+      "run-a-self-timed-race",
       "race-day-for-hosts"
     ]
   },
@@ -2024,6 +2187,10 @@
             "type": "illustration",
             "id": "race-day-for-hosts",
             "alt": "Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, LOS geben, live verfolgen und es dann im Ziel beenden."
+          },
+          {
+            "type": "p",
+            "text": "Diese Schritte gelten für ein Rennen im Modus **GO durch Veranstalter**. Ein Rennen im Modus **Geplanter GO** startet von selbst, und ein **Selbstgestoppter Zeitraum** braucht am Renntag nichts von dir; siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]]."
           }
         ]
       },
@@ -2046,6 +2213,10 @@
             "type": "note",
             "tone": "tip",
             "text": "Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du LOS gibst."
+          },
+          {
+            "type": "p",
+            "text": "Bevor das Rennen scharfgestellt wird, werden die Start- und Ziellinien jeder Strecke geprüft, und alles, was einen Blick wert ist, steht unter **Bevor du das Rennen scharfstellst**. Bei einer Warnung kannst du **Trotzdem scharfstellen**; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]. Das Scharfstellen friert außerdem die Linien für dieses Rennen ein."
           }
         ]
       },
@@ -2139,12 +2310,18 @@
               "Ein bearbeitetes Ergebnis wird als **Vom Veranstalter bearbeitet** markiert, damit alle sehen, dass der Veranstalter es geändert hat. Die Änderung verschiebt auch die Brutto-Zeit der teilnehmenden Person.",
               "**Ergebnisse als CSV herunterladen** exportiert die Listen."
             ]
+          },
+          {
+            "type": "p",
+            "text": "Bei einem selbstgestoppten Rennen warten Ergebnisse standardmäßig auf deine Genehmigung, und manche werden auch bei aktiver automatischer Genehmigung zur Prüfung zurückgehalten. Siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]]."
           }
         ]
       }
     ],
     "related": [
       "set-up-a-race",
+      "choose-how-your-race-starts",
+      "start-and-finish-lines",
       "follow-a-race-live",
       "race-results-explained",
       "racing-in-a-race"
@@ -2427,7 +2604,103 @@
       "set-up-a-race",
       "race-results-explained",
       "follow-a-race-live",
+      "run-a-self-timed-race",
       "using-help"
+    ]
+  },
+  {
+    "id": "run-a-self-timed-race",
+    "lang": "de",
+    "title": "Ein selbstgestopptes Rennen laufen",
+    "summary": "Nimm an einem Rennen teil, das für einen Zeitraum offen ist, markiere deinen Lauf als deinen Versuch und lauf von der Startlinie zur Ziellinie, wann es dir passt.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "participant",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "wear"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Was ein selbstgestopptes Rennen ist",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ein selbstgestopptes Rennen hat keinen gemeinsamen Start. Der Veranstalter öffnet einen Zeitraum, der bis zu einer Woche dauern kann, und du läufst die Strecke, wann immer du willst, solange er offen ist. Deine Zeit läuft vom Überqueren der Startlinie bis zum Überqueren der Ziellinie, es gibt also keine Brutto-Zeit."
+          },
+          {
+            "type": "p",
+            "text": "Deinen Versuch zeichnest du mit der Handy-App oder einer Wear-OS-Uhr auf. Im Web meldest du dich an und siehst Ergebnisse; ein Browser kann keinen Lauf aufzeichnen."
+          }
+        ]
+      },
+      {
+        "heading": "Bevor du losläufst",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Öffne das Renn-Event, im Web oder in der Handy-App.",
+              "Gibt es mehr als eine Strecke, wähle zuerst deine.",
+              "Wähle **Teilnehmen und versuchen**. Hast du schon **Ich bin dabei** gesagt, bist du bereits angemeldet.",
+              "Öffne die App einmal, solange du Signal hast, bevor du losläufst. Dann kennt sie das Rennen, und das Renn-Banner und dein Versuch funktionieren auch dort, wo es kein Signal gibt."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Deinen Versuch starten",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Im Lauf-Tab der Handy-App zeigt das Renn-Banner **Selbstgestoppt** und wann der Zeitraum schließt.",
+              "Tippe auf **Dieser Lauf ist mein Versuch**. Die Anzeige wechselt zu **Versuch bereit: Tippe auf Start**; tippe erneut darauf, wenn du es dir anders überlegst.",
+              "Drück auf Start, bevor du die Startlinie erreichst, und lauf dann in Richtung der Strecke durch die Startlinie."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Auf einer Wear-OS-Uhr zeigt der Bildschirm vor dem Start SELBSTGESTOPPT. Tippe auf **Dieser Lauf ist mein Versuch** und dann auf Start."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Ein Lauf, den du nicht als deinen Versuch markierst, nimmt nie am Rennen teil: Er sendet keine Live-Position und bekommt kein Ergebnis. So landet ein Lauf, den du gar nicht als Rennen laufen wolltest, nie in der Rangliste."
+          }
+        ]
+      },
+      {
+        "heading": "Versuche und dein Ergebnis",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Du kannst mehr als einen Versuch machen, solange der Zeitraum offen ist. Tippe vor jedem auf **Dieser Lauf ist mein Versuch**.",
+              "Es zählt dein bester Zieleinlauf, der über beide Linien gestoppt wurde. Ein langsamerer Versuch ersetzt ihn nicht.",
+              "Dein Ergebnis wartet möglicherweise auf die Genehmigung durch den Veranstalter. Bis dahin wird es als ausstehend angezeigt und hat noch keine Platzierung.",
+              "Ein Ergebnis ohne Überquerung der Startlinie, etwa eines von einer Apple Watch oder einer älteren Version der App, wird aufbewahrt, aber der Veranstalter prüft es, bevor es zählt."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Was die Zeiten in der Rangliste bedeuten, steht in [[guide:race-results-explained|Rennergebnisse erklärt]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "racing-in-a-race",
+      "race-results-explained",
+      "follow-a-race-live"
     ]
   },
   {
@@ -2480,7 +2753,11 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Die Ziellinie, an der die Teilnehmenden gemessen werden, ist der letzte Punkt der Route der Strecke. Zeichne die Route so, dass sie genau dort endet, wo dein Zielbogen stehen wird."
+            "text": "Jede Strecke bekommt eine Startlinie am ersten Punkt ihrer Route und eine Ziellinie am letzten. Zeichne die Route so, dass sie genau dort endet, wo dein Zielbogen stehen wird, oder verschiebe die Linien danach; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]."
+          },
+          {
+            "type": "p",
+            "text": "Wähle unter **Wie das Rennen startet** die Option **GO durch Veranstalter**, **Geplanter GO** oder **Selbstgestoppter Zeitraum**. Siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]]."
           }
         ]
       },
@@ -2512,6 +2789,10 @@
             "type": "note",
             "tone": "caution",
             "text": "Wenn du eine Route anhängst, wird ihr Zielpunkt allen angezeigt, die das Event sehen können, selbst wenn die Route selbst privat ist. Du kannst nur Routen anhängen, die du sehen darfst."
+          },
+          {
+            "type": "p",
+            "text": "Eine Strecke ohne Route bekommt keine Start- oder Ziellinie aus einer Route, aber sobald das Event gespeichert ist, kannst du beide Linien selbst für sie setzen."
           }
         ]
       },
@@ -2539,6 +2820,10 @@
           {
             "type": "p",
             "text": "Kurz bevor du das Rennen scharfstellst, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
+          },
+          {
+            "type": "p",
+            "text": "Bei einem Rennen im Modus **Geplanter GO** oder **Selbstgestoppter Zeitraum** legst du diese Einstellung stattdessen im Event-Editor unter **Wie das Rennen startet** fest. Bei einem selbstgestoppten Rennen ist der Haken anfangs nicht gesetzt."
           }
         ]
       },
@@ -2562,10 +2847,145 @@
       }
     ],
     "related": [
+      "start-and-finish-lines",
+      "choose-how-your-race-starts",
       "race-day-for-hosts",
       "racing-in-a-race",
       "follow-a-race-live",
       "race-results-explained"
+    ]
+  },
+  {
+    "id": "start-and-finish-lines",
+    "lang": "de",
+    "title": "Start- und Ziellinien",
+    "summary": "Was die Start- und Ziellinien einer Strecke sind, wie sie für dich gesetzt werden und wie du sie selbst verschiebst, drehst, verbreiterst oder setzt.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Was eine Linie ist",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Jede Strecke eines Rennens hat eine Startlinie und eine Ziellinie. Eine Linie liegt an einer Stelle quer über der Strecke, zeigt in die Laufrichtung und reicht zu jeder Seite eine festgelegte Weite. Überquert wird sie nur, wenn man in dieser Richtung und innerhalb ihrer Breite durch sie hindurchläuft."
+          },
+          {
+            "type": "p",
+            "text": "Das ist der Unterschied zu einem Zielpunkt mit einem Kreis von 30 m darum. Ein Kreis zählt alle, die in die Nähe kommen: jemanden auf einem Weg, der daneben verläuft, oder auf dem Hinweg einer Hin-und-zurück-Strecke, die auf demselben Weg zurückkommt. Eine Linie zählt sie nicht, denn sie laufen nie in der richtigen Richtung durch sie hindurch."
+          }
+        ]
+      },
+      {
+        "heading": "Für dich gesetzte Linien",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Hat eine Strecke eine Route, bekommt sie beide Linien von ihr. Die Startlinie liegt auf dem ersten Punkt der Route und zeigt entlang der Route. Die Ziellinie liegt auf ihrem letzten Punkt und zeigt in die Richtung, in der die Route dort ankommt. Jede reicht 15 m zu jeder Seite. Sie folgen der Route: Änderst du die Route, wandern sie mit."
+          },
+          {
+            "type": "p",
+            "text": "Linien erscheinen, sobald das Event mit mindestens einer Strecke gespeichert ist. Öffne das Event, wähle **Veranstaltung bearbeiten** und suche **Start- und Ziellinien**. Jede Strecke hat eine Karte und eine Zeile pro Linie, die angibt, woher die Linie stammt: **Aus der Route**, **Von einem Organisator gesetzt** oder **Keine**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Hat die Person, der die Route gehört, eine Datenschutzzone über dem Start oder dem Ende der Route, ist dieses Ende für alle anderen verborgen und bekommt daher keine Linie. Setze diese Linie selbst."
+          }
+        ]
+      },
+      {
+        "heading": "Eine Linie verschieben, drehen oder verbreitern",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Wähle neben **Startlinie** oder **Ziellinie** die Option **Bearbeiten**.",
+              "Zieh auf der Karte die Mitte der Linie, um sie zu verschieben, und ihren Griff, um sie zu drehen. Ist die Karte aus, wähle **Karte laden**, oder verzichte auf die Karte und gib die Werte stattdessen ein.",
+              "Oder gib **Breitengrad**, **Längengrad** und **Richtung (Grad)** ein. Die Richtung ist die, in der Läufer die Linie überqueren, im Uhrzeigersinn ab Norden: 0 ist Norden, 90 Osten, 180 Süden und 270 Westen.",
+              "Stell **Breite je Seite** auf einen Wert von 5 bis 100 m ein. Mach sie breit genug, um die ganze Straße oder den ganzen Weg abzudecken, und noch etwas mehr.",
+              "Wähle **Linie speichern**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Jede Linie wird für sich und sofort gespeichert; du musst das Event nicht speichern. Eine Linie, die du verschoben hast, zeigt **Von einem Organisator gesetzt**. Mit **Auf Route zurücksetzen** legst du sie wieder dorthin, wo die Route sie platziert."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Eine Linie, die du gesetzt hast, bleibt genau dort, wo du sie hingelegt hast, auch wenn du später die Route der Strecke änderst. Prüfe nach einer Routenänderung die Warnungen unter jeder Linie."
+          }
+        ]
+      },
+      {
+        "heading": "Warnungen im Editor",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Die Linie ist mehr als 100 m von der Route der Strecke entfernt. Prüfe, ob sie richtig sitzt.",
+              "Die Linie zeigt gegen die Richtung der Route, Läufer auf der Route würden sie also rückwärts überqueren. Dreh sie um.",
+              "Die Route überquert ihre eigene Ziellinie vor dem Ende, wie bei einer Rundenstrecke oder einer Bahn. Der Zieleinlauf über die Linie ist dann für diese Strecke ausgeschaltet, und Läufer beenden mit Stopp oder Ziel."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Strecken ohne Route",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Eine Strecke ohne Route hat keine Linien, bis du sie setzt. Wähle **Startlinie setzen** oder **Ziellinie setzen**. Hast du die Karte vorher an die Stelle bewegt, wird die Linie zunächst in die Mitte der Karte gesetzt; andernfalls gib ihre Position ein. Lege dann ihre Richtung und Breite fest und wähle **Linie speichern**. **Linie entfernen** nimmt eine Linie, die du gesetzt hast, wieder weg."
+          }
+        ]
+      },
+      {
+        "heading": "Linien werden beim Rennstart eingefroren",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Wenn du ein Rennen scharfstellst (bei einem selbstgestoppten Rennen, wenn sein Zeitraum öffnet), werden die Linien jeder Strecke für dieses Rennen kopiert. Alle Teilnehmenden überqueren dann dieselben Linien, egal was sich während des Rennens ändert. Eine spätere Änderung gilt ab dem nächsten Rennen. Die Event-Seite und die Live-Rennseite zeigen die Linien, mit denen das Rennen scharfgestellt wurde."
+          }
+        ]
+      },
+      {
+        "heading": "Prüfungen vor einem Rennen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Bevor ein Rennen scharfgestellt wird, werden die Linien jeder Strecke geprüft, im Web und in der Handy-App. Bei einer Warnung kannst du **Trotzdem scharfstellen**; ein mit **Muss behoben werden:** markiertes Problem verhindert das Scharfstellen, bis du es im Event-Editor im Web behebst."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Eine Strecke ohne Ziellinie und ohne Zielpunkt: eine Warnung, weil ihre Teilnehmenden von Hand beenden. Bei einem selbstgestoppten Rennen muss das behoben werden.",
+              "Eine Strecke ohne Startlinie: Bei einem selbstgestoppten Rennen muss das behoben werden. Andere Rennen können ohne sie starten.",
+              "Eine Route, die ihre eigene Ziellinie vor dem Ende überquert: eine Warnung, weil der Zieleinlauf über die Linie für diese Strecke aus ist. Bei einem selbstgestoppten Rennen muss das behoben werden.",
+              "Eine Linie, die mehr als 100 m von der Route entfernt ist: eine Warnung bei jeder Art von Rennen."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Welche Art von Rennen du durchführst, legst du unter **Wie das Rennen startet** fest; siehe [[guide:choose-how-your-race-starts|Festlegen, wie dein Rennen startet]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "choose-how-your-race-starts",
+      "race-day-for-hosts"
     ]
   },
   {
@@ -2653,6 +3073,99 @@
     "related": [
       "what-pro-includes",
       "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "how-segment-times-are-measured",
+    "lang": "de",
+    "title": "Wie Segmentzeiten gemessen werden",
+    "summary": "Zeiten auf Segmenten und Parkstrecken laufen von einer Startlinie bis zu einer Endlinie, jeweils in der richtigen Richtung überquert, und dein schnellster Durchgang zählt.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/segments/[id]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "Start- und Endlinien",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Jedes Segment hat eine Startlinie und eine Endlinie, je eine an jedem Ende quer über den Weg, in Richtung des Segments ausgerichtet und 15 m zu jeder Seite reichend. Eine Parkstrecke ist ebenfalls ein Segment und wird deshalb genauso gemessen."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Deine Zeit läuft von dem Moment, in dem dein Lauf die Startlinie überquert, bis zu dem Moment, in dem er die Endlinie überquert.",
+              "Jede Überquerung wird zwischen den beiden GPS-Punkten zu beiden Seiten der Linie berechnet, statt einfach den Punkt zu nehmen, der zufällig am nächsten lag, sodass die Zeit näher an der echten liegt.",
+              "Beide Linien müssen in Richtung des Segments überquert werden. Eine rückwärts überquerte Linie zählt nicht.",
+              "Die Distanz, die du zwischen den beiden Überquerungen zurückgelegt hast, darf höchstens 25 % von der Länge des Segments abweichen, und auf einer Parkstrecke musst du dazwischen jeden Kontrollpunkt in der richtigen Reihenfolge passieren."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Warum ein Weg daneben nicht zählt",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ein Lauf auf einem Weg, der 20 m entfernt neben dem Segment verläuft, kommt beiden Enden nahe, ohne je durch die Linien zu laufen, und bekommt daher keine Zeit. Ebenso wenig der Hinweg einer Hin-und-zurück-Route, die nur nahe am Ende vorbeiführt."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Starte die Aufzeichnung kurz vor der Startlinie. Ein Lauf, dessen Aufzeichnung auf der Linie oder dahinter beginnt, überquert sie nie und bekommt auf diesem Segment keine Zeit."
+          }
+        ]
+      },
+      {
+        "heading": "Mehr als ein Durchgang",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Führt dein Lauf mehr als einmal über das Segment, zählt dein schnellster Durchgang.",
+              "Ein Aufwärmen, das zurück über die Startlinie führt, verlängert deine Zeit nicht: Die Zeit beginnt mit deiner letzten Überquerung der Startlinie vor dem Ende.",
+              "Bei einem Rundkurs, dessen Start und Ende dieselbe Linie sind, kann die Überquerung, die eine Runde beendet, nicht zugleich die nächste starten. Deshalb wird nur jede zweite Runde gemessen (die erste, die dritte und so weiter), und die schnellste davon zählt. Ein Rundkurs mit getrennter Start- und Endlinie misst jede Runde."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Segmente ohne Linien",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ein Segment, das an einem Ende zu kurz ist, um dort eine Linie zu setzen, hat keine Linien. Es wird weiterhin auf die alte Art gemessen: Dein Lauf muss zuerst bis auf 35 m an seinen Start und dann bis auf 35 m an sein Ende herankommen."
+          }
+        ]
+      },
+      {
+        "heading": "Ältere Versuche",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Versuche, die aufgezeichnet wurden, bevor Segmente Linien hatten, wurden auf die alte Art gemessen, durch Vorbeilaufen nahe Start und Ende. Jeder wird mit den Linien neu gemessen, sobald die Person den Lauf das nächste Mal auf der Website öffnet. Dabei kann sich seine Zeit ändern, und er kann verschwinden, wenn der Lauf die Linien nie überquert hat."
+          },
+          {
+            "type": "p",
+            "text": "Bis jeder Versuch auf einem Segment neu gemessen wurde, weist seine Bestenliste darauf hin, dass einige ältere Versuche auf die alte Art gemessen wurden."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "park-courses",
+      "import-your-history"
     ]
   },
   {
@@ -3364,6 +3877,7 @@
       }
     ],
     "related": [
+      "how-segment-times-are-measured",
       "import-your-history",
       "record-your-first-run"
     ]

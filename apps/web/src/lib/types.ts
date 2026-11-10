@@ -618,7 +618,7 @@ export function parseNutritionAssignmentStatus(
 }
 // Polymorphic report target. Kept in lockstep with the `reports.target_kind`
 // CHECK constraint (migrations 20260908_001 / 20261117_001 / 20270115_001 /
-// 20270402_001 / 20271021000003 / 20271202000001 / 20271212000001) via
+// 20270402_001 / 20271021000003 / 20271202000001 / 20271213000001) via
 // apps/web/scripts/check_constraint_unions.mjs.
 export type ReportTargetKind =
 	| 'user'

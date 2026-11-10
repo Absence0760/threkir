@@ -1809,6 +1809,15 @@ export function stampedThroughRpc(landings, stamped) {
 export const FILTERED_RPC_ARGUMENTS = [
   {
     file: 'park_course_reports_test.sql',
+    description: "a land-manager request still gets into a full course's queue",
+    columns: ['reports.signed_out'],
+    readBack: 'the land-manager request on the full course is stored',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_reports_test.sql',
     description: 'a signed-out report with a contact email is filed',
     columns: ['reports.signed_out'],
     readBack: 'signed out, no reporter, the email and notes trimmed, control characters removed, pending',

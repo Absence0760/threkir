@@ -2994,8 +2994,21 @@
 				</div>
 			</div>
 		</div>
-		<div class="share-card-date">
-			{formatDate(run.started_at)}
+		<div class="share-card-foot">
+			<div class="share-card-date">
+				{formatDate(run.started_at)}
+			</div>
+			<!-- Grisnir signs the bottom-right corner, beside the date and under
+				 the stats, so he never sits on the map or a number. He travels
+				 with the mark: the editor's mark switch drops both. -->
+			{#if shareCardMark}
+				<img
+					src="/brand/grisnir/grisnir-badge-256.png"
+					alt=""
+					class="share-card-grisnir"
+					data-testid="share-card-grisnir"
+				/>
+			{/if}
 		</div>
 	</div>
 </div>
@@ -4363,7 +4376,7 @@
 		box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85);
 	}
 	.share-card-credit {
-		margin-top: 12px;
+		margin-top: 8px;
 		font-size: 22px;
 		opacity: 0.85;
 		text-align: end;
@@ -4383,7 +4396,7 @@
 	.share-card-stats {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 28px 48px;
+		gap: 20px 48px;
 	}
 	.share-stat.hero {
 		grid-column: 1 / -1;
@@ -4412,5 +4425,19 @@
 		font-size: 42px;
 		font-weight: 600;
 		opacity: 0.75;
+	}
+	/* The foot row is as tall as Grisnir, so the map, the stats and the foot
+	   still fit the card's 888 px of content height: 64 + 394 + 312 + 112. */
+	.share-card-foot {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 24px;
+	}
+	.share-card-grisnir {
+		display: block;
+		height: 112px;
+		width: auto;
+		flex: none;
 	}
 </style>

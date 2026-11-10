@@ -7211,6 +7211,24 @@ export type Database = {
           value_num: number
         }[]
       }
+      admin_home_coach_engagement_weeks: {
+        Args: never
+        Returns: {
+          active_runners: number
+          coached_pct: number
+          coached_runners: number
+          week_start: string
+        }[]
+      }
+      admin_home_plan_completion_weeks: {
+        Args: never
+        Returns: {
+          completed_days: number
+          completed_pct: number
+          scheduled_days: number
+          week_start: string
+        }[]
+      }
       admin_platform_fee_months: {
         Args: never
         Returns: {

@@ -43,7 +43,8 @@
 --     its own.
 --   * 'dismiss': the dispute reports are dismissed.
 -- Only the dispute reports are touched; general reports on the same target
--- keep their own triage. Every action, and every filing, is written to the
+-- keep their own triage, and resolve_target_reports (re-emitted) now leaves
+-- dispute reports alone. Every action, and every filing, is written to the
 -- append-only organiser_dispute_actions log with the reviewer's id; the
 -- notices to both sides carry no actor, and my_organiser_disputes() never
 -- returns one. admin_unhide_target (re-emitted) lifts a takedown on the new
@@ -649,6 +650,52 @@ $$;
 
 revoke execute on function admin_unhide_target(text, uuid) from public, anon;
 grant execute on function admin_unhide_target(text, uuid) to authenticated;
+
+-- Body from 20270105_001; the general triage now leaves a target's dispute
+-- reports to resolve_organiser_dispute, so a dispute is never closed without
+-- its log entry and its notices.
+create or replace function resolve_target_reports(
+  p_target_kind text,
+  p_target_id   uuid,
+  p_status      text,
+  p_resolution  text default null
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public, private
+as $$
+declare
+  v_admin uuid := auth.uid();
+  v_count integer;
+begin
+  if not private.is_admin(v_admin) then
+    raise exception 'resolve_target_reports: not authorized'
+      using errcode = '42501';
+  end if;
+
+  if p_status not in ('reviewed', 'dismissed') then
+    raise exception 'resolve_target_reports: invalid status %', p_status
+      using errcode = '22023';
+  end if;
+
+  update reports
+    set status      = p_status,
+        resolution  = p_resolution,
+        reviewed_by = v_admin,
+        reviewed_at = now()
+  where target_kind = p_target_kind
+    and target_id = p_target_id
+    and status = 'pending'
+    and reason <> 'organiser_dispute';
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end;
+$$;
+
+revoke execute on function resolve_target_reports(text, uuid, text, text) from public, anon;
+grant execute on function resolve_target_reports(text, uuid, text, text) to authenticated;
 
 -- ── 7. Admin reads ──────────────────────────────────────────────────────────
 

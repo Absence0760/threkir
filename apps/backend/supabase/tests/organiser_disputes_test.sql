@@ -12,7 +12,7 @@
 -- sides are notified with no actor and read their side without the reviewer.
 
 begin;
-select plan(61);
+select plan(63);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -297,6 +297,15 @@ select throws_ok(
 select throws_ok(
   $$ select resolve_organiser_dispute('route', 'd15e2222-0000-0000-0000-000000000001', 'hide') $$,
   'P0002', null, 'a target with no pending dispute cannot be acted on');
+
+-- The general triage closes the member's report and leaves the disputes.
+select is(
+  resolve_target_reports('club', 'd15e1111-0000-0000-0000-000000000003', 'dismissed', null),
+  1, 'the general triage resolves only the general report');
+select is(
+  (select count(*)::int from fetch_reports_for_target('club', 'd15e1111-0000-0000-0000-000000000003')
+    where reason = 'organiser_dispute' and status = 'pending'),
+  3, 'the general triage leaves the disputes pending');
 
 -- Rename notice on the fan club: reports stay pending, deadline in force.
 select lives_ok(

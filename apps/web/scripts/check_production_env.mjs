@@ -72,6 +72,8 @@
  *   - PUBLIC_AI_PLAN_EDIT_ENABLED the same way: on with
  *     PUBLIC_COACH_ENABLED off, the "Adjust with AI" option on /plans/[id]
  *     stays hidden, and the CLI says so.
+ *   - PUBLIC_COACH_ASSIST_ENABLED the same way: on with PUBLIC_COACH_ENABLED
+ *     off, the coach assistant and the athlete's consent toggle stay hidden.
  *
  * NOT enforced (intentional):
  *   - PUBLIC_REVENUECAT_WEB_PORTAL_URL — the manage-subscription portal
@@ -322,6 +324,14 @@ export function checkProductionEnv(env) {
 	) {
 		notices.push(
 			'AI plan edits stay hidden: PUBLIC_AI_PLAN_EDIT_ENABLED is on but PUBLIC_COACH_ENABLED is not, and /plans/[id] shows "Adjust with AI" only when both are. Turn the Coach on as well, or unset PUBLIC_AI_PLAN_EDIT_ENABLED.',
+		);
+	}
+	if (
+		isTruthyFlagValue(env.PUBLIC_COACH_ASSIST_ENABLED) &&
+		!isTruthyFlagValue(env.PUBLIC_COACH_ENABLED)
+	) {
+		notices.push(
+			'The coach assistant stays hidden: PUBLIC_COACH_ASSIST_ENABLED is on but PUBLIC_COACH_ENABLED is not, and a coach sees the AI draft panel only when both are. Turn the Coach on as well, or unset PUBLIC_COACH_ASSIST_ENABLED.',
 		);
 	}
 

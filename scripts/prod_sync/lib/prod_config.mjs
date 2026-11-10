@@ -36,6 +36,7 @@ export const FUNCTION_ENV_ALLOW = ['PARKRUN_EVENTS_ENABLED'];
 export const ELSEWHERE = {
 	AI_PLAN_ENABLED: 'the coach Lambda, from coach_config_keys in the sops file (infra/modules/web-stack/main.tf)',
 	AI_PLAN_EDIT_ENABLED: 'the coach Lambda, from coach_config_keys in the sops file (infra/modules/web-stack/main.tf)',
+	COACH_ASSIST_ENABLED: 'the coach Lambda, from coach_config_keys in the sops file (infra/modules/web-stack/main.tf)',
 	COACH_FUEL_ENABLED: 'the coach Lambda, from coach_config_keys in the sops file (infra/modules/web-stack/main.tf)',
 	PLATE_PHOTO_ENABLED: 'the coach Lambda, from coach_config_keys in the sops file (infra/modules/web-stack/main.tf)',
 	ADAPTIVE_FITNESS_GATE: 'the mobile dotenv, which ships in a store build (apps/mobile_android/deployment.md)',
@@ -54,6 +55,7 @@ export const ELSEWHERE = {
 export const PAIRS = [
 	{ web: 'PUBLIC_AI_PLAN_ENABLED', server: 'AI_PLAN_ENABLED', home: 'coach Lambda' },
 	{ web: 'PUBLIC_AI_PLAN_EDIT_ENABLED', server: 'AI_PLAN_EDIT_ENABLED', home: 'coach Lambda' },
+	{ web: 'PUBLIC_COACH_ASSIST_ENABLED', server: 'COACH_ASSIST_ENABLED', home: 'coach Lambda' },
 	{ web: 'PUBLIC_PLATE_PHOTO_ENABLED', server: 'PLATE_PHOTO_ENABLED', home: 'coach Lambda' },
 	{ web: 'PUBLIC_COACH_FUEL_ENABLED', server: 'COACH_FUEL_ENABLED', home: 'coach Lambda' },
 	{ web: 'PUBLIC_ADAPTIVE_FITNESS_GATE', server: 'ADAPTIVE_FITNESS_GATE', home: 'mobile dotenv' },
@@ -61,7 +63,7 @@ export const PAIRS = [
 ];
 
 /** Web flags that render nothing unless the Coach is on as well. */
-export const NEEDS_COACH = ['PUBLIC_AI_PLAN_ENABLED', 'PUBLIC_AI_PLAN_EDIT_ENABLED', 'PUBLIC_PLATE_PHOTO_ENABLED', 'PUBLIC_COACH_FUEL_ENABLED'];
+export const NEEDS_COACH = ['PUBLIC_AI_PLAN_ENABLED', 'PUBLIC_AI_PLAN_EDIT_ENABLED', 'PUBLIC_PLATE_PHOTO_ENABLED', 'PUBLIC_COACH_FUEL_ENABLED', 'PUBLIC_COACH_ASSIST_ENABLED'];
 
 const FLAG_NAME = /^[a-z][a-z0-9_]*$/;
 const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;

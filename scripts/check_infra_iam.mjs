@@ -997,6 +997,9 @@ export const NON_CREDENTIAL_SOPS_KEYS = {
   AI_PLAN_EDIT_ENABLED:
     'a feature switch: /api/coach/plan-edit answers 503 unless it is ' +
     'truthy. It turns a route off or on and authorises no caller',
+  COACH_ASSIST_ENABLED:
+    'a feature switch: /api/coach/assist answers 503 unless it is ' +
+    'truthy. It turns a route off or on and authorises no caller',
 };
 
 /// `name = ["A", "B"]` entries in a `locals` block, which is what a

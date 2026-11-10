@@ -84,6 +84,19 @@ test('both /api/coach wrappers read the plan-edit handoff flag from the AI plan-
 	assert.match(dev, /aiPlanEditEnabled\s*:\s*isTruthyFlagValue\(PUBLIC_AI_PLAN_EDIT_ENABLED\)/);
 });
 
+test('both /api/coach/assist wrappers read the coach-assistant gate and never bypass in prod', () => {
+	// Issue #1215 Phase 4: the server half of PUBLIC_COACH_ASSIST_ENABLED. The
+	// Lambda reads the sops key and hard-codes the bypass off; the dev wrapper
+	// reads the client flag, so local dev shows what prod will.
+	const lambda = stripComments(read('lambda/coach/src/index.ts'));
+	const dispatch = lambda.match(/async function dispatchCoachAssist[\s\S]*?\n\}/);
+	assert.ok(dispatch, 'could not locate dispatchCoachAssist in the coach Lambda');
+	assert.match(dispatch[0], /enabled\s*:\s*isTruthyFlagValue\(process\.env\.COACH_ASSIST_ENABLED\)/);
+	assert.match(dispatch[0], /bypassPaywallEnabled\s*:\s*false/);
+	const dev = stripComments(read('src/routes/api/coach/assist/+server.ts'));
+	assert.match(dev, /enabled\s*:\s*isTruthyFlagValue\(PUBLIC_COACH_ASSIST_ENABLED\)/);
+});
+
 test('RouteBuilder sends the generate JWT in `x-supabase-authorization`, not `Authorization`', () => {
 	// Reason: same collision as the coach clients — the production Lambda
 	// Function URL is AWS_IAM-auth and CloudFront's OAC signs `Authorization`

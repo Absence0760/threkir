@@ -31,6 +31,9 @@ export const PLATE_PHOTO_BODY_LIMIT_BYTES = 4 * 1024 * 1024 + 16 * 1024;
 export const PLAN_EDIT_BODY_LIMIT_BYTES = 16 * 1024;
 // A season description of a few races, capped at 1500 characters by the handler.
 export const SEASON_REQUEST_BODY_LIMIT_BYTES = 16 * 1024;
+/// /api/coach/assist carries an athlete id, a mode and at most a 500-character
+/// request; the context is read server-side.
+export const COACH_ASSIST_BODY_LIMIT_BYTES = 8 * 1024;
 
 export type BodyDecodeResult =
 	| { ok: true; body: string }

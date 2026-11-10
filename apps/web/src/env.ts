@@ -17,6 +17,7 @@ export const variables = defineEnvVars({
 	PUBLIC_APPLE_AUTH_ENABLED: { public: true, schema: optional },
 	PUBLIC_APP_RELEASE: { public: true, schema: optional },
 	PUBLIC_BYPASS_PAYWALL: { public: true, schema: optional },
+	PUBLIC_COACH_ASSIST_ENABLED: { public: true, schema: optional },
 	PUBLIC_COACH_ENABLED: { public: true, schema: optional },
 	PUBLIC_COACH_FUEL_ENABLED: { public: true, schema: optional },
 	PUBLIC_COURSE_DRIVE_ENABLED: { public: true, schema: optional },

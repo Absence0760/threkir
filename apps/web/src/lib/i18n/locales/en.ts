@@ -2414,7 +2414,7 @@ export const en = {
 	"clubEvent.autoApproveResults": "Auto-approve submitted results",
 	"clubEvent.armRace": "Arm race",
 	"clubEvent.armedLabel": "Armed",
-	"clubEvent.armedHint": "— attendees are waiting for your Start.",
+	"clubEvent.armedHint": "— attendees are waiting for your GO.",
 	"clubEvent.go": "GO",
 	"clubEvent.cancel": "Cancel",
 	"clubEvent.runningLabel": "Running",

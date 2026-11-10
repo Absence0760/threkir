@@ -858,13 +858,18 @@ func TestDistanceRecompute_KalmanV3RecomputeIsRestampedKalmanV4(t *testing.T) {
 // stored track carries no steps, so its replay credits each gap the chord
 // alone; adding the step-filled metres on top of that counted the gap twice
 // (gap_with_steps: +104.9 m). Every shared vector whose pedometer filled a
-// gap is recomputed from its fixes alone, plus the step-filled metres it
-// saved. The saved run total cannot say which gap its steps went to, so the
-// recompute credits the gaps max(chord total, step total) (gapStepTopUpM):
-// the recorder's figure exactly when every gap's steps fall on one side of
-// its chord, and short of it by sum(max(c, s)) - max(sum c, sum s) when they
-// do not. Each vector's gapCreditsM carries the reference's per-gap split, so
-// the expected figure is computed per vector rather than exempted by name.
+// gap is recomputed from its fixes alone, twice.
+//
+// As a watch from spec v1.7 on saves it, with distance_step_over_chord_m
+// (the forward filter's stepOverChordM, which is what the replay lacks): the
+// recompute is the recorder's smoothed figure exactly, on every vector.
+//
+// As an older run saved it, with the run total alone: the recompute credits
+// the gaps max(chord total, step total) (gapStepTopUpM), the recorder's
+// figure exactly when every gap's steps fall on one side of its chord, and
+// short of it by sum(max(c, s)) - max(sum c, sum s) when they do not. Each
+// vector's gapCreditsM carries the reference's per-gap split, so that
+// expected figure is computed per vector rather than exempted by name.
 func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "fixtures", "gps_distance_vectors.json"))
 	if err != nil {
@@ -885,7 +890,11 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 			} `json:"events"`
 			MaxSpeedMps       float64 `json:"maxSpeedMps"`
 			ExpectedIntervalS float64 `json:"expectedIntervalS"`
-			Smoothed          struct {
+			Expected          struct {
+				StepDistanceM  float64 `json:"stepDistanceM"`
+				StepOverChordM float64 `json:"stepOverChordM"`
+			} `json:"expected"`
+			Smoothed struct {
 				DistanceM     float64 `json:"distanceM"`
 				StepDistanceM float64 `json:"stepDistanceM"`
 				// Per gap: [chord lower bound, step metres credited].
@@ -918,12 +927,16 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 		if math.Abs(stepM-s.Smoothed.StepDistanceM) > 1e-4 {
 			t.Fatalf("%s: gapCreditsM steps sum to %.6f m, stepDistanceM is %.6f m", s.Name, stepM, s.Smoothed.StepDistanceM)
 		}
-		want := s.Smoothed.DistanceM - creditedM + math.Max(chordM, stepM)
+		if math.Abs(creditedM-chordM-s.Expected.StepOverChordM) > 1e-4 {
+			t.Fatalf("%s: gapCreditsM put %.6f m of steps over the chords, stepOverChordM is %.6f m",
+				s.Name, creditedM-chordM, s.Expected.StepOverChordM)
+		}
+		legacyWant := s.Smoothed.DistanceM - creditedM + math.Max(chordM, stepM)
 		if chordSide && stepSide {
 			mixed++
-			if s.Smoothed.DistanceM-want < 0.01 {
-				t.Errorf("%s: gaps on both sides of their chords but the recompute's shortfall is %.6f m; the split no longer tests it",
-					s.Name, s.Smoothed.DistanceM-want)
+			if s.Smoothed.DistanceM-legacyWant < 0.01 {
+				t.Errorf("%s: gaps on both sides of their chords but the run-total rule's shortfall is %.6f m; the split no longer tests it",
+					s.Name, s.Smoothed.DistanceM-legacyWant)
 			}
 		}
 		// The recompute replays with the run cap and the track's median
@@ -942,35 +955,80 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 				AccuracyM: e.Acc, SpeedMps: e.Speed, SpeedAccuracyMps: e.SpeedAcc, BearingDeg: e.Bearing,
 			})
 		}
-		meta, _ := json.Marshal(map[string]any{
-			"distance_estimator":     "kalman_v4",
-			"distance_step_filled_m": s.Smoothed.StepDistanceM,
-			"track_complete":         true,
-		})
-		run := appRun(string(meta))
-		run.Source = "watch"
-		w, b := distanceWorker(t, run, track)
-		if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
-			t.Fatalf("%s: handle: %v", s.Name, err)
+		recompute := func(withOverChord bool) float64 {
+			t.Helper()
+			md := map[string]any{
+				"distance_estimator":     "kalman_v4",
+				"distance_step_filled_m": s.Expected.StepDistanceM,
+				"track_complete":         true,
+			}
+			if withOverChord {
+				md["distance_step_over_chord_m"] = s.Expected.StepOverChordM
+			}
+			meta, _ := json.Marshal(md)
+			run := appRun(string(meta))
+			run.Source = "watch"
+			w, b := distanceWorker(t, run, track)
+			if err := w.handleDistanceRecompute(context.Background(), distanceJob(t, DistanceRecomputePayload{RunID: drRunID})); err != nil {
+				t.Fatalf("%s: handle: %v", s.Name, err)
+			}
+			if len(b.distance.updates) != 1 {
+				t.Fatalf("%s: updates = %d", s.Name, len(b.distance.updates))
+			}
+			return b.distance.updates[0].DistanceM
 		}
-		if len(b.distance.updates) != 1 {
-			t.Fatalf("%s: updates = %d", s.Name, len(b.distance.updates))
+		// distance_m is written to the centimetre.
+		if got := recompute(true); math.Abs(got-s.Smoothed.DistanceM) > 0.006 {
+			t.Errorf("%s: with distance_step_over_chord_m %.3f m the recompute = %.3f m, want the recorder's %.3f m",
+				s.Name, s.Expected.StepOverChordM, got, s.Smoothed.DistanceM)
 		}
-		// distance_m is written to the centimetre. The recompute is never
-		// long of the recorder (want <= DistanceM holds by construction).
-		if got := b.distance.updates[0].DistanceM; math.Abs(got-want) > 0.006 {
-			t.Errorf("%s: recompute = %.3f m, want %.3f m (recorder's smoothed figure %.3f m, step-filled %.3f m)",
-				s.Name, got, want, s.Smoothed.DistanceM, s.Smoothed.StepDistanceM)
+		// The run-total rule is never long of the recorder (legacyWant <=
+		// DistanceM holds by construction).
+		if got := recompute(false); math.Abs(got-legacyWant) > 0.006 {
+			t.Errorf("%s: with the run total alone the recompute = %.3f m, want %.3f m (recorder's smoothed figure %.3f m, step-filled %.3f m)",
+				s.Name, got, legacyWant, s.Smoothed.DistanceM, s.Smoothed.StepDistanceM)
 		}
 		checked[s.Name] = true
 	}
-	for _, name := range []string{"gap_with_steps", "gap_chord_steps_short", "trailing_gap_with_steps"} {
+	for _, name := range []string{"gap_with_steps", "gap_chord_steps_short", "trailing_gap_with_steps", "gap_steps_open_gap_cap"} {
 		if !checked[name] {
 			t.Errorf("vector %s no longer fills a gap from the pedometer; the test lost its case", name)
 		}
 	}
 	if mixed == 0 {
-		t.Error("no step-filled vector has gaps on both sides of their chords; the recompute's short case is untested")
+		t.Error("no step-filled vector has gaps on both sides of their chords; the run-total rule's short case is untested")
+	}
+}
+
+// distance_step_over_chord_m is a part of distance_step_filled_m, so it is
+// read only as a finite number from 0 up to it; anything else, and its
+// absence, keeps the run-total rule.
+func TestGapStepCreditM(t *testing.T) {
+	const gapM = 37.52
+	for _, c := range []struct {
+		meta     string
+		want     float64
+		wantRule string
+	}{
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352}`, 352, gapRuleStepOverChord},
+		{`{"distance_step_filled_m":57.6,"distance_step_over_chord_m":0}`, 0, gapRuleStepOverChord},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":386.005}`, 386, gapRuleStepOverChord},
+		{`{"distance_step_filled_m":386}`, 348.48, gapRuleRunTotal},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":null}`, 348.48, gapRuleRunTotal},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":-1}`, 348.48, gapRuleRejected},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":"352"}`, 348.48, gapRuleRejected},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":386.02}`, 348.48, gapRuleRejected},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":1e400}`, 348.48, gapRuleRejected},
+		{`{"distance_step_over_chord_m":5}`, 0, gapRuleRejected},
+	} {
+		meta, err := decodeRunMetadata(json.RawMessage(c.meta))
+		if err != nil {
+			t.Fatalf("%s: %v", c.meta, err)
+		}
+		got, rule := gapStepCreditM(meta, gapM)
+		if math.Abs(got-c.want) > 1e-9 || rule != c.wantRule {
+			t.Errorf("%s: %v (%s), want %v (%s)", c.meta, got, rule, c.want, c.wantRule)
+		}
 	}
 }
 

@@ -127,7 +127,12 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		if pass == EstimatorPassForward {
 			rawDistanceM, cum = replay.ForwardM, replay.ForwardCumM
 		}
-		rawDistanceM += gapStepTopUpM(replay.GapM, metaStepFilledM(meta))
+		topUpM, gapRule := gapStepCreditM(meta, replay.GapM)
+		if gapRule == gapRuleRejected {
+			w.Log.Warn("distance recompute ignored an unusable distance_step_over_chord_m; keeping the run-total rule",
+				"run_id", run.ID)
+		}
+		rawDistanceM += topUpM
 		distanceM := math.Round(rawDistanceM*100) / 100
 
 		// The line follows the figure the run now carries, so only a
@@ -175,6 +180,7 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 			"fixes", replay.Fixes,
 			"pass", pass,
 			"pass_reason", why,
+			"gap_rule", gapRule,
 			"smoothed_sidecar", sidecarSHA != "",
 		)
 		return nil
@@ -208,8 +214,8 @@ func metaStepFilledM(meta map[string]json.RawMessage) float64 {
 	return v
 }
 
-// gapStepTopUpM is what the recompute adds to a replayed pass for the
-// pedometer's share of the run's GPS gaps. The recorder credited each gap
+// gapStepTopUpM is the run-total rule for a run with no usable
+// distance_step_over_chord_m (gapStepCreditM). The recorder credited each gap
 // max(chord lower bound, steps x stride) (spec v1.4 item 9); the replay has
 // no steps, so it credited each gap its chord lower bound, gapM in total,
 // and the recorder's steps arrive only as the run total stepFilledM. The
@@ -220,6 +226,41 @@ func metaStepFilledM(meta map[string]json.RawMessage) float64 {
 // which holds the chords only and so can only make them slower.
 func gapStepTopUpM(gapM, stepFilledM float64) float64 {
 	return math.Max(gapM, stepFilledM) - gapM
+}
+
+// stepOverChordSlackM is how far distance_step_over_chord_m may sit above
+// distance_step_filled_m and still be read: the two are summed separately
+// across a watch's segments, so they can differ in the last bits, but a value
+// a centimetre over is not a figure the recorder produced.
+const stepOverChordSlackM = 0.01
+
+// The three ways gapStepCreditM can credit the gaps, logged with the
+// recompute.
+const (
+	gapRuleStepOverChord = "step_over_chord"
+	gapRuleRunTotal      = "run_total"
+	gapRuleRejected      = "run_total_bad_step_over_chord"
+)
+
+// gapStepCreditM is what the recompute adds to a replayed pass for the
+// pedometer's share of the run's GPS gaps, and which rule gave it. A watch
+// from spec v1.7 on saves distance_step_over_chord_m, the steps' credit over
+// each gap's chord summed, which is exactly what the stepless replay lacks,
+// so it is added as it stands. It is read only when it is a finite number
+// from 0 to distance_step_filled_m (stepOverChordSlackM over), since it is a
+// part of those metres; anything else, and a run saved before the key, falls
+// back to the run-total rule, gapStepTopUpM.
+func gapStepCreditM(meta map[string]json.RawMessage, gapM float64) (float64, string) {
+	stepFilledM := metaStepFilledM(meta)
+	raw, present := meta[schema.MetaDistanceStepOverChordM]
+	if !present || isJSONNull(raw) {
+		return gapStepTopUpM(gapM, stepFilledM), gapRuleRunTotal
+	}
+	var v float64
+	if json.Unmarshal(raw, &v) != nil || math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > stepFilledM+stepOverChordSlackM {
+		return gapStepTopUpM(gapM, stepFilledM), gapRuleRejected
+	}
+	return math.Min(v, stepFilledM), gapRuleStepOverChord
 }
 
 func metaString(meta map[string]json.RawMessage, key string) string {

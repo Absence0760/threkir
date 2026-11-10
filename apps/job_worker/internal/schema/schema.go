@@ -167,6 +167,11 @@ const (
 	// in distance_m. The stored track carries no steps, so a recompute adds
 	// it back to its replay.
 	MetaDistanceStepFilledM = "distance_step_filled_m"
+	// What of distance_step_filled_m the gaps' chord lower bounds would not
+	// have credited (spec v1.7): per gap max(chord, steps) - chord, summed.
+	// A watch recorder writes it beside distance_step_filled_m, and it is
+	// exactly what a stepless replay of the track lacks.
+	MetaDistanceStepOverChordM = "distance_step_over_chord_m"
 	// Stamped true by a recorder whose stored track holds every fix its
 	// distance estimator took, the off-track ones flagged `offTrack`. A
 	// live watch stamp from spec v1.4 on without it names a track that

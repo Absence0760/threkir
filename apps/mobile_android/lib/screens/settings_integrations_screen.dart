@@ -9,6 +9,7 @@ import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../fitness_surface_requests.dart';
 import '../auth_error.dart';
 import '../column_limits.dart';
 import '../integration_visibility.dart';
@@ -399,9 +400,15 @@ class _SettingsIntegrationsScreenState
     } catch (e) {
       debugPrint('settings: MAPTILER_KEY unreadable: $e');
     }
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => RacesScreen(service: _raceService, mapTilerKey: key),
-    ));
+    openFitnessSurface(
+      context,
+      FitnessTab.races,
+      fallback: () => RacesScreen(
+        service: _raceService,
+        mapTilerKey: key,
+        api: widget.apiClient,
+      ),
+    );
   }
 
   void _openParkrunBarcode() {

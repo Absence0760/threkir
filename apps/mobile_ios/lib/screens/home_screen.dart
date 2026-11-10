@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show CustomSemanticsAction;
 import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart' as cm;
 
@@ -48,6 +47,7 @@ import '../training_service.dart';
 import '../today_widget.dart' show TodayWidgetBridge;
 import '../watch_workout_push.dart' show WatchWorkoutBridge;
 import '../fab_clearance.dart';
+import '../fitness_surface_requests.dart';
 import '../help_destination.dart';
 import '../help_guides.dart';
 import '../widgets/billing_issue_banner.dart';
@@ -73,12 +73,10 @@ import 'messages_screen.dart';
 import '../onboarding.dart';
 import '../orphaned_recording.dart';
 import 'plan_new_screen.dart';
-import 'plans_screen.dart';
 import 'profile_screen.dart';
 import 'public_route_screen.dart';
 import 'public_run_screen.dart';
 import 'race_detail_screen.dart';
-import 'races_screen.dart';
 import 'route_detail_screen.dart';
 import 'route_picker_screen.dart';
 import 'run_detail_screen.dart';
@@ -280,6 +278,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingPushTarget.addListener(_onPendingPushTarget);
     pendingSettingsDestination.addListener(_onPendingSettingsDestination);
     pendingHelpDestination.addListener(_onPendingHelpDestination);
+    fitnessSurfaceRequests.addListener(_onFitnessSurfaceRequest);
     pendingClubInviteToken.addListener(_onPendingClubInvite);
     pendingChallengeLink.addListener(_onPendingChallengeLink);
     pendingEntityLink.addListener(_onPendingEntityLink);
@@ -538,11 +537,7 @@ class _HomeScreenState extends State<HomeScreen>
       case PushTargetKind.runPrCard:
         await _openRun(target.id!, sharePr: true);
       case PushTargetKind.plans:
-        await _pushScreen(PlansScreen(
-          training: widget.training,
-          apiClient: api,
-          runStore: widget.runStore,
-        ));
+        _openFitnessTab(FitnessTab.plans);
       case PushTargetKind.plan:
       case PushTargetKind.planWorkout:
         await _pushScreen(planTargetScreen(target,
@@ -689,22 +684,9 @@ class _HomeScreenState extends State<HomeScreen>
       case HelpDestination.notifications:
         if (api != null) await _openPushTarget(api, PushTarget.inbox);
       case HelpDestination.runs:
-        // The run list is a Fitness hub tab, not a pushable screen: return to
-        // the shell and select it, as the Log action does for Gym/Nutrition.
-        final shell = ModalRoute.of(context);
-        Navigator.of(context).popUntil((route) => route == shell);
-        _fitnessTab.value = FitnessTab.runs;
-        _goToPage(_pageFitness);
+        _openFitnessTab(FitnessTab.runs);
       case HelpDestination.races:
-        String? key;
-        try {
-          final raw = (dotenv.env['MAPTILER_KEY'] ?? '').trim();
-          if (raw.isNotEmpty) key = raw;
-        } catch (e) {
-          debugPrint('home: MAPTILER_KEY unreadable: $e');
-        }
-        await _pushScreen(
-            RacesScreen(service: RaceService(), mapTilerKey: key));
+        _openFitnessTab(FitnessTab.races);
       case HelpDestination.integrations:
         await _pushScreen(
             _settingsDestinationScreen(SettingsDestination.integrations));
@@ -729,6 +711,22 @@ class _HomeScreenState extends State<HomeScreen>
         apiClient: api,
         routeStore: widget.routeStore,
       ));
+
+  /// The run list and the run surface's sections are Fitness hub tabs, not
+  /// pushable screens: return to the shell and select the tab, as the Log
+  /// action does for Gym and Nutrition (decisions § 2437).
+  void _openFitnessTab(FitnessTab tab) {
+    if (!mounted) return;
+    final shell = ModalRoute.of(context);
+    Navigator.of(context).popUntil((route) => route == shell);
+    _fitnessTab.value = tab;
+    _goToPage(_pageFitness);
+  }
+
+  void _onFitnessSurfaceRequest() {
+    final tab = fitnessSurfaceRequests.take();
+    if (tab != null) _openFitnessTab(tab);
+  }
 
   Future<void> _pushScreen(Widget screen) {
     if (!mounted) return Future<void>.value();
@@ -971,6 +969,7 @@ class _HomeScreenState extends State<HomeScreen>
     pendingSettingsDestination
         .removeListener(_onPendingSettingsDestination);
     pendingHelpDestination.removeListener(_onPendingHelpDestination);
+    fitnessSurfaceRequests.removeListener(_onFitnessSurfaceRequest);
     pendingClubInviteToken.removeListener(_onPendingClubInvite);
     pendingChallengeLink.removeListener(_onPendingChallengeLink);
     pendingEntityLink.removeListener(_onPendingEntityLink);

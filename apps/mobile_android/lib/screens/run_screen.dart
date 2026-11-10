@@ -23,6 +23,7 @@ import 'package:ui_kit/ui_kit.dart'
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../fitness_surface_requests.dart';
 import '../auth_error.dart';
 import '../audio_cues.dart';
 import '../backend_timeout.dart';
@@ -5074,12 +5075,12 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                                   ),
                                 );
                               } else {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => PlansScreen(
-                                      training: widget.training,
-                                      apiClient: widget.apiClient,
-                                    ),
+                                await openFitnessSurface(
+                                  context,
+                                  FitnessTab.plans,
+                                  fallback: () => PlansScreen(
+                                    training: widget.training,
+                                    apiClient: widget.apiClient,
                                   ),
                                 );
                               }

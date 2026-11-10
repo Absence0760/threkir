@@ -17,6 +17,7 @@ import 'package:ui_kit/ui_kit.dart'
         reduceMotion,
         syncMotionLoop;
 
+import '../fitness_surface_requests.dart';
 import '../ai_disclosure.dart';
 import '../ai_disclosure_memo.dart';
 import '../backend_timeout.dart';
@@ -1607,10 +1608,12 @@ class _CoachScreenState extends State<CoachScreen> {
   }
 
   void _openRaces() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            RacesScreen(service: widget.raceService ?? RaceService()),
+    openFitnessSurface(
+      context,
+      FitnessTab.races,
+      fallback: () => RacesScreen(
+        service: widget.raceService ?? RaceService(),
+        api: widget.api,
       ),
     );
   }

@@ -114,8 +114,10 @@ Two extra rules for FKs:
   blocking window and the deadlock surface against live app traffic. Split the
   add-`NOT VALID` steps across per-table migrations (or at least keep each
   table's scan in its own `VALIDATE`).
-- **Every new FK ships with a covering index** on the referencing column, added
-  in the same migration as the FK — an unindexed FK forces a sequential scan of
+- **Every new FK ships with a covering index** on the referencing column, in
+  the same release as the FK. When the file that adds the FK also adds the
+  column (`ACCESS EXCLUSIVE`), build the index in its own later file (§ Index
+  builds — alone in their file) — an unindexed FK forces a sequential scan of
   the child table on every delete/update of the parent, and `fk_covering_index_test.sql`
   fails the pgtap job without it. See `apps/backend/CLAUDE.md` § "New policies
   wrap auth.* …".
@@ -123,6 +125,69 @@ Two extra rules for FKs:
 `SET NOT NULL` on an existing big table has the same scan hazard: prefer adding a
 `NOT VALID CHECK (col IS NOT NULL)`, `VALIDATE` it, then `SET NOT NULL` (PG12+
 skips its own scan by trusting the validated constraint).
+
+## One table per migration
+
+Each migration file is applied as ONE transaction (`apply-pending-migrations.sh`
+wraps it in `begin; … commit;` with its ledger row, and the Supabase CLI wraps it
+the same way), and every lock a statement takes is held until that commit. So a
+file that takes `ACCESS EXCLUSIVE` on `events`, then `race_sessions`, then
+`race_pings`, then `notifications` holds all four until its last statement, and
+`race_pings` inserts stall for the whole file, not for the instant its own
+`ALTER` needed. Several strong locks in sequence also widen the deadlock surface:
+a run save that holds a `runs` row lock and then inserts into `jobs` deadlocks
+against a migration that holds `jobs` and wants `runs`.
+
+Write one table's strong-lock DDL per file, ordered so each file's dependencies
+come first (columns before the `language sql` functions and views that read
+them, an index before the job that relies on it). `20271121002400` and
+`20271117002392` were split this way before `backend@1.0.38` shipped
+([decisions § 2428](../architecture/decisions.md)).
+
+## Index builds — alone in their file
+
+A non-concurrent `CREATE INDEX` reads the whole heap under `SHARE`: writers wait
+for the scan, readers do not. That holds only when nothing stronger is held. If
+the same file already took `ACCESS EXCLUSIVE` on the table (an `ADD COLUMN`, a
+`DROP`/`ADD CONSTRAINT`, a `DROP TRIGGER`, a policy change), that lock is still
+held during the build, and **readers wait for the scan too**. A partial index
+whose predicate matches no row is still a full heap scan.
+
+Put the index in its own later migration with `create index if not exists`:
+
+```sql
+-- 20271124002408: catalogue-only, a brief ACCESS EXCLUSIVE.
+alter table notifications add column course_alert_id uuid;
+
+-- 20271124100001: the build, alone, under SHARE.
+create index if not exists notifications_course_alert_id
+  on notifications (course_alert_id) where course_alert_id is not null;
+```
+
+The forward guard enforces this on the high-volume tables
+(`index_under_exclusive`, below).
+
+## Lock timeout on apply
+
+`apps/backend/scripts/apply-pending-migrations.sh` opens every file's
+transaction with `set local lock_timeout = '5s'`. Without it, an `ACCESS
+EXCLUSIVE` request queued behind a long reader (a report, a stuck idle-in-
+transaction session) waits indefinitely, and every later query on that table
+queues behind the request, so a migration that needs the lock for a millisecond
+stops the table for as long as the reader runs. With it, the waiting statement
+fails with SQLSTATE `55P03` after 5 s, the whole file rolls back (its ledger row
+is in the same transaction, so the ledger stays honest), and the script retries
+the file from the top: up to 5 attempts, sleeping 5, 10, 20 and 40 s between
+them. Any other error is not retried. When the last attempt also times out, the
+deploy fails with an `::error::` naming the version; find the holder in
+`pg_stat_activity` / `pg_locks`, let it finish or end it, and re-run the
+release.
+
+`MIGRATION_LOCK_TIMEOUT`, `MIGRATION_LOCK_ATTEMPTS` and `MIGRATION_RETRY_BASE_S`
+override the three numbers. A file that takes several locks either gets them all
+within the timeout or gets none of them, which is another reason to keep each
+file to one table. `apply_pending_migrations.test.mjs` pins the contract against
+a stub `psql`.
 
 ## Large backfills — one pass, batched, off the hot table
 
@@ -154,7 +219,8 @@ touched row, bloats the table, and holds those locks for the whole statement.
 | `ADD COLUMN … DEFAULT <volatile>` (`now()`, `gen_random_uuid()`, a function) | `ACCESS EXCLUSIVE` + full rewrite | **No** |
 | `SET NOT NULL` | `ACCESS EXCLUSIVE` + full scan | **No** — use the `NOT VALID CHECK` route |
 | `ALTER COLUMN … TYPE` | `ACCESS EXCLUSIVE` + full rewrite + index rebuild | **No** — add-new-column + batched backfill + swap |
-| `CREATE INDEX` | `ACCESS EXCLUSIVE` (blocks writes for the build) | **No** — but `CONCURRENTLY` can't run in Supabase's wrapped txn (see below) |
+| `CREATE INDEX` | `SHARE` for the build's full heap scan (blocks writes, not reads) | Only alone in its file — after an `ACCESS EXCLUSIVE` on the same table in that file, reads block too (§ Index builds). `CONCURRENTLY` can't run in the wrapped txn (see below) |
+| `DROP TRIGGER [IF EXISTS]` / `CREATE`/`DROP`/`ALTER POLICY` | `ACCESS EXCLUSIVE`, catalogue-only | Yes if the file commits promptly — the lock is held to commit |
 | `CREATE TRIGGER` | `SHARE ROW EXCLUSIVE`, catalogue-only | Yes for readers, no for writers — blocks concurrent INSERT/UPDATE/DELETE on that table only, for an O(1) change |
 | `CREATE OR REPLACE FUNCTION` (incl. a trigger's function) | none on any table | Yes — swapping a trigger's *body* never touches the table the trigger is on |
 | `GRANT` / `REVOKE` (table- or column-level) | none on the target relation — an `AccessShareLock` on the catalogue object only | Yes — no scan, no rewrite, no reader or writer blocked |
@@ -213,10 +279,13 @@ grandfathers them by name.
 
 ## Forward guard
 
-`apps/backend/scripts/check_migration_online_safety.mjs` fails CI on either
-shape that scans a high-volume table under a lock that blocks writers: a CHECK
-or FK added without `NOT VALID` (`blocking_add`), and a `VALIDATE CONSTRAINT`
-in the same file as the DDL whose lock is still held (`same_txn_validate`). It
+`apps/backend/scripts/check_migration_online_safety.mjs` fails CI on three
+shapes that scan a high-volume table under a lock that blocks more than the scan
+needs: a CHECK or FK added without `NOT VALID` (`blocking_add`), a `VALIDATE
+CONSTRAINT` in the same file as the DDL whose lock is still held
+(`same_txn_validate`), and a non-concurrent `CREATE INDEX` on a table the same
+file already took `ACCESS EXCLUSIVE` on (`index_under_exclusive`; the error names
+the table and the earlier statement). It
 scans **every** committed migration on every run, and it is deliberately narrow
 only in the table set it guards (constraints on small config tables don't trip
 it). It runs in the `parity-types` CI job right after the version-uniqueness
@@ -229,7 +298,8 @@ node apps/backend/scripts/check_migration_online_safety.mjs
 
 **Adding a migration requires no edit to the guard.** The already-applied
 violations are grandfathered one at a time in `GRANDFATHERED_VIOLATIONS`, each
-naming a `{filename, kind, table, constraint}` tuple, rather than by a version
+naming a `{filename, kind, table, constraint}` tuple (for
+`index_under_exclusive`, `constraint` is the index's name), rather than by a version
 cutoff. The `kind` is part of the key so an entry vouching for a blocking add
 cannot silently also vouch for a same-transaction validate in the same file. The
 cutoff it replaces
@@ -253,8 +323,11 @@ Before merging a migration, for each statement:
 - [ ] `ADD CONSTRAINT … CHECK/FK` on a high-volume table → `NOT VALID` + a
       `VALIDATE CONSTRAINT` in a **later migration file** — same-file, the
       VALIDATE scans under the lock the ADD is still holding.
-- [ ] New FK → covering index in the same migration; multi-table FK work split
-      one table per migration.
+- [ ] New FK → covering index in the same release; multi-table work split one
+      table per migration.
+- [ ] `CREATE INDEX` on a high-volume table → in a file that took no `ACCESS
+      EXCLUSIVE` on that table (no `ADD COLUMN`, constraint swap, `DROP
+      TRIGGER` or policy change before it).
 - [ ] `SET NOT NULL` on a big table → `NOT VALID CHECK (col IS NOT NULL)` +
       `VALIDATE` + `SET NOT NULL`, not a raw `SET NOT NULL`.
 - [ ] `ADD COLUMN` default is a **constant** (fast path), never a volatile

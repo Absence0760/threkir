@@ -11,15 +11,16 @@ To re-render, with that repo checked out:
 
 `scripts/brand/render_mascot.py` poses the rig and renders each file at the
 size it ships at (Eevee, the model's flat toon shading, a transparent film).
-The wrapper only trims the transparent margin, writes the rest-day WebP twins, copies the
-phone assets and regenerates `apps/web/src/lib/share/grisnir_badge_data.ts`.
-Nothing is scaled down from a larger still.
+The wrapper only trims the transparent margin, writes the rest-day WebP
+twins, copies the phone assets and regenerates
+`apps/web/src/lib/share/grisnir_badge_data.ts`. Nothing is scaled down from a
+larger still.
 
 ## Files
 
 | File | Size (px) | Bytes | Pose | Used by |
 |---|---|---|---|---|
-| `grisnir-badge-256.png` | 166 × 248 | 35,964 | Standing, 3/4 view | Web run share card (map style); inlined as `grisnir_badge_data.ts` into the `/og/{run,route,badge,challenge,recap}` unfurls and the recap share image; copied to `apps/mobile_{android,ios}/assets/brand/grisnir/` for the phone's run and recap share cards |
+| `grisnir-badge-256.png` | 166 × 248 | 35,964 | Standing, 3/4 view | Web run share card (map style); inlined as `grisnir_badge_data.ts` into the `/og/{run,route,badge,challenge,recap}` unfurls; copied to `apps/mobile_{android,ios}/assets/brand/grisnir/` for the phone's run share card |
 | `grisnir-rest-192.png` / `.webp` | 188 × 156 | 23,044 / 14,986 | Lying down, legs folded under | Web dashboard rest day, 1x |
 | `grisnir-rest-384.png` / `.webp` | 368 × 304 | 60,891 / 37,986 | Same | Web dashboard rest day, 2x; copied to the phones for Home's rest-day card |
 

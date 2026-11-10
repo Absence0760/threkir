@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Write apps/web/src/lib/share/grisnir_badge_data.ts from the rendered badge
 // PNG, so a share card built as an SVG string can embed Grisnir as a data URI
-// (resvg in the share Lambdas loads no files, and an SVG drawn to a canvas in
-// the browser loads no external images). `--check` fails when the module and
-// the PNG disagree.
+// (resvg in the share Lambdas loads no files). `--check` fails when the
+// module and the PNG disagree; apps/web/src/lib/share/grisnir_badge.test.ts
+// pins the same in CI.
 //
 //   node scripts/brand/gen_grisnir_badge_module.mjs [--check]
 

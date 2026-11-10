@@ -47,8 +47,8 @@ for app in mobile_android mobile_ios; do
   command cp -f "$WEB/grisnir-badge-256.png" "$WEB/grisnir-rest-384.png" "$dir/"
 done
 
-# Share cards rasterised from an SVG string (the /og/* unfurls in a Lambda,
-# the recap image in the browser) can only carry the image inline.
+# Share cards rasterised from an SVG string (the /og/* unfurls, in a Lambda)
+# can only carry the image inline.
 node "$ROOT/scripts/brand/gen_grisnir_badge_module.mjs"
 
 magick identify -format '%f %wx%h %b\n' "$WEB"/grisnir-*.png "$WEB"/grisnir-*.webp

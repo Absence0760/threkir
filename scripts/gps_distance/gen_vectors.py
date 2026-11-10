@@ -224,6 +224,20 @@ add("gap_step_stamped_inside_delivered_late", "v1.6: 5 s step batches across a 3
 add("gap_step_late_sample_faster_than_runner", "v1.6: the late batch of gap_step_stamped_inside_delivered_late counts 8 steps in its 1 s, twice the runner's rate; bounded to its own (50, 51] it credits 8 m and the sample at 57.5 shares (51, 55], so the steps credit 121.54 m of the 120 m gap (229.54 m); the unbounded share would credit the rest of the gap at 8 m/s, 140 m (248.00 m)",
     late_steps(line(list(range(26)) + [55, 56, 57], [t + 0.5 for t in range(26)] + [30, 35, 40, 45, 50, 51, 57.5],
                     east_at={55: 110.0, 56: 114.0, 57: 118.0}, count_at={51: 208}), 51.0, 55.0), stride=1.0, learn_stride=False)
+add("gap_steps_late_sample_no_stride_learning", "v1.6: the late-delivered gap of gap_step_stamped_inside_delivered_late with stride learning on, then 30 s of running and a second 30 s stall the runner loops back across; the samples at 51 and 57.5 cover steps inside the gap that GPS measured no metres for, so neither feeds the stride window, the learned 1 m stride holds, and the second gap's steps credit 120 m (468.00 m, the true path); feeding them learned 0.912 m at 62.5, 0.930 m by 85, and read 459.55 m",
+    late_steps(line(list(range(26)) + list(range(55, 86)) + [115, 116, 117],
+                    [t + 0.5 for t in range(26)] + [30, 35, 40, 45, 50, 51, 57.5] + [t + 0.5 for t in range(58, 117)],
+                    east_at={t: 110.0 + 4 * (t - 55) for t in range(55, 86)} | {115: 240.0, 116: 244.0, 117: 248.0}),
+               51.0, 55.0), stride=1.0)
+def lag_every_tenth():
+    ev = line(list(range(61)), [k + 0.5 for k in range(60)], finish=60.0)
+    for k in range(9, 60, 10):
+        ev = late_steps(ev, k + 0.5, k + 1)
+    return ev
+
+
+add("steps_stamped_before_last_fix_no_stride", "v1.6: 60 s at 4 m/s with 1 Hz fixes and steps, no gap, learning on and no seed; every tenth sample is delivered after the next fix, so it is stamped before the last fix and empties the stride window, which then never reaches 50 steps: no stride is learned (feeding those samples learns 0.997 m); the distance is the same 240 m either way",
+    lag_every_tenth())
 add("gap_steps_open_gap_cap", "v1.6: nine 12 s gaps whose fixes zigzag 10 m apart, with no step sample until one after the ninth; only MAX_OPEN_GAPS = 8 gaps can still claim a share, so the oldest keeps its chord credit and its 46 m of steps after the 25.5 sample are dropped (the cap only under-credits)",
     line(list(range(26)) + [25 + 12 * k for k in range(1, 10)], [t + 0.5 for t in range(26)] + [133.5],
          east_at={25 + 12 * k: (110.0 if k % 2 else 100.0) for k in range(1, 10)} | {25: 100.0}), stride=1.0, learn_stride=False)

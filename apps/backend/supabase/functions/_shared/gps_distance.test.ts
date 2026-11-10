@@ -79,7 +79,7 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 Deno.test('the port implements the spec v1.6 fixture: version, scenario set and every constant', () => {
 	assertEquals(fixture.spec, 'gps-distance-estimator v1.6');
 	assertEquals(SPEC_VERSION, '1.6');
-	assert(fixture.scenarios.length >= 44, `only ${fixture.scenarios.length} scenarios`);
+	assert(fixture.scenarios.length >= 46, `only ${fixture.scenarios.length} scenarios`);
 	assert(TOL > 0 && TOL <= 0.001);
 	assert(POS_TOL > 0 && POS_TOL <= 1e-8);
 	const port = gps as unknown as Record<string, unknown>;

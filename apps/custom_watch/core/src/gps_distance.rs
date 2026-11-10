@@ -683,7 +683,7 @@ impl GpsDistanceEstimator {
             return;
         }
         let d = cumulative_steps - prev;
-        self.attribute_steps(prev_t, t, d);
+        let in_gap = self.attribute_steps(prev_t, t, d);
         if d > 0 {
             if self.steps_seen {
                 let span = t - self.last_step_inc_t;
@@ -695,8 +695,10 @@ impl GpsDistanceEstimator {
             self.last_step_inc_t = t;
             self.zupt_released = false;
         }
+        // A sample whose interval reaches into a gap, or stamped before the last
+        // fix, holds steps GPS measured no metres for, so it must not teach stride.
         if let Some(fix_t) = self.t {
-            if t - fix_t <= self.fresh_fix_s {
+            if !in_gap && t - fix_t >= 0.0 && t - fix_t <= self.fresh_fix_s {
                 if !self.stride_ok {
                     return;
                 }
@@ -722,9 +724,13 @@ impl GpsDistanceEstimator {
     /// v1.6: a sample's `d` steps were taken across (prev_t, t], so each part
     /// of that interval gets its share. The part after the last fix is
     /// buffered; the part inside each gap a re-anchor closed since the
-    /// previous sample tops that gap's credit up to its steps.
-    fn attribute_steps(&mut self, prev_t: f64, t: f64, d: i64) {
+    /// previous sample tops that gap's credit up to its steps. Returns whether
+    /// (prev_t, t] overlaps any open gap.
+    fn attribute_steps(&mut self, prev_t: f64, t: f64, d: i64) -> bool {
         let open = core::mem::take(&mut self.open_gaps) as usize;
+        let in_gap = self.gaps[..open]
+            .iter()
+            .any(|&(start_t, end_t, _)| end_t.min(t) > prev_t.max(start_t));
         let rate = match self.stride_m {
             Some(stride) if d > 0 => (d as f64 * stride / (t - prev_t)).min(self.max_speed_mps),
             _ => 0.0,
@@ -756,6 +762,7 @@ impl GpsDistanceEstimator {
                 self.open_gaps += 1;
             }
         }
+        in_gap
     }
 
     /// End of run: commit buffered steps if the trailing gap exceeds [`GAP_S`]
@@ -1118,7 +1125,11 @@ mod tests {
         let before = e.distance_m();
         let steps = e.step_distance_m();
         e.add_steps(51.0, 204);
-        assert!((e.distance_m() - before - 1.0).abs() < 1e-9, "{}", e.distance_m());
+        assert!(
+            (e.distance_m() - before - 1.0).abs() < 1e-9,
+            "{}",
+            e.distance_m()
+        );
         assert!(
             (e.step_distance_m() - steps - 1.0).abs() < 1e-9,
             "{}",

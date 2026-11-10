@@ -561,7 +561,7 @@ class GpsDistanceEstimator {
       return;
     }
     final d = cumulativeSteps - prev;
-    _attributeSteps(prevT, t, d);
+    final inGap = _attributeSteps(prevT, t, d);
     if (d > 0) {
       final lastInc = _lastStepIncT;
       if (lastInc != null) {
@@ -575,7 +575,9 @@ class GpsDistanceEstimator {
       _zuptReleased = false;
     }
     final fixT = _t;
-    if (fixT != null && t - fixT <= _freshFixS) {
+    // A sample whose interval reaches into a gap, or stamped before the last
+    // fix, holds steps GPS measured no metres for, so it must not teach stride.
+    if (fixT != null && !inGap && t - fixT >= 0 && t - fixT <= _freshFixS) {
       if (!_strideOk) return;
       _winSteps += d;
       if (_winSteps >= strideWindowSteps) {
@@ -598,14 +600,20 @@ class GpsDistanceEstimator {
   /// v1.6: a sample's [d] steps were taken across (prevT, t], so each part
   /// of that interval gets its share. The part after the last fix is
   /// buffered; the part inside each gap a re-anchor closed since the
-  /// previous sample tops that gap's credit up to its steps.
-  void _attributeSteps(double prevT, double t, int d) {
+  /// previous sample tops that gap's credit up to its steps. A gap that
+  /// ends after t stays open, less what this sample took from its GPS
+  /// credit, so the next sample shares the rest of it. Returns whether
+  /// (prevT, t] overlaps any open gap.
+  bool _attributeSteps(double prevT, double t, int d) {
     final gaps = List.of(_gaps);
     _gaps.clear();
+    final inGap = gaps.any(
+      (gap) => math.min(gap.endT, t) > math.max(prevT, gap.startT),
+    );
     final stride = _strideM;
     if (d <= 0 || stride == null) {
       _gaps.addAll(gaps.where((gap) => gap.endT > t));
-      return;
+      return inGap;
     }
     final rate = math.min(d * stride / (t - prevT), maxSpeedMps);
     final fixT = _t;
@@ -638,6 +646,7 @@ class GpsDistanceEstimator {
         ));
       }
     }
+    return inGap;
   }
 
   /// End of run: commit buffered steps if the trailing gap exceeds the gap window.

@@ -623,7 +623,7 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		return
 	}
 	d := cumulativeSteps - prev
-	e.attributeSteps(prevT, t, d)
+	inGap := e.attributeSteps(prevT, t, d)
 	if d > 0 {
 		if e.stepsSeen {
 			span := t - e.lastStepIncT
@@ -635,7 +635,9 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 		e.lastStepIncT = t
 		e.zuptReleased = false
 	}
-	if e.hasT && t-e.t <= e.freshFixS {
+	// A sample whose interval reaches into a gap, or stamped before the last
+	// fix, holds steps GPS measured no metres for, so it must not teach stride.
+	if e.hasT && !inGap && t-e.t >= 0 && t-e.t <= e.freshFixS {
 		if !e.strideOK {
 			return
 		}
@@ -659,17 +661,26 @@ func (e *Estimator) AddSteps(t float64, cumulativeSteps int) {
 // attributeSteps (v1.6): a sample's d steps were taken across (prevT, t],
 // so each part of that interval gets its share. The part after the last fix
 // is buffered; the part inside each gap a re-anchor closed since the
-// previous sample tops that gap's credit up to its steps.
-func (e *Estimator) attributeSteps(prevT, t float64, d int) {
+// previous sample tops that gap's credit up to its steps. A gap that ends
+// after t stays open, less what this sample took from its GPS credit, so the
+// next sample shares the rest of it. It reports whether (prevT, t] overlaps
+// any open gap.
+func (e *Estimator) attributeSteps(prevT, t float64, d int) bool {
 	gaps := e.gaps
 	e.gaps = nil
+	inGap := false
+	for _, gap := range gaps {
+		if math.Min(gap.endT, t) > math.Max(prevT, gap.startT) {
+			inGap = true
+		}
+	}
 	if d <= 0 || e.StrideM == nil {
 		for _, gap := range gaps {
 			if gap.endT > t {
 				e.gaps = append(e.gaps, gap)
 			}
 		}
-		return
+		return inGap
 	}
 	rate := math.Min(float64(d)*(*e.StrideM)/(t-prevT), e.MaxSpeedMps)
 	lo := prevT
@@ -702,6 +713,7 @@ func (e *Estimator) attributeSteps(prevT, t float64, d int) {
 			e.gaps = append(e.gaps, gap)
 		}
 	}
+	return inGap
 }
 
 // Finish ends the run: commits buffered steps if the trailing gap

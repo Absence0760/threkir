@@ -370,7 +370,7 @@ class GpsDistanceEstimator(
         lastStepT = t
         if (prev == null || cumulativeSteps < prev || prevT == null || t <= prevT) return
         val d = cumulativeSteps - prev
-        attributeSteps(prevT, t, d)
+        val inGap = attributeSteps(prevT, t, d)
         if (d > 0) {
             if (stepsSeen) {
                 val span = t - lastStepIncT
@@ -381,7 +381,9 @@ class GpsDistanceEstimator(
             zuptReleased = false
         }
         val fixT = lastT
-        if (fixT != null && t - fixT <= freshFixS) {
+        // A sample whose interval reaches into a gap, or stamped before the last
+        // fix, holds steps GPS measured no metres for, so it must not teach stride.
+        if (fixT != null && !inGap && t - fixT >= 0 && t - fixT <= freshFixS) {
             if (!strideOk) return
             winSteps += d
             if (winSteps >= STRIDE_WINDOW_STEPS) {
@@ -406,14 +408,18 @@ class GpsDistanceEstimator(
     /// v1.6: a sample's [d] steps were taken across (prevT, t], so each part
     /// of that interval gets its share. The part after the last fix is
     /// buffered; the part inside each gap a re-anchor closed since the
-    /// previous sample tops that gap's credit up to its steps.
-    private fun attributeSteps(prevT: Double, t: Double, d: Long) {
+    /// previous sample tops that gap's credit up to its steps. A gap that
+    /// ends after t stays open, less what this sample took from its GPS
+    /// credit, so the next sample shares the rest of it. Returns whether
+    /// (prevT, t] overlaps any open gap.
+    private fun attributeSteps(prevT: Double, t: Double, d: Long): Boolean {
         val closed = gaps.toList()
         gaps.clear()
+        val inGap = closed.any { (startT, endT) -> min(endT, t) > max(prevT, startT) }
         val stride = strideM
         if (stride == null || d <= 0) {
             closed.filterTo(gaps) { it.second > t }
-            return
+            return inGap
         }
         val rate = min(d * stride / (t - prevT), maxSpeedMps)
         val fixT = lastT
@@ -431,6 +437,7 @@ class GpsDistanceEstimator(
             }
             if (endT > t) gaps.addLast(Triple(startT, endT, topUpM - take))
         }
+        return inGap
     }
 
     /// A fresh estimator for the segment after a pause or a source switch:

@@ -511,7 +511,7 @@ final class GpsDistanceEstimator {
         lastStepT = t
         guard let prev, let prevT, cumulativeSteps >= prev, t > prevT else { return }
         let d = cumulativeSteps - prev
-        attributeSteps(prevT: prevT, t: t, d: d)
+        let inGap = attributeSteps(prevT: prevT, t: t, d: d)
         if d > 0 {
             if stepsSeen {
                 let span = t - lastStepIncT
@@ -521,7 +521,9 @@ final class GpsDistanceEstimator {
             lastStepIncT = t
             zuptReleased = false
         }
-        if let fixT = self.t, t - fixT <= freshFixWindowS {
+        // A sample whose interval reaches into a gap, or stamped before the last
+        // fix, holds steps GPS measured no metres for, so it must not teach stride.
+        if let fixT = self.t, !inGap, t - fixT >= 0, t - fixT <= freshFixWindowS {
             if !strideOk { return }
             winSteps += d
             if winSteps >= Self.strideWindowSteps {
@@ -545,13 +547,17 @@ final class GpsDistanceEstimator {
     /// v1.6: a sample's `d` steps were taken across (prevT, t], so each part
     /// of that interval gets its share. The part after the last fix is
     /// buffered; the part inside each gap a re-anchor closed since the
-    /// previous sample tops that gap's credit up to its steps.
-    private func attributeSteps(prevT: Double, t: Double, d: Int) {
+    /// previous sample tops that gap's credit up to its steps. A gap that
+    /// ends after t stays open, less what this sample took from its GPS
+    /// credit, so the next sample shares the rest of it. Returns whether
+    /// (prevT, t] overlaps any open gap.
+    private func attributeSteps(prevT: Double, t: Double, d: Int) -> Bool {
         let closed = gaps
         gaps.removeAll()
+        let inGap = closed.contains { min($0.endT, t) > max(prevT, $0.startT) }
         guard d > 0, let stride = strideM else {
             gaps = closed.filter { $0.endT > t }
-            return
+            return inGap
         }
         let rate = min(Double(d) * stride / (t - prevT), maxSpeedMps)
         let lo = self.t.map { max(prevT, $0) } ?? prevT
@@ -568,6 +574,7 @@ final class GpsDistanceEstimator {
             }
             if gap.endT > t { gaps.append((startT: gap.startT, endT: gap.endT, topUpM: gap.topUpM - take)) }
         }
+        return inGap
     }
 
     /// End of run: commit buffered steps if the trailing gap exceeds `gapWindowS`.

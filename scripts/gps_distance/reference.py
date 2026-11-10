@@ -437,7 +437,7 @@ class GpsDistanceEstimator:
         if prev is None or cumulative_steps < prev or prev_t is None or t <= prev_t:
             return
         d = cumulative_steps - prev
-        self._attribute_steps(prev_t, t, d)
+        in_gap = self._attribute_steps(prev_t, t, d)
         if d > 0:
             if self._last_step_inc_t is not None:
                 span = t - self._last_step_inc_t
@@ -446,7 +446,9 @@ class GpsDistanceEstimator:
             self._steps_seen = True
             self._last_step_inc_t = t
             self._zupt_released = False
-        if self._t is not None and t - self._t <= self._fresh_fix_s:
+        # A sample whose interval reaches into a gap, or stamped before the last fix,
+        # holds steps GPS measured no metres for, so it must not teach stride.
+        if self._t is not None and not in_gap and 0.0 <= t - self._t <= self._fresh_fix_s:
             if not self._stride_ok:
                 return
             self._win_steps += d
@@ -464,12 +466,14 @@ class GpsDistanceEstimator:
         interval gets its share. The part after the last fix is buffered; the part
         inside each gap a re-anchor closed since the previous sample tops that gap's
         credit up to its steps. A gap that ends after t stays open, less what this
-        sample took from its GPS credit, so the next sample shares the rest of it."""
+        sample took from its GPS credit, so the next sample shares the rest of it.
+        Returns whether (prev_t, t] overlaps any open gap."""
         gaps, self._gaps = self._gaps, []
+        in_gap = any(min(g1, t) > max(prev_t, g0) for g0, g1, _, _ in gaps)
         stride = self.stride_m
         if d <= 0 or stride is None:
             self._gaps = [g for g in gaps if g[1] > t]
-            return
+            return in_gap
         rate = min(d * stride / (t - prev_t), self.max_speed_mps)
         lo = prev_t if self._t is None else max(prev_t, self._t)
         if t > lo:
@@ -490,6 +494,7 @@ class GpsDistanceEstimator:
                         self.records[k]["step_distance_m"] += late
             if g1 > t:
                 self._gaps.append([g0, g1, top_up - take, rec])
+        return in_gap
 
     def finish(self, t):
         """End of run: commit buffered steps if the trailing gap exceeds the gap window."""

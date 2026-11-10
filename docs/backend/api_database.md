@@ -744,6 +744,15 @@ Seven RPCs, all SECURITY DEFINER, all (except the chrome gate) hard-denying a no
 
 Pinned by `apps/backend/supabase/tests/admin_moderation_test.sql` (22 pgtap subtests; the load-bearing assertions are admin-allowed vs non-admin/anon-DENIED on every RPC) + `apps/web/tests-e2e/admin/reports.spec.ts`.
 
+#### Home metrics (operator-only reads, migration `20271201000001`, decisions § 2440)
+
+The two weekly numbers behind the Home redesign's revisit trigger ([multi_modal.md § Home](../features/multi_modal.md), decisions § 2387), read at `/admin/home-metrics`. Two `stable` SECURITY DEFINER RPCs with `search_path = ''`, each raising `42501` unless `private.is_admin(auth.uid())`, revoked from `public` + `anon` and granted to `authenticated`. Both return one row per ISO week (Monday start, **UTC**) for the current week and the 15 before it, oldest first, every week present even when empty; counts are `bigint`, the percentage is `numeric` rounded to one decimal and **null over a zero denominator**. Aggregates only — no user id leaves either function.
+
+- `admin_home_coach_engagement_weeks()` → `(week_start date, active_runners bigint, coached_runners bigint, coached_pct numeric)`. Active = a `runs` row whose `started_at` falls in the week (UTC date); coached = of those, a `user_coach_usage` row in the same week with `message_count > 0`. Coach use without a run is in neither count. `user_coach_usage` has no entry-point column, so this is Coach use from every entry point.
+- `admin_home_plan_completion_weeks()` → `(week_start date, scheduled_days bigint, completed_days bigint, completed_pct numeric)`. Scheduled = `plan_workouts` with `kind <> 'rest'` and `scheduled_date` before today (UTC), on plans that are not `is_template`, not `abandoned`, and for a `paused` plan only before the UTC date of `paused_at`; completed = `completed_run_id is not null or manually_completed`. A skipped day stays scheduled. Abandonment carries no timestamp, so abandoning a plan removes its earlier weeks from the counts too.
+
+Pinned by `apps/backend/supabase/tests/admin_home_metrics_test.sql` (anon has no EXECUTE, non-admin refused, result types carry no user id, the arithmetic and the null percentage) + `apps/web/tests-e2e/admin/home-metrics.spec.ts`.
+
 #### Auto-hide on reports (`shadow_hidden`, migration `20270218_001`, decisions §172)
 
 `clubs.shadow_hidden` / `routes.shadow_hidden` / `user_profiles.shadow_hidden` (each `boolean not null default false`) are a soft, reversible hide. An AFTER INSERT trigger on `reports` calls the SECURITY DEFINER `auto_hide_target(kind, id)`, which counts DISTINCT pending reporters with **≥ 5 public runs** each (the `is_public`-run reputation gate, E3) and flips the target's `shadow_hidden` at **≥ 3** — notifying the owner once on the false→true transition with the new `content_hidden` notification kind. Only `user` / `club` / `route` participate (the function early-returns for `comment` / `club_post` / `run` — no column, manual takedown only). `auto_hide_target` has no anon/authenticated grant; the trigger is the sole caller.

@@ -510,50 +510,27 @@ user logs**, not a fixed grid. The ordering algorithm:
 > There is no product analytics and this change adds none (§ 1922's
 > query-measured pattern; a client event stream would be a new personal-data
 > flow behind a CISO/counsel gate). Two numbers come from tables that already
-> exist, run read-only against prod by someone with access:
+> exist, and an administrator reads them at **`/admin/home-metrics`** — nobody
+> hand-runs SQL against prod (decisions § 2440, issue #1362). The page sits on
+> two `app_admins`-gated RPCs that return weekly aggregates over the last 16
+> ISO weeks in UTC, current week partial, with the 2026-11-08 redesign week
+> marked:
 >
-> ```sql
-> -- Coach engagement: of the runners active in each week, the share who sent
-> -- the Coach at least one message. Compare the weeks before 2026-11-08 with
-> -- the weeks after; a fall is the trigger to revisit the Coach placement.
-> with active as (
->   select distinct user_id, date_trunc('week', started_at)::date as wk
->   from runs
->   where started_at >= now() - interval '16 weeks'
-> ), coached as (
->   select distinct user_id, date_trunc('week', usage_date)::date as wk
->   from user_coach_usage
->   where usage_date >= current_date - 112 and message_count > 0
-> )
-> select a.wk,
->        count(*) as active_runners,
->        count(c.user_id) as coached_runners,
->        round(100.0 * count(c.user_id) / count(*), 1) as coached_pct
-> from active a
-> left join coached c using (user_id, wk)
-> group by a.wk
-> order by a.wk;
+> - **Coach engagement** — `admin_home_coach_engagement_weeks()`: of the users
+>   with a run started in the week, the share with a `user_coach_usage` row
+>   that week with `message_count > 0`. A fall after 2026-11-08 is the trigger
+>   to revisit the Coach placement.
+> - **Plan-day completion** — `admin_home_plan_completion_weeks()`: of the
+>   non-rest `plan_workouts` scheduled in the week up to yesterday, the share
+>   with `completed_run_id` set or `manually_completed`. Templates, abandoned
+>   plans and a paused plan's days from its `paused_at` are left out. Read
+>   beside the hero's plan states.
 >
-> -- Plan-day completion: of the plan sessions scheduled in each week up to
-> -- yesterday (rest days excluded), the share completed by a run or marked
-> -- done. Read beside the hero's plan states.
-> select date_trunc('week', pw.scheduled_date)::date as wk,
->        count(*) as scheduled,
->        count(*) filter (where pw.completed_run_id is not null
->                            or pw.manually_completed) as done,
->        round(100.0 * count(*) filter (where pw.completed_run_id is not null
->                            or pw.manually_completed) / count(*), 1) as done_pct
-> from plan_workouts pw
-> where pw.kind <> 'rest'
->   and pw.scheduled_date between current_date - 112 and current_date - 1
-> group by 1
-> order by 1;
-> ```
->
-> `user_coach_usage` records no entry point, so the first query measures
-> Coach use as a whole, not the Home row against the sidebar or Messages. No
-> prod figure was run for this change; the baseline is whatever the first run
-> of the query reports for the weeks before 2026-11-08.
+> `user_coach_usage` records no entry point, so the first number measures
+> Coach use as a whole, not the Home row against the sidebar or Messages; the
+> page says so. The baseline is whatever the page reports for the weeks before
+> 2026-11-08. Schema and rules: [api_database.md](../backend/api_database.md)
+> § Home metrics.
 
 ```
   Home                                    (today)
@@ -1397,7 +1374,7 @@ Bottom nav becomes `Home · Train · [+] Log · Social · You` (still five slots
 - **`Log` (+)** is unchanged — the capture sheet (Log run / lift / food → keep-alive capture page), long-press = open the fan. Capture stays separate from the Train *review/plan* surfaces (the verb-vs-modality split §63 established).
 - **`Social`** is unchanged (Feed / People / Clubs). **Routes leaves Social** — the mobile Social screen drops any routes entry.
 - **`You`** = profile + Settings + subscription + (future) payout account. `Settings` vacates its own slot; the `keepRunPrimary` toggle and all prefs live under `You → Settings`.
-- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach; since [decisions § 2280](../architecture/decisions.md) it closes the Today block instead, under today's workout and what was logged today, and since [§ 2387](../architecture/decisions.md) it is a compact row on web and mobile; the trigger below is measured by the `user_coach_usage` query in § Home) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
+- **`Coach` is made the face of Home, not a buried card.** The thesis of this doc is that *cross-modal intelligence is the product* — so the nav must not hide it. Rather than spend a scarce sixth slot (and rather than the demoted "scrollable card" the first draft proposed), **Home gains a persistent, pinned `Ask your coach…` entry at the top** (always visible above the card stack, one tap to the Coach; since [decisions § 2280](../architecture/decisions.md) it closes the Today block instead, under today's workout and what was logged today, and since [§ 2387](../architecture/decisions.md) it is a compact row on web and mobile; the trigger below is measured at `/admin/home-metrics`, see § Home) so the intelligence layer is the first thing on the default landing surface. Web keeps its dedicated `/coach` sidebar item (it has room). Coach stays cross-modal advisory, not a modality, so it is not a Train sub-tab. *Considered and rejected:* a dedicated `Coach` bottom-nav slot displacing `Social` — Social now also hosts paid club classes ([club_events.md](club_events.md)), so it earns its slot; the pinned-Home-entry reconciles the thesis without that trade. This is the one reversible call in the redesign — revisit if Coach engagement warrants a full slot.
 - **Home** is unchanged — the prioritised, self-hiding card stack ("what's my day").
 - **Expanded widths (≥840dp — tablets / landscape foldables) swap the chrome, not the IA:** the same four destinations + the Log action render as a `NavigationRail` (Log rides the rail's leading slot and fans its speed-dial from the button's own anchor) instead of the `BottomAppBar` + docked centre FAB. Destinations, keep-alive pages, and the Log contract are identical — only the shell changes (`widthClassOf` gate, see [conventions.md § Mobile adaptive width](../architecture/conventions.md#mobile-adaptive-width--widthclass)).
 

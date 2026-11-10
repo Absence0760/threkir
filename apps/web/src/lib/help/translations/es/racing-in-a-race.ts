@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'racing-in-a-race',
 	title: 'Competir en una carrera en directo',
-	summary: 'Apúntate, elige tu recorrido, empieza a grabar en la línea de salida o después de la salida y deja que tu móvil o tu reloj te cronometre al cruzar la meta.',
+	summary: 'Apúntate, elige tu recorrido, empieza a grabar en la línea de salida o después del GO y deja que tu móvil o tu reloj te cronometre al cruzar la meta.',
 	sections: [
 		{
 			heading: 'Con qué dispositivos se puede competir',
@@ -42,12 +42,12 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Cuando el organizador prepara la carrera, la pestaña Correr de la app del móvil muestra **Carrera preparada** con «esperando la salida». El reloj Wear OS muestra «CARRERA LISTA» encima de su botón Empezar. Cuando el organizador da la salida, cambia a **Carrera EN VIVO** («CARRERA EN VIVO» en el reloj) con el tiempo transcurrido y «toca Iniciar».',
+					text: 'Cuando el organizador prepara la carrera, la pestaña Correr de la app del móvil muestra **Carrera preparada** con «esperando el GO». El reloj Wear OS muestra «CARRERA PREPARADA» encima de su botón Empezar. Cuando el organizador da el GO, cambia a **Carrera EN VIVO** («CARRERA EN VIVO» en el reloj) con el tiempo transcurrido y «toca Iniciar».',
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera preparada**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar.',
+					text: 'Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera preparada**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en el GO, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde el GO y no desde que pulsaste Iniciar.',
 				},
 				{
 					type: 'p',
@@ -121,9 +121,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'El **Tiempo oficial** va desde el momento en que el organizador dio la salida hasta tu llegada. Es el tiempo por el que se te clasifica.',
-						'El **Tiempo chip** va desde que pulsaste Iniciar hasta tu llegada, incluidas las pausas. Si pulsaste Iniciar antes de la salida, cuenta desde la salida, así que nunca es más largo que tu tiempo oficial.',
-						'Si empiezas más de 5 minutos después de la salida, o tu primera posición está a más de 200 m del inicio del recorrido, la app del móvil muestra un aviso de salida tardía y un reloj Wear OS mantiene **Salida tardía** bajo el reloj de carrera. Tu tiempo oficial sigue contando desde la salida, así que una salida tardía lo hace más largo que tu tiempo chip.',
+						'El **Tiempo oficial** va desde el momento en que el organizador dio el GO hasta tu llegada. Es el tiempo por el que se te clasifica.',
+						'El **Tiempo chip** va desde que pulsaste Iniciar hasta tu llegada, incluidas las pausas. Si pulsaste Iniciar antes del GO, cuenta desde el GO, así que nunca es más largo que tu tiempo oficial.',
+						'Si empiezas más de 5 minutos después del GO, o tu primera posición está a más de 200 m del inicio del recorrido, la app del móvil muestra un aviso de salida tardía y un reloj Wear OS mantiene **Salida tardía** bajo el reloj de carrera. Tu tiempo oficial sigue contando desde el GO, así que una salida tardía lo hace más largo que tu tiempo chip.',
 					],
 				},
 				{
@@ -137,7 +137,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Si el organizador finaliza la carrera antes de que llegues, tu móvil te lo indica y tu reloj muestra «Carrera terminada». Tu carrera sigue grabándose como una carrera normal, pero tu dispositivo no envía ningún resultado de competición. Si ya habías enviado una posición en directo, la carrera te marca como DNF.',
+					text: 'Si el organizador finaliza la carrera antes de que llegues, tu móvil te lo indica y tu reloj muestra «Carrera finalizada». Tu carrera sigue grabándose como una carrera normal, pero tu dispositivo no envía ningún resultado de competición. Si ya habías enviado una posición en directo, la carrera te marca como DNF.',
 				},
 			],
 		},

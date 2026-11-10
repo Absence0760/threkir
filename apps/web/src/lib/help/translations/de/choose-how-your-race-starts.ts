@@ -13,7 +13,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'**GO durch Veranstalter**: Du stellst das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.',
 						'**Geplanter GO**: Das Rennen startet zur eingestellten Zeit von selbst. Nutze das, wenn die Startzeit feststeht, du aber vielleicht nicht an der Linie bist oder selbst mitlaufen möchtest. Bis dahin kannst du den Start verschieben oder das Rennen absagen.',
-						'**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Brutto-Zeit.',
+						'**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Bruttozeit.',
 					],
 				},
 				{

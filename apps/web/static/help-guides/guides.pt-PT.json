@@ -2154,7 +2154,7 @@
     "id": "race-day-for-hosts",
     "lang": "pt-PT",
     "title": "Dia de prova para organizadores",
-    "summary": "Prepare a prova, dê a partida, acompanhe-a em direto, encerre-a e depois aprove e corrija os resultados.",
+    "summary": "Prepare a prova, dê o GO, acompanhe-a em direto, encerre-a e depois aprove e corrija os resultados.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2186,7 +2186,7 @@
           {
             "type": "illustration",
             "id": "race-day-for-hosts",
-            "alt": "O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar a partida, acompanhá-la em direto e encerrá-la na meta."
+            "alt": "O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar o GO, acompanhá-la em direto e encerrá-la na meta."
           },
           {
             "type": "p",
@@ -2207,12 +2207,12 @@
           },
           {
             "type": "p",
-            "text": "Os corredores que disseram **Eu vou** veem agora **Prova preparada** no separador Corrida do telemóvel e “PROVA PRONTA” no relógio Wear OS."
+            "text": "Os corredores que disseram **Eu vou** veem agora **Prova preparada** no separador Corrida do telemóvel e “PROVA PREPARADA” no relógio Wear OS."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Uma prova preparada está em espera. Nada é cronometrado e nenhum resultado pode ser guardado até dar a partida."
+            "text": "Uma prova preparada está em espera. Nada é cronometrado e nenhum resultado pode ser guardado até dar o GO."
           },
           {
             "type": "p",
@@ -2221,11 +2221,11 @@
         ]
       },
       {
-        "heading": "2. Dar a partida",
+        "heading": "2. Dar o GO",
         "blocks": [
           {
             "type": "p",
-            "text": "Prima **JÁ** na web (**Disparar o Go** na app do telemóvel) no momento em que a prova começa."
+            "text": "Prima **GO** na web ou na app do telemóvel no momento em que a prova começa."
           },
           {
             "type": "p",
@@ -2234,7 +2234,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Dar a partida não inicia a gravação de ninguém. Os corredores premem Iniciar no próprio telemóvel ou relógio, seja na linha de partida enquanto a prova está preparada (a gravação entra na prova no momento da partida), seja depois de verem **Prova EM DIRETO**. Lembre-os de iniciar a gravação."
+            "text": "O GO não inicia a gravação de ninguém. Os corredores premem Iniciar no próprio telemóvel ou relógio, seja na linha de partida enquanto a prova está preparada (a gravação entra na prova no GO), seja depois de verem **Prova EM DIRETO**. Lembre-os de iniciar a gravação."
           }
         ]
       },
@@ -2282,7 +2282,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** na app do telemóvel) e depois **Cancelar prova**. Depois de dar a partida, a prova só pode ser encerrada."
+            "text": "Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **GO** e depois **Cancelar prova**. Depois de dar o GO, a prova só pode ser encerrada."
           },
           {
             "type": "p",
@@ -2353,9 +2353,9 @@
           {
             "type": "list",
             "items": [
-              "O **Tempo oficial** é medido desde o momento em que o organizador deu a partida até ao momento em que cruzou a meta. A partida é registada pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.",
+              "O **Tempo oficial** é medido desde o momento em que o organizador deu o GO até ao momento em que cruzou a meta. O GO é registado pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.",
               "O **Tempo de chip** é medido desde que premiu Iniciar no seu próprio dispositivo até à sua chegada, incluindo eventuais pausas.",
-              "O tempo grande no quadro é o seu tempo oficial quando o organizador deu a partida na prova; caso contrário, é o seu tempo de chip. As posições são calculadas a partir desse tempo grande."
+              "O tempo grande no quadro é o seu tempo oficial quando a prova teve um GO; caso contrário, é o seu tempo de chip. As posições são calculadas a partir desse tempo grande."
             ]
           },
           {
@@ -2445,7 +2445,7 @@
     "id": "racing-in-a-race",
     "lang": "pt-PT",
     "title": "Correr numa prova em direto",
-    "summary": "Inscreva-se, escolha o seu percurso, comece a gravar na linha de partida ou depois da partida e deixe o telemóvel ou o relógio cronometrá-lo até à meta.",
+    "summary": "Inscreva-se, escolha o seu percurso, comece a gravar na linha de partida ou depois do GO e deixe o telemóvel ou o relógio cronometrá-lo até à meta.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2500,12 +2500,12 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Prova preparada** com “a aguardar a partida”. O relógio Wear OS mostra “PROVA PRONTA” por cima do botão Iniciar. Quando o organizador dá a partida, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”."
+            "text": "Quando o organizador prepara a prova, o separador Corrida da app do telemóvel mostra **Prova preparada** com “a aguardar o GO”. O relógio Wear OS mostra “PROVA PREPARADA” por cima do botão Iniciar. Quando o organizador dá o GO, passa a **Prova EM DIRETO** (“PROVA EM DIRETO” no relógio), com o tempo decorrido e “toque em Iniciar”."
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Prova preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no momento da partida, no telemóvel e num relógio Wear OS, e o seu tempo de chip passa a contar a partir da partida e não de quando premiu Iniciar."
+            "text": "O telemóvel ou o relógio não começa a gravar sozinho: tem de premir Iniciar. Pode começar na linha de partida enquanto a prova mostra **Prova preparada**, ou quando vir **Prova EM DIRETO**. Uma gravação iniciada antes entra na prova no GO, no telemóvel e num relógio Wear OS, e o seu tempo de chip passa a contar a partir do GO e não de quando premiu Iniciar."
           },
           {
             "type": "p",
@@ -2579,9 +2579,9 @@
           {
             "type": "list",
             "items": [
-              "O **Tempo oficial** conta desde o momento em que o organizador deu a partida até à sua chegada. É o tempo pelo qual é classificado.",
-              "O **Tempo de chip** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes da partida, conta a partir da partida, por isso nunca é maior do que o seu tempo oficial.",
-              "Se começar mais de 5 minutos depois da partida, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia e um relógio Wear OS mantém **Partida tardia** por baixo do relógio da prova. O seu tempo oficial continua a contar a partir da partida, por isso uma partida tardia torna-o maior do que o seu tempo de chip."
+              "O **Tempo oficial** conta desde o momento em que o organizador deu o GO até à sua chegada. É o tempo pelo qual é classificado.",
+              "O **Tempo de chip** conta desde que premiu Iniciar até à sua chegada, incluindo eventuais pausas. Se premiu Iniciar antes do GO, conta a partir do GO, por isso nunca é maior do que o seu tempo oficial.",
+              "Se começar mais de 5 minutos depois do GO, ou se a sua primeira posição estiver a mais de 200 m do início do percurso, a app do telemóvel mostra um aviso de partida tardia e um relógio Wear OS mantém **Partida tardia** por baixo do relógio da prova. O seu tempo oficial continua a contar a partir do GO, por isso uma partida tardia torna-o maior do que o seu tempo de chip."
             ]
           },
           {
@@ -2595,7 +2595,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Se o organizador encerrar a prova antes de chegar à meta, o telemóvel avisa-o e o relógio mostra “Corrida terminada”. A sua corrida continua a ser gravada como uma corrida normal, mas o dispositivo não envia nenhum resultado da prova. Se já tinha enviado uma posição em direto, a prova marca-o como DNF."
+            "text": "Se o organizador encerrar a prova antes de chegar à meta, o telemóvel avisa-o e o relógio mostra “Prova encerrada”. A sua corrida continua a ser gravada como uma corrida normal, mas o dispositivo não envia nenhum resultado da prova. Se já tinha enviado uma posição em direto, a prova marca-o como DNF."
           }
         ]
       }
@@ -2728,7 +2728,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Uma prova é um evento de clube normal com percursos associados. Os proprietários e administradores do clube e os organizadores de eventos podem criar eventos. Gerir a prova no dia (preparar, dar a partida, terminar) exige um proprietário, um administrador ou um **Diretor de prova** — consulte [[guide:race-day-for-hosts|Dia de prova para organizadores]]."
+            "text": "Uma prova é um evento de clube normal com percursos associados. Os proprietários e administradores do clube e os organizadores de eventos podem criar eventos. Gerir a prova no dia (preparar, dar o GO, encerrar) exige um proprietário, um administrador ou um **Diretor de prova** — consulte [[guide:race-day-for-hosts|Dia de prova para organizadores]]."
           },
           {
             "type": "p",
@@ -4005,7 +4005,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "As corridas são gravadas na app do telemóvel ou num relógio. A aplicação web mostra as suas corridas, mas não consegue gravar nenhuma."
+            "text": "As corridas são gravadas na app do telemóvel ou num relógio. A app web mostra as suas corridas, mas não consegue gravar nenhuma."
           },
           {
             "type": "steps",

@@ -48,7 +48,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Preparas la carrera, das la salida y la finalizas tú mismo. Consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]].',
+					text: 'Preparas la carrera, das el GO y la finalizas tú mismo. Consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]].',
 				},
 			],
 		},

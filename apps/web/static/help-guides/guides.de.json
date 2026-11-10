@@ -1828,7 +1828,7 @@
             "items": [
               "**GO durch Veranstalter**: Du stellst das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.",
               "**Geplanter GO**: Das Rennen startet zur eingestellten Zeit von selbst. Nutze das, wenn die Startzeit feststeht, du aber vielleicht nicht an der Linie bist oder selbst mitlaufen möchtest. Bis dahin kannst du den Start verschieben oder das Rennen absagen.",
-              "**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Brutto-Zeit."
+              "**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Bruttozeit."
             ]
           },
           {
@@ -2225,11 +2225,11 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Drücke im Web **GO** (in der Handy-App **GO geben**) genau in dem Moment, in dem das Rennen startet."
+            "text": "Drücke im Web oder in der Handy-App auf **GO**, genau in dem Moment, in dem das Rennen startet."
           },
           {
             "type": "p",
-            "text": "Die Startzeit wird von unserem Server gestempelt, nicht von deinem Gerät. So gilt für alle Teilnehmenden derselbe Startschuss, auch wenn die Uhr deines Handys ein paar Sekunden abweicht. Die Brutto-Zeit aller Teilnehmenden wird ab diesem Moment gemessen."
+            "text": "Die Startzeit wird von unserem Server gestempelt, nicht von deinem Gerät. So gilt für alle Teilnehmenden derselbe GO-Zeitpunkt, auch wenn die Uhr deines Handys ein paar Sekunden abweicht. Die Bruttozeit aller Teilnehmenden wird ab diesem Moment gemessen."
           },
           {
             "type": "note",
@@ -2282,7 +2282,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** (in der Handy-App **GO geben**) und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden."
+            "text": "Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden."
           },
           {
             "type": "p",
@@ -2307,7 +2307,7 @@
             "items": [
               "War die automatische Genehmigung aus, zeigen neue Ergebnisse **AUSSTEHEND** und keinen Platz. Wähle **Genehmigen**, um eines zu veröffentlichen. **Verifizierung aufheben** setzt ein genehmigtes Ergebnis wieder auf ausstehend.",
               "Um ein Ergebnis zu korrigieren, wähle **Bearbeiten**, gib eine **Zeit (h:mm:ss)** und einen **Status** (**Im Ziel**, **DNF** oder **DNS**) ein und wähle dann **Ergebnis speichern**.",
-              "Ein bearbeitetes Ergebnis wird als **Vom Veranstalter bearbeitet** markiert, damit alle sehen, dass der Veranstalter es geändert hat. Die Änderung verschiebt auch die Brutto-Zeit der teilnehmenden Person.",
+              "Ein bearbeitetes Ergebnis wird als **Vom Veranstalter bearbeitet** markiert, damit alle sehen, dass der Veranstalter es geändert hat. Die Änderung verschiebt auch die Bruttozeit der teilnehmenden Person.",
               "**Ergebnisse als CSV herunterladen** exportiert die Listen."
             ]
           },
@@ -2331,7 +2331,7 @@
     "id": "race-results-explained",
     "lang": "de",
     "title": "Rennergebnisse erklärt",
-    "summary": "Was Brutto- und Netto-Zeit bedeuten, wie Platzierungen pro Strecke ermittelt werden und was die Kennzeichnungen Manuell, Veranstalter, DNF, DNS und ausstehend aussagen.",
+    "summary": "Was Brutto- und Nettozeit bedeuten, wie Platzierungen pro Strecke ermittelt werden und was die Kennzeichnungen Manuell, Veranstalter, DNF, DNS und ausstehend aussagen.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -2348,19 +2348,19 @@
     ],
     "sections": [
       {
-        "heading": "Brutto-Zeit und Netto-Zeit",
+        "heading": "Bruttozeit und Nettozeit",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Brutto-Zeit** wird von dem Moment, in dem der Veranstalter GO gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. GO wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.",
-              "**Netto-Zeit** wird von dem Moment, in dem du auf deinem eigenen Gerät auf Start gedrückt hast, bis zu deinem Zieleinlauf gemessen, einschließlich aller Pausen.",
-              "Die große Zeit in der Liste ist deine Brutto-Zeit, wenn es im Rennen ein GO gab, sonst deine Netto-Zeit. Die Platzierungen werden aus dieser großen Zeit ermittelt."
+              "**Bruttozeit** wird von dem Moment, in dem der Veranstalter GO gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. GO wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.",
+              "**Nettozeit** wird von dem Moment, in dem du auf deinem eigenen Gerät auf Start gedrückt hast, bis zu deinem Zieleinlauf gemessen, einschließlich aller Pausen.",
+              "Die große Zeit in der Liste ist deine Bruttozeit, wenn es im Rennen einen GO gab, sonst deine Nettozeit. Die Platzierungen werden aus dieser großen Zeit ermittelt."
             ]
           },
           {
             "type": "p",
-            "text": "Im Web lautet die kleinere Zeile unter einer Zeit etwa „Brutto 41:58 · Netto 41:20“. In der Handy-App wird unter der Hauptzeit eine „Netto“-Zeit angezeigt, wenn sie davon abweicht. Bist du verspätet gestartet, ist deine Brutto-Zeit länger als deine Netto-Zeit."
+            "text": "Im Web lautet die kleinere Zeile unter einer Zeit etwa „Brutto 41:58 · Netto 41:20“. In der Handy-App wird unter der Hauptzeit eine „Netto“-Zeit angezeigt, wenn sie davon abweicht. Bist du verspätet gestartet, ist deine Bruttozeit länger als deine Nettozeit."
           }
         ]
       },
@@ -2505,7 +2505,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei GO mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Netto-Zeit zählt dann ab GO statt ab dem Moment, in dem du auf Start gedrückt hast."
+            "text": "Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei GO mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Nettozeit zählt dann ab GO statt ab dem Moment, in dem du auf Start gedrückt hast."
           },
           {
             "type": "p",
@@ -2529,7 +2529,7 @@
           },
           {
             "type": "p",
-            "text": "Deine Zeit wird in dem Moment genommen, in dem du dem Ziel am nächsten warst, nicht im ersten Moment innerhalb von 30 m. Die 90-%-Regel verhindert, dass dich eine Rundstrecke, die dort startet, wo sie endet, schon in der ersten Sekunde ins Ziel bringt. Das Handy zeigt „Im Ziel!“ mit deiner Brutto-Zeit, und deine Aufzeichnung stoppt."
+            "text": "Deine Zeit wird in dem Moment genommen, in dem du dem Ziel am nächsten warst, nicht im ersten Moment innerhalb von 30 m. Die 90-%-Regel verhindert, dass dich eine Rundstrecke, die dort startet, wo sie endet, schon in der ersten Sekunde ins Ziel bringt. Das Handy zeigt „Im Ziel!“ mit deiner Bruttozeit, und deine Aufzeichnung stoppt."
           },
           {
             "type": "note",
@@ -2574,14 +2574,14 @@
         ]
       },
       {
-        "heading": "Brutto-Zeit, Netto-Zeit und später Start",
+        "heading": "Bruttozeit, Nettozeit und später Start",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "**Brutto-Zeit** läuft ab dem Moment, in dem der Veranstalter GO gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.",
-              "**Netto-Zeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor GO auf Start gedrückt, läuft sie ab GO, sodass sie nie länger als deine Brutto-Zeit ist.",
-              "Startest du mehr als 5 Minuten nach GO oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Brutto-Zeit zählt trotzdem ab GO, sodass ein später Start sie länger macht als deine Netto-Zeit."
+              "**Bruttozeit** läuft ab dem Moment, in dem der Veranstalter GO gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.",
+              "**Nettozeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor GO auf Start gedrückt, läuft sie ab GO, sodass sie nie länger als deine Bruttozeit ist.",
+              "Startest du mehr als 5 Minuten nach GO oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Bruttozeit zählt trotzdem ab GO, sodass ein später Start sie länger macht als deine Nettozeit."
             ]
           },
           {
@@ -2634,7 +2634,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Ein selbstgestopptes Rennen hat keinen gemeinsamen Start. Der Veranstalter öffnet einen Zeitraum, der bis zu einer Woche dauern kann, und du läufst die Strecke, wann immer du willst, solange er offen ist. Deine Zeit läuft vom Überqueren der Startlinie bis zum Überqueren der Ziellinie, es gibt also keine Brutto-Zeit."
+            "text": "Ein selbstgestopptes Rennen hat keinen gemeinsamen Start. Der Veranstalter öffnet einen Zeitraum, der bis zu einer Woche dauern kann, und du läufst die Strecke, wann immer du willst, solange er offen ist. Deine Zeit läuft vom Überqueren der Startlinie bis zum Überqueren der Ziellinie, es gibt also keine Bruttozeit."
           },
           {
             "type": "p",

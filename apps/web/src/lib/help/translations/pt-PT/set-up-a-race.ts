@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Uma prova é um evento de clube normal com percursos associados. Os proprietários e administradores do clube e os organizadores de eventos podem criar eventos. Gerir a prova no dia (preparar, dar a partida, terminar) exige um proprietário, um administrador ou um **Diretor de prova** — consulte [[guide:race-day-for-hosts|Dia de prova para organizadores]].',
+					text: 'Uma prova é um evento de clube normal com percursos associados. Os proprietários e administradores do clube e os organizadores de eventos podem criar eventos. Gerir a prova no dia (preparar, dar o GO, encerrar) exige um proprietário, um administrador ou um **Diretor de prova** — consulte [[guide:race-day-for-hosts|Dia de prova para organizadores]].',
 				},
 				{
 					type: 'p',

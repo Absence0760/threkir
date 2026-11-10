@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Una carrera es un evento de club normal con recorridos asociados. Los propietarios, los administradores y los organizadores de eventos del club pueden crear eventos. Dirigir la carrera el día (preparar, dar la salida, finalizar) requiere un propietario, un administrador o un **Director de carrera**: consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]].',
+					text: 'Una carrera es un evento de club normal con recorridos asociados. Los propietarios, los administradores y los organizadores de eventos del club pueden crear eventos. Dirigir la carrera el día (preparar, dar el GO, finalizar) requiere un propietario, un administrador o un **Director de carrera**: consulta [[guide:race-day-for-hosts|El día de la carrera para organizadores]].',
 				},
 				{
 					type: 'p',

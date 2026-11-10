@@ -64,7 +64,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Press **GO** on the web (**Fire Go** in the phone app) at the moment the race starts.'
+					text: 'Press **GO** on the web or in the phone app at the moment the race starts.'
 				},
 				{
 					type: 'p',
@@ -121,7 +121,7 @@ export const guide: Guide = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'You can cancel only while the race is armed: choose **Cancel** next to **GO** (**Fire Go** in the phone app), then **Cancel race**. Once you have fired GO the race can only be ended.'
+					text: 'You can cancel only while the race is armed: choose **Cancel** next to **GO**, then **Cancel race**. Once you have fired GO the race can only be ended.'
 				},
 				{
 					type: 'p',

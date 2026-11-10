@@ -11,9 +11,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'El **Tiempo oficial** se mide desde el momento en que el organizador dio la salida hasta el momento en que cruzaste la meta. La salida la marca nuestro servidor, así que todos los participantes comparten la misma salida.',
+						'El **Tiempo oficial** se mide desde el momento en que el organizador dio el GO hasta el momento en que cruzaste la meta. El GO lo marca nuestro servidor, así que todos los participantes comparten la misma salida.',
 						'El **Tiempo chip** se mide desde que pulsaste Iniciar en tu propio dispositivo hasta tu llegada, incluidas las pausas.',
-						'El tiempo grande del panel es tu tiempo oficial cuando la carrera tuvo salida, y si no, tu tiempo chip. Los puestos se calculan a partir de ese tiempo grande.',
+						'El tiempo grande del panel es tu tiempo oficial cuando la carrera tuvo un GO, y si no, tu tiempo chip. Los puestos se calculan a partir de ese tiempo grande.',
 					],
 				},
 				{

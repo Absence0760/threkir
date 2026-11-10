@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'As corridas são gravadas na app do telemóvel ou num relógio. A aplicação web mostra as suas corridas, mas não consegue gravar nenhuma.',
+					text: 'As corridas são gravadas na app do telemóvel ou num relógio. A app web mostra as suas corridas, mas não consegue gravar nenhuma.',
 				},
 				{
 					type: 'steps',

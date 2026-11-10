@@ -2207,7 +2207,7 @@
           },
           {
             "type": "p",
-            "text": "Les coureurs qui ont répondu **Je participe** voient alors **Course armée** dans l'onglet Courir de leur téléphone et « COURSE PRÊTE » sur leur montre Wear OS."
+            "text": "Les coureurs qui ont répondu **Je participe** voient alors **Course armée** dans l'onglet Courir de leur téléphone et « COURSE ARMÉE » sur leur montre Wear OS."
           },
           {
             "type": "note",
@@ -2225,7 +2225,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Appuyez sur **GO** sur le web (**Lancer le Go** dans l'app mobile) au moment où la course part."
+            "text": "Appuyez sur **GO**, sur le web ou dans l'app mobile, au moment où la course part."
           },
           {
             "type": "p",
@@ -2282,7 +2282,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Vous ne pouvez annuler que tant que la course est armée : choisissez **Annuler** à côté de **GO** (**Lancer le Go** dans l'app mobile), puis **Annuler la course**. Une fois le GO donné, la course ne peut plus qu'être terminée."
+            "text": "Vous ne pouvez annuler que tant que la course est armée : choisissez **Annuler** à côté de **GO**, puis **Annuler la course**. Une fois le GO donné, la course ne peut plus qu'être terminée."
           },
           {
             "type": "p",
@@ -2500,7 +2500,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Quand l'organisateur arme la course, l'onglet Courir de l'app mobile affiche **Course armée** avec « en attente du départ ». La montre Wear OS affiche « COURSE PRÊTE » au-dessus de son bouton Démarrer. Quand l'organisateur donne le GO, cela devient **Course EN DIRECT** (« COURSE EN DIRECT » sur la montre) avec le temps écoulé et « touchez Démarrer »."
+            "text": "Quand l'organisateur arme la course, l'onglet Courir de l'app mobile affiche **Course armée** avec « en attente du GO ». La montre Wear OS affiche « COURSE ARMÉE » au-dessus de son bouton Démarrer. Quand l'organisateur donne le GO, cela devient **Course EN DIRECT** (« COURSE EN DIRECT » sur la montre) avec le temps écoulé et « touchez Démarrer »."
           },
           {
             "type": "note",

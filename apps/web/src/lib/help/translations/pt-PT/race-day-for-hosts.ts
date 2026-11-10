@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-day-for-hosts',
 	title: 'Dia de prova para organizadores',
-	summary: 'Prepare a prova, dê a partida, acompanhe-a em direto, encerre-a e depois aprove e corrija os resultados.',
+	summary: 'Prepare a prova, dê o GO, acompanhe-a em direto, encerre-a e depois aprove e corrija os resultados.',
 	sections: [
 		{
 			heading: 'Quem pode gerir uma prova',
@@ -19,7 +19,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'illustration',
 					id: 'race-day-for-hosts',
-					alt: 'O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar a partida, acompanhá-la em direto e encerrá-la na meta.',
+					alt: 'O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar o GO, acompanhá-la em direto e encerrá-la na meta.',
 				},
 				{
 					type: 'p',
@@ -40,12 +40,12 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Os corredores que disseram **Eu vou** veem agora **Prova preparada** no separador Corrida do telemóvel e “PROVA PRONTA” no relógio Wear OS.',
+					text: 'Os corredores que disseram **Eu vou** veem agora **Prova preparada** no separador Corrida do telemóvel e “PROVA PREPARADA” no relógio Wear OS.',
 				},
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Uma prova preparada está em espera. Nada é cronometrado e nenhum resultado pode ser guardado até dar a partida.',
+					text: 'Uma prova preparada está em espera. Nada é cronometrado e nenhum resultado pode ser guardado até dar o GO.',
 				},
 				{
 					type: 'p',
@@ -54,11 +54,11 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: '2. Dar a partida',
+			heading: '2. Dar o GO',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Prima **JÁ** na web (**Disparar o Go** na app do telemóvel) no momento em que a prova começa.',
+					text: 'Prima **GO** na web ou na app do telemóvel no momento em que a prova começa.',
 				},
 				{
 					type: 'p',
@@ -67,7 +67,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Dar a partida não inicia a gravação de ninguém. Os corredores premem Iniciar no próprio telemóvel ou relógio, seja na linha de partida enquanto a prova está preparada (a gravação entra na prova no momento da partida), seja depois de verem **Prova EM DIRETO**. Lembre-os de iniciar a gravação.',
+					text: 'O GO não inicia a gravação de ninguém. Os corredores premem Iniciar no próprio telemóvel ou relógio, seja na linha de partida enquanto a prova está preparada (a gravação entra na prova no GO), seja depois de verem **Prova EM DIRETO**. Lembre-os de iniciar a gravação.',
 				},
 			],
 		},
@@ -115,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **JÁ** (**Disparar o Go** na app do telemóvel) e depois **Cancelar prova**. Depois de dar a partida, a prova só pode ser encerrada.',
+					text: 'Só pode cancelar enquanto a prova está preparada: escolha **Cancelar** ao lado de **GO** e depois **Cancelar prova**. Depois de dar o GO, a prova só pode ser encerrada.',
 				},
 				{
 					type: 'p',
@@ -167,7 +167,7 @@ export const translation: GuideTranslation = {
 		's1.b2': '9b4a5aa61857cac1',
 		's1.b3': 'e8bb5e75119028d9',
 		's2.heading': 'bcda14674f57c276',
-		's2.b0': '933b20b503e29bac',
+		's2.b0': '7d9717e613d837c4',
 		's2.b1': '656cb122eaf287fc',
 		's2.b2': '65fce2c1be98450f',
 		's3.heading': 'c3c4743c28e9dcc0',
@@ -182,7 +182,7 @@ export const translation: GuideTranslation = {
 		's4.b2': 'eefbd14c075fb596',
 		's4.b3': 'b067bfb6142d262b',
 		's5.heading': '20d55e8c3373cb09',
-		's5.b0': 'df971b2d64e7ef15',
+		's5.b0': '262e1b926341a0a0',
 		's5.b1': 'ba1729be79f60bc4',
 		's5.b2': 'b10fb4196bd3e2ef',
 		's6.heading': '27e65c3d7a252fc5',

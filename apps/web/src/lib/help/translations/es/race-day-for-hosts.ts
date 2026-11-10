@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-day-for-hosts',
 	title: 'El día de la carrera para organizadores',
-	summary: 'Prepara la carrera, da la salida, síguela en directo, finalízala y después aprueba y corrige los resultados.',
+	summary: 'Prepara la carrera, da el GO, síguela en directo, finalízala y después aprueba y corrige los resultados.',
 	sections: [
 		{
 			heading: 'Quién puede dirigir una carrera',
@@ -19,7 +19,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'illustration',
 					id: 'race-day-for-hosts',
-					alt: 'El día de la carrera en cuatro pasos, de izquierda a derecha: preparar la carrera, dar la salida, seguirla en directo y finalizarla en la meta.',
+					alt: 'El día de la carrera en cuatro pasos, de izquierda a derecha: preparar la carrera, dar el GO, seguirla en directo y finalizarla en la meta.',
 				},
 				{
 					type: 'p',
@@ -40,12 +40,12 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Los corredores que dijeron **Voy** ven ahora **Carrera preparada** en la pestaña Correr de su móvil y «CARRERA LISTA» en su reloj Wear OS.',
+					text: 'Los corredores que dijeron **Voy** ven ahora **Carrera preparada** en la pestaña Correr de su móvil y «CARRERA PREPARADA» en su reloj Wear OS.',
 				},
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Preparada es un estado de espera. No se cronometra nada ni se pueden guardar resultados hasta que des la salida.',
+					text: 'Preparada es un estado de espera. No se cronometra nada ni se pueden guardar resultados hasta que des el GO.',
 				},
 				{
 					type: 'p',
@@ -54,11 +54,11 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: '2. Dar la salida',
+			heading: '2. Dar el GO',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Pulsa **YA** en la web (**Dar la salida** en la app del móvil) en el momento en que empieza la carrera.',
+					text: 'Pulsa **GO** en la web o en la app del móvil en el momento en que empieza la carrera.',
 				},
 				{
 					type: 'p',
@@ -67,7 +67,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Dar la salida no inicia la grabación de nadie. Los corredores pulsan Iniciar en su propio móvil o reloj, ya sea en la línea de salida mientras la carrera está preparada (la grabación se une a la carrera en la salida) o después de ver **Carrera EN VIVO**. Recuérdales que inicien la grabación.',
+					text: 'El GO no inicia la grabación de nadie. Los corredores pulsan Iniciar en su propio móvil o reloj, ya sea en la línea de salida mientras la carrera está preparada (la grabación se une a la carrera en el GO) o después de ver **Carrera EN VIVO**. Recuérdales que inicien la grabación.',
 				},
 			],
 		},
@@ -115,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Solo puedes cancelar mientras la carrera está preparada: elige **Cancelar** junto a **YA** (**Dar la salida** en la app del móvil) y luego **Cancelar carrera**. Una vez dada la salida, la carrera solo se puede finalizar.',
+					text: 'Solo puedes cancelar mientras la carrera está preparada: elige **Cancelar** junto a **GO** y luego **Cancelar carrera**. Una vez dado el GO, la carrera solo se puede finalizar.',
 				},
 				{
 					type: 'p',
@@ -167,7 +167,7 @@ export const translation: GuideTranslation = {
 		's1.b2': '9b4a5aa61857cac1',
 		's1.b3': 'e8bb5e75119028d9',
 		's2.heading': 'bcda14674f57c276',
-		's2.b0': '933b20b503e29bac',
+		's2.b0': '7d9717e613d837c4',
 		's2.b1': '656cb122eaf287fc',
 		's2.b2': '65fce2c1be98450f',
 		's3.heading': 'c3c4743c28e9dcc0',
@@ -182,7 +182,7 @@ export const translation: GuideTranslation = {
 		's4.b2': 'eefbd14c075fb596',
 		's4.b3': 'b067bfb6142d262b',
 		's5.heading': '20d55e8c3373cb09',
-		's5.b0': 'df971b2d64e7ef15',
+		's5.b0': '262e1b926341a0a0',
 		's5.b1': 'ba1729be79f60bc4',
 		's5.b2': 'b10fb4196bd3e2ef',
 		's6.heading': '27e65c3d7a252fc5',

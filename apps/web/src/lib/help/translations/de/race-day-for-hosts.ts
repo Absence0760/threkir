@@ -58,11 +58,11 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Drücke im Web **GO** (in der Handy-App **GO geben**) genau in dem Moment, in dem das Rennen startet.',
+					text: 'Drücke im Web oder in der Handy-App auf **GO**, genau in dem Moment, in dem das Rennen startet.',
 				},
 				{
 					type: 'p',
-					text: 'Die Startzeit wird von unserem Server gestempelt, nicht von deinem Gerät. So gilt für alle Teilnehmenden derselbe Startschuss, auch wenn die Uhr deines Handys ein paar Sekunden abweicht. Die Brutto-Zeit aller Teilnehmenden wird ab diesem Moment gemessen.',
+					text: 'Die Startzeit wird von unserem Server gestempelt, nicht von deinem Gerät. So gilt für alle Teilnehmenden derselbe GO-Zeitpunkt, auch wenn die Uhr deines Handys ein paar Sekunden abweicht. Die Bruttozeit aller Teilnehmenden wird ab diesem Moment gemessen.',
 				},
 				{
 					type: 'note',
@@ -115,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** (in der Handy-App **GO geben**) und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden.',
+					text: 'Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden.',
 				},
 				{
 					type: 'p',
@@ -140,7 +140,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'War die automatische Genehmigung aus, zeigen neue Ergebnisse **AUSSTEHEND** und keinen Platz. Wähle **Genehmigen**, um eines zu veröffentlichen. **Verifizierung aufheben** setzt ein genehmigtes Ergebnis wieder auf ausstehend.',
 						'Um ein Ergebnis zu korrigieren, wähle **Bearbeiten**, gib eine **Zeit (h:mm:ss)** und einen **Status** (**Im Ziel**, **DNF** oder **DNS**) ein und wähle dann **Ergebnis speichern**.',
-						'Ein bearbeitetes Ergebnis wird als **Vom Veranstalter bearbeitet** markiert, damit alle sehen, dass der Veranstalter es geändert hat. Die Änderung verschiebt auch die Brutto-Zeit der teilnehmenden Person.',
+						'Ein bearbeitetes Ergebnis wird als **Vom Veranstalter bearbeitet** markiert, damit alle sehen, dass der Veranstalter es geändert hat. Die Änderung verschiebt auch die Bruttozeit der teilnehmenden Person.',
 						'**Ergebnisse als CSV herunterladen** exportiert die Listen.',
 					],
 				},
@@ -167,7 +167,7 @@ export const translation: GuideTranslation = {
 		's1.b2': '9b4a5aa61857cac1',
 		's1.b3': 'e8bb5e75119028d9',
 		's2.heading': 'bcda14674f57c276',
-		's2.b0': '933b20b503e29bac',
+		's2.b0': '7d9717e613d837c4',
 		's2.b1': '656cb122eaf287fc',
 		's2.b2': '65fce2c1be98450f',
 		's3.heading': 'c3c4743c28e9dcc0',
@@ -182,7 +182,7 @@ export const translation: GuideTranslation = {
 		's4.b2': 'eefbd14c075fb596',
 		's4.b3': 'b067bfb6142d262b',
 		's5.heading': '20d55e8c3373cb09',
-		's5.b0': 'df971b2d64e7ef15',
+		's5.b0': '262e1b926341a0a0',
 		's5.b1': 'ba1729be79f60bc4',
 		's5.b2': 'b10fb4196bd3e2ef',
 		's6.heading': '27e65c3d7a252fc5',

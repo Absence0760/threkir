@@ -47,7 +47,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei GO mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Netto-Zeit zählt dann ab GO statt ab dem Moment, in dem du auf Start gedrückt hast.',
+					text: 'Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei GO mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Nettozeit zählt dann ab GO statt ab dem Moment, in dem du auf Start gedrückt hast.',
 				},
 				{
 					type: 'p',
@@ -71,7 +71,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Deine Zeit wird in dem Moment genommen, in dem du dem Ziel am nächsten warst, nicht im ersten Moment innerhalb von 30 m. Die 90-%-Regel verhindert, dass dich eine Rundstrecke, die dort startet, wo sie endet, schon in der ersten Sekunde ins Ziel bringt. Das Handy zeigt „Im Ziel!“ mit deiner Brutto-Zeit, und deine Aufzeichnung stoppt.',
+					text: 'Deine Zeit wird in dem Moment genommen, in dem du dem Ziel am nächsten warst, nicht im ersten Moment innerhalb von 30 m. Die 90-%-Regel verhindert, dass dich eine Rundstrecke, die dort startet, wo sie endet, schon in der ersten Sekunde ins Ziel bringt. Das Handy zeigt „Im Ziel!“ mit deiner Bruttozeit, und deine Aufzeichnung stoppt.',
 				},
 				{
 					type: 'note',
@@ -116,14 +116,14 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: 'Brutto-Zeit, Netto-Zeit und später Start',
+			heading: 'Bruttozeit, Nettozeit und später Start',
 			blocks: [
 				{
 					type: 'list',
 					items: [
-						'**Brutto-Zeit** läuft ab dem Moment, in dem der Veranstalter GO gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.',
-						'**Netto-Zeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor GO auf Start gedrückt, läuft sie ab GO, sodass sie nie länger als deine Brutto-Zeit ist.',
-						'Startest du mehr als 5 Minuten nach GO oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Brutto-Zeit zählt trotzdem ab GO, sodass ein später Start sie länger macht als deine Netto-Zeit.',
+						'**Bruttozeit** läuft ab dem Moment, in dem der Veranstalter GO gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.',
+						'**Nettozeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor GO auf Start gedrückt, läuft sie ab GO, sodass sie nie länger als deine Bruttozeit ist.',
+						'Startest du mehr als 5 Minuten nach GO oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Bruttozeit zählt trotzdem ab GO, sodass ein später Start sie länger macht als deine Nettozeit.',
 					],
 				},
 				{

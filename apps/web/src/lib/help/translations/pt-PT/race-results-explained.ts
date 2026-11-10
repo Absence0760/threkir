@@ -11,9 +11,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'O **Tempo oficial** é medido desde o momento em que o organizador deu a partida até ao momento em que cruzou a meta. A partida é registada pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.',
+						'O **Tempo oficial** é medido desde o momento em que o organizador deu o GO até ao momento em que cruzou a meta. O GO é registado pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.',
 						'O **Tempo de chip** é medido desde que premiu Iniciar no seu próprio dispositivo até à sua chegada, incluindo eventuais pausas.',
-						'O tempo grande no quadro é o seu tempo oficial quando o organizador deu a partida na prova; caso contrário, é o seu tempo de chip. As posições são calculadas a partir desse tempo grande.',
+						'O tempo grande no quadro é o seu tempo oficial quando a prova teve um GO; caso contrário, é o seu tempo de chip. As posições são calculadas a partir desse tempo grande.',
 					],
 				},
 				{

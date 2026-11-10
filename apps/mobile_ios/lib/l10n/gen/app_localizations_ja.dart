@@ -20441,6 +20441,16 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
+  String get runRaceStartCrossed => 'スタートラインを通過。計測を開始します';
+
+  @override
+  String get runRaceUndoResume => 'ゴールしていない？再開';
+
+  @override
+  String get runRaceFinishUndone =>
+      'ゴールを取り消しました。ゴールしたら「停止」をタップし、続けて「レースを終了」をタップしてください。';
+
+  @override
   String get runRaceThisIsMyAttempt => 'このランを挑戦にする';
 
   @override

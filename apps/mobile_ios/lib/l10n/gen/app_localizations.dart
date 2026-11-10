@@ -34601,11 +34601,29 @@ abstract class AppLocalizations {
   /// **'{label} opens at {time}'**
   String runRaceSelfTimedOpens(String label, String time);
 
-  /// Run screen race banner: how far the runner is from a self-timed race's start line
+  /// Run screen: how far the runner is from a race's start line, on the idle banner for a self-timed race and while recording until the start is timed
   ///
   /// In en, this message translates to:
   /// **'{distance} to the start line'**
   String runRaceToStartLine(String distance);
+
+  /// Voice cue and screen-reader announcement when a racer crosses the course's start line and their race clock starts
+  ///
+  /// In en, this message translates to:
+  /// **'Start line crossed, timing'**
+  String get runRaceStartCrossed;
+
+  /// Run screen button, offered for 60 seconds after the app finished a race automatically at the finish line: cancels that finish and resumes recording
+  ///
+  /// In en, this message translates to:
+  /// **'Not finished? Resume'**
+  String get runRaceUndoResume;
+
+  /// Run screen banner after the runner cancelled an automatic race finish; the rest of the race is finished by hand
+  ///
+  /// In en, this message translates to:
+  /// **'Finish undone. When you finish, tap Stop, then Finish race.'**
+  String get runRaceFinishUndone;
 
   /// Run screen race banner button: bind the next recording to a self-timed race as the runner's attempt
   ///

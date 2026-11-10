@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'apple_watch_race_bridge.dart';
-import 'course_gates.dart' show CourseGate, SessionStartMode;
+import 'course_gates.dart' show CourseGate, GateSource, SessionStartMode;
 import 'race_finish.dart';
 import 'race_start_modes.dart';
 import 'rate_limit_errors.dart';
@@ -27,6 +27,31 @@ const kPendingRaceResultsMax = 20;
 /// account found, with its window and the frozen start line, so the banner
 /// and the attempt still work with no signal (#1306 offline).
 const kActiveRaceCacheKey = 'race_active_cache';
+
+/// SharedPreferences key holding the frozen course of the race this account
+/// last found, so a recording times by the lines with no signal (#1307
+/// offline): one entry, keyed to its account and race.
+const kRaceCourseCacheKey = 'race_course_cache';
+
+/// How long "Not finished? Resume" is offered after a line finish (#1307
+/// m11).
+const Duration kRaceUndoWindow = Duration(seconds: 60);
+
+/// Fixes a recording keeps from its Start for the detector to replay when
+/// the race or its course is known only later: twelve hours at one a second.
+/// Past it the oldest go first.
+const int kRaceFixLogMax = 43200;
+
+/// How a result's start was detected (`event_results.start_detection`):
+/// a start-line crossing or GO itself ([gate]), or the runner's own Start
+/// press ([device]).
+enum RaceStartDetection {
+  gate('gate'),
+  device('device');
+
+  const RaceStartDetection(this.wire);
+  final String wire;
+}
 
 /// The HTTP status PostgREST answers an error [code] with, after its error
 /// table (docs.postgrest.org, "Errors"): `supabase_flutter` surfaces the
@@ -123,6 +148,7 @@ class PendingRaceResult {
     this.gunTimeS,
     this.chipTimeS,
     this.finishMethod,
+    this.crossings = RaceCrossings.none,
   });
 
   /// The account the time belongs to. The upsert writes whoever is signed
@@ -139,6 +165,10 @@ class PendingRaceResult {
   final int? chipTimeS;
   final String? finishMethod;
 
+  /// The crossing instants on the server clock and how each was detected
+  /// (#1307). Sent with every replay, null included.
+  final RaceCrossings crossings;
+
   Map<String, dynamic> toJson() => <String, dynamic>{
         'user_id': userId,
         'event_id': eventId,
@@ -151,6 +181,10 @@ class PendingRaceResult {
         if (gunTimeS != null) 'gun_time_s': gunTimeS,
         if (chipTimeS != null) 'chip_time_s': chipTimeS,
         if (finishMethod != null) 'finish_method': finishMethod,
+        ...{
+          for (final e in crossings.toRow().entries)
+            if (e.value != null) e.key: e.value,
+        },
       };
 
   /// Null for an entry that cannot be replayed safely, including one queued
@@ -191,6 +225,13 @@ class PendingRaceResult {
       gunTimeS: gun is num ? gun.toInt() : null,
       chipTimeS: chip is num ? chip.toInt() : null,
       finishMethod: json['finish_method'] as String?,
+      crossings: RaceCrossings(
+        startAt: parseIsoStrictValue(json['start_at']),
+        finishAt: parseIsoStrictValue(json['finish_at']),
+        startDetection: json['start_detection'] as String?,
+        finishDetection: json['finish_detection'] as String?,
+        clockOffsetMs: (json['clock_offset_ms'] as num?)?.toInt(),
+      ),
     );
   }
 }
@@ -209,6 +250,7 @@ class RaceCourse {
     this.startLng,
     this.startGate,
     this.finishGate,
+    this.finishLineSelfCross = false,
   });
 
   /// Null for an event with no `event_courses` rows, raced on the event's
@@ -220,13 +262,78 @@ class RaceCourse {
   final double? startLat;
   final double? startLng;
 
-  /// The course's timing lines, drawn on the race screen's map. Detection by
-  /// the lines is #1307's; until then the finish rule is the 30 m circle.
+  /// The course's timing lines: drawn on the race screen's map and handed
+  /// to `race_finish v2` (#1307).
   final CourseGate? startGate;
   final CourseGate? finishGate;
 
+  /// The route crosses its own finish line before its end (laps, a track):
+  /// the line cannot tell a lap from the finish, so this course finishes by
+  /// hand only.
+  final bool finishLineSelfCross;
+
   bool get hasFinish => finishLat != null && finishLng != null;
   bool get hasStart => startLat != null && startLng != null;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'course_id': courseId,
+        'distance_m': distanceM,
+        'finish_lat': finishLat,
+        'finish_lng': finishLng,
+        'start_lat': startLat,
+        'start_lng': startLng,
+        'start_gate': _gateJson(startGate),
+        'finish_gate': _gateJson(finishGate),
+        'finish_line_self_cross': finishLineSelfCross,
+      };
+
+  /// A cached [toJson]; null when it is not one.
+  static RaceCourse? fromJson(Object? j) {
+    if (j is! Map) return null;
+    double? n(Object? v) => v is num && v.toDouble().isFinite ? v.toDouble() : null;
+    final id = j['course_id'];
+    return RaceCourse(
+      courseId: id is String ? id : null,
+      distanceM: n(j['distance_m']),
+      finishLat: n(j['finish_lat']),
+      finishLng: n(j['finish_lng']),
+      startLat: n(j['start_lat']),
+      startLng: n(j['start_lng']),
+      startGate: _gateFromJson(j['start_gate']),
+      finishGate: _gateFromJson(j['finish_gate']),
+      finishLineSelfCross: j['finish_line_self_cross'] == true,
+    );
+  }
+
+  static Map<String, dynamic>? _gateJson(CourseGate? g) => g == null
+      ? null
+      : <String, dynamic>{
+          'lat': g.lat,
+          'lng': g.lng,
+          'bearing_deg': g.bearingDeg,
+          'half_width_m': g.halfWidthM,
+          'source': g.source.name,
+        };
+
+  static CourseGate? _gateFromJson(Object? j) {
+    if (j is! Map) return null;
+    final lat = j['lat'];
+    final lng = j['lng'];
+    final bearing = j['bearing_deg'];
+    final half = j['half_width_m'];
+    if (lat is! num || lng is! num || bearing is! num || half is! num) {
+      return null;
+    }
+    return CourseGate(
+      lat: lat.toDouble(),
+      lng: lng.toDouble(),
+      bearingDeg: bearing.toDouble(),
+      halfWidthM: half.toDouble(),
+      source: j['source'] == GateSource.organiser.name
+          ? GateSource.organiser
+          : GateSource.derived,
+    );
+  }
 }
 
 /// Which of an event's [courses] a racer runs: the one they picked at RSVP,
@@ -452,6 +559,55 @@ class RaceController extends ChangeNotifier {
   /// `at` (decisions § 1843).
   final ServerClockOffset clockOffset = ServerClockOffset();
 
+  // ── Detection from the recording's Start (#1307 M1) ──────────────────────
+  //
+  // Every fresh fix of a recording is logged from its Start, bound to a race
+  // or not, and the detector is (re)built over the log whenever the race and
+  // its course are both known: a self-timed attempt as soon as it is armed,
+  // a gun race once GO is. So a crossing in the seconds before the phone
+  // hears GO, or before the course loads, is kept and resolved against GO
+  // rather than lost.
+
+  /// A recording is running on this device.
+  bool _recording = false;
+  final List<RaceFix> _fixLog = [];
+
+  /// Log length when the recording attached: a v1 detector (no lines) with
+  /// no GO on record only ever saw fixes after the attach, and still does.
+  int _attachLogIndex = 0;
+
+  /// `eventId|instance` of the race the detector and [_course] belong to.
+  String? _detKey;
+
+  /// The finish behind an automatic [_outcome], for its detection and start.
+  RaceFinish? _finish;
+
+  /// An automatic finish found while replaying the log rather than on a live
+  /// fix; the run screen collects it with [takePendingFinish].
+  RaceFinish? _pendingFinish;
+
+  /// The runner said "Not finished? Resume": this recording finishes by hand.
+  bool _autoFinishVoided = false;
+
+  /// The outcome already filed by [fileOutcomeNow], so Stop does not file it
+  /// twice, and the write in flight that a void must wait for.
+  RaceOutcome? _filedOutcome;
+  Future<void>? _filing;
+
+  bool _startCued = false;
+
+  /// Metres from the runner to the centre of the start line, until a start
+  /// is committed; null without a course start line or a fix.
+  final ValueNotifier<double?> distanceToStartM = ValueNotifier<double?>(null);
+
+  /// Called once per recording when a start-line crossing commits the start.
+  /// The run screen cues it; a failure there is the screen's to contain.
+  void Function()? onStartLineCrossed;
+
+  /// The course of each race seen this session, keyed like [_detKey].
+  final Map<String, RaceCourse> _courseCache = {};
+  final Set<String> _coursePrefetched = {};
+
   /// Whether a recorder is attached to a running race.
   bool get isHosting => _hostingEventId != null;
 
@@ -468,6 +624,24 @@ class RaceController extends ChangeNotifier {
 
   RaceCourse? get course => _course;
   RaceOutcome? get outcome => _outcome;
+
+  /// The finish behind the current automatic outcome; null otherwise.
+  RaceFinish? get autoFinish => _finish;
+
+  /// Whether a recording on this device is feeding the detector: from
+  /// [beginRecording] (or an attach) until it is detached.
+  bool get followsRecording => _recording;
+
+  /// Whether this recording has a detector timing it right now.
+  bool get detecting => _detector != null;
+
+  /// A finish the detector found while replaying fixes (at GO, or when the
+  /// course arrived), once; null when there is none to collect.
+  RaceFinish? takePendingFinish() {
+    final f = _pendingFinish;
+    _pendingFinish = null;
+    return f;
+  }
 
   /// Stop while racing is a pause until the runner says otherwise: true when
   /// a hosted race has no outcome yet, was not ended by the host, and the
@@ -529,6 +703,7 @@ class RaceController extends ChangeNotifier {
     _pollTimer?.cancel();
     _pingTimer?.cancel();
     _transitionTimer?.cancel();
+    distanceToStartM.dispose();
     final ch = _channel;
     if (ch != null) _c.removeChannel(ch);
     super.dispose();
@@ -573,6 +748,7 @@ class RaceController extends ChangeNotifier {
       }
       _setActive(next);
       unawaited(_writeActiveCache(next));
+      if (next != null) unawaited(_prefetchCourse(next));
     } catch (e) {
       debugPrint('[RaceController._refresh] ${safeErrorLabel(e)}');
       // Offline: a self-timed or scheduled race found earlier still stands
@@ -693,12 +869,14 @@ class RaceController extends ChangeNotifier {
     final race = _active;
     if (race == null || !race.isSelfTimed || _attemptArmed) return;
     _attemptArmed = true;
+    _detectionChanged();
     notifyListeners();
   }
 
   void cancelAttempt() {
     if (!_attemptArmed) return;
     _attemptArmed = false;
+    _detectionChanged();
     notifyListeners();
   }
 
@@ -741,6 +919,7 @@ class RaceController extends ChangeNotifier {
     );
     _active = next;
     _scheduleTransition(next);
+    _detectionChanged();
     if (changed) notifyListeners();
     // L4, and last: a watch on a charger in another room must not be able to
     // hold up the poll that found this transition, let alone fail it.
@@ -862,20 +1041,37 @@ class RaceController extends ChangeNotifier {
     DateTime? startedAt,
     DateTime? recordingStartedAt,
   }) {
+    final key = _raceKey(eventId, instance);
+    // The same race the recording was already timing before it bound keeps
+    // its course, detector and any outcome; anything else starts clean.
+    if (_detKey != key) _resetDetection();
+    _recording = true;
     _hostingEventId = eventId;
     _hostingInstance = instance;
     _hostingUserId = _signedInUserId;
     _gunAt = startedAt;
-    _recordingStartedAt = recordingStartedAt;
-    _course = null;
-    _detector = null;
-    _outcome = null;
+    _recordingStartedAt = recordingStartedAt ?? _recordingStartedAt;
+    _attachLogIndex = _fixLog.length;
     _raceEnded = false;
     _lateStart = false;
     _firstFixSeen = false;
     _firstFixLat = null;
     _firstFixLng = null;
     unawaited(_resolveCourse(++_attachGeneration, eventId, instance));
+    _syncDetector();
+  }
+
+  /// A recording started on this device at [startedAt] (device clock). From
+  /// here every fix offered is kept for the detector, whether or not the
+  /// recording has joined a race yet (#1307 M1).
+  void beginRecording({required DateTime startedAt}) {
+    if (isHosting) return;
+    _resetDetection();
+    _fixLog.clear();
+    _attachLogIndex = 0;
+    _recording = true;
+    _recordingStartedAt = startedAt;
+    _detectionChanged();
   }
 
   void detachRecorder() {
@@ -885,9 +1081,10 @@ class RaceController extends ChangeNotifier {
     _hostingUserId = null;
     _gunAt = null;
     _recordingStartedAt = null;
-    _course = null;
-    _detector = null;
-    _outcome = null;
+    _recording = false;
+    _fixLog.clear();
+    _attachLogIndex = 0;
+    _resetDetection();
     _raceEnded = false;
     _lateStart = false;
     _firstFixSeen = false;
@@ -895,6 +1092,181 @@ class RaceController extends ChangeNotifier {
     _firstFixLng = null;
     _pingTimer?.cancel();
     _pingTimer = null;
+  }
+
+  void _resetDetection() {
+    _detKey = null;
+    _course = null;
+    _detector = null;
+    _outcome = null;
+    _finish = null;
+    _pendingFinish = null;
+    _autoFinishVoided = false;
+    _filedOutcome = null;
+    _filing = null;
+    _startCued = false;
+    distanceToStartM.value = null;
+  }
+
+  static String _raceKey(String eventId, DateTime instance) =>
+      '$eventId|${instanceStartKey(instance)}';
+
+  /// The race this recording is timed for right now: the one it is bound to,
+  /// else the runner's armed or live race while a recording runs (a
+  /// self-timed one only once "This run is my attempt" is on).
+  ({String eventId, DateTime instance, bool selfTimed, DateTime? goAt})?
+      _detectionRace() {
+    final eid = _hostingEventId;
+    final inst = _hostingInstance;
+    final a = _active;
+    if (eid != null && inst != null) {
+      final same = a != null &&
+          a.eventId == eid &&
+          a.instanceStart.isAtSameMomentAs(inst);
+      return (
+        eventId: eid,
+        instance: inst,
+        selfTimed: same && a.isSelfTimed,
+        goAt: _gunAt,
+      );
+    }
+    if (!_recording || a == null) return null;
+    if (!a.isArmed && !a.isRunning) return null;
+    if (a.isSelfTimed && !_attemptArmed) return null;
+    return (
+      eventId: a.eventId,
+      instance: a.instanceStart,
+      selfTimed: a.isSelfTimed,
+      goAt: a.isRunning ? a.goAt : null,
+    );
+  }
+
+  /// The race, its course or GO moved: bring the detector up to date, and
+  /// find the course if it is not in hand. Never throws (L4).
+  void _detectionChanged() {
+    try {
+      _syncDetector();
+      final r = _detectionRace();
+      if (r != null && _course == null && !isHosting) {
+        unawaited(_loadDetectionCourse(r.eventId, r.instance));
+      }
+    } catch (e) {
+      debugPrint('[RaceController._detectionChanged] ${safeErrorLabel(e)}');
+    }
+  }
+
+  void _syncDetector() {
+    final r = _detectionRace();
+    if (r == null) {
+      if (!isHosting && _detKey != null) _resetDetection();
+      return;
+    }
+    final key = _raceKey(r.eventId, r.instance);
+    if (_detKey != key) {
+      _resetDetection();
+      _detKey = key;
+      _course = _courseCache[key];
+    }
+    final course = _course;
+    if (course == null || _autoFinishVoided || _outcome != null) return;
+    final goDevice = r.goAt?.subtract(clockOffset.offset);
+    final d = _detector;
+    if (d == null) {
+      // A gun race waits for GO; a recording already bound (whose GO may
+      // never have been on record) times as it always did.
+      if (!r.selfTimed && goDevice == null && !isHosting) return;
+      final built = _buildDetector(course, r.selfTimed, goDevice);
+      if (built == null) return;
+      _detector = built;
+      _replayLog(goDevice);
+    } else if (!r.selfTimed && goDevice != null) {
+      final f = d.setGo(goDevice);
+      if (f != null) _onDetectedFinish(f, live: false);
+      _checkStartCue();
+    }
+  }
+
+  /// `race_finish v2` over this course, or null when it cannot finish
+  /// itself: no distance, no finish, or a finish line the route crosses
+  /// before its end, which finishes by hand only.
+  RaceFinishDetector? _buildDetector(
+      RaceCourse course, bool selfTimed, DateTime? goDevice) {
+    if (course.finishLineSelfCross) return null;
+    final distance = course.distanceM;
+    if (distance == null || !distance.isFinite || distance <= 0) return null;
+    final lat = course.finishLat ?? course.finishGate?.lat;
+    final lng = course.finishLng ?? course.finishGate?.lng;
+    if (lat == null || lng == null) return null;
+    return RaceFinishDetector(
+      finishLat: lat,
+      finishLng: lng,
+      courseDistanceM: distance,
+      startGate: course.startGate,
+      finishGate: course.finishGate,
+      mode: selfTimed ? RaceStartMode.selfTimed : RaceStartMode.gun,
+      goAt: selfTimed ? null : goDevice,
+    );
+  }
+
+  static bool _isV1(RaceFinishDetector d) =>
+      d.mode == RaceStartMode.gun && d.startGate == null && d.finishGate == null;
+
+  /// Whether a v1 detector (no lines) may see [fix]: v1 holds nothing until
+  /// GO, so it is shown only fixes from GO on, or, with no GO on record,
+  /// only those after the recording attached, as before #1307.
+  bool _v1Sees(RaceFix fix, int index, DateTime? goDevice) => goDevice != null
+      ? !fix.at.isBefore(goDevice)
+      : index >= _attachLogIndex;
+
+  void _replayLog(DateTime? goDevice) {
+    final d = _detector;
+    if (d == null) return;
+    final v1 = _isV1(d);
+    for (var i = 0; i < _fixLog.length; i++) {
+      final fix = _fixLog[i];
+      if (v1 && !_v1Sees(fix, i, goDevice)) continue;
+      final f = d.offer(fix);
+      if (f != null) {
+        _onDetectedFinish(f, live: false);
+        break;
+      }
+    }
+    _checkStartCue();
+  }
+
+  RaceFinish _onDetectedFinish(RaceFinish finish, {required bool live}) {
+    _outcome = RaceOutcome(
+      finisherStatus: 'finished',
+      method: RaceFinishMethod.auto,
+      finishAt: finish.at,
+    );
+    _finish = finish;
+    if (!live) _pendingFinish = finish;
+    distanceToStartM.value = null;
+    notifyListeners();
+    return finish;
+  }
+
+  void _checkStartCue() {
+    final start = _detector?.start;
+    if (start == null) return;
+    distanceToStartM.value = null;
+    if (_startCued || start.kind != RaceStartKind.line) return;
+    _startCued = true;
+    try {
+      onStartLineCrossed?.call();
+    } catch (e) {
+      debugPrint('[RaceController.onStartLineCrossed] ${safeErrorLabel(e)}');
+    }
+  }
+
+  void _updateDistanceToStart(double lat, double lng) {
+    final gate = _course?.startGate;
+    if (gate == null || _detector?.start != null || _outcome != null) {
+      if (distanceToStartM.value != null) distanceToStartM.value = null;
+      return;
+    }
+    distanceToStartM.value = raceDistanceM(lat, lng, gate.lat, gate.lng);
   }
 
   /// The course lookup, as a seam: the default reaches Supabase, which no
@@ -909,36 +1281,104 @@ class RaceController extends ChangeNotifier {
 
   /// L4: a course that cannot be resolved leaves the race recording with no
   /// auto-finish and an ungated manual finish, never a broken recording.
+  /// With no signal the course comes off the device's cache (#1307
+  /// offline): detection never needs the network once the race was seen.
   Future<void> _resolveCourse(
       int generation, String eventId, DateTime instance) async {
+    final key = _raceKey(eventId, instance);
+    RaceCourse? course;
     try {
       final loader = courseLoader ?? _loadCourse;
-      final course = await loader(eventId, instance);
-      if (generation != _attachGeneration) return;
-      setCourse(course);
+      course = await loader(eventId, instance);
+      if (course != null) unawaited(_cacheCourse(key, course));
     } catch (e) {
       debugPrint('[RaceController._resolveCourse] ${safeErrorLabel(e)}');
+      course = _courseCache[key] ?? await _readCachedCourse(key);
+    }
+    if (generation != _attachGeneration) return;
+    if (course == null && _course != null) return;
+    setCourse(course);
+  }
+
+  /// Install the racer's course and time the recording by it, replaying the
+  /// fixes so far. Public for the run-screen tests, which drive a race
+  /// without a network.
+  @visibleForTesting
+  void setCourse(RaceCourse? course) {
+    final key = _detKey;
+    _course = course;
+    if (course != null && key != null) _courseCache[key] = course;
+    if (_outcome == null) _detector = null;
+    _syncDetector();
+    _evaluateLateStart();
+  }
+
+  /// The course of the race a recording not yet bound is going to time, off
+  /// the memory cache, the device cache or the network, in that order.
+  Future<void> _loadDetectionCourse(String eventId, DateTime instance) async {
+    final key = _raceKey(eventId, instance);
+    var course = _courseCache[key] ?? await _readCachedCourse(key);
+    if (course == null) {
+      try {
+        final loader = courseLoader ?? _loadCourse;
+        course = await loader(eventId, instance);
+        if (course != null) unawaited(_cacheCourse(key, course));
+      } catch (e) {
+        debugPrint('[RaceController._loadDetectionCourse] ${safeErrorLabel(e)}');
+      }
+    }
+    if (course == null || _detKey != key || _course != null) return;
+    setCourse(course);
+  }
+
+  /// The race this runner is going to was found: keep its frozen course on
+  /// the device, once per race per session, so a recording times by it with
+  /// no signal later. L4.
+  Future<void> _prefetchCourse(ActiveRace race) async {
+    final key = _raceKey(race.eventId, race.instanceStart);
+    if (!_coursePrefetched.add(key)) return;
+    try {
+      final loader = courseLoader ?? _loadCourse;
+      final course = await loader(race.eventId, race.instanceStart);
+      if (course == null) return;
+      await _cacheCourse(key, course);
+      if (_detKey == key && _course == null) setCourse(course);
+    } catch (e) {
+      _coursePrefetched.remove(key);
+      debugPrint('[RaceController._prefetchCourse] ${safeErrorLabel(e)}');
     }
   }
 
-  /// Install the racer's course. Public for the run-screen tests, which
-  /// drive a race without a network.
-  @visibleForTesting
-  void setCourse(RaceCourse? course) {
-    _course = course;
-    final distance = course?.distanceM;
-    _detector = course != null &&
-            course.hasFinish &&
-            distance != null &&
-            distance.isFinite &&
-            distance > 0
-        ? RaceFinishDetector(
-            finishLat: course.finishLat!,
-            finishLng: course.finishLng!,
-            courseDistanceM: distance,
-          )
-        : null;
-    _evaluateLateStart();
+  Future<void> _cacheCourse(String key, RaceCourse course) async {
+    _courseCache[key] = course;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kRaceCourseCacheKey, jsonEncode({
+        'user_id': _signedInUserId,
+        'race': key,
+        'course': course.toJson(),
+      }));
+    } catch (e) {
+      debugPrint('[RaceController._cacheCourse] $e');
+    }
+  }
+
+  Future<RaceCourse?> _readCachedCourse(String key) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(kRaceCourseCacheKey);
+      if (raw == null) return null;
+      final j = jsonDecode(raw);
+      if (j is! Map || j['user_id'] != _signedInUserId || j['race'] != key) {
+        return null;
+      }
+      final course = RaceCourse.fromJson(j['course']);
+      if (course != null) _courseCache[key] = course;
+      return course;
+    } catch (e) {
+      debugPrint('[RaceController._readCachedCourse] $e');
+      return null;
+    }
   }
 
   /// The finish point comes off the course row, never the route: a
@@ -972,6 +1412,7 @@ class RaceController extends ChangeNotifier {
           startLng: mine.startLng,
           startGate: frozen.startGate,
           finishGate: frozen.finishGate,
+          finishLineSelfCross: frozen.finishLineSelfCross,
         );
       }
       return RaceCourse(
@@ -983,6 +1424,7 @@ class RaceController extends ChangeNotifier {
         startLng: mine.startLng,
         startGate: mine.startGate,
         finishGate: mine.finishGate,
+        finishLineSelfCross: mine.finishLineSelfCross,
       );
     }
     return RaceCourse(
@@ -1000,23 +1442,32 @@ class RaceController extends ChangeNotifier {
     required double coveredM,
     required DateTime at,
   }) {
-    if (!isHosting || _outcome != null || _raceEnded) return null;
-    if (!_firstFixSeen && lat.isFinite && lng.isFinite) {
+    if (!_recording || _outcome != null || _raceEnded) return null;
+    if (!lat.isFinite || !lng.isFinite || !coveredM.isFinite) return null;
+    if (isHosting && !_firstFixSeen) {
       _firstFixSeen = true;
       _firstFixLat = lat;
       _firstFixLng = lng;
       _evaluateLateStart();
     }
-    final finish = _detector?.offer(
-        RaceFix(lat: lat, lng: lng, at: at, coveredM: coveredM));
+    final fix = RaceFix(lat: lat, lng: lng, at: at, coveredM: coveredM);
+    _fixLog.add(fix);
+    if (_fixLog.length > kRaceFixLogMax + 1000) {
+      _fixLog.removeRange(0, 1000);
+      _attachLogIndex = _attachLogIndex > 1000 ? _attachLogIndex - 1000 : 0;
+    }
+    _updateDistanceToStart(lat, lng);
+    final d = _detector;
+    if (d == null) return null;
+    if (_isV1(d) &&
+        !_v1Sees(fix, _fixLog.length - 1,
+            _gunAt?.subtract(clockOffset.offset))) {
+      return null;
+    }
+    final finish = d.offer(fix);
+    _checkStartCue();
     if (finish == null) return null;
-    _outcome = RaceOutcome(
-      finisherStatus: 'finished',
-      method: RaceFinishMethod.auto,
-      finishAt: finish.at,
-    );
-    notifyListeners();
-    return finish;
+    return _onDetectedFinish(finish, live: true);
   }
 
   /// Runs on the first fix and again when the course lands, whichever is
@@ -1049,13 +1500,15 @@ class RaceController extends ChangeNotifier {
   RaceOutcome decideStop({required double coveredM, DateTime? now}) {
     final existing = _outcome;
     if (existing != null) return existing;
+    final settled = _detector?.settle();
     final o = raceStopOutcome(
-      candidate: _detector?.settle(),
+      candidate: settled,
       coveredM: coveredM,
       courseDistanceM: _course?.distanceM,
       now: now ?? DateTime.now(),
     );
     _outcome = o;
+    if (o.method == RaceFinishMethod.auto) _finish = settled;
     notifyListeners();
     return o;
   }
@@ -1065,7 +1518,10 @@ class RaceController extends ChangeNotifier {
   @visibleForTesting
   void observeHostedSession(String status, DateTime? startedAt) {
     if (!isHosting) return;
-    if (startedAt != null) _gunAt = startedAt;
+    if (startedAt != null) {
+      _gunAt = startedAt;
+      _syncDetector();
+    }
     if ((status == 'finished' || status == 'cancelled') &&
         _outcome == null &&
         !_raceEnded) {
@@ -1175,17 +1631,126 @@ class RaceController extends ChangeNotifier {
       detachRecorder();
       return;
     }
+    if (identical(outcome, _filedOutcome)) {
+      await _filing;
+      detachRecorder();
+      return;
+    }
+    await _file(_resultFor(
+      owner: owner,
+      eventId: eid,
+      instance: inst,
+      runId: runId,
+      durationS: durationS,
+      distanceM: distanceM,
+      outcome: outcome,
+    ));
+    detachRecorder();
+  }
+
+  /// File the automatic finish now, while the recording stays open for
+  /// "Not finished? Resume" (#1307 m11): the result reaches the leaderboard
+  /// at the line, and a Stop later in the window files nothing again.
+  Future<void> fileOutcomeNow({
+    required String runId,
+    required int durationS,
+    required double distanceM,
+  }) {
+    final eid = _hostingEventId;
+    final inst = _hostingInstance;
+    final outcome = _outcome;
+    final owner = _hostingUserId ?? _signedInUserId;
+    if (eid == null || inst == null || outcome == null || owner == null) {
+      return Future<void>.value();
+    }
+    _filedOutcome = outcome;
+    final filing = _file(_resultFor(
+      owner: owner,
+      eventId: eid,
+      instance: inst,
+      runId: runId,
+      durationS: durationS,
+      distanceM: distanceM,
+      outcome: outcome,
+    ));
+    _filing = filing;
+    return filing;
+  }
+
+  /// "Not finished? Resume": void the automatic finish and keep racing. The
+  /// filed row is deleted while it is still the runner's own automatic one,
+  /// and a queued one is dropped. The rest of this recording finishes by
+  /// hand: a line that finished the runner once where they were not
+  /// finishing would do it again. Returns whether there was one to void.
+  Future<bool> voidAutoFinish() async {
+    final eid = _hostingEventId;
+    final inst = _hostingInstance;
+    final outcome = _outcome;
+    if (eid == null ||
+        inst == null ||
+        outcome == null ||
+        outcome.method != RaceFinishMethod.auto) {
+      return false;
+    }
+    final filed = _filedOutcome != null;
+    final filing = _filing;
+    _outcome = null;
+    _finish = null;
+    _pendingFinish = null;
+    _filedOutcome = null;
+    _filing = null;
+    _detector = null;
+    _autoFinishVoided = true;
+    notifyListeners();
+    if (!filed) return true;
+    try {
+      await filing;
+    } catch (e) {
+      debugPrint('[RaceController.voidAutoFinish filing] ${safeErrorLabel(e)}');
+    }
+    final owner = _hostingUserId ?? _signedInUserId;
+    if (owner != null) await _dequeuePendingResult(owner, eid, inst);
+    try {
+      await _social.deleteOwnAutoEventResult(eventId: eid, instance: inst);
+    } catch (e) {
+      debugPrint('[RaceController.voidAutoFinish] ${safeErrorLabel(e)}');
+    }
+    return true;
+  }
+
+  /// The row a race recording files for [outcome]: the timing columns from
+  /// [raceResultTiming], and the crossings (#1307) on the server clock — the
+  /// device instant plus the offset the gun time uses, which the server
+  /// re-derives the gun and chip time from. A committed start (a start-line
+  /// crossing, or GO for a runner past the line) is `gate`; without one the
+  /// start is the runner's own Start press, `device`. A DNF carries none.
+  PendingRaceResult _resultFor({
+    required String owner,
+    required String eventId,
+    required DateTime instance,
+    required String runId,
+    required int durationS,
+    required double distanceM,
+    required RaceOutcome outcome,
+  }) {
+    final auto = outcome.method == RaceFinishMethod.auto;
+    final finish = auto ? _finish : null;
+    final start = outcome.finished ? (finish?.start ?? _detector?.start) : null;
     final timing = raceResultTiming(
       outcome: outcome,
       gunAt: _gunAt,
       clockOffset: clockOffset.offset,
       recordingStartedAt: _recordingStartedAt,
+      startAt: start?.at,
       elapsedS: durationS,
     );
-    final result = PendingRaceResult(
+    final offset = clockOffset.offset;
+    final startDevice = outcome.finished ? (start?.at ?? _recordingStartedAt) : null;
+    final finishDevice = outcome.finished ? outcome.finishAt : null;
+    return PendingRaceResult(
       userId: owner,
-      eventId: eid,
-      instanceStart: inst,
+      eventId: eventId,
+      instanceStart: instance,
       runId: runId,
       durationS: timing.durationS,
       distanceM: distanceM,
@@ -1194,14 +1759,43 @@ class RaceController extends ChangeNotifier {
       gunTimeS: timing.gunTimeS,
       chipTimeS: timing.chipTimeS,
       finishMethod: outcome.method?.wire,
+      crossings: RaceCrossings(
+        startAt: startDevice?.add(offset).toUtc(),
+        finishAt: finishDevice?.add(offset).toUtc(),
+        startDetection: startDevice == null
+            ? null
+            : (start != null ? RaceStartDetection.gate : RaceStartDetection.device)
+                .wire,
+        finishDetection: auto
+            ? (finish?.detection ?? RaceFinishDetection.zone).wire
+            : null,
+        clockOffsetMs: clockOffset.known ? offset.inMilliseconds : null,
+      ),
     );
+  }
+
+  Future<void> _file(PendingRaceResult result) async {
     try {
       await _submitPending(result);
     } catch (e) {
       debugPrint('[RaceController.submitResult] ${safeErrorLabel(e)}');
       if (isRetryableRaceResultFailure(e)) await _queuePendingResult(result);
     }
-    detachRecorder();
+  }
+
+  Future<void> _dequeuePendingResult(
+      String owner, String eventId, DateTime instance) async {
+    try {
+      final queued = await _readPendingResults();
+      final before = queued.length;
+      queued.removeWhere((r) =>
+          r.userId == owner &&
+          r.eventId == eventId &&
+          r.instanceStart.isAtSameMomentAs(instance));
+      if (queued.length != before) await _writePendingResults(queued);
+    } catch (e) {
+      debugPrint('[RaceController._dequeuePendingResult] $e');
+    }
   }
 
   /// The upsert writes whoever is signed in, so a result is only ever sent
@@ -1222,6 +1816,7 @@ class RaceController extends ChangeNotifier {
       gunTimeS: r.gunTimeS,
       chipTimeS: r.chipTimeS,
       finishMethod: r.finishMethod,
+      crossings: r.crossings,
     );
   }
 

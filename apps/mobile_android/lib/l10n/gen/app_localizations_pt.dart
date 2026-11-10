@@ -21500,6 +21500,17 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get runRaceStartCrossed =>
+      'Linha de partida atravessada, a cronometrar';
+
+  @override
+  String get runRaceUndoResume => 'Não terminou? Retomar';
+
+  @override
+  String get runRaceFinishUndone =>
+      'Chegada anulada. Quando terminar, toque em “Parar” e depois em “Terminar prova”.';
+
+  @override
   String get runRaceThisIsMyAttempt => 'Esta corrida é a minha tentativa';
 
   @override
@@ -43362,6 +43373,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String runRaceToStartLine(String distance) {
     return '$distance até a linha de largada';
   }
+
+  @override
+  String get runRaceStartCrossed => 'Linha de largada cruzada, cronometrando';
+
+  @override
+  String get runRaceUndoResume => 'Não terminou? Retomar';
+
+  @override
+  String get runRaceFinishUndone =>
+      'Chegada desfeita. Quando terminar, toque em “Parar” e depois em “Finalizar prova”.';
 
   @override
   String get runRaceThisIsMyAttempt => 'Esta corrida é a minha tentativa';

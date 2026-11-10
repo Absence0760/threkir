@@ -21523,6 +21523,16 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get runRaceStartCrossed => 'Startlinie überquert, Zeitmessung läuft';
+
+  @override
+  String get runRaceUndoResume => 'Nicht im Ziel? Fortsetzen';
+
+  @override
+  String get runRaceFinishUndone =>
+      'Zieleinlauf rückgängig gemacht. Wenn du im Ziel bist, tippe auf „Stopp“ und dann auf „Rennen beenden“.';
+
+  @override
   String get runRaceThisIsMyAttempt => 'Dieser Lauf ist mein Versuch';
 
   @override

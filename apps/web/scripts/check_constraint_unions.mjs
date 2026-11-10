@@ -942,13 +942,15 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'event_results.start_detection',
-		clients: [],
-		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+		clients: [
+			{ file: 'apps/mobile_android/lib/race_controller.dart', decl: 'RaceStartDetection', shape: 'enum' },
+		],
 	},
 	{
 		tableColumn: 'event_results.finish_detection',
-		clients: [],
-		note: 'devices start writing it with timing-lines phase 4 (#1307); today the race guard reads it and no client enumerates the set.',
+		clients: [
+			{ file: 'apps/mobile_android/lib/race_finish.dart', decl: 'RaceFinishDetection', shape: 'enum' },
+		],
 	},
 	{
 		tableColumn: 'recipes.meal_slot',

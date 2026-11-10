@@ -21263,6 +21263,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get runRaceStartCrossed => 'Start line crossed, timing';
+
+  @override
+  String get runRaceUndoResume => 'Not finished? Resume';
+
+  @override
+  String get runRaceFinishUndone =>
+      'Finish undone. When you finish, tap Stop, then Finish race.';
+
+  @override
   String get runRaceThisIsMyAttempt => 'This run is my attempt';
 
   @override

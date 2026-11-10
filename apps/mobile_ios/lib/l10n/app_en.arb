@@ -28209,12 +28209,24 @@
   },
   "runRaceToStartLine": "{distance} to the start line",
   "@runRaceToStartLine": {
-    "description": "Run screen race banner: how far the runner is from a self-timed race's start line",
+    "description": "Run screen: how far the runner is from a race's start line, on the idle banner for a self-timed race and while recording until the start is timed",
     "placeholders": {
       "distance": {
         "type": "String"
       }
     }
+  },
+  "runRaceStartCrossed": "Start line crossed, timing",
+  "@runRaceStartCrossed": {
+    "description": "Voice cue and screen-reader announcement when a racer crosses the course's start line and their race clock starts"
+  },
+  "runRaceUndoResume": "Not finished? Resume",
+  "@runRaceUndoResume": {
+    "description": "Run screen button, offered for 60 seconds after the app finished a race automatically at the finish line: cancels that finish and resumes recording"
+  },
+  "runRaceFinishUndone": "Finish undone. When you finish, tap Stop, then Finish race.",
+  "@runRaceFinishUndone": {
+    "description": "Run screen banner after the runner cancelled an automatic race finish; the rest of the race is finished by hand"
   },
   "runRaceThisIsMyAttempt": "This run is my attempt",
   "@runRaceThisIsMyAttempt": {

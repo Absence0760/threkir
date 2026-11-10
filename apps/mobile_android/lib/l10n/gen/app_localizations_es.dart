@@ -21498,6 +21498,16 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get runRaceStartCrossed => 'Línea de salida cruzada, cronometrando';
+
+  @override
+  String get runRaceUndoResume => '¿No has terminado? Reanudar';
+
+  @override
+  String get runRaceFinishUndone =>
+      'Llegada anulada. Cuando termines, toca «Detener» y luego «Terminar carrera».';
+
+  @override
   String get runRaceThisIsMyAttempt => 'Esta carrera es mi intento';
 
   @override

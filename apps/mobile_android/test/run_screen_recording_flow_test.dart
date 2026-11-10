@@ -15,6 +15,7 @@ import 'package:wakelock_plus_platform_interface/wakelock_plus_platform_interfac
 import '../lib/audio_cues.dart';
 import '../lib/ble_heart_rate.dart';
 import '../lib/ble_treadmill.dart';
+import '../lib/course_gates.dart' show CourseGate, GateSource;
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_route_store.dart';
 import '../lib/local_run_store.dart';
@@ -24,6 +25,7 @@ import '../lib/race_finish.dart';
 import '../lib/run_stop_dock.dart';
 import '../lib/screens/run_screen.dart';
 import '../lib/social_service.dart';
+import '../lib/step_haptics.dart' show RunHapticPattern;
 import '../lib/training_service.dart';
 import '../lib/turn_cues.dart';
 import '../lib/widgets/collapsible_panel.dart';
@@ -303,9 +305,54 @@ class _RaceResultSocial extends SocialService {
     int? gunTimeS,
     int? chipTimeS,
     String? finishMethod,
+    RaceCrossings crossings = RaceCrossings.none,
   }) async {
     submitted.add((finisherStatus: finisherStatus, finishMethod: finishMethod));
   }
+}
+
+/// [_RaceResultSocial] that also takes the undo's delete.
+class _UndoableRaceSocial extends _RaceResultSocial {
+  int deletes = 0;
+
+  @override
+  Future<void> deleteOwnAutoEventResult({
+    required String eventId,
+    required DateTime instance,
+  }) async {
+    deletes++;
+  }
+}
+
+/// Captures the race cues the run screen speaks.
+class _SpokenCues extends AudioCues {
+  final List<String> spoken = [];
+
+  @override
+  Future<void> announceGuidedCue(String text) async => spoken.add(text);
+}
+
+/// A 100 m course due east of [_pos]'s origin with a start line 6 m in and
+/// a finish line at 90 m, both facing east.
+RaceCourse _linedCourse() {
+  const lat = 47.37;
+  const lngBase = 8.54;
+  const metrePerDegLng = 111320 * 0.6773;
+  CourseGate line(double eastM) => CourseGate(
+        lat: lat,
+        lng: lngBase + eastM / metrePerDegLng,
+        bearingDeg: 90,
+        halfWidthM: 15,
+        source: GateSource.organiser,
+      );
+  return RaceCourse(
+    courseId: 'course-100',
+    distanceM: 100,
+    finishLat: lat,
+    finishLng: lngBase + 90 / metrePerDegLng,
+    startGate: line(6),
+    finishGate: line(90),
+  );
 }
 
 /// A race controller already watching a race that went live a minute ago,
@@ -2932,6 +2979,149 @@ void main() {
           reason: 'the run itself is never lost to a race state');
       expect(raceSocial.submitted, isEmpty,
           reason: 'the server marks the runner DNF; nothing is submitted');
+      await unmount(tester);
+    });
+  });
+
+  group('RunScreen — timing by the lines (#1307)', () {
+    late List<String> haptics;
+
+    Future<({_CapturingRunStore runStore, RaceController race})> pumpLined(
+        WidgetTester tester, SocialService social, AudioCues cues) async {
+      haptics = [];
+      mockMethodChannel('run_app/haptics', (call) async {
+        haptics.add(call.arguments as String);
+        return null;
+      });
+      final runStore = _CapturingRunStore();
+      await runStore.init(overrideDirectory: runsDir);
+      final s = await makeStores();
+      await s.prefs.setAudioCues(true);
+      final race = _runningRace(social)
+        ..courseLoader = ((_, _) async => _linedCourse());
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RunScreen(
+            apiClient: null,
+            runStore: runStore,
+            routeStore: s.routeStore,
+            preferences: s.prefs,
+            audioCues: cues,
+            social: s.social,
+            raceController: race,
+            training: s.training,
+            heartRate: s.heartRate,
+            treadmill: s.treadmill,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('START'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      tester.takeException();
+      return (runStore: runStore, race: race);
+    }
+
+    /// Run east from [fromM] to [toM], 12 m every 2 s.
+    Future<void> runEast(WidgetTester tester, double fromM, double toM,
+        {int fromS = 0}) async {
+      var s = fromS;
+      for (var x = fromM; x <= toM; x += 12, s += 2) {
+        geolocator.emit(_pos(metresEast: x, secondsFromStart: s));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    Future<void> unmount(WidgetTester tester) async {
+      await tester.pumpWidget(const SizedBox());
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      tester.takeException();
+    }
+
+    testWidgets('before the start line the screen shows how far it is, and '
+        'crossing it is cued by voice and haptic', (tester) async {
+      final cues = _SpokenCues();
+      final r = await pumpLined(tester, _UndoableRaceSocial(), cues);
+      expect(r.race.isHosting, isTrue);
+
+      await runEast(tester, -12, -12);
+      expect(find.byKey(const ValueKey('race-to-start')), findsOneWidget);
+
+      await runEast(tester, 0, 72, fromS: 2);
+      expect(find.byKey(const ValueKey('race-to-start')), findsNothing,
+          reason: 'the distance goes once the start is timed');
+      expect(cues.spoken, contains('Start line crossed, timing'));
+      expect(haptics, contains(RunHapticPattern.stepWork.wireName));
+      await unmount(tester);
+    });
+
+    testWidgets('a finish-line crossing files the finish and holds the run '
+        'open behind Not finished? Resume, then stops', (tester) async {
+      final social = _UndoableRaceSocial();
+      final cues = _SpokenCues();
+      final r = await pumpLined(tester, social, cues);
+
+      await runEast(tester, 0, 96);
+      await pumpUntil(tester, () => social.submitted.isNotEmpty,
+          describe: 'the line finish to be filed');
+      expect(social.submitted.single.finishMethod, RaceFinishMethod.auto.wire);
+      expect(find.byKey(const ValueKey('race-undo-resume')), findsOneWidget);
+      expect(r.runStore.captured, isEmpty,
+          reason: 'the recording stays open for the undo');
+      expect(haptics, contains(RunHapticPattern.workoutComplete.wireName));
+
+      await tester.pump(kRaceUndoWindow + const Duration(seconds: 1));
+      await pumpUntil(tester, () => r.runStore.captured.isNotEmpty,
+          describe: 'the run to stop when the undo window closes');
+      expect(social.submitted, hasLength(1),
+          reason: 'the stop files nothing a second time');
+      expect(find.byKey(const ValueKey('race-undo-resume')), findsNothing);
+      await unmount(tester);
+    });
+
+    testWidgets('Not finished? Resume voids the finish and records on',
+        (tester) async {
+      final social = _UndoableRaceSocial();
+      final r = await pumpLined(tester, social, _SpokenCues());
+
+      await runEast(tester, 0, 96);
+      await pumpUntil(tester, () => social.submitted.isNotEmpty,
+          describe: 'the line finish to be filed');
+      await tester.tap(find.byKey(const ValueKey('race-undo-resume')));
+      await pumpUntil(tester, () => social.deletes == 1,
+          describe: 'the filed finish to be withdrawn');
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('race-undo-resume')), findsNothing);
+      expect(r.race.outcome, isNull);
+      expect(r.race.isHosting, isTrue);
+      expect(r.runStore.captured, isEmpty);
+      await tester.pump(kRaceUndoWindow + const Duration(seconds: 1));
+      expect(r.runStore.captured, isEmpty,
+          reason: 'an undone finish no longer stops the run');
+
+      final stopped = await holdFinish(tester,
+          until: () => find.byType(RaceStopSheet).evaluate().isNotEmpty,
+          describe: 'Stop to ask Resume race / Finish race');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Finish race'), findsOneWidget,
+          reason: 'after an undo the race finishes by hand');
+      await tester.tap(find.byKey(const Key('race-stop-finish')));
+      await pumpUntil(tester, stopped, describe: 'Finish race to stop the run');
+      await pumpUntil(tester, () => social.submitted.length == 2,
+          describe: 'the hand finish to be filed');
+      expect(social.submitted.last.finishMethod, RaceFinishMethod.manual.wire);
       await unmount(tester);
     });
   });

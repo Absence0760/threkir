@@ -21540,6 +21540,16 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get runRaceStartCrossed => 'Ligne de départ franchie, chrono lancé';
+
+  @override
+  String get runRaceUndoResume => 'Pas terminé ? Reprendre';
+
+  @override
+  String get runRaceFinishUndone =>
+      'Arrivée annulée. Quand vous aurez terminé, touchez « Arrêter », puis « Terminer la course ».';
+
+  @override
   String get runRaceThisIsMyAttempt => 'Cette course est ma tentative';
 
   @override

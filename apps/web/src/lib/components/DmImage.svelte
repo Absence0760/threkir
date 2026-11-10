@@ -31,7 +31,8 @@
 		} catch (e) {
 			if (id !== current) return;
 			console.error('dm image read failed', e instanceof Error ? e.message : e);
-			failed = true;
+			if (++checks < PENDING_MAX_CHECKS) schedule(PENDING_RECHECK_MS, id);
+			else if (view?.status !== 'ready') failed = true;
 		}
 	}
 

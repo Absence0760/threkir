@@ -39,6 +39,7 @@
 			return;
 		}
 		searching = true;
+		searchError = false;
 		const timer = setTimeout(async () => {
 			try {
 				const hits = await searchDms(q);

@@ -17,7 +17,7 @@
 	import DmMessageText from '#lib/components/DmMessageText.svelte';
 	import DmReactions from '#lib/components/DmReactions.svelte';
 	import DmImage from '#lib/components/DmImage.svelte';
-	import { withMyDmReaction, type DmReaction, type DmReactionRow } from '#lib/social/dm_reactions.ts';
+	import { parseDmReaction, withMyDmReaction, type DmReaction, type DmReactionRow } from '#lib/social/dm_reactions.ts';
 	import { DmImageEncodeError, encodeDmImage } from '#lib/social/dm_image_encode.ts';
 	import { coachAssistEnabled } from '#lib/coach/coach_assist_flag.ts';
 	import { bodyRestatesAttachment, hasDmRouteAttachment } from '#lib/social/dm_attachment.ts';
@@ -55,8 +55,13 @@
 	// next poll.
 	let reactions = $state<DmReactionRow[]>([]);
 	let reactionsFor = '';
+	// A read that started before another read, or before a reaction the viewer
+	// set, would put an older picture back; both are dropped.
+	let reactionReadSeq = 0;
+	let reactionWrites = 0;
 	// Photos (migration 20271213121604): offered only while the server's gate
-	// is open; one picked photo per conversation waits beside the composer.
+	// is open; one picked photo at a time, shown only in the conversation it
+	// was picked in.
 	let photosEnabled = $state(false);
 	let photoDraft = $state<{ thread: string; blob: Blob; preview: string } | null>(null);
 	let photoInput = $state<HTMLInputElement | null>(null);
@@ -260,9 +265,11 @@
 
 	async function loadReactions(id: string) {
 		const ids = messages.filter((m) => m.unsent_at === null).map((m) => m.id);
+		const seq = ++reactionReadSeq;
+		const writes = reactionWrites;
 		try {
 			const rows = await fetchDmReactions(ids);
-			if (id !== activeId) return;
+			if (id !== activeId || seq !== reactionReadSeq || writes !== reactionWrites) return;
 			reactions = rows;
 			reactionsFor = id;
 		} catch (e) {
@@ -274,18 +281,18 @@
 	async function react(m: DirectMessage, next: DmReaction | null) {
 		const id = activeId;
 		if (!id || !me) return;
-		const before = reactions;
-		reactions = withMyDmReaction(reactions, m.id, me, next, (reaction) => ({
-			message_id: m.id,
-			user_id: me,
-			reaction
-		}));
+		const previous = reactions.find((r) => r.message_id === m.id && r.user_id === me)?.reaction ?? null;
+		const write = ++reactionWrites;
+		const mine = (reaction: DmReaction) => ({ message_id: m.id, user_id: me, reaction });
+		reactions = withMyDmReaction(reactions, m.id, me, next, mine);
 		actionError = null;
 		try {
 			await setDmReaction(m.id, next);
 		} catch (e) {
 			if (id === activeId) {
-				reactions = before;
+				if (write === reactionWrites) {
+					reactions = withMyDmReaction(reactions, m.id, me, parseDmReaction(previous), mine);
+				}
 				actionError = errorCopy(e, tr, 'messages.reactionRefused', 'messages.reactionRefused');
 			}
 		}
@@ -294,6 +301,10 @@
 	$effect(() => {
 		if (!auth.user) return;
 		void fetchDmImagesEnabled().then((on) => (photosEnabled = on));
+	});
+
+	$effect(() => () => {
+		if (photoDraft) URL.revokeObjectURL(photoDraft.preview);
 	});
 
 	function clearPhotoDraft() {
@@ -310,8 +321,8 @@
 		sendError = null;
 		try {
 			const blob = await encodeDmImage(file);
-			clearPhotoDraft();
 			if (id !== activeId) return;
+			clearPhotoDraft();
 			photoDraft = { thread: id, blob, preview: URL.createObjectURL(blob) };
 		} catch (err) {
 			sendError =

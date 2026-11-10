@@ -2,7 +2,8 @@
 // Drawing to a canvas keeps pixels only, so the camera's EXIF / XMP block,
 // GPS position included, never leaves the device; `imageOrientation:
 // 'from-image'` bakes the orientation tag into the pixels first so a portrait
-// shot stays upright. The server re-encodes again before anyone reads it.
+// shot stays upright, and transparency is flattened onto white (a JPEG has
+// none; mobile's dm_image_encode.dart does the same). The server re-encodes again before anyone reads it.
 
 import { DM_IMAGE_CONTENT_TYPE, DM_IMAGE_MAX_BYTES, DM_IMAGE_QUALITY, dmImageFit } from './dm_image';
 
@@ -27,6 +28,8 @@ export async function encodeDmImage(file: Blob): Promise<Blob> {
 		canvas.height = height;
 		const ctx = canvas.getContext('2d');
 		if (!ctx) throw new DmImageEncodeError('unreadable');
+		ctx.fillStyle = '#fff';
+		ctx.fillRect(0, 0, width, height);
 		ctx.drawImage(bitmap, 0, 0, width, height);
 		for (const quality of [DM_IMAGE_QUALITY, 0.7, 0.55]) {
 			const blob = await new Promise<Blob | null>((resolve) =>

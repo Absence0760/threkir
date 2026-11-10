@@ -17,7 +17,7 @@ export type DmTextSegment =
 	| { kind: 'text'; text: string }
 	| { kind: 'link'; text: string; href: string; domain: string };
 
-const URL_RE = /https?:\/\/[^\s<>"'`]+/gi;
+const URL_RE = /https?:\/\/[^\s<>"'`\u0080-\uFFFF]+/gi;
 const TRAILING = /[.,;:!?'"\]}>]+$/;
 const ASCII_HOST = /^[a-z0-9.-]+$/;
 

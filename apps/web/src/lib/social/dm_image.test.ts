@@ -1,3 +1,4 @@
+// Reason: reads the migration source so the client constants cannot drift from the bucket limits, size CHECK and status set in the dm_images migration.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';

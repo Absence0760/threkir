@@ -1,3 +1,4 @@
+// Reason: reads the migration source so the client constants cannot drift from the query bounds in search_direct_messages.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';

@@ -59,3 +59,11 @@ test('no markup survives as markup: segments are plain strings', () => {
 	assert.equal(segs[1].kind, 'link');
 	assert.equal((segs[1] as { href: string }).href, 'https://example.com/');
 });
+
+test('a link stops at the first non-ASCII character, so text with no spaces around it stays text', () => {
+	assert.deepEqual(dmTextSegments('https://example.com/route路線を見て'), [
+		{ kind: 'link', text: 'https://example.com/route', href: 'https://example.com/route', domain: 'example.com' },
+		{ kind: 'text', text: '路線を見て' },
+	]);
+	assert.equal(dmTextSegments('見て https://example.com。')[1].text, 'https://example.com');
+});

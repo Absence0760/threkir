@@ -1,3 +1,4 @@
+// Reason: reads the migration source so the client constants cannot drift from the reaction key CHECK in the dm_reactions migration.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';

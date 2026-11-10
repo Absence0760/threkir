@@ -84,6 +84,31 @@ final class RunCheckpointCodableTests: XCTestCase {
         XCTAssertNil(try decoder().decode(RunCheckpoint.self, from: older).workoutReview)
     }
 
+    func testTheStepOverChordMetresRoundTripAndAnOlderCheckpointHasNone() throws {
+        let cp = RunCheckpoint(
+            id: "run-1",
+            startedAt: Date(timeIntervalSince1970: 1_700_000_000),
+            distanceMetres: 480,
+            activeDurationSeconds: 120,
+            pausedIntervalSeconds: 0,
+            trackPointCount: 90,
+            cacheFileURL: URL(fileURLWithPath: "/tmp/run.ndjson"),
+            averageBPM: nil,
+            hrCoverage: nil,
+            steps: nil,
+            laps: nil,
+            distanceEstimator: WorkoutManager.distanceEstimatorTag,
+            distanceStepFilledMetres: 104,
+            distanceStepOverChordMetres: 48.6
+        )
+        let decoded = try decoder().decode(RunCheckpoint.self, from: encoder().encode(cp))
+        XCTAssertEqual(decoded.distanceStepFilledMetres, 104)
+        XCTAssertEqual(decoded.distanceStepOverChordMetres, 48.6)
+
+        let older = #"{"id":"run-1","distanceMetres":1,"distanceStepFilledMetres":104}"#.data(using: .utf8)!
+        XCTAssertNil(try decoder().decode(RunCheckpoint.self, from: older).distanceStepOverChordMetres)
+    }
+
     func testCurrentVersionIsOne() {
         XCTAssertEqual(RunCheckpoint.currentVersion, 1)
     }

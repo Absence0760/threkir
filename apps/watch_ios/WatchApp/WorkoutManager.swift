@@ -160,6 +160,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// Distance banked by segments closed at a pause.
     private var bankedDistanceMetres: Double = 0
     private var bankedStepFilledMetres: Double = 0
+    /// Nil when it cannot be known: a run continued from a checkpoint that
+    /// predates the field but had already filled a gap.
+    private var bankedStepOverChordMetres: Double? = 0
     /// Whether the track file holds every fix the estimator took this run:
     /// true from `start()`, and on a continued run only when its checkpoint
     /// said so. Becomes `FinishedRun.trackComplete`.
@@ -170,6 +173,13 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     var distanceStepFilledMetres: Double {
         bankedStepFilledMetres + distanceEstimator.stepDistanceM
+    }
+
+    /// What of `distanceStepFilledMetres` the gaps' chord lower bounds would
+    /// not have credited (`GpsDistanceEstimator.stepOverChordM`), or nil when
+    /// an earlier build's part of the run is unknown.
+    var distanceStepOverChordMetres: Double? {
+        bankedStepOverChordMetres.map { $0 + distanceEstimator.stepOverChordM }
     }
 
     /// The phone's `ActivityType.maxSpeedMps`
@@ -234,6 +244,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         /// Metres the pedometer filled across GPS gaps, already inside
         /// `distanceMetres`. Sent only when above zero.
         var distanceStepFilledMetres: Double = 0
+        /// `metadata.distance_step_over_chord_m`: what of the step-filled
+        /// metres the gaps' chords would not have credited, which the server's
+        /// stepless replay needs. Sent with `distanceStepFilledMetres`; nil
+        /// when unknown, which leaves the server its run-total rule.
+        var distanceStepOverChordMetres: Double? = nil
         /// `metadata.track_complete`: the track file holds every fix the
         /// estimator took, off-track ones flagged, and is not empty.
         var trackComplete: Bool = false
@@ -620,6 +635,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         resetDistanceEstimator()
         bankedDistanceMetres = cp.distanceMetres.isFinite ? max(cp.distanceMetres, 0) : 0
         bankedStepFilledMetres = cp.distanceStepFilledMetres ?? 0
+        bankedStepOverChordMetres = cp.distanceStepOverChordMetres
+            ?? (bankedStepFilledMetres > 0 ? nil : 0)
         distanceMetres = bankedDistanceMetres
         lapMarks = cp.laps ?? []
         steps = cp.steps
@@ -769,6 +786,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored()),
             distanceEstimator: Self.distanceEstimatorTag,
             distanceStepFilledMetres: distanceStepFilledMetres,
+            distanceStepOverChordMetres: distanceStepOverChordMetres,
             trackComplete: storedTrackComplete && trackPointCount > 0,
             workoutReview: workoutRunner?.review() ?? carriedWorkoutReview
         )
@@ -996,6 +1014,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         distanceEstimator = GpsDistanceEstimator(maxSpeedMps: Self.maxSpeedMps(for: activityType))
         bankedDistanceMetres = 0
         bankedStepFilledMetres = 0
+        bankedStepOverChordMetres = 0
         lastEstimatorFixT = nil
         paceWindow.seal()
     }
@@ -1008,6 +1027,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         distanceEstimator.finish(t: ProcessInfo.processInfo.systemUptime)
         bankedDistanceMetres += distanceEstimator.distanceM
         bankedStepFilledMetres += distanceEstimator.stepDistanceM
+        bankedStepOverChordMetres = distanceStepOverChordMetres
         distanceEstimator = distanceEstimator.nextSegment()
         lastEstimatorFixT = nil
         paceWindow.seal()
@@ -1202,6 +1222,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             isPublic: PrivacyDefault.isPublic(PrivacyDefault.stored()),
             distanceEstimator: Self.distanceEstimatorTag,
             distanceStepFilledMetres: distanceStepFilledMetres,
+            distanceStepOverChordMetres: distanceStepOverChordMetres,
             pausedAt: pausedAt,
             hrMeanUngraded: measured.mean,
             hrCoveredSeconds: measured.coveredSeconds,
@@ -1256,6 +1277,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             isPublic: cp.isPublic,
             distanceEstimator: cp.distanceEstimator,
             distanceStepFilledMetres: cp.distanceStepFilledMetres ?? 0,
+            distanceStepOverChordMetres: cp.distanceStepOverChordMetres,
             trackComplete: (cp.trackComplete ?? false) && count > 0,
             workoutReview: cp.workoutReview
         )

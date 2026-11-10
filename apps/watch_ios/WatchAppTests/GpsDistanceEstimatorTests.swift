@@ -2,7 +2,7 @@ import XCTest
 @testable import WatchApp
 
 /// Replays `fixtures/gps_distance_vectors.json` — the golden vectors every
-/// port of the spec-v1.6 estimator is held to (`docs/features/gps_distance.md`).
+/// port of the spec-v1.7 estimator is held to (`docs/features/gps_distance.md`).
 /// The distance is asserted after every event, not only at the end, so a port
 /// that reaches the right total by a different path still fails. The scenario
 /// list comes from the fixture, so a new scenario is replayed without a code
@@ -42,6 +42,7 @@ final class GpsDistanceEstimatorTests: XCTestCase {
         let distanceAfterEachEventM: [Double]
         let gpsDistanceM: Double
         let stepDistanceM: Double
+        let stepOverChordM: Double
         let strideM: Double?
         let rejectedFixes: Int
         let zuptFixes: Int
@@ -65,8 +66,8 @@ final class GpsDistanceEstimatorTests: XCTestCase {
     func testFixtureIsSpecOneFourAndEveryConstantMatches() throws {
         let vectors = try loadVectors()
         XCTAssertFalse(vectors.scenarios.isEmpty)
-        XCTAssertEqual(vectors.spec, "gps-distance-estimator v1.6")
-        XCTAssertEqual(GpsDistanceEstimator.specVersion, "1.6")
+        XCTAssertEqual(vectors.spec, "gps-distance-estimator v1.7")
+        XCTAssertEqual(GpsDistanceEstimator.specVersion, "1.7")
         XCTAssertFalse(GpsDistanceEstimator.constants.isEmpty)
         for (name, value) in GpsDistanceEstimator.constants {
             XCTAssertEqual(vectors.constants[name], value, "\(name)")
@@ -148,6 +149,8 @@ final class GpsDistanceEstimatorTests: XCTestCase {
                            "\(scenario.name): gpsDistanceM")
             XCTAssertEqual(estimator.stepDistanceM, scenario.expected.stepDistanceM, accuracy: tol,
                            "\(scenario.name): stepDistanceM")
+            XCTAssertEqual(estimator.stepOverChordM, scenario.expected.stepOverChordM, accuracy: tol,
+                           "\(scenario.name): stepOverChordM")
             if let stride = scenario.expected.strideM {
                 XCTAssertEqual(estimator.strideM ?? -1, stride, accuracy: tol, "\(scenario.name): strideM")
             } else {
@@ -297,6 +300,41 @@ final class GpsDistanceEstimatorTests: XCTestCase {
             }
         }
         XCTAssertEqual(estimator.strideM ?? 0, 1, accuracy: 1e-6)
+    }
+
+    /// The baseline, stamped 15.5, arrives after the fix at 18, so the window's
+    /// metres start at 18; the sample at 30.5, whose steps start at 15.5, must
+    /// empty the window rather than pair 15 s of steps with 12 s of metres,
+    /// which learned 0.8 m (v1.7).
+    func testStepBaselineDeliveredAfterALaterFixKeepsItsStepsOutOfTheStrideWindow() {
+        let estimator = GpsDistanceEstimator()
+        for i in 0...60 {
+            estimator.addFix(t: Double(i), lat: 40, lng: -75 + 4 * Double(i) / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+            if i == 18 { estimator.addSteps(t: 15.5, cumulativeSteps: 62) }
+            if i > 15 && i % 15 == 0 {
+                estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i + 2)
+            }
+        }
+        XCTAssertEqual(estimator.strideM ?? 0, 1, accuracy: 1e-6)
+    }
+
+    /// A seeded 1 m stride, 4 m/s and 4 steps/s, then a 26 s fix gap whose 104 m
+    /// of steps the resuming fix puts beside no chord (the runner looped back),
+    /// a 55.39 m one, and one longer than the steps (v1.7).
+    func testStepOverChordCountsOnlyTheStepsAGapCreditedBeyondItsChord() {
+        for (eastM, want) in [(24.0, 104.0), (80.0, 48.612667), (160.0, 0.0)] {
+            let estimator = GpsDistanceEstimator(initialStrideM: 1.0, learnStride: false)
+            for i in 0...30 {
+                if i <= 5 {
+                    estimator.addFix(t: Double(i), lat: 40, lng: -75 + 4 * Double(i) / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+                }
+                estimator.addSteps(t: Double(i) + 0.5, cumulativeSteps: 4 * i + 2)
+            }
+            estimator.addFix(t: 31, lat: 40, lng: -75 + eastM / eastMPerDeg, accuracyM: 3, speedMps: 4, speedAccuracyMps: 0.3, bearingDeg: 90)
+            estimator.addSteps(t: 31.5, cumulativeSteps: 126)
+            XCTAssertEqual(estimator.stepDistanceM, 104, accuracy: 1e-9)
+            XCTAssertEqual(estimator.stepOverChordM, want, accuracy: 1e-6, "resume \(eastM) m")
+        }
     }
 
     func testStretchCreditsNoStepsTakenBeforeItsFirstFix() {

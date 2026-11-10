@@ -228,6 +228,7 @@ final class WorkoutManagerDistanceTests: XCTestCase {
         XCTAssertEqual(wm.finishedRun?.distanceMetres ?? -1, live, accuracy: 0.0001)
         XCTAssertEqual(wm.finishedRun?.distanceEstimator, WorkoutManager.distanceEstimatorTag)
         XCTAssertEqual(wm.finishedRun?.distanceStepFilledMetres ?? -1, 0)
+        XCTAssertEqual(wm.finishedRun?.distanceStepOverChordMetres, 0)
     }
 
     /// `fixtures/activity_speed_caps.json` is the phone's

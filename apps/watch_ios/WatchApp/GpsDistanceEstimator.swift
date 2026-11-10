@@ -1,6 +1,6 @@
 import Foundation
 
-/// GPS distance estimator, spec v1.6 forward filter — the watchOS port of
+/// GPS distance estimator, spec v1.7 forward filter — the watchOS port of
 /// `scripts/gps_distance/reference.py`. See `docs/features/gps_distance.md`.
 /// The watch runs only the causal filter; the spec's smoother is ported where
 /// a whole run's saved figure is computed (phone, web, server).
@@ -57,7 +57,7 @@ final class GpsDistanceEstimator {
     static let zuptBatchMinCadenceSps = 1.0
     static let zuptBatchMargin = 1.5
     static let zuptMaxNoStepS = 30.0
-    static let specVersion = "1.6"
+    static let specVersion = "1.7"
 
     /// Every constant by its reference name, so the vector test can hold each
     /// one to the fixture's `constants` block.
@@ -156,6 +156,10 @@ final class GpsDistanceEstimator {
     let freshFixWindowS: Double
     private(set) var gpsDistanceM: Double = 0
     private(set) var stepDistanceM: Double = 0
+    /// v1.7: what the steps credited the gaps over their chord lower bounds,
+    /// summed: per gap max(chord, steps) - chord, exactly what a replay with
+    /// no steps lacks. Saved as `metadata.distance_step_over_chord_m`.
+    private(set) var stepOverChordM: Double = 0
     private(set) var strideM: Double?
     private(set) var rScale: Double = 1
     private(set) var rejectedFixes = 0
@@ -315,6 +319,7 @@ final class GpsDistanceEstimator {
                     gapM = lower - pendingStepM
                     gpsDistanceM += gapM
                 }
+                stepOverChordM += max(0, pendingStepM - max(lower, 0))
                 gaps.append((startT: last, endT: t, topUpM: gapM))
                 if gaps.count > Self.maxOpenGaps { gaps.removeFirst() }
             }
@@ -530,8 +535,15 @@ final class GpsDistanceEstimator {
             // also marks the window, as any stale sample does, so the next fix
             // empties it.
             if let fixT = self.t, t - fixT > freshFixWindowS { winStale = true }
-            winSteps = 0
-            winM = 0
+            if let fixT = self.t, t < fixT {
+                // v1.7: stamped before the last fix, so the window's metres
+                // already start after this stamp; the next sample's steps reach
+                // back before them and must not refill it.
+                emptyWindow(at: fixT)
+            } else {
+                winSteps = 0
+                winM = 0
+            }
             return
         }
         let d = cumulativeSteps - prev
@@ -596,6 +608,7 @@ final class GpsDistanceEstimator {
                 stepDistanceM += late
                 take = min(late, gap.topUpM)
                 gpsDistanceM -= take
+                stepOverChordM += late - take
             }
             if gap.endT > t { gaps.append((startT: gap.startT, endT: gap.endT, topUpM: gap.topUpM - take)) }
         }
@@ -606,6 +619,7 @@ final class GpsDistanceEstimator {
     func finish(t: Double) {
         if let fixT = self.t, t.isFinite, t - fixT > gapWindowS {
             stepDistanceM += pendingStepM
+            stepOverChordM += pendingStepM
         }
         pendingStepM = 0
     }

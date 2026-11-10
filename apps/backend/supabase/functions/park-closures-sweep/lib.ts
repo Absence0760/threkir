@@ -2,7 +2,7 @@
 /// NPS Data API alerts page, and deciding which park courses an alert may
 /// affect. Nothing here closes a course. An NPS alert is free text written for
 /// visitors, so a match only puts the course in front of an operator, who
-/// closes it from /admin/reports if the alert really shuts the trail.
+/// closes it from /admin/park-alerts if the alert really shuts the trail.
 ///
 /// The rule is deliberately narrow, because every flag costs a person a read:
 ///
@@ -69,6 +69,10 @@ export type CourseFlag = {
 
 export interface AlertsPage {
   alerts: NpsAlert[];
+  /// Every entry that carries an id, the malformed ones too, so an alert NPS
+  /// still lists is never read as gone because this side could not use it.
+  /// A null park code means the entry named none: it counts for every park.
+  seen: Array<{ id: string; parkCode: string | null }>;
   /// How many entries the page held, malformed ones included, for paging.
   count: number;
   total: number;
@@ -87,9 +91,13 @@ export function parseAlertsPage(payload: unknown): AlertsPage | null {
   const start = Number(p.start ?? 0);
   if (!Number.isFinite(total) || !Number.isFinite(start)) return null;
   const alerts: NpsAlert[] = [];
+  const seen: AlertsPage['seen'] = [];
   for (const raw of p.data) {
     if (!raw || typeof raw !== 'object') continue;
     const a = raw as Record<string, unknown>;
+    if (typeof a.id === 'string' && a.id.length > 0) {
+      seen.push({ id: a.id, parkCode: typeof a.parkCode === 'string' && a.parkCode ? a.parkCode.toLowerCase() : null });
+    }
     if (typeof a.id !== 'string' || a.id.length === 0 || a.id.length > 64) continue;
     if (typeof a.parkCode !== 'string' || a.parkCode.length === 0) continue;
     if (typeof a.title !== 'string' || a.title.trim().length === 0) continue;
@@ -103,7 +111,7 @@ export function parseAlertsPage(payload: unknown): AlertsPage | null {
       url,
     });
   }
-  return { alerts, count: p.data.length, total, start };
+  return { alerts, seen, count: p.data.length, total, start };
 }
 
 /// The request for one chunk of park codes, one page of it. The key travels in

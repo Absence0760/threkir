@@ -28,6 +28,7 @@ import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
 import { cronGate } from '../events-refund-sweep/lib.ts';
 import { UPSTREAM_TIMEOUT_MS } from '../_shared/upstream_deadline.ts';
 import {
+  type AlertsPage,
   alertsUrl,
   chunk,
   flagsForPark,
@@ -103,19 +104,20 @@ export function makeParkClosuresSweepHandler(
     for (const [i, parks] of chunks.entries()) {
       if (i > 0) await deps.sleep(REQUEST_GAP_MS);
       const codes = parks.map((p) => p.nps_park_code);
-      const alerts = await fetchChunk(deps, apiKey, codes, budget, summary);
-      if (alerts === null) {
+      const read = await fetchChunk(deps, apiKey, codes, budget, summary);
+      if (read === null) {
         summary.failed_parks += parks.length;
         continue;
       }
-      summary.alerts += alerts.length;
+      summary.alerts += read.alerts.length;
       for (const park of parks) {
-        const own = alerts.filter((a) => a.parkCode === park.nps_park_code);
+        const own = read.alerts.filter((a) => a.parkCode === park.nps_park_code);
         const flags = flagsForPark(own, park.courses);
+        const seen = read.seen.filter((e) => e.parkCode === null || e.parkCode === park.nps_park_code).map((e) => e.id);
         const { error: recordError } = await db.rpc('record_park_nps_alerts', {
           p_park_id: park.park_id,
           p_flags: flags,
-          p_seen_alert_ids: own.map((a) => a.id),
+          p_seen_alert_ids: [...new Set(seen)],
         });
         if (recordError) {
           console.error('park-closures-sweep: record failed', { code: recordError.code });
@@ -130,15 +132,17 @@ export function makeParkClosuresSweepHandler(
   };
 }
 
-/// Every page of one chunk's alerts, or null when any page failed.
+/// Every page of one chunk's alerts and the ids NPS listed, or null when any
+/// page failed.
 async function fetchChunk(
   deps: ParkClosuresSweepDeps,
   apiKey: string,
   codes: string[],
   budget: AbortSignal,
   summary: { requests: number },
-): Promise<NpsAlert[] | null> {
+): Promise<{ alerts: NpsAlert[]; seen: AlertsPage['seen'] } | null> {
   const out: NpsAlert[] = [];
+  const seen: AlertsPage['seen'] = [];
   let start = 0;
   for (let page = 0; page < MAX_PAGES; page++) {
     if (page > 0) await deps.sleep(REQUEST_GAP_MS);
@@ -173,8 +177,9 @@ async function fetchChunk(
       return null;
     }
     out.push(...parsed.alerts);
+    seen.push(...parsed.seen);
     start = parsed.start + parsed.count;
-    if (parsed.count === 0 || start >= parsed.total) return out;
+    if (parsed.count === 0 || start >= parsed.total) return { alerts: out, seen };
   }
   console.error('park-closures-sweep: a chunk ran past its page cap', { parks: codes.length });
   return null;

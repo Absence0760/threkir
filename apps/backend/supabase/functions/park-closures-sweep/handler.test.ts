@@ -166,6 +166,26 @@ Deno.test('a chunk spread over two pages is read to its total', async () => {
   assertEquals(h.records()[0].args.p_seen_alert_ids, ['A', 'B', 'C']);
 });
 
+Deno.test('an alert this side cannot read still counts as listed, so its flags never go gone', async () => {
+  const h = harness({
+    npsAnswer: () =>
+      Response.json({
+        total: '3',
+        start: '0',
+        data: [
+          { id: 'SHEN-OK', parkCode: 'shen', title: 'Big Meadows closed', category: 'Park Closure' },
+          { id: 'SHEN-NO-TITLE', parkCode: 'shen', title: '' },
+          { id: 'NO-PARK', title: 'Something' },
+        ],
+      }),
+  });
+  assertEquals((await h.handler(cron())).status, 200);
+  const [shen, prwi] = h.records();
+  assertEquals(shen.args.p_seen_alert_ids, ['SHEN-OK', 'SHEN-NO-TITLE', 'NO-PARK']);
+  assertEquals(prwi.args.p_seen_alert_ids, ['NO-PARK'], 'an entry naming no park counts for every park');
+  assertEquals((shen.args.p_flags as Array<{ alert_id: string }>).map((f) => f.alert_id), ['SHEN-OK']);
+});
+
 Deno.test('a failed chunk records nothing for its parks and answers 502, so no flag reads as gone', async () => {
   const answers: Array<() => Response> = [
     () => new Response('rate limited', { status: 429 }),

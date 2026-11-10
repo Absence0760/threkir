@@ -72,6 +72,11 @@ Deno.test('anything but the alerts envelope is refused, and a malformed alert is
   })!;
   assertEquals(page.count, 3, 'paging counts every entry the page held');
   assertEquals(page.alerts, [{ id: 'X', parkCode: 'shen', title: 'Closed', description: '', category: '', url: null }]);
+  assertEquals(
+    parseAlertsPage({ total: '2', data: [{ id: 'NO-TITLE', parkCode: 'shen', title: ' ' }, { id: 'NO-PARK', title: 'T' }] })!.seen,
+    [{ id: 'NO-TITLE', parkCode: 'shen' }, { id: 'NO-PARK', parkCode: null }],
+    'an entry this side cannot use is still listed by NPS, so it is still seen',
+  );
 });
 
 Deno.test('the recorded Shenandoah alerts flag each course a closure names, by its short name', () => {

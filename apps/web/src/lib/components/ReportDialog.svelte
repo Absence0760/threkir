@@ -3,7 +3,7 @@
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import {
 		submitReport,
-		type ReportReason,
+		type GeneralReportReason,
 		type GeneralReportTargetKind,
 	} from '#lib/core/data.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
@@ -41,8 +41,9 @@
 	};
 
 	// The organiser dispute reason is filed through OrganiserDisputeDialog,
-	// for a verified club's owner or admin only.
-	const REASONS: { value: Exclude<ReportReason, 'organiser_dispute'>; label: MessageKey; hint: MessageKey }[] = [
+	// for a verified club's owner or admin only; the course reasons through
+	// ParkCourseReportDialog, on a park course only.
+	const REASONS: { value: GeneralReportReason; label: MessageKey; hint: MessageKey }[] = [
 		{
 			value: 'spam',
 			label: 'reportDialog.reasonSpamLabel',
@@ -70,7 +71,7 @@
 		},
 	];
 
-	let reason = $state<Exclude<ReportReason, 'organiser_dispute'>>('spam');
+	let reason = $state<GeneralReportReason>('spam');
 	let notes = $state('');
 	let busy = $state(false);
 	let error = $state<string | null>(null);

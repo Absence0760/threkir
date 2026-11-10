@@ -48,6 +48,7 @@
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
 	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ParkCourseNotices from '#lib/components/parks/ParkCourseNotices.svelte';
+	import ParkCourseReportDialog from '#lib/components/parks/ParkCourseReportDialog.svelte';
 	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import type { TrackPoint } from '#lib/types.ts';
@@ -77,6 +78,7 @@
 	let completions = $state<CompletionsEntry[] | null>(null);
 	let boardFailed = $state(false);
 	let showHeadToHead = $state(false);
+	let showReport = $state(false);
 	// Whether the course has any time at all, on any board: until it has, the
 	// board kinds, seasons and filters have nothing to switch between, so the
 	// section is an invitation instead. Read from the all-time completions
@@ -391,6 +393,19 @@
 						{'text' in credit ? credit.text : m(credit.key)}
 					</p>
 				{/if}
+				<!-- Kept with the notices, away from Navigate: it is for the rare
+				     runner or land manager with a problem, not a next step. -->
+				<p class="report-row">
+					<button
+						type="button"
+						class="report-link"
+						onclick={() => (showReport = true)}
+						data-testid="park-course-report"
+					>
+						<span class="material-symbols" aria-hidden="true">flag</span>
+						{m('parks.report.action')}
+					</button>
+				</p>
 			</div>
 
 			<section class="board" aria-labelledby="park-board-title">
@@ -548,6 +563,12 @@
 				{/if}
 			</section>
 		</div>
+		<ParkCourseReportDialog
+			open={showReport}
+			courseId={course.id}
+			courseName={course.segment.name}
+			onclose={() => (showReport = false)}
+		/>
 		<HeadToHeadDialog
 			open={showHeadToHead}
 			onclose={() => (showHeadToHead = false)}
@@ -594,6 +615,33 @@
 		font-size: 0.9rem;
 	}
 	.meta .material-symbols {
+		font-size: 1rem;
+	}
+	.report-row {
+		margin: var(--space-sm) 0 0;
+	}
+	.report-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		min-height: 1.5rem;
+		padding: 0.2rem 0;
+		border: none;
+		background: none;
+		color: var(--color-text-secondary);
+		font: inherit;
+		font-size: 0.85rem;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+	.report-link:hover {
+		color: var(--color-text);
+	}
+	.report-link:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 2px;
+	}
+	.report-link .material-symbols {
 		font-size: 1rem;
 	}
 	.closed-banner {

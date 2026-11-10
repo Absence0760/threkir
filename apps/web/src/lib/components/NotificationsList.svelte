@@ -221,6 +221,8 @@
 				return item.club_name
 					? m('notificationsList.verbOrganiserDisputeNamed', { club: item.club_name })
 					: m('notificationsList.verbOrganiserDispute');
+			case 'park_course_report':
+				return m('notificationsList.verbParkCourseReport');
 			case 'race_starting_soon':
 				return item.event_title
 					? m('notificationsList.verbRaceStartingSoonTitled', { title: item.event_title })

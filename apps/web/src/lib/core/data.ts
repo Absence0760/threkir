@@ -15380,6 +15380,56 @@ export async function fetchPlatformFeesByHost(month: string): Promise<PlatformFe
 	}));
 }
 
+// ─── Home metrics (operator back-office; /admin/home-metrics) ───────────
+// Weekly aggregates over the last 16 ISO weeks in UTC, no user ids. Both RPCs
+// raise 42501 for anyone not in app_admins (issue #1362, decisions § 2387).
+
+export interface CoachEngagementWeek {
+	week_start: string;
+	active_runners: number;
+	coached_runners: number;
+	/** Null when no one was active that week. */
+	coached_pct: number | null;
+}
+
+export interface PlanCompletionWeek {
+	week_start: string;
+	scheduled_days: number;
+	completed_days: number;
+	/** Null when no plan day was scheduled that week. */
+	completed_pct: number | null;
+}
+
+function nullablePct(v: number | string | null | undefined): number | null {
+	return v === null || v === undefined ? null : Number(v);
+}
+
+/** Of the runners active each week, how many messaged the Coach. Throws for a
+ *  non-admin. */
+export async function fetchCoachEngagementWeeks(): Promise<CoachEngagementWeek[]> {
+	const { data, error } = await supabase.rpc('admin_home_coach_engagement_weeks', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		week_start: r.week_start,
+		active_runners: Number(r.active_runners ?? 0),
+		coached_runners: Number(r.coached_runners ?? 0),
+		coached_pct: nullablePct(r.coached_pct),
+	}));
+}
+
+/** Of the non-rest plan days scheduled each week up to yesterday, how many
+ *  were done. Throws for a non-admin. */
+export async function fetchPlanCompletionWeeks(): Promise<PlanCompletionWeek[]> {
+	const { data, error } = await supabase.rpc('admin_home_plan_completion_weeks', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		week_start: r.week_start,
+		scheduled_days: Number(r.scheduled_days ?? 0),
+		completed_days: Number(r.completed_days ?? 0),
+		completed_pct: nullablePct(r.completed_pct),
+	}));
+}
+
 /** Club-owned session plans (the club's "session templates"). Visible to club
  *  members + writable by admins via RLS — mirrors fetchClubTemplates for
  *  training plans. */

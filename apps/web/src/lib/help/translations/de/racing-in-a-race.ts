@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'racing-in-a-race',
 	title: 'Bei einem Live-Rennen mitlaufen',
-	summary: 'Melde dich an, wähle deine Strecke, starte die Aufzeichnung an der Startlinie oder nach LOS und lass dein Handy oder deine Uhr deine Zeit an der Ziellinie nehmen.',
+	summary: 'Melde dich an, wähle deine Strecke, starte die Aufzeichnung an der Startlinie oder nach GO und lass dein Handy oder deine Uhr deine Zeit an der Ziellinie nehmen.',
 	sections: [
 		{
 			heading: 'Mit welchen Geräten du mitlaufen kannst',
@@ -42,12 +42,12 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Wenn der Veranstalter das Rennen scharfstellt, zeigt der Lauf-Tab der Handy-App **Rennen bereit** mit „warten auf START“. Die Wear-OS-Uhr zeigt „RENNEN BEREIT“ über ihrer Start-Taste. Wenn der Veranstalter LOS gibt, wechselt die Anzeige zu **Rennen LIVE** („RENNEN LÄUFT“ auf der Uhr) mit der verstrichenen Zeit und „auf Start tippen“.',
+					text: 'Wenn der Veranstalter das Rennen scharfstellt, zeigt der Lauf-Tab der Handy-App **Rennen bereit** mit „warten auf GO“. Die Wear-OS-Uhr zeigt „RENNEN BEREIT“ über ihrer Start-Taste. Wenn der Veranstalter GO gibt, wechselt die Anzeige zu **Rennen LIVE** („RENNEN LÄUFT“ auf der Uhr) mit der verstrichenen Zeit und „auf Start tippen“.',
 				},
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei LOS mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Netto-Zeit zählt dann ab LOS statt ab dem Moment, in dem du auf Start gedrückt hast.',
+					text: 'Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei GO mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Netto-Zeit zählt dann ab GO statt ab dem Moment, in dem du auf Start gedrückt hast.',
 				},
 				{
 					type: 'p',
@@ -121,9 +121,9 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Brutto-Zeit** läuft ab dem Moment, in dem der Veranstalter LOS gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.',
-						'**Netto-Zeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor LOS auf Start gedrückt, läuft sie ab LOS, sodass sie nie länger als deine Brutto-Zeit ist.',
-						'Startest du mehr als 5 Minuten nach LOS oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Brutto-Zeit zählt trotzdem ab LOS, sodass ein später Start sie länger macht als deine Netto-Zeit.',
+						'**Brutto-Zeit** läuft ab dem Moment, in dem der Veranstalter GO gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.',
+						'**Netto-Zeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor GO auf Start gedrückt, läuft sie ab GO, sodass sie nie länger als deine Brutto-Zeit ist.',
+						'Startest du mehr als 5 Minuten nach GO oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Brutto-Zeit zählt trotzdem ab GO, sodass ein später Start sie länger macht als deine Netto-Zeit.',
 					],
 				},
 				{

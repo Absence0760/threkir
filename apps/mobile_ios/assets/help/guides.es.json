@@ -1833,7 +1833,7 @@
           },
           {
             "type": "p",
-            "text": "Se elige en **Cómo empieza la carrera**, en el editor del evento en la web, para un evento de salida en grupo o de ciclismo. La app del móvil puede dirigir la carrera el día (armarla antes, retrasarla, ampliarla o finalizarla), pero la forma de salida se elige en la web."
+            "text": "Se elige en **Cómo empieza la carrera**, en el editor del evento en la web, para un evento de salida en grupo o de ciclismo. La app del móvil puede dirigir la carrera el día (prepararla antes, retrasarla, ampliarla o finalizarla), pero la forma de salida se elige en la web."
           }
         ]
       },
@@ -1873,8 +1873,8 @@
           {
             "type": "list",
             "items": [
-              "No tienes que hacer nada. La carrera se prepara aproximadamente un día antes de la salida y empieza sola a la hora programada.",
-              "Para revisar antes las líneas del recorrido, elige **Armar antes**.",
+              "No tienes que hacer nada. La carrera se configura aproximadamente un día antes de la salida y empieza sola a la hora programada.",
+              "Para revisar antes las líneas del recorrido, elige **Preparar antes**.",
               "Antes de la salida, el panel de carrera muestra **Salida a las** con la hora y una cuenta atrás. Para retrasar la salida, introduce los minutos y elige **Retrasar salida**; se avisa a todos los apuntados de que la salida ha cambiado. Elige **Cancelar** para suspender la carrera.",
               "Una vez pasada la hora de salida, la carrera ya no se puede cancelar. Termina sola cuando se acaba su tiempo, o elige **Finalizar carrera** para terminarla antes.",
               "Los móviles de los corredores hacen la cuenta atrás hasta la salida con el reloj del servidor y dicen en voz alta los últimos segundos, para que todos salgan a la vez."
@@ -2064,15 +2064,15 @@
             "type": "list",
             "items": [
               "**Antes de la carrera**: el organizador todavía no ha preparado el cronómetro de la carrera.",
-              "**Listo**: el cronómetro está preparado y esperando la salida.",
+              "**Preparada**: el cronómetro está preparado y esperando la salida.",
               "**En curso**: la carrera está en marcha, con el tiempo transcurrido.",
-              "**Finalizado**: la carrera ha terminado.",
-              "**Cancelado**: el organizador ha cancelado la carrera."
+              "**Finalizada**: la carrera ha terminado.",
+              "**Cancelada**: el organizador ha cancelado la carrera."
             ]
           },
           {
             "type": "p",
-            "text": "Una carrera con salida programada muestra **Listo** con la hora a la que empieza sola. Una carrera con cronometraje propio muestra **Ventana de cronometraje propio** con cuándo se abre y después **Ventana de cronometraje propio abierta** con cuándo se cierra: cada corredor sale cuando cruza la línea de salida."
+            "text": "Una carrera con salida programada muestra **Preparada** con la hora a la que empieza sola. Una carrera con cronometraje propio muestra **Ventana de cronometraje propio** con cuándo se abre y después **Ventana de cronometraje propio abierta** con cuándo se cierra: cada corredor sale cuando cruza la línea de salida."
           }
         ]
       },
@@ -2207,7 +2207,7 @@
           },
           {
             "type": "p",
-            "text": "Los corredores que dijeron **Voy** ven ahora **Carrera lista** en la pestaña Correr de su móvil y «CARRERA LISTA» en su reloj Wear OS."
+            "text": "Los corredores que dijeron **Voy** ven ahora **Carrera preparada** en la pestaña Correr de su móvil y «CARRERA LISTA» en su reloj Wear OS."
           },
           {
             "type": "note",
@@ -2496,16 +2496,16 @@
         ]
       },
       {
-        "heading": "Carrera lista y Carrera EN VIVO",
+        "heading": "Carrera preparada y Carrera EN VIVO",
         "blocks": [
           {
             "type": "p",
-            "text": "Cuando el organizador prepara la carrera, la pestaña Correr de la app del móvil muestra **Carrera lista** con «esperando la salida». El reloj Wear OS muestra «CARRERA LISTA» encima de su botón Empezar. Cuando el organizador da la salida, cambia a **Carrera EN VIVO** («CARRERA EN VIVO» en el reloj) con el tiempo transcurrido y «toca Iniciar»."
+            "text": "Cuando el organizador prepara la carrera, la pestaña Correr de la app del móvil muestra **Carrera preparada** con «esperando la salida». El reloj Wear OS muestra «CARRERA LISTA» encima de su botón Empezar. Cuando el organizador da la salida, cambia a **Carrera EN VIVO** («CARRERA EN VIVO» en el reloj) con el tiempo transcurrido y «toca Iniciar»."
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera lista**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar."
+            "text": "Tu móvil o tu reloj no empieza a grabar por sí solo: pulsa Iniciar tú mismo. Puedes empezar en la línea de salida mientras la carrera muestra **Carrera preparada**, o cuando veas **Carrera EN VIVO**. Una grabación iniciada antes de tiempo se une a la carrera en la salida, en el móvil y en un reloj Wear OS, y tu tiempo chip cuenta entonces desde la salida y no desde que pulsaste Iniciar."
           },
           {
             "type": "p",

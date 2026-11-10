@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-day-for-hosts',
 	title: 'Renntag für Veranstalter',
-	summary: 'Stell das Rennen scharf, gib LOS, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.',
+	summary: 'Stell das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.',
 	sections: [
 		{
 			heading: 'Wer ein Rennen leiten kann',
@@ -19,7 +19,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'illustration',
 					id: 'race-day-for-hosts',
-					alt: 'Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, LOS geben, live verfolgen und es dann im Ziel beenden.',
+					alt: 'Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, GO geben, live verfolgen und es dann im Ziel beenden.',
 				},
 				{
 					type: 'p',
@@ -45,7 +45,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du LOS gibst.',
+					text: 'Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst.',
 				},
 				{
 					type: 'p',
@@ -54,11 +54,11 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: '2. LOS geben',
+			heading: '2. GO geben',
 			blocks: [
 				{
 					type: 'p',
-					text: 'Drücke im Web **LOS** (in der Handy-App **Los**) genau in dem Moment, in dem das Rennen startet.',
+					text: 'Drücke im Web **GO** (in der Handy-App **GO geben**) genau in dem Moment, in dem das Rennen startet.',
 				},
 				{
 					type: 'p',
@@ -67,7 +67,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'LOS startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharfgestellt ist (die Aufzeichnung wird bei LOS mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten.',
+					text: 'GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharfgestellt ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten.',
 				},
 			],
 		},
@@ -115,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **LOS** (in der Handy-App **Los**) und dann **Rennen abbrechen**. Sobald du LOS gegeben hast, kann das Rennen nur noch beendet werden.',
+					text: 'Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** (in der Handy-App **GO geben**) und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden.',
 				},
 				{
 					type: 'p',

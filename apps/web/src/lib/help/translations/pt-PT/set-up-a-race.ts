@@ -39,7 +39,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Em **Como a corrida começa**, escolha **GO do organizador**, **GO agendado** ou **Janela de tempo próprio**. Consulte [[guide:choose-how-your-race-starts|Escolher como começa a sua prova]].',
+					text: 'Em **Como a prova começa**, escolha **GO do organizador**, **GO agendado** ou **Janela de tempo próprio**. Consulte [[guide:choose-how-your-race-starts|Escolher como começa a sua prova]].',
 				},
 			],
 		},
@@ -105,7 +105,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Numa prova com **GO agendado** ou **Janela de tempo próprio**, defina-o em vez disso no editor do evento, em **Como a corrida começa**. Numa prova de tempo próprio, começa desmarcado.',
+					text: 'Numa prova com **GO agendado** ou **Janela de tempo próprio**, defina-o em vez disso no editor do evento, em **Como a prova começa**. Numa prova de tempo próprio, começa desmarcado.',
 				},
 			],
 		},

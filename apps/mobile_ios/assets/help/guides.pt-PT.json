@@ -3267,6 +3267,7 @@
       "ios"
     ],
     "routes": [
+      "/races",
       "/parks",
       "/parks/[region]/[park]",
       "/parks/[region]/[park]/[course]"
@@ -3277,7 +3278,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em [[route:/parks|Percursos de parques]]."
+            "text": "Um percurso de parque é um percurso fixo de contrarrelógio num trilho de um parque estadual ou nacional. Não há organizador nem dia de prova: corra-o quando o parque estiver aberto, e uma corrida que cubra o percurso completo é cronometrada. Encontre-os em **Corra quando quiser**, em [[route:/races|Provas e percursos]], com os mais próximos primeiro quando indica um local, ou veja todos em [[route:/parks|Percursos de parques]]."
           },
           {
             "type": "list",

@@ -8,7 +8,7 @@ export const translation: GuideTranslation = {
 		{
 			heading: "Was eine Parkstrecke ist",
 			blocks: [
-				{ type: 'p', text: "Eine Parkstrecke ist eine feste Zeitlaufstrecke auf einem Weg in einem State Park oder Nationalpark. Es gibt keinen Veranstalter und keinen Wettkampftag: Lauf sie, wann immer der Park geöffnet ist, und ein Lauf, der die ganze Strecke abdeckt, bekommt eine Zeit. Du findest sie unter [[route:/parks|Parkstrecken]]." },
+				{ type: 'p', text: "Eine Parkstrecke ist eine feste Zeitlaufstrecke auf einem Weg in einem State Park oder Nationalpark. Es gibt keinen Veranstalter und keinen Wettkampftag: Lauf sie, wann immer der Park geöffnet ist, und ein Lauf, der die ganze Strecke abdeckt, bekommt eine Zeit. Du findest sie unter **Jederzeit laufen** auf [[route:/races|Rennen & Strecken]], die nächsten zuerst, sobald du einen Ort festlegst, oder alle unter [[route:/parks|Parkstrecken]]." },
 				{
 					type: 'list',
 					items: [
@@ -72,7 +72,7 @@ export const translation: GuideTranslation = {
 		title: "c0967d2bf224e3d2",
 		summary: "6a173631b44944bc",
 		"s0.heading": "216fc084817bfda9",
-		"s0.b0": "b14392ecc1ced0da",
+		"s0.b0": "a96a5717c602367f",
 		"s0.b1.i0": "a8567bc2512800d1",
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",

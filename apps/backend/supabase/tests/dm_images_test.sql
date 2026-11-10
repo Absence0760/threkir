@@ -6,7 +6,7 @@
 -- holds it, the report snapshot, and the orphan worklist.
 
 begin;
-select plan(37);
+select plan(38);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -258,6 +258,22 @@ select is(
   (select count(*)::int from direct_message_images where id = (select id from img where k = 'd')),
   0,
   'an upload never sent is deleted after a day');
+
+-- ── the two-year purge takes the photo ──
+
+insert into direct_message_images (id, owner_id, upload_path, storage_path)
+values ('5555a216-1a6e-0000-0000-000000000001', 'aaaa1216-1a6e-0000-0000-0000000000b2',
+        'aaaa1216-1a6e-0000-0000-0000000000b2/5555a216-1a6e-0000-0000-000000000001/upload',
+        'aaaa1216-1a6e-0000-0000-0000000000b2/5555a216-1a6e-0000-0000-000000000001.jpg');
+insert into direct_messages (id, sender_id, recipient_id, body, image_id, created_at)
+values ('4444a216-1a6e-0000-0000-000000000009', 'aaaa1216-1a6e-0000-0000-0000000000b2',
+        'aaaa1216-1a6e-0000-0000-0000000000d4', null, '5555a216-1a6e-0000-0000-000000000001',
+        now() - interval '3 years');
+select private.purge_stale_direct_messages();
+select is(
+  (select count(*)::int from direct_message_images where id = '5555a216-1a6e-0000-0000-000000000001'),
+  0,
+  'the two-year purge deletes the photo with its message');
 
 -- ── withheld column and the waiting-upload cap ──
 

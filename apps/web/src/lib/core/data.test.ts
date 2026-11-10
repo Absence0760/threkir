@@ -2315,6 +2315,9 @@ test('every gym / meal-template / recipe read and the row type it is read as nam
 			absent: {
 				last_modified_at: 'redacted by the view (20270319_001); created_at stands in',
 			},
+			extra: {
+				is_official: 'PublicGymRoutineEntry carries it; the view derives it (20271211000002)',
+			},
 		},
 		{ fn: 'fetchMealTemplatesWithError', type: 'MealTemplateSummary', table: 'meal_templates' },
 		{ fn: 'fetchMealTemplateDetail', type: 'MealTemplateSummary', table: 'meal_templates' },

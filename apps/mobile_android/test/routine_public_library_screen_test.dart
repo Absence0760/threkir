@@ -9,6 +9,7 @@ import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/local_gym_store.dart';
 import '../lib/local_routine_store.dart';
 import '../lib/screens/routine_public_library_screen.dart';
+import '../lib/widgets/official_badge.dart';
 import 'pump_until.dart';
 
 GymRoutineRow _routine(String id, String title) => GymRoutineRow(
@@ -24,7 +25,7 @@ GymRoutineRow _routine(String id, String title) => GymRoutineRow(
 
 class _LibraryApi extends ApiClient {
   _LibraryApi(this.entries);
-  final List<({GymRoutineRow routine, String? authorHandle})> entries;
+  final List<({GymRoutineRow routine, String? authorHandle, bool isOfficial})> entries;
 
   /// The screen gates on the viewer id, so a fake must declare who is
   /// looking rather than falling through to a real Supabase read.
@@ -32,7 +33,7 @@ class _LibraryApi extends ApiClient {
   String? get userId => 'u-viewer';
 
   @override
-  Future<List<({GymRoutineRow routine, String? authorHandle})>>
+  Future<List<({GymRoutineRow routine, String? authorHandle, bool isOfficial})>>
       fetchPublicGymRoutineLibrary({String query = ''}) async {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return entries;
@@ -136,13 +137,65 @@ void main() {
     final f = await _fixture('list');
     try {
       final api = _LibraryApi([
-        (routine: _routine('r-1', 'Wendler 5/3/1'), authorHandle: 'Coach Sam'),
+        (
+          routine: _routine('r-1', 'Wendler 5/3/1'),
+          authorHandle: 'Coach Sam',
+          isOfficial: false,
+        ),
       ]);
       await tester.pumpWidget(_app(api, f.store, f.gym));
       await tester.pump();
       await tester.pump();
       expect(find.text('Wendler 5/3/1'), findsOneWidget);
       expect(find.text('by Coach Sam'), findsOneWidget);
+    } finally {
+      f.dir.deleteSync(recursive: true);
+    }
+  });
+
+  testWidgets('an official routine carries the badge in the list and preview',
+      (tester) async {
+    final f = await _fixture('official');
+    try {
+      final official = (
+        routine: _routine('r-off', 'Strength for runners'),
+        authorHandle: 'Threkir',
+        isOfficial: true,
+      );
+      final api = _LibraryApi([
+        official,
+        (
+          routine: _routine('r-per', 'My routine'),
+          authorHandle: 'Coach Sam',
+          isOfficial: false,
+        ),
+      ]);
+      await tester.pumpWidget(_app(api, f.store, f.gym));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(OfficialBadge), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(
+              of: find.text('Strength for runners'), matching: find.byType(Card)),
+          matching: find.byType(OfficialBadge),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: RoutinePublicPreviewScreen(
+          api: _AdoptApi('r-adopted'),
+          store: f.store,
+          gymStore: f.gym,
+          entry: official,
+        ),
+      ));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byType(OfficialBadge), findsOneWidget);
     } finally {
       f.dir.deleteSync(recursive: true);
     }
@@ -181,7 +234,11 @@ void main() {
           api: _AdoptApi('r-adopted'),
           store: f.store,
           gymStore: f.gym,
-          entry: (routine: _routine('r-pub', 'Wendler'), authorHandle: null),
+          entry: (
+            routine: _routine('r-pub', 'Wendler'),
+            authorHandle: null,
+            isOfficial: false,
+          ),
         ),
       ));
       // The extended FAB animates in; tap only once it is hit-testable. The

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import { fetchPublicGymRoutineLibrary, type PublicGymRoutineEntry } from '#lib/core/data.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 
@@ -64,7 +65,7 @@
 			{#each routines as r (r.id)}
 				<li>
 					<a class="routine-card" href="/gym/routines/library/{r.id}">
-						<span class="routine-name">{r.title}</span>
+						<span class="routine-name">{r.title}{#if r.is_official}<OfficialBadge />{/if}</span>
 						<span class="routine-author">
 							{t('gymLibrary.byAuthor', {
 								author: r.author_handle ?? t('gymLibrary.anonymousAuthor'),

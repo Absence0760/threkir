@@ -1,4 +1,5 @@
 <script lang="ts">
+	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
 	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
@@ -18,6 +19,7 @@
 
 	let detail = $state<GymRoutineDetail | null>(null);
 	let authorHandle = $state<string | null>(null);
+	let isOfficial = $state(false);
 	let loading = $state(true);
 	let loadError = $state<string | null>(null);
 	let notFound = $state(false);
@@ -50,7 +52,9 @@
 		// The library read carries its own error field, which was being
 		// discarded — a failure silently rendered the author as "Anonymous".
 		loadError = lib.error ? errorCopy(lib.error, t, 'gym/routines/library/[id]: loadError') : null;
-		authorHandle = lib.routines.find((r) => r.id === routineId)?.author_handle ?? null;
+		const entry = lib.routines.find((r) => r.id === routineId);
+		authorHandle = entry?.author_handle ?? null;
+		isOfficial = entry?.is_official ?? false;
 		loading = false;
 	}
 
@@ -120,7 +124,7 @@
 		<p class="state" data-testid="gym-library-not-found">{t('gymLibrary.notFound')}</p>
 	{:else}
 		<header class="preview-head">
-			<h1>{detail.routine.title}</h1>
+			<h1>{detail.routine.title}{#if isOfficial}<OfficialBadge size={18} />{/if}</h1>
 			<p class="author">
 				{t('gymLibrary.byAuthor', {
 					author: authorHandle ?? t('gymLibrary.anonymousAuthor'),

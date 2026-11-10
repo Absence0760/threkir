@@ -11,7 +11,8 @@ import { readRow, readRows } from '../fixtures/db-read';
  * Covers: an owner publishes a personal routine to the public library and
  * unpublishes it (set_gym_routine_public); a different signed-in user browses
  * the library, previews a public routine's planned sets, and adopts (clones) it
- * into their own routine list (clone_gym_routine_template public branch).
+ * into their own routine list (clone_gym_routine_template public branch); a
+ * verified club's routine carries the Official badge there.
  *
  * Each run uses a unique title so rows never collide in the shared seed DB and
  * cleans up its own backend rows.
@@ -147,6 +148,59 @@ test.describe('/gym/routines/library — publish, browse, preview, adopt', () =>
 		} finally {
 			if (adoptedId) await admin.from('gym_routines').delete().eq('id', adoptedId);
 			await admin.from('gym_routines').delete().eq('id', templateId);
+		}
+	});
+
+	// A verified club's routine reaches the library through the official
+	// catalogue load (issue #1190, migration 20271211000002), which writes as
+	// the service role; the library and its preview carry the Official badge,
+	// and a personal routine beside it does not.
+	test('a verified club routine reads as official in the library and its preview', async ({ page }) => {
+		const admin = getAdminClient();
+		const clubId = crypto.randomUUID();
+		const stamp = Date.now();
+		const official = `E2E Official Lib ${stamp}`;
+		const personal = `E2E Personal Lib ${stamp}`;
+
+		const club = await admin.from('clubs').insert({
+			id: clubId,
+			owner_id: USER_B.id,
+			name: `E2E Official Gym ${stamp}`,
+			slug: `e2e-official-gym-${stamp}`,
+			is_public: true,
+		});
+		if (club.error) throw club.error;
+		const verified = await admin.from('clubs').update({ is_verified: true }).eq('id', clubId);
+		if (verified.error) throw verified.error;
+		const routines = await admin
+			.from('gym_routines')
+			.insert([
+				{ author_id: USER_B.id, club_id: clubId, title: official, exercise_count: 0, is_public_template: true },
+				{ author_id: USER_B.id, title: personal, exercise_count: 0, is_public_template: true },
+			])
+			.select('id, title');
+		if (routines.error) throw routines.error;
+		const officialId = routines.data.find((r) => r.title === official)!.id;
+
+		try {
+			await page.goto('/gym/routines/library');
+			await page.getByRole('searchbox').fill(`${stamp}`);
+			const list = page.getByTestId('gym-library-list');
+			const officialCard = list.getByRole('link', { name: new RegExp(official) });
+			const personalCard = list.getByRole('link', { name: new RegExp(personal) });
+			await expect(officialCard).toBeVisible({ timeout: 10_000 });
+			await expect(personalCard).toBeVisible();
+			await expect(officialCard.getByTestId('official-badge')).toBeVisible();
+			await expect(personalCard.getByTestId('official-badge')).toHaveCount(0);
+
+			await officialCard.click();
+			await expect(page).toHaveURL(new RegExp(`/gym/routines/library/${officialId}$`));
+			await expect(page.getByRole('heading', { level: 1 }).getByTestId('official-badge')).toBeVisible({
+				timeout: 10_000,
+			});
+		} finally {
+			await admin.from('gym_routines').delete().in('id', routines.data.map((r) => r.id));
+			await admin.from('clubs').delete().eq('id', clubId);
 		}
 	});
 });

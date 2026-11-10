@@ -162,6 +162,17 @@ double idleStartButtonSize(double height) {
   return (height * 0.28).clamp(96.0, 140.0);
 }
 
+/// Height of the fade above the idle Start, where the cards scrolling behind
+/// it dissolve into the page instead of ending on a hard edge.
+const double kIdleStartFadeHeight = 32;
+
+/// Height of the area the idle Start floats in over the scrolling cards, for
+/// a Start circle [buttonSize] across above a docked bar [dockInset] tall.
+/// The scroll is padded by at least this much so its last card can scroll
+/// wholly clear of Start.
+double idleStartAreaHeight(double buttonSize, double dockInset) =>
+    kIdleStartFadeHeight + buttonSize + 16 + dockInset;
+
 /// Main run recording screen with GPS tracking, live stats, sync, audio cues,
 /// auto-pause, countdown, and optional route following.
 class RunScreen extends StatefulWidget {
@@ -4943,17 +4954,24 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final lastRun = _mostRecentRun();
-    // Start is the L0/L1 entry point, so it is pinned below the scroll
-    // rather than ending it: every card above (race, route, event, plan
-    // workout, last run) is auxiliary, and when they stacked up Start was
-    // pushed under the bottom bar and had to be scrolled to.
+    // Start is the L0/L1 entry point, so it floats over the scroll rather
+    // than ending it: every card above (race, route, event, plan workout,
+    // last run) is auxiliary, and when they stacked up Start was pushed
+    // under the bottom bar and had to be scrolled to. The cards run on
+    // behind it under a fade, so the page reads as continuing rather than
+    // cut off, and the scroll is padded so the last card clears Start.
+    final dockInset = DockedFabInset.of(context);
     return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) => Column(
+      child: LayoutBuilder(builder: (context, constraints) {
+        final startSize = idleStartButtonSize(constraints.maxHeight);
+        final startArea = idleStartAreaHeight(startSize, dockInset);
+        final page = theme.scaffoldBackgroundColor;
+        return Stack(
           children: [
-            Expanded(
+            Positioned.fill(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                key: const ValueKey('run-idle-scroll'),
+                padding: EdgeInsets.fromLTRB(24, 16, 24, 8 + startArea),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -5171,18 +5189,48 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
                 ),
               ),
             ),
-            Padding(
-              padding: EdgeInsets.only(
-                  top: 8, bottom: 16 + DockedFabInset.of(context)),
-              child: _buildIdleStartButton(
-                theme,
-                l10n,
-                idleStartButtonSize(constraints.maxHeight),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: startArea,
+              child: Stack(
+                children: [
+                  // Only the circle takes taps; a tap on the fade or
+                  // beside Start reaches the card underneath it.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      key: const ValueKey('run-idle-start-scrim'),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              page.withValues(alpha: 0),
+                              page.withValues(alpha: 0.7),
+                              page,
+                            ],
+                            stops: const [0, 0.5, 1],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 16 + dockInset,
+                    child: Center(
+                      child: _buildIdleStartButton(theme, l10n, startSize),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ),
-      ),
+        );
+      }),
     );
   }
 

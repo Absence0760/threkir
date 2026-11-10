@@ -89,7 +89,7 @@ Disputed targets sort first on `/admin/reports`, with an **Organiser dispute** b
 | **Send rename notice** | The owner is asked to rename or change it within a deadline (14 days by default, 1 to 60). The reports stay pending and the target stays at the top of the queue showing the deadline. Nothing happens automatically at the deadline; the reviewer then hides or dismisses. |
 | **Dismiss dispute** | The dispute reports are dismissed and nothing changes. |
 
-Only the dispute reports are touched, and the general Dismiss / Mark reviewed buttons now leave dispute reports alone, so a dispute closes only with its log entry and its notices. **Restore** (`admin_unhide_target`) lifts a plan, routine or challenge takedown; the owner republishes when they choose. A takedown cannot stop someone making a new copy; the organiser files again.
+Only the dispute reports are touched, and the general Dismiss / Mark reviewed buttons now leave dispute reports alone, so a dispute closes only with its log entry and its notices. **Restore** (`admin_unhide_target`) lifts a plan, routine or challenge takedown; the owner republishes when they choose. A library plan is published as a new copy, so while a copy's takedown stands its source plan cannot be published again either; content rebuilt from scratch under the same name is a new target, and the organiser files again.
 
 ### Audit and notices
 

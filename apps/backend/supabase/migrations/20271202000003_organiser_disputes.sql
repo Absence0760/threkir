@@ -33,7 +33,8 @@
 --     flag auto-hide and admin_unhide_target already use). A plan or routine
 --     template and a challenge have no such flag, so they are unpublished
 --     (is_public_template / is_public false) and a trigger refuses a
---     republish while the takedown stands. A race listing's claim is released
+--     republish while the takedown stands; for a library plan copy the lock
+--     also holds against publishing its source plan again. A race listing's claim is released
 --     (organiser club, course link and course stamps cleared) so the rightful
 --     organiser can claim it. The dispute reports are marked reviewed.
 --   * 'rename_notice': the owner is asked to rename or change the content by
@@ -44,7 +45,8 @@
 --   * 'dismiss': the dispute reports are dismissed.
 -- Only the dispute reports are touched; general reports on the same target
 -- keep their own triage, and resolve_target_reports (re-emitted) now leaves
--- dispute reports alone. Every action, and every filing, is written to the
+-- dispute reports alone. reports.reviewed_by stays null on a dispute: the
+-- reporter can read their own report row, and must not learn the reviewer. Every action, and every filing, is written to the
 -- append-only organiser_dispute_actions log with the reviewer's id; the
 -- notices to both sides carry no actor, and my_organiser_disputes() never
 -- returns one. admin_unhide_target (re-emitted) lifts a takedown on the new
@@ -84,6 +86,10 @@ create table organiser_dispute_actions (
   action             text not null,
   deadline_at        timestamptz,
   note               text,
+  -- For a library plan copy, the owner's plan it was published from, so a
+  -- takedown also holds against publishing that plan again (no FK: the log
+  -- outlives the plan).
+  source_plan_id     uuid,
   created_at         timestamptz not null default now(),
   constraint organiser_dispute_actions_kind_check
     check (target_kind in ('club', 'route', 'training_plan', 'gym_routine', 'challenge', 'race_listing')),
@@ -215,6 +221,25 @@ as $$
   ), false);
 $$;
 
+-- A plan whose library copy was taken down, while that takedown stands.
+create or replace function private.organiser_dispute_source_locked(p_plan_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1
+      from (select distinct a.target_id
+              from organiser_dispute_actions a
+             where a.target_kind = 'training_plan'
+               and a.source_plan_id = p_plan_id) t
+     where private.organiser_dispute_hidden('training_plan', t.target_id)
+  );
+$$;
+
+revoke execute on function private.organiser_dispute_source_locked(uuid) from public, anon, authenticated;
 revoke execute on function private.organiser_dispute_target_owner(text, uuid) from public, anon, authenticated;
 revoke execute on function private.organiser_dispute_target_label(text, uuid) from public, anon, authenticated;
 revoke execute on function private.organiser_dispute_target_club(text, uuid) from public, anon, authenticated;
@@ -246,6 +271,35 @@ revoke execute on function private.organiser_dispute_publish_guard() from public
 create trigger training_plans_organiser_dispute_guard
   before update of is_public_template on training_plans
   for each row execute function private.organiser_dispute_publish_guard('training_plan', 'is_public_template');
+
+-- A client publishes a plan only through publish_plan_to_library, which makes
+-- a NEW library copy and then points the source's library_copy_id at it. The
+-- row guard above cannot see that copy, so the lock also follows the lineage:
+-- the source of a taken-down copy cannot be published again while the
+-- takedown stands (the raise rolls the new copy back with it).
+create or replace function private.organiser_dispute_republish_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  if new.library_copy_id is not null
+     and new.library_copy_id is distinct from old.library_copy_id
+     and private.organiser_dispute_source_locked(new.id) then
+    raise exception 'organiser_dispute_takedown'
+      using errcode = '42501',
+            hint = 'This plan''s library copy was taken down after a naming dispute and cannot be published again until it is reviewed.';
+  end if;
+  return new;
+end;
+$$;
+
+revoke execute on function private.organiser_dispute_republish_guard() from public, anon, authenticated;
+
+create trigger training_plans_organiser_dispute_lineage_guard
+  before update of library_copy_id on training_plans
+  for each row execute function private.organiser_dispute_republish_guard();
 
 create trigger gym_routines_organiser_dispute_guard
   before update of is_public_template on gym_routines
@@ -467,6 +521,7 @@ declare
   v_clubs uuid[];
   v_owner uuid;
   v_owner_club uuid;
+  v_source_plan uuid;
   v_deadline timestamptz;
   v_count integer := 0;
 begin
@@ -515,12 +570,15 @@ begin
   if p_target_kind in ('club', 'race_listing') then
     v_owner_club := private.organiser_dispute_target_club(p_target_kind, p_target_id);
   end if;
+  if p_target_kind = 'training_plan' then
+    select tp.id into v_source_plan from training_plans tp where tp.library_copy_id = p_target_id;
+  end if;
 
   -- One log row per reporting club. A deleted club keeps the name its
   -- filing recorded.
   insert into organiser_dispute_actions (
     target_kind, target_id, organiser_club_id, organiser_club_name, target_owner_id,
-    actor_id, action, deadline_at, note
+    actor_id, action, deadline_at, note, source_plan_id
   )
   select p_target_kind, p_target_id, x.organiser_club_id,
          left(coalesce(
@@ -531,7 +589,7 @@ begin
                and f.organiser_club_id is not distinct from x.organiser_club_id
              order by f.created_at desc, f.id desc limit 1),
            ''), 200),
-         v_owner, v_admin, p_action, v_deadline, v_note
+         v_owner, v_admin, p_action, v_deadline, v_note, v_source_plan
     from (
       select r.organiser_club_id, min(r.created_at) as first_at
         from reports r
@@ -566,11 +624,12 @@ begin
     end if;
   end if;
 
+  -- reviewed_by stays null: the reporter reads their own report rows, and
+  -- the reviewer is not theirs to know. The log row above names them.
   if p_action in ('takedown', 'dismiss') then
     update reports
        set status      = case p_action when 'takedown' then 'reviewed' else 'dismissed' end,
            resolution  = v_note,
-           reviewed_by = v_admin,
            reviewed_at = now()
      where target_kind = p_target_kind
        and target_id = p_target_id
@@ -634,10 +693,12 @@ begin
 
   if p_target_kind <> 'user' and private.organiser_dispute_hidden(p_target_kind, p_target_id) then
     insert into organiser_dispute_actions (
-      target_kind, target_id, organiser_club_id, organiser_club_name, target_owner_id, actor_id, action
+      target_kind, target_id, organiser_club_id, organiser_club_name, target_owner_id, actor_id, action,
+      source_plan_id
     )
     select a.target_kind, a.target_id, a.organiser_club_id, a.organiser_club_name,
-           private.organiser_dispute_target_owner(p_target_kind, p_target_id), v_admin, 'unhide'
+           private.organiser_dispute_target_owner(p_target_kind, p_target_id), v_admin, 'unhide',
+           a.source_plan_id
       from organiser_dispute_actions a
      where a.target_kind = p_target_kind and a.target_id = p_target_id and a.action = 'takedown'
      order by a.created_at desc, a.id desc

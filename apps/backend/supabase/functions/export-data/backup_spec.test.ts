@@ -998,3 +998,17 @@ Deno.test('reports_against_my_messages holds back a pending report', () => {
 	assertExists(rep);
 	assertEquals(rep.filter.includes('status=neq.pending'), true);
 });
+
+Deno.test('organiser dispute notices carry only reviewed actions, never the reviewer', () => {
+	// A filing alone is not the content owner's to read (my_organiser_disputes
+	// withholds it too), and the reviewer is not theirs to know (decisions § 2441).
+	const specs = buildBackupSpecs(TEST_UID);
+	const notices = specs.find((s) => s.entry === 'organiser_dispute_notices.json');
+	assertExists(notices);
+	assertEquals(notices.table, 'organiser_dispute_actions');
+	assertEquals(notices.filter, `target_owner_id=eq.${TEST_UID}&action=neq.filed`);
+	assertEquals(notices.select.split(',').includes('actor_id'), false);
+	const taken = specs.find((s) => s.entry === 'organiser_dispute_actions.json');
+	assertExists(taken);
+	assertEquals(taken.filter, `actor_id=eq.${TEST_UID}`);
+});

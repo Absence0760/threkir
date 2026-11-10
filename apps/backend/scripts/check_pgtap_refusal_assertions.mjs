@@ -2535,6 +2535,16 @@ export const UNOBSERVED_RPC_WRITES = [
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
   {
+    file: 'organiser_disputes_test.sql',
+    description: 'once lifted, the source may be published again',
+    columns: ['training_plans.library_copy_id'],
+    readBack: 'the source points at its library copy again',
+    reason:
+      'freeze_training_plan_managed_columns keeps library_copy_id for a client role; the assertion runs ' +
+      'as the test superuser (the path publish_plan_to_library takes as definer), and the read-back ' +
+      'proves the stored link is the one written once the takedown was lifted.',
+  },
+  {
     file: 'race_start_modes_test.sql',
     description: 'a scheduled race whose start passed takes pings before the job moves it',
     columns: ['race_pings.lat', 'race_pings.lng'],

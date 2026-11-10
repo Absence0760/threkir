@@ -2540,7 +2540,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// subject owns, without the reviewer.
 		{
 			name: "organiser_dispute_notices.json", table: schema.TableOrganiserDisputeActions,
-			filter: "target_owner_id=eq." + uid,
+			filter: "target_owner_id=eq." + uid + "&action=neq.filed",
 			sel:    "id,target_kind,target_id,organiser_club_id,organiser_club_name,action,deadline_at,note,created_at",
 		},
 		// course_alerts — the course alerts the subject posted as a verified

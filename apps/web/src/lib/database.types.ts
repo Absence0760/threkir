@@ -3474,6 +3474,7 @@ export type Database = {
           note: string | null
           organiser_club_id: string | null
           organiser_club_name: string
+          source_plan_id: string | null
           target_id: string
           target_kind: string
           target_owner_id: string | null
@@ -3487,6 +3488,7 @@ export type Database = {
           note?: string | null
           organiser_club_id?: string | null
           organiser_club_name: string
+          source_plan_id?: string | null
           target_id: string
           target_kind: string
           target_owner_id?: string | null
@@ -3500,6 +3502,7 @@ export type Database = {
           note?: string | null
           organiser_club_id?: string | null
           organiser_club_name?: string
+          source_plan_id?: string | null
           target_id?: string
           target_kind?: string
           target_owner_id?: string | null

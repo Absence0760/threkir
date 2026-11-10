@@ -12,7 +12,7 @@
 -- sides are notified with no actor and read their side without the reviewer.
 
 begin;
-select plan(63);
+select plan(67);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -63,6 +63,10 @@ values ('d15e3333-0000-0000-0000-000000000001', 'd15e0000-0000-0000-0000-0000000
         'OD Marathon Official Plan', 'distance_full', 42195, '2036-01-01', '2036-04-01', 'completed', true, true),
        ('d15e3333-0000-0000-0000-000000000002', 'd15e0000-0000-0000-0000-000000000005',
         'OD Private Plan', 'distance_full', 42195, '2036-01-01', '2036-04-01', 'active', false, false);
+
+-- The private plan is the one the library copy above was published from.
+update training_plans set library_copy_id = 'd15e3333-0000-0000-0000-000000000001'
+ where id = 'd15e3333-0000-0000-0000-000000000002';
 
 insert into gym_routines (id, author_id, is_public_template, title, exercise_count)
 values ('d15e4444-0000-0000-0000-000000000001', 'd15e0000-0000-0000-0000-000000000005', true, 'OD Marathon Strength', 0);
@@ -358,6 +362,22 @@ select is(
 select throws_ok(
   $$ update training_plans set is_public_template = true where id = 'd15e3333-0000-0000-0000-000000000001' $$,
   '42501', 'organiser_dispute_takedown', 'the taken-down plan copy cannot be republished');
+-- Unpublishing clears the source's link; publishing it again would make a
+-- new copy, and the lineage guard refuses that while the takedown stands.
+update training_plans set library_copy_id = null where id = 'd15e3333-0000-0000-0000-000000000002';
+select throws_ok(
+  $$ update training_plans set library_copy_id = 'd15e3333-0000-0000-0000-000000000001'
+      where id = 'd15e3333-0000-0000-0000-000000000002' $$,
+  '42501', 'organiser_dispute_takedown', 'the source of a taken-down copy cannot be published again');
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"d15e0000-0000-0000-0000-000000000001","role":"authenticated"}';
+select ok(
+  (select count(*) = 1 and bool_and(reviewed_by is null and status = 'reviewed')
+     from reports where target_kind = 'training_plan'
+      and target_id = 'd15e3333-0000-0000-0000-000000000001'),
+  'the reporter reads the outcome on their own report, but never the reviewer');
+reset role;
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"d15e0000-0000-0000-0000-000000000005","role":"authenticated"}';
@@ -410,6 +430,14 @@ reset role;
 select lives_ok(
   $$ update training_plans set is_public_template = true where id = 'd15e3333-0000-0000-0000-000000000001' $$,
   'once lifted, the copy may be published again');
+select lives_ok(
+  $$ update training_plans set library_copy_id = 'd15e3333-0000-0000-0000-000000000001'
+      where id = 'd15e3333-0000-0000-0000-000000000002' $$,
+  'once lifted, the source may be published again');
+select is(
+  (select library_copy_id from training_plans where id = 'd15e3333-0000-0000-0000-000000000002'),
+  'd15e3333-0000-0000-0000-000000000001'::uuid,
+  'the source points at its library copy again');
 
 select * from finish();
 rollback;

@@ -379,7 +379,8 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		{
 			entry: 'organiser_dispute_notices.json',
 			table: 'organiser_dispute_actions',
-			filter: `target_owner_id=eq.${uid}`,
+			// A filing alone is not the owner's to read: only reviewed actions.
+			filter: `target_owner_id=eq.${uid}&action=neq.filed`,
 			select: 'id,target_kind,target_id,organiser_club_id,organiser_club_name,action,deadline_at,note,created_at',
 		},
 		// course_alerts — the course alerts the subject posted as a verified

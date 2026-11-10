@@ -27788,6 +27788,12 @@ abstract class AppLocalizations {
   /// **'Segments'**
   String get runSurfaceTabSegments;
 
+  /// Run-surface peer strip entry for the park-course index (park time-trial courses with season boards)
+  ///
+  /// In en, this message translates to:
+  /// **'Parks'**
+  String get runSurfaceTabParks;
+
   /// Rate-limit refusal when the create_club bucket is spent
   ///
   /// In en, this message translates to:

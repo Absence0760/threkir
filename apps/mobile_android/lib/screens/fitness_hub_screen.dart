@@ -18,6 +18,7 @@ import '../widgets/surface_peer_strip.dart';
 import 'global_segments_screen.dart';
 import 'gym_screen.dart';
 import 'nutrition_screen.dart';
+import 'park_courses_screen.dart';
 import 'plans_screen.dart';
 import 'races_screen.dart';
 import 'routes_screen.dart';
@@ -53,7 +54,7 @@ import 'runs_screen.dart';
 /// decisions § 1654).
 ///
 /// The Runs sub-tab additionally carries the labelled peer strip
-/// `Runs · Routes · Segments · Plans · Races` (mirroring web's
+/// `Runs · Routes · Segments · Parks · Plans · Races` (mirroring web's
 /// `RunSurfaceTabs`), so run planning has a named destination instead of
 /// hanging off tooltip-only glyphs (decisions § 488).
 ///
@@ -254,6 +255,12 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
     ));
   }
 
+  void _openParks() {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => ParksScreen(api: widget.apiClient),
+    ));
+  }
+
   void _openPlans() {
     Navigator.of(context).push(MaterialPageRoute<void>(
       builder: (_) => PlansScreen(
@@ -344,6 +351,7 @@ class _FitnessHubScreenState extends State<FitnessHubScreen>
               SurfacePeer(label: l10n.fitnessRunsRoutes, onTap: _openRoutes),
               SurfacePeer(
                   label: l10n.runSurfaceTabSegments, onTap: _openSegments),
+              SurfacePeer(label: l10n.runSurfaceTabParks, onTap: _openParks),
               SurfacePeer(label: l10n.runSurfaceTabPlans, onTap: _openPlans),
               SurfacePeer(label: l10n.runSurfaceTabRaces, onTap: _openRaces),
             ],

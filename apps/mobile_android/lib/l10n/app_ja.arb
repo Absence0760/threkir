@@ -4809,6 +4809,7 @@
   "segmentCatalogueStatSurface": "路面",
   "segmentCatalogueLeaderboard": "ランキング",
   "runSurfaceTabSegments": "セグメント",
+  "runSurfaceTabParks": "公園",
   "rateLimitCreateClub": "クラブの作成が速すぎます。{wait}待ってから、もう一度お試しください。",
   "rateLimitCreateRoute": "ルートの作成が速すぎます。{wait}待ってから、もう一度お試しください。",
   "rateLimitCreateReport": "報告の送信が速すぎます。{wait}待ってから、もう一度お試しください。",

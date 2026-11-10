@@ -17099,6 +17099,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runSurfaceTabSegments => 'Segments';
 
   @override
+  String get runSurfaceTabParks => 'Parcs';
+
+  @override
   String rateLimitCreateClub(String wait) {
     return 'Vous créez des clubs trop rapidement — veuillez patienter $wait et réessayer.';
   }

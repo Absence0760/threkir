@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchParks, type Park } from '#lib/core/data.ts';
 	import { groupParksByRegion, regionName, regionSlug } from '#lib/parks/park_courses.ts';
@@ -50,7 +51,14 @@
 			<button type="button" class="btn btn-outline btn-sm" onclick={load}>{m('parks.retry')}</button>
 		</div>
 	{:else if parks.length === 0}
-		<p class="state-msg" data-testid="parks-empty">{m('parks.empty')}</p>
+		<EmptyState icon="park" title={m('parks.empty')} data-testid="parks-empty">
+			{#snippet actions()}
+				<a class="btn btn-outline" href="/segments">
+					<span class="material-symbols" aria-hidden="true">terrain</span>
+					{m('runSurface.tabSegments')}
+				</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		{#each groups as group (group.regionCode)}
 			<section class="region" data-testid="parks-region">

@@ -4698,6 +4698,7 @@ export const messages = {
 	"races.unverified": "Non vérifié",
 	"races.loading": "Recherche de courses…",
 	"races.empty": "Aucune course ne correspond encore à ces filtres.",
+	"races.clearFilters": "Effacer les filtres",
 	"races.searchFailed": "Impossible de charger les courses. Vérifiez votre connexion et réessayez.",
 	"races.retry": "Réessayer",
 	"races.findMyResult": "Trouver mon résultat de course",

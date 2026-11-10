@@ -4697,6 +4697,7 @@ export const messages = {
 	"races.unverified": "Não verificado",
 	"races.loading": "A procurar provas…",
 	"races.empty": "Nenhuma prova corresponde a estes filtros ainda.",
+	"races.clearFilters": "Limpar filtros",
 	"races.searchFailed": "Não foi possível carregar as provas. Verifique a sua ligação e tente novamente.",
 	"races.retry": "Tentar novamente",
 	"races.findMyResult": "Encontrar o meu resultado da prova",

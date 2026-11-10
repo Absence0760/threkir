@@ -3,6 +3,7 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
@@ -100,7 +101,14 @@
 			</button>
 		</div>
 	{:else if segments.length === 0}
-		<p class="state-msg" data-testid="segment-catalogue-empty">{m('segments.browseEmpty')}</p>
+		<EmptyState icon="terrain" title={m('segments.browseEmpty')} data-testid="segment-catalogue-empty">
+			{#snippet actions()}
+				<a class="btn btn-outline" href="/parks">
+					<span class="material-symbols" aria-hidden="true">park</span>
+					{m('parks.browseLink')}
+				</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<div class="filters">
 			<label class="field search-field">
@@ -175,9 +183,17 @@
 		     everything). Swapping its contents announces in both directions. -->
 		<div class="results-status" role="status">
 			{#if shown.length === 0}
-				<p class="state-msg" data-testid="segment-catalogue-no-matches">
-					{m('segments.browseNoMatches')}
-				</p>
+				<EmptyState
+					icon="filter_alt_off"
+					title={m('segments.browseNoMatches')}
+					data-testid="segment-catalogue-no-matches"
+				>
+					{#snippet actions()}
+						<button type="button" class="btn btn-primary" onclick={resetFilters}>
+							{m('segments.clearFilters')}
+						</button>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<p class="count" data-testid="segment-catalogue-count">
 					{m('segments.browseCount', { count: shown.length })}

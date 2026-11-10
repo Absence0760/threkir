@@ -4693,6 +4693,7 @@ export const messages = {
 	"races.unverified": "未検証",
 	"races.loading": "レースを検索中…",
 	"races.empty": "この条件に一致するレースはまだありません。",
+	"races.clearFilters": "フィルターをクリア",
 	"races.searchFailed": "レースを読み込めませんでした。接続を確認して再試行してください。",
 	"races.retry": "再試行",
 	"races.findMyResult": "自分のレース結果を探す",

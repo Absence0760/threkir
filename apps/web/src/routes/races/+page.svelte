@@ -14,6 +14,7 @@
 	import { addDays, formatISO } from '#lib/training/training.ts';
 	import { probeRaceLeg } from '#lib/integrations/race_import_probe.svelte.ts';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import RaceCalendarCard from '#lib/components/RaceCalendarCard.svelte';
 	import RaceImportDialog from '#lib/components/RaceImportDialog.svelte';
 	import RaceListingEditor from '#lib/components/RaceListingEditor.svelte';
@@ -171,6 +172,13 @@
 		radiusM = undefined;
 		nearLabel = '';
 		geoError = '';
+	}
+
+	function clearFilters() {
+		query = '';
+		distance = '';
+		when = 'upcoming';
+		clearNear();
 	}
 
 	function openImport(race: RaceListingResult) {
@@ -363,9 +371,22 @@
 			<button type="button" class="btn btn-outline" onclick={run}>{m('races.retry')}</button>
 		</div>
 	{:else if results.length === 0}
-		<p class="state-msg" data-testid="races-empty">
-			{when === 'recent' ? m('races.emptyRecent', { days: RECENT_WINDOW_DAYS }) : m('races.empty')}
-		</p>
+		<EmptyState
+			icon="event_busy"
+			title={when === 'recent' ? m('races.emptyRecent', { days: RECENT_WINDOW_DAYS }) : m('races.empty')}
+			data-testid="races-empty"
+		>
+			{#snippet actions()}
+				{#if activeCount > 0 || query.trim() !== ''}
+					<button type="button" class="btn btn-outline" onclick={clearFilters}>
+						{m('races.clearFilters')}
+					</button>
+				{/if}
+				<button type="button" class="btn btn-primary" onclick={() => (showEditor = true)}>
+					{m('races.submitRace')}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="results" data-testid="races-results">
 			{#each results as r (r.id)}

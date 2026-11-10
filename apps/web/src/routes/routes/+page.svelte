@@ -16,6 +16,7 @@
 	import { fold, compareFoldedNames } from '#lib/segments/catalogue_browse.ts';
 	import ImportRoute from '#lib/components/ImportRoute.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import RouteExplorer from '#lib/components/RouteExplorer.svelte';
 	import RouteTrackPreview from '#lib/components/RouteTrackPreview.svelte';
@@ -377,13 +378,8 @@
 				<button class="btn btn-outline" onclick={load}>{m('routesPage.retry')}</button>
 			</div>
 		{:else if routes.length === 0}
-			<div class="empty-card">
-				<span class="material-symbols empty-icon" aria-hidden="true">route</span>
-				<h3>{m('routesPage.emptyTitle')}</h3>
-				<p class="empty-text">
-					{m('routesPage.emptyText')}
-				</p>
-				<div class="empty-actions">
+			<EmptyState icon="route" title={m('routesPage.emptyTitle')} text={m('routesPage.emptyText')}>
+				{#snippet actions()}
 					<a href="/routes/new" class="btn btn-primary">
 						<span class="material-symbols" aria-hidden="true">add</span>
 						{m('routesPage.buildRoute')}
@@ -400,8 +396,8 @@
 						<span class="material-symbols" aria-hidden="true">explore</span>
 						{m('routesPage.browseCommunity')}
 					</button>
-				</div>
-			</div>
+				{/snippet}
+			</EmptyState>
 		{:else}
 			<!-- Single-rail toolbar: search grows to fill, selects + chips +
 			     meta share the same row so the toolbar never burns more than
@@ -488,18 +484,17 @@
 			</div>
 
 			{#if filteredRoutes.length === 0}
-				<div class="empty-card">
-					<span class="material-symbols empty-icon" aria-hidden="true">filter_alt_off</span>
-					<h3>{m('routesPage.noMatchTitle')}</h3>
-					<p class="empty-text">
-						{m('routesPage.noMatchText')}
-					</p>
-					<div class="empty-actions">
+				<EmptyState
+					icon="filter_alt_off"
+					title={m('routesPage.noMatchTitle')}
+					text={m('routesPage.noMatchText')}
+				>
+					{#snippet actions()}
 						<button type="button" class="btn btn-primary" onclick={clearFilters}>
 							{m('routesPage.clearFilters')}
 						</button>
-					</div>
-				</div>
+					{/snippet}
+				</EmptyState>
 			{:else}
 				<div class="route-grid">
 					{#each filteredRoutes as route (route.id)}
@@ -628,48 +623,6 @@
 	.error-banner .material-symbols {
 		color: var(--color-danger-text);
 		font-size: 1.4rem;
-	}
-
-	/* Empty-state card — same shape as /runs, /plans, /dashboard. Card
-	   with icon, h3, explainer, primary CTA + secondary actions. */
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: var(--color-text);
-	}
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-	.empty-actions .material-symbols {
-		font-size: 1.1rem;
 	}
 
 	.route-grid {

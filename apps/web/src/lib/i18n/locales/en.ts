@@ -4711,6 +4711,7 @@ export const en = {
 	"races.unverified": "Unverified",
 	"races.loading": "Searching races…",
 	"races.empty": "No races match these filters yet.",
+	"races.clearFilters": "Clear filters",
 	"races.searchFailed": "Couldn't load races. Check your connection and try again.",
 	"races.retry": "Retry",
 	"races.findMyResult": "Find my race result",

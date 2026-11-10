@@ -280,3 +280,71 @@ export function formatGuideLine(line: GuideLine, fmt: GuideFormat): string {
 export function routeGuideText(guide: RouteGuide, fmt: GuideFormat): string[] {
 	return routeGuideLines(guide).map((l) => formatGuideLine(l, fmt));
 }
+
+/**
+ * The English templates, for the two places that write canonical English
+ * whoever asks: a GPX file's `<desc>` (the file is the same whoever
+ * downloads it) and the share page's search text, which the Lambda builds
+ * without the locale catalogues. `route_guide.test.ts` holds every entry to
+ * `parks.guide.<key>` in `locales/en.ts`, so the two cannot drift.
+ */
+export const GUIDE_EN: Readonly<Record<GuideLineKey | 'pending' | 'checked', string>> = {
+	pending: "Drafted from map data, not yet checked on the ground.",
+	checked: "Checked on the ground on {date}.",
+	startNamed: "Start on {name}.",
+	startFireRoad: "Start on the fire road.",
+	startRoad: "Start on the park road.",
+	startPath: "Start on the path.",
+	clockwise: "Run the loop clockwise.",
+	counterclockwise: "Run the loop counterclockwise.",
+	keepLeft: "Keep {landmark} on your left.",
+	keepRight: "Keep {landmark} on your right.",
+	passCheckpoints: "Pass every checkpoint in order, or the run is not timed.",
+	leftNamed: "{at}: turn left onto {name}.",
+	rightNamed: "{at}: turn right onto {name}.",
+	straightNamed: "{at}: continue straight onto {name}.",
+	leftFireRoad: "{at}: turn left onto the fire road.",
+	rightFireRoad: "{at}: turn right onto the fire road.",
+	straightFireRoad: "{at}: continue straight along the fire road.",
+	leftRoad: "{at}: turn left onto the park road.",
+	rightRoad: "{at}: turn right onto the park road.",
+	straightRoad: "{at}: continue straight along the park road.",
+	leftPath: "{at}: turn left onto the path.",
+	rightPath: "{at}: turn right onto the path.",
+	straightPath: "{at}: continue straight along the path.",
+	bridge: "{at}: cross the bridge.",
+	ford: "{at}: cross the ford. There is no bridge, so expect water.",
+	surfacePaved: "{at}: paved from here.",
+	surfaceGravel: "{at}: gravel from here.",
+	surfaceDirt: "{at}: dirt trail from here.",
+	surfaceUnpaved: "{at}: unpaved from here.",
+	surfaceBoardwalk: "{at}: boardwalk from here.",
+	climb: "{at}: a climb of {gain} over {length}.",
+	checkpoint: "{at}: checkpoint {n} of {total}.",
+	lap: "{at}: start lap {n} of {total} and repeat the loop.",
+	finish: "{at}: finish.",
+};
+
+const fill = (template: string, params: Record<string, string | number>) =>
+	template.replace(/\{(\w+)\}/g, (_, p: string) => String(params[p] ?? ''));
+
+/** Canonical-English formatting: kilometres to one decimal, metres whole. */
+export const ENGLISH_GUIDE_FORMAT: GuideFormat = {
+	message: (key, params) => fill(GUIDE_EN[key], params),
+	distance: (metres) => `${(metres / 1000).toFixed(1)} km`,
+	short: (metres) => `${Math.round(metres)} m`,
+};
+
+/**
+ * The guide as canonical-English text: whether it has been checked on the
+ * ground, the getting-there note, then every line. `checkedAt` is
+ * `park_courses.route_guide_checked_at` (YYYY-MM-DD) or null.
+ */
+export function routeGuideEnglish(guide: RouteGuide, checkedAt: string | null): string[] {
+	const status = checkedAt ? fill(GUIDE_EN.checked, { date: checkedAt }) : GUIDE_EN.pending;
+	return [
+		status,
+		...(guide.gettingThere ? [guide.gettingThere] : []),
+		...routeGuideText(guide, ENGLISH_GUIDE_FORMAT),
+	];
+}

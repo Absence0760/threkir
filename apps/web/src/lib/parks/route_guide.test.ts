@@ -4,9 +4,11 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+	GUIDE_EN,
 	GUIDE_LINE_KEYS,
 	formatGuideLine,
 	parseRouteGuide,
+	routeGuideEnglish,
 	routeGuideLines,
 	routeGuideText,
 	type GuideFormat,
@@ -69,4 +71,24 @@ test('routeGuideText renders a guide as English lines', () => {
 	assert.equal(text[3], '0.4 km: turn left onto Ridge Trail.');
 	assert.equal(text[6], '0.8 km: a climb of 14 m over 300 m.');
 	assert.equal(text.at(-1), '2.0 km: finish.');
+});
+
+test('GUIDE_EN is the English catalogue, entry for entry', () => {
+	for (const [key, value] of Object.entries(GUIDE_EN)) {
+		assert.equal(value, catalogue[`parks.guide.${key}`], key);
+	}
+	assert.deepEqual(
+		Object.keys(GUIDE_EN).sort(),
+		[...GUIDE_LINE_KEYS, 'pending', 'checked'].sort(),
+	);
+});
+
+test('routeGuideEnglish leads with the ground-check status and the getting-there note', () => {
+	const guide = parseRouteGuide(cases[0].guide);
+	assert.ok(guide);
+	const pending = routeGuideEnglish(guide, null);
+	assert.equal(pending[0], 'Drafted from map data, not yet checked on the ground.');
+	assert.equal(pending[1], 'Park by the boathouse.');
+	assert.equal(pending[2], 'Start on Lake Trail.');
+	assert.equal(routeGuideEnglish(guide, '2026-12-01')[0], 'Checked on the ground on 2026-12-01.');
 });

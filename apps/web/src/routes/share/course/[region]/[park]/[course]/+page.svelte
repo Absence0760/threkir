@@ -8,6 +8,7 @@
 	import RunMap from '#lib/components/RunMap.svelte';
 	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
 	import ParkCourseNotices from '#lib/components/parks/ParkCourseNotices.svelte';
+	import ParkCourseRouteGuide from '#lib/components/parks/ParkCourseRouteGuide.svelte';
 	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
 	import { regionName } from '#lib/parks/park_courses.ts';
 	import { DIFFICULTY_LABEL, SHAPE_LABEL, courseCredit, labelKey } from '#lib/parks/park_labels.ts';
@@ -180,6 +181,15 @@
 					/>
 				</div>
 			{/if}
+			{#if course.route_guide}
+				<div class="guide-slot">
+					<ParkCourseRouteGuide
+						guide={course.route_guide}
+						checkedAt={course.route_guide_checked_at}
+						testidPrefix="share-course"
+					/>
+				</div>
+			{/if}
 			<div class="notices-slot">
 				<ParkCourseNotices distanceM={course.segment.distance_m} testidPrefix="share-course" />
 			</div>
@@ -317,7 +327,8 @@
 		margin: 0 0 var(--space-sm);
 		font-size: var(--font-size-section-title);
 	}
-	.notices-slot {
+	.notices-slot,
+	.guide-slot {
 		margin-top: var(--space-lg);
 	}
 	.notfound-card {

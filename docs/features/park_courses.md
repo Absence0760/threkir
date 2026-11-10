@@ -23,7 +23,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Launch backfill (`enqueue_segment_backfill`) | Shipped; an operator call per new course |
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
 | Badges (`park_courses` / `park_complete` / `park_passport`), passport challenge metric, recap entries, course share sticker | Shipped (migration `20271123002404`, decisions § 2404 / § 2405); see *Collections* |
-| "Report a problem with this course" (issue #1346, migrations `20271212000001`..`005`, decisions § 2449): signed in or signed out, on web and mobile, reviewed and acted on from `/admin/reports`. See *Reports and closures* | Shipped |
+| "Report a problem with this course" (issue #1346, migrations `20271213000001`..`005`, decisions § 2449): signed in or signed out, on web and mobile, reviewed and acted on from `/admin/reports`. See *Reports and closures* | Shipped |
 | NPS closures job | Not built (Phase 6) |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
 | Indexable park pages | Not built; see *SEO* |
@@ -321,7 +321,8 @@ account. The reporter picks a reason (`course_hazard`, `course_closure`,
   address (`check_rate_limit`, fail closed), and calls
   `submit_park_course_report`, which only the service role may execute.
 - **The database's own caps,** which rotating addresses does not get round:
-  25 pending reports per course and 60 signed-out reports an hour across all
+  25 pending reports per course (a land-manager request is never refused by,
+  nor counted toward, this one) and 60 signed-out reports an hour across all
   courses (SQLSTATE `PT429`); one pending report per course per signed-in
   reporter, or per contact email when signed out; at most two links in a note.
 - **The row** is a `reports` row (`target_kind = 'park_course'`) carrying
@@ -551,7 +552,9 @@ These gate going live, not the code:
 - [ ] Owner check of the park course report defaults (decisions § 2449): the
       30-day contact-email retention, the hand reply in place of an
       acknowledgement email, and the caps (10 an hour per user or address,
-      25 pending a course, 60 signed-out an hour).
+      25 pending a course, 60 signed-out an hour), and that
+      `TRUSTED_CLIENT_IP_HEADER` is right for the production edge, or every
+      signed-out reporter shares one bucket.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
 - [ ] NPS API key provisioned before the closures job is built; it must do
       nothing without one.

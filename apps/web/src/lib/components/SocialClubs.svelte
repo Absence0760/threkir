@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import ClubAvatar from '#lib/components/ClubAvatar.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { browseClubsWithError, fetchMyClubsWithError, searchClubsWithError } from '#lib/core/data.ts';
@@ -94,16 +95,14 @@
 </script>
 
 {#snippet missingClubActions(query: string)}
-	<div class="empty-actions" data-testid="clubs-missing-club">
-		<a class="btn btn-primary" href={clubSetupHref(query)}>
-			<span class="material-symbols" aria-hidden="true">add</span>
-			{m('socialClubs.setUpYourClub')}
-		</a>
-		<a class="btn btn-outline" href="/help/{CREATE_CLUB_GUIDE_ID}">
-			<span class="material-symbols" aria-hidden="true">help</span>
-			{m('socialClubs.howToCreateClub')}
-		</a>
-	</div>
+	<a class="btn btn-primary" href={clubSetupHref(query)}>
+		<span class="material-symbols" aria-hidden="true">add</span>
+		{m('socialClubs.setUpYourClub')}
+	</a>
+	<a class="btn btn-outline" href="/help/{CREATE_CLUB_GUIDE_ID}">
+		<span class="material-symbols" aria-hidden="true">help</span>
+		{m('socialClubs.howToCreateClub')}
+	</a>
 {/snippet}
 
 {#snippet clubGrid()}
@@ -238,11 +237,14 @@
 		</p>
 		{@render clubGrid()}
 	{:else if loadError}
-		<div class="empty-card" role="alert">
-			<span class="material-symbols empty-icon" aria-hidden="true">cloud_off</span>
-			<h3>{m('socialClubs.loadErrorTitle')}</h3>
-			<p class="empty-text">{m('socialClubs.loadErrorText')}</p>
-			<div class="empty-actions">
+		<EmptyState
+			icon="cloud_off"
+			tone="danger"
+			title={m('socialClubs.loadErrorTitle')}
+			text={m('socialClubs.loadErrorText')}
+			role="alert"
+		>
+			{#snippet actions()}
 				<button
 					class="btn btn-primary"
 					type="button"
@@ -251,17 +253,16 @@
 					<span class="material-symbols" aria-hidden="true">refresh</span>
 					{m('socialClubs.retry')}
 				</button>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	{:else if visible.length === 0}
-		<div class="empty-card">
-			{#if subtab === 'mine'}
-				<img src="/logo-mark.svg" alt="" width="64" height="64" class="empty-mark" />
-				<h3>{m('socialClubs.emptyMineTitle')}</h3>
-				<p class="empty-text">
-					{m('socialClubs.emptyMineText')}
-				</p>
-				<div class="empty-actions">
+		{#if subtab === 'mine'}
+			<EmptyState
+				icon="groups"
+				title={m('socialClubs.emptyMineTitle')}
+				text={m('socialClubs.emptyMineText')}
+			>
+				{#snippet actions()}
 					<button class="btn btn-primary" type="button" onclick={() => setSubtab('browse')}>
 						<span class="material-symbols" aria-hidden="true">search</span>
 						{m('socialClubs.findAClub')}
@@ -270,30 +271,38 @@
 						<span class="material-symbols" aria-hidden="true">add</span>
 						{m('socialClubs.createOneInstead')}
 					</button>
-				</div>
-			{:else if search.trim()}
-				<span class="material-symbols empty-icon" aria-hidden="true">search_off</span>
-				<h3>{m('socialClubs.noClubsMatch', { query: search.trim() })}</h3>
-				<p class="empty-text">
-					{m('socialClubs.missingClubText')}
-				</p>
-				{@render missingClubActions(search)}
-				<button
-					type="button"
-					class="btn btn-secondary btn-sm"
-					onclick={() => { search = ''; loadBrowse(); }}
-				>
-					{m('socialClubs.clearSearch')}
-				</button>
-			{:else}
-				<span class="material-symbols empty-icon" aria-hidden="true">groups</span>
-				<h3>{m('socialClubs.noPublicClubsTitle')}</h3>
-				<p class="empty-text">
-					{m('socialClubs.noPublicClubsText')}
-				</p>
-				{@render missingClubActions('')}
-			{/if}
-		</div>
+				{/snippet}
+			</EmptyState>
+		{:else if search.trim()}
+			<EmptyState
+				icon="search_off"
+				title={m('socialClubs.noClubsMatch', { query: search.trim() })}
+				text={m('socialClubs.missingClubText')}
+				data-testid="clubs-missing-club"
+			>
+				{#snippet actions()}
+					{@render missingClubActions(search)}
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={() => { search = ''; loadBrowse(); }}
+					>
+						{m('socialClubs.clearSearch')}
+					</button>
+				{/snippet}
+			</EmptyState>
+		{:else}
+			<EmptyState
+				icon="groups"
+				title={m('socialClubs.noPublicClubsTitle')}
+				text={m('socialClubs.noPublicClubsText')}
+				data-testid="clubs-missing-club"
+			>
+				{#snippet actions()}
+					{@render missingClubActions('')}
+				{/snippet}
+			</EmptyState>
+		{/if}
 	{:else}
 		{@render clubGrid()}
 	{/if}
@@ -512,43 +521,6 @@
 		font-size: 0.75rem;
 		font-weight: 600;
 	}
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h3 { margin: 0; font-size: 1.1rem; font-weight: 600; }
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.85;
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
-	.empty-actions .material-symbols { font-size: 1.1rem; }
 	.material-symbols { font-family: 'Material Symbols Outlined'; }
 	.skel-card {
 		background: var(--color-surface);

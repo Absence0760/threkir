@@ -272,7 +272,7 @@ test.describe('notifications journey — engagement → bell → inbox → read'
 				// Unread filter → the "all caught up" empty state.
 				await runner.getByRole('button', { name: /Unread/ }).click();
 				await expect(
-					runner.locator('.empty', { hasText: "You're all caught up" })
+					runner.getByTestId('notifications-empty').filter({ hasText: "You're all caught up" })
 				).toBeVisible({ timeout: 5_000 });
 
 				// All rows survive but none retain the unread class.

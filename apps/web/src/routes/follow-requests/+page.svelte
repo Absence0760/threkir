@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Avatar from '#lib/components/Avatar.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
@@ -79,11 +80,12 @@
 			<button class="btn btn-outline" onclick={load}>{m('followRequests.retry')}</button>
 		</div>
 	{:else if requests.length === 0}
-		<div class="empty-card" data-testid="follow-requests-empty">
-			<span class="material-symbols empty-icon" aria-hidden="true">person_add</span>
-			<h3>{m('followRequests.emptyTitle')}</h3>
-			<p class="empty-text">{m('followRequests.emptyText')}</p>
-		</div>
+		<EmptyState
+			icon="person_add"
+			title={m('followRequests.emptyTitle')}
+			text={m('followRequests.emptyText')}
+			data-testid="follow-requests-empty"
+		/>
 	{:else}
 		<ul class="list" data-testid="follow-requests-list">
 			{#each requests as r (r.id)}

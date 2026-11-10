@@ -237,7 +237,7 @@ test.describe('/u/[id] — non-self notifications gate', () => {
 		const bogusId = '00000000-0000-0000-0000-000000000bad';
 		await page.goto(`/u/${bogusId}`);
 		await expect(
-			page.getByRole('heading', { name: 'Profile not found', level: 3 })
+			page.getByRole('heading', { name: 'Profile not found', level: 2 })
 		).toBeVisible({ timeout: 10_000 });
 		await expect(
 			page.getByRole('link', { name: /Back to dashboard/i })

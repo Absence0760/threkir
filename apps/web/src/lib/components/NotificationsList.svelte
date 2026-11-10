@@ -3,6 +3,7 @@
 	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import { onMount } from 'svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { goto } from '$app/navigation';
 	import {
 		fetchNotificationsWithError,
@@ -328,14 +329,15 @@
 			<button class="btn btn-outline" onclick={load}>{m('profile.retry')}</button>
 		</div>
 	{:else if visible.length === 0}
-		<div class="empty">
-			{#if filter === 'unread'}
-				<p>{m('notificationsList.allCaughtUp')}</p>
-			{:else}
-				<p>{m('notificationsList.emptyAll')}</p>
-				<a href="/social?tab=people" class="btn btn-primary">{m('notificationsList.findPeople')}</a>
-			{/if}
-		</div>
+		{#if filter === 'unread'}
+			<EmptyState icon="check_circle" title={m('notificationsList.allCaughtUp')} data-testid="notifications-empty" />
+		{:else}
+			<EmptyState icon="notifications" title={m('notificationsList.emptyAll')} data-testid="notifications-empty">
+				{#snippet actions()}
+					<a href="/social?tab=people" class="btn btn-primary">{m('notificationsList.findPeople')}</a>
+				{/snippet}
+			</EmptyState>
+		{/if}
 	{:else}
 		<ul class="list">
 			{#each groups as group (group.key + group.lead.id)}
@@ -487,15 +489,6 @@
 		color: var(--color-text-tertiary);
 		font-size: 0.95rem;
 		margin: 0;
-	}
-	.empty {
-		text-align: center;
-		padding: var(--space-2xl);
-		color: var(--color-text-tertiary);
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-md);
 	}
 	.error-banner {
 		display: flex;

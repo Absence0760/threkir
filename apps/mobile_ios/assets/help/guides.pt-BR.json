@@ -591,6 +591,7 @@
       "invite-members-and-roles",
       "recurring-events",
       "set-up-a-race",
+      "choose-how-your-race-starts",
       "import-your-history"
     ]
   },
@@ -1799,6 +1800,155 @@
     ]
   },
   {
+    "id": "choose-how-your-race-starts",
+    "lang": "pt-BR",
+    "title": "Escolher como sua prova começa",
+    "summary": "GO do organizador, GO agendado ou Janela de tempo próprio: quando usar cada um, o que você faz no dia e como os resultados são aprovados.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Três formas de largar",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**GO do organizador**: você prepara a prova e aperta GO na linha. Use quando você estiver na largada com todo mundo, para uma largada em massa.",
+              "**GO agendado**: a prova começa sozinha no horário que você definir. Use quando o horário de largada for fixo, mas você talvez não esteja na linha ou queira correr também. Até lá, você pode atrasá-la ou cancelá-la.",
+              "**Janela de tempo próprio**: não há largada conjunta. Cada corredor cronometra a própria tentativa entre a linha de largada e a linha de chegada, a qualquer momento enquanto a janela estiver aberta. Use para um contrarrelógio semanal ou para um percurso que as pessoas correm quando podem. Não há tempo bruto."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Escolha em **Como a corrida começa** no editor do evento na web, para um evento de corrida em grupo ou de ciclismo. O app do celular pode conduzir a prova no dia (prepará-la antes, atrasá-la, estendê-la ou encerrá-la), mas a forma de largada é escolhida na web."
+          }
+        ]
+      },
+      {
+        "heading": "Definir os horários",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "GO agendado: defina o **Horário da largada** e o **Dia da largada** (no dia, na véspera ou no dia seguinte ao evento). Em **Termina após, dias** e **Horas**, defina quanto tempo depois do GO a prova termina sozinha, a menos que você a encerre antes.",
+              "Janela de tempo próprio: defina **A janela abre às** e **Abre em** (da véspera do evento até uma semana depois dele) e quanto tempo ela fica aberta em **Duração da janela, dias** e **Horas**, de 1 minuto a 7 dias."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Você digita e vê os horários no relógio do próprio evento, no fuso horário dele. Na página do evento, o painel da prova mostra esse fuso horário e, quando o seu é diferente, o seu horário ao lado."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Os horários são guardados em relação a cada ocorrência do evento. Se você mover o evento, ou uma ocorrência dele, os horários da prova se movem junto. Se você mudar os horários no editor, toda ocorrência que ainda não começou passa a usar os novos horários."
+          }
+        ]
+      },
+      {
+        "heading": "No dia: GO do organizador",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Você prepara a prova, dá o GO e a encerra você mesmo. Veja [[guide:race-day-for-hosts|Dia de prova para organizadores]]."
+          }
+        ]
+      },
+      {
+        "heading": "No dia: GO agendado",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Você não precisa fazer nada. A prova é configurada cerca de um dia antes da largada e começa sozinha no horário agendado.",
+              "Para conferir as linhas do percurso mais cedo, escolha **Armar antes**.",
+              "Antes da largada, o painel da prova mostra **Largada às** com o horário e uma contagem regressiva. Para adiar a largada, informe os minutos e escolha **Atrasar largada**; todos que vão participar são avisados de que a largada mudou. Escolha **Cancelar** para cancelar a prova.",
+              "Depois que o horário de largada passa, a prova não pode mais ser cancelada. Ela termina sozinha quando o tempo dela acaba, ou escolha **Encerrar corrida** para encerrá-la antes.",
+              "Os celulares dos corredores fazem a contagem regressiva até a largada pelo relógio do servidor e falam os últimos segundos, para que todos larguem juntos."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "No dia: tempo próprio",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Não há nada para apertar. A janela abre e fecha sozinha.",
+              "Antes de ela abrir, você pode usar **Atrasar largada** ou **Cancelar**, como em uma prova agendada.",
+              "Enquanto ela estiver aberta, informe as horas e escolha **Estender janela** para mantê-la aberta por mais tempo (até 7 dias a partir de quando abriu), ou escolha **Encerrar a janela agora** para fechá-la antes.",
+              "Quando a janela fecha, um corredor que começou uma tentativa mas não enviou resultado é marcado como DNF, como quando você encerra qualquer prova."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Todo percurso precisa de uma linha de largada e de uma linha de chegada, e elas são fixadas para a prova quando a janela abre. Veja [[guide:start-and-finish-lines|Linhas de largada e chegada]]."
+          }
+        ]
+      },
+      {
+        "heading": "Aprovar resultados de tempo próprio",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ninguém fica na linha em uma prova de tempo próprio, então, por padrão, os resultados aguardam você: **Aprovar automaticamente os resultados enviados** começa desmarcado. Cada resultado aparece como **PENDENTE** até você escolher **Aprovar**."
+          },
+          {
+            "type": "p",
+            "text": "Alguns resultados ficam retidos para sua revisão mesmo com a aprovação automática ativada: um sem cruzamento da linha de largada (de um app antigo ou de um Apple Watch), um que começa fora da janela e um cujos cruzamentos não são confirmados pelas próprias posições ao vivo do corredor. Um corredor que altera o próprio tempo também volta para pendente."
+          },
+          {
+            "type": "p",
+            "text": "Um corredor pode fazer várias tentativas. Vale a melhor chegada cronometrada pelas duas linhas, e uma tentativa mais lenta não a substitui."
+          }
+        ]
+      },
+      {
+        "heading": "Avisos de largada próxima",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cerca de 10 minutos antes de um GO agendado, todos que vão participar recebem uma notificação push de que a prova vai começar em breve, a menos que um lembrete do evento tenha chegado a eles na última hora. Quando você atrasa uma largada, eles recebem uma avisando que ela mudou. Esses avisos nunca são enviados por e-mail."
+          },
+          {
+            "type": "p",
+            "text": "Os corredores desativam os dois com **Corrida prestes a começar**: na web, em [[route:/settings/notifications|Notificações]]; no app do celular, em **Preferências** na aba **Você**."
+          }
+        ]
+      },
+      {
+        "heading": "Os corredores precisam de um app atualizado",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Provas agendadas e de tempo próprio precisam da versão mais recente do app no celular ou no relógio Wear OS. Os resultados de apps antigos e do Apple Watch ficam guardados para sua revisão em vez de serem recusados."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "start-and-finish-lines",
+      "race-day-for-hosts",
+      "run-a-self-timed-race"
+    ]
+  },
+  {
     "id": "drive-a-course",
     "lang": "pt-BR",
     "title": "Percorrer de carro o percurso de uma prova antes do dia",
@@ -1919,6 +2069,10 @@
               "**Concluído**: a prova terminou.",
               "**Cancelado**: o organizador cancelou a prova."
             ]
+          },
+          {
+            "type": "p",
+            "text": "Uma prova com largada agendada mostra **Preparada** com o horário em que começa sozinha. Uma prova de tempo próprio mostra **Janela de tempo próprio** com o horário em que abre e depois **Janela de tempo próprio aberta** com o horário em que fecha: cada corredor larga quando cruza a linha de largada."
           }
         ]
       },
@@ -1933,6 +2087,10 @@
             "type": "illustration",
             "id": "follow-a-race-live",
             "alt": "Um percurso em um mapa com corredores ao longo dele, cada um um ponto colorido com um pequeno rastro do trajeto recente, e uma bandeira na chegada."
+          },
+          {
+            "type": "p",
+            "text": "O mapa também desenha as linhas de largada e chegada de cada percurso, aquelas com que a prova foi preparada."
           }
         ]
       },
@@ -1946,6 +2104,10 @@
           {
             "type": "p",
             "text": "Não existe um rótulo separado de “pausado”. Um corredor que parou (para amarrar o tênis, em um posto de apoio ou porque pausou a gravação) ou que perdeu o sinal simplesmente para de atualizar. Depois de cerca de 90 segundos sem atualização, a linha dele é marcada como **ATRASADO**. Isso não significa que algo está errado; muitas vezes significa apenas falta de sinal."
+          },
+          {
+            "type": "p",
+            "text": "Em uma prova de tempo próprio, os corredores são ordenados por há quanto tempo cruzaram a linha de largada, de quem cruzou há mais tempo para quem cruzou há menos. Os corredores ainda sem tempo da linha de largada aparecem depois deles, em **Ainda sem tempo desde a linha de largada**."
           }
         ]
       },
@@ -1984,6 +2146,7 @@
     "related": [
       "race-results-explained",
       "racing-in-a-race",
+      "run-a-self-timed-race",
       "race-day-for-hosts"
     ]
   },
@@ -2024,6 +2187,10 @@
             "type": "illustration",
             "id": "race-day-for-hosts",
             "alt": "O dia da prova em quatro passos, da esquerda para a direita: preparar a prova, dar o GO, acompanhar ao vivo e encerrá-la na chegada."
+          },
+          {
+            "type": "p",
+            "text": "Estes passos são para uma prova com **GO do organizador**. Uma prova com **GO agendado** começa sozinha, e uma **Janela de tempo próprio** não precisa de nada de você no dia; veja [[guide:choose-how-your-race-starts|Escolher como sua prova começa]]."
           }
         ]
       },
@@ -2046,6 +2213,10 @@
             "type": "note",
             "tone": "tip",
             "text": "Preparada, a prova fica em espera. Nada é cronometrado e nenhum resultado pode ser salvo até você dar o GO."
+          },
+          {
+            "type": "p",
+            "text": "Antes de a prova ser preparada, as linhas de largada e chegada de cada percurso são verificadas, e tudo o que merece atenção aparece em **Antes de preparar a corrida**. Um aviso permite **Preparar mesmo assim**; veja [[guide:start-and-finish-lines|Linhas de largada e chegada]]. Preparar a prova também fixa as linhas para ela."
           }
         ]
       },
@@ -2139,12 +2310,18 @@
               "Um resultado editado é marcado como **Editado pelo organizador**, para que todos vejam que ele foi alterado pelo organizador. A edição ajusta junto o tempo bruto do corredor.",
               "**Baixar resultados CSV** exporta as classificações."
             ]
+          },
+          {
+            "type": "p",
+            "text": "Em uma prova de tempo próprio, os resultados aguardam a sua aprovação por padrão, e alguns ficam retidos para revisão mesmo com a aprovação automática ativada. Veja [[guide:choose-how-your-race-starts|Escolher como sua prova começa]]."
           }
         ]
       }
     ],
     "related": [
       "set-up-a-race",
+      "choose-how-your-race-starts",
+      "start-and-finish-lines",
       "follow-a-race-live",
       "race-results-explained",
       "racing-in-a-race"
@@ -2427,7 +2604,103 @@
       "set-up-a-race",
       "race-results-explained",
       "follow-a-race-live",
+      "run-a-self-timed-race",
       "using-help"
+    ]
+  },
+  {
+    "id": "run-a-self-timed-race",
+    "lang": "pt-BR",
+    "title": "Correr uma prova de tempo próprio",
+    "summary": "Participe de uma prova aberta durante uma janela de tempo, marque sua corrida como sua tentativa e corra da linha de largada até a linha de chegada quando for melhor para você.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "participant",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "wear"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "O que é uma prova de tempo próprio",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Uma prova de tempo próprio não tem largada em grupo. O organizador abre uma janela, que pode durar até uma semana, e você corre o percurso quando quiser enquanto ela estiver aberta. Seu tempo vai de quando você cruza a linha de largada até quando cruza a linha de chegada, então não há tempo bruto."
+          },
+          {
+            "type": "p",
+            "text": "Você grava sua tentativa com o app do celular ou com um relógio Wear OS. A web serve para participar e ver os resultados; um navegador não consegue gravar uma corrida."
+          }
+        ]
+      },
+      {
+        "heading": "Antes de sair",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Abra o evento da prova, na web ou no app do celular.",
+              "Se houver mais de um percurso, escolha o seu primeiro.",
+              "Escolha **Participar e tentar**. Se você já disse **Eu vou**, já está participando.",
+              "Abra o app uma vez enquanto tiver sinal, antes de sair. Assim ele fica sabendo da prova, e o banner da prova e a sua tentativa continuam funcionando onde não há sinal."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Começar sua tentativa",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Na aba Corrida do app do celular, o banner da prova mostra **Tempo próprio** e quando a janela fecha.",
+              "Toque em **Esta corrida é a minha tentativa**. O botão muda para **Tentativa pronta: toque em Iniciar**; toque de novo se mudar de ideia.",
+              "Pressione Iniciar antes de chegar à linha de largada e depois passe pela linha de largada no sentido do percurso."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Em um relógio Wear OS, a tela antes de você iniciar mostra TEMPO PRÓPRIO. Toque em **Esta corrida é a minha tentativa** e depois em Iniciar."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Uma corrida que você não marca como sua tentativa nunca entra na prova: ela não envia posição ao vivo e não recebe resultado. Assim, uma corrida que você não pretendia disputar nunca vai parar na classificação."
+          }
+        ]
+      },
+      {
+        "heading": "Tentativas e seu resultado",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Você pode fazer mais de uma tentativa enquanto a janela estiver aberta. Toque em **Esta corrida é a minha tentativa** antes de cada uma.",
+              "Vale a sua melhor chegada cronometrada pelas duas linhas. Uma tentativa mais lenta não a substitui.",
+              "Seu resultado pode aguardar a aprovação do organizador. Até lá, ele aparece como pendente e não tem colocação.",
+              "Um resultado sem cruzamento da linha de largada, como um enviado de um Apple Watch ou de uma versão antiga do app, fica guardado, mas o organizador o revisa antes que ele conte."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "O que significam os tempos na classificação está em [[guide:race-results-explained|Como funcionam os resultados de prova]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "racing-in-a-race",
+      "race-results-explained",
+      "follow-a-race-live"
     ]
   },
   {
@@ -2480,7 +2753,11 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "A linha de chegada em que os participantes são cronometrados é o último ponto da rota do percurso. Desenhe a rota para que ela termine exatamente onde vai ficar o seu pórtico de chegada."
+            "text": "Cada percurso recebe uma linha de largada no primeiro ponto da rota e uma linha de chegada no último. Desenhe a rota para que ela termine exatamente onde vai ficar o seu pórtico de chegada, ou mova as linhas depois; veja [[guide:start-and-finish-lines|Linhas de largada e chegada]]."
+          },
+          {
+            "type": "p",
+            "text": "Em **Como a corrida começa**, escolha **GO do organizador**, **GO agendado** ou **Janela de tempo próprio**. Veja [[guide:choose-how-your-race-starts|Escolher como sua prova começa]]."
           }
         ]
       },
@@ -2512,6 +2789,10 @@
             "type": "note",
             "tone": "caution",
             "text": "Vincular uma rota mostra o ponto de chegada dela a todos que podem ver o evento, mesmo que a própria rota seja privada. Você só pode vincular rotas que tem permissão para ver."
+          },
+          {
+            "type": "p",
+            "text": "Um percurso sem rota não recebe linha de largada nem de chegada a partir de uma rota, mas, depois que o evento é salvo, você pode colocar as duas linhas para ele você mesmo."
           }
         ]
       },
@@ -2539,6 +2820,10 @@
           {
             "type": "p",
             "text": "Logo antes de preparar a prova, você escolhe se os resultados vão direto para a classificação. **Aprovar automaticamente os resultados enviados** vem marcado por padrão. Desmarque se quiser conferir cada resultado antes; cada um então aparece como **PENDENTE** até você aprová-lo."
+          },
+          {
+            "type": "p",
+            "text": "Para uma prova com **GO agendado** ou **Janela de tempo próprio**, defina isso no editor do evento, em **Como a corrida começa**. Em uma prova de tempo próprio, a opção começa desmarcada."
           }
         ]
       },
@@ -2562,10 +2847,145 @@
       }
     ],
     "related": [
+      "start-and-finish-lines",
+      "choose-how-your-race-starts",
       "race-day-for-hosts",
       "racing-in-a-race",
       "follow-a-race-live",
       "race-results-explained"
+    ]
+  },
+  {
+    "id": "start-and-finish-lines",
+    "lang": "pt-BR",
+    "title": "Linhas de largada e chegada",
+    "summary": "O que são as linhas de largada e chegada de um percurso, como elas são colocadas para você e como movê-las, girá-las, alargá-las ou colocá-las você mesmo.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "O que é uma linha",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Todo percurso de uma prova tem uma linha de largada e uma linha de chegada. Uma linha atravessa o percurso em um ponto, fica voltada para o sentido em que os corredores avançam e se estende por uma distância definida para cada lado. Um corredor só a cruza quando passa por ela nesse sentido, dentro do seu alcance."
+          },
+          {
+            "type": "p",
+            "text": "Essa é a diferença em relação a um ponto de chegada com um círculo de 30 m em volta. Um círculo conta qualquer pessoa que chegue perto: um corredor em um caminho paralelo, ou na ida de um percurso de ida e volta que retorna pelo mesmo caminho. Uma linha não conta, porque essas pessoas nunca passam por ela no sentido certo."
+          }
+        ]
+      },
+      {
+        "heading": "Linhas colocadas para você",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando um percurso tem uma rota, ele recebe as duas linhas a partir dela. A linha de largada fica no primeiro ponto da rota, voltada no sentido da rota. A linha de chegada fica no último ponto, voltada para o sentido em que a rota chega. Cada uma se estende 15 m para cada lado. Elas acompanham a rota: se você mudar a rota, elas se movem junto."
+          },
+          {
+            "type": "p",
+            "text": "As linhas aparecem depois que o evento é salvo com pelo menos um percurso. Abra o evento, escolha **Editar evento** e encontre **Linhas de largada e chegada**. Cada percurso tem um mapa e, para cada linha, uma entrada que diz de onde ela veio: **Da rota**, **Colocada por um organizador** ou **Nenhuma**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Se o dono da rota tiver uma zona de privacidade sobre o início ou o fim da rota, essa ponta fica oculta para todos os demais, então ela não recebe linha. Coloque essa linha você mesmo."
+          }
+        ]
+      },
+      {
+        "heading": "Mover, girar ou alargar uma linha",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Ao lado de **Linha de largada** ou **Linha de chegada**, escolha **Editar**.",
+              "No mapa, arraste o meio da linha para movê-la e arraste a alça dela para girá-la. Se o mapa não estiver carregado, escolha **Carregar mapa**, ou dispense o mapa e digite os valores.",
+              "Ou digite a **Latitude**, a **Longitude** e a **Direção (graus)**. A direção é o sentido em que os corredores cruzam, em sentido horário a partir do norte: 0 é norte, 90 é leste, 180 é sul e 270 é oeste.",
+              "Defina o **Alcance de cada lado**, de 5 a 100 m. Deixe-o largo o bastante para cobrir toda a rua ou trilha, com um pouco de folga.",
+              "Escolha **Salvar linha**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Cada linha é salva por conta própria, na hora; você não precisa salvar o evento. Uma linha que você moveu mostra **Colocada por um organizador**. Escolha **Voltar à rota** para devolvê-la ao lugar em que a rota a coloca."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Uma linha que você colocou fica exatamente onde você a deixou, mesmo que depois você mude a rota do percurso. Depois de mudar uma rota, confira os avisos abaixo de cada linha."
+          }
+        ]
+      },
+      {
+        "heading": "Avisos no editor",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "A linha está a mais de 100 m da rota do percurso. Confira se ela está no lugar certo.",
+              "A linha está voltada contra a rota, então os corredores que seguirem a rota a cruzariam no sentido contrário. Gire-a.",
+              "A rota cruza a própria linha de chegada antes do fim, como acontece em um percurso de voltas ou em uma pista. A chegada pela linha fica então desativada para esse percurso, e os corredores concluem pressionando Parar ou Finalizar."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Percursos sem rota",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Um percurso sem rota não tem linhas até você colocá-las. Escolha **Colocar linha de largada** ou **Colocar linha de chegada**. Se você já tiver levado o mapa até o local, a linha começa no centro do mapa; caso contrário, digite a posição dela. Depois defina a direção e o alcance e escolha **Salvar linha**. **Remover linha** retira de novo uma linha que você colocou."
+          }
+        ]
+      },
+      {
+        "heading": "As linhas são fixadas quando a prova começa",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quando você prepara uma prova (no caso de uma prova de tempo próprio, quando a janela dela abre), as linhas de cada percurso são copiadas para essa prova. Assim, todos os corredores dela cruzam as mesmas linhas, seja qual for a mudança durante a prova. Uma alteração que você fizer depois vale a partir da próxima prova. A página do evento e a página da prova ao vivo mostram as linhas com que a prova foi preparada."
+          }
+        ]
+      },
+      {
+        "heading": "Verificações antes de uma prova",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Antes de uma prova ser preparada, as linhas de todos os percursos são verificadas, na web e no app do celular. Um aviso permite **Preparar mesmo assim**; um problema marcado com **Precisa corrigir:** impede que a prova seja preparada até você corrigi-lo no editor do evento na web."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Um percurso sem linha de chegada e sem ponto de chegada: um aviso, porque os corredores dele concluem manualmente. Em uma prova de tempo próprio, é preciso corrigir.",
+              "Um percurso sem linha de largada: em uma prova de tempo próprio, é preciso corrigir. As outras provas podem começar sem ela.",
+              "Uma rota que cruza a própria linha de chegada antes do fim: um aviso, porque a chegada pela linha fica desativada para esse percurso. Em uma prova de tempo próprio, é preciso corrigir.",
+              "Uma linha a mais de 100 m da rota: um aviso em qualquer tipo de prova."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "O tipo de prova que você está conduzindo é definido em **Como a corrida começa**; veja [[guide:choose-how-your-race-starts|Escolher como sua prova começa]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "choose-how-your-race-starts",
+      "race-day-for-hosts"
     ]
   },
   {
@@ -2653,6 +3073,99 @@
     "related": [
       "what-pro-includes",
       "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "how-segment-times-are-measured",
+    "lang": "pt-BR",
+    "title": "Como os tempos de segmento são medidos",
+    "summary": "Os tempos de segmentos e de percursos de parques vão de uma linha de largada até uma linha final, cruzadas no sentido certo, e vale a sua passagem mais rápida.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/segments/[id]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "Linha de largada e linha final",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Cada segmento tem uma linha de largada e uma linha final, uma atravessando o caminho em cada ponta, voltadas para o sentido do segmento e com alcance de 15 m para cada lado. Um percurso de parque também é um segmento, então é cronometrado da mesma forma."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Seu tempo vai do momento em que a sua corrida cruza a linha de largada até o momento em que ela cruza a linha final.",
+              "Cada cruzamento é calculado entre os dois pontos de GPS de cada lado da linha, e não tomado no ponto que por acaso estava mais perto, então o tempo fica mais próximo do real.",
+              "As duas linhas precisam ser cruzadas no sentido do segmento. Cruzar uma delas ao contrário não conta.",
+              "A distância que você percorreu entre os dois cruzamentos não pode diferir em mais de 25% do comprimento do segmento e, em um percurso de parque, você precisa passar por todos os pontos de controle, em ordem, no meio do caminho."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Por que um caminho paralelo não conta",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Uma corrida em um caminho paralelo ao segmento, a 20 m dele, chega perto das duas pontas sem nunca passar pelas linhas, então não recebe tempo. O mesmo vale para a ida de uma rota de ida e volta que só passa perto do fim."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Comece a gravar um pouco antes da linha de largada. Uma corrida cuja gravação começa em cima da linha, ou depois dela, nunca a cruza e não recebe tempo nesse segmento."
+          }
+        ]
+      },
+      {
+        "heading": "Mais de uma passagem",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Se a sua corrida passar pelo segmento mais de uma vez, vale a sua passagem mais rápida.",
+              "Um aquecimento que volta e cruza de novo a linha de largada não aumenta o seu tempo: o tempo começa no seu último cruzamento da linha de largada antes do fim.",
+              "Em um circuito cujo início e fim são a mesma linha, o cruzamento que encerra uma volta não pode também iniciar a seguinte. Por isso, só voltas alternadas são cronometradas (a primeira, a terceira e assim por diante), e vale a mais rápida delas. Um circuito que começa e termina em linhas diferentes cronometra todas as voltas."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Segmentos sem linhas",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Um segmento curto demais em uma das pontas para receber uma linha ali não tem linhas. Ele continua sendo cronometrado do jeito antigo: sua corrida precisa passar a menos de 35 m do início dele e depois a menos de 35 m do fim."
+          }
+        ]
+      },
+      {
+        "heading": "Esforços mais antigos",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Os esforços registrados antes de os segmentos terem linhas foram medidos do jeito antigo, passando perto do início e do fim. Cada um é medido de novo pelas linhas na próxima vez que o corredor abrir a corrida no site. O tempo pode mudar, e o esforço pode sumir se a corrida nunca cruzou as linhas."
+          },
+          {
+            "type": "p",
+            "text": "Até que todos os esforços de um segmento tenham sido medidos de novo, a classificação dele avisa que alguns esforços mais antigos foram medidos do jeito antigo."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "park-courses",
+      "import-your-history"
     ]
   },
   {
@@ -3363,6 +3876,7 @@
       }
     ],
     "related": [
+      "how-segment-times-are-measured",
       "import-your-history",
       "record-your-first-run"
     ]

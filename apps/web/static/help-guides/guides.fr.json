@@ -591,6 +591,7 @@
       "invite-members-and-roles",
       "recurring-events",
       "set-up-a-race",
+      "choose-how-your-race-starts",
       "import-your-history"
     ]
   },
@@ -1799,6 +1800,155 @@
     ]
   },
   {
+    "id": "choose-how-your-race-starts",
+    "lang": "fr",
+    "title": "Choisir comment votre course démarre",
+    "summary": "GO par l'organisateur, GO programmé ou Fenêtre en chrono libre : quand utiliser chacun, ce que vous faites le jour J et comment les résultats sont approuvés.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/new",
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Trois façons de démarrer",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "**GO par l'organisateur** : vous armez la course et appuyez sur GO sur la ligne. Utilisez-le quand vous êtes au départ avec tout le monde, pour un départ groupé.",
+              "**GO programmé** : la course démarre d'elle-même à l'heure que vous avez fixée. Utilisez-le quand l'heure de départ est fixe mais que vous ne serez peut-être pas sur la ligne, ou que vous voulez courir vous-même. Vous pouvez la retarder ou l'annuler jusque-là.",
+              "**Fenêtre en chrono libre** : il n'y a pas de départ commun. Chaque coureur chronomètre sa propre tentative entre la ligne de départ et la ligne d'arrivée, à tout moment pendant que la fenêtre est ouverte. Utilisez-la pour un contre-la-montre hebdomadaire, ou un parcours que les gens courent quand ils le peuvent. Il n'y a pas de temps officiel au coup de pistolet."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Faites votre choix sous **Comment la course démarre** dans l'éditeur d'événement sur le web, pour un événement de sortie en groupe ou de vélo. L'app mobile permet de gérer la course le jour J (l'armer plus tôt, la retarder, la prolonger ou la terminer), mais le mode de départ se choisit sur le web."
+          }
+        ]
+      },
+      {
+        "heading": "Régler les horaires",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "GO programmé : réglez l'**Heure de départ** et le **Jour du départ** (le jour même, la veille ou le lendemain de l'événement). Sous **Se termine après, jours** et **Heures**, indiquez combien de temps après le GO la course se termine d'elle-même, sauf si vous la terminez avant.",
+              "Fenêtre en chrono libre : réglez **La fenêtre ouvre à** et **Ouvre le** (de la veille de l'événement à une semaine après), et combien de temps elle reste ouverte sous **Durée de la fenêtre, jours** et **Heures**, de 1 minute à 7 jours."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Vous saisissez et voyez les horaires à l'heure de l'événement, dans son fuseau horaire. Sur la page de l'événement, le panneau de course indique ce fuseau horaire et, si le vôtre est différent, votre propre heure à côté."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Les horaires sont relatifs à chaque occurrence de l'événement. Déplacez l'événement, ou une de ses occurrences, et ses horaires de course se déplacent avec lui. Modifiez les horaires dans l'éditeur, et chaque occurrence qui n'a pas encore commencé prend les nouveaux horaires."
+          }
+        ]
+      },
+      {
+        "heading": "Le jour J : GO par l'organisateur",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Vous armez la course, donnez le GO et la terminez vous-même. Voir [[guide:race-day-for-hosts|Le jour de la course, côté organisateur]]."
+          }
+        ]
+      },
+      {
+        "heading": "Le jour J : GO programmé",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Vous n'avez rien à faire. La course est préparée environ un jour avant son départ et démarre d'elle-même à l'heure prévue.",
+              "Pour vérifier les lignes du parcours plus tôt, choisissez **Armer plus tôt**.",
+              "Avant le départ, le panneau de course affiche **Départ à** suivi de l'heure et d'un compte à rebours. Pour reculer le départ, saisissez le nombre de minutes et choisissez **Retarder le départ** ; chaque participant est prévenu que le départ a été déplacé. Choisissez **Annuler** pour annuler la course.",
+              "Une fois l'heure de départ passée, la course ne peut plus être annulée. Elle se termine d'elle-même quand son temps est écoulé, ou choisissez **Terminer la course** pour la terminer plus tôt.",
+              "Les téléphones des coureurs font le compte à rebours jusqu'au départ selon l'horloge du serveur et annoncent à voix haute les dernières secondes, pour que tout le monde parte ensemble."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Le jour J : chrono libre",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Vous n'avez rien à déclencher. La fenêtre s'ouvre et se ferme d'elle-même.",
+              "Avant son ouverture, vous pouvez choisir **Retarder le départ** ou **Annuler**, comme pour une course programmée.",
+              "Pendant qu'elle est ouverte, saisissez le nombre d'heures et choisissez **Prolonger la fenêtre** pour la garder ouverte plus longtemps (jusqu'à 7 jours après son ouverture), ou choisissez **Fermer la fenêtre maintenant** pour la fermer plus tôt.",
+              "À la fermeture de la fenêtre, un coureur qui a commencé une tentative mais n'a envoyé aucun résultat est marqué DNF, comme lorsque vous terminez n'importe quelle course."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Chaque parcours a besoin d'une ligne de départ et d'une ligne d'arrivée, et elles sont figées pour la course à l'ouverture de la fenêtre. Voir [[guide:start-and-finish-lines|Lignes de départ et d'arrivée]]."
+          }
+        ]
+      },
+      {
+        "heading": "Approuver les résultats en chrono libre",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Personne ne se tient sur la ligne dans une course en chrono libre : ses résultats attendent donc votre validation par défaut, et **Approuver automatiquement les résultats soumis** est décoché au départ. Chaque résultat s'affiche **EN ATTENTE** jusqu'à ce que vous choisissiez **Approuver**."
+          },
+          {
+            "type": "p",
+            "text": "Certains résultats sont retenus pour votre vérification même quand l'approbation automatique est activée : un résultat sans franchissement de la ligne de départ (envoyé depuis une ancienne version de l'app ou une Apple Watch), un résultat qui commence en dehors de la fenêtre, et un résultat dont les franchissements ne sont pas confirmés par les positions en direct du coureur lui-même. Un coureur qui modifie son propre temps repasse aussi en attente."
+          },
+          {
+            "type": "p",
+            "text": "Un coureur peut faire plusieurs tentatives. Sa meilleure arrivée chronométrée par les deux lignes compte, et une tentative plus lente ne la remplace pas."
+          }
+        ]
+      },
+      {
+        "heading": "Notifications de départ imminent",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Environ 10 minutes avant un GO programmé, chaque participant reçoit une notification push indiquant que la course va bientôt partir, sauf si un rappel d'événement lui est parvenu dans l'heure précédente. Quand vous retardez un départ, ils en reçoivent une indiquant que le départ a été déplacé. Ces notifications ne sont jamais envoyées par e-mail."
+          },
+          {
+            "type": "p",
+            "text": "Les coureurs désactivent les deux avec **Course bientôt au départ** : sur le web dans [[route:/settings/notifications|Notifications]], dans l'app mobile sous **Préférences** dans l'onglet **Vous**."
+          }
+        ]
+      },
+      {
+        "heading": "Les coureurs ont besoin d'une app récente",
+        "blocks": [
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Les courses programmées et en chrono libre nécessitent la dernière version de l'app sur le téléphone ou la montre Wear OS. Les résultats des anciennes versions de l'app et de l'Apple Watch sont conservés pour votre vérification au lieu d'être refusés."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "start-and-finish-lines",
+      "race-day-for-hosts",
+      "run-a-self-timed-race"
+    ]
+  },
+  {
     "id": "drive-a-course",
     "lang": "fr",
     "title": "Parcourir un tracé de course en voiture avant le jour J",
@@ -1919,6 +2069,10 @@
               "**Terminé** : la course est finie.",
               "**Annulé** : l'organisateur a annulé la course."
             ]
+          },
+          {
+            "type": "p",
+            "text": "Une course à départ programmé affiche **Armé** avec l'heure à laquelle elle démarre d'elle-même. Une course en chrono libre affiche **Fenêtre en chrono libre** avec son heure d'ouverture, puis **Fenêtre en chrono libre ouverte** avec son heure de fermeture : chaque coureur part au moment où il franchit la ligne de départ."
           }
         ]
       },
@@ -1933,6 +2087,10 @@
             "type": "illustration",
             "id": "follow-a-race-live",
             "alt": "Un parcours sur une carte avec des coureurs, chacun représenté par un point de couleur suivi d'une courte trace de son trajet récent, et un drapeau à l'arrivée."
+          },
+          {
+            "type": "p",
+            "text": "La carte trace aussi les lignes de départ et d'arrivée de chaque parcours, celles avec lesquelles la course a été armée."
           }
         ]
       },
@@ -1946,6 +2104,10 @@
           {
             "type": "p",
             "text": "Il n'y a pas d'étiquette « en pause » distincte. Un coureur qui s'est arrêté (pour refaire un lacet, à un ravitaillement ou parce qu'il a mis son enregistrement en pause) ou qui a perdu le signal cesse simplement d'être mis à jour. Après environ 90 secondes sans mise à jour, sa ligne est marquée **RETARDÉ**. Cela ne veut pas dire qu'il y a un problème ; souvent, il n'y a simplement pas de réseau."
+          },
+          {
+            "type": "p",
+            "text": "Dans une course en chrono libre, les coureurs sont classés selon le temps écoulé depuis leur franchissement de la ligne de départ, le plus long en premier. Les coureurs qui n'ont pas encore de temps depuis la ligne de départ sont listés après eux, sous **Pas encore de temps depuis la ligne de départ**."
           }
         ]
       },
@@ -1984,6 +2146,7 @@
     "related": [
       "race-results-explained",
       "racing-in-a-race",
+      "run-a-self-timed-race",
       "race-day-for-hosts"
     ]
   },
@@ -2024,6 +2187,10 @@
             "type": "illustration",
             "id": "race-day-for-hosts",
             "alt": "Le jour de course en quatre étapes, de gauche à droite : armer la course, donner le GO, la suivre en direct, puis la terminer à l'arrivée."
+          },
+          {
+            "type": "p",
+            "text": "Ces étapes concernent une course en **GO par l'organisateur**. Une course en **GO programmé** démarre d'elle-même et une **Fenêtre en chrono libre** ne vous demande rien le jour J ; voir [[guide:choose-how-your-race-starts|Choisir comment votre course démarre]]."
           }
         ]
       },
@@ -2046,6 +2213,10 @@
             "type": "note",
             "tone": "tip",
             "text": "L'état armé est un état d'attente. Rien n'est chronométré et aucun résultat ne peut être enregistré tant que vous n'avez pas donné le GO."
+          },
+          {
+            "type": "p",
+            "text": "Avant que la course soit armée, les lignes de départ et d'arrivée de chaque parcours sont vérifiées, et tout ce qui mérite un coup d'œil est listé sous **Avant d'armer la course**. Un avertissement vous laisse **Armer quand même** ; voir [[guide:start-and-finish-lines|Lignes de départ et d'arrivée]]. Armer la course fige aussi les lignes pour cette course."
           }
         ]
       },
@@ -2139,12 +2310,18 @@
               "Un résultat modifié est marqué **Modifié par l'organisateur** pour que chacun voie qu'il a été changé par l'organisateur. La modification ajuste aussi le temps officiel du coureur.",
               "**Télécharger les résultats (CSV)** exporte les classements."
             ]
+          },
+          {
+            "type": "p",
+            "text": "Dans une course en chrono libre, les résultats attendent votre validation par défaut, et certains sont retenus pour vérification même avec l'approbation automatique activée. Voir [[guide:choose-how-your-race-starts|Choisir comment votre course démarre]]."
           }
         ]
       }
     ],
     "related": [
       "set-up-a-race",
+      "choose-how-your-race-starts",
+      "start-and-finish-lines",
       "follow-a-race-live",
       "race-results-explained",
       "racing-in-a-race"
@@ -2427,7 +2604,103 @@
       "set-up-a-race",
       "race-results-explained",
       "follow-a-race-live",
+      "run-a-self-timed-race",
       "using-help"
+    ]
+  },
+  {
+    "id": "run-a-self-timed-race",
+    "lang": "fr",
+    "title": "Courir une course en chrono libre",
+    "summary": "Inscrivez-vous à une course ouverte pendant une fenêtre de temps, marquez votre sortie comme votre tentative et courez de la ligne de départ à la ligne d'arrivée quand cela vous convient.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "participant",
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "wear"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Qu'est-ce qu'une course en chrono libre",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Une course en chrono libre n'a pas de départ groupé. L'organisateur ouvre une fenêtre, qui peut durer jusqu'à une semaine, et vous courez le parcours quand vous voulez tant qu'elle est ouverte. Votre temps court du moment où vous franchissez la ligne de départ jusqu'à celui où vous franchissez la ligne d'arrivée : il n'y a donc pas de temps officiel au coup de pistolet."
+          },
+          {
+            "type": "p",
+            "text": "Vous enregistrez votre tentative avec l'app mobile ou une montre Wear OS. Le web sert à vous inscrire et à consulter les résultats ; un navigateur ne peut pas enregistrer une sortie."
+          }
+        ]
+      },
+      {
+        "heading": "Avant de partir",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Ouvrez l'événement de la course, sur le web ou dans l'app mobile.",
+              "S'il y a plusieurs parcours, choisissez d'abord le vôtre.",
+              "Choisissez **Participer et tenter**. Si vous avez déjà répondu **Je participe**, vous êtes déjà inscrit.",
+              "Ouvrez l'app une fois pendant que vous avez du réseau, avant de partir. Elle connaît alors la course : le bandeau de course et votre tentative fonctionnent même là où il n'y a pas de réseau."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Lancer votre tentative",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "Dans l'onglet Courir de l'app mobile, le bandeau de course affiche **Chrono libre** et l'heure de fermeture de la fenêtre.",
+              "Touchez **Cette course est ma tentative**. Le bouton devient **Tentative prête : touchez Démarrer** ; touchez-le de nouveau si vous changez d'avis.",
+              "Appuyez sur Démarrer avant d'atteindre la ligne de départ, puis franchissez la ligne de départ dans le sens du parcours."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Sur une montre Wear OS, l'écran avant le départ affiche CHRONO LIBRE. Touchez **Cette course est ma tentative**, puis Démarrer."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Une sortie que vous ne marquez pas comme votre tentative ne rejoint jamais la course : elle n'envoie aucune position en direct et n'obtient aucun résultat. Ainsi, une sortie que vous ne vouliez pas courir en compétition n'apparaît jamais au classement."
+          }
+        ]
+      },
+      {
+        "heading": "Tentatives et résultat",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Vous pouvez faire plusieurs tentatives tant que la fenêtre est ouverte. Touchez **Cette course est ma tentative** avant chacune.",
+              "Votre meilleure arrivée chronométrée par les deux lignes compte. Une tentative plus lente ne la remplace pas.",
+              "Votre résultat peut attendre la validation de l'organisateur. D'ici là, il s'affiche en attente et n'a pas de place.",
+              "Un résultat sans franchissement de la ligne de départ, par exemple envoyé depuis une Apple Watch ou une ancienne version de l'app, est conservé, mais l'organisateur le vérifie avant qu'il compte."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "La signification des temps au classement est expliquée dans [[guide:race-results-explained|Comprendre les résultats de course]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "racing-in-a-race",
+      "race-results-explained",
+      "follow-a-race-live"
     ]
   },
   {
@@ -2480,7 +2753,11 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "La ligne d'arrivée où les coureurs sont chronométrés est le dernier point de l'itinéraire du parcours. Tracez l'itinéraire pour qu'il se termine exactement à l'emplacement de votre arche d'arrivée."
+            "text": "Chaque parcours reçoit une ligne de départ au premier point de son itinéraire et une ligne d'arrivée au dernier. Tracez l'itinéraire pour qu'il se termine exactement à l'emplacement de votre arche d'arrivée, ou déplacez les lignes ensuite ; voir [[guide:start-and-finish-lines|Lignes de départ et d'arrivée]]."
+          },
+          {
+            "type": "p",
+            "text": "Sous **Comment la course démarre**, choisissez **GO par l'organisateur**, **GO programmé** ou **Fenêtre en chrono libre**. Voir [[guide:choose-how-your-race-starts|Choisir comment votre course démarre]]."
           }
         ]
       },
@@ -2512,6 +2789,10 @@
             "type": "note",
             "tone": "caution",
             "text": "Rattacher un itinéraire rend son point d'arrivée visible par toute personne qui peut voir l'événement, même si l'itinéraire lui-même est privé. Vous ne pouvez rattacher que des itinéraires que vous êtes autorisé à voir."
+          },
+          {
+            "type": "p",
+            "text": "Un parcours sans itinéraire ne reçoit aucune ligne de départ ni d'arrivée issue d'un itinéraire, mais une fois l'événement enregistré, vous pouvez placer vous-même ses deux lignes."
           }
         ]
       },
@@ -2539,6 +2820,10 @@
           {
             "type": "p",
             "text": "Juste avant d'armer la course, vous choisissez si les résultats vont directement au classement. **Approuver automatiquement les résultats soumis** est coché par défaut. Décochez-le si vous voulez vérifier chaque résultat d'abord ; chacun s'affiche alors **EN ATTENTE** jusqu'à ce que vous l'approuviez."
+          },
+          {
+            "type": "p",
+            "text": "Pour une course en **GO programmé** ou en **Fenêtre en chrono libre**, réglez-le plutôt dans l'éditeur d'événement, sous **Comment la course démarre**. Pour une course en chrono libre, il est décoché au départ."
           }
         ]
       },
@@ -2562,10 +2847,145 @@
       }
     ],
     "related": [
+      "start-and-finish-lines",
+      "choose-how-your-race-starts",
       "race-day-for-hosts",
       "racing-in-a-race",
       "follow-a-race-live",
       "race-results-explained"
+    ]
+  },
+  {
+    "id": "start-and-finish-lines",
+    "lang": "fr",
+    "title": "Lignes de départ et d'arrivée",
+    "summary": "Ce que sont les lignes de départ et d'arrivée d'un parcours, comment elles sont placées pour vous, et comment les déplacer, les faire pivoter, les élargir ou les placer vous-même.",
+    "kind": "how-to",
+    "category": "races",
+    "audience": [
+      "organiser",
+      "club-admin"
+    ],
+    "platforms": [
+      "web"
+    ],
+    "routes": [
+      "/clubs/[slug]/events/[id]"
+    ],
+    "sections": [
+      {
+        "heading": "Qu'est-ce qu'une ligne",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Chaque parcours d'une course a une ligne de départ et une ligne d'arrivée. Une ligne traverse le parcours en un point, est orientée dans le sens où avancent les coureurs et s'étend sur une distance fixe de chaque côté. Un coureur ne la franchit qu'en la traversant dans ce sens, à l'intérieur de sa portée."
+          },
+          {
+            "type": "p",
+            "text": "C'est la différence avec un point d'arrivée entouré d'un cercle de 30 m. Un cercle compte toute personne qui s'en approche : un coureur sur un chemin qui longe le parcours, ou à l'aller d'un parcours en aller-retour qui revient par le même chemin. Une ligne, non, car ces coureurs ne la traversent jamais dans le bon sens."
+          }
+        ]
+      },
+      {
+        "heading": "Des lignes placées pour vous",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quand un parcours a un itinéraire, il en tire ses deux lignes. La ligne de départ se trouve sur le premier point de l'itinéraire, orientée dans le sens de l'itinéraire. La ligne d'arrivée se trouve sur son dernier point, orientée dans le sens où l'itinéraire arrive. Chacune s'étend sur 15 m de chaque côté. Elles suivent l'itinéraire : modifiez l'itinéraire et elles se déplacent avec lui."
+          },
+          {
+            "type": "p",
+            "text": "Les lignes apparaissent une fois l'événement enregistré avec au moins un parcours. Ouvrez l'événement, choisissez **Modifier l'événement** et repérez **Lignes de départ et d'arrivée**. Chaque parcours a une carte et une rangée par ligne, qui indique d'où vient la ligne : **Issue de l'itinéraire**, **Placée par un organisateur** ou **Aucune**."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Si le propriétaire de l'itinéraire a une zone de confidentialité sur le départ ou la fin de l'itinéraire, cette extrémité est masquée pour tous les autres : elle n'a donc pas de ligne. Placez cette ligne vous-même."
+          }
+        ]
+      },
+      {
+        "heading": "Déplacer, faire pivoter ou élargir une ligne",
+        "blocks": [
+          {
+            "type": "steps",
+            "items": [
+              "À côté de **Ligne de départ** ou **Ligne d'arrivée**, choisissez **Modifier**.",
+              "Sur la carte, faites glisser le milieu de la ligne pour la déplacer, et faites glisser sa poignée pour la faire pivoter. Si la carte est désactivée, choisissez **Charger la carte**, ou laissez la carte de côté et saisissez plutôt les valeurs.",
+              "Ou saisissez la **Latitude**, la **Longitude** et la **Direction (degrés)**. La direction est le sens dans lequel les coureurs franchissent la ligne, dans le sens horaire depuis le nord : 0 est le nord, 90 l'est, 180 le sud et 270 l'ouest.",
+              "Réglez la **Portée de chaque côté**, de 5 à 100 m. Prévoyez-la assez large pour couvrir toute la route ou tout le chemin, avec un peu de marge.",
+              "Choisissez **Enregistrer la ligne**."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Chaque ligne s'enregistre séparément, immédiatement ; vous n'avez pas besoin d'enregistrer l'événement. Une ligne que vous avez déplacée affiche **Placée par un organisateur**. Choisissez **Revenir à l'itinéraire** pour la remettre là où l'itinéraire la place."
+          },
+          {
+            "type": "note",
+            "tone": "caution",
+            "text": "Une ligne que vous avez placée reste exactement où vous l'avez mise, même si vous modifiez ensuite l'itinéraire du parcours. Après avoir modifié un itinéraire, vérifiez les avertissements sous chaque ligne."
+          }
+        ]
+      },
+      {
+        "heading": "Avertissements dans l'éditeur",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "La ligne est à plus de 100 m de l'itinéraire du parcours. Vérifiez qu'elle est au bon endroit.",
+              "La ligne est orientée à contresens de l'itinéraire : les coureurs qui suivent l'itinéraire la franchiraient à l'envers. Faites-la pivoter d'un demi-tour.",
+              "L'itinéraire franchit sa propre ligne d'arrivée avant la fin, comme un parcours en tours ou une piste. L'arrivée par la ligne est alors désactivée pour ce parcours, et les coureurs terminent en appuyant sur Arrêter ou Terminer."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Parcours sans itinéraire",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Un parcours sans itinéraire n'a pas de lignes tant que vous ne les placez pas. Choisissez **Placer la ligne de départ** ou **Placer la ligne d'arrivée**. Si vous avez d'abord déplacé la carte jusqu'à l'endroit voulu, la ligne commence au milieu de la carte ; sinon, saisissez sa position. Réglez ensuite sa direction et sa portée, puis choisissez **Enregistrer la ligne**. **Supprimer la ligne** retire une ligne que vous avez placée."
+          }
+        ]
+      },
+      {
+        "heading": "Les lignes sont figées au départ d'une course",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Quand vous armez une course (pour une course en chrono libre, à l'ouverture de sa fenêtre), les lignes de chaque parcours sont copiées pour cette course. Chaque coureur franchit alors les mêmes lignes, quels que soient les changements pendant la course. Une modification faite ensuite s'applique à partir de la course suivante. La page de l'événement et la page en direct de la course affichent les lignes avec lesquelles la course a été armée."
+          }
+        ]
+      },
+      {
+        "heading": "Vérifications avant une course",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Avant qu'une course soit armée, les lignes de chaque parcours sont vérifiées, sur le web et dans l'app mobile. Un avertissement vous laisse **Armer quand même** ; un problème marqué **À corriger :** empêche d'armer la course tant que vous ne l'avez pas corrigé dans l'éditeur d'événement sur le web."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Un parcours sans ligne ni point d'arrivée : un avertissement, car ses coureurs terminent à la main. Pour une course en chrono libre, il faut le corriger.",
+              "Un parcours sans ligne de départ : pour une course en chrono libre, il faut le corriger. Les autres courses peuvent partir sans.",
+              "Un itinéraire qui franchit sa propre ligne d'arrivée avant la fin : un avertissement, car l'arrivée par la ligne est désactivée pour ce parcours. Pour une course en chrono libre, il faut le corriger.",
+              "Une ligne à plus de 100 m de l'itinéraire : un avertissement, quel que soit le type de course."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Le type de course que vous organisez se règle sous **Comment la course démarre** ; voir [[guide:choose-how-your-race-starts|Choisir comment votre course démarre]]."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "set-up-a-race",
+      "choose-how-your-race-starts",
+      "race-day-for-hosts"
     ]
   },
   {
@@ -2653,6 +3073,99 @@
     "related": [
       "what-pro-includes",
       "your-data-and-privacy"
+    ]
+  },
+  {
+    "id": "how-segment-times-are-measured",
+    "lang": "fr",
+    "title": "Comment les temps de segment sont mesurés",
+    "summary": "Les temps des segments et des parcours de parc courent d'une ligne de départ à une ligne de fin, franchies dans le bon sens, et votre passage le plus rapide compte.",
+    "kind": "explainer",
+    "category": "running",
+    "audience": [
+      "runner"
+    ],
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "routes": [
+      "/segments/[id]",
+      "/parks/[region]/[park]/[course]"
+    ],
+    "sections": [
+      {
+        "heading": "Lignes de départ et de fin",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Chaque segment a une ligne de départ et une ligne de fin, une en travers du chemin à chaque extrémité, orientées dans le sens du segment et s'étendant sur 15 m de chaque côté. Un parcours de parc est aussi un segment : il est donc chronométré de la même façon."
+          },
+          {
+            "type": "list",
+            "items": [
+              "Votre temps court du moment où votre sortie franchit la ligne de départ jusqu'à celui où elle franchit la ligne de fin.",
+              "Chaque franchissement est calculé entre les deux points GPS situés de part et d'autre de la ligne, et non pris au point qui se trouvait être le plus proche : le temps est donc plus proche du temps réel.",
+              "Les deux lignes doivent être franchies dans le sens du segment. En franchir une à l'envers ne compte pas.",
+              "La distance parcourue entre les deux franchissements doit être à 25 % près de la longueur du segment, et sur un parcours de parc vous devez passer par chaque point de contrôle, dans l'ordre, entre les deux."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Pourquoi un chemin parallèle ne compte pas",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Une sortie sur un chemin qui longe le segment, à 20 m, passe près des deux extrémités sans jamais traverser les lignes : elle n'obtient donc pas de temps. L'aller d'un itinéraire en aller-retour qui ne fait que passer près de la fin n'en obtient pas non plus."
+          },
+          {
+            "type": "note",
+            "tone": "tip",
+            "text": "Lancez l'enregistrement un peu avant la ligne de départ. Une sortie dont l'enregistrement commence sur la ligne, ou après, ne la franchit jamais et n'obtient pas de temps sur ce segment."
+          }
+        ]
+      },
+      {
+        "heading": "Plusieurs passages",
+        "blocks": [
+          {
+            "type": "list",
+            "items": [
+              "Si votre sortie passe plusieurs fois sur le segment, votre passage le plus rapide compte.",
+              "Un échauffement qui repasse par la ligne de départ n'allonge pas votre temps : le chrono part de votre dernier franchissement de la ligne de départ avant la fin.",
+              "Sur une boucle dont le départ et la fin sont la même ligne, le franchissement qui termine un tour ne peut pas aussi lancer le suivant. Seul un tour sur deux est donc chronométré (le premier, le troisième, etc.), et le plus rapide d'entre eux compte. Une boucle qui commence et se termine sur des lignes différentes chronomètre chaque tour."
+            ]
+          }
+        ]
+      },
+      {
+        "heading": "Segments sans lignes",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Un segment trop court à une extrémité pour y placer une ligne n'a pas de lignes. Il est toujours chronométré à l'ancienne : votre sortie doit passer à moins de 35 m de son départ, puis à moins de 35 m de sa fin."
+          }
+        ]
+      },
+      {
+        "heading": "Efforts plus anciens",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Les efforts enregistrés avant que les segments aient des lignes ont été mesurés à l'ancienne, en passant près du départ et de la fin. Chacun est remesuré avec les lignes la prochaine fois que son coureur ouvre la sortie sur le site web. Son temps peut changer, et il peut disparaître si la sortie n'a jamais franchi les lignes."
+          },
+          {
+            "type": "p",
+            "text": "Tant que tous les efforts d'un segment n'ont pas été remesurés, son classement indique que certains efforts plus anciens ont été mesurés à l'ancienne."
+          }
+        ]
+      }
+    ],
+    "related": [
+      "park-courses",
+      "import-your-history"
     ]
   },
   {
@@ -3363,6 +3876,7 @@
       }
     ],
     "related": [
+      "how-segment-times-are-measured",
       "import-your-history",
       "record-your-first-run"
     ]

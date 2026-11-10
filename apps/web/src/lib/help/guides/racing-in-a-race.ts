@@ -147,5 +147,5 @@ export const guide: Guide = {
 			]
 		}
 	],
-	related: ['set-up-a-race', 'race-results-explained', 'follow-a-race-live', 'using-help']
+	related: ['set-up-a-race', 'race-results-explained', 'follow-a-race-live', 'run-a-self-timed-race', 'using-help']
 };

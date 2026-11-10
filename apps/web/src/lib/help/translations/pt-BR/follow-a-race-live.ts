@@ -26,6 +26,10 @@ export const translation: GuideTranslation = {
 						'**Cancelado**: o organizador cancelou a prova.',
 					],
 				},
+				{
+					type: 'p',
+					text: 'Uma prova com largada agendada mostra **Preparada** com o horário em que começa sozinha. Uma prova de tempo próprio mostra **Janela de tempo próprio** com o horário em que abre e depois **Janela de tempo próprio aberta** com o horário em que fecha: cada corredor larga quando cruza a linha de largada.',
+				},
 			],
 		},
 		{
@@ -40,6 +44,10 @@ export const translation: GuideTranslation = {
 					id: 'follow-a-race-live',
 					alt: 'Um percurso em um mapa com corredores ao longo dele, cada um um ponto colorido com um pequeno rastro do trajeto recente, e uma bandeira na chegada.',
 				},
+				{
+					type: 'p',
+					text: 'O mapa também desenha as linhas de largada e chegada de cada percurso, aquelas com que a prova foi preparada.',
+				},
 			],
 		},
 		{
@@ -52,6 +60,10 @@ export const translation: GuideTranslation = {
 				{
 					type: 'p',
 					text: 'Não existe um rótulo separado de “pausado”. Um corredor que parou (para amarrar o tênis, em um posto de apoio ou porque pausou a gravação) ou que perdeu o sinal simplesmente para de atualizar. Depois de cerca de 90 segundos sem atualização, a linha dele é marcada como **ATRASADO**. Isso não significa que algo está errado; muitas vezes significa apenas falta de sinal.',
+				},
+				{
+					type: 'p',
+					text: 'Em uma prova de tempo próprio, os corredores são ordenados por há quanto tempo cruzaram a linha de largada, de quem cruzou há mais tempo para quem cruzou há menos. Os corredores ainda sem tempo da linha de largada aparecem depois deles, em **Ainda sem tempo desde a linha de largada**.',
 				},
 			],
 		},
@@ -98,11 +110,15 @@ export const translation: GuideTranslation = {
 		's0.b2.i2': '120d1d8d969ced75',
 		's0.b2.i3': 'fbe2e397efb8ef5e',
 		's0.b2.i4': '1709d9ad712d85d2',
+		's0.b3': '83dd516ddc912210',
 		's1.heading': 'dc711bb38f5066a7',
 		's1.b0': 'f40d0503826f0955',
+		's1.b1': '1afba2a8fcb03c42',
+		's1.b2': 'fb3cff758e366cf0',
 		's2.heading': '46db515d7f1689a7',
 		's2.b0': '3316e288511685d1',
 		's2.b1': 'cff7f7798a6785c9',
+		's2.b2': '6af38311559d85ee',
 		's3.heading': '7804f7a79a9eee32',
 		's3.b0': '4355700d3a60d89c',
 		's3.b1': 'ea613ba62f6ba84a',
@@ -111,6 +127,5 @@ export const translation: GuideTranslation = {
 		's4.b0.i1': '7cf40c647db03cc3',
 		's4.b0.i2': 'edbbe7f08d1cf63e',
 		's4.b1': '1bb7132a7305e850',
-		's1.b1': '1afba2a8fcb03c42',
 	},
 };

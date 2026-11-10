@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { MIGRATIONS_DIR } from './check_migration_versions.mjs';
+import { splitSqlStatements } from './sql_lex.mjs';
 import {
   GRANDFATHERED_VIOLATIONS,
   UnlexableMigration,
@@ -491,16 +492,27 @@ test('the backend@1.0.38 split files each pass on their own', () => {
 });
 
 test('no file in the segment_match split holds jobs and runs together', () => {
-  const touches = (filename, table) =>
-    new RegExp(`\\b(?:alter table|on|index \\S+ on) (?:public\\.)?${table}\\b`).test(
-      readFileSync(join(MIGRATIONS_DIR, filename), 'utf8').replace(/\$\$[\s\S]*?\$\$/g, ''),
+  // The tables each top-level statement locks: ALTER TABLE, CREATE INDEX and
+  // CREATE/DROP TRIGGER targets. Function bodies are not the migration's locks.
+  const locked = (filename) =>
+    new Set(
+      splitSqlStatements(readFileSync(join(MIGRATIONS_DIR, filename), 'utf8'), { blankLiterals: true })
+        .map((raw) => raw.replace(/\s+/g, ' ').trim().toLowerCase())
+        .map(
+          (st) =>
+            /^alter table (?:if exists )?(?:only )?(?:public\.)?([a-z0-9_]+)/.exec(st)?.[1] ??
+            /^(?:create (?:unique )?index|create trigger|drop trigger)\b.*?\bon (?:only )?(?:public\.)?([a-z0-9_]+)/.exec(st)?.[1],
+        )
+        .filter(Boolean),
     );
   for (const filename of [
     '20271117002392_segment_match_jobs.sql',
     '20271117100001_segment_match_jobs_dedupe_index.sql',
     '20271117100002_segment_match_jobs_triggers.sql',
   ]) {
-    assert.ok(!(touches(filename, 'jobs') && touches(filename, 'runs')), filename);
+    const tables = locked(filename);
+    assert.ok(tables.size > 0, filename);
+    assert.ok(!(tables.has('jobs') && tables.has('runs')), `${filename}: ${[...tables].join(', ')}`);
   }
 });
 

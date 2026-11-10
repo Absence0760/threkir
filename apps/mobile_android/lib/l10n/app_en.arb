@@ -28510,5 +28510,43 @@
         "type": "String"
       }
     }
+  },
+  "reportReasonOrganiserDispute": "Impersonates or copies my organisation",
+  "@reportReasonOrganiserDispute": {
+    "description": "Report reason label, shown only to an owner or admin of a verified club: the content impersonates their organisation or copies its content (organiser name dispute, decisions § 2441)"
+  },
+  "reportReasonOrganiserDisputeHint": "For owners and admins of a verified club. A reviewer decides; nothing is hidden automatically.",
+  "@reportReasonOrganiserDisputeHint": {
+    "description": "Hint under the organiser dispute reason in the report sheet"
+  },
+  "reportOrganiserDisputeFor": "You're reporting for {club}.",
+  "@reportOrganiserDisputeFor": {
+    "description": "Line in the report sheet naming the verified club the organiser dispute is filed for",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
+  },
+  "reportOrganiserDisputeClubLabel": "Report for",
+  "@reportOrganiserDisputeClubLabel": {
+    "description": "Label of the picker choosing which verified club an organiser dispute is filed for"
+  },
+  "reportErrNotOrganiser": "Only an owner or admin of a verified club can report this.",
+  "@reportErrNotOrganiser": {
+    "description": "Report sheet error: the server refused an organiser dispute because the caller is not an owner or admin of a verified club"
+  },
+  "profileNotifOrganiserDispute": "There's an update on a naming dispute",
+  "@profileNotifOrganiserDispute": {
+    "description": "Notification text: a reviewer acted on a naming dispute about content the recipient owns, or one their verified club filed"
+  },
+  "profileNotifOrganiserDisputeNamed": "There's an update on a naming dispute with {club}",
+  "@profileNotifOrganiserDisputeNamed": {
+    "description": "Notification text: a reviewer acted on a naming dispute involving the named verified club",
+    "placeholders": {
+      "club": {
+        "type": "String"
+      }
+    }
   }
 }

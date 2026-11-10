@@ -21702,4 +21702,33 @@ class AppLocalizationsEs extends AppLocalizations {
   String profileNotifCourseAlertNamed(String club) {
     return '$club publicó un aviso del recorrido';
   }
+
+  @override
+  String get reportReasonOrganiserDispute =>
+      'Suplanta o copia a mi organización';
+
+  @override
+  String get reportReasonOrganiserDisputeHint =>
+      'Para propietarios y administradores de un club verificado. Decide una persona de revisión; no se oculta nada automáticamente.';
+
+  @override
+  String reportOrganiserDisputeFor(String club) {
+    return 'Denuncias en nombre de $club.';
+  }
+
+  @override
+  String get reportOrganiserDisputeClubLabel => 'Denunciar en nombre de';
+
+  @override
+  String get reportErrNotOrganiser =>
+      'Solo el propietario o un administrador de un club verificado puede denunciar esto.';
+
+  @override
+  String get profileNotifOrganiserDispute =>
+      'Hay novedades sobre una disputa de nombre';
+
+  @override
+  String profileNotifOrganiserDisputeNamed(String club) {
+    return 'Hay novedades sobre una disputa de nombre con $club';
+  }
 }

@@ -34924,6 +34924,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{club} posted a course alert'**
   String profileNotifCourseAlertNamed(String club);
+
+  /// Report reason label, shown only to an owner or admin of a verified club: the content impersonates their organisation or copies its content (organiser name dispute, decisions § 2441)
+  ///
+  /// In en, this message translates to:
+  /// **'Impersonates or copies my organisation'**
+  String get reportReasonOrganiserDispute;
+
+  /// Hint under the organiser dispute reason in the report sheet
+  ///
+  /// In en, this message translates to:
+  /// **'For owners and admins of a verified club. A reviewer decides; nothing is hidden automatically.'**
+  String get reportReasonOrganiserDisputeHint;
+
+  /// Line in the report sheet naming the verified club the organiser dispute is filed for
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re reporting for {club}.'**
+  String reportOrganiserDisputeFor(String club);
+
+  /// Label of the picker choosing which verified club an organiser dispute is filed for
+  ///
+  /// In en, this message translates to:
+  /// **'Report for'**
+  String get reportOrganiserDisputeClubLabel;
+
+  /// Report sheet error: the server refused an organiser dispute because the caller is not an owner or admin of a verified club
+  ///
+  /// In en, this message translates to:
+  /// **'Only an owner or admin of a verified club can report this.'**
+  String get reportErrNotOrganiser;
+
+  /// Notification text: a reviewer acted on a naming dispute about content the recipient owns, or one their verified club filed
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s an update on a naming dispute'**
+  String get profileNotifOrganiserDispute;
+
+  /// Notification text: a reviewer acted on a naming dispute involving the named verified club
+  ///
+  /// In en, this message translates to:
+  /// **'There\'s an update on a naming dispute with {club}'**
+  String profileNotifOrganiserDisputeNamed(String club);
 }
 
 class _AppLocalizationsDelegate

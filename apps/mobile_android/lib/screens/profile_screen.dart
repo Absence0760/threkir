@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../auth_error.dart';
 import '../entity_link.dart';
@@ -16,6 +17,7 @@ import '../settings_destination.dart';
 import '../social_service.dart';
 import '../training_service.dart';
 import '../undo_queue.dart';
+import '../web_base_url.dart';
 import '../widgets/badge_grid.dart';
 import '../widgets/badge_share_sheet.dart';
 import '../widgets/collapsing_tab_host.dart';
@@ -1545,6 +1547,10 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
+    } else if (kind == 'organiser_dispute') {
+      // Both sides read the decision and any rename deadline on the web's
+      // disputes page; the review is web-only (decisions § 24, § 2441).
+      await _openDisputesOnWeb();
     } else if (kind == 'course_alert' && item.row.courseAlertId != null) {
       await _openCourseAlert(item.row.courseAlertId!);
     } else if (kind == 'challenge_complete' && item.row.challengeId != null) {
@@ -1585,6 +1591,22 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         ),
       );
+    }
+  }
+
+  Future<void> _openDisputesOnWeb() async {
+    final url = '${resolveWebBaseUrl()}/disputes';
+    try {
+      final ok = await launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        showTopBanner(context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
+    } catch (e) {
+      debugPrint('ProfileScreen: opening $url failed: $e');
+      if (mounted) {
+        showTopBanner(context, AppLocalizations.of(context).legalCouldNotOpen(url));
+      }
     }
   }
 
@@ -1696,6 +1718,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         return item.clubName != null
             ? l10n.profileNotifClubVerificationNamed(item.clubName!)
             : l10n.profileNotifClubVerification;
+      case 'organiser_dispute':
+        return item.clubName != null
+            ? l10n.profileNotifOrganiserDisputeNamed(item.clubName!)
+            : l10n.profileNotifOrganiserDispute;
       case 'event_reminder':
         return item.eventTitle != null
             ? l10n.profileNotifEventReminderTitled(item.eventTitle!)

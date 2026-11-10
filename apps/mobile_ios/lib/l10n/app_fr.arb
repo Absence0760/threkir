@@ -6003,5 +6003,12 @@
   "racesAnyTimeRecordBy": "Record {year} : {time} par {name}",
   "racesAnyTimeNoRecord": "Aucun temps cette saison pour l'instant. Le vôtre pourrait être le premier.",
   "racesAnyTimeAway": "à {distance}",
-  "racesAnyTimeRecordsFailed": "Impossible de charger les records de cette saison."
+  "racesAnyTimeRecordsFailed": "Impossible de charger les records de cette saison.",
+  "reportReasonOrganiserDispute": "Usurpe ou copie mon organisation",
+  "reportReasonOrganiserDisputeHint": "Pour les propriétaires et administrateurs d'un club vérifié. Un vérificateur décide ; rien n'est masqué automatiquement.",
+  "reportOrganiserDisputeFor": "Vous signalez pour {club}.",
+  "reportOrganiserDisputeClubLabel": "Signaler pour",
+  "reportErrNotOrganiser": "Seul un propriétaire ou un administrateur d'un club vérifié peut faire ce signalement.",
+  "profileNotifOrganiserDispute": "Il y a du nouveau sur un litige de nom",
+  "profileNotifOrganiserDisputeNamed": "Il y a du nouveau sur un litige de nom avec {club}"
 }

@@ -956,12 +956,16 @@ export const PAIRS = [
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
 				decl: '_reasonKeys',
 				shape: 'strings',
+				// kOrganiserDisputeReason, offered below the general reasons to a
+				// verified club's owner or admin only (decisions § 2441).
+				allowMissing: ['organiser_dispute'],
 			},
 			{
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
 				decl: '_reasonLabel',
 				shape: 'switch',
-				allowMissing: ['other'],
+				// The dispute reason has its own label next to its own radio.
+				allowMissing: ['other', 'organiser_dispute'],
 			},
 		],
 	},
@@ -992,6 +996,9 @@ export const PAIRS = [
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
 				decl: '_title',
 				shape: 'switch',
+				// These four take only an organiser dispute, and mobile has no
+				// report menu on them; they are reported from the web (§ 2441).
+				allowMissing: ['training_plan', 'gym_routine', 'challenge', 'race_listing'],
 			},
 		],
 	},

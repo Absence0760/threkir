@@ -20635,4 +20635,30 @@ class AppLocalizationsJa extends AppLocalizations {
   String profileNotifCourseAlertNamed(String club) {
     return '$clubがコースのお知らせを投稿しました';
   }
+
+  @override
+  String get reportReasonOrganiserDispute => '自分の団体へのなりすまし・複製';
+
+  @override
+  String get reportReasonOrganiserDisputeHint =>
+      '認証済みクラブの所有者と管理者向けです。担当者が判断し、自動で非表示になることはありません。';
+
+  @override
+  String reportOrganiserDisputeFor(String club) {
+    return '$clubとして報告します。';
+  }
+
+  @override
+  String get reportOrganiserDisputeClubLabel => '報告する団体';
+
+  @override
+  String get reportErrNotOrganiser => '認証済みクラブの所有者または管理者だけが報告できます。';
+
+  @override
+  String get profileNotifOrganiserDispute => '名前に関する申し立てについてお知らせがあります';
+
+  @override
+  String profileNotifOrganiserDisputeNamed(String club) {
+    return '$clubとの名前に関する申し立てについてお知らせがあります';
+  }
 }

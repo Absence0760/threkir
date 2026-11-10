@@ -21728,4 +21728,33 @@ class AppLocalizationsDe extends AppLocalizations {
   String profileNotifCourseAlertNamed(String club) {
     return '$club hat einen Streckenhinweis gepostet';
   }
+
+  @override
+  String get reportReasonOrganiserDispute =>
+      'Ahmt meine Organisation nach oder kopiert sie';
+
+  @override
+  String get reportReasonOrganiserDisputeHint =>
+      'Für Eigentümer und Admins eines verifizierten Clubs. Ein Prüfer entscheidet; nichts wird automatisch ausgeblendet.';
+
+  @override
+  String reportOrganiserDisputeFor(String club) {
+    return 'Du meldest für $club.';
+  }
+
+  @override
+  String get reportOrganiserDisputeClubLabel => 'Melden für';
+
+  @override
+  String get reportErrNotOrganiser =>
+      'Nur ein Eigentümer oder Admin eines verifizierten Clubs kann das melden.';
+
+  @override
+  String get profileNotifOrganiserDispute =>
+      'Es gibt ein Update zu einem Namensstreitfall';
+
+  @override
+  String profileNotifOrganiserDisputeNamed(String club) {
+    return 'Es gibt ein Update zu einem Namensstreitfall mit $club';
+  }
 }

@@ -1223,6 +1223,9 @@ class _RouteDetailScreenState extends State<RouteDetailScreen> {
                     api: widget.apiClient!,
                     targetKind: 'route',
                     targetId: route.id,
+                    organiserClubs:
+                        _isPublic ? _raceService.fetchMyOrganiserClubs : null,
+                    targetClubId: _clubId,
                   ),
                 ),
               if (_isOwner)

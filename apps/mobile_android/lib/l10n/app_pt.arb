@@ -6003,5 +6003,12 @@
   "racesAnyTimeRecordBy": "Recorde de {year}: {time}, de {name}",
   "racesAnyTimeNoRecord": "Ainda não há tempos nesta época. O seu pode ser o primeiro.",
   "racesAnyTimeAway": "A {distance}",
-  "racesAnyTimeRecordsFailed": "Não foi possível carregar os recordes desta época."
+  "racesAnyTimeRecordsFailed": "Não foi possível carregar os recordes desta época.",
+  "reportReasonOrganiserDispute": "Faz-se passar pela minha organização ou copia-a",
+  "reportReasonOrganiserDisputeHint": "Para proprietários e administradores de um clube verificado. Uma pessoa da análise decide; nada é ocultado automaticamente.",
+  "reportOrganiserDisputeFor": "Está a denunciar em nome de {club}.",
+  "reportOrganiserDisputeClubLabel": "Denunciar em nome de",
+  "reportErrNotOrganiser": "Só o proprietário ou um administrador de um clube verificado pode denunciar isto.",
+  "profileNotifOrganiserDispute": "Há uma novidade sobre uma disputa de nome",
+  "profileNotifOrganiserDisputeNamed": "Há uma novidade sobre uma disputa de nome com {club}"
 }

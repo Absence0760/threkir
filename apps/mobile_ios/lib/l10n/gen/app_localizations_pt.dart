@@ -21703,6 +21703,35 @@ class AppLocalizationsPt extends AppLocalizations {
   String profileNotifCourseAlertNamed(String club) {
     return '$club publicou um alerta do percurso';
   }
+
+  @override
+  String get reportReasonOrganiserDispute =>
+      'Faz-se passar pela minha organização ou copia-a';
+
+  @override
+  String get reportReasonOrganiserDisputeHint =>
+      'Para proprietários e administradores de um clube verificado. Uma pessoa da análise decide; nada é ocultado automaticamente.';
+
+  @override
+  String reportOrganiserDisputeFor(String club) {
+    return 'Está a denunciar em nome de $club.';
+  }
+
+  @override
+  String get reportOrganiserDisputeClubLabel => 'Denunciar em nome de';
+
+  @override
+  String get reportErrNotOrganiser =>
+      'Só o proprietário ou um administrador de um clube verificado pode denunciar isto.';
+
+  @override
+  String get profileNotifOrganiserDispute =>
+      'Há uma novidade sobre uma disputa de nome';
+
+  @override
+  String profileNotifOrganiserDisputeNamed(String club) {
+    return 'Há uma novidade sobre uma disputa de nome com $club';
+  }
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -43387,5 +43416,34 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String profileNotifCourseAlertNamed(String club) {
     return '$club publicou um alerta do percurso';
+  }
+
+  @override
+  String get reportReasonOrganiserDispute =>
+      'Se passa pela minha organização ou a copia';
+
+  @override
+  String get reportReasonOrganiserDisputeHint =>
+      'Para donos e administradores de um clube verificado. Uma pessoa da análise decide; nada é ocultado automaticamente.';
+
+  @override
+  String reportOrganiserDisputeFor(String club) {
+    return 'Você está denunciando em nome de $club.';
+  }
+
+  @override
+  String get reportOrganiserDisputeClubLabel => 'Denunciar em nome de';
+
+  @override
+  String get reportErrNotOrganiser =>
+      'Só o dono ou um administrador de um clube verificado pode denunciar isto.';
+
+  @override
+  String get profileNotifOrganiserDispute =>
+      'Há uma novidade sobre uma disputa de nome';
+
+  @override
+  String profileNotifOrganiserDisputeNamed(String club) {
+    return 'Há uma novidade sobre uma disputa de nome com $club';
   }
 }

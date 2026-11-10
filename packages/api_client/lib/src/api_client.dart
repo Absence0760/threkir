@@ -290,6 +290,34 @@ class ApiClient {
     return result as String;
   }
 
+  /// File an organiser name dispute (issue #1363, decisions § 2441): the
+  /// caller, an active owner or admin of the verified club [clubId], reports
+  /// [targetKind] / [targetId] as impersonating that organisation or copying
+  /// its content. `submit_organiser_dispute` is the gate and raises 42501 for
+  /// anyone else; 23505 and P0001 mean the same as for [submitReport], whose
+  /// rate-limit bucket it shares.
+  ///
+  /// Mirrors `apps/web/src/lib/core/data.ts:submitOrganiserDispute`.
+  Future<String> submitOrganiserDispute({
+    required String targetKind,
+    required String targetId,
+    required String clubId,
+    String? notes,
+  }) async {
+    final trimmed = notes?.trim();
+    final result = await _client.rpc(
+      'submit_organiser_dispute',
+      params: {
+        'p_target_kind': targetKind,
+        'p_target_id': targetId,
+        'p_club_id': clubId,
+        'p_notes':
+            (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+      },
+    );
+    return result as String;
+  }
+
   /// Fetch heatmap-friendly point set within a bbox. Backed by the
   /// `heatmap_points_in_bbox` PostGIS RPC (migration 20260828_001),
   /// capped at [maxPoints] (default 5000) regardless of bbox size —

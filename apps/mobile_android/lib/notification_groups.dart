@@ -64,6 +64,10 @@ String _targetKeyFor(NotificationRow n) {
     case 'club_join_approved':
     case 'club_verification':
       return n.clubId != null ? 'club:${n.clubId}' : solo;
+    case 'organiser_dispute':
+      // Each is a reviewer's decision on one dispute, and a rename notice
+      // carries its own deadline: never collapse two (decisions § 2441).
+      return solo;
     case 'plan_update':
     case 'plan_assigned':
     case 'plan_ai_edit':

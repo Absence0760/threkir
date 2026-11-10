@@ -6003,5 +6003,12 @@
   "racesAnyTimeRecordBy": "{year}年の記録：{time}（{name}）",
   "racesAnyTimeNoRecord": "今シーズンはまだタイムがありません。最初の記録になるかもしれません。",
   "racesAnyTimeAway": "{distance}先",
-  "racesAnyTimeRecordsFailed": "今シーズンの記録を読み込めませんでした。"
+  "racesAnyTimeRecordsFailed": "今シーズンの記録を読み込めませんでした。",
+  "reportReasonOrganiserDispute": "自分の団体へのなりすまし・複製",
+  "reportReasonOrganiserDisputeHint": "認証済みクラブの所有者と管理者向けです。担当者が判断し、自動で非表示になることはありません。",
+  "reportOrganiserDisputeFor": "{club}として報告します。",
+  "reportOrganiserDisputeClubLabel": "報告する団体",
+  "reportErrNotOrganiser": "認証済みクラブの所有者または管理者だけが報告できます。",
+  "profileNotifOrganiserDispute": "名前に関する申し立てについてお知らせがあります",
+  "profileNotifOrganiserDisputeNamed": "{club}との名前に関する申し立てについてお知らせがあります"
 }

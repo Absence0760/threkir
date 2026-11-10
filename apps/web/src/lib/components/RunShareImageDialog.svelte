@@ -185,7 +185,13 @@
 	let rendering = $state(false);
 	let busy = $state(false);
 	let preview = $state<{ url: string; blob: Blob; key: string } | null>(null);
-	let cardBlob: { mark: boolean; blob: Blob } | null = null;
+	/// Why the last render failed, shown in the preview with a retry in place
+	/// of an image, so a failure is never an empty box with Download live.
+	let renderError = $state<string | null>(null);
+	let retries = $state(0);
+	/// The captured map card, keyed on what the capture draws: the mark, and
+	/// the line, which can land after the editor opens.
+	let cardBlob: { mark: boolean; points: number; blob: Blob } | null = null;
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let canShare = $state(false);
 	let photoSeq = $state(0);
@@ -233,6 +239,7 @@
 			cardBlob = null;
 			if (preview) URL.revokeObjectURL(preview.url);
 			preview = null;
+			renderError = null;
 			// A decoded photo holds its full-resolution pixels until closed.
 			photo?.close();
 			photo = null;
@@ -363,7 +370,9 @@
 		r: PrCardEntry | null,
 	): Promise<Rendered> {
 		if (s === 'card') {
-			if (cardBlob?.mark !== l.mark) cardBlob = { mark: l.mark, blob: await captureCard(l.mark) };
+			if (cardBlob?.mark !== l.mark || cardBlob.points !== line.length) {
+				cardBlob = { mark: l.mark, points: line.length, blob: await captureCard(l.mark) };
+			}
 			return { blob: cardBlob.blob, laid: null };
 		}
 		await loadShareFonts();
@@ -411,10 +420,19 @@
 		const k = kind;
 		if (s === 'versus' || (s === 'photo' && !p)) return;
 		const occasion = k === 'stats' ? null : [k, r, streakDays, race, course, badge, splits.length];
-		const key = JSON.stringify([s, l, s === 'photo' ? photoSeq : 0, s === 'pr' ? r : null, occasion]);
+		const key = JSON.stringify([
+			s,
+			l,
+			s === 'photo' ? photoSeq : 0,
+			s === 'pr' ? r : null,
+			occasion,
+			s === 'card' ? line.length : 0,
+		]);
+		void retries;
 		if (preview?.key === key) return;
 		const seq = ++renderSeq;
 		rendering = true;
+		renderError = null;
 		renderPng(s, l, k, p, r)
 			.then(({ blob, laid }) => {
 				if (seq !== renderSeq) return;
@@ -425,7 +443,13 @@
 			.catch((e) => {
 				if (seq !== renderSeq) return;
 				console.warn('share image render failed', e);
-				showToast(m('runDetail.imageGenerateFailed', { error: errorCopy(e, m, 'runDetail.imageGenerateFailed') }), 'error');
+				// The stale preview is another look's image: drop it, so Download
+				// cannot hand it over under this one.
+				if (preview) URL.revokeObjectURL(preview.url);
+				preview = null;
+				renderError = m('runDetail.imageGenerateFailed', {
+					error: errorCopy(e, m, 'runDetail.imageGenerateFailed'),
+				});
 			})
 			.finally(() => {
 				if (seq === renderSeq) rendering = false;
@@ -675,6 +699,19 @@
 					<span class="material-symbols" aria-hidden="true">add_photo_alternate</span>
 					{m('runShare.pickPhoto')}
 				</button>
+			{:else if renderError}
+				<div class="render-error" role="alert" data-testid="share-image-error">
+					<p>{renderError}</p>
+					<button
+						type="button"
+						class="btn btn-secondary"
+						onclick={() => retries++}
+						data-testid="share-image-retry"
+					>
+						<span class="material-symbols" aria-hidden="true">refresh</span>
+						{m('runDetail.retry')}
+					</button>
+				</div>
 			{:else if preview && style === 'photo'}
 				<div class="stage-area" bind:clientWidth={areaW} bind:clientHeight={areaH}>
 					{#if stage}
@@ -1014,6 +1051,18 @@
 		.preview img {
 			transition: none;
 		}
+	}
+	.render-error {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: var(--space-sm);
+		max-width: 32rem;
+		text-align: center;
+		color: var(--color-text);
+	}
+	.render-error p {
+		margin: 0;
 	}
 	.preparing,
 	.hint {

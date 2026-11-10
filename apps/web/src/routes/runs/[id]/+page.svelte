@@ -117,6 +117,7 @@
 	} from '#lib/routes/privacy.ts';
 	import { knownEffective, type LoadedSettings } from '#lib/settings/settings_overlay.ts';
 	import { SHARE_CARD_MAP, shareCardTrack } from '#lib/share/share_card_track.ts';
+	import { isCompleteCardCapture } from '#lib/share/share_card_capture.ts';
 	import {
 		estimateRunCalories,
 		ACTIVITY_KCAL_PER_KG_PER_KM,
@@ -1046,9 +1047,14 @@
 		await tick();
 		// Dynamic import keeps the 30 KB lib out of the initial
 		// bundle for users who never open the share editor.
-		const { toBlob } = await import('html-to-image');
+		const { toCanvas } = await import('html-to-image');
 		if (!shareCardEl) throw new Error('share card not ready');
-		const blob = await toBlob(shareCardEl, { pixelRatio: 1, cacheBust: true });
+		const canvas = await toCanvas(shareCardEl, { pixelRatio: 1, cacheBust: true });
+		// A card drawn outside its own frame rasterises transparent without
+		// throwing; refuse it so the editor shows an error, not a blank PNG.
+		const pixels = canvas.getContext('2d')?.getImageData(0, 0, canvas.width, canvas.height).data;
+		if (!pixels || !isCompleteCardCapture(pixels)) throw new Error('share card rendered blank');
+		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
 		if (!blob) throw new Error('share card produced no image');
 		return blob;
 	}
@@ -2923,16 +2929,19 @@
 {/if}
 
 <!-- Off-screen share card. 1080 square, rendered to PNG by
-     `html-to-image` when the user taps Share-as-image. Lives outside
-     the main layout so it doesn't affect scrolling; positioned
-     `fixed` at top:-9999px so it still has real layout dimensions
-     (pure `display:none` would zero them out and break the canvas
-     capture). Background tint + gradient matches the dashboard
-     primary, independent of the active theme. -->
+     `html-to-image` when the user taps Share-as-image. The HOST is what
+     sits `fixed` at -9999px, so the card keeps real layout dimensions
+     (pure `display:none` would zero them out) while the captured node
+     itself carries no offset: html-to-image copies the node's computed
+     style onto its clone, and a card offset by its own top/left was drawn
+     -9999px outside the PNG, which came out fully transparent. Background
+     tint + gradient matches the dashboard primary, independent of the
+     active theme. -->
+<div class="share-card-host" aria-hidden="true">
 <div
 	bind:this={shareCardEl}
 	class="share-card"
-	aria-hidden="true"
+	data-testid="share-card"
 >
 	<div class="share-card-inner">
 		{#if shareCardMark}
@@ -2987,6 +2996,7 @@
 			{formatDate(run.started_at)}
 		</div>
 	</div>
+</div>
 </div>
 {/if}
 
@@ -4300,10 +4310,13 @@
 		color: var(--color-primary);
 	}
 
-	.share-card {
+	.share-card-host {
 		position: fixed;
 		top: -9999px;
 		left: -9999px;
+		pointer-events: none;
+	}
+	.share-card {
 		width: 1080px;
 		height: 1080px;
 		/* Rasterised to a PNG that leaves the device, so the ramp is a fixed

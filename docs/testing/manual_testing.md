@@ -398,7 +398,7 @@ See [decisions.md §36](../architecture/decisions.md#36-photos-on-runs-own-table
 
 ### Field test: timing by the lines (#1307)
 
-Not yet run. Needs a real park, a course whose start and finish lines are placed on the web event editor, an organiser account and one runner account on the phone (and, once its lane ships, Wear OS). Record each row's result here with the date, devices and OS versions.
+Not yet run. Needs a real park, a course whose start and finish lines are placed on the web event editor, an organiser account and one runner account on the phone and on a Wear OS watch (run each row on both; on the watch the undo is the paused screen's resume button and the distance to the start line sits under the race clock). Record each row's result here with the date, devices and OS versions.
 
 | Scenario | Steps | Pass |
 |---|---|---|

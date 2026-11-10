@@ -43,10 +43,11 @@
 --
 -- Locks (docs/backend/migration_locks.md): the jobs_kind_chk widen is `drop` +
 -- `add ... not valid` with no same-file validate (§ 1148, as 20271106000020).
--- jobs_dedupe_segment_match is a plain partial build for the reason
--- 20270719000001 gives: its predicate matches no existing row. The GiST index
--- is on global_segments, a small curated table. CREATE TRIGGER takes SHARE ROW
--- EXCLUSIVE on runs and storage.objects for the instant of the change. No
+-- That ACCESS EXCLUSIVE on jobs is held to this file's commit, so the
+-- jobs_dedupe_segment_match build (a heap scan) is 20271117100001 and the
+-- runs and storage.objects triggers are 20271117100002: no file holds jobs and
+-- runs at once, and a run save that inserts into jobs cannot deadlock against
+-- this apply. The GiST index is on global_segments, a small curated table. No
 -- backfill runs here: existing runs are scored by enqueue_segment_backfill,
 -- one bounded batch per job.
 
@@ -70,14 +71,7 @@ alter table public.jobs
 
 -- ─────────────────── 2. jobs_dedupe_segment_match ───────────────────
 
--- One QUEUED per-run job at a time, not one queued-or-running: a track
--- rewritten while its job runs must still get a job of its own, or the
--- dedupe would swallow the enqueue and leave the efforts describing the old
--- bytes. Two jobs for one run can then overlap; record_segment_match refuses
--- the one whose bytes are no longer stored, and the write is idempotent.
-create unique index jobs_dedupe_segment_match
-  on jobs (kind, ((payload->>'run_id')::uuid))
-  where kind = 'segment_match' and status = 'queued' and payload ? 'run_id';
+-- Built by 20271117100001, in its own transaction.
 
 -- ─────────────────── 3. extents and the candidate lookup ───────────────────
 
@@ -398,10 +392,7 @@ $$;
 
 revoke execute on function public.runs_enqueue_segment_match() from public, anon, authenticated;
 
-drop trigger if exists runs_enqueue_segment_match on public.runs;
-create trigger runs_enqueue_segment_match
-  after insert or update of track_url on public.runs
-  for each row execute function public.runs_enqueue_segment_match();
+-- Attached to runs by 20271117100002.
 
 -- The bytes behind a run's track_url uploaded or replaced: the first upload
 -- of a run whose row was written first, or a rewrite in place (the path never
@@ -455,12 +446,7 @@ $$;
 
 revoke execute on function public.runs_track_object_enqueue_segment_match() from public, anon, authenticated;
 
-drop trigger if exists runs_track_object_enqueue_segment_match on storage.objects;
-create trigger runs_track_object_enqueue_segment_match
-  after insert or update on storage.objects
-  for each row
-  when (new.bucket_id = 'runs')
-  execute function public.runs_track_object_enqueue_segment_match();
+-- Attached to storage.objects by 20271117100002.
 
 -- ─────────────────── 7. the launch backfill ───────────────────
 

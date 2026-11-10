@@ -14,9 +14,9 @@
 -- Locks: ADD COLUMN of a nullable column with no default is catalogue-only.
 -- The FK and the CHECK are added NOT VALID (brief ACCESS EXCLUSIVE, no scan)
 -- and validated in 20271124002409 under SHARE UPDATE EXCLUSIVE. The covering
--- index is partial on a column that is null in every row; its build reads the
--- heap once under SHARE (writers wait for that read, readers do not), the
--- same shape every notifications FK index took (20270417_001).
+-- index is built by 20271124100001 in its own transaction: here the ADD
+-- COLUMN's ACCESS EXCLUSIVE would still be held while the build reads the
+-- heap, so readers would wait for the scan too.
 
 alter table notifications add column course_alert_id uuid;
 
@@ -24,10 +24,6 @@ alter table notifications
   add constraint notifications_course_alert_id_fkey
   foreign key (course_alert_id) references course_alerts (id) on delete cascade
   not valid;
-
-create index notifications_course_alert_id
-  on notifications (course_alert_id)
-  where course_alert_id is not null;
 
 alter table notifications drop constraint notifications_kind_check;
 alter table notifications

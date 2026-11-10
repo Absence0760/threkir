@@ -1,5 +1,6 @@
--- Pins migration 20271121002400 (#1306, decisions § 2400-§ 2401): race start
--- modes, the per-minute job and the Self-timed result rules.
+-- Pins migrations 20271121002400 and 20271121100001-100007 (#1306, decisions
+-- § 2400-§ 2401): race start modes, the per-minute job and the Self-timed
+-- result rules.
 --
 --   1-2.   The event mode CHECK and the per-mode settings CHECK.
 --   3-5.   ensure_race_session answers true, creates a scheduled session from the offsets and
@@ -30,7 +31,7 @@
 --          approval and flags it for review.
 --   36.    my_race_sessions lists the runner's live race.
 --   37.    Extend refused past 7 days from the opening.
---   38.    Every new CHECK was validated by 20271121002401.
+--   38.    Every new CHECK was validated (20271121002401, 20271121100007).
 
 begin;
 select plan(38);

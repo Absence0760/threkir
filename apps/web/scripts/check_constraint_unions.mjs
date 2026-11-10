@@ -134,6 +134,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'challenges.activity_type',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'CHALLENGE_ACTIVITY_TYPES', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'ActivityType', shape: 'union' },
 			{ file: 'apps/web/src/lib/runs/activity_type.ts', decl: 'ACTIVITY_TYPES', shape: 'strings' },
 			{ file: 'packages/core_models/lib/src/activity_type.dart', decl: 'ActivityType', shape: 'enum' },
@@ -142,6 +143,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'challenges.metric',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'CHALLENGE_METRICS', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'ChallengeMetric', shape: 'union' },
 			{
 				file: 'apps/web/src/lib/social/challenge_progress.ts',
@@ -512,6 +514,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'gym_routine_exercises.modality',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'MODALITIES', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'GymExerciseModality', shape: 'union' },
 			{
 				file: 'apps/web/src/lib/components/RoutineEditor.svelte',
@@ -533,6 +536,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'gym_routine_exercises.progression',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'PROGRESSIONS', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'GymProgressionScheme', shape: 'union' },
 			{
 				file: 'apps/web/src/lib/gym/gym_progression.ts',
@@ -578,6 +582,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'gym_routine_sets.set_type',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'SET_TYPES', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'GymSetType', shape: 'union' },
 			{
 				file: 'apps/web/src/lib/components/RoutineEditor.svelte',
@@ -603,7 +608,10 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'gym_routines.periodisation',
-		clients: [{ file: TS_TYPES, decl: 'GymPeriodisation', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'GymPeriodisation', shape: 'union' },
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'PERIODISATIONS', shape: 'strings' },
+		],
 	},
 	{
 		// `_setTypeChip` returns null for `working` BEFORE its switch — the common
@@ -709,6 +717,14 @@ export const PAIRS = [
 				decl: '_verbFor',
 				shape: 'switch',
 			},
+		],
+	},
+	{
+		tableColumn: 'direct_messages.kind',
+		clients: [
+			{ file: 'apps/web/src/lib/social/coach_share.ts', decl: 'DmKind', shape: 'union' },
+			{ file: 'apps/web/src/lib/social/coach_share.ts', decl: 'DM_KINDS', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/coach_share.dart', decl: 'kDmKinds', shape: 'strings' },
 		],
 	},
 	{
@@ -839,7 +855,10 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'race_listings.provider',
-		clients: [{ file: TS_TYPES, decl: 'RaceProvider', shape: 'union' }],
+		clients: [
+			{ file: TS_TYPES, decl: 'RaceProvider', shape: 'union' },
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'RACE_PROVIDERS', shape: 'strings' },
+		],
 	},
 	{
 		tableColumn: 'race_listings.course_source',
@@ -1091,6 +1110,7 @@ export const PAIRS = [
 	{
 		tableColumn: 'routes.surface',
 		clients: [
+			{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'ROUTE_SURFACES', shape: 'strings' },
 			{ file: TS_TYPES, decl: 'RouteSurface', shape: 'union' },
 			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'ROUTE_SURFACES', shape: 'strings' },
 			{
@@ -1215,8 +1235,7 @@ export const PAIRS = [
 	},
 	{
 		tableColumn: 'training_plans.source',
-		clients: [],
-		note: 'each creation path stamps its own literal (`generated` from the wizard, `manual` otherwise); no client enumerates the three.',
+		clients: [{ file: 'scripts/official/lib/official_catalogue.mjs', decl: 'PLAN_SOURCES', shape: 'strings' }],
 	},
 	{
 		tableColumn: 'training_plans.status',

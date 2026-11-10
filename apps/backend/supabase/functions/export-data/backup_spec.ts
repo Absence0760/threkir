@@ -46,7 +46,7 @@ export function orderForTable(table: string): string {
 
 /** Every direct_messages column but read_at (see the sent spec below). */
 export const DIRECT_MESSAGES_SENT_SELECT =
-	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body';
+	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id';
 
 /// Build the full table-spec list. Pure — only takes the caller's
 /// user id. Mirrors the Go worker's `FetchExportPersonalDataTables`
@@ -281,13 +281,13 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 			entry: 'coaching_as_coach.json',
 			table: 'coach_athletes',
 			filter: `coach_id=eq.${uid}`,
-			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at',
+			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at',
 		},
 		{
 			entry: 'coaching_as_athlete.json',
 			table: 'coach_athletes',
 			filter: `athlete_id=eq.${uid}`,
-			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at',
+			select: 'id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at',
 		},
 		// plan_change_requests — changes to a coach-assigned plan the subject
 		// sent as athlete or decided as coach (issue #1215 Phase 2). The

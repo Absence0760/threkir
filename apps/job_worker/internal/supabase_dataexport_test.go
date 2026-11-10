@@ -971,6 +971,11 @@ func TestStreamExportPersonalDataTables_IncludesCriticalCommsTables(t *testing.T
 	if !strings.Contains(dmSentQ, "edited_at") || !strings.Contains(dmSentQ, "original_body") {
 		t.Errorf("direct_messages (sent) select must carry edited_at and original_body; got %q", dmSentQ)
 	}
+	// A shared AI Coach answer (20271210001215) says what it is and which of
+	// the sender's own Coach answers it quoted.
+	if !strings.Contains(dmSentQ, "kind") || !strings.Contains(dmSentQ, "coach_message_id") {
+		t.Errorf("direct_messages (sent) select must carry kind and coach_message_id; got %q", dmSentQ)
+	}
 	// Where a message request to or from the subject stands is their own
 	// conversation state (20271115002384).
 	if !strings.Contains(convQ, "request_state") || !strings.Contains(convQ, "requested_at") {

@@ -7,7 +7,7 @@ import { canEditDm, DM_EDIT_WINDOW_MS } from './dm_edit.ts';
 const me = 'me';
 const sent = '2026-11-08T10:00:00.000Z';
 const at = (minutes: number) => Date.parse(sent) + minutes * 60_000;
-const msg = (over: Partial<{ sender_id: string; unsent_at: string | null; body: string | null; created_at: string }> = {}) => ({
+const msg = (over: Partial<{ sender_id: string; unsent_at: string | null; body: string | null; created_at: string; kind: string }> = {}) => ({
 	sender_id: me,
 	created_at: sent,
 	unsent_at: null,
@@ -49,6 +49,11 @@ test('not someone else\'s message, and not with no viewer', () => {
 test('not an unsent message', () => {
 	assert.equal(canEditDm(msg({ unsent_at: sent, body: null }), me, at(1)), false);
 	assert.equal(canEditDm(msg({ body: null }), me, at(1)), false);
+});
+
+test('not a shared AI Coach answer', () => {
+	assert.equal(canEditDm(msg({ kind: 'coach_share' }), me, at(1)), false);
+	assert.equal(canEditDm(msg({ kind: 'text' }), me, at(1)), true);
 });
 
 test('not a message with an unreadable timestamp', () => {

@@ -3191,3 +3191,13 @@ insert into private.feature_flags (name, enabled) values ('signup_source', true)
 -- names are exactly what the seed wrote.
 insert into private.feature_flags (name, enabled) values ('display_name_from_provider', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Share with coach gate (20271210001215) ───────────────────
+--
+-- An athlete sharing an AI Coach answer with their coach is fail-closed behind
+-- a private.feature_flags row no migration writes, so prod stays off until the
+-- CISO / Security Analyst confirms the AI labelling (docs/ops/deployment.md,
+-- issue #1215 Phase 3). Local stacks and CI open it so both clients and their
+-- specs exercise it.
+insert into private.feature_flags (name, enabled) values ('coach_share', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

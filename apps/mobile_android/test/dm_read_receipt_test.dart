@@ -10,6 +10,7 @@ const _them = 'them';
 
 DirectMessageRow _msg(String id, String sender, [DateTime? seenAt]) =>
     DirectMessageRow(
+      kind: 'text',
       id: id,
       conversationId: 'c-1',
       senderId: sender,

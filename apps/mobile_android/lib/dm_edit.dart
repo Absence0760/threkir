@@ -17,5 +17,6 @@ const Duration kDmEditWindow = Duration(minutes: 15);
 bool canEditDm(DirectMessageRow m, String? viewerId, DateTime now) {
   if (viewerId == null || m.senderId != viewerId) return false;
   if (m.unsentAt != null || m.body == null) return false;
+  if (m.kind == 'coach_share') return false;
   return now.difference(m.createdAt) <= kDmEditWindow;
 }

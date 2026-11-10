@@ -427,6 +427,28 @@ Deno.test('an edited message exports its edit time and the text as first sent', 
 	assertEquals(reports.select.split(',').includes('snapshot_original_body'), true);
 });
 
+Deno.test('a coaching link exports the athlete\'s coach-assistant consent', () => {
+	// 20271210001217: the athlete's consent to the coach assistant, per link.
+	for (const entry of ['coaching_as_coach.json', 'coaching_as_athlete.json']) {
+		const spec = buildBackupSpecs(TEST_UID).find((s) => s.entry === entry);
+		assertExists(spec);
+		const cols = spec.select.split(',');
+		assertEquals(cols.includes('ai_assist_consent_version'), true);
+		assertEquals(cols.includes('ai_assist_consent_at'), true);
+		assertEquals(cols.includes('invite_token'), false);
+	}
+});
+
+Deno.test('a shared AI Coach answer exports as one, with its link back', () => {
+	// 20271210001215: kind says the message is a coach_share card, and
+	// coach_message_id names the sender's own Coach answer it quoted.
+	const sent = buildBackupSpecs(TEST_UID).find((s) => s.entry === 'direct_messages_sent.json');
+	assertExists(sent);
+	const cols = sent.select.split(',');
+	assertEquals(cols.includes('kind'), true);
+	assertEquals(cols.includes('coach_message_id'), true);
+});
+
 Deno.test('coach_athletes exported both ways without the invite_token credential', () => {
 	// audit/data-export-completeness (2026-05-30) Critical. The
 	// subject's coaching links (as coach and as athlete) are their own

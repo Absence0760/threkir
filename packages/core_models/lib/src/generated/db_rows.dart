@@ -1091,6 +1091,8 @@ class CoachAthleteRow {
   static const String colCreatedAt = 'created_at';
   static const String colAcceptedAt = 'accepted_at';
   static const String colEndedAt = 'ended_at';
+  static const String colAiAssistConsentVersion = 'ai_assist_consent_version';
+  static const String colAiAssistConsentAt = 'ai_assist_consent_at';
 
   final String id;
   final String coachId;
@@ -1101,6 +1103,8 @@ class CoachAthleteRow {
   final DateTime createdAt;
   final DateTime? acceptedAt;
   final DateTime? endedAt;
+  final int? aiAssistConsentVersion;
+  final DateTime? aiAssistConsentAt;
 
   const CoachAthleteRow({
     required this.id,
@@ -1112,6 +1116,8 @@ class CoachAthleteRow {
     required this.createdAt,
     this.acceptedAt,
     this.endedAt,
+    this.aiAssistConsentVersion,
+    this.aiAssistConsentAt,
   });
 
   factory CoachAthleteRow.fromJson(Map<String, dynamic> json) => CoachAthleteRow(
@@ -1124,6 +1130,8 @@ class CoachAthleteRow {
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     acceptedAt: parseIsoStrictValue(json['accepted_at']),
     endedAt: parseIsoStrictValue(json['ended_at']),
+    aiAssistConsentVersion: (json['ai_assist_consent_version'] as num?)?.toInt(),
+    aiAssistConsentAt: parseIsoStrictValue(json['ai_assist_consent_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1136,6 +1144,8 @@ class CoachAthleteRow {
     colCreatedAt: createdAt.toIso8601String(),
     colAcceptedAt: acceptedAt?.toIso8601String(),
     colEndedAt: endedAt?.toIso8601String(),
+    colAiAssistConsentVersion: aiAssistConsentVersion,
+    colAiAssistConsentAt: aiAssistConsentAt?.toIso8601String(),
   };
 
   CoachAthleteRow copyWith({
@@ -1148,6 +1158,8 @@ class CoachAthleteRow {
     DateTime? createdAt,
     DateTime? acceptedAt,
     DateTime? endedAt,
+    int? aiAssistConsentVersion,
+    DateTime? aiAssistConsentAt,
   }) => CoachAthleteRow(
     id: id ?? this.id,
     coachId: coachId ?? this.coachId,
@@ -1158,6 +1170,8 @@ class CoachAthleteRow {
     createdAt: createdAt ?? this.createdAt,
     acceptedAt: acceptedAt ?? this.acceptedAt,
     endedAt: endedAt ?? this.endedAt,
+    aiAssistConsentVersion: aiAssistConsentVersion ?? this.aiAssistConsentVersion,
+    aiAssistConsentAt: aiAssistConsentAt ?? this.aiAssistConsentAt,
   );
 }
 
@@ -1344,6 +1358,8 @@ class DirectMessageRow {
   static const String colSeenAt = 'seen_at';
   static const String colEditedAt = 'edited_at';
   static const String colOriginalBody = 'original_body';
+  static const String colKind = 'kind';
+  static const String colCoachMessageId = 'coach_message_id';
 
   final String id;
   final String senderId;
@@ -1358,6 +1374,8 @@ class DirectMessageRow {
   final DateTime? seenAt;
   final DateTime? editedAt;
   final String? originalBody;
+  final String kind;
+  final String? coachMessageId;
 
   const DirectMessageRow({
     required this.id,
@@ -1373,6 +1391,8 @@ class DirectMessageRow {
     this.seenAt,
     this.editedAt,
     this.originalBody,
+    required this.kind,
+    this.coachMessageId,
   });
 
   factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
@@ -1389,6 +1409,8 @@ class DirectMessageRow {
     seenAt: parseIsoStrictValue(json['seen_at']),
     editedAt: parseIsoStrictValue(json['edited_at']),
     originalBody: json['original_body'] as String?,
+    kind: json['kind'] as String,
+    coachMessageId: json['coach_message_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1405,6 +1427,8 @@ class DirectMessageRow {
     colSeenAt: seenAt?.toIso8601String(),
     colEditedAt: editedAt?.toIso8601String(),
     colOriginalBody: originalBody,
+    colKind: kind,
+    colCoachMessageId: coachMessageId,
   };
 
   DirectMessageRow copyWith({
@@ -1421,6 +1445,8 @@ class DirectMessageRow {
     DateTime? seenAt,
     DateTime? editedAt,
     String? originalBody,
+    String? kind,
+    String? coachMessageId,
   }) => DirectMessageRow(
     id: id ?? this.id,
     senderId: senderId ?? this.senderId,
@@ -1435,6 +1461,8 @@ class DirectMessageRow {
     seenAt: seenAt ?? this.seenAt,
     editedAt: editedAt ?? this.editedAt,
     originalBody: originalBody ?? this.originalBody,
+    kind: kind ?? this.kind,
+    coachMessageId: coachMessageId ?? this.coachMessageId,
   );
 }
 

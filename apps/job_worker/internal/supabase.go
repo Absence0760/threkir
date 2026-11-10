@@ -2440,7 +2440,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "direct_messages_sent.json", table: schema.TableDirectMessages,
 			filter: "sender_id=eq." + uid,
-			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body",
+			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id",
 		},
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,
@@ -2462,12 +2462,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		{
 			name: "coaching_as_coach.json", table: schema.TableCoachAthletes,
 			filter: "coach_id=eq." + uid,
-			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at",
+			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at",
 		},
 		{
 			name: "coaching_as_athlete.json", table: schema.TableCoachAthletes,
 			filter: "athlete_id=eq." + uid,
-			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at",
+			sel:    "id,coach_id,athlete_id,status,note,created_at,accepted_at,ended_at,ai_assist_consent_version,ai_assist_consent_at",
 		},
 		// plan_change_requests — changes to a coach-assigned plan the subject
 		// sent as athlete or decided as coach (issue #1215 Phase 2).

@@ -92,6 +92,7 @@ class _FakeApi extends ApiClient {
     if (gate != null) await gate.future;
     if (sendError != null) throw sendError!;
     return DirectMessageRow(
+      kind: 'text',
       id: 'm-${sent.length}',
       conversationId: 'c-$recipientId',
       senderId: _me,

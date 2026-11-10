@@ -795,6 +795,8 @@ export type Database = {
       coach_athletes: {
         Row: {
           accepted_at: string | null
+          ai_assist_consent_at: string | null
+          ai_assist_consent_version: number | null
           athlete_id: string | null
           coach_id: string
           created_at: string
@@ -806,6 +808,8 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          ai_assist_consent_at?: string | null
+          ai_assist_consent_version?: number | null
           athlete_id?: string | null
           coach_id: string
           created_at?: string
@@ -817,6 +821,8 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          ai_assist_consent_at?: string | null
+          ai_assist_consent_version?: number | null
           athlete_id?: string | null
           coach_id?: string
           created_at?: string
@@ -1141,11 +1147,13 @@ export type Database = {
       direct_messages: {
         Row: {
           body: string | null
+          coach_message_id: string | null
           conversation_id: string
           created_at: string
           deleted_partner_key: string | null
           edited_at: string | null
           id: string
+          kind: string
           original_body: string | null
           read_at: string | null
           recipient_id: string | null
@@ -1156,11 +1164,13 @@ export type Database = {
         }
         Insert: {
           body?: string | null
+          coach_message_id?: string | null
           conversation_id: string
           created_at?: string
           deleted_partner_key?: string | null
           edited_at?: string | null
           id?: string
+          kind?: string
           original_body?: string | null
           read_at?: string | null
           recipient_id?: string | null
@@ -1171,11 +1181,13 @@ export type Database = {
         }
         Update: {
           body?: string | null
+          coach_message_id?: string | null
           conversation_id?: string
           created_at?: string
           deleted_partner_key?: string | null
           edited_at?: string | null
           id?: string
+          kind?: string
           original_body?: string | null
           read_at?: string | null
           recipient_id?: string | null
@@ -1185,6 +1197,13 @@ export type Database = {
           unsent_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "direct_messages_coach_message_id_fkey"
+            columns: ["coach_message_id"]
+            isOneToOne: false
+            referencedRelation: "coach_messages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "direct_messages_conversation_id_fkey"
             columns: ["conversation_id"]
@@ -6754,6 +6773,7 @@ export type Database = {
           created_at: string | null
           exercise_count: number | null
           id: string | null
+          is_official: boolean | null
           is_public_template: boolean | null
           notes: string | null
           periodisation: string | null
@@ -6761,10 +6781,11 @@ export type Database = {
         }
         Insert: {
           author_id?: string | null
-          club_id?: string | null
+          club_id?: never
           created_at?: string | null
           exercise_count?: number | null
           id?: string | null
+          is_official?: never
           is_public_template?: boolean | null
           notes?: string | null
           periodisation?: string | null
@@ -6772,31 +6793,17 @@ export type Database = {
         }
         Update: {
           author_id?: string | null
-          club_id?: string | null
+          club_id?: never
           created_at?: string | null
           exercise_count?: number | null
           id?: string | null
+          is_official?: never
           is_public_template?: boolean | null
           notes?: string | null
           periodisation?: string | null
           title?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "gym_routines_club_id_fkey"
-            columns: ["club_id"]
-            isOneToOne: false
-            referencedRelation: "clubs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gym_routines_club_id_fkey"
-            columns: ["club_id"]
-            isOneToOne: false
-            referencedRelation: "public_race_listings"
-            referencedColumns: ["organiser_club_id"]
-          },
-        ]
+        Relationships: []
       }
       public_gym_sets: {
         Row: {
@@ -7693,6 +7700,7 @@ export type Database = {
           slug: string
         }[]
       }
+      coach_assist_consent_current_version: { Args: never; Returns: number }
       coach_roster_summary: {
         Args: never
         Returns: {
@@ -7712,6 +7720,7 @@ export type Database = {
         }[]
       }
       coach_run_map_enabled: { Args: never; Returns: boolean }
+      coach_share_enabled: { Args: never; Returns: boolean }
       confirm_age_and_terms: {
         Args: { p_preferred_unit?: string }
         Returns: undefined
@@ -7837,6 +7846,7 @@ export type Database = {
           last_at: string
           last_body: string
           last_from_me: boolean
+          last_kind: string
           last_unsent: boolean
           marked_unread: boolean
           muted: boolean
@@ -7853,11 +7863,13 @@ export type Database = {
         Args: { p_body: string; p_message_id: string }
         Returns: {
           body: string | null
+          coach_message_id: string | null
           conversation_id: string
           created_at: string
           deleted_partner_key: string | null
           edited_at: string | null
           id: string
+          kind: string
           original_body: string | null
           read_at: string | null
           recipient_id: string | null
@@ -9352,6 +9364,28 @@ export type Database = {
         Args: { p_actor: string; p_club_id: string; p_strava_club_id: number }
         Returns: string
       }
+      set_coach_ai_assist_consent: {
+        Args: { p_link_id: string; p_version: number }
+        Returns: {
+          accepted_at: string | null
+          ai_assist_consent_at: string | null
+          ai_assist_consent_version: number | null
+          athlete_id: string | null
+          coach_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          invite_token: string
+          note: string | null
+          status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "coach_athletes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       set_conversation_archived: {
         Args: { p_archived: boolean; p_conversation_id: string }
         Returns: undefined
@@ -9444,6 +9478,36 @@ export type Database = {
         Returns: boolean
       }
       share_attribution_enabled: { Args: never; Returns: boolean }
+      share_coach_message: {
+        Args: {
+          p_coach_id: string
+          p_coach_message_id: string
+          p_paragraphs: number[]
+        }
+        Returns: {
+          body: string | null
+          coach_message_id: string | null
+          conversation_id: string
+          created_at: string
+          deleted_partner_key: string | null
+          edited_at: string | null
+          id: string
+          kind: string
+          original_body: string | null
+          read_at: string | null
+          recipient_id: string | null
+          route_id: string | null
+          seen_at: string | null
+          sender_id: string
+          unsent_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "direct_messages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       shift_training_plan: {
         Args: { p_days: number; p_plan_id: string; p_shift_following?: boolean }
         Returns: undefined
@@ -9512,11 +9576,13 @@ export type Database = {
         Args: { p_message_id: string }
         Returns: {
           body: string | null
+          coach_message_id: string | null
           conversation_id: string
           created_at: string
           deleted_partner_key: string | null
           edited_at: string | null
           id: string
+          kind: string
           original_body: string | null
           read_at: string | null
           recipient_id: string | null

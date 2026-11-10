@@ -1,6 +1,8 @@
 // Turns a park's built `manifest.json` and course GeoJSON into the payload
 // `private.load_park_catalogue` takes (migration 20271126002425, decisions
-// § 2425; laps and the credit's own column, 20271130002438, § 2438), and that payload into the one SQL statement the operator runs.
+// § 2425; laps and the credit's own column, 20271130002438, § 2438; the route
+// guide, 20271212001344, § 2448), and that payload into the one SQL statement
+// the operator runs.
 // Pure: the CLI in ../load.mjs does the file reads.
 //
 // Everything the database would refuse is refused here first, with the course
@@ -8,6 +10,7 @@
 // through a production transaction.
 
 import { RACE_DISTANCES_M, haversineM, pathLengthM } from './course_geometry.mjs';
+import { routeGuideRefusal } from './route_guide.mjs';
 
 /** @typedef {import('./course_geometry.mjs').LatLng} LatLng */
 
@@ -65,6 +68,7 @@ const RACE_DISTANCE_WORDS = Object.freeze({
  *   distance_m: number, elevation_m: number | null, official_distance_m: number | null,
  *   description: string | null, laps: number | null, checkpoints: { lat: number, lng: number }[], waypoints: LatLng[],
  *   start_gate: PayloadGate | null, end_gate: PayloadGate | null,
+ *   route_guide: object | null, route_guide_checked_at: string | null,
  * }} PayloadCourse
  * @typedef {{ lat: number, lng: number, bearing_deg: number, half_width_m: number }} PayloadGate
  * @typedef {{
@@ -161,6 +165,15 @@ function payloadCourse(entry, line, shape) {
 		`${slug}: laps must be a whole number from 1 to ${MAX_LAPS}`,
 	);
 
+	const guide = entry.route_guide ?? null;
+	const guideRefusal = guide === null ? null : routeGuideRefusal(guide);
+	check(guideRefusal === null, `${slug}: route_guide is not valid: ${guideRefusal}; rebuild it`);
+	const guideCheckedAt = entry.route_guide_checked_at ?? null;
+	check(
+		guideCheckedAt === null || (typeof guideCheckedAt === 'string' && DATE.test(guideCheckedAt) && guide !== null),
+		`${slug}: route_guide_checked_at must be YYYY-MM-DD, and only beside a route_guide`,
+	);
+
 	const checkpoints = entry.checkpoints ?? [];
 	check(Array.isArray(checkpoints) && checkpoints.length <= MAX_CHECKPOINTS, `${slug}: at most ${MAX_CHECKPOINTS} checkpoints`);
 	checkpoints.forEach((/** @type {any} */ c, /** @type {number} */ i) =>
@@ -198,6 +211,8 @@ function payloadCourse(entry, line, shape) {
 		waypoints: line,
 		start_gate: curatedGate(entry.start_gate, line[0], `${slug}: start_gate`),
 		end_gate: curatedGate(entry.end_gate, line[line.length - 1], `${slug}: end_gate`),
+		route_guide: guide,
+		route_guide_checked_at: guideCheckedAt,
 	};
 }
 

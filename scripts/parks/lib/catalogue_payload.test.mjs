@@ -147,8 +147,45 @@ test('a valid manifest maps every field the load writes', () => {
 		waypoints: SQUARE.map(([lng, lat, ele]) => ({ lat, lng, ele })),
 		start_gate: null,
 		end_gate: null,
+		route_guide: null,
+		route_guide_checked_at: null,
 	});
 	assert.equal(payload.attribution, '© OpenStreetMap contributors (ODbL)');
+});
+
+const GUIDE = {
+	version: 1,
+	lang: 'en',
+	steps: [
+		{ kind: 'start', at_m: 0, name: 'Square Trail' },
+		{ kind: 'direction', at_m: 0, rotation: 'clockwise' },
+		{ kind: 'finish', at_m: SQUARE_M },
+	],
+};
+
+test('a route guide and its ground-check date travel to the load as they are', () => {
+	const payload = cataloguePayload(
+		manifest({ courses: [{ ...manifest().courses[0], route_guide: GUIDE, route_guide_checked_at: '2026-12-01' }] }),
+		squareOnly,
+	);
+	assert.deepEqual(payload.courses[0].route_guide, GUIDE);
+	assert.equal(payload.courses[0].route_guide_checked_at, '2026-12-01');
+});
+
+test('every Pocahontas course carries its guide, none yet checked on the ground', () => {
+	for (const c of readPayload(POCAHONTAS).courses) {
+		assert.equal(/** @type {any} */ (c.route_guide)?.steps?.[0]?.kind, 'start', c.slug);
+		assert.equal(c.route_guide_checked_at, null, c.slug);
+	}
+});
+
+test('a route guide the database would refuse is refused first', () => {
+	const withGuide = (/** @type {any} */ guide, checked = null) =>
+		() => cataloguePayload(manifest({ courses: [{ ...manifest().courses[0], route_guide: guide, route_guide_checked_at: checked }] }), squareOnly);
+	assert.throws(withGuide({ ...GUIDE, version: 2 }), /square: route_guide is not valid: version must be 1/);
+	assert.throws(withGuide({ ...GUIDE, steps: GUIDE.steps.slice(0, 2) }), /close with its one finish step/);
+	assert.throws(withGuide(null, '2026-12-01'), /route_guide_checked_at must be YYYY-MM-DD, and only beside a route_guide/);
+	assert.throws(withGuide(GUIDE, '1 Dec'), /route_guide_checked_at/);
 });
 
 test('the description is the course\'s own text: the credit travels only as the payload attribution', () => {

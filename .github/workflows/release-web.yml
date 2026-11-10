@@ -208,6 +208,14 @@ jobs:
           PUBLIC_APP_RELEASE=${PUBLIC_APP_RELEASE}
           EOF
 
+      # Production config as code (issue #1350, decisions § 2430): a PUBLIC_*
+      # flag declared in apps/backend/ops/prod_config.json's web_env replaces
+      # its repo secret in apps/web/.env, so a reviewed PR flips it and no
+      # secret is edited. An undeclared flag keeps the secret. The step fails
+      # when the file fails its guard.
+      - name: Apply web flags from prod_config.json
+        run: node scripts/prod_sync/web_env.mjs apps/web/.env
+
       - run: npm run check --workspace=apps/web
 
       - name: Guard production env (no placeholder / empty secrets)

@@ -11,16 +11,24 @@
 //
 // To add a concern, add a stage: a function returning { id, title, sql, note? }
 // whose SQL leaves exactly one result set (an `action` column, when it has
-// one, is counted in the summary).
+// one, is counted in the summary), or { id, title, run, note? } for one that
+// needs several transactions or the Supabase CLI (lib/stages.mjs).
+//
+// After the park catalogue come the prod config stages (issue #1350,
+// decisions § 2430): apps/backend/ops/prod_config.json's feature flags, Edge
+// Function env toggles, web flags and cron URL entries, then the one-off
+// tasks in apps/backend/ops/tasks/. The config is guarded before any stage
+// runs.
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 
 import { parkCatalogueStage } from '../parks/sync.mjs';
+import { prodConfigStages } from './config.mjs';
 import { runStages } from './lib/stages.mjs';
 
-/** @type {(() => import('./lib/stages.mjs').Stage)[]} */
-export const STAGES = [parkCatalogueStage];
+/** @type {(() => import('./lib/stages.mjs').Stage | import('./lib/stages.mjs').Stage[])[]} */
+export const STAGES = [parkCatalogueStage, prodConfigStages];
 
 function main() {
 	const args = process.argv.slice(2);
@@ -53,14 +61,20 @@ function main() {
 		return { ok: r.status === 0, stdout: r.stdout ?? '', stderr: r.stderr || (r.error ? String(r.error) : '') };
 	};
 
+	/** @param {string} command @param {string[]} cmdArgs */
+	const exec = (command, cmdArgs) => {
+		const r = spawnSync(command, cmdArgs, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+		return { ok: r.status === 0, stdout: r.stdout ?? '', stderr: r.stderr || (r.error ? String(r.error) : '') };
+	};
+
 	let stages;
 	try {
-		stages = STAGES.map((build) => build());
+		stages = STAGES.flatMap((build) => build());
 	} catch (err) {
 		console.error(`::error::a sync stage could not be built: ${err instanceof Error ? err.message : String(err)}`);
 		process.exit(1);
 	}
-	if (!runStages(stages, { dryRun, runSql, write })) {
+	if (!runStages(stages, { dryRun, runSql, write, exec, env: process.env })) {
 		console.error('::error::a production sync stage failed and was rolled back; the error is in the step summary above.');
 		process.exit(1);
 	}

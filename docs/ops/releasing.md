@@ -184,20 +184,32 @@ paragraph generalised.
 **What a backend release does last.** After the migrations and the Edge
 Functions, the "Sync production state" step (`apps/backend/scripts/sync-production-state.sh`, stages in
 `scripts/prod_sync/run.mjs`, [decisions § 2429](../architecture/decisions.md))
-runs over the migration step's connection, with no secret of its own. Its one
-stage today loads every committed park catalogue through
+runs over the migration step's connection, with no secret of its own. Its
+first stage loads every committed park catalogue through
 `private.load_park_catalogue` and writes a created / updated / unchanged /
 closed row per course to the job's step summary; read it on the release run.
-An unchanged catalogue writes nothing. It runs last so a sync failure can
+An unchanged catalogue writes nothing. The rest apply
+[`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md)
+([decisions § 2430](../architecture/decisions.md)): feature flags, allow-listed
+Edge Function toggles (`supabase secrets set`, compared by digest), cron URL
+entries in Vault (each newly armed one invoked once and required to answer
+2xx), and the one-off tasks in `apps/backend/ops/tasks/`, each run once
+against the `private.ops_task_runs` ledger. The file's `web_env` flags are
+applied by the next `web@*` release instead, when `release-web.yml` writes
+`apps/web/.env`. An entry absent from the file is left untouched, so a release
+with nothing declared changes nothing. The config is guarded before any stage
+runs, and the cron and Edge Function stages commit as they go, so a failure
+there says what was already applied. It runs last so a sync failure can
 never leave migrations applied and functions undeployed: each stage is one
 transaction, and a failed stage rolls back and fails the job loudly, with
 the schema and functions already live; fix the cause and re-run the sync
 with a dispatch. To preview it without releasing, run **Release Backend** by hand
 (Actions, Run workflow): that runs only the sync, behind the `production`
 approval, with `dry_run` on by default (every stage rolled back). A dispatch
-with `dry_run` off commits, and is refused anywhere but `main`. More
-production state (feature flags, Vault cron URLs, one-off tasks, issue #1350)
-goes in as further stages of the same runner.
+with `dry_run` off commits, and is refused anywhere but `main`; it is how a
+merged `prod_config.json` change goes live without cutting a release. A dry
+run never sets a function secret or sends a cron request; it runs pending ops
+tasks and rolls them back, so their results preview in the summary.
 
 Promoting Android + Wear from the Internal track to Beta or Production
 is done manually in the Play Console after you've smoke-tested the

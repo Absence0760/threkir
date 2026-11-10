@@ -53,7 +53,7 @@ Each status change notifies the club's owner and active admins (`club_verificati
 ### Keeping the badge honest
 
 - **Lock.** Renaming a verified club, changing its slug, or moving its website to another domain drops the badge until it is reviewed again (`clubs_verification_lock`). The owner is warned in Edit club.
-- **Re-check.** Hourly, `club-verification-recheck` re-runs the DNS and file checks for clubs approved on them, each about once a day. Three failures in a row drop the badge and mark the request lapsed (`proof_missing`), which notifies the club; the owner can request again. Clubs proven by email or manual review are not re-checked. Arming the schedule is an operator step in [deployment.md](../ops/deployment.md).
+- **Re-check.** Hourly, `club-verification-recheck` re-runs the DNS and file checks for clubs approved on them, each about once a day. Three failures in a row drop the badge and mark the request lapsed (`proof_missing`), which notifies the club; the owner can request again. Clubs proven by email or manual review are not re-checked. Arming the schedule is one line in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) (`"club_verification_recheck"` under `cron_urls`), which the next backend release applies and verifies; see [deployment.md](../ops/deployment.md).
 
 ### Audit and data
 

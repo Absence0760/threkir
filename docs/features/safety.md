@@ -635,7 +635,8 @@ contacts only**.
    `/live/[id]` notice and closed-link state in all seven locales, the
    overdue / off-route email and SMS now carrying a personal link) and the
    default-on posture for the runner.
-3. Only then: `insert into private.feature_flags (name, enabled) values
-   ('safety_audience', true)` in prod. Turning it off again is the rollback;
+3. Only then: declare `"safety_audience": { "enabled": true, "signoff": "<link>" }`
+   under `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md)
+   in a PR; the next backend release applies it. Turning it off again is the rollback;
    the default reverts for everyone who never touched the switch.
 

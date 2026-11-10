@@ -4,12 +4,29 @@
 // rows become a table in the job's step summary. Pure: ../run.mjs owns psql
 // and the files.
 //
-// Adding a concern (issue #1350's feature flags, cron URLs, one-off tasks) is
-// adding a stage to STAGES in ../run.mjs; nothing here changes.
+// Adding a concern is adding a stage to STAGES in ../run.mjs. A stage is
+// either one SQL body (`sql`), or a `run(ctx)` for one that needs more than
+// one transaction or the Supabase CLI (issue #1350's cron URLs, Edge Function
+// env and one-off tasks, decisions § 2430). A `run` stage reports a table and,
+// when it failed after doing part of its work, why.
 
 /**
- * @typedef {{ id: string, title: string, sql: string, note?: string }} Stage
  * @typedef {{ header: string[], rows: string[][] }} Table
+ * @typedef {{ ok: boolean, stdout: string, stderr: string }} CommandResult
+ * @typedef {{
+ *   dryRun: boolean,
+ *   runSql: (script: string) => CommandResult,
+ *   exec: (command: string, args: string[]) => CommandResult,
+ *   env: Record<string, string | undefined>,
+ * }} StageContext
+ * @typedef {{ table: Table, failed?: string }} StageResult
+ * @typedef {{
+ *   id: string,
+ *   title: string,
+ *   note?: string,
+ *   sql?: string,
+ *   run?: (ctx: StageContext) => StageResult,
+ * }} Stage
  */
 
 /** Each stage's transaction waits this long for a lock before it fails. */
@@ -143,28 +160,52 @@ export function stageSummary(stage, table, { dryRun }) {
  * The step-summary section for a stage that failed. The error is psql's
  * stderr, which names no credential: the connection string never reaches it.
  *
+ * A `run` stage commits per transaction, so its failure says only "failed"
+ * and the table above it says what was done.
+ *
  * @param {Stage} stage
  * @param {string} error
  */
 export function failureSummary(stage, error) {
-	return `### ${stage.title}: failed, rolled back\n\n\`\`\`\n${error.trim().slice(0, 4000)}\n\`\`\`\n\n`;
+	return `### ${stage.title}: ${stage.run ? 'failed' : 'failed, rolled back'}\n\n\`\`\`\n${error.trim().slice(0, 4000)}\n\`\`\`\n\n`;
 }
 
+/** @type {StageContext['exec']} */
+const noExec = (command) => ({ ok: false, stdout: '', stderr: `${command} is not available to this run` });
+
 /**
- * Runs each stage through `runSql` in order and stops at the first failure.
+ * Runs each stage in order and stops at the first failure.
  *
  * @param {Stage[]} stages
  * @param {{
  *   dryRun: boolean,
- *   runSql: (script: string) => { ok: boolean, stdout: string, stderr: string },
+ *   runSql: StageContext['runSql'],
  *   write: (markdown: string) => void,
+ *   exec?: StageContext['exec'],
+ *   env?: StageContext['env'],
  * }} opts
  * @returns {boolean} whether every stage succeeded
  */
-export function runStages(stages, { dryRun, runSql, write }) {
+export function runStages(stages, { dryRun, runSql, write, exec = noExec, env = {} }) {
 	write(`## Sync production state${dryRun ? ' (dry run)' : ''}\n\n`);
 	for (const stage of stages) {
-		const result = runSql(stageScript(stage.sql, { dryRun }));
+		if (stage.run) {
+			/** @type {StageResult} */
+			let result;
+			try {
+				result = stage.run({ dryRun, runSql, exec, env });
+			} catch (err) {
+				write(failureSummary(stage, err instanceof Error ? err.message : String(err)));
+				return false;
+			}
+			write(stageSummary(stage, result.table, { dryRun }));
+			if (result.failed !== undefined) {
+				write(failureSummary(stage, result.failed));
+				return false;
+			}
+			continue;
+		}
+		const result = runSql(stageScript(stage.sql ?? '', { dryRun }));
 		if (!result.ok) {
 			write(failureSummary(stage, result.stderr));
 			return false;

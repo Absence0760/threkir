@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
 import '../lib/elevation_profile.dart';
-import '../lib/screens/run_detail_screen.dart';
+import '../lib/widgets/elevation_chart.dart';
 
 /// The run-detail elevation chart's gutter labels, swept over the data
 /// ranges a real track can produce: none at all, sub-metre GPS jitter, a

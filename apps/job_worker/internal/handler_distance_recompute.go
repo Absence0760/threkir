@@ -234,22 +234,27 @@ func gapStepTopUpM(gapM, stepFilledM float64) float64 {
 // a centimetre over is not a figure the recorder produced.
 const stepOverChordSlackM = 0.01
 
-// The three ways gapStepCreditM can credit the gaps, logged with the
-// recompute.
+// The ways gapStepCreditM can credit the gaps, logged with the recompute.
 const (
 	gapRuleStepOverChord = "step_over_chord"
 	gapRuleRunTotal      = "run_total"
 	gapRuleRejected      = "run_total_bad_step_over_chord"
+	// The key was usable but the run-total rule credited more.
+	gapRuleRunTotalOverKey = "run_total_over_step_over_chord"
 )
 
 // gapStepCreditM is what the recompute adds to a replayed pass for the
 // pedometer's share of the run's GPS gaps, and which rule gave it. A watch
 // from spec v1.7 on saves distance_step_over_chord_m, the steps' credit over
-// each gap's chord summed, which is exactly what the stepless replay lacks,
-// so it is added as it stands. It is read only when it is a finite number
-// from 0 to distance_step_filled_m (stepOverChordSlackM over), since it is a
-// part of those metres; anything else, and a run saved before the key, falls
-// back to the run-total rule, gapStepTopUpM.
+// each gap's chord summed, which is what the stepless replay lacks. It is read
+// only when it is a finite number from 0 to distance_step_filled_m
+// (stepOverChordSlackM over), since it is a part of those metres; anything
+// else, and a run saved before the key, falls back to the run-total rule,
+// gapStepTopUpM. A usable key is credited as the larger of the two: neither
+// adds more than the steps credited beyond the replay's chords, and the key
+// holds back the steps a pause or source switch committed across a gap the
+// replay runs on into the next segment (the track has no segment marks),
+// where the run-total rule can be the exact one.
 func gapStepCreditM(meta map[string]json.RawMessage, gapM float64) (float64, string) {
 	stepFilledM := metaStepFilledM(meta)
 	raw, present := meta[schema.MetaDistanceStepOverChordM]
@@ -260,7 +265,11 @@ func gapStepCreditM(meta map[string]json.RawMessage, gapM float64) (float64, str
 	if json.Unmarshal(raw, &v) != nil || math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > stepFilledM+stepOverChordSlackM {
 		return gapStepTopUpM(gapM, stepFilledM), gapRuleRejected
 	}
-	return math.Min(v, stepFilledM), gapRuleStepOverChord
+	runTotal := gapStepTopUpM(gapM, stepFilledM)
+	if v = math.Min(v, stepFilledM); v >= runTotal {
+		return v, gapRuleStepOverChord
+	}
+	return runTotal, gapRuleRunTotalOverKey
 }
 
 func metaString(meta map[string]json.RawMessage, key string) string {

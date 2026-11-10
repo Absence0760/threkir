@@ -1002,7 +1002,7 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 
 // distance_step_over_chord_m is a part of distance_step_filled_m, so it is
 // read only as a finite number from 0 up to it; anything else, and its
-// absence, keeps the run-total rule.
+// absence, keeps the run-total rule, which also wins when it credits more.
 func TestGapStepCreditM(t *testing.T) {
 	const gapM = 37.52
 	for _, c := range []struct {
@@ -1011,7 +1011,7 @@ func TestGapStepCreditM(t *testing.T) {
 		wantRule string
 	}{
 		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352}`, 352, gapRuleStepOverChord},
-		{`{"distance_step_filled_m":57.6,"distance_step_over_chord_m":0}`, 0, gapRuleStepOverChord},
+		{`{"distance_step_filled_m":30,"distance_step_over_chord_m":0}`, 0, gapRuleStepOverChord},
 		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":386.005}`, 386, gapRuleStepOverChord},
 		{`{"distance_step_filled_m":386}`, 348.48, gapRuleRunTotal},
 		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":null}`, 348.48, gapRuleRunTotal},
@@ -1029,6 +1029,15 @@ func TestGapStepCreditM(t *testing.T) {
 		if math.Abs(got-c.want) > 1e-9 || rule != c.wantRule {
 			t.Errorf("%s: %v (%s), want %v (%s)", c.meta, got, rule, c.want, c.wantRule)
 		}
+	}
+	// A Wear OS handover inside a gap (reference: fixes to 20 s, steps to
+	// 32.5 s, fused fixes from 33 s; the recorder credits 238.00 m): the 50 m
+	// of steps the closing segment committed are held out of the key, and the
+	// replay's one gap across the boundary has a 47.52 m chord, so the run
+	// total, 2.48 m, is the exact credit and wins over the key's 0.
+	meta, _ := decodeRunMetadata(json.RawMessage(`{"distance_step_filled_m":50,"distance_step_over_chord_m":0}`))
+	if got, rule := gapStepCreditM(meta, 47.52); math.Abs(got-2.48) > 1e-9 || rule != gapRuleRunTotalOverKey {
+		t.Errorf("handover in a gap: %v (%s), want 2.48 (%s)", got, rule, gapRuleRunTotalOverKey)
 	}
 }
 

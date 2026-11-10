@@ -13,7 +13,9 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
-| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the index is the **Parks** tab on the run-surface strip, after Segments; decisions § 2431) | Shipped |
+| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the full index and the deep-link target; reached from **Run any time** on `/races`, the `/segments` header link and share pages, with a back-link to Races & courses and no run-surface strip of its own; decisions § 2436, superseding the Parks tab of § 2431) | Shipped |
+| Web **Run any time** on `/races` (Races & courses, issue #1352): up to eight courses with distance, shape and this season's record, nearest first once the page has a place or the runner's location, otherwise region, park, distance, name; closed courses last (`orderAnyTimeCourses` in `lib/parks/any_time_courses.ts`). Its own loading, error and `EmptyState`, independent of the race calendar above it | Shipped |
+| `park_course_records()`: this season's record on every course in one call, a security-invoker wrapper over `global_segment_leaderboard` (migration `20271129002436`) | Shipped |
 | Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the **Parks** peer on the Fitness hub's Runs strip, and the segment catalogue's app bar) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
 | Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. See *Loading courses* |
@@ -123,6 +125,30 @@ Every run is scored on the server (decisions § 2392):
   `parks`, so no client carries a timezone database.
 - Both boards need an account (42501 for anon). Signed-out readers see the
   course, its safety notice and attribution, and a sign-in prompt.
+- **This season's record on every course at once:** `park_course_records()`,
+  for the Run any time list on `/races`. It calls the fastest board per course
+  with `p_limit` 1 and that park's `park_season`, so it applies exactly the
+  board's rules; a course with nothing this season has no row, and the card
+  says no time yet. A failed read leaves the courses listed without records.
+
+## Where courses are surfaced
+
+Owner decision on #1352 (decisions § 2436): park courses live with races,
+because a course is something you go and do, not a stretch you happen to run.
+
+- **Races & courses** (`/races`, the run-surface tab): two sections. *Upcoming
+  races* is the race calendar, unchanged. *Run any time* lists park courses,
+  nearest first once the runner sets a place or uses their location under
+  Filters (the same point the race search uses), otherwise in region, park,
+  distance and name order, closed courses last. Each card shows distance,
+  shape, the park and this season's record, and opens the course page. An
+  "All park courses" link goes to `/parks`. Each section loads and fails on
+  its own.
+- **`/parks`** stays the full index and the deep-link target for share pages
+  and posts, with a back-link to Races & courses and no strip.
+- **`/segments`** keeps its header link to `/parks`.
+- The run-surface strip has no Parks tab (five tabs: Runs · Plans · Races &
+  courses · Routes · Segments, in the mobile order).
 
 ## Wording and safety
 
@@ -359,6 +385,17 @@ These gate going live, not the code:
 
 ## Tests
 
+- Run any time: `apps/web/src/lib/parks/any_time_courses.test.ts` (stable
+  order, nearest first with the distance away, unmeasured courses after
+  measured ones, closed courses last); pgTAP
+  `apps/backend/supabase/tests/park_course_records_test.sql` (this season's
+  fastest visible effort, the park's season, no row for a quiet course, a
+  pulled park hidden, the caller's own private effort, anon refused);
+  Playwright `apps/web/tests-e2e/races/races-and-courses.spec.ts` (the five-tab
+  strip, both sections, a course card with its record and its link, no time
+  yet, each section's error leaving the other standing, the empty state, failed
+  records, nearest first from the granted location, `/parks` from Run any
+  time, Segments and directly).
 - Load: pgTAP `apps/backend/supabase/tests/park_catalogue_load_test.sql`
   (creation, an unchanged re-run, changed geometry in place with efforts
   kept, status untouched, a deleted route recreated, the backfill flag, the

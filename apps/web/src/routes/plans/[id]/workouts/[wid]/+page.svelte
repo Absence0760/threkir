@@ -25,6 +25,7 @@
 	import { formatDateShort } from '#lib/format/time.ts';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -291,16 +292,17 @@
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('workoutDetail.backToPlan')}
 		</a>
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h2>{t('workoutDetail.loadFailedTitle')}</h2>
-			<p class="empty-text">
-				{t('workoutDetail.loadFailedText')}
-			</p>
-			<div class="empty-actions">
+		<EmptyState
+			icon="error"
+			tone="danger"
+			title={t('workoutDetail.loadFailedTitle')}
+			text={t('workoutDetail.loadFailedText')}
+			role="alert"
+		>
+			{#snippet actions()}
 				<button type="button" class="btn btn-primary" onclick={load}>{t('workoutDetail.retry')}</button>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else if !workout}
 	<div class="page">
@@ -308,16 +310,11 @@
 			<span class="material-symbols" aria-hidden="true">arrow_back</span>
 			{t('workoutDetail.backToPlan')}
 		</a>
-		<div class="empty-card">
-			<img src="/logo-mark.svg" alt="" width="56" height="56" class="empty-mark" />
-			<h2>{t('workoutDetail.notFoundTitle')}</h2>
-			<p class="empty-text">
-				{t('workoutDetail.notFoundText')}
-			</p>
-			<div class="empty-actions">
+		<EmptyState icon="search_off" title={t('workoutDetail.notFoundTitle')} text={t('workoutDetail.notFoundText')}>
+			{#snippet actions()}
 				<a class="btn btn-primary" href="/plans/{planId}">{t('workoutDetail.returnToPlan')}</a>
-			</div>
-		</div>
+			{/snippet}
+		</EmptyState>
 	</div>
 {:else}
 	<div class="page" data-kind={kindForChrome}>
@@ -976,41 +973,6 @@
 		font-size: 0.95rem;
 	}
 	.muted { color: var(--color-text-tertiary); font-size: 0.88rem; }
-
-	.empty-card {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: var(--space-sm);
-		padding: var(--space-2xl) var(--space-lg);
-		background: var(--color-surface);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-		text-align: center;
-	}
-	.empty-card h2 {
-		margin: 0;
-		font-size: 1.2rem;
-		font-weight: 700;
-	}
-	.empty-mark {
-		display: block;
-		border-radius: var(--radius-md);
-		box-shadow: var(--shadow-sm);
-	}
-	.empty-text {
-		max-width: 36rem;
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
-	}
-	.empty-actions {
-		display: flex;
-		justify-content: center;
-		gap: var(--space-sm);
-		margin-top: var(--space-sm);
-	}
 
 	.back-skel {
 		display: inline-flex;

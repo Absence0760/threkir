@@ -116,7 +116,7 @@ test.describe('/guided/[id] — unknown id is an in-page empty state, not a 404'
 			page.locator('.back-link').first()
 		).toHaveAttribute('href', '/guided');
 		await expect(
-			page.locator('.empty').getByRole('link', { name: /Back to library/i })
+			page.getByTestId('guided-unknown').getByRole('link', { name: /Back to library/i })
 		).toHaveAttribute('href', '/guided');
 	});
 

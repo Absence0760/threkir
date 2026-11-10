@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import {
 		amIAdmin,
 		fetchPlatformFeeMonths,
@@ -103,13 +104,9 @@
 		</header>
 
 		{#if loadError}
-			<div class="card-elevated empty" role="alert" data-testid="earnings-load-error">
-				<p>{loadError}</p>
-			</div>
+			<EmptyState icon="error" tone="danger" title={loadError} role="alert" data-testid="earnings-load-error" />
 		{:else if months.length === 0}
-			<div class="card-elevated empty" data-testid="earnings-empty">
-				<p class="muted">{t('admin.earnings.empty')}</p>
-			</div>
+			<EmptyState icon="payments" title={t('admin.earnings.empty')} data-testid="earnings-empty" />
 		{:else}
 			<section class="card-elevated" aria-labelledby="earnings-totals-heading">
 				<h2 id="earnings-totals-heading">{t('admin.earnings.totalsHeading')}</h2>
@@ -256,8 +253,7 @@
 	.muted {
 		color: var(--color-text-secondary);
 	}
-	.not-authorized,
-	.empty {
+	.not-authorized {
 		padding: var(--space-xl);
 		text-align: center;
 	}

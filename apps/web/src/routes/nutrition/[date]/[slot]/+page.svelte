@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchFoodLogWithError, type FoodEntry } from '#lib/core/data.ts';
 	import { sumMacros, MEAL_SLOTS, type MealSlot } from '#lib/nutrition/nutrition_totals.ts';
@@ -71,7 +72,7 @@
 	</a>
 
 	{#if !validSlot}
-		<p class="empty">{m('nutritionMeal.invalidSlot')}</p>
+		<EmptyState icon="search_off" title={m('nutritionMeal.invalidSlot')} />
 	{:else}
 		<header class="page-header">
 			<p class="kicker">{formatDateShort(date)}</p>

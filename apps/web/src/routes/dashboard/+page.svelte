@@ -64,6 +64,7 @@
 	import { sumMacros } from '#lib/nutrition/nutrition_totals.ts';
 	import NutritionRingsCard from '#lib/components/NutritionRingsCard.svelte';
 	import SkeletonBlock from '#lib/components/SkeletonBlock.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import TrainingLoadChart from '#lib/components/TrainingLoadChart.svelte';
 	import RacePredictorCard from '#lib/components/RacePredictorCard.svelte';
 	import ConsistencyCard from '#lib/components/ConsistencyCard.svelte';
@@ -1803,9 +1804,8 @@
 
 			<!-- Multi-metric goals — local-only. Lives directly under the
 			     stat-grid so the "what am I working toward?" lens sits next
-			     to the "where am I right now?" stats. Empty state is a
-			     proper card (icon + heading + explainer + primary CTA), not
-			     a one-line grey sentence. The legacy `weekly_mileage_goal_m`
+			     to the "where am I right now?" stats. The empty state is the
+			     shared EmptyState card. The legacy `weekly_mileage_goal_m`
 			     setting (still shared with Android via Settings → Preferences)
 			     is surfaced as a synthetic weekly distance goal so it shows
 			     up here without needing a separate card. -->
@@ -1819,19 +1819,20 @@
 					{/if}
 				</header>
 				{#if displayGoals.length === 0}
-					<div class="goals-empty-card">
-						<span class="material-symbols goals-empty-icon" aria-hidden="true">flag</span>
-						<div class="goals-empty-body">
-							<h3>{m('dash.noGoalsSet')}</h3>
-							<p>
-								{m('dash.noGoalsBody')}
-							</p>
-						</div>
-						<button type="button" class="btn btn-primary" onclick={openNewGoal}>
-							<span class="material-symbols">add</span>
-							{m('dash.addGoal')}
-						</button>
-					</div>
+					<EmptyState
+						icon="flag"
+						headingLevel={3}
+						title={m('dash.noGoalsSet')}
+						text={m('dash.noGoalsBody')}
+						data-testid="goals-empty"
+					>
+						{#snippet actions()}
+							<button type="button" class="btn btn-primary" onclick={openNewGoal}>
+								<span class="material-symbols" aria-hidden="true">add</span>
+								{m('dash.addGoal')}
+							</button>
+						{/snippet}
+					</EmptyState>
 				{:else}
 					<div class="goal-grid">
 						{#each displayGoals as g (g.id)}
@@ -3685,48 +3686,6 @@
 		font-size: 0.9rem;
 		color: var(--color-text-tertiary);
 	}
-
-	/* Goals empty state — full card surface to mirror the plan-promo
-	   peer when both are absent. Icon + heading + explainer + primary
-	   CTA, not a one-line grey sentence. */
-	.goals-empty-card {
-		display: flex;
-		align-items: center;
-		gap: var(--space-lg);
-		padding: var(--space-lg) var(--space-xl);
-		background: linear-gradient(
-			135deg,
-			color-mix(in srgb, var(--color-secondary) 10%, var(--color-surface)) 0%,
-			var(--color-surface) 70%
-		);
-		border: 1px dashed color-mix(in srgb, var(--color-secondary) 35%, var(--color-border));
-		border-radius: var(--radius-xl);
-	}
-	.goals-empty-icon {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: 2.75rem;
-		height: 2.75rem;
-		border-radius: 50%;
-		background: color-mix(in srgb, var(--color-secondary) 16%, transparent);
-		color: var(--color-secondary-text);
-		font-size: 1.5rem;
-		flex-shrink: 0;
-	}
-	.goals-empty-body { flex: 1; min-width: 0; }
-	.goals-empty-body h3 {
-		margin: 0 0 var(--space-2xs);
-		font-size: 1.1rem;
-		font-weight: 700;
-		color: var(--color-text);
-	}
-	.goals-empty-body p {
-		margin: 0;
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
-	}
-	.goals-empty-card .btn :global(.material-symbols) { font-size: 1.05rem; }
 	.goal-grid {
 		display: grid;
 		/* auto-fit: one goal under auto-fill sat in a 24rem track with two
@@ -4366,11 +4325,6 @@
 		   width, so on a phone the ellipsis never engages — the box grows
 		   and takes the page with it. Below this width the name wraps. */
 		.plan-hero-name { font-size: 1.25rem; white-space: normal; }
-		.goals-empty-card {
-			flex-direction: column;
-			align-items: flex-start;
-			text-align: start;
-		}
 		.intensity-empty {
 			flex-direction: column;
 			align-items: flex-start;

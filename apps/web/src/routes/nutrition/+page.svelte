@@ -85,6 +85,7 @@
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { deferDestructive } from '#lib/stores/undo.svelte.ts';
 	import Modal from '#lib/components/Modal.svelte';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import LogFoodPanel from '#lib/components/LogFoodPanel.svelte';
 	import MealPlanEditor from '#lib/components/MealPlanEditor.svelte';
@@ -1077,12 +1078,16 @@
 		{/if}
 
 		{#if !hasMeals}
-			<section class="card-elevated empty" data-testid="macro-rings-empty">
-				<span class="material-symbols empty-icon" aria-hidden="true">restaurant</span>
-				<h2>{isViewingToday ? m('nutrition.empty') : m('nutrition.day.emptyPast')}</h2>
-				<p class="empty-text">{m('nutrition.searchPlaceholder')}</p>
-				<button class="btn btn-primary" type="button" onclick={() => (showLog = true)}>{m('nutrition.logFood')}</button>
-			</section>
+			<EmptyState
+				icon="restaurant"
+				title={isViewingToday ? m('nutrition.empty') : m('nutrition.day.emptyPast')}
+				text={m('nutrition.searchPlaceholder')}
+				data-testid="macro-rings-empty"
+			>
+				{#snippet actions()}
+					<button class="btn btn-primary" type="button" onclick={() => (showLog = true)}>{m('nutrition.logFood')}</button>
+				{/snippet}
+			</EmptyState>
 		{:else}
 			<section class="card-elevated meals-card">
 				<div class="card-head">
@@ -1829,21 +1834,6 @@
 	.load-error-banner .material-symbols {
 		color: var(--color-danger-text);
 		font-size: 1.4rem;
-	}
-	.empty {
-		text-align: center;
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-sm);
-		align-items: center;
-		padding: var(--space-2xl) var(--space-lg);
-	}
-	.empty h2 { margin: 0; font-size: 1.05rem; }
-	.empty .btn { margin-top: var(--space-sm); }
-	.empty-icon {
-		font-size: 2.5rem;
-		color: var(--color-text-tertiary);
-		opacity: 0.7;
 	}
 
 	/* 7-day trend — value labels + a dashed average reference line, today

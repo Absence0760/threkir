@@ -4,6 +4,7 @@
 	// amIAdmin only picks the page chrome.
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import {
 		amIAdmin,
 		approveClubVerification,
@@ -191,11 +192,9 @@
 		</div>
 
 		{#if loadError}
-			<div class="card-elevated empty" role="alert">{loadError}</div>
+			<EmptyState icon="error" tone="danger" title={loadError} role="alert" />
 		{:else if rows.length === 0}
-			<div class="card-elevated empty" data-testid="club-verification-empty">
-				<p class="muted">{t('admin.clubVerification.empty')}</p>
-			</div>
+			<EmptyState icon="verified" title={t('admin.clubVerification.empty')} data-testid="club-verification-empty" />
 		{:else}
 			<ul class="request-queue">
 				{#each rows as row (row.request_id ?? row.club_id)}
@@ -359,8 +358,7 @@
 	.muted {
 		color: var(--color-text-secondary);
 	}
-	.not-authorized,
-	.empty {
+	.not-authorized {
 		padding: var(--space-xl);
 		text-align: center;
 	}

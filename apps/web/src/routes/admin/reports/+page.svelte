@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
+	import EmptyState from '#lib/components/EmptyState.svelte';
 	import {
 		amIAdmin,
 		fetchPendingReports,
@@ -213,18 +214,23 @@
 
 		{#if view === 'resolved'}
 			{#if resolvedError}
-				<div class="card-elevated empty" role="alert" data-testid="admin-resolved-error">
-					<p class="muted">{resolvedError}</p>
-					<button type="button" class="btn btn-outline btn-sm" onclick={loadResolved}>
-						{t('admin.reports.retry')}
-					</button>
-				</div>
+				<EmptyState
+					icon="error"
+					tone="danger"
+					title={resolvedError}
+					role="alert"
+					data-testid="admin-resolved-error"
+				>
+					{#snippet actions()}
+						<button type="button" class="btn btn-outline" onclick={loadResolved}>
+							{t('admin.reports.retry')}
+						</button>
+					{/snippet}
+				</EmptyState>
 			{:else if resolvedLoading || !resolvedLoaded}
 				<p class="muted">{t('admin.reports.loading')}</p>
 			{:else if resolved.length === 0}
-				<div class="card-elevated empty" data-testid="admin-resolved-empty">
-					<p class="muted">{t('admin.reports.resolvedEmpty')}</p>
-				</div>
+				<EmptyState icon="inbox" title={t('admin.reports.resolvedEmpty')} data-testid="admin-resolved-empty" />
 			{:else}
 				<div class="card-elevated">
 					<table data-testid="admin-resolved">
@@ -276,9 +282,7 @@
 				</div>
 			{/if}
 		{:else if queue.length === 0}
-			<div class="card-elevated empty" data-testid="admin-queue-empty">
-				<p class="muted">{t('admin.reports.empty')}</p>
-			</div>
+			<EmptyState icon="check_circle" title={t('admin.reports.empty')} data-testid="admin-queue-empty" />
 		{:else}
 			<div class="card-elevated">
 				<table data-testid="admin-queue">
@@ -532,8 +536,7 @@
 	.muted {
 		color: var(--color-text-secondary);
 	}
-	.not-authorized,
-	.empty {
+	.not-authorized {
 		padding: var(--space-xl);
 		text-align: center;
 	}

@@ -213,7 +213,7 @@ test.describe('/plans/[id]', () => {
 		// PlanDetail's not-found branch renders the canonical empty
 		// state (icon + h3 + explainer + CTA).
 		await expect(
-			page.getByRole('heading', { name: 'Plan not found', level: 3 })
+			page.getByRole('heading', { name: 'Plan not found', level: 2 })
 		).toBeVisible({ timeout: 10_000 });
 	});
 

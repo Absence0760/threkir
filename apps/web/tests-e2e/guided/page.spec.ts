@@ -179,14 +179,14 @@ test.describe('/guided/[id] — detail pages (anon)', () => {
 		expect(res?.status() ?? 200).toBeGreaterThanOrEqual(200);
 		await expect(page.getByText(/Unknown guided run/)).toBeVisible();
 		await expect(
-			page.locator('.empty').getByRole('link', { name: /Back to library/, exact: true })
+			page.getByTestId('guided-unknown').getByRole('link', { name: /Back to library/, exact: true })
 		).toHaveAttribute('href', '/guided');
 	});
 
 	test('empty-state Back to library CTA round-trips to /guided', async ({ page }) => {
 		await page.goto('/guided/no-such-run-id');
 		await page
-			.locator('.empty')
+			.getByTestId('guided-unknown')
 			.getByRole('link', { name: /Back to library/, exact: true })
 			.click();
 		await expect(page).toHaveURL(/\/guided$/);

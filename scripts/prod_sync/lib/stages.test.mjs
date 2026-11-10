@@ -102,13 +102,48 @@ test('stages run in order and the first failure stops the rest', () => {
 	assert.ok(!out.includes('### C'));
 });
 
-// A stub psql that records its arguments, its PGPASSWORD and its stdin, and
-// answers with the CSV in $STUB_CSV (or fails when it is unset).
+test('a run stage gets the context, reports its table, and stops the sync on a failure or a throw', () => {
+	let out = '';
+	/** @type {import('./stages.mjs').StageContext[]} */
+	const seen = [];
+	const write = (/** @type {string} */ md) => {
+		out += md;
+	};
+	const exec = () => ({ ok: true, stdout: 'x', stderr: '' });
+	const ok = runStages(
+		[
+			{ id: 'r', title: 'R', run: (ctx) => (seen.push(ctx), { table: { header: ['action'], rows: [['set']] } }) },
+			{ id: 'f', title: 'F', run: () => ({ table: { header: ['action'], rows: [['created']] }, failed: 'answered 500' }) },
+			{ id: 'never', title: 'Never', sql: 'select 1;' },
+		],
+		{ dryRun: true, runSql: () => assert.fail('no SQL stage runs after a failure'), write, exec, env: { A: '1' } },
+	);
+	assert.equal(ok, false);
+	assert.equal(seen[0].dryRun, true);
+	assert.equal(seen[0].exec, exec);
+	assert.deepEqual(seen[0].env, { A: '1' });
+	assert.ok(out.includes('### R (dry run, rolled back)\n\n1 set.'));
+	assert.ok(out.includes('### F (dry run, rolled back)\n\n1 created.'), 'what a failed stage did is still reported');
+	assert.ok(out.includes('### F: failed\n\n```\nanswered 500\n```'));
+
+	out = '';
+	const thrown = runStages([{ id: 't', title: 'T', run: () => { throw new Error('no project ref'); } }], {
+		dryRun: false,
+		runSql: () => ({ ok: true, stdout: '', stderr: '' }),
+		write,
+	});
+	assert.equal(thrown, false);
+	assert.equal(out, '## Sync production state\n\n### T: failed\n\n```\nno project ref\n```\n\n');
+});
+
+// A stub psql that records its arguments, its PGPASSWORD and every stdin it is
+// sent (one per transaction, appended), and answers with the CSV in $STUB_CSV
+// (or fails when it is unset).
 const STUB = `#!/usr/bin/env bash
 set -u
 printf '%s\\n' "$@" > "$STUB_STATE/args"
 printf '%s' "\${PGPASSWORD:-<unset>}" > "$STUB_STATE/pgpassword"
-cat > "$STUB_STATE/stdin"
+cat >> "$STUB_STATE/stdin"
 if [[ -z "\${STUB_CSV:-}" ]]; then
   echo "psql:<stdin>:20: ERROR:  42501: not an official publisher" >&2
   exit 3
@@ -169,6 +204,14 @@ test('the entry point connects without the password on the command line and summ
 	assert.ok(r.summary.includes('1 unchanged.'));
 	assert.ok(r.summary.includes('| pocahontas | swift-creek-5k | unchanged |   | u1 |'));
 	assert.equal(r.stdout, r.summary);
+	// The committed prod_config.json is empty (issue #1350), so its stages
+	// report and write nothing.
+	for (const title of ['Feature flags', 'Edge Function env toggles', 'Web build flags', 'Cron URL entries', 'One-off ops tasks']) {
+		assert.ok(r.summary.includes(`### ${title}\n`), title);
+	}
+	for (const call of ['private.apply_feature_flag(', 'private.arm_cron_url(', 'private.begin_ops_task(', 'private.ops_task_runs']) {
+		assert.ok(!r.stdin.includes(call), `the committed config sends no ${call}`);
+	}
 });
 
 test('a dry run rolls the stage back', () => {

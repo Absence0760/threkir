@@ -47,6 +47,7 @@ import '../widgets/finisher_certificate_card.dart';
 import '../widgets/gym_compose_sheet.dart';
 import '../widgets/gym_routine_picker.dart';
 import '../widgets/help_button.dart';
+import 'help_screen.dart' show openGuide;
 import '../widgets/session_plan_picker.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/loading_skeletons.dart';
@@ -2520,6 +2521,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 label: Text(l10n.eventRaceJoinAttempt),
               ),
             ],
+            TextButton(
+              key: const ValueKey('self-timed-guide'),
+              onPressed: () => openGuide(context, 'run-a-self-timed-race'),
+              child: Text(l10n.infoTipReadGuide),
+            ),
           ],
         ),
       ),
@@ -2671,12 +2677,24 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.eventRaceControlLabel,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                letterSpacing: 0.8,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.eventRaceControlLabel,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  key: const ValueKey('race-mode-guide'),
+                  onPressed: () =>
+                      openGuide(context, 'choose-how-your-race-starts'),
+                  child: Text(l10n.infoTipReadGuide),
+                ),
+              ],
             ),
             const SizedBox(height: 4),
             if (race == null || status == 'idle') ...[

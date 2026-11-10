@@ -17,6 +17,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../preferences.dart';
 import '../route_surface_label.dart';
 import '../widgets/error_state.dart';
+import '../widgets/help_button.dart';
 import 'park_courses_screen.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/sign_in_required_state.dart';
@@ -484,6 +485,7 @@ class _GlobalSegmentDetailScreenState extends State<GlobalSegmentDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(segment?.name ?? l10n.segmentCatalogueTitle),
+        actions: const [HelpButton(routes: ['/segments/[id]'])],
       ),
       body: _loading
           ? ListView(

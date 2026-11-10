@@ -58,6 +58,8 @@ ParkCourseListing _course({
   String? description,
   Object checkpoints = const [],
   List<Map<String, dynamic>>? waypoints,
+  Object? routeGuide,
+  DateTime? routeGuideCheckedAt,
 }) => ParkCourseListing(
   course: ParkCourseRow(
     id: id,
@@ -71,6 +73,8 @@ ParkCourseListing _course({
     checkpoints: checkpoints,
     laps: laps,
     attribution: attribution,
+    routeGuide: routeGuide,
+    routeGuideCheckedAt: routeGuideCheckedAt,
     createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
   ),
   segment: GlobalSegmentRow(
@@ -592,6 +596,126 @@ void main() {
       );
       expect(find.text('21.1 km'), findsOneWidget);
       await _unmount(tester);
+    });
+
+    testWidgets('the route guide sits above the notices under its draft note', (
+      tester,
+    ) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              routeGuide: {
+                'version': 1,
+                'lang': 'en',
+                'getting_there': 'Park by the boathouse.',
+                'steps': [
+                  {'kind': 'start', 'at_m': 0, 'name': 'Lake Trail'},
+                  {
+                    'kind': 'junction',
+                    'at_m': 400,
+                    'turn': 'left',
+                    'name': 'Ridge Trail',
+                  },
+                  {'kind': 'finish', 'at_m': 1990},
+                ],
+              },
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final guide = find.byKey(const Key('park-course-guide'));
+      expect(guide, findsOneWidget);
+      expect(find.text('Route guide'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('park-course-guide-pending')),
+          matching: find.text(
+            'Drafted from map data, not yet checked on the ground.',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Park by the boathouse.'), findsOneWidget);
+      final steps = find.byKey(const Key('park-course-guide-steps'));
+      expect(
+        find.descendant(of: steps, matching: find.text('Start on Lake Trail.')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: steps,
+          matching: find.textContaining('turn left onto Ridge Trail.'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester.getTopLeft(guide).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const Key('park-course-notices'))).dy,
+        ),
+      );
+      await _unmount(tester);
+    });
+
+    testWidgets('a guide checked on the ground says when, not the draft note', (
+      tester,
+    ) async {
+      tallView(tester);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              routeGuide: {
+                'version': 1,
+                'lang': 'en',
+                'steps': [
+                  {'kind': 'start', 'at_m': 0, 'way': 'path'},
+                  {'kind': 'finish', 'at_m': 1100},
+                ],
+              },
+              routeGuideCheckedAt: DateTime(2026, 12, 1),
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(find.byKey(const Key('park-course-guide-pending')), findsNothing);
+      expect(
+        find.text('Checked on the ground on Dec 1, 2026.'),
+        findsOneWidget,
+      );
+      await _unmount(tester);
+    });
+
+    testWidgets('no route guide, or an unreadable one, shows no guide section', (
+      tester,
+    ) async {
+      tallView(tester);
+      for (final raw in <Object?>[
+        null,
+        {'version': 1, 'lang': 'en', 'steps': []},
+      ]) {
+        await tester.pumpWidget(
+          _host(
+            ParkCourseScreen(
+              api: _ParksApi(),
+              listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+              course: _course(routeGuide: raw),
+            ),
+          ),
+        );
+        await _settle(tester);
+        expect(find.byKey(const Key('park-course-guide')), findsNothing);
+        expect(find.byKey(const Key('park-course-notices')), findsOneWidget);
+        await _unmount(tester);
+      }
     });
 
     testWidgets('the map carries a legend for every mark it draws', (

@@ -133,6 +133,9 @@ rendering "1 …" for 0. Use `{count}` (ARB) / `#` (web).
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Guardar / **Definições** / Feed / Seguidores | `navSettings` is "Config." — inconsistency 3 |
 | app | **a app** (feminine, from *a aplicação*): "na app", "da app", "esta app", "outra app" | settled 2026-10-13 |
+| arm / armed (race control) | **Preparar** / **preparada** — "Preparar prova", "Prova preparada", "Preparar mais cedo", "Preparar na mesma", "Prepare-a mais cedo" | settled 2026-11-10; never "Armar" / "armada" / "Arme", never "mesmo assim" |
+| set up (a race created automatically before its start) | **configurada** ("A prova é configurada um dia antes da partida") | settled 2026-11-10; never "preparada", which is *arm* |
+| self-timed (race) | **de tempo próprio** ("prova de tempo próprio", "Janela de tempo próprio") | settled 2026-11-10; never "com cronometragem própria" / "cronometrada por cada um" |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

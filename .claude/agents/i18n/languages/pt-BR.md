@@ -113,6 +113,9 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | skip a workout / skipped | **Ignorar** / **ignorado** (treino) — un-skip **Deixar de ignorar** | settled 2026-10-21; never "pulado" for the status. Skipping a step or setup is **Pular**; "não pule" stays in coaching advice |
 | warm-up / cool-down / recovery | Aquecimento / Desaquecimento / Recuperação | |
 | save / settings / feed / followers | Salvar / Configurações (nav "Config.") / Feed / Seguidores | |
+| Arm early / Arm anyway | **Preparar mais cedo** / **Preparar mesmo assim** | settled 2026-11-10; the last "Armar antes" / "Armar mesmo assim" / "Arme antes" / "arma a corrida" strings moved to *Preparar* |
+| set up (a race created automatically before its start) | **configurada** ("A corrida é configurada um dia antes da largada") | settled 2026-11-10; never "preparada", which is *arm* |
+| self-timed (race) | **de tempo próprio** ("corrida de tempo próprio", "Janela de tempo próprio") | settled 2026-11-10; never "com cronometragem própria" / "cronometrada por cada um" |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Escolha em **Como a corrida começa** no editor do evento, na web, num evento de corrida em grupo ou de ciclismo. A app do telemóvel consegue gerir a prova no dia (prepará-la mais cedo, atrasá-la, prolongá-la ou encerrá-la), mas a forma de partida escolhe-se na web.',
+					text: 'Escolha em **Como a prova começa** no editor do evento, na web, num evento de corrida em grupo ou de ciclismo. A app do telemóvel consegue gerir a prova no dia (prepará-la mais cedo, atrasá-la, prolongá-la ou encerrá-la), mas a forma de partida escolhe-se na web.',
 				},
 			],
 		},
@@ -58,8 +58,8 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'Não precisa de fazer nada. A prova é preparada cerca de um dia antes da partida e começa sozinha à hora agendada.',
-						'Para verificar as linhas do percurso mais cedo, escolha **Armar antes**.',
+						'Não precisa de fazer nada. A prova é configurada cerca de um dia antes da partida e começa sozinha à hora agendada.',
+						'Para verificar as linhas do percurso mais cedo, escolha **Preparar mais cedo**.',
 						'Antes da partida, o painel da prova mostra **Partida às** com a hora e uma contagem decrescente. Para adiar a partida, introduza os minutos e escolha **Atrasar partida**; todos os que vão são avisados de que a partida mudou. Escolha **Cancelar** para anular a prova.',
 						'Depois de passada a hora de partida, a prova já não pode ser cancelada. Termina sozinha quando o tempo acabar, ou escolha **Encerrar prova** para a terminar mais cedo.',
 						'Os telemóveis dos corredores fazem a contagem decrescente até à partida pelo relógio do servidor e dizem em voz alta os últimos segundos, para que todos partam ao mesmo tempo.',
@@ -111,7 +111,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Os corredores desligam ambos com **Corrida prestes a começar**: na web, em [[route:/settings/notifications|Notificações]]; na app do telemóvel, em **Preferências**, no separador **Tu**.',
+					text: 'Os corredores desligam ambos com **Prova prestes a começar**: na web, em [[route:/settings/notifications|Notificações]]; na app do telemóvel, em **Preferências**, no separador **Tu**.',
 				},
 			],
 		},

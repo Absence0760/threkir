@@ -1874,7 +1874,7 @@
             "type": "list",
             "items": [
               "Você não precisa fazer nada. A prova é configurada cerca de um dia antes da largada e começa sozinha no horário agendado.",
-              "Para conferir as linhas do percurso mais cedo, escolha **Armar antes**.",
+              "Para conferir as linhas do percurso mais cedo, escolha **Preparar mais cedo**.",
               "Antes da largada, o painel da prova mostra **Largada às** com o horário e uma contagem regressiva. Para adiar a largada, informe os minutos e escolha **Atrasar largada**; todos que vão participar são avisados de que a largada mudou. Escolha **Cancelar** para cancelar a prova.",
               "Depois que o horário de largada passa, a prova não pode mais ser cancelada. Ela termina sozinha quando o tempo dela acaba, ou escolha **Encerrar corrida** para encerrá-la antes.",
               "Os celulares dos corredores fazem a contagem regressiva até a largada pelo relógio do servidor e falam os últimos segundos, para que todos larguem juntos."

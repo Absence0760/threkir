@@ -405,5 +405,114 @@ test('the grandfathered set covers both violation kinds', () => {
   // into one transaction. If the list ever loses that half, the assertion that
   // the tree is clean would be passing over a rule nothing exercises.
   const kinds = new Set(GRANDFATHERED_VIOLATIONS.map((e) => e.kind));
-  assert.deepEqual([...kinds].sort(), ['blocking_add', 'same_txn_validate']);
+  assert.deepEqual([...kinds].sort(), ['blocking_add', 'index_under_exclusive', 'same_txn_validate']);
+});
+
+test('an index built after the same file took ACCESS EXCLUSIVE on its table is flagged', () => {
+  // The 20271121002400 shape: the kind_check swap's ACCESS EXCLUSIVE is held
+  // to commit, so the index build's heap scan stops readers as well.
+  const sql = `alter table notifications drop constraint notifications_kind_check;
+    alter table notifications add constraint notifications_kind_check check (kind in ('a')) not valid;
+    create unique index notifications_race_starting_soon_uniq
+      on notifications (user_id, event_id) where kind = 'a';`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'index_under_exclusive');
+  assert.equal(findings[0].table, 'notifications');
+  assert.equal(findings[0].constraint, 'notifications_race_starting_soon_uniq');
+  assert.equal(findings[0].held, 'alter table notifications drop constraint notifications_kind_check');
+});
+
+test('an index after an ADD COLUMN on the same table is flagged, IF NOT EXISTS or not', () => {
+  const sql = `alter table notifications add column course_alert_id uuid;
+    create index if not exists notifications_course_alert_id
+      on notifications (course_alert_id) where course_alert_id is not null;`;
+  const findings = findOnlineSafetyViolations(sql);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].kind, 'index_under_exclusive');
+  assert.equal(findings[0].held, 'alter table notifications add column course_alert_id uuid');
+});
+
+test('DROP TRIGGER and policy DDL take ACCESS EXCLUSIVE, so an index after them is flagged', () => {
+  for (const first of [
+    'drop trigger if exists runs_enqueue_x on runs;',
+    'drop policy if exists runs_select on public.runs;',
+    'create policy runs_select on public.runs for select using (true);',
+  ]) {
+    const findings = findOnlineSafetyViolations(`${first}
+      create index runs_x_idx on public.runs (x);`);
+    assert.equal(findings.length, 1, first);
+    assert.equal(findings[0].kind, 'index_under_exclusive', first);
+    assert.equal(findings[0].table, 'runs', first);
+  }
+});
+
+test('an index is not flagged when nothing stronger than SHARE ROW EXCLUSIVE is held on its table', () => {
+  // CREATE TRIGGER and ADD FOREIGN KEY block writers but not readers, which the
+  // build does on its own anyway; VALIDATE takes SHARE UPDATE EXCLUSIVE.
+  const sql = `create trigger runs_t after insert on public.runs for each row execute function f();
+    alter table runs add constraint runs_route_id_fkey foreign key (route_id) references routes (id) not valid;
+    alter table runs validate constraint runs_distance_m_check;
+    create index runs_route_id_idx on public.runs (route_id);`;
+  const kinds = findOnlineSafetyViolations(sql).map((f) => f.kind);
+  assert.ok(!kinds.includes('index_under_exclusive'), kinds.join(','));
+});
+
+test('an index built BEFORE the ACCESS EXCLUSIVE, or on another table, is not flagged', () => {
+  const sql = `create index notifications_a_idx on notifications (a);
+    alter table notifications add column b text;
+    alter table jobs drop constraint jobs_kind_chk;
+    create index runs_b_idx on runs (b);`;
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('an index on an unguarded table after its ACCESS EXCLUSIVE is not flagged', () => {
+  const sql = `alter table public.events add column race_start_mode text;
+    create index events_race_start_mode_idx on public.events (race_start_mode);`;
+  assert.deepEqual(findOnlineSafetyViolations(sql), []);
+});
+
+test('the backend@1.0.38 split files each pass on their own', () => {
+  // The three files the migration-lock audit flagged, as split: each index is
+  // alone in its file, and no file holds jobs and runs at once.
+  for (const filename of [
+    '20271117002392_segment_match_jobs.sql',
+    '20271117100001_segment_match_jobs_dedupe_index.sql',
+    '20271117100002_segment_match_jobs_triggers.sql',
+    '20271121002400_race_start_modes.sql',
+    '20271121100004_race_start_modes_notifications_index.sql',
+    '20271121100006_race_start_modes_race_pings.sql',
+    '20271124002408_notifications_course_alert.sql',
+    '20271124100001_notifications_course_alert_index.sql',
+  ]) {
+    const sql = readFileSync(join(MIGRATIONS_DIR, filename), 'utf8');
+    assert.deepEqual(findOnlineSafetyViolations(sql), [], filename);
+  }
+});
+
+test('no file in the segment_match split holds jobs and runs together', () => {
+  const touches = (filename, table) =>
+    new RegExp(`\\b(?:alter table|on|index \\S+ on) (?:public\\.)?${table}\\b`).test(
+      readFileSync(join(MIGRATIONS_DIR, filename), 'utf8').replace(/\$\$[\s\S]*?\$\$/g, ''),
+    );
+  for (const filename of [
+    '20271117002392_segment_match_jobs.sql',
+    '20271117100001_segment_match_jobs_dedupe_index.sql',
+    '20271117100002_segment_match_jobs_triggers.sql',
+  ]) {
+    assert.ok(!(touches(filename, 'jobs') && touches(filename, 'runs')), filename);
+  }
+});
+
+test('an index_under_exclusive entry exempts that index and not a second one in its file', () => {
+  const sql = `alter table runs add column x text;
+    create index runs_x_idx on runs (x);
+    create index runs_y_idx on runs (y);`;
+  const { violations, unmatched } = auditMigrations(
+    [{ filename: '20260101_001_legacy.sql', sql }],
+    [{ filename: '20260101_001_legacy.sql', kind: 'index_under_exclusive', table: 'runs', constraint: 'runs_x_idx' }],
+  );
+  assert.deepEqual(unmatched, []);
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].constraint, 'runs_y_idx');
 });

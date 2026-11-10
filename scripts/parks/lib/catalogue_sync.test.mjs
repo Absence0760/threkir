@@ -12,7 +12,7 @@ import { SYNC_COLUMNS, catalogueSyncSql, parkDirsFromManifests, parsePublisher }
 
 const CLUB = '11111111-1111-4111-8111-111111111111';
 const AUTHOR = '22222222-2222-4222-8222-222222222222';
-const PUBLISHER = { clubSlug: 'official', clubId: CLUB, authorId: AUTHOR };
+const PUBLISHER = { clubSlug: 'official', clubId: CLUB };
 
 /** @param {string} slug */
 const payload = (slug) =>
@@ -23,25 +23,22 @@ const payload = (slug) =>
 		courses: [{ slug: 'c', waypoints: [] }],
 	});
 
-test('the committed publisher is the official club and its owner', () => {
+test('the committed publisher is the official club, with no author committed', () => {
 	const publisher = parsePublisher(JSON.parse(fs.readFileSync(PUBLISHER_FILE, 'utf8')));
-	assert.deepEqual(publisher, {
-		clubSlug: 'threkir',
-		clubId: '42cb8259-8e1e-475e-8c56-321254794da1',
-		authorId: '442e4798-0375-45a3-89f2-6c128e532c3a',
-	});
+	assert.deepEqual(publisher, { clubSlug: 'threkir', clubId: '42cb8259-8e1e-475e-8c56-321254794da1' });
 });
 
 test('a publisher config with a missing, extra or malformed key is refused', () => {
 	assert.throws(() => parsePublisher(null), /must be an object/);
-	assert.throws(() => parsePublisher({ club_slug: 'x', club_id: CLUB }), /exactly club_slug, club_id and author_id/);
+	assert.throws(() => parsePublisher({ club_slug: 'x' }), /exactly club_slug and club_id/);
 	assert.throws(
-		() => parsePublisher({ club_slug: 'x', club_id: CLUB, author_id: AUTHOR, role: 'admin' }),
-		/exactly club_slug, club_id and author_id/,
+		() => parsePublisher({ club_slug: 'x', club_id: CLUB, author_id: AUTHOR }),
+		/exactly club_slug and club_id, got author_id,club_id,club_slug/,
+		'an author is resolved at run time, never committed',
 	);
-	assert.throws(() => parsePublisher({ club_slug: 'x', club_id: 'not-a-uuid', author_id: AUTHOR }), /club_id not-a-uuid/);
-	assert.throws(() => parsePublisher({ club_slug: 'Bad Slug', club_id: CLUB, author_id: AUTHOR }), /not a slug/);
-	assert.deepEqual(parsePublisher({ club_slug: 'x', club_id: CLUB.toUpperCase(), author_id: AUTHOR }).clubId, CLUB);
+	assert.throws(() => parsePublisher({ club_slug: 'x', club_id: 'not-a-uuid' }), /club_id not-a-uuid/);
+	assert.throws(() => parsePublisher({ club_slug: 'Bad Slug', club_id: CLUB }), /not a slug/);
+	assert.deepEqual(parsePublisher({ club_slug: 'x', club_id: CLUB.toUpperCase() }).clubId, CLUB);
 });
 
 test('park dirs are the region/park pairs holding a manifest, sorted', () => {
@@ -64,29 +61,47 @@ test('the committed catalogue is found on disk', () => {
 	);
 });
 
-test('the stage loads every park as the service role with the backfill flag on', () => {
+test('the stage resolves the author at run time and loads every park as it, with the backfill flag on', () => {
 	const sql = catalogueSyncSql([payload('park-a'), payload('park-b')], PUBLISHER);
 	assert.match(sql, /^set local role service_role;\n/);
+	assert.ok(
+		sql.includes(`select private.resolve_club_publisher('official', '${CLUB}'::uuid) as author_id;`),
+		'the club is named by slug, with its id as the cross-check',
+	);
+	assert.ok(sql.indexOf('resolve_club_publisher') < sql.indexOf('load_park_catalogue'), 'resolved before any load');
 	assert.equal(sql.match(/from private\.load_park_catalogue\(/g)?.length, 2);
-	assert.equal(sql.match(new RegExp(`'${CLUB}'::uuid,\\n  '${AUTHOR}'::uuid,\\n  true\\n\\) l;`, 'g'))?.length, 2);
+	assert.equal(
+		sql.match(
+			new RegExp(`'${CLUB}'::uuid,\\n  \\(select author_id from pg_temp\\.park_catalogue_publisher\\),\\n  true\\n\\) l;`, 'g'),
+		)?.length,
+		2,
+	);
+	assert.ok(!sql.includes(AUTHOR));
 	assert.ok(sql.includes("select 'park-a', l.course_slug"));
 	assert.ok(sql.includes("select 'park-b', l.course_slug"));
 	assert.ok(sql.indexOf("'park-a'") < sql.indexOf("'park-b'"), 'parks load in the order given');
-	assert.ok(sql.endsWith(`select ${SYNC_COLUMNS.join(', ')} from pg_temp.park_catalogue_sync order by seq;\n`));
+	assert.ok(
+		sql.endsWith(
+			'select s.park, s.course_slug, s.action, s.backfill_job_id, s.park_course_id, p.author_id as published_by\n' +
+				'  from pg_temp.park_catalogue_sync s cross join pg_temp.park_catalogue_publisher p order by s.seq;\n',
+		),
+	);
+	assert.deepEqual(SYNC_COLUMNS.at(-1), 'published_by');
 	assert.equal(sql.match(/^select /gm)?.length, 3, 'one result set: the two inserts select into the table');
 });
 
-test('an empty catalogue or a repeated park is refused', () => {
+test('an empty catalogue, a repeated park or a malformed publisher is refused', () => {
 	assert.throws(() => catalogueSyncSql([], PUBLISHER), /no parks/);
+	assert.throws(() => catalogueSyncSql([payload('p')], { clubSlug: "x'; drop", clubId: CLUB }), /not a club slug and id/);
 	assert.throws(() => catalogueSyncSql([payload('p'), payload('p')], PUBLISHER), /park slugs repeat: p, p/);
 });
 
-test('the Pocahontas stage carries its six courses and the committed publisher', () => {
+test('the Pocahontas stage carries its six courses and the committed club', () => {
 	const stage = parkCatalogueStage();
 	assert.equal(stage.id, 'park-catalogue');
 	assert.equal(stage.note, '1 park(s): pocahontas (6 courses)');
-	assert.ok(stage.sql.includes("'42cb8259-8e1e-475e-8c56-321254794da1'::uuid"));
-	assert.ok(stage.sql.includes("'442e4798-0375-45a3-89f2-6c128e532c3a'::uuid"));
+	assert.ok(stage.sql.includes("private.resolve_club_publisher('threkir', '42cb8259-8e1e-475e-8c56-321254794da1'::uuid)"));
+	assert.ok(!stage.sql.includes('442e4798'), 'no owner id is committed or emitted');
 	for (const slug of ['beaver-lake-trail', 'swift-creek-5k', 'swift-creek-10k', 'swift-creek-half', 'swift-creek-marathon', 'swift-creek-50k']) {
 		assert.ok(stage.sql.includes(`"slug":"${slug}"`), slug);
 	}
@@ -101,9 +116,9 @@ test('a stage built from a catalogue root and publisher file elsewhere reads tho
 			fs.copyFileSync(path.join(CATALOGUE_ROOT, 'us-va', 'pocahontas', f), path.join(parkDir, f));
 		}
 		const publisherFile = path.join(tmp, 'publisher.json');
-		fs.writeFileSync(publisherFile, JSON.stringify({ club_slug: 'other', club_id: CLUB, author_id: AUTHOR }));
+		fs.writeFileSync(publisherFile, JSON.stringify({ club_slug: 'other', club_id: CLUB }));
 		const stage = parkCatalogueStage({ root: tmp, publisherFile });
-		assert.ok(stage.sql.includes(`'${CLUB}'::uuid`));
+		assert.ok(stage.sql.includes(`resolve_club_publisher('other', '${CLUB}'::uuid)`));
 		assert.ok(!stage.sql.includes('42cb8259-8e1e-475e-8c56-321254794da1'));
 	} finally {
 		fs.rmSync(tmp, { recursive: true, force: true });

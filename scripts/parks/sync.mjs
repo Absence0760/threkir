@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // The park catalogue sync (issue #1349, decisions § 2429): every committed
 // `catalogue/<region>/<park>/manifest.json`, loaded through
-// `private.load_park_catalogue` by the publisher in `publisher.json`, with the
+// `private.load_park_catalogue` as the official club in `publisher.json`, by
+// the account `private.resolve_club_publisher` picks when it runs, with the
 // backfill flag on (the function queues one only for a created course or
 // changed matching geometry).
 //

@@ -274,12 +274,28 @@ export function cataloguePayload(manifest, readGeojson) {
 export function loadCall(payload, { clubId, authorId, enqueueBackfill = false }) {
 	check(UUID.test(clubId), `--club-id ${clubId} is not a uuid`);
 	check(UUID.test(authorId), `--author-id ${authorId} is not a uuid`);
+	return loadCallSql(payload, {
+		clubSql: `'${clubId.toLowerCase()}'::uuid`,
+		authorSql: `'${authorId.toLowerCase()}'::uuid`,
+		enqueueBackfill,
+	});
+}
+
+/**
+ * The same call with the club and author given as SQL expressions, for the
+ * release sync, which resolves its author in the database. The caller owns
+ * what the expressions contain.
+ *
+ * @param {CataloguePayload} payload
+ * @param {{ clubSql: string, authorSql: string, enqueueBackfill: boolean }} opts
+ */
+export function loadCallSql(payload, { clubSql, authorSql, enqueueBackfill }) {
 	const json = JSON.stringify(payload);
 	let tag = '$park_catalogue$';
 	for (let n = 1; json.includes(tag); n++) tag = `$park_catalogue_${n}$`;
 	return (
 		`private.load_park_catalogue(\n  ${tag}${json}${tag}::jsonb,\n` +
-		`  '${clubId.toLowerCase()}'::uuid,\n  '${authorId.toLowerCase()}'::uuid,\n  ${enqueueBackfill}\n)`
+		`  ${clubSql},\n  ${authorSql},\n  ${enqueueBackfill}\n)`
 	);
 }
 

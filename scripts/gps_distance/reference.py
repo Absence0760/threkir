@@ -1,4 +1,4 @@
-"""GPS distance estimator — reference implementation, spec v1.6.
+"""GPS distance estimator — reference implementation, spec v1.7.
 
 Every port (Dart, TypeScript, Deno, Kotlin, Swift, Rust, Go) must reproduce
 gps_distance_vectors.json to 1e-3 m. Operation order matters only at the
@@ -12,7 +12,7 @@ Two entry points:
 """
 import math
 
-SPEC_VERSION = "1.6"
+SPEC_VERSION = "1.7"
 
 EARTH_RADIUS_M = 6371008.8
 Q_ACCEL = 0.6                     # m^2/s^3, white-acceleration spectral density (unvalidated, see doc)
@@ -162,6 +162,10 @@ class GpsDistanceEstimator:
         self._fresh_fix_s = FRESH_FIX_S * scale
         self.gps_distance_m = 0.0
         self.step_distance_m = 0.0
+        # v1.7: what the steps credited the gaps over their chord lower bounds, summed.
+        # A replay with no steps credits each gap its chord, so this is exactly what it
+        # lacks: per gap max(chord, steps) - chord, a split step_distance_m cannot give.
+        self.step_over_chord_m = 0.0
         self.stride_m = initial_stride_m if (_valid(initial_stride_m) and
                                               MIN_STRIDE_M <= initial_stride_m <= MAX_STRIDE_M) else None
         self._lat0 = self._lng0 = None
@@ -265,6 +269,7 @@ class GpsDistanceEstimator:
                 if lower > self._pending_step_m:
                     gap_m = lower - self._pending_step_m
                     self.gps_distance_m += gap_m
+                self.step_over_chord_m += max(0.0, self._pending_step_m - max(lower, 0.0))
                 rec = len(self.records) if self.records is not None else None
                 if self.gap_credits is not None:
                     self.gap_credits[self._t] = [max(lower, 0.0), self._pending_step_m]
@@ -459,7 +464,13 @@ class GpsDistanceEstimator:
             # the window, as any stale sample does, so the next fix empties it.
             if self._t is not None and t - self._t > self._fresh_fix_s:
                 self._win_stale = True
-            self._win_steps, self._win_m = 0, 0.0
+            if self._t is not None and t < self._t:
+                # v1.7: stamped before the last fix, so the window's metres already
+                # start after this sample's stamp; the next sample's steps reach back
+                # before them and must not refill it.
+                self._empty_window(self._t)
+            else:
+                self._win_steps, self._win_m = 0, 0.0
             return
         d = cumulative_steps - prev
         in_gap = self._attribute_steps(prev_t, t, d)
@@ -517,6 +528,7 @@ class GpsDistanceEstimator:
                     self.gap_credits[g0][1] += late
                 take = min(late, top_up)
                 self.gps_distance_m -= take
+                self.step_over_chord_m += late - take
                 if rec is not None:
                     if take > 0:
                         self.records[rec]["chord"] -= take
@@ -530,6 +542,7 @@ class GpsDistanceEstimator:
         """End of run: commit buffered steps if the trailing gap exceeds the gap window."""
         if self._t is not None and _valid(t) and t - self._t > self._gap_s:
             self.step_distance_m += self._pending_step_m
+            self.step_over_chord_m += self._pending_step_m
             if self.gap_credits is not None and self._pending_step_m > 0:
                 self.gap_credits[self._t] = [0.0, self._pending_step_m]
         self._pending_step_m = 0.0
@@ -696,6 +709,7 @@ def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial
         cumulative.append(gps + step_m)
         positions.append(pos)
     return {"distance_m": gps + est.step_distance_m, "gps_distance_m": gps,
-            "step_distance_m": est.step_distance_m, "cumulative_m": cumulative,
+            "step_distance_m": est.step_distance_m, "step_over_chord_m": est.step_over_chord_m,
+            "cumulative_m": cumulative,
             "positions": positions, "stopped_fixes": len(hints),
             "gap_credits": list(est.gap_credits.values())}

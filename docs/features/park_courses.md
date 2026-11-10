@@ -162,6 +162,52 @@ because a course is something you go and do, not a stretch you happen to run.
 - The run-surface strip has no Parks tab (five tabs: Runs · Plans · Races &
   courses · Routes · Segments, in the mobile order).
 
+## The pages (web, issue #1352)
+
+The owner's 2026-11-10 review found the pages primitive; this is what each
+one does now. Mobile matches it (`park_courses_screen.dart`).
+
+- **Distances** read through the `park_course_distance` parity pair
+  (`lib/parks/park_course_distance.ts` ↔ `park_course_distance.dart`): whole
+  when the one-decimal value lands on a whole number, else one decimal, never
+  two (`5 km`, `21.1 km`, `3.1 mi`). A park's range reads `5–50 km`.
+- **Order:** a park's courses sort closed last, then shortest first, then
+  name (`sortParkCourses`), never alphabetically.
+- **Shape and laps:** "Loop" is never shown, since nearly every course is one;
+  out-and-back and point-to-point are. A course with `laps` over 1 carries an
+  "N laps" chip (`courseLapsChip`).
+- **`/parks`:** a responsive card grid by region. Each card has a static SVG
+  of the park's course lines (no tile request), the agency, and the course
+  count with the distance range. The course read is auxiliary: when it fails
+  the parks still list.
+- **Park page:** region, agency and the park website as separate items; a
+  course list (route thumbnail, distance, laps chip, elevation gain,
+  difficulty, this season's record and holder when signed in, status pill)
+  beside a map of every course line (`ParkCoursesMap`) with each distinct
+  start area marked. Pointing at or focusing a course highlights its line.
+  The map waits for cookie consent like every MapLibre map. Side by side from
+  64rem; map first on a phone.
+- **Course page:** the map marks the checkpoints (`CP 1`, `CP 2`, …) and
+  carries a key (`ParkMapLegend`): start and finish (one red pin, "Start and
+  finish", when the line closes within 30 m, since the finish pin draws over
+  the start), checkpoints, the kilometre or mile badges, and the ▶ direction
+  arrows. An elevation profile, linked to the map, shows when every point has
+  a height. The credit is one line (below). The safety, long-course and
+  not-affiliated notices are one callout (`ParkCourseNotices`), safety first.
+  "Navigate this course" is the filled primary action, "Download GPX" the
+  outline one (primary when there is no route). From 72rem the map, profile
+  and boards take the wide column and the stats, actions and notices the
+  narrow one, so each column's blocks share its width.
+- **Empty board:** the page asks the all-time completions board for one row
+  first (it throws on a failed read, so a failure is not read as empty).
+  With no time at all, the board kinds, seasons, Compare and the filters are
+  hidden and an `EmptyState` explains how to get the first time. They appear
+  once there is one; a filtered or this-year board that is empty still says so
+  inline.
+- **`/share/course/…`** takes the same distance label, laps chip, credit line,
+  map key (without checkpoints, which the public lookup does not carry),
+  elevation profile and notices callout.
+
 ## Wording and safety
 
 The surfaces say *course* and *time trial*, never *race*, *compete* or
@@ -308,8 +354,10 @@ pattern if search data says park pages are where people land.
 
 ## Attribution
 
-Every course page shows the geometry credit under its map (web and mobile),
-and every exported file carries it too, because OpenStreetMap's licence asks
+Every course page shows the geometry credit once, under its map (web and mobile):
+the course's `attribution` text when it has one, else the label for its
+`geometry_source` (`courseCredit` in `lib/parks/park_labels.ts`), never as part
+of the description. Every exported file carries it too, because OpenStreetMap's licence asks
 for the credit on the exported work (decisions § 2395).
 `courseAttribution` (the `park_courses` parity pair) maps `geometry_source` to
 a credit the `route_gpx` pair writes into GPX `<metadata>`:
@@ -443,6 +491,14 @@ These gate going live, not the code:
   `handler_segment_match_test.go`; `segments/edge_matcher_bundle.test.ts` and
   `segments/track_extent.test.ts` on web.
 - Parity pair: `parks/park_courses.test.ts` ↔ `test/park_courses_test.dart`.
+- Pages (#1352): `parks/park_course_distance.test.ts` ↔
+  `test/park_course_distance_test.dart` (labels, range, order, shape, laps);
+  `parks/course_map.test.ts` (shared starts, a closing loop); Playwright
+  `tests-e2e/parks/park-course-pages.spec.ts` (the index card's count and
+  range, distance order and labels, one laps chip and no Loop, the meta line,
+  the record line, the map key, one credit line from the column and the
+  fallback label, the notices callout, one primary action, the empty-board
+  invitation with its controls hidden, and the share page).
 - Attribution: the `courseAttribution` / `parkCourseGpx` cases in the
   `park_courses` pair and the attribution cases in `route_gpx.test.ts` ↔
   `route_gpx_test.dart`; `gpx.test.ts` (web `toGpx` / `toKml`) and

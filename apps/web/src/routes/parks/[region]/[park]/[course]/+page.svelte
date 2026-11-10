@@ -365,6 +365,11 @@
 						<RunMap track={mapTrack} markers={checkpointPins} hoverIdx={chartHoverIdx} />
 					</div>
 					<ParkMapLegend items={legendItems} testid="park-course-legend" />
+					{#if credit}
+						<p class="attribution" data-testid="park-course-attribution">
+							{'text' in credit ? credit.text : m(credit.key)}
+						</p>
+					{/if}
 					{#if elevations}
 						<div class="elevation" data-testid="park-course-elevation">
 							<h2 class="section-title">{m('parks.elevationTitle')}</h2>
@@ -381,7 +386,7 @@
 
 			<div class="notices-slot">
 				<ParkCourseNotices distanceM={Number(course.segment.distance_m)} testidPrefix="park-course" />
-				{#if credit}
+				{#if credit && mapTrack.length < 2}
 					<p class="attribution" data-testid="park-course-attribution">
 						{'text' in credit ? credit.text : m(credit.key)}
 					</p>

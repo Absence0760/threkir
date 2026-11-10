@@ -21906,4 +21906,119 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get coachAssistConsentFailed =>
       'Das konnte nicht gespeichert werden. Versuche es erneut.';
+
+  @override
+  String rateLimitReaction(String wait) {
+    return 'Du reagierst zu schnell – bitte warte $wait und versuche es erneut.';
+  }
+
+  @override
+  String rateLimitPhotoUpload(String wait) {
+    return 'Du hast viele Fotos gesendet – bitte warte $wait und versuche es erneut.';
+  }
+
+  @override
+  String get prefsMessageRequests => 'Nachrichtenanfragen';
+
+  @override
+  String get prefsMessageRequestsHint =>
+      'Personen, mit denen du einen Club oder ein Event teilst, dürfen dir zuerst schreiben. Wenn du das ausschaltest, können nur Personen, denen du folgst oder die dir folgen, eine Unterhaltung mit dir beginnen.';
+
+  @override
+  String get prefsMessageRequestsFailed =>
+      'Nachrichtenanfragen konnten nicht geändert werden.';
+
+  @override
+  String get messagesReact => 'Reagieren';
+
+  @override
+  String get messagesReactPickerLabel => 'Reaktion auswählen';
+
+  @override
+  String messagesReactionChipLabel(String reaction, int count) {
+    return '$reaction, $count';
+  }
+
+  @override
+  String get messagesReactionThumbsUp => 'Daumen hoch';
+
+  @override
+  String get messagesReactionHeart => 'Herz';
+
+  @override
+  String get messagesReactionLaugh => 'Lachen';
+
+  @override
+  String get messagesReactionSurprised => 'Überrascht';
+
+  @override
+  String get messagesReactionSad => 'Traurig';
+
+  @override
+  String get messagesReactionFire => 'Feuer';
+
+  @override
+  String get messagesReactionRefused =>
+      'Du kannst auf diese Nachricht nicht reagieren.';
+
+  @override
+  String get messagesSearchPlaceholder => 'Nachrichten durchsuchen';
+
+  @override
+  String get messagesSearchLabel => 'Deine Nachrichten durchsuchen';
+
+  @override
+  String get messagesSearchEmpty => 'Keine passenden Nachrichten.';
+
+  @override
+  String get messagesSearchFailed =>
+      'Deine Nachrichten konnten nicht durchsucht werden. Versuche es erneut.';
+
+  @override
+  String get messagesPhotoAttach => 'Foto anhängen';
+
+  @override
+  String get messagesPhotoRemove => 'Foto entfernen';
+
+  @override
+  String get messagesPhotoDraftAlt => 'Zu sendendes Foto';
+
+  @override
+  String get messagesPhotoAlt => 'Foto in der Nachricht';
+
+  @override
+  String get messagesPhotoProcessing => 'Foto wird vorbereitet…';
+
+  @override
+  String get messagesPhotoRejected =>
+      'Dieses Foto konnte nicht gesendet werden.';
+
+  @override
+  String get messagesPhotoUnavailableToView => 'Foto nicht verfügbar';
+
+  @override
+  String get messagesPhotoPreview => 'Foto';
+
+  @override
+  String get messagesPhotoTooLarge => 'Dieses Foto ist zu groß zum Senden.';
+
+  @override
+  String get messagesPhotoUnreadable =>
+      'Diese Datei konnte nicht als Foto gelesen werden.';
+
+  @override
+  String get messagesPhotoUnavailable =>
+      'Fotos in Nachrichten sind noch nicht verfügbar.';
+
+  @override
+  String get messagesPhotoUploadFailed =>
+      'Das Foto konnte nicht hochgeladen werden. Versuche es erneut.';
+
+  @override
+  String get messagesPhotoSendNotAllowed =>
+      'Du kannst Fotos an Personen senden, denen du folgst oder die dir folgen, oder in eine Unterhaltung, die sie angenommen haben – außer einer von euch hat den anderen blockiert.';
+
+  @override
+  String get messagesLinkOpenFailed =>
+      'Dieser Link konnte nicht geöffnet werden.';
 }

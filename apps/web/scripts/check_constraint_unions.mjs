@@ -734,7 +734,7 @@ export const PAIRS = [
 			{ file: 'apps/web/src/lib/social/dm_reactions.ts', decl: 'DM_REACTIONS', shape: 'strings' },
 			{ file: 'apps/web/src/lib/social/dm_reactions.ts', decl: 'DM_REACTION_CODEPOINTS', shape: 'keys' },
 			{ file: 'apps/mobile_android/lib/dm_reactions.dart', decl: 'kDmReactions', shape: 'strings' },
-			{ file: 'apps/mobile_android/lib/dm_reactions.dart', decl: 'kDmReactionCodepoints', shape: 'keys' },
+			{ file: 'apps/mobile_android/lib/widgets/dm_reaction_chips.dart', decl: 'dmReactionName', shape: 'switch' },
 		],
 	},
 	{

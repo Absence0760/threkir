@@ -1,17 +1,25 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show LengthLimitingTextInputFormatter;
+import 'package:flutter/services.dart'
+    show LengthLimitingTextInputFormatter, PlatformException;
+import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart' show openAppSettings;
 import 'package:ui_kit/ui_kit.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../auth_error.dart';
 import '../coach_share.dart';
 import '../dm_attachment.dart';
 import '../dm_edit.dart';
+import '../dm_image.dart';
+import '../dm_image_encode.dart';
 import '../dm_pending_hides.dart';
+import '../dm_reactions.dart';
 import '../dm_read_receipt.dart';
 import '../dm_send_error.dart';
 import '../l10n/date_format.dart';
@@ -19,6 +27,9 @@ import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../undo_queue.dart';
 import '../widgets/coach_share_card.dart';
+import '../widgets/dm_message_text.dart';
+import '../widgets/dm_photo.dart';
+import '../widgets/dm_reaction_chips.dart';
 import '../widgets/dm_route_attachment.dart';
 import '../widgets/error_state.dart';
 import '../widgets/plan_change_requests.dart';
@@ -61,6 +72,11 @@ const Duration kMessageThreadPollInterval = Duration(seconds: 10);
 /// the server only when the window closes, so it is not confirmed.
 /// While the viewer's block stands the composer gives way to a notice, since
 /// the INSERT policy refuses a send either way across a block.
+///
+/// Issue #1216: a message's links show their domain and open in the browser;
+/// a live message carries reaction chips, and React in its options; a photo
+/// is re-encoded on the device before upload, offered only while the
+/// server's `dm_images` gate is open.
 class MessageThreadScreen extends StatefulWidget {
   const MessageThreadScreen({
     super.key,
@@ -76,6 +92,8 @@ class MessageThreadScreen extends StatefulWidget {
     this.initialArchived,
     this.initialMarkedUnread,
     this.initialRequest,
+    this.pickPhoto,
+    this.openLink,
   }) : deletedPartnerKey = null;
 
   const MessageThreadScreen.deletedPartner({
@@ -89,7 +107,9 @@ class MessageThreadScreen extends StatefulWidget {
     this.initialMuted,
     this.initialArchived,
     this.initialMarkedUnread,
+    this.openLink,
   })  : initialRequest = null,
+        pickPhoto = null,
         partnerId = null,
         partnerName = null,
         partnerAvatarUrl = null;
@@ -121,6 +141,14 @@ class MessageThreadScreen extends StatefulWidget {
   /// The conversation is a message request to the viewer they have not
   /// answered (migration 20271115002384).
   final bool? initialRequest;
+
+  /// The bytes of a photo the runner picked, or null when they cancelled.
+  /// Defaults to the gallery picker; tests inject it.
+  final Future<Uint8List?> Function()? pickPhoto;
+
+  /// Opens a link from a message. Defaults to the external browser; tests
+  /// inject it.
+  final Future<bool> Function(Uri uri)? openLink;
 
   @override
   State<MessageThreadScreen> createState() => _MessageThreadScreenState();
@@ -188,6 +216,22 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
   /// than putting an unsent message's text back.
   int _localWrites = 0;
 
+  /// Reactions on the live messages on screen (migration 20271213121602),
+  /// re-read with every thread read so the partner's appear on the next poll.
+  List<DmReactionRow> _reactions = const [];
+  int _reactionReadSeq = 0;
+
+  /// Bumped by the viewer's own reaction, so a read that started before it
+  /// cannot put the old chip back.
+  int _reactionWrites = 0;
+
+  /// The server's `dm_images` gate; off until read, and off on a failure.
+  bool _photosEnabled = false;
+
+  /// The picked photo, already re-encoded without its metadata.
+  Uint8List? _photoDraft;
+  bool _preparingPhoto = false;
+
   DmThreadTarget get _target => widget.partnerId != null
       ? DmPartnerThread(widget.partnerId!)
       : DmDeletedPartnerThread(widget.deletedPartnerKey!);
@@ -206,6 +250,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     _load();
     if (_partnerName == null && widget.partnerId != null) _loadPartnerName();
     if (widget.partnerId != null) _loadBlockState();
+    if (widget.partnerId != null) _loadPhotosEnabled();
     _poll = Timer.periodic(widget.pollInterval, (_) => _refresh());
   }
 
@@ -250,6 +295,149 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       if (blocked != _blocked) setState(() => _blocked = blocked);
     } catch (e) {
       debugPrint('message thread block check failed: ${safeErrorLabel(e)}');
+    }
+  }
+
+  Future<void> _loadPhotosEnabled() async {
+    final on = await widget.api.fetchDmImagesEnabled();
+    if (mounted && on != _photosEnabled) setState(() => _photosEnabled = on);
+  }
+
+  /// An auxiliary read: a failure keeps the chips shown and the next thread
+  /// read tries again.
+  Future<void> _loadReactions() async {
+    if (widget.api.userId == null) return;
+    final ids = [
+      for (final m in _messages)
+        if (m.unsentAt == null) m.id,
+    ];
+    final seq = ++_reactionReadSeq;
+    final writes = _reactionWrites;
+    try {
+      final rows = await widget.api.fetchDmReactions(ids);
+      if (!mounted || seq != _reactionReadSeq || writes != _reactionWrites) {
+        return;
+      }
+      setState(() => _reactions = [
+            for (final r in rows)
+              DmReactionRow(
+                messageId: r.messageId,
+                userId: r.userId,
+                reaction: r.reaction,
+              ),
+          ]);
+    } catch (e) {
+      debugPrint('message reactions read failed: ${safeErrorLabel(e)}');
+    }
+  }
+
+  /// The server decides (a block either way, an unaccepted request, an
+  /// unsent message all refuse it); this only decides whether to offer it.
+  bool _canReact(DirectMessageRow m) =>
+      widget.partnerId != null &&
+      widget.api.userId != null &&
+      !_blocked &&
+      !_request &&
+      !_deleted &&
+      m.unsentAt == null;
+
+  /// Applied at once; a refusal puts the viewer's previous reaction back and
+  /// says why.
+  Future<void> _react(DirectMessageRow m, String? next) async {
+    final me = widget.api.userId;
+    if (me == null || !_canReact(m)) return;
+    final previous = myDmReaction(_reactions, m.id, me);
+    _reactionWrites++;
+    setState(() => _reactions = withMyDmReaction(_reactions, m.id, me, next));
+    try {
+      await widget.api.setDmReaction(m.id, next);
+    } catch (e) {
+      debugPrint('message reaction failed: ${safeErrorLabel(e)}');
+      if (!mounted) return;
+      _reactionWrites++;
+      setState(() =>
+          _reactions = withMyDmReaction(_reactions, m.id, me, previous));
+      showTopBanner(
+          context, dmReactionErrorMessage(AppLocalizations.of(context), e));
+    }
+  }
+
+  Future<void> _pickReaction(DirectMessageRow m) async {
+    final current = myDmReaction(_reactions, m.id, widget.api.userId);
+    final picked = await showDmReactionPicker(context, current: current);
+    if (picked == null || !mounted) return;
+    await _react(m, picked == current ? null : picked);
+  }
+
+  /// Only http(s) reaches here ([DmMessageText] makes nothing else a link),
+  /// and it opens outside the app.
+  Future<void> _openLink(String href) async {
+    final l10n = AppLocalizations.of(context);
+    var opened = false;
+    try {
+      final uri = Uri.parse(href);
+      if (uri.scheme == 'http' || uri.scheme == 'https') {
+        opened = await (widget.openLink ?? _launchExternal)(uri);
+      }
+    } catch (e) {
+      debugPrint('message link open failed: ${safeErrorLabel(e)}');
+    }
+    if (!opened && mounted) showTopBanner(context, l10n.messagesLinkOpenFailed);
+  }
+
+  static Future<bool> _launchExternal(Uri uri) =>
+      launchUrl(uri, mode: LaunchMode.externalApplication);
+
+  static Future<Uint8List?> _pickFromGallery() async {
+    final file = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: kDmImageMaxEdge.toDouble(),
+      maxHeight: kDmImageMaxEdge.toDouble(),
+    );
+    return file?.readAsBytes();
+  }
+
+  /// The photo is decoded and drawn again as a JPEG before it is kept, so
+  /// what waits beside the composer, and what is uploaded, has no metadata.
+  Future<void> _pickPhoto() async {
+    if (_preparingPhoto || _sending) return;
+    final l10n = AppLocalizations.of(context);
+    Uint8List? raw;
+    try {
+      raw = await (widget.pickPhoto ?? _pickFromGallery)();
+    } catch (e) {
+      debugPrint('message photo pick failed: ${safeErrorLabel(e)}');
+      if (!mounted) return;
+      if (e is PlatformException && e.code == 'photo_access_denied') {
+        showTopBanner(
+          context,
+          l10n.runPhotosPermissionDenied,
+          actionLabel: l10n.runPhotosOpenSettings,
+          onAction: () => openAppSettings(),
+          duration: const Duration(seconds: 6),
+        );
+      } else {
+        showTopBanner(context, l10n.runPhotosPickerFailed);
+      }
+      return;
+    }
+    if (raw == null || !mounted) return;
+    setState(() => _preparingPhoto = true);
+    try {
+      final jpeg = await encodeDmImageInBackground(raw);
+      if (!mounted) return;
+      setState(() => _photoDraft = jpeg);
+    } catch (e) {
+      debugPrint('message photo encode failed: $e');
+      if (!mounted) return;
+      showTopBanner(
+        context,
+        e is DmImageEncodeError && e.kind == DmImageEncodeFailure.tooLarge
+            ? l10n.messagesPhotoTooLarge
+            : l10n.messagesPhotoUnreadable,
+      );
+    } finally {
+      if (mounted) setState(() => _preparingPhoto = false);
     }
   }
 
@@ -440,6 +628,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       });
       return;
     }
+    unawaited(_loadReactions());
     if (widget.initialMuted == null) {
       _loadConversationState();
     } else if (widget.initialMarkedUnread == true) {
@@ -651,6 +840,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         ]);
         _hasMore = true;
       });
+      unawaited(_loadReactions());
       await _markReadIfUnread();
     } catch (e) {
       debugPrint('message thread poll failed: ${safeErrorLabel(e)}');
@@ -671,6 +861,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         _messages = _merge(_messages, page.messages);
         _hasMore = page.hasMore;
       });
+      unawaited(_loadReactions());
     } catch (e) {
       debugPrint('message thread older page failed: ${safeErrorLabel(e)}');
       if (mounted) {
@@ -720,29 +911,45 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     }
   }
 
+  /// A photo is uploaded first and the message sent with its id; the photo
+  /// stays beside the composer until the message is stored.
   Future<void> _send() async {
     final partnerId = widget.partnerId;
     final body = _composer.text.trim();
-    if (partnerId == null || _blocked || _sending || body.isEmpty) return;
-    final pending =
-        _PendingMessage('pending-${_pendingSeq++}', body, DateTime.now());
+    final photo = _photoDraft;
+    if (partnerId == null ||
+        _blocked ||
+        _sending ||
+        _preparingPhoto ||
+        (body.isEmpty && photo == null)) {
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    final pending = _PendingMessage('pending-${_pendingSeq++}',
+        body.isEmpty ? l10n.messagesPhotoPreview : body, DateTime.now());
     setState(() {
       _sending = true;
       _pending.add(pending);
     });
     _composer.clear();
+    var uploaded = false;
     try {
-      final row = await widget.api.sendDm(partnerId, body);
+      String? imageId;
+      if (photo != null) {
+        imageId = await widget.api.uploadDmImage(photo);
+        uploaded = true;
+      }
+      final row = await widget.api.sendDm(partnerId, body, imageId: imageId);
       if (!mounted) return;
       _localWrites++;
       setState(() {
         _pending.remove(pending);
         _messages = _merge(_messages, [row]);
+        if (identical(_photoDraft, photo)) _photoDraft = null;
       });
     } catch (e) {
       debugPrint('message send failed: ${safeErrorLabel(e)}');
       if (!mounted) return;
-      final l10n = AppLocalizations.of(context);
       setState(() => _pending.remove(pending));
       if (_composer.text.isEmpty) {
         _composer.value = TextEditingValue(
@@ -752,7 +959,9 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       }
       showTopBanner(
         context,
-        dmSendErrorMessage(l10n, e),
+        photo != null
+            ? dmPhotoSendErrorMessage(l10n, e, uploaded: uploaded)
+            : dmSendErrorMessage(l10n, e),
         duration: kTopBannerMaxDuration,
       );
     } finally {
@@ -777,6 +986,7 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
     final l10n = AppLocalizations.of(context);
     final mine = m.senderId == widget.api.userId;
     final editable = canEditDm(m, widget.api.userId, DateTime.now());
+    final canReact = _canReact(m);
     final action = await showModalBottomSheet<String>(
       context: context,
       useSafeArea: true,
@@ -784,6 +994,13 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (canReact)
+              ListTile(
+                key: const ValueKey('message-action-react'),
+                leading: const Icon(Icons.add_reaction_outlined),
+                title: Text(l10n.messagesReact),
+                onTap: () => Navigator.pop(ctx, 'react'),
+              ),
             if (editable)
               ListTile(
                 key: const ValueKey('message-action-edit'),
@@ -811,17 +1028,20 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
       ),
     );
     if (!mounted || action == null) return;
-    if (action == 'unsend') {
-      await _unsend(m);
-    } else if (action == 'edit') {
-      await _edit(m);
-    } else {
-      await showReportSheet(
-        context,
-        api: widget.api,
-        targetKind: 'direct_message',
-        targetId: m.id,
-      );
+    switch (action) {
+      case 'react':
+        await _pickReaction(m);
+      case 'unsend':
+        await _unsend(m);
+      case 'edit':
+        await _edit(m);
+      case 'report':
+        await showReportSheet(
+          context,
+          api: widget.api,
+          targetKind: 'direct_message',
+          targetId: m.id,
+        );
     }
   }
 
@@ -1073,14 +1293,17 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           body: p.body,
           time: formatTime(p.createdAt, tag),
           sendingLabel: l10n.messagesSending,
+          onOpenLink: _openLink,
         ),
       for (final m in _messages.reversed)
         _Bubble(
           key: ValueKey(m.id),
           mine: m.senderId == me,
-          unsentLabel: m.unsentAt != null || m.body == null
-              ? l10n.messagesUnsentPlaceholder
-              : null,
+          unsentLabel:
+              m.unsentAt != null || (m.body == null && m.imageId == null)
+                  ? l10n.messagesUnsentPlaceholder
+                  : null,
+          onOpenLink: _openLink,
           body: m.body == null ||
                   _isCoachShare(m) ||
                   (hasDmRouteAttachment(m.routeId) &&
@@ -1115,6 +1338,24 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
                   routeId: m.routeId!,
                   refreshTick: _refreshTick,
                   onOpen: widget.onOpenRoute,
+                )
+              : m.unsentAt == null && m.imageId != null
+              ? DmPhoto(
+                  key: ValueKey('dm-photo-${m.imageId}'),
+                  api: widget.api,
+                  imageId: m.imageId!,
+                  color: m.senderId == me
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.onSurface,
+                )
+              : null,
+          footer: m.unsentAt == null
+              ? DmReactionChips(
+                  messageId: m.id,
+                  rows: _reactions,
+                  viewerId: me,
+                  canReact: _canReact(m),
+                  onSet: (r) => _react(m, r),
                 )
               : null,
         ),
@@ -1224,7 +1465,10 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
 
   Widget _composerBar(AppLocalizations l10n) {
     final theme = Theme.of(context);
-    final canSend = !_sending && _composer.text.trim().isNotEmpty;
+    final photo = _photoDraft;
+    final canSend = !_sending &&
+        !_preparingPhoto &&
+        (_composer.text.trim().isNotEmpty || photo != null);
     return SafeArea(
       top: false,
       child: Container(
@@ -1232,38 +1476,81 @@ class _MessageThreadScreenState extends State<MessageThreadScreen>
           border: Border(top: BorderSide(color: theme.dividerColor)),
         ),
         padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: TextField(
-                key: const ValueKey('message-composer'),
-                controller: _composer,
-                minLines: 1,
-                maxLines: 5,
-                textCapitalization: TextCapitalization.sentences,
-                inputFormatters: [
-                  LengthLimitingTextInputFormatter(kDirectMessageMaxLength),
+            if (photo != null) ...[
+              Row(
+                key: const ValueKey('dm-photo-draft'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    child: Image.memory(
+                      photo,
+                      height: 96,
+                      fit: BoxFit.cover,
+                      semanticLabel: l10n.messagesPhotoDraftAlt,
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('dm-photo-remove'),
+                    tooltip: l10n.messagesPhotoRemove,
+                    icon: const Icon(Icons.close),
+                    onPressed: _sending
+                        ? null
+                        : () => setState(() => _photoDraft = null),
+                  ),
                 ],
-                decoration: InputDecoration(
-                  hintText: l10n.messagesComposerHint,
-                  border: const OutlineInputBorder(),
-                  isDense: true,
-                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              key: const ValueKey('message-send'),
-              tooltip: l10n.messagesSend,
-              icon: const Icon(Icons.send),
-              onPressed: canSend ? _send : null,
-            ),
+              const SizedBox(height: 8),
+            ],
+            _composerRow(l10n, canSend),
           ],
         ),
       ),
     );
   }
+
+  Widget _composerRow(AppLocalizations l10n, bool canSend) => Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (_photosEnabled) ...[
+            IconButton(
+              key: const ValueKey('dm-attach-photo'),
+              tooltip: l10n.messagesPhotoAttach,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              onPressed: _sending || _preparingPhoto ? null : _pickPhoto,
+            ),
+            const SizedBox(width: 4),
+          ],
+          Expanded(
+            child: TextField(
+              key: const ValueKey('message-composer'),
+              controller: _composer,
+              minLines: 1,
+              maxLines: 5,
+              textCapitalization: TextCapitalization.sentences,
+              inputFormatters: [
+                LengthLimitingTextInputFormatter(kDirectMessageMaxLength),
+              ],
+              decoration: InputDecoration(
+                hintText: l10n.messagesComposerHint,
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton.filled(
+            key: const ValueKey('message-send'),
+            tooltip: l10n.messagesSend,
+            icon: const Icon(Icons.send),
+            onPressed: canSend ? _send : null,
+          ),
+        ],
+      );
 }
 
 bool _isCoachShare(DirectMessageRow m) => parseDmKind(m.kind) == 'coach_share';
@@ -1283,6 +1570,8 @@ class _Bubble extends StatelessWidget {
     this.aiAssisted,
     this.onLongPress,
     this.longPressHint,
+    this.onOpenLink,
+    this.footer,
   });
 
   final bool mine;
@@ -1307,6 +1596,10 @@ class _Bubble extends StatelessWidget {
   final ({String label, String title})? aiAssisted;
   final VoidCallback? onLongPress;
   final String? longPressHint;
+  final void Function(String href)? onOpenLink;
+
+  /// Under the bubble: the message's reaction chips.
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
@@ -1341,7 +1634,11 @@ class _Bubble extends StatelessWidget {
               ),
             )
           else if (body != null)
-            Text(body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
+            DmMessageText(
+              body: body!,
+              style: theme.textTheme.bodyMedium?.copyWith(color: fg),
+              onOpenLink: onOpenLink,
+            ),
           const SizedBox(height: 2),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -1415,21 +1712,27 @@ class _Bubble extends StatelessWidget {
       alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
       child: content,
     );
-    if (seenLabel == null) return aligned;
+    if (seenLabel == null && footer == null) return aligned;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
         aligned,
-        Padding(
-          padding: const EdgeInsets.only(right: 4, bottom: 2),
-          child: Text(
-            seenLabel!,
-            key: const ValueKey('dm-seen'),
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
+        if (footer != null)
+          Align(
+            alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+            child: footer,
           ),
-        ),
+        if (seenLabel != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 4, bottom: 2),
+            child: Text(
+              seenLabel!,
+              key: const ValueKey('dm-seen'),
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
       ],
     );
   }

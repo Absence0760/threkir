@@ -138,6 +138,11 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
   bool? _readReceipts;
   bool _readReceiptsSaving = false;
 
+  /// user_settings.dm_requests, a column because the INSERT policy reads it
+  /// (migration 20271213121601). Null until read, like [_readReceipts].
+  bool? _messageRequests;
+  bool _messageRequestsSaving = false;
+
   /// Date of birth lives in two stores under two rules (decisions § 718).
   /// [_profileDob] is the `user_profiles` age record behind the under-18
   /// discoverability floor — written whenever the runner picks a date — and
@@ -158,6 +163,7 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     if (_nearbyGate) _loadNearbyAreaLabel();
     _loadProfilePrivate();
     _loadReadReceipts();
+    _loadMessageRequests();
     _loadHealthProfile();
   }
 
@@ -1234,6 +1240,39 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
     }
   }
 
+  Future<void> _loadMessageRequests() async {
+    final api = widget.apiClient;
+    if (api == null) return;
+    try {
+      final value = await api.fetchMyDmRequests();
+      if (!mounted) return;
+      setState(() => _messageRequests = value);
+    } catch (e) {
+      debugPrint('message requests read failed: $e');
+    }
+  }
+
+  /// Rolls back on a refused write, as [_editReadReceipts] does.
+  Future<void> _editMessageRequests(bool next) async {
+    final api = widget.apiClient;
+    if (api == null || _messageRequestsSaving) return;
+    setState(() {
+      _messageRequests = next;
+      _messageRequestsSaving = true;
+    });
+    try {
+      await api.setDmRequests(next);
+    } catch (e) {
+      debugPrint('message requests write failed: $e');
+      if (!mounted) return;
+      setState(() => _messageRequests = !next);
+      showTopBanner(
+          context, AppLocalizations.of(context).prefsMessageRequestsFailed);
+    } finally {
+      if (mounted) setState(() => _messageRequestsSaving = false);
+    }
+  }
+
   Future<void> _openFollowRequests() async {
     final api = widget.apiClient;
     if (api == null) return;
@@ -1975,6 +2014,17 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                         onChanged: _readReceipts == null || _readReceiptsSaving
                             ? null
                             : _editReadReceipts,
+                      ),
+                    if (widget.apiClient != null)
+                      SwitchListTile(
+                        key: const Key('prefsMessageRequests'),
+                        title: Text(l10n.prefsMessageRequests),
+                        subtitle: Text(l10n.prefsMessageRequestsHint),
+                        value: _messageRequests ?? false,
+                        onChanged:
+                            _messageRequests == null || _messageRequestsSaving
+                                ? null
+                                : _editMessageRequests,
                       ),
                   ],
                 ),

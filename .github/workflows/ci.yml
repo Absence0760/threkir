@@ -923,14 +923,19 @@ jobs:
             echo "Reproduce with: node --test apps/backend/scripts/sql_lex.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+          if ! node --test apps/backend/scripts/apply_pending_migrations.test.mjs; then
+            echo "::error::apply-pending-migrations.sh no longer honours its lock contract (lock_timeout inside each file's transaction, a bounded whole-file retry on SQLSTATE 55P03, no retry on any other error). The release workflow applies prod migrations with it."
+            echo "Reproduce with: node --test apps/backend/scripts/apply_pending_migrations.test.mjs (stub psql, no database needed)."
+            exit 1
+          fi
           if ! node --test apps/backend/scripts/check_migration_online_safety.test.mjs; then
             echo "::error::The migration online-safety guard's own unit tests failed, so its verdict on the migration set cannot be trusted. This is not schema drift."
             echo "Fix apps/backend/scripts/check_migration_online_safety.mjs (or its tests) first, then re-read what it says about the migrations."
             exit 1
           fi
           if ! node apps/backend/scripts/check_migration_online_safety.mjs; then
-            echo "::error::A migration adds a constraint to a guarded high-volume table without the NOT VALID two-step, which would take a blocking lock against populated prod tables."
-            echo "Split it into ADD CONSTRAINT ... NOT VALID plus a later VALIDATE CONSTRAINT — the playbook is docs/backend/migration_locks.md."
+            echo "::error::A migration takes a blocking scan of a guarded high-volume table: a constraint without the NOT VALID two-step, a VALIDATE in the same file as its ADD, or an index built under an ACCESS EXCLUSIVE its own file already took."
+            echo "Split it as the error above says (NOT VALID plus a later VALIDATE; the index in its own later file) — the playbook is docs/backend/migration_locks.md."
             exit 1
           fi
       # `revoke select (col) on t from authenticated` revokes nothing while the

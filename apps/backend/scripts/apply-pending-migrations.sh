@@ -20,11 +20,33 @@
 # Idempotent: already-applied versions are skipped; the ledger insert is
 # guarded with ON CONFLICT. On any error the current migration's transaction
 # rolls back and the script stops, leaving the ledger honest.
+#
+# Lock waits are bounded. Each file's transaction opens with
+# `set local lock_timeout` (MIGRATION_LOCK_TIMEOUT, default 5s): an ACCESS
+# EXCLUSIVE queued behind a long reader would otherwise make every later query
+# on that table queue behind it, for as long as the reader runs. A file that
+# hits the timeout (SQLSTATE 55P03) has rolled back whole, ledger row included,
+# and is retried from the top up to MIGRATION_LOCK_ATTEMPTS times (default 5),
+# sleeping MIGRATION_RETRY_BASE_S (default 5) seconds, doubled each time, in
+# between. Any other error, or the last attempt timing out, stops the script.
+# See docs/backend/migration_locks.md § Lock timeout on apply.
 
 set -euo pipefail
 
 DB_URL="${SUPABASE_DB_URL:?SUPABASE_DB_URL must be set to the target database connection string}"
 MIG_DIR="${MIG_DIR:-supabase/migrations}"
+LOCK_TIMEOUT="${MIGRATION_LOCK_TIMEOUT:-5s}"
+LOCK_ATTEMPTS="${MIGRATION_LOCK_ATTEMPTS:-5}"
+RETRY_BASE_S="${MIGRATION_RETRY_BASE_S:-5}"
+
+if ! [[ "$LOCK_TIMEOUT" =~ ^[0-9]+(ms|s|min)?$ ]]; then
+  echo "::error::MIGRATION_LOCK_TIMEOUT must be a Postgres duration like 5s or 500ms, got '${LOCK_TIMEOUT}'" >&2
+  exit 1
+fi
+if ! [[ "$LOCK_ATTEMPTS" =~ ^[1-9][0-9]*$ && "$RETRY_BASE_S" =~ ^[0-9]+$ ]]; then
+  echo "::error::MIGRATION_LOCK_ATTEMPTS must be a positive integer and MIGRATION_RETRY_BASE_S a whole number of seconds" >&2
+  exit 1
+fi
 
 # Authenticate via PGPASSWORD and drop whatever password is embedded in the URL.
 # Supabase DB passwords routinely contain %, !, ^ (which psql's URI parser tries
@@ -80,17 +102,47 @@ for row in "${sorted[@]}"; do
     continue
   fi
 
-  echo "Applying ${version} (${name})…"
   # The migration SQL + its ledger row commit atomically. ON_ERROR_STOP makes
-  # psql exit non-zero on the first failure so `set -e` halts the loop.
-  PGOPTIONS='' psql "$DB_URL" -v ON_ERROR_STOP=1 --quiet <<SQL
+  # psql exit non-zero on the first failure, and VERBOSITY verbose puts the
+  # SQLSTATE in the error line so a lock timeout can be told from a real fault.
+  attempt=1
+  while :; do
+    echo "Applying ${version} (${name}), attempt ${attempt}/${LOCK_ATTEMPTS}…"
+    log="$(mktemp)"
+    set +e
+    PGOPTIONS='' psql "$DB_URL" -v ON_ERROR_STOP=1 --quiet >"$log" 2>&1 <<SQL
+\set VERBOSITY verbose
 begin;
+set local lock_timeout = '${LOCK_TIMEOUT}';
 \i ${file}
 insert into supabase_migrations.schema_migrations(version, name)
   values ('${version}', '${name}')
   on conflict (version) do nothing;
 commit;
 SQL
+    rc=$?
+    set -e
+    cat "$log"
+    if [[ $rc -eq 0 ]]; then
+      rm -f "$log"
+      break
+    fi
+    if grep -q 'ERROR:  55P03' "$log" && [[ $attempt -lt $LOCK_ATTEMPTS ]]; then
+      rm -f "$log"
+      wait_s=$((RETRY_BASE_S * (1 << (attempt - 1))))
+      echo "::warning::${version} waited longer than lock_timeout=${LOCK_TIMEOUT} for a lock and rolled back whole; retrying in ${wait_s}s."
+      sleep "$wait_s"
+      attempt=$((attempt + 1))
+      continue
+    fi
+    if grep -q 'ERROR:  55P03' "$log"; then
+      echo "::error::${version} (${name}) could not take its locks within lock_timeout=${LOCK_TIMEOUT} on any of ${LOCK_ATTEMPTS} attempts, so it was not applied and the ledger has no row for it. A long transaction is holding a lock on a table it alters: find it in pg_stat_activity / pg_locks, let it finish or end it, then re-run this deploy." >&2
+    else
+      echo "::error::${version} (${name}) failed (psql exit ${rc}); its transaction rolled back and the ledger has no row for it. The error is above." >&2
+    fi
+    rm -f "$log"
+    exit 1
+  done
   applied_count=$((applied_count + 1))
 done
 

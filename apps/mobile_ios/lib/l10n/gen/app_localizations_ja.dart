@@ -943,13 +943,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get fitnessRunsPlans => 'トレーニングプラン';
 
   @override
-  String get runSurfaceLabel => 'ランセクション';
-
-  @override
   String get runSurfaceTabPlans => 'プラン';
 
   @override
-  String get runSurfaceTabRaces => 'レース';
+  String get runSurfaceTabRacesCourses => 'レース・コース';
 
   @override
   String get gymSurfaceLabel => 'ジムセクション';
@@ -14318,6 +14315,33 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesTitle => 'レースカレンダー';
 
   @override
+  String get racesSectionUpcoming => '今後のレース';
+
+  @override
+  String get racesSectionAnyTime => 'いつでも走れる';
+
+  @override
+  String racesAnyTimeRecord(String year, String time) {
+    return '$year年の記録：$time';
+  }
+
+  @override
+  String racesAnyTimeRecordBy(String year, String time, String name) {
+    return '$year年の記録：$time（$name）';
+  }
+
+  @override
+  String get racesAnyTimeNoRecord => '今シーズンはまだタイムがありません。最初の記録になるかもしれません。';
+
+  @override
+  String racesAnyTimeAway(String distance) {
+    return '$distance先';
+  }
+
+  @override
+  String get racesAnyTimeRecordsFailed => '今シーズンの記録を読み込めませんでした。';
+
+  @override
   String get racesSearchPlaceholder => 'レースを名前で検索…';
 
   @override
@@ -16263,9 +16287,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runSurfaceTabSegments => 'セグメント';
-
-  @override
-  String get runSurfaceTabParks => '公園';
 
   @override
   String rateLimitCreateClub(String wait) {

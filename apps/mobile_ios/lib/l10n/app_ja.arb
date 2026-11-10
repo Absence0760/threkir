@@ -252,9 +252,7 @@
   "fitnessTabNutrition": "栄養",
   "fitnessRunsRoutes": "ルート",
   "fitnessRunsPlans": "トレーニングプラン",
-  "runSurfaceLabel": "ランセクション",
   "runSurfaceTabPlans": "プラン",
-  "runSurfaceTabRaces": "レース",
   "gymSurfaceLabel": "ジムセクション",
   "gymTabLog": "ログ",
   "gymTabRecords": "記録",
@@ -4809,7 +4807,6 @@
   "segmentCatalogueStatSurface": "路面",
   "segmentCatalogueLeaderboard": "ランキング",
   "runSurfaceTabSegments": "セグメント",
-  "runSurfaceTabParks": "公園",
   "rateLimitCreateClub": "クラブの作成が速すぎます。{wait}待ってから、もう一度お試しください。",
   "rateLimitCreateRoute": "ルートの作成が速すぎます。{wait}待ってから、もう一度お試しください。",
   "rateLimitCreateReport": "報告の送信が速すぎます。{wait}待ってから、もう一度お試しください。",
@@ -5984,5 +5981,13 @@
   "courseAlertsRemoveFailed": "お知らせを削除できませんでした。",
   "courseAlertsNotFound": "このお知らせは表示できません",
   "profileNotifCourseAlert": "主催者がコースのお知らせを投稿しました",
-  "profileNotifCourseAlertNamed": "{club}がコースのお知らせを投稿しました"
+  "profileNotifCourseAlertNamed": "{club}がコースのお知らせを投稿しました",
+  "runSurfaceTabRacesCourses": "レース・コース",
+  "racesSectionUpcoming": "今後のレース",
+  "racesSectionAnyTime": "いつでも走れる",
+  "racesAnyTimeRecord": "{year}年の記録：{time}",
+  "racesAnyTimeRecordBy": "{year}年の記録：{time}（{name}）",
+  "racesAnyTimeNoRecord": "今シーズンはまだタイムがありません。最初の記録になるかもしれません。",
+  "racesAnyTimeAway": "{distance}先",
+  "racesAnyTimeRecordsFailed": "今シーズンの記録を読み込めませんでした。"
 }

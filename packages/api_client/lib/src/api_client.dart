@@ -5893,6 +5893,48 @@ class ApiClient {
     ];
   }
 
+  /// Every listed park course with its catalogue segment, across all parks,
+  /// for the "Run any time" section of Races & courses. One read where a
+  /// [fetchParkCourses] call per park would be a round trip each; the same
+  /// RLS hides an inactive park's courses and a pulled segment. Throws on a
+  /// failed read.
+  Future<List<ParkCourseListing>> fetchAllParkCourses() async {
+    final rows = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .order(ParkCourseRow.colSlug, ascending: true);
+    return [
+      for (final r in rows)
+        if (r['global_segments'] is Map)
+          ParkCourseListing(
+            course: ParkCourseRow.fromJson(r),
+            segment: GlobalSegmentRow.fromJson(
+              (r['global_segments'] as Map).cast<String, dynamic>(),
+            ),
+          ),
+    ];
+  }
+
+  /// This season's record on every park course the caller can see, keyed by
+  /// course id (`park_course_records`, migration 20271129002436). A course
+  /// with no visible effort this season has no entry. Signed-in only: the
+  /// board it wraps refuses an anonymous caller. Throws on a failed read.
+  Future<Map<String, ParkCourseRecord>> fetchParkCourseRecords() async {
+    final rows = await _client.rpc('park_course_records', get: true);
+    if (rows is! List) return const {};
+    return {
+      for (final r in rows)
+        if (r is Map &&
+            r['course_id'] is String &&
+            r['time_seconds'] is num)
+          r['course_id'] as String: ParkCourseRecord(
+            season: (r['season'] as num).toInt(),
+            timeSeconds: (r['time_seconds'] as num).toDouble(),
+            displayName: r['display_name'] as String?,
+          ),
+    };
+  }
+
   /// Which of [routeIds] are a park course's official route, so their
   /// Official badge can read "Official Threkir course". Mirrors web
   /// `fetchParkCourseRouteIds`. Throws on a failed read.

@@ -252,9 +252,7 @@
   "fitnessTabNutrition": "Nutrición",
   "fitnessRunsRoutes": "Rutas",
   "fitnessRunsPlans": "Planes de entrenamiento",
-  "runSurfaceLabel": "Secciones del área de carrera",
   "runSurfaceTabPlans": "Planes",
-  "runSurfaceTabRaces": "Carreras",
   "gymSurfaceLabel": "Secciones del gimnasio",
   "gymTabLog": "Registro",
   "gymTabRecords": "Récords",
@@ -4809,7 +4807,6 @@
   "segmentCatalogueStatSurface": "Superficie",
   "segmentCatalogueLeaderboard": "Clasificación",
   "runSurfaceTabSegments": "Segmentos",
-  "runSurfaceTabParks": "Parques",
   "rateLimitCreateClub": "Estás creando clubes demasiado rápido: espera {wait} e inténtalo de nuevo.",
   "rateLimitCreateRoute": "Estás creando rutas demasiado rápido: espera {wait} e inténtalo de nuevo.",
   "rateLimitCreateReport": "Estás enviando informes demasiado rápido: espera {wait} e inténtalo de nuevo.",
@@ -5984,5 +5981,13 @@
   "courseAlertsRemoveFailed": "No se pudo quitar el aviso.",
   "courseAlertsNotFound": "Este aviso ya no está disponible",
   "profileNotifCourseAlert": "La organización publicó un aviso del recorrido",
-  "profileNotifCourseAlertNamed": "{club} publicó un aviso del recorrido"
+  "profileNotifCourseAlertNamed": "{club} publicó un aviso del recorrido",
+  "runSurfaceTabRacesCourses": "Pruebas y recorridos",
+  "racesSectionUpcoming": "Próximas pruebas",
+  "racesSectionAnyTime": "Corre cuando quieras",
+  "racesAnyTimeRecord": "Récord de {year}: {time}",
+  "racesAnyTimeRecordBy": "Récord de {year}: {time}, de {name}",
+  "racesAnyTimeNoRecord": "Todavía no hay tiempos esta temporada. El tuyo podría ser el primero.",
+  "racesAnyTimeAway": "a {distance}",
+  "racesAnyTimeRecordsFailed": "No se pudieron cargar los récords de esta temporada."
 }

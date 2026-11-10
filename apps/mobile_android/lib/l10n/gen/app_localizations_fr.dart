@@ -981,13 +981,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get fitnessRunsPlans => 'Plans d\'entraînement';
 
   @override
-  String get runSurfaceLabel => 'Sections de la zone de course';
-
-  @override
   String get runSurfaceTabPlans => 'Plans';
 
   @override
-  String get runSurfaceTabRaces => 'Courses';
+  String get runSurfaceTabRacesCourses => 'Épreuves et parcours';
 
   @override
   String get gymSurfaceLabel => 'Sections muscu';
@@ -15065,6 +15062,35 @@ class AppLocalizationsFr extends AppLocalizations {
   String get racesTitle => 'Calendrier des courses';
 
   @override
+  String get racesSectionUpcoming => 'Épreuves à venir';
+
+  @override
+  String get racesSectionAnyTime => 'À courir quand vous voulez';
+
+  @override
+  String racesAnyTimeRecord(String year, String time) {
+    return 'Record $year : $time';
+  }
+
+  @override
+  String racesAnyTimeRecordBy(String year, String time, String name) {
+    return 'Record $year : $time par $name';
+  }
+
+  @override
+  String get racesAnyTimeNoRecord =>
+      'Aucun temps cette saison pour l\'instant. Le vôtre pourrait être le premier.';
+
+  @override
+  String racesAnyTimeAway(String distance) {
+    return 'à $distance';
+  }
+
+  @override
+  String get racesAnyTimeRecordsFailed =>
+      'Impossible de charger les records de cette saison.';
+
+  @override
   String get racesSearchPlaceholder => 'Rechercher des courses par nom…';
 
   @override
@@ -17097,9 +17123,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runSurfaceTabSegments => 'Segments';
-
-  @override
-  String get runSurfaceTabParks => 'Parcs';
 
   @override
   String rateLimitCreateClub(String wait) {

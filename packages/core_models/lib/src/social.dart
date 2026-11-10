@@ -410,6 +410,20 @@ class ParkCourseListing {
   const ParkCourseListing({required this.course, required this.segment});
 }
 
+/// The fastest visible time on a park course in its park's current season
+/// (`park_course_records`). Mirrors the web `ParkCourseRecord` type.
+class ParkCourseRecord {
+  final int season;
+  final double timeSeconds;
+  final String? displayName;
+
+  const ParkCourseRecord({
+    required this.season,
+    required this.timeSeconds,
+    this.displayName,
+  });
+}
+
 /// One row of the most-completions board on a catalogue segment
 /// (`global_segment_completions`): distinct local days with a visible effort.
 /// Tied counts share a rank. Mirrors the web `CompletionsEntry`.

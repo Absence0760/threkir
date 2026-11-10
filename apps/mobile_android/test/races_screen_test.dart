@@ -915,8 +915,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(find.text('Race 7'), 300,
-        scrollable: find.descendant(
-            of: find.byType(ListView), matching: find.byType(Scrollable)));
+        scrollable: find
+            .descendant(
+                of: find.byKey(const Key('races-scroll')),
+                matching: find.byType(Scrollable))
+            .first);
     await tester.pumpAndSettle();
 
     final lastCard = find.ancestor(

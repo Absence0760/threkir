@@ -1314,23 +1314,19 @@
   },
   "fitnessRunsRoutes": "Routes",
   "@fitnessRunsRoutes": {
-    "description": "Label for the Routes entry on the Fitness hub's Runs sub-tab"
+    "description": "Fitness hub tab, and that screen's title, for the route library"
   },
   "fitnessRunsPlans": "Training plans",
   "@fitnessRunsPlans": {
     "description": "Label for the Training plans entry on the Fitness hub's Runs sub-tab"
   },
-  "runSurfaceLabel": "Run surface sections",
-  "@runSurfaceLabel": {
-    "description": "Accessibility label for the labelled peer strip on the run surface"
-  },
   "runSurfaceTabPlans": "Plans",
   "@runSurfaceTabPlans": {
-    "description": "Run surface peer strip entry opening the training plan library"
+    "description": "Fitness hub tab holding the training plan library"
   },
-  "runSurfaceTabRaces": "Races",
-  "@runSurfaceTabRaces": {
-    "description": "Run surface peer strip entry opening the race calendar"
+  "runSurfaceTabRacesCourses": "Races & courses",
+  "@runSurfaceTabRacesCourses": {
+    "description": "Fitness hub tab, and that screen's title, holding the race calendar (Upcoming races) and the park courses runnable on any day (Run any time). Mirrors web runSurface.tabRacesCourses"
   },
   "gymSurfaceLabel": "Gym sections",
   "@gymSurfaceLabel": {
@@ -19850,7 +19846,47 @@
   },
   "racesTitle": "Race calendar",
   "@racesTitle": {
-    "description": "Title of the race calendar / discovery screen"
+    "description": "Fallback title of a race whose name has not loaded, and the label of a run's race row"
+  },
+  "racesSectionUpcoming": "Upcoming races",
+  "@racesSectionUpcoming": {
+    "description": "Heading of the race-calendar section on Races & courses. Mirrors web races.sectionUpcoming"
+  },
+  "racesSectionAnyTime": "Run any time",
+  "@racesSectionAnyTime": {
+    "description": "Heading of the park-courses section on Races & courses: standing courses that can be run on any day, unlike a race. Mirrors web races.sectionAnyTime"
+  },
+  "racesAnyTimeRecord": "{year} record: {time}",
+  "@racesAnyTimeRecord": {
+    "description": "A park course's fastest time this season, when the record holder's name is hidden. Mirrors web races.anyTimeRecord",
+    "placeholders": {
+      "year": {"type": "String", "example": "2026"},
+      "time": {"type": "String", "example": "24:31"}
+    }
+  },
+  "racesAnyTimeRecordBy": "{year} record: {time} by {name}",
+  "@racesAnyTimeRecordBy": {
+    "description": "A park course's fastest time this season and who ran it. Mirrors web races.anyTimeRecordBy",
+    "placeholders": {
+      "year": {"type": "String", "example": "2026"},
+      "time": {"type": "String", "example": "24:31"},
+      "name": {"type": "String", "example": "Sam"}
+    }
+  },
+  "racesAnyTimeNoRecord": "No time yet this season. Yours could be the first.",
+  "@racesAnyTimeNoRecord": {
+    "description": "A park course with no recorded time this season. Mirrors web races.anyTimeNoRecord"
+  },
+  "racesAnyTimeAway": "{distance} away",
+  "@racesAnyTimeAway": {
+    "description": "How far a park course's start is from the runner. Mirrors web races.anyTimeAway",
+    "placeholders": {
+      "distance": {"type": "String", "example": "3.2 km"}
+    }
+  },
+  "racesAnyTimeRecordsFailed": "Couldn't load this season's records.",
+  "@racesAnyTimeRecordsFailed": {
+    "description": "Shown above the park courses when this season's records failed to load; the courses still list. Mirrors web races.anyTimeRecordsFailed"
   },
   "racesSearchPlaceholder": "Search races by name…",
   "@racesSearchPlaceholder": {
@@ -22271,11 +22307,7 @@
   },
   "runSurfaceTabSegments": "Segments",
   "@runSurfaceTabSegments": {
-    "description": "Run-surface peer strip entry for the famous-segment catalogue"
-  },
-  "runSurfaceTabParks": "Parks",
-  "@runSurfaceTabParks": {
-    "description": "Run-surface peer strip entry for the park-course index (park time-trial courses with season boards)"
+    "description": "Fitness hub tab holding the famous-segment catalogue"
   },
   "rateLimitCreateClub": "You're creating clubs too quickly — please wait {wait} and try again.",
   "@rateLimitCreateClub": {

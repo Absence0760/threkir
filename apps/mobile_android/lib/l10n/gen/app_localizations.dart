@@ -1607,7 +1607,7 @@ abstract class AppLocalizations {
   /// **'Nutrition'**
   String get fitnessTabNutrition;
 
-  /// Label for the Routes entry on the Fitness hub's Runs sub-tab
+  /// Fitness hub tab, and that screen's title, for the route library
   ///
   /// In en, this message translates to:
   /// **'Routes'**
@@ -1619,23 +1619,17 @@ abstract class AppLocalizations {
   /// **'Training plans'**
   String get fitnessRunsPlans;
 
-  /// Accessibility label for the labelled peer strip on the run surface
-  ///
-  /// In en, this message translates to:
-  /// **'Run surface sections'**
-  String get runSurfaceLabel;
-
-  /// Run surface peer strip entry opening the training plan library
+  /// Fitness hub tab holding the training plan library
   ///
   /// In en, this message translates to:
   /// **'Plans'**
   String get runSurfaceTabPlans;
 
-  /// Run surface peer strip entry opening the race calendar
+  /// Fitness hub tab, and that screen's title, holding the race calendar (Upcoming races) and the park courses runnable on any day (Run any time). Mirrors web runSurface.tabRacesCourses
   ///
   /// In en, this message translates to:
-  /// **'Races'**
-  String get runSurfaceTabRaces;
+  /// **'Races & courses'**
+  String get runSurfaceTabRacesCourses;
 
   /// Accessibility label for the labelled peer strip on the gym surface
   ///
@@ -24332,11 +24326,53 @@ abstract class AppLocalizations {
   /// **'Donate on web'**
   String get fundraiserDonateOnWeb;
 
-  /// Title of the race calendar / discovery screen
+  /// Fallback title of a race whose name has not loaded, and the label of a run's race row
   ///
   /// In en, this message translates to:
   /// **'Race calendar'**
   String get racesTitle;
+
+  /// Heading of the race-calendar section on Races & courses. Mirrors web races.sectionUpcoming
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming races'**
+  String get racesSectionUpcoming;
+
+  /// Heading of the park-courses section on Races & courses: standing courses that can be run on any day, unlike a race. Mirrors web races.sectionAnyTime
+  ///
+  /// In en, this message translates to:
+  /// **'Run any time'**
+  String get racesSectionAnyTime;
+
+  /// A park course's fastest time this season, when the record holder's name is hidden. Mirrors web races.anyTimeRecord
+  ///
+  /// In en, this message translates to:
+  /// **'{year} record: {time}'**
+  String racesAnyTimeRecord(String year, String time);
+
+  /// A park course's fastest time this season and who ran it. Mirrors web races.anyTimeRecordBy
+  ///
+  /// In en, this message translates to:
+  /// **'{year} record: {time} by {name}'**
+  String racesAnyTimeRecordBy(String year, String time, String name);
+
+  /// A park course with no recorded time this season. Mirrors web races.anyTimeNoRecord
+  ///
+  /// In en, this message translates to:
+  /// **'No time yet this season. Yours could be the first.'**
+  String get racesAnyTimeNoRecord;
+
+  /// How far a park course's start is from the runner. Mirrors web races.anyTimeAway
+  ///
+  /// In en, this message translates to:
+  /// **'{distance} away'**
+  String racesAnyTimeAway(String distance);
+
+  /// Shown above the park courses when this season's records failed to load; the courses still list. Mirrors web races.anyTimeRecordsFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load this season\'s records.'**
+  String get racesAnyTimeRecordsFailed;
 
   /// Placeholder for the race name search field
   ///
@@ -27782,17 +27818,11 @@ abstract class AppLocalizations {
   /// **'Leaderboard'**
   String get segmentCatalogueLeaderboard;
 
-  /// Run-surface peer strip entry for the famous-segment catalogue
+  /// Fitness hub tab holding the famous-segment catalogue
   ///
   /// In en, this message translates to:
   /// **'Segments'**
   String get runSurfaceTabSegments;
-
-  /// Run-surface peer strip entry for the park-course index (park time-trial courses with season boards)
-  ///
-  /// In en, this message translates to:
-  /// **'Parks'**
-  String get runSurfaceTabParks;
 
   /// Rate-limit refusal when the create_club bucket is spent
   ///

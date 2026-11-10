@@ -970,13 +970,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fitnessRunsPlans => 'Training plans';
 
   @override
-  String get runSurfaceLabel => 'Run surface sections';
-
-  @override
   String get runSurfaceTabPlans => 'Plans';
 
   @override
-  String get runSurfaceTabRaces => 'Races';
+  String get runSurfaceTabRacesCourses => 'Races & courses';
 
   @override
   String get gymSurfaceLabel => 'Gym sections';
@@ -14885,6 +14882,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesTitle => 'Race calendar';
 
   @override
+  String get racesSectionUpcoming => 'Upcoming races';
+
+  @override
+  String get racesSectionAnyTime => 'Run any time';
+
+  @override
+  String racesAnyTimeRecord(String year, String time) {
+    return '$year record: $time';
+  }
+
+  @override
+  String racesAnyTimeRecordBy(String year, String time, String name) {
+    return '$year record: $time by $name';
+  }
+
+  @override
+  String get racesAnyTimeNoRecord =>
+      'No time yet this season. Yours could be the first.';
+
+  @override
+  String racesAnyTimeAway(String distance) {
+    return '$distance away';
+  }
+
+  @override
+  String get racesAnyTimeRecordsFailed =>
+      'Couldn\'t load this season\'s records.';
+
+  @override
   String get racesSearchPlaceholder => 'Search races by name…';
 
   @override
@@ -16886,9 +16912,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runSurfaceTabSegments => 'Segments';
-
-  @override
-  String get runSurfaceTabParks => 'Parks';
 
   @override
   String rateLimitCreateClub(String wait) {

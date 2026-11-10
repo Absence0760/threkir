@@ -1776,6 +1776,15 @@ class _SettingsPreferencesScreenState extends State<SettingsPreferencesScreen> {
                           ? (v) => _putUniversal(SettingsKeys.showCalories, v)
                           : null,
                     ),
+                    SwitchListTile(
+                      key: const Key('prefsShowMascot'),
+                      title: Text(l10n.prefsShowMascot),
+                      subtitle: Text(l10n.prefsShowMascotHint),
+                      value: _bagValue<bool>(SettingsKeys.showMascot) != false,
+                      onChanged: _bagReady
+                          ? (v) => _putUniversal(SettingsKeys.showMascot, v)
+                          : null,
+                    ),
                   ],
                 ),
                 (

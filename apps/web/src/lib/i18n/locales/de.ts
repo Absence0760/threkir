@@ -5673,6 +5673,8 @@ export const messages = {
 	"prefs.nearbyAreaNotFound": "Ort nicht gefunden. Versuche einen Stadt- oder Regionsnamen.",
 	"prefs.showCalories": "Kalorienschätzungen anzeigen",
 	"prefs.showCaloriesHint": "Geschätzt aus Distanz und Körpergewicht (Standard 70 kg, wenn nicht gesetzt). Deaktivieren, um die Kalorienangabe auf Laufseiten auszublenden.",
+	"prefs.showMascot": "Grisnir anzeigen",
+	"prefs.showMascotHint": "Threkirs Ziegenbock. Er ruht an Ruhetagen mit dir und sitzt in einer Ecke deiner geteilten Bilder.",
 	"prefs.modalitiesHeading": "Gym & Ernährung",
 	"prefs.showGym": "Gym anzeigen",
 	"prefs.showGymHint": "Zeigt Gym in der Seitenleiste, „Workout erfassen“ im Verlauf und deine Trainings auf der Startseite. Solange du nichts wählst, erscheint es mit deinem ersten Training.",

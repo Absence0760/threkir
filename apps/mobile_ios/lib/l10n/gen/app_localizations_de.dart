@@ -10109,6 +10109,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Geschätzt aus Distanz und Körpergewicht (Standard 70 kg, wenn nicht gesetzt). Deaktivieren, um die Kalorienangabe auf Laufseiten auszublenden.';
 
   @override
+  String get prefsShowMascot => 'Grisnir anzeigen';
+
+  @override
+  String get prefsShowMascotHint =>
+      'Threkirs Ziegenbock. Er ruht an Ruhetagen mit dir und sitzt in einer Ecke deiner geteilten Bilder.';
+
+  @override
   String get prefsDefaultRunPrivacy => 'Standard-Datenschutz für Läufe';
 
   @override

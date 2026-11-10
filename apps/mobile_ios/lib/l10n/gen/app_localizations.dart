@@ -16036,6 +16036,18 @@ abstract class AppLocalizations {
   /// **'Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.'**
   String get prefsShowCaloriesHint;
 
+  /// Title of the switch that shows or hides Grisnir, the Threkir mascot
+  ///
+  /// In en, this message translates to:
+  /// **'Show Grisnir'**
+  String get prefsShowMascot;
+
+  /// Subtitle of the show-Grisnir switch: where the mascot appears
+  ///
+  /// In en, this message translates to:
+  /// **'Threkir\'s goat. He rests with you on rest days and sits in a corner of your share images.'**
+  String get prefsShowMascotHint;
+
   /// Tile title for the default run privacy
   ///
   /// In en, this message translates to:

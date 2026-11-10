@@ -5691,6 +5691,8 @@ export const en = {
 	"prefs.nearbyAreaNotFound": "Couldn't find that place. Try a city or region name.",
 	"prefs.showCalories": "Show calorie estimates",
 	"prefs.showCaloriesHint": "Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.",
+	"prefs.showMascot": "Show Grisnir",
+	"prefs.showMascotHint": "Threkir's goat. He rests with you on rest days and sits in a corner of your share images.",
 	"prefs.modalitiesHeading": "Gym & nutrition",
 	"prefs.showGym": "Show Gym",
 	"prefs.showGymHint": "Adds Gym to the sidebar, Log workout to History and your lifts to Home. Until you choose, it appears once you log a lift.",

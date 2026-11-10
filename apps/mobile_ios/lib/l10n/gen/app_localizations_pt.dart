@@ -10096,6 +10096,13 @@ class AppLocalizationsPt extends AppLocalizations {
       'Estimadas a partir da distância e do peso corporal (predefinição de 70 kg quando não definido). Desative para ocultar as calorias nas páginas de corrida.';
 
   @override
+  String get prefsShowMascot => 'Mostrar o Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'O bode do Threkir. Descansa consigo nos dias de descanso e fica num canto das suas imagens partilhadas.';
+
+  @override
   String get prefsDefaultRunPrivacy => 'Privacidade predefinida das corridas';
 
   @override
@@ -31843,6 +31850,13 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get prefsShowCaloriesHint =>
       'Estimadas a partir da distância e do peso corporal (padrão de 70 kg quando não definido). Desative para ocultar as calorias nas páginas de corrida.';
+
+  @override
+  String get prefsShowMascot => 'Mostrar o Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'O bode do Threkir. Ele descansa com você nos dias de descanso e fica num canto das suas imagens compartilhadas.';
 
   @override
   String get prefsDefaultRunPrivacy => 'Privacidade padrão das corridas';

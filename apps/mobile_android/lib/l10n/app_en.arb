@@ -13518,6 +13518,14 @@
   "@prefsShowCaloriesHint": {
     "description": "Subtitle of the show-calories toggle"
   },
+  "prefsShowMascot": "Show Grisnir",
+  "@prefsShowMascot": {
+    "description": "Title of the switch that shows or hides Grisnir, the Threkir mascot"
+  },
+  "prefsShowMascotHint": "Threkir's goat. He rests with you on rest days and sits in a corner of your share images.",
+  "@prefsShowMascotHint": {
+    "description": "Subtitle of the show-Grisnir switch: where the mascot appears"
+  },
   "prefsDefaultRunPrivacy": "Default run privacy",
   "@prefsDefaultRunPrivacy": {
     "description": "Tile title for the default run privacy"

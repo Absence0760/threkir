@@ -5672,6 +5672,8 @@ export const messages = {
 	"prefs.nearbyAreaNotFound": "Não encontramos esse local. Tente o nome de uma cidade ou região.",
 	"prefs.showCalories": "Mostrar estimativas de calorias",
 	"prefs.showCaloriesHint": "Estimadas a partir da distância e do peso corporal (predefinição de 70 kg quando não definido). Desative para ocultar as calorias nas páginas de corrida.",
+	"prefs.showMascot": "Mostrar o Grisnir",
+	"prefs.showMascotHint": "O bode do Threkir. Descansa consigo nos dias de descanso e fica num canto das suas imagens partilhadas.",
 	"prefs.modalitiesHeading": "Ginásio e nutrição",
 	"prefs.showGym": "Mostrar Ginásio",
 	"prefs.showGymHint": "Adiciona Ginásio à barra lateral, «Registar treino» ao Histórico e os seus treinos ao Início. Enquanto não escolher, aparece quando registar o primeiro treino.",

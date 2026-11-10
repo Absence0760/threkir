@@ -9990,6 +9990,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Estimated from distance and body weight (a 70 kg default when unset). Turn off to hide the calorie figure on run pages.';
 
   @override
+  String get prefsShowMascot => 'Show Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'Threkir\'s goat. He rests with you on rest days and sits in a corner of your share images.';
+
+  @override
   String get prefsDefaultRunPrivacy => 'Default run privacy';
 
   @override

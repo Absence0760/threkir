@@ -5673,6 +5673,8 @@ export const messages = {
 	"prefs.nearbyAreaNotFound": "No se encontró ese lugar. Prueba con el nombre de una ciudad o región.",
 	"prefs.showCalories": "Mostrar estimaciones de calorías",
 	"prefs.showCaloriesHint": "Estimadas a partir de la distancia y el peso corporal (70 kg por defecto si no se ha configurado). Desactívalo para ocultar las calorías en las páginas de carrera.",
+	"prefs.showMascot": "Mostrar a Grisnir",
+	"prefs.showMascotHint": "La cabra de Threkir. Descansa contigo en los días de descanso y aparece en una esquina de tus imágenes para compartir.",
 	"prefs.modalitiesHeading": "Gym y nutrición",
 	"prefs.showGym": "Mostrar Gym",
 	"prefs.showGymHint": "Añade Gym a la barra lateral, «Registrar entreno» al historial y tus sesiones a Inicio. Mientras no elijas, aparece cuando registras tu primera sesión.",

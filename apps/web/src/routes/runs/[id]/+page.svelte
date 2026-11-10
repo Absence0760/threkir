@@ -277,6 +277,9 @@
 	// Hide-calories opt-out (universal `show_calories` pref, default on) —
 	// hunt-newrunner: a weight-conscious runner can suppress the estimate.
 	let showCalories = $state(true);
+	// Universal `show_mascot` (default on): off drops Grisnir from the map
+	// share card whatever the editor's mark switch says.
+	let showMascot = $state(true);
 	// HR-zone fallback inputs, read from the universal settings bag on
 	// mount. Used only when explicit `hr_zones` is unset (Older #8).
 	let maxHrBpm = $state<number | null>(null);
@@ -414,6 +417,7 @@
 				const bw = effective<number>(settings, 'body_weight_kg');
 				if (typeof bw === 'number' && bw > 0) bodyWeightKg = bw;
 				showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
+				showMascot = effective<boolean>(settings, 'show_mascot', true) !== false;
 			}
 			// Read viewer gender for the calorie cross-formula
 			// calibration (persona-hunt Round 3 finding Woman #5).
@@ -3000,8 +3004,9 @@
 			</div>
 			<!-- Grisnir signs the bottom-right corner, beside the date and under
 				 the stats, so he never sits on the map or a number. He travels
-				 with the mark: the editor's mark switch drops both. -->
-			{#if shareCardMark}
+				 with the mark: the editor's mark switch drops both, and the
+				 runner's show_mascot setting drops him on every card. -->
+			{#if shareCardMark && showMascot}
 				<img
 					src="/brand/grisnir/grisnir-badge-256.png"
 					alt=""

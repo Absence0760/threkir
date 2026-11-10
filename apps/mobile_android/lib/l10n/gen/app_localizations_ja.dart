@@ -9550,6 +9550,12 @@ class AppLocalizationsJa extends AppLocalizations {
       '距離と体重から推定します（未設定の場合は70 kgを使用）。オフにするとラン詳細ページのカロリー表示を非表示にします。';
 
   @override
+  String get prefsShowMascot => 'Grisnirを表示';
+
+  @override
+  String get prefsShowMascotHint => 'Threkirのヤギです。休養日には一緒に休み、シェア画像の隅に小さく載ります。';
+
+  @override
   String get prefsDefaultRunPrivacy => 'ランのデフォルトプライバシー';
 
   @override

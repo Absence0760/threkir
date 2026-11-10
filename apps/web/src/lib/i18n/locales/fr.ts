@@ -5673,6 +5673,8 @@ export const messages = {
 	"prefs.nearbyAreaNotFound": "Lieu introuvable. Essayez un nom de ville ou de région.",
 	"prefs.showCalories": "Afficher les estimations de calories",
 	"prefs.showCaloriesHint": "Estimées à partir de la distance et du poids corporel (70 kg par défaut si non renseigné). Désactivez pour masquer les calories sur les pages de course.",
+	"prefs.showMascot": "Afficher Grisnir",
+	"prefs.showMascotHint": "Le bouc de Threkir. Il se repose avec vous les jours de repos et se tient dans un coin de vos images partagées.",
 	"prefs.modalitiesHeading": "Muscu et nutrition",
 	"prefs.showGym": "Afficher la muscu",
 	"prefs.showGymHint": "Ajoute Muscu à la barre latérale, « Enregistrer une séance » à l’historique et vos séances à l’accueil. Tant que vous n’avez pas choisi, elle apparaît dès votre première séance.",

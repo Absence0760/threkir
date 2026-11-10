@@ -10090,6 +10090,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'Estimadas a partir de la distancia y el peso corporal (70 kg por defecto si no se ha configurado). Desactívalo para ocultar las calorías en las páginas de carrera.';
 
   @override
+  String get prefsShowMascot => 'Mostrar a Grisnir';
+
+  @override
+  String get prefsShowMascotHint =>
+      'La cabra de Threkir. Descansa contigo en los días de descanso y aparece en una esquina de tus imágenes para compartir.';
+
+  @override
   String get prefsDefaultRunPrivacy =>
       'Privacidad predeterminada de las carreras';
 

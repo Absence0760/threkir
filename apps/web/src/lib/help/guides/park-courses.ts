@@ -100,5 +100,5 @@ export const guide: Guide = {
 			],
 		},
 	],
-	related: ['import-your-history', 'record-your-first-run'],
+	related: ['how-segment-times-are-measured', 'import-your-history', 'record-your-first-run'],
 };

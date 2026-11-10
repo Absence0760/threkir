@@ -30,6 +30,10 @@ export const guide: Guide = {
 						'**Finished**: the race is over.',
 						'**Cancelled**: the organiser cancelled the race.'
 					]
+				},
+				{
+					type: 'p',
+					text: 'A race with a scheduled start shows **Armed** with the time it starts by itself. A self-timed race shows **Self-timed window** with when it opens, then **Self-timed window open** with when it closes: each runner starts when they cross the start line.'
 				}
 			]
 		},
@@ -45,6 +49,10 @@ export const guide: Guide = {
 					id: 'follow-a-race-live',
 					alt: 'A course on a map with runners along it, each a coloured dot with a short trail of their recent path, and a flag at the finish.',
 				},
+				{
+					type: 'p',
+					text: "The map also draws each course's start and finish lines, the ones the race was armed with.",
+				},
 			]
 		},
 		{
@@ -57,6 +65,10 @@ export const guide: Guide = {
 				{
 					type: 'p',
 					text: 'There is no separate "paused" label. A runner who has stopped (to tie a lace, at an aid station, or because they paused their recording) or who has lost signal simply stops updating. After about 90 seconds without an update their row is marked **DELAYED**. That does not mean anything is wrong; it often just means no signal.'
+				},
+				{
+					type: 'p',
+					text: 'In a self-timed race, runners are ordered by how long ago they crossed the start line, longest first. Runners with no start-line time yet are listed after them, under **No start-line time yet**.'
 				}
 			]
 		},
@@ -92,5 +104,5 @@ export const guide: Guide = {
 			]
 		}
 	],
-	related: ['race-results-explained', 'racing-in-a-race', 'race-day-for-hosts']
+	related: ['race-results-explained', 'racing-in-a-race', 'run-a-self-timed-race', 'race-day-for-hosts']
 };

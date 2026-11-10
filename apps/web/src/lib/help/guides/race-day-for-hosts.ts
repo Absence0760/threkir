@@ -27,6 +27,10 @@ export const guide: Guide = {
 					id: 'race-day-for-hosts',
 					alt: 'Race day in four steps, from left to right: arm the race, fire GO, watch it live, then end it at the finish.',
 				},
+				{
+					type: 'p',
+					text: 'These steps are for a **Host GO** race. A **Scheduled GO** race starts by itself and a **Self-timed window** needs nothing from you on the day; see [[guide:choose-how-your-race-starts|Choose how your race starts]].',
+				},
 			]
 		},
 		{
@@ -48,6 +52,10 @@ export const guide: Guide = {
 					type: 'note',
 					tone: 'tip',
 					text: 'Armed is a waiting state. Nothing is timed and no results can be saved until you fire GO.'
+				},
+				{
+					type: 'p',
+					text: "Before the race is armed, each course's start and finish lines are checked, and anything worth a look is listed under **Before you arm the race**. A warning lets you **Arm anyway**; see [[guide:start-and-finish-lines|Start and finish lines]]. Arming also freezes the lines for this race."
 				}
 			]
 		},
@@ -141,9 +149,13 @@ export const guide: Guide = {
 						'An edited result is marked **Host edited** so everyone can see it was changed by the host. The edit moves the racer\'s gun time with it.',
 						'**Download results CSV** exports the boards.'
 					]
+				},
+				{
+					type: 'p',
+					text: 'In a self-timed race, results wait for your approval by default, and some are held for review even with auto-approve on. See [[guide:choose-how-your-race-starts|Choose how your race starts]].'
 				}
 			]
 		}
 	],
-	related: ['set-up-a-race', 'follow-a-race-live', 'race-results-explained', 'racing-in-a-race']
+	related: ['set-up-a-race', 'choose-how-your-race-starts', 'start-and-finish-lines', 'follow-a-race-live', 'race-results-explained', 'racing-in-a-race']
 };

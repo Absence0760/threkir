@@ -5,6 +5,7 @@
 	// clock ("GO at 07:30", "opens the day after at 06:00"), and each occurrence's
 	// session can still be delayed or extended on its own from the race panel.
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import HelpLink from '#lib/components/help/HelpLink.svelte';
 	import {
 		RACE_WINDOW_MAX_S,
 		localFromStartOffset,
@@ -100,6 +101,7 @@
 <fieldset class="start-mode" data-testid="race-start-mode">
 	<legend>{m('raceStart.legend')}</legend>
 	<p class="hint" id={`${uid}-explainer`}>{m('raceStart.explainer')}</p>
+	<HelpLink guide="choose-how-your-race-starts" />
 	<div
 		class="modes"
 		role="radiogroup"

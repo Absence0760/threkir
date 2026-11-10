@@ -868,6 +868,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     runStopRequests.addListener(_onDockedStopRequest);
     runSummaryDismissRequests.addListener(_onSummaryDismissRequest);
     widget.raceController?.addListener(_onRaceChange);
+    widget.raceController?.onStartLineCrossed = _onRaceStartCrossed;
     _activityType =
         ActivityType.fromName(widget.preferences.defaultActivityType);
     _selectedRoute = widget.initialRoute;
@@ -1015,6 +1016,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final rc = widget.raceController;
     if (rc == null || !mounted || _state != _ScreenState.recording) return;
     if (!_stopRequested) _attachToRunningRace();
+    // A finish the detector found replaying fixes at GO, or when the course
+    // arrived, rather than on a live fix.
+    final replayed = rc.takePendingFinish();
+    if (replayed != null) unawaited(_onRaceAutoFinish(replayed));
     if (rc.raceEnded && !_raceEndedShown) {
       _raceEndedShown = true;
       _showTopBanner(_l10n.runRaceEnded, duration: const Duration(seconds: 8));
@@ -1068,17 +1073,96 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// The runner reached the finish: stop the recorder, which submits the
-  /// auto result through [RaceController.submitResult].
+  /// The runner reached the finish. A finish-line crossing files the result
+  /// at once and holds the recording paused for [kRaceUndoWindow] behind
+  /// "Not finished? Resume" (#1307 m11), then stops; any other automatic
+  /// finish stops the recorder, which files it through
+  /// [RaceController.submitResult].
   Future<void> _onRaceAutoFinish(RaceFinish finish) async {
-    if (!mounted || _stopRequested) return;
-    final gun = widget.raceController?.gunTimeTo(finish.at);
+    if (!mounted || _stopRequested || _raceUndoOpen) return;
+    final rc = widget.raceController;
+    final gun = rc?.gunTimeTo(finish.at);
     final message = gun == null
         ? _l10n.runRaceFinishRecorded
         : _l10n.runRaceFinishedAuto(_formatDuration(Duration(seconds: gun)));
+    // L4: each cue on its own; neither may cost the runner the finish.
+    try {
+      _runHaptic(RunHapticPattern.workoutComplete);
+    } catch (e) {
+      debugPrint('race finish haptic failed: $e');
+    }
+    try {
+      if (widget.preferences.audioCues) {
+        _ttsCue('raceFinishCue',
+            () => widget.audioCues.announceGuidedCue(message));
+      }
+    } catch (e) {
+      debugPrint('race finish cue failed: $e');
+    }
     _showTopBanner(message, duration: const Duration(seconds: 6));
     _announceA11yState(message);
-    await _stop();
+    final runId = _runId;
+    if (rc == null ||
+        runId == null ||
+        finish.detection != RaceFinishDetection.gate) {
+      await _stop();
+      return;
+    }
+    if (!_manualPaused) _toggleManualPause();
+    unawaited(rc.fileOutcomeNow(
+      runId: runId,
+      durationS: _elapsed.inSeconds,
+      distanceM: _distanceMetres,
+    ));
+    setState(() => _raceUndoOpen = true);
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = Timer(kRaceUndoWindow, () {
+      if (!mounted || !_raceUndoOpen) return;
+      setState(() => _raceUndoOpen = false);
+      unawaited(_stop());
+    });
+  }
+
+  bool _raceUndoOpen = false;
+  Timer? _raceUndoTimer;
+
+  /// "Not finished? Resume": void the line finish and record on. The rest of
+  /// this race finishes by hand (Stop, then Finish race).
+  Future<void> _onRaceUndo() async {
+    final rc = widget.raceController;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    if (!_raceUndoOpen || rc == null) return;
+    setState(() => _raceUndoOpen = false);
+    if (_manualPaused) _toggleManualPause();
+    _showTopBanner(_l10n.runRaceFinishUndone,
+        duration: const Duration(seconds: 6));
+    _announceA11yState(_l10n.runRaceFinishUndone);
+    await rc.voidAutoFinish();
+  }
+
+  /// The start line committed this runner's start (#1307 cues). Each cue is
+  /// its own L4 effect.
+  void _onRaceStartCrossed() {
+    if (!mounted || _state != _ScreenState.recording) return;
+    try {
+      _runHaptic(RunHapticPattern.stepWork);
+    } catch (e) {
+      debugPrint('race start haptic failed: $e');
+    }
+    try {
+      if (widget.preferences.audioCues) {
+        _ttsCue('raceStartCue',
+            () => widget.audioCues.announceGuidedCue(_l10n.runRaceStartCrossed));
+      }
+    } catch (e) {
+      debugPrint('race start cue failed: $e');
+    }
+    try {
+      _announceA11yState(_l10n.runRaceStartCrossed);
+    } catch (e) {
+      debugPrint('race start announce failed: $e');
+    }
   }
 
   /// A Log-run action over the finished summary: the same exit as its Done.
@@ -2540,6 +2624,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // is joined at GO, by [_onRaceChange].
     _raceEndedShown = false;
     _raceLateShown = false;
+    final startedAt = _runStartedAtWall;
+    if (startedAt != null) {
+      widget.raceController?.beginRecording(startedAt: startedAt);
+    }
     _attachToRunningRace();
   }
 
@@ -3104,7 +3192,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         final rc = widget.raceController;
         final pos = snapshot.currentPosition;
         if (rc != null &&
-            rc.isHosting &&
+            rc.followsRecording &&
             pos != null &&
             fixedAt != null &&
             fixedAt != _raceFixOfferedAt &&
@@ -3890,6 +3978,9 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final recorder = _recorder;
     if (_stopRequested || recorder == null) return;
     _stopRequested = true;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    if (_raceUndoOpen && mounted) setState(() => _raceUndoOpen = false);
     final raw = await recorder.stop();
     unawaited(_persistStride(recorder));
     _snapshotSub?.cancel();
@@ -4360,6 +4451,11 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     _stopRequested = false;
     _runId = null;
     _runStartedAtWall = null;
+    _raceUndoTimer?.cancel();
+    _raceUndoTimer = null;
+    _raceUndoOpen = false;
+    // A discarded recording files no race result and times nothing more.
+    widget.raceController?.detachRecorder();
     // Clear the share intent + indicator so the next run starts private —
     // a sticky flag would silently re-broadcast a fresh run the runner
     // never chose to share.
@@ -4465,6 +4561,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     runStopRequests.removeListener(_onDockedStopRequest);
     runSummaryDismissRequests.removeListener(_onSummaryDismissRequest);
     widget.raceController?.removeListener(_onRaceChange);
+    if (widget.raceController?.onStartLineCrossed == _onRaceStartCrossed) {
+      widget.raceController?.onStartLineCrossed = null;
+    }
+    _raceUndoTimer?.cancel();
     widget.preferences.removeListener(_onPrefsChange);
     widget.runStore.removeListener(_onPrefsChange);
     widget.social.removeListener(_onSocialChange);
@@ -5566,7 +5666,10 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         // treadmill live-mode toggle compose in one Column so their real
         // heights stack — fixed per-widget offsets overlapped the moment a
         // card grew (a11y text scaling, long labels).
-        if (_phasePlan.isNotEmpty || _cutoffLegs.isNotEmpty || _treadmillPaired)
+        if (_phasePlan.isNotEmpty ||
+            _cutoffLegs.isNotEmpty ||
+            _treadmillPaired ||
+            widget.raceController != null)
           Positioned(
             left: 12,
             right: 12,
@@ -5575,6 +5678,58 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // A line finish, held open: "Not finished? Resume" (#1307).
+                if (_raceUndoOpen)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Card(
+                      key: const ValueKey('race-undo'),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                l10n.runRaceFinishRecorded,
+                                style: Theme.of(context).textTheme.bodyMedium,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton(
+                              key: const ValueKey('race-undo-resume'),
+                              onPressed: () => unawaited(_onRaceUndo()),
+                              child: Text(l10n.runRaceUndoResume),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                // How far the start line is, until the start commits.
+                if (widget.raceController != null)
+                  ValueListenableBuilder<double?>(
+                    valueListenable: widget.raceController!.distanceToStartM,
+                    builder: (context, toStart, _) {
+                      if (toStart == null) return const SizedBox.shrink();
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Center(
+                          child: Card(
+                            key: const ValueKey('race-to-start'),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              child: Text(
+                                l10n.runRaceToStartLine(
+                                    UnitFormat.distance(toStart, _unit)),
+                                style: Theme.of(context).textTheme.labelLarge,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 // Current phase + intent (+ the phase's target pace when a
                 // goal time was set).
                 if (_phasePlan.isNotEmpty)

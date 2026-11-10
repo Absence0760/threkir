@@ -5611,6 +5611,14 @@ export async function submitEventResult(params: {
 			...(params.finishMethod !== undefined ? { finish_method: params.finishMethod } : {}),
 			...(params.chipTimeS !== undefined ? { chip_time_s: params.chipTimeS } : {}),
 			...(params.courseId !== undefined ? { course_id: params.courseId } : {}),
+			// A time typed here asserts no line crossings. The upsert keeps an
+			// omitted column, and the server derives the gun and chip time from
+			// a `finish_at` left by an earlier device result (#1307), so clear
+			// them; `clock_offset_ms` is a device fact and stays.
+			start_at: null,
+			finish_at: null,
+			start_detection: null,
+			finish_detection: null,
 			updated_at: new Date().toISOString(),
 		},
 		{ onConflict: 'event_id,instance_start,user_id' }

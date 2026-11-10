@@ -350,6 +350,7 @@ class _SubmitFailSocial extends _EventSocial {
     int? gunTimeS,
     int? chipTimeS,
     String? finishMethod,
+    RaceCrossings crossings = RaceCrossings.none,
   }) async {
     submitCalls++;
     throw Exception('network down');

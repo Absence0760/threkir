@@ -33,6 +33,15 @@ The `direct_messages` INSERT policy is the only gate, and it is the same for eve
 
 A refusal is one 42501 for every reason, and clients show it as one sentence ("You can message people you follow or who follow you, or someone you share a club or an event with, unless either of you has blocked the other."). `user_blocks` and `conversation_participants` are owner-read, so a client never learns that the *other* person blocked it or declined its request ([decisions § 1916](../architecture/decisions.md)).
 
+Since migration `20271210001215` an **active coaching link** counts as a follow edge for this rule (`private.dm_follow_edge`), so a coach and the athlete they coach can write to each other without a request: a plan-change card ([§ 2382](../architecture/decisions.md)) and a shared AI answer both live in that thread. Ending the link removes the edge on the next send.
+
+## Typed messages: shared AI answers and AI-assisted messages (issue #1215)
+
+`direct_messages.kind` is `text`, `coach_share` or `ai_assisted` (CHECK, registered in `check_constraint_unions.mjs`; `DmKind` / `kDmKinds` in the `coach_share` parity pair).
+
+- **`coach_share`** — paragraphs of the sender's own AI Coach answer, sent to their active coach by `share_coach_message` only (migration `20271210001215`). The INSERT policy admits no client-written `coach_share` and no `coach_message_id`; `edit_direct_message` refuses one (55000), and unsend clears the text and the link back. Both clients draw it as an AI-labelled card (`CoachShareCard`, `coach_share_card.dart`) from typed blocks, never HTML, and the inbox preview carries the AI tag (`dm_threads().last_kind`). Gate: the `coach_share` row of `private.feature_flags`, closed in prod until the CISO confirms the labelling ([deployment.md](../ops/deployment.md#share-with-coach--after-the-ciso--security-analyst-confirms-the-ai-labelling)).
+- **`ai_assisted`** — a coach's own message drafted with the coach assistant (migration `20271210001217`). The client sets it; the INSERT policy admits it only from an active coach to their athlete. Both sides show an "AI-assisted" marker. See [coach_roster.md § Coach assistant](coach_roster.md#coach-assistant-issue-1215-phase-4).
+
 ## Message requests
 
 Someone who does not follow you, and whom you do not follow, can message you first only when you share one of:

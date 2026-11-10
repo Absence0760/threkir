@@ -174,3 +174,10 @@ need a notarised log of changes prior to a specific date, email
 * **Activation date**: none; this records the existing relationship.
 * **DPA**: MapTiler standard DPA, copy on file. A countersigned copy is available only on a paid plan, through sales@maptiler.com.
 * **Opt-out path**: unchanged; see the MapTiler row in [`sub-processors.md`](sub-processors.md).
+
+## Planned — Anthropic — new data category: the coach assistant (no new sub-processor)
+
+* **What changes**: a coach can ask the AI for a draft message to an athlete they coach (issue #1215 Phase 4). With the athlete's own consent on that coaching link, the athlete's recent messages with the coach, their current plan with the next two weeks of workouts, and their 10 most recent activities go to Anthropic, with what the coach types. This is a third party's data processed at the coach's request, which no earlier entry covers. The field list is the coach-assist entry of the Anthropic row in [`sub-processors.md`](sub-processors.md).
+* **Gate**: built and off. Both halves of the flag (`PUBLIC_COACH_ASSIST_ENABLED`, `COACH_ASSIST_ENABLED`) stay unset until the CISO + counsel sign-off and the DPIA section ([dpia.md](dpia.md#coach-assistant-issue-1215-phase-4)) are complete. Every call also needs the coach's AI disclosure v7 and the athlete's per-link consent.
+* **Activation date**: not set. It is at least 30 days after this entry is published, per the notice period above.
+* **Opt-out path**: athletes leave "Let {coach} use AI assistance" off on /coaching (the default) or turn it off; coaches don't use the assistant.

@@ -39,7 +39,7 @@
 		deadlinePassed,
 	} from '#lib/social/organiser_dispute.ts';
 	import type { OrganiserDisputeTargetKind } from '#lib/types.ts';
-	import { landManagerDueAt } from '#lib/parks/course_report.ts';
+	import { courseReportMailto, landManagerDueAt } from '#lib/parks/course_report.ts';
 	import { regionSlug } from '#lib/parks/park_courses.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 
@@ -600,7 +600,7 @@
 							</p>
 							{#if r.contact_email}
 								<p class="report-by" data-testid="admin-report-contact">
-									<a href="mailto:{r.contact_email}">{t('admin.reports.course.contact', { email: r.contact_email })}</a>
+									<a href={courseReportMailto(r.contact_email)}>{t('admin.reports.course.contact', { email: r.contact_email })}</a>
 								</p>
 							{/if}
 							{#if r.organiser_club}

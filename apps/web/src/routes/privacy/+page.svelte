@@ -107,8 +107,8 @@
 			<strong>Park course reports</strong>: when you report a problem with a park course, the
 			reason and the note you write, and an email address if you give one so we can reply. You
 			can report without an account. Only Threkir's moderators see a report. To limit abuse we
-			count reports per network address using a one-way hash of the address, never the address
-			itself, and delete that count within a day.
+			count reports per network address using a hash of the address, never the address itself,
+			and delete that count within a day.
 		</li>
 		<li>
 			<strong>Safety contacts</strong>: email addresses of people you nominate for safety

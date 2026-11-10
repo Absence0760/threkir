@@ -89,7 +89,11 @@ class _DmPhotoState extends State<DmPhoto> {
     } catch (e) {
       debugPrint('message photo read failed: ${safeErrorLabel(e)}');
       if (!mounted || gen != _gen) return;
-      setState(() => _failed = true);
+      if (++_checks < kDmPhotoPendingMaxChecks) {
+        _schedule(kDmPhotoPendingRecheck);
+      } else if (_view?.status != 'ready') {
+        setState(() => _failed = true);
+      }
     }
   }
 

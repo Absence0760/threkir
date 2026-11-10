@@ -318,6 +318,7 @@ class _MessagesScreenState extends State<MessagesScreen>
     setState(() {
       _searchQuery = q;
       _searching = true;
+      _searchFailed = false;
     });
     _searchTimer = Timer(kMessagesSearchDebounce, () => _runSearch(q, seq));
   }

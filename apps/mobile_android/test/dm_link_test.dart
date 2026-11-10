@@ -67,4 +67,16 @@ void main() {
     expect(segs[0], isA<DmTextRun>());
     expect((segs[1] as DmLink).href, 'https://example.com/');
   });
+
+  test(
+      'a link stops at the first non-ASCII character, so text with no spaces around it stays text',
+      () {
+    expect(dmTextSegments('https://example.com/route路線を見て'), const [
+      DmLink('https://example.com/route',
+          href: 'https://example.com/route', domain: 'example.com'),
+      DmTextRun('路線を見て'),
+    ]);
+    expect(dmTextSegments('見て https://example.com。')[1].text,
+        'https://example.com');
+  });
 }

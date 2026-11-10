@@ -10550,6 +10550,9 @@ class ApiClient {
   /// How long a signed URL for a message photo lives, in seconds.
   static const int dmImageSignedUrlSeconds = 600;
 
+  /// The dm-images bucket's file_size_limit (migration 20271213121604).
+  static const int dmImageMaxBytes = 5 * 1024 * 1024;
+
   /// One message photo: its processing state and, only once the server has
   /// re-encoded it, a signed URL valid for [dmImageSignedUrlSeconds]. The
   /// bucket's SELECT policy admits only that re-encoded copy, and only to
@@ -10590,6 +10593,9 @@ class ApiClient {
         jpeg[1] != 0xD8 ||
         jpeg[2] != 0xFF) {
       throw ArgumentError.value(jpeg.length, 'jpeg', 'is not a JPEG');
+    }
+    if (jpeg.length > dmImageMaxBytes) {
+      throw ArgumentError.value(jpeg.length, 'jpeg', 'is over the 5 MiB limit');
     }
     final List<dynamic> rows;
     try {

@@ -48,7 +48,13 @@ class DmLink extends DmTextSegment {
   String toString() => 'DmLink($text, $domain)';
 }
 
-final RegExp _urlRe = RegExp(r'''https?://[^\s<>"'`]+''', caseSensitive: false);
+// The scheme's case is spelled out rather than matched case-insensitively:
+// with unicode: true, an ignore-case class excluding U+0080 and up also
+// excludes ASCII letters that fold to a non-ASCII one ('k' to the Kelvin sign).
+final RegExp _urlRe = RegExp(
+  r'''[Hh][Tt][Tt][Pp][Ss]?://[^\s<>"'`\u{80}-\u{10FFFF}]+''',
+  unicode: true,
+);
 final RegExp _trailing = RegExp(r'''[.,;:!?'"\]}>]+$''');
 final RegExp _asciiHost = RegExp(r'^[a-z0-9.-]+$');
 final RegExp _authority = RegExp(r'^(https?)://([^/?#]*)', caseSensitive: false);

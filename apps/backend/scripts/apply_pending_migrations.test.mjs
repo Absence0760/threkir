@@ -104,7 +104,7 @@ test('each file runs in one transaction that sets lock_timeout before the SQL an
   assert.deepEqual(ledger, ['20990101000001', '20990101000002']);
   assert.equal(calls.length, 2);
   const lines = calls[0].split('\n').map((l) => l.trim());
-  const at = (prefix) => lines.findIndex((l) => l.startsWith(prefix));
+  const at = (/** @type {string} */ prefix) => lines.findIndex((l) => l.startsWith(prefix));
   assert.ok(at('\\set VERBOSITY verbose') >= 0, 'the SQLSTATE must reach the error line');
   assert.ok(at('begin;') < at("set local lock_timeout = '5s';"));
   assert.ok(at("set local lock_timeout = '5s';") < at('\\i supabase/migrations/20990101000001_first.sql'));

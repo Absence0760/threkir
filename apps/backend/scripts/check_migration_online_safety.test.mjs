@@ -494,7 +494,7 @@ test('the backend@1.0.38 split files each pass on their own', () => {
 test('no file in the segment_match split holds jobs and runs together', () => {
   // The tables each top-level statement locks: ALTER TABLE, CREATE INDEX and
   // CREATE/DROP TRIGGER targets. Function bodies are not the migration's locks.
-  const locked = (filename) =>
+  const locked = (/** @type {string} */ filename) =>
     new Set(
       splitSqlStatements(readFileSync(join(MIGRATIONS_DIR, filename), 'utf8'), { blankLiterals: true })
         .map((raw) => raw.replace(/\s+/g, ' ').trim().toLowerCase())

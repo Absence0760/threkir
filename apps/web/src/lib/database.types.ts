@@ -8510,6 +8510,16 @@ export type Database = {
         Args: { p_export_job_id: string }
         Returns: boolean
       }
+      park_course_records: {
+        Args: never
+        Returns: {
+          course_id: string
+          display_name: string
+          season: number
+          time_seconds: number
+          user_id: string
+        }[]
+      }
       park_season: {
         Args: { p: Database["public"]["Tables"]["parks"]["Row"] }
         Returns: number

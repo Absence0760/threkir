@@ -327,7 +327,7 @@ Issue #1273 item 5, [decisions § 2262](../architecture/decisions.md). A creator
 
 1. CISO / Security Analyst review of the redacted projection (what an anonymous reader sees, and that the author credit honours private profiles and blocks), recorded with the sign-off date.
 2. `terraform apply` for the `/share/plan/*` CloudFront behaviour and the `plan` upstream alarm, then a `web@*` deploy so the `share-entity` zip carries the dispatcher branch.
-3. `insert into private.feature_flags (name, enabled) values ('public_plan_share', true) on conflict (name) do update set enabled = true;`
+3. Add `"public_plan_share": { "enabled": true, "signoff": "<link>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR, and the next backend release applies it (decisions § 2430).
 
 ## First-time plan discovery
 

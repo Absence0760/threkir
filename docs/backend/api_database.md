@@ -1965,6 +1965,21 @@ Pinned by `data_export_jobs_test.sql` (19 assertions) + `data_export_ready_notif
 
 ---
 
+#### Production config sync — `private.ops_task_runs` + the sync functions (migration `20271128002430`, [decisions § 2430](../architecture/decisions.md))
+
+What the backend release's "Sync production state" calls to apply `apps/backend/ops/prod_config.json` and `apps/backend/ops/tasks/` (issue #1350). Every function is SECURITY DEFINER, `search_path = ''`, and service role only.
+
+- `private.ops_task_runs (name text pk, sha256 text, ran_at timestamptz, result jsonb)` — one row per one-off task the release ran; `name` is the task file's stem (`<14-digit timestamp>_<snake_name>`), `sha256` the file it ran, `result` a JSON object. RLS on with no policy; service role only. A BEFORE UPDATE trigger (`ops_task_runs_keep_sha`) refuses rewriting `name` or `sha256` (`55000`).
+- `private.begin_ops_task(p_name, p_sha256)` → text — records the task and returns `run`, or `already ran` when the ledger holds it with the same sha256; refuses (`55000`) one whose file changed after it ran. Names the task for the rest of the transaction.
+- `private.set_ops_task_result(p_result jsonb)` — stores the running task's result on its row; refuses outside a running task (`55000`) or for a non-object (`22023`).
+- `private.apply_feature_flag(p_name, p_enabled)` → text — upserts one `private.feature_flags` row: `created` / `updated` / `unchanged`, and an unchanged flag writes nothing. Service role has no grant on the table itself.
+- `private.arm_cron_url(p_function, p_url)` → text — creates or updates the `<fn>_url` Vault entry `public.invoke_<fn>()` reads, by name: `created` / `updated` / `unchanged`. Refuses a function with no invoker (`P0002`), a URL that is not `https://<20-char ref>.supabase.co/functions/v1/<fn with dashes>` (`22023`), and a project with no `cron_secret` entry, checked by name only (`55000`).
+- `private.cron_invoke_outcome(p_request_id, p_timeout_seconds default 30)` → text — polls `net._http_response` for one request (at most 120 s) and returns its status code, or `timed out` / `error` / `no status` / `pending` / `not sent`. Never a body.
+
+Pinned by `prod_config_sync_test.sql` (37 assertions).
+
+---
+
 #### pg_cron schedules
 
 | Job | Schedule | What it does | Migration |

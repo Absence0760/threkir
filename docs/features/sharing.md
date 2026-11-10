@@ -41,7 +41,7 @@ The `privacy_default` value `followers` used to mean private, because a run had 
 
 ### Pre-deploy checklist
 
-- [ ] **CISO / Security Analyst review** of the audience oracles, the `shared_*` projections, and the `clip-public-track` branch, before `insert into private.feature_flags (name, enabled) values ('audience_sharing', true)` runs in prod. Recorded in [deployment.md](../ops/deployment.md).
+- [ ] **CISO / Security Analyst review** of the audience oracles, the `shared_*` projections, and the `clip-public-track` branch, before `audience_sharing` is declared enabled in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) (applied by the next backend release). Recorded in [deployment.md](../ops/deployment.md).
 
 ## Private profiles (decisions § 1967)
 

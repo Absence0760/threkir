@@ -66,6 +66,7 @@ export const messages = {
 	'runSurface.tabRuns': 'ラン',
 	'runSurface.tabRoutes': 'ルート',
 	'runSurface.tabSegments': 'セグメント',
+	'runSurface.tabParks': '公園',
 	'runSurface.tabPlans': 'プラン',
 	'runSurface.tabRaces': 'レース',
 	'shell.offline': 'オフラインです。新しいランはローカルに保存され、オンラインに戻ると同期されます。',

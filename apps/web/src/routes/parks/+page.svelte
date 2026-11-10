@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { m } from '#lib/i18n/store.svelte.ts';
+	import RunSurfaceTabs from '#lib/components/RunSurfaceTabs.svelte';
 	import { auth } from '#lib/stores/auth.svelte.ts';
 	import { fetchParks, type Park } from '#lib/core/data.ts';
 	import { groupParksByRegion, regionName, regionSlug } from '#lib/parks/park_courses.ts';
@@ -34,6 +35,7 @@
 <svelte:head><title>{m('parks.title')}</title></svelte:head>
 
 <div class="page">
+	<RunSurfaceTabs active="parks" />
 	<header class="page-header">
 		<h1>{m('parks.title')}</h1>
 		<p class="subtitle">{m('parks.intro')}</p>

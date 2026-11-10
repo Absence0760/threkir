@@ -17,6 +17,7 @@ import '../lib/screens/fitness_hub_screen.dart';
 import '../lib/screens/global_segments_screen.dart';
 import '../lib/screens/gym_screen.dart';
 import '../lib/screens/nutrition_screen.dart';
+import '../lib/screens/park_courses_screen.dart';
 import '../lib/screens/plans_screen.dart';
 import '../lib/screens/races_screen.dart';
 import '../lib/screens/routes_screen.dart';
@@ -24,6 +25,7 @@ import '../lib/screens/runs_screen.dart';
 import '../lib/training_service.dart';
 import '../lib/widgets/activity_timeline_list.dart';
 import '../lib/widgets/surface_peer_strip.dart';
+import 'pump_until.dart';
 
 void main() {
   setUpAll(() => initializeDateFormatting());
@@ -173,7 +175,14 @@ void main() {
     // Every run-planning surface is a named peer, not a tooltip-only glyph.
     final strip = find.byType(SurfacePeerStrip);
     expect(strip, findsOneWidget);
-    for (final label in ['Runs', 'Routes', 'Segments', 'Plans', 'Races']) {
+    for (final label in [
+      'Runs',
+      'Routes',
+      'Segments',
+      'Parks',
+      'Plans',
+      'Races'
+    ]) {
       expect(find.descendant(of: strip, matching: find.text(label)),
           findsOneWidget);
     }
@@ -214,6 +223,20 @@ void main() {
     await tester.tap(peer);
     await tester.pumpAndSettle();
     expect(find.byType(GlobalSegmentsScreen), findsOneWidget);
+  });
+
+  testWidgets('the Parks peer opens the park-course index', (tester) async {
+    await pump(tester, runs: [runRow('r1')]);
+    await tester.tap(find.text('Runs').first);
+    await tester.pumpAndSettle();
+    final peer = find.descendant(
+        of: find.byType(SurfacePeerStrip), matching: find.text('Parks'));
+    await tester.ensureVisible(peer);
+    await tester.tap(peer);
+    await pumpUntil(
+        tester, () => find.byType(ParksScreen).evaluate().isNotEmpty,
+        describe: 'the Parks peer to push ParksScreen');
+    expect(find.byType(ParksScreen), findsOneWidget);
   });
 
   testWidgets('the Plans peer opens the training plan library', (tester) async {
@@ -383,7 +406,14 @@ void main() {
       // The Runs surface keeps its peer strip when it stands alone.
       final strip = find.byType(SurfacePeerStrip);
       expect(strip, findsOneWidget);
-      for (final label in ['Runs', 'Routes', 'Segments', 'Plans', 'Races']) {
+      for (final label in [
+        'Runs',
+        'Routes',
+        'Segments',
+        'Parks',
+        'Plans',
+        'Races'
+      ]) {
         expect(find.descendant(of: strip, matching: find.text(label)),
             findsOneWidget);
       }

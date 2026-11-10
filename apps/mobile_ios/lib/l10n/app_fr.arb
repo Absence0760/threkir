@@ -4809,6 +4809,7 @@
   "segmentCatalogueStatSurface": "Surface",
   "segmentCatalogueLeaderboard": "Classement",
   "runSurfaceTabSegments": "Segments",
+  "runSurfaceTabParks": "Parcs",
   "rateLimitCreateClub": "Vous créez des clubs trop rapidement — veuillez patienter {wait} et réessayer.",
   "rateLimitCreateRoute": "Vous créez des parcours trop rapidement — veuillez patienter {wait} et réessayer.",
   "rateLimitCreateReport": "Vous envoyez des signalements trop rapidement — veuillez patienter {wait} et réessayer.",

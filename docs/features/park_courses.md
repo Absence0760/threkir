@@ -13,8 +13,8 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Season argument on `global_segment_leaderboard` (`p_season`) | Shipped |
 | Most-completions board (`global_segment_completions`) | Shipped |
 | `park_season` computed field (current year where the park is) | Shipped |
-| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` | Shipped |
-| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the segment catalogue's app bar) | Shipped |
+| Web `/parks`, `/parks/[region]/[park]`, `/parks/[region]/[park]/[course]` (the index is the **Parks** tab on the run-surface strip, after Segments; decisions § 2431) | Shipped |
+| Mobile `ParksScreen` → `ParkScreen` → `ParkCourseScreen` (from the **Parks** peer on the Fitness hub's Runs strip, and the segment catalogue's app bar) | Shipped |
 | Local fixture park (`seed.sql`, "Fixture State Park") | Shipped, local and CI only |
 | Geometry pipeline (`scripts/parks/`) and the load (`private.load_park_catalogue`, migrations `20271126002425` + `20271127002429`, decisions § 2425, § 2429), run by the release's "Sync production state" step (`scripts/parks/sync.mjs`) | Shipped. Pocahontas (Beaver Lake Trail + the five Swift Creek distances) was loaded by hand on 2026-11-10; every backend release since re-syncs it. See *Loading courses* |
 | Server-side matching (issue #1313 Phase 1) | Shipped (migration `20271117002392`, decisions § 2392 / § 2393). See *Matching* |

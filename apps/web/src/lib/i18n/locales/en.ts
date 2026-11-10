@@ -76,11 +76,12 @@ export const en = {
 	'nav.social': 'Social',
 	'nav.messages': 'Messages',
 	'nav.messagesUnread': '{n} unread',
-	// Run-surface sub-tab strip (Runs · Routes · Plans) — RunSurfaceTabs.svelte
+	// Run-surface sub-tab strip (Runs · Routes · Segments · Parks · Plans · Races) — RunSurfaceTabs.svelte
 	'runSurface.label': 'Run surface sections',
 	'runSurface.tabRuns': 'Runs',
 	'runSurface.tabRoutes': 'Routes',
 	'runSurface.tabSegments': 'Segments',
+	'runSurface.tabParks': 'Parks',
 	'runSurface.tabPlans': 'Plans',
 	'runSurface.tabRaces': 'Races',
 	'shell.offline': "You're offline. New runs save locally and sync when you're back online.",

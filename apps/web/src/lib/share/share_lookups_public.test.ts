@@ -224,6 +224,15 @@ test('course: a row maps onto the course, its segment geometry and its park', as
 					difficulty: null,
 					laps: 2,
 					attribution: '  © OpenStreetMap contributors (ODbL)  ',
+					route_guide: {
+						version: 1,
+						lang: 'en',
+						steps: [
+							{ kind: 'start', at_m: 0, way: 'path' },
+							{ kind: 'finish', at_m: 5120 },
+						],
+					},
+					route_guide_checked_at: '2026-12-01',
 					global_segments: {
 						name: 'Lake Loop',
 						description: null,
@@ -254,4 +263,9 @@ test('course: a row maps onto the course, its segment geometry and its park', as
 	assert.equal(course?.park.name, 'Fixture State Park');
 	assert.equal(course?.laps, 2);
 	assert.equal(course?.attribution, '© OpenStreetMap contributors (ODbL)');
+	assert.deepEqual(course?.route_guide?.steps, [
+		{ kind: 'start', at_m: 0, way: 'path' },
+		{ kind: 'finish', at_m: 5120 },
+	]);
+	assert.equal(course?.route_guide_checked_at, '2026-12-01');
 });

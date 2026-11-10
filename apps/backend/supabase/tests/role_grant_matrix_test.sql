@@ -68,6 +68,10 @@ select plan(12);
 -- it names the reviewing site admin, whom neither side may learn, so it is
 -- read only through definer RPCs that project the reviewer away
 -- (organiser_disputes_test.sql pins that side).
+-- park_course_status_actions (20271212000003) is the operator's park course
+-- close and reopen log; it names the site admin and is read only through the
+-- admin-gated park_course_status_history (park_course_reports_test.sql pins
+-- that side).
 select is(
   (select count(*)::int
      from pg_class c
@@ -76,7 +80,8 @@ select is(
        and c.relname not in ('app_quota', 'deletion_audit_log', 'data_export_jobs',
                              'payment_refunds', 'apple_sign_in_tokens', 'platform_fees',
                              'us_zcta_points', 'plan_calendar_feeds', 'run_track_extents',
-                             'club_verification_email_challenges', 'organiser_dispute_actions')
+                             'club_verification_email_challenges', 'organiser_dispute_actions',
+                             'park_course_status_actions')
        and not has_table_privilege('authenticated', c.oid, 'SELECT')
        and not exists (
          select 1 from information_schema.role_column_grants g

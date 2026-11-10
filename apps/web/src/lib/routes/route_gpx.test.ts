@@ -245,3 +245,13 @@ test('toRouteGpxWithMarkers — no attribution leaves the metadata as the name a
 	const xml = toRouteGpxWithMarkers('Loop', COORDS_3, ELEVS_3, [], null);
 	assert.ok(xml.includes('  <metadata>\n    <name>Loop</name>\n  </metadata>\n'));
 });
+
+test('toRouteGpxWithMarkers — a track description is the trk desc, after its name, escaped', () => {
+	const xml = toRouteGpxWithMarkers('Loop', COORDS_3, ELEVS_3, [], null, 'Turn left at <the> "fork" & go');
+	assert.ok(
+		xml.includes(
+			'  <trk>\n    <name>Loop</name>\n    <desc>Turn left at &lt;the&gt; &quot;fork&quot; &amp; go</desc>\n    <trkseg>\n'
+		)
+	);
+	assert.ok(toRouteGpxWithMarkers('Loop', COORDS_3, ELEVS_3, []).includes('  <trk>\n    <name>Loop</name>\n    <trkseg>\n'));
+});

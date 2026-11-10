@@ -2364,6 +2364,7 @@ class EventResultRow {
   static const String colStartDetection = 'start_detection';
   static const String colFinishDetection = 'finish_detection';
   static const String colNeedsReview = 'needs_review';
+  static const String colClockOffsetMs = 'clock_offset_ms';
 
   final String eventId;
   final DateTime instanceStart;
@@ -2392,6 +2393,7 @@ class EventResultRow {
   final String? startDetection;
   final String? finishDetection;
   final bool needsReview;
+  final int? clockOffsetMs;
 
   const EventResultRow({
     required this.eventId,
@@ -2421,6 +2423,7 @@ class EventResultRow {
     this.startDetection,
     this.finishDetection,
     required this.needsReview,
+    this.clockOffsetMs,
   });
 
   factory EventResultRow.fromJson(Map<String, dynamic> json) => EventResultRow(
@@ -2451,6 +2454,7 @@ class EventResultRow {
     startDetection: json['start_detection'] as String?,
     finishDetection: json['finish_detection'] as String?,
     needsReview: (json['needs_review'] as bool?) ?? false,
+    clockOffsetMs: (json['clock_offset_ms'] as num?)?.toInt(),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -2481,6 +2485,7 @@ class EventResultRow {
     colStartDetection: startDetection,
     colFinishDetection: finishDetection,
     colNeedsReview: needsReview,
+    colClockOffsetMs: clockOffsetMs,
   };
 
   EventResultRow copyWith({
@@ -2511,6 +2516,7 @@ class EventResultRow {
     String? startDetection,
     String? finishDetection,
     bool? needsReview,
+    int? clockOffsetMs,
   }) => EventResultRow(
     eventId: eventId ?? this.eventId,
     instanceStart: instanceStart ?? this.instanceStart,
@@ -2539,6 +2545,7 @@ class EventResultRow {
     startDetection: startDetection ?? this.startDetection,
     finishDetection: finishDetection ?? this.finishDetection,
     needsReview: needsReview ?? this.needsReview,
+    clockOffsetMs: clockOffsetMs ?? this.clockOffsetMs,
   );
 }
 
@@ -5177,6 +5184,8 @@ class ParkCourseRow {
   static const String colCreatedAt = 'created_at';
   static const String colLaps = 'laps';
   static const String colAttribution = 'attribution';
+  static const String colRouteGuide = 'route_guide';
+  static const String colRouteGuideCheckedAt = 'route_guide_checked_at';
 
   final String id;
   final String parkId;
@@ -5195,6 +5204,8 @@ class ParkCourseRow {
   final DateTime createdAt;
   final int? laps;
   final String? attribution;
+  final dynamic routeGuide;
+  final DateTime? routeGuideCheckedAt;
 
   const ParkCourseRow({
     required this.id,
@@ -5214,6 +5225,8 @@ class ParkCourseRow {
     required this.createdAt,
     this.laps,
     this.attribution,
+    this.routeGuide,
+    this.routeGuideCheckedAt,
   });
 
   factory ParkCourseRow.fromJson(Map<String, dynamic> json) => ParkCourseRow(
@@ -5234,6 +5247,8 @@ class ParkCourseRow {
     createdAt: parseIsoStrictRequired(json['created_at'], 'created_at'),
     laps: (json['laps'] as num?)?.toInt(),
     attribution: json['attribution'] as String?,
+    routeGuide: json['route_guide'],
+    routeGuideCheckedAt: parseIsoStrictValue(json['route_guide_checked_at']),
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5254,6 +5269,8 @@ class ParkCourseRow {
     colCreatedAt: createdAt.toIso8601String(),
     colLaps: laps,
     colAttribution: attribution,
+    colRouteGuide: routeGuide,
+    colRouteGuideCheckedAt: routeGuideCheckedAt?.toIso8601String(),
   };
 
   ParkCourseRow copyWith({
@@ -5274,6 +5291,8 @@ class ParkCourseRow {
     DateTime? createdAt,
     int? laps,
     String? attribution,
+    dynamic routeGuide,
+    DateTime? routeGuideCheckedAt,
   }) => ParkCourseRow(
     id: id ?? this.id,
     parkId: parkId ?? this.parkId,
@@ -5292,6 +5311,8 @@ class ParkCourseRow {
     createdAt: createdAt ?? this.createdAt,
     laps: laps ?? this.laps,
     attribution: attribution ?? this.attribution,
+    routeGuide: routeGuide ?? this.routeGuide,
+    routeGuideCheckedAt: routeGuideCheckedAt ?? this.routeGuideCheckedAt,
   );
 }
 

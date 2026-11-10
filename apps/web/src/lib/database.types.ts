@@ -1829,6 +1829,7 @@ export type Database = {
           age_grade_pct: number | null
           bib: string | null
           chip_time_s: number | null
+          clock_offset_ms: number | null
           course_id: string | null
           created_at: string
           distance_m: number
@@ -1858,6 +1859,7 @@ export type Database = {
           age_grade_pct?: number | null
           bib?: string | null
           chip_time_s?: number | null
+          clock_offset_ms?: number | null
           course_id?: string | null
           created_at?: string
           distance_m: number
@@ -1887,6 +1889,7 @@ export type Database = {
           age_grade_pct?: number | null
           bib?: string | null
           chip_time_s?: number | null
+          clock_offset_ms?: number | null
           course_id?: string | null
           created_at?: string
           distance_m?: number
@@ -3622,6 +3625,50 @@ export type Database = {
           },
         ]
       }
+      park_course_status_actions: {
+        Row: {
+          action: string
+          actor_id: string | null
+          course_slug: string
+          created_at: string
+          id: number
+          note: string | null
+          park_course_id: string | null
+          reports_resolved: number
+          status_before: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          course_slug: string
+          created_at?: string
+          id?: never
+          note?: string | null
+          park_course_id?: string | null
+          reports_resolved?: number
+          status_before: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          course_slug?: string
+          created_at?: string
+          id?: never
+          note?: string | null
+          park_course_id?: string | null
+          reports_resolved?: number
+          status_before?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "park_course_status_actions_park_course_id_fkey"
+            columns: ["park_course_id"]
+            isOneToOne: false
+            referencedRelation: "park_courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       park_courses: {
         Row: {
           attribution: string | null
@@ -3634,6 +3681,8 @@ export type Database = {
           id: string
           laps: number | null
           park_id: string
+          route_guide: Json | null
+          route_guide_checked_at: string | null
           route_id: string | null
           slug: string
           source_checked_at: string | null
@@ -3653,6 +3702,8 @@ export type Database = {
           id?: string
           laps?: number | null
           park_id: string
+          route_guide?: Json | null
+          route_guide_checked_at?: string | null
           route_id?: string | null
           slug: string
           source_checked_at?: string | null
@@ -3672,6 +3723,8 @@ export type Database = {
           id?: string
           laps?: number | null
           park_id?: string
+          route_guide?: Json | null
+          route_guide_checked_at?: string | null
           route_id?: string | null
           slug?: string
           source_checked_at?: string | null
@@ -4784,6 +4837,7 @@ export type Database = {
       }
       reports: {
         Row: {
+          contact_email: string | null
           created_at: string
           id: string
           legal_hold: boolean
@@ -4794,6 +4848,7 @@ export type Database = {
           resolution: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          signed_out: boolean
           snapshot_author_id: string | null
           snapshot_body: string | null
           snapshot_image_id: string | null
@@ -4804,6 +4859,7 @@ export type Database = {
           target_kind: string
         }
         Insert: {
+          contact_email?: string | null
           created_at?: string
           id?: string
           legal_hold?: boolean
@@ -4814,6 +4870,7 @@ export type Database = {
           resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          signed_out?: boolean
           snapshot_author_id?: string | null
           snapshot_body?: string | null
           snapshot_image_id?: string | null
@@ -4824,6 +4881,7 @@ export type Database = {
           target_kind: string
         }
         Update: {
+          contact_email?: string | null
           created_at?: string
           id?: string
           legal_hold?: boolean
@@ -4834,6 +4892,7 @@ export type Database = {
           resolution?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          signed_out?: boolean
           snapshot_author_id?: string | null
           snapshot_body?: string | null
           snapshot_image_id?: string | null
@@ -6708,6 +6767,7 @@ export type Database = {
           age_grade_pct: number | null
           bib: string | null
           chip_time_s: number | null
+          clock_offset_ms: number | null
           course_id: string | null
           created_at: string | null
           distance_m: number | null
@@ -6733,6 +6793,7 @@ export type Database = {
           age_grade_pct?: never
           bib?: string | null
           chip_time_s?: number | null
+          clock_offset_ms?: never
           course_id?: string | null
           created_at?: string | null
           distance_m?: number | null
@@ -6758,6 +6819,7 @@ export type Database = {
           age_grade_pct?: never
           bib?: string | null
           chip_time_s?: number | null
+          clock_offset_ms?: never
           course_id?: string | null
           created_at?: string | null
           distance_m?: number | null
@@ -7440,6 +7502,10 @@ export type Database = {
           reversed_fee_cents: number
         }[]
       }
+      admin_set_park_course_status: {
+        Args: { p_course_id: string; p_note?: string; p_status: string }
+        Returns: number
+      }
       admin_unhide_target: {
         Args: { p_target_id: string; p_target_kind: string }
         Returns: boolean
@@ -7483,6 +7549,7 @@ export type Database = {
           age_grade_pct: number | null
           bib: string | null
           chip_time_s: number | null
+          clock_offset_ms: number | null
           course_id: string | null
           created_at: string
           distance_m: number
@@ -8100,6 +8167,7 @@ export type Database = {
       fetch_pending_reports: {
         Args: never
         Returns: {
+          land_manager_since: string
           latest_at: string
           organiser_clubs: Json
           organiser_dispute: boolean
@@ -8116,6 +8184,7 @@ export type Database = {
       fetch_reports_for_target: {
         Args: { p_target_id: string; p_target_kind: string }
         Returns: {
+          contact_email: string
           created_at: string
           id: string
           legal_hold: boolean
@@ -8130,6 +8199,7 @@ export type Database = {
           resolution: string
           reviewed_at: string
           reviewed_by: string
+          signed_out: boolean
           snapshot_author_id: string
           snapshot_body: string
           snapshot_original_body: string
@@ -8779,6 +8849,18 @@ export type Database = {
           season: number
           time_seconds: number
           user_id: string
+        }[]
+      }
+      park_course_status_history: {
+        Args: { p_course_id: string }
+        Returns: {
+          action: string
+          actor_id: string
+          created_at: string
+          id: number
+          note: string
+          reports_resolved: number
+          status_before: string
         }[]
       }
       park_season: {
@@ -9673,6 +9755,16 @@ export type Database = {
           p_notes?: string
           p_target_id: string
           p_target_kind: string
+        }
+        Returns: string
+      }
+      submit_park_course_report: {
+        Args: {
+          p_contact_email?: string
+          p_course_id: string
+          p_notes: string
+          p_reason: string
+          p_reporter_id?: string
         }
         Returns: string
       }

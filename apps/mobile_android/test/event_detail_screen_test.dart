@@ -880,6 +880,7 @@ void main() {
       );
       await pumpEvent(tester, social);
       expect(find.byKey(const ValueKey('race-mode-control')), findsOneWidget);
+      expect(find.byKey(const ValueKey('race-mode-guide')), findsOneWidget);
       expect(find.byKey(const ValueKey('race-mode-start')), findsOneWidget);
       expect(find.byKey(const ValueKey('race-delay')), findsOneWidget);
       expect(find.byKey(const ValueKey('race-cancel')), findsOneWidget);
@@ -920,6 +921,7 @@ void main() {
       await pumpEvent(tester, runner);
       expect(find.byKey(const ValueKey('self-timed-participant')), findsOneWidget);
       expect(find.byKey(const ValueKey('self-timed-join')), findsOneWidget);
+      expect(find.byKey(const ValueKey('self-timed-guide')), findsOneWidget);
       expect(find.byKey(const ValueKey('race-mode-control')), findsNothing);
     });
 

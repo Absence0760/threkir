@@ -358,6 +358,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Harlem Hill'), findsOneWidget);
       expect(find.text('The classic north-end climb.'), findsOneWidget);
+      expect(find.byKey(const Key('help-how-this-works')), findsOneWidget);
       expect(find.text('Distance'), findsOneWidget);
       expect(find.text('Elevation gain'), findsOneWidget);
       expect(find.text('Road'), findsOneWidget);

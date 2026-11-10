@@ -2,14 +2,24 @@
 	/// "How this works": the way from a screen to the help guide that explains
 	/// it. Takes the screen's SvelteKit route id and links to every guide whose
 	/// `routes` name it — straight to the guide when there is one, a short list
-	/// when there are several, nothing when there are none.
+	/// when there are several, nothing when there are none. A part of a page
+	/// whose own guide would be lost in that list (a section of the event
+	/// editor, say) passes `guide` instead and links straight to that one.
 	/// `help_guides_guard.test.ts` fails the unit job when a `route` here has no
-	/// guide, so a mounted link never silently renders nothing.
+	/// guide or a `guide` names none, so a mounted link never silently renders
+	/// nothing.
 	import { helpIndex } from '#lib/help/localized.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
 
-	let { route }: { route: string } = $props();
-	const guides = $derived(helpIndex().guidesForRoute(route));
+	let { route, guide }: { route?: string; guide?: string } = $props();
+	const guides = $derived.by(() => {
+		const index = helpIndex();
+		if (guide) {
+			const one = index.guideFor(guide);
+			return one ? [one] : [];
+		}
+		return route ? index.guidesForRoute(route) : [];
+	});
 	const only = $derived(guides.length === 1 ? guides[0] : undefined);
 </script>
 

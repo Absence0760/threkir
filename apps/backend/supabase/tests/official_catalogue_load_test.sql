@@ -10,7 +10,7 @@
 
 begin;
 
-select plan(59);
+select plan(64);
 
 -- ── Fixture ──
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -40,6 +40,14 @@ values
   ('00000000-0000-0000-0000-0000000c3c02', 'runsignup', 'oc-2', 'OC Claimed 10K', '2027-10-11', 10000);
 update race_listings set organiser_club_id = '00000000-0000-0000-0000-0000000c3b02'
  where id = '00000000-0000-0000-0000-0000000c3c02';
+insert into routes (id, user_id, club_id, name, waypoints, distance_m, is_public)
+values ('00000000-0000-0000-0000-0000000c3d01', '00000000-0000-0000-0000-0000000c3a01',
+        '00000000-0000-0000-0000-0000000c3b01', 'Organiser GPX',
+        '[{"lat": 12.0, "lng": 22.0}, {"lat": 12.01, "lng": 22.0}]', 1100, true);
+insert into race_listings (id, provider, provider_race_id, name, race_date, distance_m, organiser_club_id,
+                           route_id, course_source)
+values ('00000000-0000-0000-0000-0000000c3c03', 'runsignup', 'oc-3', 'OC Own 5K', '2027-10-12', 5000,
+        '00000000-0000-0000-0000-0000000c3b01', '00000000-0000-0000-0000-0000000c3d01', 'official');
 
 create temp table catalogues (k text primary key, j jsonb not null);
 insert into catalogues (k, j) values
@@ -95,6 +103,8 @@ union all
 select 'drop_course', jsonb_set(j, '{race_courses}', '[]') from catalogues where k = 'base'
 union all
 select 'claimed', jsonb_set(j, '{race_courses,0,listing,provider_race_id}', '"oc-2"') from catalogues where k = 'base'
+union all
+select 'official_linked', jsonb_set(j, '{race_courses,0,listing,provider_race_id}', '"oc-3"') from catalogues where k = 'base'
 union all
 select 'missing', jsonb_set(j, '{race_courses,0,listing,provider_race_id}', '"oc-404"') from catalogues where k = 'base'
 union all
@@ -309,7 +319,8 @@ select is(
   false, 'and not republished');
 
 -- ── 13: the course gate ──
-select is((select count(*)::int from routes where club_id = '00000000-0000-0000-0000-0000000c3b01'), 0,
+select is((select count(*)::int from routes where club_id = '00000000-0000-0000-0000-0000000c3b01'
+                                          and id <> '00000000-0000-0000-0000-0000000c3d01'), 0,
   'with the flag off no course route is written');
 select is((select organiser_club_id from race_listings where id = '00000000-0000-0000-0000-0000000c3c01'), null::uuid,
   'and no race is claimed');
@@ -353,6 +364,30 @@ select is(
 select is(
   (select is_public from routes where id = (select target_id from loads where n = 13 and kind = 'race_course')),
   false, 'and its route made private, not deleted');
+
+select pg_temp.load(171, 'official_linked');
+select is((select action from loads where n = 171 and kind = 'race_course'), 'course_exists',
+  'a race whose organiser linked its own official course is left alone');
+select is(
+  (select route_id::text || ':' || course_source from race_listings where id = '00000000-0000-0000-0000-0000000c3c03'),
+  '00000000-0000-0000-0000-0000000c3d01:official', 'and keeps its course and its provenance');
+
+select pg_temp.load(172, 'base');
+select is((select action from loads where n = 172 and kind = 'race_course'), 'updated',
+  'naming the course again republishes and relinks it');
+reset role;
+update private.feature_flags set enabled = false where name = 'official_race_courses';
+set local role service_role;
+select pg_temp.load(173, 'base');
+select is(
+  (select string_agg(action, ',' order by action) from loads where n = 173 and kind = 'race_course'),
+  'gated,retired', 'turning the flag off gates the item and takes the loaded course down');
+select is(
+  (select l.route_id is null and not r.is_public
+     from race_listings l, routes r
+    where l.id = '00000000-0000-0000-0000-0000000c3c01'
+      and r.id = (select target_id from loads where n = 13 and kind = 'race_course')),
+  true, 'its race is unlinked and its route private');
 
 -- ── Ownership change re-authors the live rows ──
 reset role;

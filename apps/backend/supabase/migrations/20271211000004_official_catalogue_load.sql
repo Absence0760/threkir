@@ -23,8 +23,11 @@
 --   race_courses   a public club route traced from the race's published map,
 --                  claimed and linked to its race listing as `traced`. Only
 --                  while the `official_race_courses` flag is on
---                  (20271211000001); off, each item reports `gated` and
---                  nothing is read or written for it.
+--                  (20271211000001); off, each item reports `gated`, and a
+--                  course an earlier load published is retired, so turning
+--                  the flag off takes the courses down. A race whose
+--                  organiser linked its own `official` course is left alone
+--                  (`course_exists`).
 --
 -- One function rather than one per kind: one official-publisher check, one
 -- advisory lock and one report per release, and the retire pass of a kind
@@ -50,7 +53,7 @@
 --
 -- Returns one row per item (per board, for a challenge): kind, slug,
 -- target_id and action (`created`, `updated`, `unchanged`, `retired`,
--- `held`, `gated`, `missing_listing`, `claimed_elsewhere`).
+-- `held`, `gated`, `missing_listing`, `claimed_elsewhere`, `course_exists`).
 --
 -- Locks (docs/backend/migration_locks.md): new functions only.
 
@@ -541,6 +544,13 @@ begin
     return query select null::uuid, 'claimed_elsewhere'::text;
     return;
   end if;
+  if v_listing.course_source = 'official' and not exists (
+    select 1 from private.official_catalogue_items i
+     where i.kind = 'race_course' and i.slug = v_slug and i.target_id = v_listing.route_id
+  ) then
+    return query select v_listing.route_id, 'course_exists'::text;
+    return;
+  end if;
 
   select r.id, r.shadow_hidden into v_route, v_hidden
     from private.official_catalogue_items i
@@ -731,32 +741,34 @@ begin
     return next;
   end loop;
 
-  if v_courses_on then
-    for v_row in
-      select i.slug, r.id, r.is_public
-        from private.official_catalogue_items i
-        join routes r on r.id = i.target_id
-       where i.kind = 'race_course'
-         and not exists (select 1 from jsonb_array_elements(p_catalogue -> 'race_courses') e where e ->> 'slug' = i.slug)
-         for update of r
+  -- With the flag off every loaded course is retired, so turning the gate
+  -- off takes the courses down rather than leaving them linked.
+  for v_row in
+    select i.slug, r.id, r.is_public
+      from private.official_catalogue_items i
+      join routes r on r.id = i.target_id
+     where i.kind = 'race_course'
+       and (not v_courses_on
+            or not exists (select 1 from jsonb_array_elements(p_catalogue -> 'race_courses') e
+                            where e ->> 'slug' = i.slug))
+       for update of r
+  loop
+    v_rows := 0;
+    for v_res in
+      select l.id, l.organiser_club_id from race_listings l where l.route_id = v_row.id for update
     loop
-      v_rows := 0;
-      for v_res in
-        select l.id, l.organiser_club_id from race_listings l where l.route_id = v_row.id for update
-      loop
-        perform private.apply_race_course_link(v_res.id, v_res.organiser_club_id, null, null, p_author_id, 'unlink');
-        v_rows := v_rows + 1;
-      end loop;
-      if v_row.is_public then
-        update routes r set is_public = false, updated_at = now() where r.id = v_row.id;
-        v_rows := v_rows + 1;
-      end if;
-      if v_rows > 0 then
-        kind := 'race_course'; slug := v_row.slug; target_id := v_row.id; action := 'retired';
-        return next;
-      end if;
+      perform private.apply_race_course_link(v_res.id, v_res.organiser_club_id, null, null, p_author_id, 'unlink');
+      v_rows := v_rows + 1;
     end loop;
-  end if;
+    if v_row.is_public then
+      update routes r set is_public = false, updated_at = now() where r.id = v_row.id;
+      v_rows := v_rows + 1;
+    end if;
+    if v_rows > 0 then
+      kind := 'race_course'; slug := v_row.slug; target_id := v_row.id; action := 'retired';
+      return next;
+    end if;
+  end loop;
 end;
 $$;
 

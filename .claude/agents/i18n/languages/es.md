@@ -90,9 +90,11 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | warm-up / cool-down / recovery | Calentamiento / Enfriamiento / Recuperación | |
 | challenge | Desafío | web also "reto" (0 / 7) |
 | save / settings / feed / followers | Guardar / **Ajustes** (mobile) – **Configuración** (web `shell.settings`) / Feed / Seguidores | inconsistency 3 |
-| arm / armed (race control) | **Preparar** / **preparada** — "Preparar carrera", "Carrera preparada", status "Preparada", "Preparar antes", "Preparar de todos modos", "Prepárala antes" | settled 2026-11-10; never "Armar" / "armado" or "lista" / "Listo" (reads as *ready*, confusable with GO). The Wear watch still shows «CARRERA LISTA» (watch strings are outside these agents) |
+| arm / armed (race control) | **Preparar** / **preparada** — "Preparar carrera", "Carrera preparada", status "Preparada", "Preparar antes", "Preparar de todos modos", "Prepárala antes" | settled 2026-11-10; never "Armar" / "armado" or "lista" / "Listo" (reads as *ready*, confusable with GO). The Wear watch's banner is «CARRERA PREPARADA» |
 | set up (a race created automatically before its start) | **configurar** ("La carrera se configura un día antes") | settled 2026-11-10; never "preparar", which is *arm* |
 | self-timed (race) | **con cronometraje propio** ("carrera con cronometraje propio", "Ventana de cronometraje propio") | settled 2026-11-10; never "autocronometrada" |
+| GO (the start signal) | **GO** — the button on the web and in the phone app ("GO"), "GO del organizador", "GO programado"; prose "dar el GO", "el GO", "después del GO", "esperando el GO" | settled 2026-11-10; never "YA" / "Dar la salida" for the button or "dar la salida" / "la salida" for the signal. *Salida* stays for the start line and the time fields ("línea de salida", "Hora de salida", "Salida a las {when}") |
+| race ended (watch) / host End | "Carrera finalizada" / **Finalizar carrera**, status "Finalizada" | settled 2026-11-10 |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

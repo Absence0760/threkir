@@ -116,6 +116,7 @@ literal `1` in a `one` branch — 11 mobile strings already do (e.g.
 | Arm early / Arm anyway | **Preparar mais cedo** / **Preparar mesmo assim** | settled 2026-11-10; the last "Armar antes" / "Armar mesmo assim" / "Arme antes" / "arma a corrida" strings moved to *Preparar* |
 | set up (a race created automatically before its start) | **configurada** ("A corrida é configurada um dia antes da largada") | settled 2026-11-10; never "preparada", which is *arm* |
 | self-timed (race) | **de tempo próprio** ("corrida de tempo próprio", "Janela de tempo próprio") | settled 2026-11-10; never "com cronometragem própria" / "cronometrada por cada um" |
+| GO (the start signal) | **GO** — the button on the web and in the phone app, "GO do organizador", "GO agendado"; prose "dar o GO", "o GO", "após o GO", "aguardando o GO" | settled 2026-11-10; never "JÁ" / "Disparar o Go". *Largada* stays for the start line and the time fields ("linha de largada", "Horário da largada", "Largada às {when}") |
 
 ## Known inconsistencies (findings for the user — don't fix them in a batch)
 

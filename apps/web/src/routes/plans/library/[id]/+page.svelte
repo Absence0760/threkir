@@ -1,5 +1,6 @@
 <script lang="ts">
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -198,6 +199,13 @@
 					{m('session.copyShareLink')}
 				</button>
 			{/if}
+			<OrganiserDisputeAction
+				targetKind="training_plan"
+				targetId={plan.id}
+				targetLabel={plan.name}
+				targetClubId={plan.club_id ?? null}
+				ownerId={plan.user_id}
+			/>
 		</section>
 
 		<section class="weeks">

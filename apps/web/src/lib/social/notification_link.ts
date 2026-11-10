@@ -111,6 +111,10 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 			// The stable-id resolver opens the race or route the alert is on
 			// (decisions § 2407); the row carries only the alert's id.
 			return r.course_alert_id ? `/course-alerts/${r.course_alert_id}` : null;
+		case 'organiser_dispute':
+			// Both sides read the decision, and any rename deadline, on the
+			// disputes page; the row names only the reporting club.
+			return '/disputes';
 		case 'content_hidden':
 			return null;
 		default:

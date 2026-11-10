@@ -948,6 +948,9 @@ export const PAIRS = [
 				decl: 'REASONS',
 				shape: 'records',
 				field: 'value',
+				// Filed through OrganiserDisputeAction by a verified club's owner or
+				// admin only; submit_report refuses it (decisions § 2441).
+				allowMissing: ['organiser_dispute'],
 			},
 			{
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
@@ -961,6 +964,14 @@ export const PAIRS = [
 				allowMissing: ['other'],
 			},
 		],
+	},
+	{
+		tableColumn: 'organiser_dispute_actions.target_kind',
+		clients: [{ file: TS_TYPES, decl: 'OrganiserDisputeTargetKind', shape: 'union' }],
+	},
+	{
+		tableColumn: 'organiser_dispute_actions.action',
+		clients: [{ file: DATA_TS, decl: 'OrganiserDisputeAction', shape: 'union' }],
 	},
 	{
 		// `pending` is the insert default every report starts at, and the

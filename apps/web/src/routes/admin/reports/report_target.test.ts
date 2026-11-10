@@ -19,6 +19,10 @@ const EXPECTED: Record<ReportTargetKind, { label: string; href: string | null }>
 	club_post: { label: 'Club post', href: `/clubs/${PAGE}` },
 	route_review: { label: 'Route review', href: `/routes/${PAGE}` },
 	direct_message: { label: 'Direct message', href: null },
+	training_plan: { label: 'Training plan', href: `/plans/library/${PAGE}` },
+	gym_routine: { label: 'Gym routine', href: `/gym/routines/library/${PAGE}` },
+	challenge: { label: 'Challenge', href: `/challenges/${PAGE}` },
+	race_listing: { label: 'Race listing', href: `/races/${PAGE}` },
 };
 
 // EXPECTED is a Record over the union, which check_constraint_unions.mjs

@@ -98,6 +98,10 @@ function targetKeyFor(n: GroupableNotification): string {
 			// One notice per recipient per alert, and two alerts are two
 			// different course changes: never collapse them.
 			return solo;
+		case 'organiser_dispute':
+			// Each is a reviewer's decision on one dispute, and a rename notice
+			// carries its own deadline: "and 1 other" would hide one.
+			return solo;
 		case 'workout_reminder':
 			// One a day, each about that day's session: yesterday's is not a
 			// second actor on today's, so they never collapse.

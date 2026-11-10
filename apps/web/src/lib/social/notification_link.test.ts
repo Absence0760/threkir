@@ -91,6 +91,11 @@ test('join requests, approvals and verification updates link to the club home', 
 	}
 });
 
+test('a naming dispute notice links to the disputes page, for either side', () => {
+	assert.equal(notificationLinkFor(make({ kind: 'organiser_dispute', club_slug: 'road-runners' })), '/disputes');
+	assert.equal(notificationLinkFor(make({ kind: 'organiser_dispute' })), '/disputes');
+});
+
 test('plan kinds link to the plan detail', () => {
 	for (const kind of ['plan_update', 'plan_assigned', 'plan_ai_edit', 'workout_reminder']) {
 		assert.equal(notificationLinkFor(make({ kind, plan_id: 'p3' })), '/plans/p3');

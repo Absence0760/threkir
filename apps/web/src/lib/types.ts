@@ -618,7 +618,8 @@ export function parseNutritionAssignmentStatus(
 }
 // Polymorphic report target. Kept in lockstep with the `reports.target_kind`
 // CHECK constraint (migrations 20260908_001 / 20261117_001 / 20270115_001 /
-// 20270402_001 / 20271021000003) via apps/web/scripts/check_constraint_unions.mjs.
+// 20270402_001 / 20271021000003 / 20271202000001) via
+// apps/web/scripts/check_constraint_unions.mjs.
 export type ReportTargetKind =
 	| 'user'
 	| 'club'
@@ -627,7 +628,26 @@ export type ReportTargetKind =
 	| 'club_post'
 	| 'run'
 	| 'route_review'
-	| 'direct_message';
+	| 'direct_message'
+	| 'training_plan'
+	| 'gym_routine'
+	| 'challenge'
+	| 'race_listing';
+
+// The kinds a verified organiser may dispute (reports_organiser_dispute_check).
+// The last four take nothing but a dispute, so the general report dialog never
+// offers them.
+export type OrganiserDisputeTargetKind =
+	| 'club'
+	| 'route'
+	| 'training_plan'
+	| 'gym_routine'
+	| 'challenge'
+	| 'race_listing';
+export type GeneralReportTargetKind = Exclude<
+	ReportTargetKind,
+	'training_plan' | 'gym_routine' | 'challenge' | 'race_listing'
+>;
 export type NotificationKind =
 	| 'kudos'
 	| 'comment'
@@ -661,6 +681,7 @@ export type NotificationKind =
 	| 'plan_change_decision'
 	| 'club_verification'
 	| 'course_alert'
+	| 'organiser_dispute'
 	| 'race_starting_soon'
 	| 'race_start_moved';
 

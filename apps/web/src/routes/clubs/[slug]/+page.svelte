@@ -69,6 +69,7 @@
 	import ClubLogoControl from '#lib/components/ClubLogoControl.svelte';
 	import Modal from '#lib/components/Modal.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import VerifiedBadge from '#lib/components/VerifiedBadge.svelte';
 	import ClubVerificationCard from '#lib/components/ClubVerificationCard.svelte';
 	import OfficialBadge from '#lib/components/OfficialBadge.svelte';
@@ -1105,6 +1106,14 @@
 					>
 						<span class="material-symbols" aria-hidden="true">flag</span>
 					</button>
+				{/if}
+				{#if !isAdmin && auth.loggedIn && club.is_public}
+					<OrganiserDisputeAction
+						targetKind="club"
+						targetId={club.id}
+						targetLabel={club.name}
+						targetClubId={club.id}
+					/>
 				{/if}
 			</div>
 		</div>

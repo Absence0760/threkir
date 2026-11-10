@@ -1,4 +1,5 @@
 <script lang="ts">
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
@@ -143,6 +144,13 @@
 			>
 				{adopting ? t('gymLibrary.adopting') : t('gymLibrary.adopt')}
 			</button>
+			<OrganiserDisputeAction
+				targetKind="gym_routine"
+				targetId={detail.routine.id}
+				targetLabel={detail.routine.title}
+				targetClubId={detail.routine.club_id ?? null}
+				ownerId={detail.routine.author_id ?? null}
+			/>
 		</section>
 
 		<section class="exercises">

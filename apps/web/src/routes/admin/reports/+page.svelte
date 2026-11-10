@@ -10,6 +10,9 @@
 		adminUnhideTarget,
 		fetchResolvedReports,
 		setReportLegalHold,
+		resolveOrganiserDispute,
+		fetchOrganiserDisputeHistory,
+		type OrganiserDisputeHistoryEntry,
 		type PendingReportTarget,
 		type ResolvedReportTarget,
 		type TargetReport,
@@ -23,11 +26,23 @@
 	import { m as t } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
 	import { reportTargetHref, reportTargetLabelKey } from './report_target';
+	import {
+		DISPUTE_DEADLINE_DEFAULT_DAYS,
+		DISPUTE_DEADLINE_MAX_DAYS,
+		DISPUTE_DEADLINE_MIN_DAYS,
+		deadlineDaysOrNull,
+		deadlinePassed,
+	} from '#lib/social/organiser_dispute.ts';
+	import type { OrganiserDisputeTargetKind } from '#lib/types.ts';
 
 	type QueueTarget = Pick<
 		PendingReportTarget,
 		'target_kind' | 'target_id' | 'page_id' | 'shadow_hidden' | 'report_count'
-	>;
+	> &
+		Partial<Pick<PendingReportTarget, 'organiser_dispute' | 'organiser_clubs' | 'rename_deadline_at'>>;
+
+	type DisputeAction = 'takedown' | 'rename_notice' | 'dismiss';
+	const DISPUTE_KINDS: readonly string[] = ['club', 'route', 'training_plan', 'gym_routine', 'challenge', 'race_listing'];
 
 	let isAdmin = $state<boolean | null>(null);
 	let loading = $state(true);
@@ -48,7 +63,18 @@
 	let confirmUnhide = $state(false);
 	let holdBusy = $state<string | null>(null);
 	let confirmLiftHold = $state<TargetReport | null>(null);
-	let hasPending = $derived(detail.some((r) => r.status === 'pending'));
+	let hasPending = $derived(detail.some((r) => r.status === 'pending' && r.reason !== 'organiser_dispute'));
+	let hasPendingDispute = $derived(
+		detail.some((r) => r.status === 'pending' && r.reason === 'organiser_dispute') &&
+			!!selected &&
+			DISPUTE_KINDS.includes(selected.target_kind),
+	);
+	let disputeNote = $state('');
+	let deadlineDays = $state<string | number | null>(DISPUTE_DEADLINE_DEFAULT_DAYS);
+	let disputeBusy = $state(false);
+	let confirmDispute = $state<DisputeAction | null>(null);
+	let history = $state<OrganiserDisputeHistoryEntry[]>([]);
+	const deadlineValid = $derived(deadlineDaysOrNull(deadlineDays) !== null);
 
 	function kindLabel(kind: ReportTargetKind): string {
 		const key = reportTargetLabelKey(kind);
@@ -105,10 +131,19 @@
 	async function openTarget(target: QueueTarget) {
 		selected = target;
 		resolution = '';
+		disputeNote = '';
+		deadlineDays = DISPUTE_DEADLINE_DEFAULT_DAYS;
+		history = [];
 		detail = [];
 		detailLoading = true;
 		try {
 			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
+			if (detail.some((r) => r.reason === 'organiser_dispute') && DISPUTE_KINDS.includes(target.target_kind)) {
+				history = await fetchOrganiserDisputeHistory(
+					target.target_kind as OrganiserDisputeTargetKind,
+					target.target_id,
+				);
+			}
 		} catch (e) {
 			showToast(t('admin.reports.detailFailed', { error: errorCopy(e, t, 'admin.reports.detailFailed') }), 'error');
 		} finally {
@@ -141,6 +176,55 @@
 			showToast(t('admin.reports.resolveFailed', { error: errorCopy(e, t, 'admin.reports.resolveFailed') }), 'error');
 		} finally {
 			resolving = false;
+		}
+	}
+
+	async function doDisputeAction(action: DisputeAction) {
+		if (!selected || disputeBusy) return;
+		const days = deadlineDaysOrNull(deadlineDays);
+		if (action === 'rename_notice' && days === null) return;
+		disputeBusy = true;
+		const target = selected;
+		try {
+			await resolveOrganiserDispute({
+				targetKind: target.target_kind as OrganiserDisputeTargetKind,
+				targetId: target.target_id,
+				action,
+				note: disputeNote.trim() || null,
+				deadlineDays: days,
+			});
+			const key =
+				action === 'takedown'
+					? 'admin.reports.dispute.doneHide'
+					: action === 'rename_notice'
+						? 'admin.reports.dispute.doneRename'
+						: 'admin.reports.dispute.doneDismiss';
+			showToast(t(key), 'success');
+			closeDetail();
+			await loadQueue();
+			if (resolvedLoaded) await loadResolved();
+		} catch (e) {
+			showToast(
+				t('admin.reports.dispute.failed', { error: errorCopy(e, t, 'admin.reports.dispute.failed') }),
+				'error',
+			);
+		} finally {
+			disputeBusy = false;
+		}
+	}
+
+	function historyActionLabel(action: OrganiserDisputeHistoryEntry['action']): string {
+		switch (action) {
+			case 'filed':
+				return t('admin.reports.dispute.historyFiled');
+			case 'takedown':
+				return t('admin.reports.dispute.historyHide');
+			case 'rename_notice':
+				return t('admin.reports.dispute.historyRename');
+			case 'dismiss':
+				return t('admin.reports.dispute.historyDismiss');
+			case 'unhide':
+				return t('admin.reports.dispute.historyUnhide');
 		}
 	}
 
@@ -317,6 +401,23 @@
 									{#if target.shadow_hidden}
 										<span class="hidden-badge" data-testid="admin-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 									{/if}
+									{#if target.organiser_dispute}
+										<div class="dispute-line" data-testid="admin-dispute-row">
+											<span class="dispute-badge">{t('admin.reports.dispute.badge')}</span>
+											{#each target.organiser_clubs as c (c.id)}
+												<span class="dispute-club">
+													{c.name}{#if c.is_verified}<span class="material-symbols verified" aria-label={t('admin.reports.dispute.verified')}>verified</span>{/if}
+												</span>
+											{/each}
+											{#if target.rename_deadline_at}
+												<span class="muted deadline" class:overdue={deadlinePassed(target.rename_deadline_at)}>
+													{deadlinePassed(target.rename_deadline_at)
+														? t('admin.reports.dispute.deadlinePassed', { date: formatDate(target.rename_deadline_at) })
+														: t('admin.reports.dispute.deadlineOn', { date: formatDate(target.rename_deadline_at) })}
+												</span>
+											{/if}
+										</div>
+									{/if}
 								</td>
 								<td>{target.report_count}</td>
 								<td>{target.reporter_count}</td>
@@ -407,6 +508,16 @@
 									? t('admin.reports.reportBy', { id: r.reporter_id.slice(0, 8) })
 									: t('admin.reports.reporterDeleted')}
 							</p>
+							{#if r.organiser_club}
+								<p class="report-by" data-testid="admin-report-organiser">
+									{t('admin.reports.dispute.filedFor', { club: r.organiser_club.name })}
+									{#if r.organiser_club.is_verified}
+										<span class="material-symbols verified" aria-label={t('admin.reports.dispute.verified')}>verified</span>
+									{:else}
+										<span class="muted">{t('admin.reports.dispute.noLongerVerified')}</span>
+									{/if}
+								</p>
+							{/if}
 							<p class="notes">{r.notes || t('admin.reports.noNotes')}</p>
 							{#if r.snapshot_body !== null}
 								<blockquote class="snapshot" data-testid="admin-report-snapshot">
@@ -438,6 +549,84 @@
 						</li>
 					{/each}
 				</ul>
+
+				{#if hasPendingDispute}
+					<section class="dispute-panel" data-testid="admin-dispute-panel">
+						<h3>{t('admin.reports.dispute.panelTitle')}</h3>
+						<p class="muted">{t('admin.reports.dispute.panelHint')}</p>
+						{#if selected.rename_deadline_at}
+							<p class="deadline" class:overdue={deadlinePassed(selected.rename_deadline_at)}>
+								{deadlinePassed(selected.rename_deadline_at)
+									? t('admin.reports.dispute.deadlinePassed', { date: formatDate(selected.rename_deadline_at) })
+									: t('admin.reports.dispute.deadlineOn', { date: formatDate(selected.rename_deadline_at) })}
+							</p>
+						{/if}
+						<label class="resolution">
+							<span>{t('admin.reports.dispute.noteLabel')}</span>
+							<textarea
+								bind:value={disputeNote}
+								rows="2"
+								maxlength="1000"
+								placeholder={t('admin.reports.dispute.notePlaceholder')}
+								data-testid="admin-dispute-note"
+							></textarea>
+						</label>
+						<label class="deadline-field">
+							<span>{t('admin.reports.dispute.deadlineLabel')}</span>
+							<input
+								type="number"
+								inputmode="numeric"
+								min={DISPUTE_DEADLINE_MIN_DAYS}
+								max={DISPUTE_DEADLINE_MAX_DAYS}
+								step="1"
+								bind:value={deadlineDays}
+								aria-invalid={!deadlineValid}
+								data-testid="admin-dispute-deadline"
+							/>
+						</label>
+						<div class="actions">
+							<button
+								type="button"
+								class="btn btn-secondary"
+								disabled={disputeBusy}
+								data-testid="admin-dispute-dismiss"
+								onclick={() => (confirmDispute = 'dismiss')}
+							>{t('admin.reports.dispute.dismiss')}</button>
+							<button
+								type="button"
+								class="btn btn-secondary"
+								disabled={disputeBusy || !deadlineValid}
+								data-testid="admin-dispute-rename"
+								onclick={() => (confirmDispute = 'rename_notice')}
+							>{t('admin.reports.dispute.rename')}</button>
+							<button
+								type="button"
+								class="btn btn-primary"
+								disabled={disputeBusy}
+								data-testid="admin-dispute-hide"
+								onclick={() => (confirmDispute = 'takedown')}
+							>{t('admin.reports.dispute.hide')}</button>
+						</div>
+						{#if history.length > 0}
+							<h4>{t('admin.reports.dispute.historyTitle')}</h4>
+							<ul class="history" data-testid="admin-dispute-history">
+								{#each history as h (h.id)}
+									<li>
+										<strong>{historyActionLabel(h.action)}</strong>
+										<span class="muted">· {h.organiser_club_name} · {formatRelativeTime(h.created_at)}</span>
+										{#if h.actor_id}
+											<span class="muted">· {t('admin.reports.reportBy', { id: h.actor_id.slice(0, 8) })}</span>
+										{/if}
+										{#if h.deadline_at}
+											<span class="muted">· {t('admin.reports.dispute.deadlineOn', { date: formatDate(h.deadline_at) })}</span>
+										{/if}
+										{#if h.note}<p class="notes">{h.note}</p>{/if}
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</section>
+				{/if}
 
 				{#if hasPending}
 					<label class="resolution">
@@ -506,6 +695,33 @@
 		if (report) setHold(report, false);
 	}}
 	oncancel={() => (confirmLiftHold = null)}
+/>
+
+<ConfirmDialog
+	open={!!confirmDispute}
+	danger={confirmDispute === 'takedown'}
+	title={confirmDispute === 'takedown'
+		? t('admin.reports.dispute.confirmHideTitle')
+		: confirmDispute === 'rename_notice'
+			? t('admin.reports.dispute.confirmRenameTitle')
+			: t('admin.reports.dispute.confirmDismissTitle')}
+	message={confirmDispute === 'takedown'
+		? t('admin.reports.dispute.confirmHideMessage')
+		: confirmDispute === 'rename_notice'
+			? t('admin.reports.dispute.confirmRenameMessage', { days: deadlineDaysOrNull(deadlineDays) ?? DISPUTE_DEADLINE_DEFAULT_DAYS })
+			: t('admin.reports.dispute.confirmDismissMessage')}
+	confirmLabel={confirmDispute === 'takedown'
+		? t('admin.reports.dispute.hide')
+		: confirmDispute === 'rename_notice'
+			? t('admin.reports.dispute.rename')
+			: t('admin.reports.dispute.dismiss')}
+	data-testid="admin-dispute-confirm"
+	onconfirm={() => {
+		const action = confirmDispute;
+		confirmDispute = null;
+		if (action) doDisputeAction(action);
+	}}
+	oncancel={() => (confirmDispute = null)}
 />
 
 <ConfirmDialog
@@ -732,7 +948,83 @@
 	}
 	.actions {
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: flex-end;
 		gap: 0.5rem;
+	}
+	.dispute-line {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.35rem;
+		margin-top: 0.3rem;
+		font-size: 0.8rem;
+	}
+	.dispute-badge {
+		display: inline-block;
+		padding: 0.1rem 0.45rem;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-primary);
+		color: var(--color-primary);
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+	.dispute-club {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.15rem;
+	}
+	.verified {
+		font-size: 1rem;
+		color: var(--color-primary);
+		vertical-align: middle;
+	}
+	.deadline.overdue {
+		color: var(--color-danger-text);
+		font-weight: 600;
+	}
+	.dispute-panel {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-sm);
+		padding: var(--space-sm);
+		border: 1px solid var(--color-primary);
+		border-radius: var(--radius-sm);
+	}
+	.dispute-panel h3,
+	.dispute-panel h4,
+	.dispute-panel p {
+		margin: 0;
+	}
+	.dispute-panel h3 {
+		font-size: 1rem;
+	}
+	.dispute-panel h4 {
+		font-size: 0.85rem;
+	}
+	.deadline-field {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: 0.84rem;
+	}
+	.deadline-field input {
+		width: 5rem;
+		padding: var(--space-xs) var(--space-sm);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		background: var(--color-bg);
+		color: var(--color-text);
+		font: inherit;
+	}
+	.history {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		font-size: 0.82rem;
 	}
 </style>

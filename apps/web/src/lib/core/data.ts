@@ -236,7 +236,9 @@ import type {
 	SessionPlanItem,
 	SessionPlanWithItems,
 	SessionItemKind,
-	ReportTargetKind
+	ReportTargetKind,
+	GeneralReportTargetKind,
+	OrganiserDisputeTargetKind
 } from '../types';
 // Re-export the session-plan domain shapes so consumers can import them from the
 // data-layer facade alongside fetchSessionPlan* (which returns SessionPlanWithItems)
@@ -245,7 +247,7 @@ export type { SessionPlan, SessionPlanBlock, SessionPlanItem, SessionPlanWithIte
 // ReportTargetKind lives in types.ts alongside the other CHECK-paired narrow
 // unions (so the CHECK<->union guard can read it from one file); re-exported
 // here so the report surfaces keep importing it from the data-layer facade.
-export type { ReportTargetKind } from '../types';
+export type { ReportTargetKind, GeneralReportTargetKind, OrganiserDisputeTargetKind } from '../types';
 import { isOccurrenceCancelled, nextLiveInstance } from '../social/event_occurrence';
 import {
 	parseGymTemplate,
@@ -12095,7 +12097,8 @@ export type ReportReason =
 	| 'harassment'
 	| 'inappropriate'
 	| 'impersonation'
-	| 'other';
+	| 'other'
+	| 'organiser_dispute';
 
 // The two RESOLVED statuses of `reports.status`. `pending` is the column's
 // third value and the default every report is inserted with, so the moderation
@@ -12104,9 +12107,9 @@ export type ReportReason =
 export type ReportResolution = 'reviewed' | 'dismissed';
 
 export async function submitReport(input: {
-	targetKind: ReportTargetKind;
+	targetKind: GeneralReportTargetKind;
 	targetId: string;
-	reason: ReportReason;
+	reason: Exclude<ReportReason, 'organiser_dispute'>;
 	notes?: string;
 }): Promise<string> {
 	const { data, error } = await supabase.rpc('submit_report', {
@@ -12136,6 +12139,76 @@ export async function submitReport(input: {
 		throw dbError(error);
 	}
 	return data as string;
+}
+
+// ─────────────── Organiser name disputes (#1363, decisions § 2441) ───────────────
+//
+// A verified club's owner or admin reports content as impersonating their
+// organisation or copying their content. submit_organiser_dispute is the
+// gate (private.is_official_publisher); the client only decides whether to
+// offer it (organiserClubsOf).
+
+export async function submitOrganiserDispute(input: {
+	targetKind: OrganiserDisputeTargetKind;
+	targetId: string;
+	clubId: string;
+	notes?: string;
+}): Promise<string> {
+	const { data, error } = await supabase.rpc('submit_organiser_dispute', {
+		p_target_kind: input.targetKind,
+		p_target_id: input.targetId,
+		p_club_id: input.clubId,
+		p_notes: input.notes?.trim() || null,
+	});
+	if (error) {
+		if (isDuplicateKeyError(error)) {
+			throw new AppError('reportDialog.errorAlreadyPending', {
+				message: 'You already have a pending report against this content.',
+			});
+		}
+		const limited = rateLimitAppError(m, error);
+		if (limited) throw limited;
+		if (error.code === '42501') {
+			throw new AppError('organiserDispute.errorNotOrganiser', { message: error.message });
+		}
+		throw dbError(error);
+	}
+	return data as string;
+}
+
+export type OrganiserDisputeAction = 'filed' | 'takedown' | 'rename_notice' | 'dismiss' | 'unhide';
+
+/** One dispute as one side sees it: the latest action, never the reviewer. */
+export interface MyOrganiserDispute {
+	side: 'owner' | 'organiser';
+	target_kind: OrganiserDisputeTargetKind;
+	target_id: string;
+	target_label: string | null;
+	organiser_club_id: string | null;
+	organiser_club_name: string;
+	organiser_club_slug: string | null;
+	action: OrganiserDisputeAction;
+	deadline_at: string | null;
+	note: string | null;
+	acted_at: string;
+}
+
+export async function fetchMyOrganiserDisputes(): Promise<MyOrganiserDispute[]> {
+	const { data, error } = await supabase.rpc('my_organiser_disputes', undefined, { get: true });
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		side: r.side === 'organiser' ? 'organiser' : 'owner',
+		target_kind: r.target_kind as OrganiserDisputeTargetKind,
+		target_id: r.target_id,
+		target_label: r.target_label ?? null,
+		organiser_club_id: r.organiser_club_id ?? null,
+		organiser_club_name: r.organiser_club_name,
+		organiser_club_slug: r.organiser_club_slug ?? null,
+		action: r.action as OrganiserDisputeAction,
+		deadline_at: r.deadline_at ?? null,
+		note: r.note ?? null,
+		acted_at: r.acted_at,
+	}));
 }
 
 // ─────────────────────── Direct messages (#55) ───────────────────────
@@ -15165,6 +15238,19 @@ export interface PendingReportTarget {
 	 *  the run / club / route carrying a comment / post / review); null for a
 	 *  direct message or a target whose row is gone. */
 	page_id: string | null;
+	/** A verified organiser's naming dispute is pending; these sort first. */
+	organiser_dispute: boolean;
+	/** The reporting clubs, first filing first. */
+	organiser_clubs: OrganiserDisputeClub[];
+	/** The rename deadline in force, when the latest action was a notice. */
+	rename_deadline_at: string | null;
+}
+
+export interface OrganiserDisputeClub {
+	id: string;
+	name: string;
+	slug: string | null;
+	is_verified: boolean;
 }
 
 /** One target with at least one resolved report — the list a legal hold is
@@ -15206,6 +15292,8 @@ export interface TargetReport {
 	/** When the retention purge may delete this report; null while it is
 	 *  pending or held. */
 	purge_after: string | null;
+	/** The verified club a naming dispute speaks for; null otherwise. */
+	organiser_club: OrganiserDisputeClub | null;
 }
 
 /** Whether the current user is a moderator. Chrome gate only — the RPCs
@@ -15229,6 +15317,16 @@ export async function fetchPendingReports(): Promise<PendingReportTarget[]> {
 		latest_at: r.latest_at as string,
 		shadow_hidden: r.shadow_hidden === true,
 		page_id: (r.page_id ?? null) as string | null,
+		organiser_dispute: r.organiser_dispute === true,
+		organiser_clubs: Array.isArray(r.organiser_clubs)
+			? (r.organiser_clubs as Record<string, unknown>[]).map((c) => ({
+					id: c.id as string,
+					name: c.name as string,
+					slug: (c.slug ?? null) as string | null,
+					is_verified: c.is_verified === true,
+				}))
+			: [],
+		rename_deadline_at: (r.rename_deadline_at ?? null) as string | null,
 	}));
 }
 
@@ -15259,6 +15357,14 @@ export async function fetchReportsForTarget(
 		snapshot_original_body: (r.snapshot_original_body ?? null) as string | null,
 		legal_hold: r.legal_hold === true,
 		purge_after: (r.purge_after ?? null) as string | null,
+		organiser_club: r.organiser_club_id
+			? {
+					id: r.organiser_club_id as string,
+					name: (r.organiser_club_name ?? '') as string,
+					slug: (r.organiser_club_slug ?? null) as string | null,
+					is_verified: r.organiser_club_verified === true,
+				}
+			: null,
 	}));
 }
 
@@ -15319,6 +15425,59 @@ export async function adminUnhideTarget(
 	});
 	if (error) throw dbError(error);
 	return data === true;
+}
+
+/** A reviewer's action on a target's pending naming disputes. Returns the
+ *  number of dispute reports resolved (0 for a rename notice, which leaves
+ *  them pending until the deadline). Admin-gated at the DB. */
+export async function resolveOrganiserDispute(input: {
+	targetKind: OrganiserDisputeTargetKind;
+	targetId: string;
+	action: 'takedown' | 'rename_notice' | 'dismiss';
+	note: string | null;
+	deadlineDays?: number | null;
+}): Promise<number> {
+	const { data, error } = await supabase.rpc('resolve_organiser_dispute', {
+		p_target_kind: input.targetKind,
+		p_target_id: input.targetId,
+		p_action: input.action,
+		p_note: input.note?.trim() || null,
+		p_deadline_days: input.action === 'rename_notice' ? (input.deadlineDays ?? null) : null,
+	});
+	if (error) throw dbError(error);
+	return Number(data ?? 0);
+}
+
+export interface OrganiserDisputeHistoryEntry {
+	id: number;
+	action: OrganiserDisputeAction;
+	organiser_club_name: string;
+	actor_id: string | null;
+	deadline_at: string | null;
+	note: string | null;
+	created_at: string;
+}
+
+/** The dispute log on one target, reviewer included. Admin-gated at the DB. */
+export async function fetchOrganiserDisputeHistory(
+	targetKind: OrganiserDisputeTargetKind,
+	targetId: string,
+): Promise<OrganiserDisputeHistoryEntry[]> {
+	const { data, error } = await supabase.rpc(
+		'organiser_dispute_history',
+		{ p_target_kind: targetKind, p_target_id: targetId },
+		{ get: true },
+	);
+	if (error) throw dbError(error);
+	return (data ?? []).map((r) => ({
+		id: Number(r.id),
+		action: r.action as OrganiserDisputeAction,
+		organiser_club_name: r.organiser_club_name,
+		actor_id: r.actor_id ?? null,
+		deadline_at: r.deadline_at ?? null,
+		note: r.note ?? null,
+		created_at: r.created_at,
+	}));
 }
 
 // ─── Platform-fee earnings (operator back-office; /admin/earnings) ──────

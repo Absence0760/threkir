@@ -4,7 +4,7 @@
 	import {
 		submitReport,
 		type ReportReason,
-		type ReportTargetKind,
+		type GeneralReportTargetKind,
 	} from '#lib/core/data.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { m } from '#lib/i18n/store.svelte.ts';
@@ -12,7 +12,7 @@
 
 	interface Props {
 		open: boolean;
-		targetKind: ReportTargetKind;
+		targetKind: GeneralReportTargetKind;
 		targetId: string;
 		/// Human-readable name of the thing being reported. Surfaced
 		/// in the dialog body so the user can sanity-check what they're
@@ -29,7 +29,7 @@
 	/// so a slot rendered "Denunciar este rota" in Portuguese and Spanish,
 	/// "Signaler ce course" in French, and put a feminine "Diese" on four
 	/// masculine German nouns (decisions § 1060).
-	const TITLES: Record<ReportTargetKind, MessageKey> = {
+	const TITLES: Record<GeneralReportTargetKind, MessageKey> = {
 		user: 'reportDialog.titleProfile',
 		club: 'reportDialog.titleClub',
 		route: 'reportDialog.titleRoute',
@@ -40,7 +40,9 @@
 		direct_message: 'reportDialog.titleMessage',
 	};
 
-	const REASONS: { value: ReportReason; label: MessageKey; hint: MessageKey }[] = [
+	// The organiser dispute reason is filed through OrganiserDisputeDialog,
+	// for a verified club's owner or admin only.
+	const REASONS: { value: Exclude<ReportReason, 'organiser_dispute'>; label: MessageKey; hint: MessageKey }[] = [
 		{
 			value: 'spam',
 			label: 'reportDialog.reasonSpamLabel',
@@ -68,7 +70,7 @@
 		},
 	];
 
-	let reason = $state<ReportReason>('spam');
+	let reason = $state<Exclude<ReportReason, 'organiser_dispute'>>('spam');
 	let notes = $state('');
 	let busy = $state(false);
 	let error = $state<string | null>(null);

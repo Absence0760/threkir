@@ -26,6 +26,7 @@
 	import RoutePhotos from '#lib/components/RoutePhotos.svelte';
 	import RouteConditions from '#lib/components/RouteConditions.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
+	import OrganiserDisputeAction from '#lib/components/OrganiserDisputeAction.svelte';
 	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
 	import SendRouteDialog from '#lib/components/SendRouteDialog.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
@@ -1146,6 +1147,14 @@
 						>
 							<span class="material-symbols" aria-hidden="true">flag</span>
 						</button>
+					{/if}
+					{#if !isOwner && auth.user && route.is_public}
+						<OrganiserDisputeAction
+							targetKind="route"
+							targetId={route.id}
+							targetLabel={route.name ?? undefined}
+							targetClubId={route.club_id ?? null}
+						/>
 					{/if}
 				</div>
 			</header>

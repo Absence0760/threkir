@@ -226,3 +226,11 @@ verify_jwt = false
 
 [functions.clip-public-track]
 verify_jwt = false
+
+# park-course-report takes a report from a signed-out land manager or runner,
+# whose supabase-js sends the publishable key as the bearer; the platform gate
+# would 401 it. The handler verifies a user JWT when one is sent, rate-limits
+# per user or per hashed client address (fail closed), and calls a filing RPC
+# only the service role may execute (decisions § 2447).
+[functions.park-course-report]
+verify_jwt = false

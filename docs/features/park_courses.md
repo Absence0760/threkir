@@ -42,6 +42,18 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
   with `source_ref` and `source_checked_at`, `difficulty`, `checkpoints`, and a
   nullable `route_id` to the public official route a runner follows. Surface is
   the segment's own `surface`, labelled through the route-surface vocabulary.
+- **`laps`** (integer 1-1000, nullable; migration `20271130002438`, decisions
+  § 2438): laps of the loop in one timed effort. A race course stores its
+  manifest `laps` (the Swift Creek 10K, marathon and 50K are 2), a plain trail
+  loop 1, and an out-and-back or point-to-point course null. The clients show a
+  "2 laps" chip when it is over 1.
+- **`attribution`** (text, 1-300 characters after trimming, nullable): the
+  manifest's credit line verbatim ("© OpenStreetMap contributors (ODbL);
+  elevation: USGS 3DEP"). It is the only place the load writes the credit: the
+  segment's and route's description is the course's own text. The route and
+  segment pages (web and mobile) read it through `fetchParkCourseCredit` and
+  show it once under the description; the `/share/course` lookup carries it with
+  `laps`.
 - **Parks:** `slug`, `name`, `agency` (`nps` / `state` / `county` / `other`),
   `region_code` (ISO 3166-2, `US-VA`; the URL segment is its lower case),
   `country_code`, `timezone` (IANA, validated against `pg_timezone_names` by a
@@ -216,7 +228,10 @@ every release. A course of the park the manifest no longer names is set
 deleted, so its segment and efforts stay; it is reported `closed` on the load
 that closes it and not again. If the manifest names it again it reopens
 (`updated`). Any other status, an operator's closure included, is never
-written, and `is_active` is never written. Every description ends with the manifest's attribution. The
+written, and `is_active` is never written. The manifest's attribution goes to
+`park_courses.attribution` and each course's laps to `park_courses.laps`; no
+description carries the credit (decisions § 2438), and the first sync after
+that change reports every earlier course `updated`, with no backfill. The
 segment's start and end lines follow the manifest: an end the course carries a
 curated `start_gate` / `end_gate` for is written as a curator line, on insert
 and on every re-load (the build emits one where the derived line would face

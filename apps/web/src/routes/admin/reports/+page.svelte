@@ -12,6 +12,11 @@
 		setReportLegalHold,
 		resolveOrganiserDispute,
 		fetchOrganiserDisputeHistory,
+		fetchAdminParkCourse,
+		adminSetParkCourseStatus,
+		fetchParkCourseStatusHistory,
+		type AdminParkCourse,
+		type ParkCourseStatusHistoryEntry,
 		type OrganiserDisputeHistoryEntry,
 		type PendingReportTarget,
 		type ResolvedReportTarget,
@@ -34,12 +39,17 @@
 		deadlinePassed,
 	} from '#lib/social/organiser_dispute.ts';
 	import type { OrganiserDisputeTargetKind } from '#lib/types.ts';
+	import { landManagerDueAt } from '#lib/parks/course_report.ts';
+	import { regionSlug } from '#lib/parks/park_courses.ts';
+	import type { MessageKey } from '#lib/i18n/messages.ts';
 
 	type QueueTarget = Pick<
 		PendingReportTarget,
 		'target_kind' | 'target_id' | 'page_id' | 'shadow_hidden' | 'report_count'
 	> &
-		Partial<Pick<PendingReportTarget, 'organiser_dispute' | 'organiser_clubs' | 'rename_deadline_at'>>;
+		Partial<
+			Pick<PendingReportTarget, 'organiser_dispute' | 'organiser_clubs' | 'rename_deadline_at' | 'land_manager_since'>
+		>;
 
 	type DisputeAction = 'takedown' | 'rename_notice' | 'dismiss';
 	const DISPUTE_KINDS: readonly string[] = ['club', 'route', 'training_plan', 'gym_routine', 'challenge', 'race_listing'];
@@ -75,6 +85,70 @@
 	let confirmDispute = $state<DisputeAction | null>(null);
 	let history = $state<OrganiserDisputeHistoryEntry[]>([]);
 	const deadlineValid = $derived(deadlineDaysOrNull(deadlineDays) !== null);
+
+	// Park course reports (decisions § 2447): a report never closes a course;
+	// the admin does, here, with the note the course page shows.
+	let course = $state<AdminParkCourse | null>(null);
+	let courseHistory = $state<ParkCourseStatusHistoryEntry[]>([]);
+	let courseNote = $state('');
+	let courseBusy = $state(false);
+	let confirmCourse = $state<'closed' | 'open' | null>(null);
+	const CATALOGUE_NOTE = 'Removed from the park catalogue.';
+	const courseHref = $derived(
+		course?.park ? `/parks/${regionSlug(course.park.region_code)}/${course.park.slug}/${course.slug}` : null,
+	);
+	const pendingLandManager = $derived(
+		detail
+			.filter((r) => r.status === 'pending' && r.reason === 'land_manager_request')
+			.map((r) => r.created_at)
+			.sort()[0] ?? null,
+	);
+
+	const COURSE_REASON_LABELS: Record<string, MessageKey> = {
+		course_hazard: 'admin.reports.reason.courseHazard',
+		course_closure: 'admin.reports.reason.courseClosure',
+		course_off_trail: 'admin.reports.reason.courseOffTrail',
+		land_manager_request: 'admin.reports.reason.landManagerRequest',
+	};
+
+	function reasonLabel(reason: string): string {
+		const key = COURSE_REASON_LABELS[reason];
+		return key ? t(key) : reason;
+	}
+
+	function landManagerDue(receivedIso: string): { text: string; overdue: boolean } {
+		const due = landManagerDueAt(receivedIso);
+		const overdue = due.getTime() < Date.now();
+		const date = formatDate(due.toISOString());
+		return {
+			text: overdue ? t('admin.reports.course.overdue', { date }) : t('admin.reports.course.dueOn', { date }),
+			overdue,
+		};
+	}
+
+	async function loadCourse(courseId: string) {
+		course = await fetchAdminParkCourse(courseId);
+		courseHistory = course ? await fetchParkCourseStatusHistory(courseId) : [];
+	}
+
+	async function doCourseStatus(status: 'closed' | 'open') {
+		if (!selected || !course || courseBusy) return;
+		courseBusy = true;
+		const target = selected;
+		try {
+			await adminSetParkCourseStatus(course.id, status, courseNote.trim() || null);
+			showToast(t(status === 'closed' ? 'admin.reports.course.doneClose' : 'admin.reports.course.doneReopen'), 'success');
+			courseNote = '';
+			await loadCourse(course.id);
+			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
+			await loadQueue();
+			if (resolvedLoaded) await loadResolved();
+		} catch (e) {
+			showToast(t('admin.reports.course.failed', { error: errorCopy(e, t, 'admin.reports.course.failed') }), 'error');
+		} finally {
+			courseBusy = false;
+		}
+	}
 
 	function kindLabel(kind: ReportTargetKind): string {
 		const key = reportTargetLabelKey(kind);
@@ -134,10 +208,14 @@
 		disputeNote = '';
 		deadlineDays = DISPUTE_DEADLINE_DEFAULT_DAYS;
 		history = [];
+		course = null;
+		courseHistory = [];
+		courseNote = '';
 		detail = [];
 		detailLoading = true;
 		try {
 			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
+			if (target.target_kind === 'park_course') await loadCourse(target.target_id);
 			if (detail.some((r) => r.reason === 'organiser_dispute') && DISPUTE_KINDS.includes(target.target_kind)) {
 				history = await fetchOrganiserDisputeHistory(
 					target.target_kind as OrganiserDisputeTargetKind,
@@ -154,6 +232,8 @@
 	function closeDetail() {
 		selected = null;
 		detail = [];
+		course = null;
+		courseHistory = [];
 	}
 
 	async function doResolve(status: ReportResolution) {
@@ -401,6 +481,14 @@
 									{#if target.shadow_hidden}
 										<span class="hidden-badge" data-testid="admin-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 									{/if}
+									{#if target.land_manager_since}
+										{@const due = landManagerDue(target.land_manager_since)}
+										<div class="dispute-line" data-testid="admin-land-manager-row">
+											<span class="dispute-badge">{t('admin.reports.course.landManagerBadge')}</span>
+											<span class="muted">{t('admin.reports.course.receivedAgo', { when: formatRelativeTime(target.land_manager_since) })}</span>
+											<span class="muted deadline" class:overdue={due.overdue} data-testid="admin-land-manager-due">{due.text}</span>
+										</div>
+									{/if}
 									{#if target.organiser_dispute}
 										<div class="dispute-line" data-testid="admin-dispute-row">
 											<span class="dispute-badge">{t('admin.reports.dispute.badge')}</span>
@@ -424,7 +512,7 @@
 								<td>
 									<span class="reasons">
 										{#each Object.entries(target.reasons) as [reason, n] (reason)}
-											<span class="chip">{reason} · {n}</span>
+											<span class="chip">{reasonLabel(reason)} · {n}</span>
 										{/each}
 									</span>
 								</td>
@@ -496,7 +584,7 @@
 					{#each detail as r (r.id)}
 						<li class="report">
 							<div class="report-top">
-								<span class="reason chip">{r.reason}</span>
+								<span class="reason chip">{reasonLabel(r.reason)}</span>
 								<span class="status status-{r.status}">{statusLabel(r.status)}</span>
 								<span class="muted when">{formatRelativeTime(r.created_at)}</span>
 								{#if r.legal_hold}
@@ -506,8 +594,15 @@
 							<p class="report-by muted">
 								{r.reporter_id
 									? t('admin.reports.reportBy', { id: r.reporter_id.slice(0, 8) })
-									: t('admin.reports.reporterDeleted')}
+									: r.signed_out
+										? t('admin.reports.course.signedOut')
+										: t('admin.reports.reporterDeleted')}
 							</p>
+							{#if r.contact_email}
+								<p class="report-by" data-testid="admin-report-contact">
+									<a href="mailto:{r.contact_email}">{t('admin.reports.course.contact', { email: r.contact_email })}</a>
+								</p>
+							{/if}
 							{#if r.organiser_club}
 								<p class="report-by" data-testid="admin-report-organiser">
 									{t('admin.reports.dispute.filedFor', { club: r.organiser_club.name })}
@@ -549,6 +644,80 @@
 						</li>
 					{/each}
 				</ul>
+
+				{#if selected.target_kind === 'park_course'}
+					<section class="dispute-panel" data-testid="admin-course-panel">
+						<h3>{t('admin.reports.course.panelTitle')}</h3>
+						{#if !course}
+							<p class="muted">{t('admin.reports.course.missing')}</p>
+						{:else}
+							<p>
+								<strong>{course.name}</strong>{#if course.park}&nbsp;·&nbsp;{course.park.name}{/if}
+								{#if courseHref}<a href={courseHref} class="target-link">{t('admin.reports.course.viewCourse')}</a>{/if}
+							</p>
+							<p data-testid="admin-course-status">
+								{course.status === 'closed'
+									? t('parks.statusClosed')
+									: course.status === 'seasonal'
+										? t('parks.statusSeasonal')
+										: t('parks.statusOpen')}{#if course.status_note}: {course.status_note}{/if}
+							</p>
+							<p class="muted">{t('admin.reports.course.panelHint')}</p>
+							{#if pendingLandManager}
+								{@const due = landManagerDue(pendingLandManager)}
+								<p class="deadline" class:overdue={due.overdue}>{due.text}</p>
+							{/if}
+							{#if detail.some((r) => r.contact_email)}
+								<p class="muted">{t('admin.reports.course.replyHint')}</p>
+							{/if}
+							{#if course.status === 'closed' && course.status_note === CATALOGUE_NOTE}
+								<p class="muted">{t('admin.reports.course.catalogueClosed')}</p>
+							{:else}
+								<label class="resolution">
+									<span>{course.status === 'closed' ? t('admin.reports.course.reopenNoteLabel') : t('admin.reports.course.noteLabel')}</span>
+									<textarea
+										bind:value={courseNote}
+										rows="2"
+										maxlength="500"
+										placeholder={course.status === 'closed' ? '' : t('admin.reports.course.notePlaceholder')}
+										data-testid="admin-course-note"
+									></textarea>
+								</label>
+								<div class="actions">
+									{#if course.status === 'closed'}
+										<button
+											type="button"
+											class="btn btn-secondary"
+											disabled={courseBusy}
+											data-testid="admin-course-reopen"
+											onclick={() => (confirmCourse = 'open')}
+										>{t('admin.reports.course.reopen')}</button>
+									{:else}
+										<button
+											type="button"
+											class="btn btn-danger"
+											disabled={courseBusy || courseNote.trim().length === 0 || courseNote.trim() === CATALOGUE_NOTE}
+											data-testid="admin-course-close"
+											onclick={() => (confirmCourse = 'closed')}
+										>{t('admin.reports.course.close')}</button>
+									{/if}
+								</div>
+							{/if}
+							{#if courseHistory.length > 0}
+								<h4>{t('admin.reports.course.historyTitle')}</h4>
+								<ul class="history" data-testid="admin-course-history">
+									{#each courseHistory as h (h.id)}
+										<li>
+											<strong>{h.action === 'close' ? t('admin.reports.course.historyClose') : t('admin.reports.course.historyReopen')}</strong>
+											<span class="muted">· {formatRelativeTime(h.created_at)}</span>
+											{#if h.note}<p class="notes">{h.note}</p>{/if}
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						{/if}
+					</section>
+				{/if}
 
 				{#if hasPendingDispute}
 					<section class="dispute-panel" data-testid="admin-dispute-panel">
@@ -722,6 +891,23 @@
 		if (action) doDisputeAction(action);
 	}}
 	oncancel={() => (confirmDispute = null)}
+/>
+
+<ConfirmDialog
+	open={!!confirmCourse}
+	danger={confirmCourse === 'closed'}
+	title={confirmCourse === 'closed' ? t('admin.reports.course.confirmCloseTitle') : t('admin.reports.course.confirmReopenTitle')}
+	message={confirmCourse === 'closed'
+		? t('admin.reports.course.confirmCloseMessage')
+		: t('admin.reports.course.confirmReopenMessage')}
+	confirmLabel={confirmCourse === 'closed' ? t('admin.reports.course.close') : t('admin.reports.course.reopen')}
+	data-testid="admin-course-confirm"
+	onconfirm={() => {
+		const status = confirmCourse;
+		confirmCourse = null;
+		if (status) doCourseStatus(status);
+	}}
+	oncancel={() => (confirmCourse = null)}
 />
 
 <ConfirmDialog

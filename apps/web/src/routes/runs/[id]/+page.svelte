@@ -36,6 +36,7 @@
 	import FundraiserSection from '#lib/components/FundraiserSection.svelte';
 	import RunGearChips from '#lib/components/RunGearChips.svelte';
 	import RunRaceResult from '#lib/components/RunRaceResult.svelte';
+	import RunParkCourseChips from '#lib/components/RunParkCourseChips.svelte';
 	import RunPlanWorkoutPrompt from '#lib/components/RunPlanWorkoutPrompt.svelte';
 	import RunSegmentEfforts from '#lib/components/RunSegmentEfforts.svelte';
 	import RouteHistory from '#lib/components/RouteHistory.svelte';
@@ -972,6 +973,7 @@
 	/// every run up to it, so last month's run does not print today's streak.
 	let shareStreakDays = $state(0);
 	let shareBadge = $state<{ badgeKey: string; tier: AchievementTier } | null>(null);
+	let parkCourseRefresh = $state(0);
 	let shareCourse = $state<{ name: string; park: string; timeS: number; season: number; rank: number | null } | null>(null);
 	/// The race the run is linked to, from the result stamped on it: the
 	/// official chip time when there is one.
@@ -2369,6 +2371,8 @@
 			onlisting={(id) => (publicRaceListingId = id)}
 		/>
 
+		<RunParkCourseChips runId={run.id} runOwnerId={run.user_id} refresh={parkCourseRefresh} />
+
 		<RunPhotos
 			runId={run.id}
 			runOwnerId={run.user_id}
@@ -2391,6 +2395,7 @@
 				runOwnerId={run.user_id}
 				routeId={run.route_id}
 				track={trackLine(run.track ?? [])}
+				onscored={() => parkCourseRefresh++}
 			/>
 		</section>
 		{#if run.route_id}

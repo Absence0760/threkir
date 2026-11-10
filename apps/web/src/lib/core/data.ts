@@ -798,14 +798,18 @@ export async function fetchRecapParkCourses(startIso: string, endIso: string): P
 }
 
 /// The park course times one of the caller's own runs set, with the season
-/// rank each holds (`run_park_course_times`), for the share image's course
-/// sticker. Throws on a failed read.
+/// rank each holds (`run_park_course_times`), for run detail's course chips
+/// and the share image's course sticker. Throws on a failed read.
 export async function fetchRunParkCourseTimes(runId: string): Promise<RunParkCourseTime[]> {
 	const { data, error } = await supabase.rpc('run_park_course_times', { p_run_id: runId }, { get: true });
 	if (error) throw dbError(error);
 	return (data ?? []).map((r) => ({
+		effort_id: r.effort_id,
 		course_name: r.course_name,
+		course_slug: r.course_slug,
 		park_name: r.park_name,
+		park_slug: r.park_slug,
+		region_code: r.region_code,
 		time_seconds: r.time_seconds,
 		season: r.season,
 		season_rank: r.season_rank ?? null,

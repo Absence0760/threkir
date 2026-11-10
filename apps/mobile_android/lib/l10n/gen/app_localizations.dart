@@ -5555,6 +5555,30 @@ abstract class AppLocalizations {
   /// **'Segments'**
   String get runDetailSectionSegments;
 
+  /// Accessibility label for the owner's park course chips on run detail (runDetail.parkCourses)
+  ///
+  /// In en, this message translates to:
+  /// **'Park courses on this run'**
+  String get runDetailParkCourses;
+
+  /// A park course chip's place on that season's fastest board, e.g. #3 in 2027 (runDetail.parkCourseRank)
+  ///
+  /// In en, this message translates to:
+  /// **'#{rank} in {season}'**
+  String runDetailParkCourseRank(String rank, String season);
+
+  /// Quiet line on run detail when the park course chips could not be read; a Retry button follows (runDetail.parkCoursesLoadFailed)
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your park course times.'**
+  String get runDetailParkCoursesLoadFailed;
+
+  /// Banner when tapping a park course chip on run detail could not load the course
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open this course.'**
+  String get runDetailParkCourseOpenFailed;
+
   /// Title of the save-as-route dialog
   ///
   /// In en, this message translates to:

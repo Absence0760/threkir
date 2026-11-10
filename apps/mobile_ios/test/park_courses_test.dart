@@ -299,7 +299,17 @@ void main() {
   });
 
   RunParkCourseTime time(String name, int? rank) =>
-      RunParkCourseTime(courseName: name, parkName: 'Park', timeSeconds: 600, season: 2027, seasonRank: rank);
+      RunParkCourseTime(
+        effortId: 'e-$name',
+        courseName: name,
+        courseSlug: 'lake-loop',
+        parkName: 'Park',
+        parkSlug: 'park',
+        regionCode: 'US-VA',
+        timeSeconds: 600,
+        season: 2027,
+        seasonRank: rank,
+      );
 
   test('pickShareCourse: no course is null', () {
     expect(pickShareCourse(const []), isNull);

@@ -982,8 +982,12 @@ void main() {
         (tester) async {
       await openSheet(tester,
           courseLoad: () async => const RunParkCourseTime(
+              effortId: 'effort-1',
               courseName: 'Beaver Lake Trail',
+              courseSlug: 'beaver-lake-trail',
               parkName: 'Pocahontas State Park',
+              parkSlug: 'pocahontas',
+              regionCode: 'US-VA',
               timeSeconds: 1452,
               season: 2027,
               seasonRank: 3));

@@ -3349,6 +3349,22 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runDetailSectionSegments => 'Segmentos';
 
   @override
+  String get runDetailParkCourses => 'Percursos de parque nesta corrida';
+
+  @override
+  String runDetailParkCourseRank(String rank, String season) {
+    return 'N.º $rank em $season';
+  }
+
+  @override
+  String get runDetailParkCoursesLoadFailed =>
+      'Não foi possível carregar os seus tempos nos percursos de parque.';
+
+  @override
+  String get runDetailParkCourseOpenFailed =>
+      'Não foi possível abrir este percurso.';
+
+  @override
   String get runDetailSaveAsRouteTitle => 'Guardar como rota';
 
   @override
@@ -25488,6 +25504,22 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailSectionSegments => 'Segmentos';
+
+  @override
+  String get runDetailParkCourses => 'Percursos de parque nesta corrida';
+
+  @override
+  String runDetailParkCourseRank(String rank, String season) {
+    return 'N.º $rank em $season';
+  }
+
+  @override
+  String get runDetailParkCoursesLoadFailed =>
+      'Não foi possível carregar seus tempos nos percursos de parque.';
+
+  @override
+  String get runDetailParkCourseOpenFailed =>
+      'Não foi possível abrir este percurso.';
 
   @override
   String get runDetailSaveAsRouteTitle => 'Salvar como rota';

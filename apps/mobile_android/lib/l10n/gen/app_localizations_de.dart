@@ -3353,6 +3353,22 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailSectionSegments => 'Segmente';
 
   @override
+  String get runDetailParkCourses => 'Parkstrecken in diesem Lauf';
+
+  @override
+  String runDetailParkCourseRank(String rank, String season) {
+    return 'Platz $rank in $season';
+  }
+
+  @override
+  String get runDetailParkCoursesLoadFailed =>
+      'Deine Parkstrecken-Zeiten konnten nicht geladen werden.';
+
+  @override
+  String get runDetailParkCourseOpenFailed =>
+      'Diese Strecke konnte nicht geöffnet werden.';
+
+  @override
   String get runDetailSaveAsRouteTitle => 'Als Route speichern';
 
   @override

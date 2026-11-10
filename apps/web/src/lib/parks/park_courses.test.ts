@@ -251,7 +251,16 @@ test('recapParkSummary: parks with equal counts sort by name', () => {
 	);
 });
 
-const TIME = { course_name: 'Lake Loop', park_name: 'Pocahontas', time_seconds: 900, season: 2027 };
+const TIME = {
+	effort_id: 'e1',
+	course_name: 'Lake Loop',
+	course_slug: 'lake-loop',
+	park_name: 'Pocahontas',
+	park_slug: 'pocahontas',
+	region_code: 'US-VA',
+	time_seconds: 900,
+	season: 2027,
+};
 
 test('pickShareCourse: no park course, no sticker', () => {
 	assert.equal(pickShareCourse([]), null);

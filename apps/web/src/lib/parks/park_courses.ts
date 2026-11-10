@@ -301,8 +301,12 @@ export function recapParkSummary(rows: readonly RecapParkRow[]): RecapParkSummar
 
 /** A park course time on one run, as `run_park_course_times` returns it. */
 export interface RunParkCourseTime {
+	effort_id: string;
 	course_name: string;
+	course_slug: string;
 	park_name: string;
+	park_slug: string;
+	region_code: string;
 	time_seconds: number;
 	season: number;
 	season_rank: number | null;

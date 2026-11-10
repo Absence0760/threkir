@@ -339,22 +339,34 @@ RecapParkSummary recapParkSummary(List<RecapParkRow> rows) {
 
 /// One row of `run_park_course_times`: a park course the run completed.
 class RunParkCourseTime {
+  final String effortId;
   final String courseName;
+  final String courseSlug;
   final String parkName;
+  final String parkSlug;
+  final String regionCode;
   final int timeSeconds;
   final int season;
   final int? seasonRank;
   const RunParkCourseTime({
+    required this.effortId,
     required this.courseName,
+    required this.courseSlug,
     required this.parkName,
+    required this.parkSlug,
+    required this.regionCode,
     required this.timeSeconds,
     required this.season,
     required this.seasonRank,
   });
 
   factory RunParkCourseTime.fromRow(Map<String, dynamic> row) => RunParkCourseTime(
+        effortId: row['effort_id'] as String,
         courseName: row['course_name'] as String,
+        courseSlug: row['course_slug'] as String,
         parkName: row['park_name'] as String,
+        parkSlug: row['park_slug'] as String,
+        regionCode: row['region_code'] as String,
         timeSeconds: (row['time_seconds'] as num).round(),
         season: (row['season'] as num).toInt(),
         seasonRank: (row['season_rank'] as num?)?.toInt(),

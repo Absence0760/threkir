@@ -5923,6 +5923,41 @@ class ApiClient {
     ];
   }
 
+  /// One park course by its park's slug and its own slug, with the park and
+  /// its current season, for opening a course from a run's park course chip
+  /// (the run only knows the slugs). Null when RLS hides either (a pulled park
+  /// or segment) or it is gone. Throws on a failed read.
+  Future<({ParkListing park, ParkCourseListing course})?> fetchParkCourseBySlugs(
+    String parkSlug,
+    String courseSlug,
+  ) async {
+    final park = await _client
+        .from(ParkRow.table)
+        .select('*, park_season')
+        .eq(ParkRow.colSlug, parkSlug)
+        .maybeSingle();
+    if (park == null) return null;
+    final course = await _client
+        .from(ParkCourseRow.table)
+        .select('*, global_segments(*)')
+        .eq(ParkCourseRow.colParkId, park[ParkRow.colId] as String)
+        .eq(ParkCourseRow.colSlug, courseSlug)
+        .maybeSingle();
+    if (course == null || course['global_segments'] is! Map) return null;
+    return (
+      park: ParkListing(
+        park: ParkRow.fromJson(park),
+        season: (park['park_season'] as num).toInt(),
+      ),
+      course: ParkCourseListing(
+        course: ParkCourseRow.fromJson(course),
+        segment: GlobalSegmentRow.fromJson(
+          (course['global_segments'] as Map).cast<String, dynamic>(),
+        ),
+      ),
+    );
+  }
+
   /// A park's courses with their catalogue segment, by slug. A course whose
   /// segment was pulled is dropped (RLS hides the segment). Throws on a
   /// failed read.

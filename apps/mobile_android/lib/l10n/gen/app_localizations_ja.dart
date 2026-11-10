@@ -3185,6 +3185,20 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailSectionSegments => 'セグメント';
 
   @override
+  String get runDetailParkCourses => 'このランの公園コース';
+
+  @override
+  String runDetailParkCourseRank(String rank, String season) {
+    return '$season年 $rank位';
+  }
+
+  @override
+  String get runDetailParkCoursesLoadFailed => '公園コースのタイムを読み込めませんでした。';
+
+  @override
+  String get runDetailParkCourseOpenFailed => 'このコースを開けませんでした。';
+
+  @override
   String get runDetailSaveAsRouteTitle => 'ルートとして保存';
 
   @override

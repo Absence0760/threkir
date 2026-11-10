@@ -35422,6 +35422,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{at}: finish.'**
   String parkGuideFinish(String at);
+
+  /// Park course page: opens the sheet to report a hazard, closure, off-trail line or land-manager request (also the sheet title)
+  ///
+  /// In en, this message translates to:
+  /// **'Report a problem with this course'**
+  String get parkCourseReportAction;
+
+  /// Report sheet: what a report is for and that a person reviews it; a report never closes the course by itself
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us about a hazard, a closure or a line that leaves the trail. A person at Threkir reviews every report. A report does not close the course by itself.'**
+  String get parkCourseReportExplainer;
+
+  /// Report sheet: heading over the reason choices
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s the problem?'**
+  String get parkCourseReportReasonLegend;
+
+  /// Report reason: a hazard on the course
+  ///
+  /// In en, this message translates to:
+  /// **'A hazard on the course'**
+  String get parkCourseReportReasonHazard;
+
+  /// Report reason: the course or trail is closed
+  ///
+  /// In en, this message translates to:
+  /// **'The course or trail is closed'**
+  String get parkCourseReportReasonClosure;
+
+  /// Report reason: the published line leaves the designated trail
+  ///
+  /// In en, this message translates to:
+  /// **'The line leaves the designated trail'**
+  String get parkCourseReportReasonOffTrail;
+
+  /// Report reason: the park or agency managing the land asks for the course to come down
+  ///
+  /// In en, this message translates to:
+  /// **'A request from the land manager'**
+  String get parkCourseReportReasonLandManager;
+
+  /// Hint under the land-manager reason: the two-business-day promise
+  ///
+  /// In en, this message translates to:
+  /// **'For park or agency staff. Ask us to take the course down and we close it within two business days.'**
+  String get parkCourseReportReasonLandManagerHint;
+
+  /// Report reason: anything else
+  ///
+  /// In en, this message translates to:
+  /// **'Something else'**
+  String get parkCourseReportReasonOther;
+
+  /// Report sheet: label of the required free-text note
+  ///
+  /// In en, this message translates to:
+  /// **'What should we know?'**
+  String get parkCourseReportNotesLabel;
+
+  /// Report sheet: hint inside the note field
+  ///
+  /// In en, this message translates to:
+  /// **'Where on the course, what you saw and when.'**
+  String get parkCourseReportNotesHint;
+
+  /// Report sheet: label of the optional contact email field
+  ///
+  /// In en, this message translates to:
+  /// **'Your email (optional)'**
+  String get parkCourseReportEmailLabel;
+
+  /// Report sheet: what the contact email is used for and when it is deleted
+  ///
+  /// In en, this message translates to:
+  /// **'Only if you\'d like a reply. We use it to answer this report and delete it 30 days after we resolve it.'**
+  String get parkCourseReportEmailHint;
+
+  /// Report sheet: cancel button
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get parkCourseReportCancel;
+
+  /// Report sheet: send button
+  ///
+  /// In en, this message translates to:
+  /// **'Send report'**
+  String get parkCourseReportSubmit;
+
+  /// Banner after a report was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks. Your report is with the Threkir team.'**
+  String get parkCourseReportSent;
+
+  /// Report sheet error: sending failed for an unknown reason
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the report. Try again.'**
+  String get parkCourseReportErrorFailed;
+
+  /// Report sheet error: too many reports right now
+  ///
+  /// In en, this message translates to:
+  /// **'Too many reports right now. Try again later.'**
+  String get parkCourseReportErrorRateLimited;
+
+  /// Report sheet error: this person already has an open report on this course
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve already reported this course, and that report is still open.'**
+  String get parkCourseReportErrorAlreadyReported;
+
+  /// Report sheet error: the course is no longer listed
+  ///
+  /// In en, this message translates to:
+  /// **'This course is no longer listed.'**
+  String get parkCourseReportErrorNotFound;
+
+  /// Report sheet error: the server refused the report as invalid
+  ///
+  /// In en, this message translates to:
+  /// **'Check the report and try again.'**
+  String get parkCourseReportErrorInvalid;
+
+  /// Report sheet: the contact email is not shaped like an address
+  ///
+  /// In en, this message translates to:
+  /// **'That email address doesn\'t look right.'**
+  String get parkCourseReportErrorEmail;
+
+  /// Notification text, app admins only: someone reported a problem with a park course
+  ///
+  /// In en, this message translates to:
+  /// **'A park course was reported'**
+  String get profileNotifParkCourseReport;
 }
 
 class _AppLocalizationsDelegate

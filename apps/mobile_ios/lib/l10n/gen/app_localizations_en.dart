@@ -21805,4 +21805,85 @@ class AppLocalizationsEn extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at: finish.';
   }
+
+  @override
+  String get parkCourseReportAction => 'Report a problem with this course';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Tell us about a hazard, a closure or a line that leaves the trail. A person at Threkir reviews every report. A report does not close the course by itself.';
+
+  @override
+  String get parkCourseReportReasonLegend => 'What\'s the problem?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'A hazard on the course';
+
+  @override
+  String get parkCourseReportReasonClosure => 'The course or trail is closed';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'The line leaves the designated trail';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'A request from the land manager';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'For park or agency staff. Ask us to take the course down and we close it within two business days.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Something else';
+
+  @override
+  String get parkCourseReportNotesLabel => 'What should we know?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Where on the course, what you saw and when.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Your email (optional)';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Only if you\'d like a reply. We use it to answer this report and delete it 30 days after we resolve it.';
+
+  @override
+  String get parkCourseReportCancel => 'Cancel';
+
+  @override
+  String get parkCourseReportSubmit => 'Send report';
+
+  @override
+  String get parkCourseReportSent =>
+      'Thanks. Your report is with the Threkir team.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'Couldn\'t send the report. Try again.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Too many reports right now. Try again later.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'You\'ve already reported this course, and that report is still open.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'This course is no longer listed.';
+
+  @override
+  String get parkCourseReportErrorInvalid => 'Check the report and try again.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'That email address doesn\'t look right.';
+
+  @override
+  String get profileNotifParkCourseReport => 'A park course was reported';
 }

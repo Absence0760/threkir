@@ -22048,6 +22048,90 @@ class AppLocalizationsPt extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at: meta.';
   }
+
+  @override
+  String get parkCourseReportAction => 'Comunicar um problema neste percurso';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Diga-nos se há um perigo, um encerramento ou um traçado que sai do trilho. Uma pessoa da Threkir analisa cada comunicação. Uma comunicação não fecha o percurso por si só.';
+
+  @override
+  String get parkCourseReportReasonLegend => 'Qual é o problema?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'Um perigo no percurso';
+
+  @override
+  String get parkCourseReportReasonClosure =>
+      'O percurso ou o trilho está fechado';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'O traçado sai do trilho sinalizado';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'Um pedido da gestão do parque';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'Para a equipa do parque ou da entidade gestora. Peça-nos para retirar o percurso e fechamo-lo no prazo de dois dias úteis.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Outra coisa';
+
+  @override
+  String get parkCourseReportNotesLabel => 'O que devemos saber?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Onde no percurso, o que viu e quando.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'O seu e-mail (opcional)';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Só se quiser uma resposta. Usamo-lo para responder a esta comunicação e apagamo-lo 30 dias depois de a resolvermos.';
+
+  @override
+  String get parkCourseReportCancel => 'Cancelar';
+
+  @override
+  String get parkCourseReportSubmit => 'Enviar comunicação';
+
+  @override
+  String get parkCourseReportSent =>
+      'Obrigado. A sua comunicação chegou à equipa da Threkir.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'Não foi possível enviar a comunicação. Tente novamente.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Há demasiadas comunicações neste momento. Tente mais tarde.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'Já comunicou um problema neste percurso, e essa comunicação ainda está aberta.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'Este percurso já não está disponível.';
+
+  @override
+  String get parkCourseReportErrorInvalid =>
+      'Verifique a comunicação e tente novamente.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'Esse endereço de e-mail não parece correto.';
+
+  @override
+  String get profileNotifParkCourseReport =>
+      'Foi comunicado um problema num percurso de parque';
 }
 
 /// The translations for Portuguese, as used in Brazil (`pt_BR`).
@@ -44077,4 +44161,88 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String parkGuideFinish(String at) {
     return '$at: chegada.';
   }
+
+  @override
+  String get parkCourseReportAction => 'Relatar um problema neste percurso';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Conte para a gente sobre um perigo, uma interdição ou um traçado que sai da trilha. Uma pessoa da Threkir analisa cada relato. Um relato não fecha o percurso sozinho.';
+
+  @override
+  String get parkCourseReportReasonLegend => 'Qual é o problema?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'Um perigo no percurso';
+
+  @override
+  String get parkCourseReportReasonClosure =>
+      'O percurso ou a trilha está fechado';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'O traçado sai da trilha sinalizada';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'Um pedido da administração do parque';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'Para a equipe do parque ou do órgão gestor. Peça para retirarmos o percurso e nós o fechamos em até dois dias úteis.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Outra coisa';
+
+  @override
+  String get parkCourseReportNotesLabel => 'O que devemos saber?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Onde no percurso, o que você viu e quando.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Seu e-mail (opcional)';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Só se quiser uma resposta. Usamos para responder a este relato e o apagamos 30 dias depois de resolvido.';
+
+  @override
+  String get parkCourseReportCancel => 'Cancelar';
+
+  @override
+  String get parkCourseReportSubmit => 'Enviar relato';
+
+  @override
+  String get parkCourseReportSent =>
+      'Obrigado. Seu relato chegou à equipe da Threkir.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'Não foi possível enviar o relato. Tente de novo.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Há relatos demais agora. Tente mais tarde.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'Você já relatou este percurso, e esse relato ainda está aberto.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'Este percurso não está mais disponível.';
+
+  @override
+  String get parkCourseReportErrorInvalid =>
+      'Confira o relato e tente de novo.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'Esse endereço de e-mail não parece correto.';
+
+  @override
+  String get profileNotifParkCourseReport =>
+      'Um percurso de parque foi relatado';
 }

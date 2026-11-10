@@ -20964,4 +20964,77 @@ class AppLocalizationsJa extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at：フィニッシュ。';
   }
+
+  @override
+  String get parkCourseReportAction => 'このコースの問題を報告';
+
+  @override
+  String get parkCourseReportExplainer =>
+      '危険、閉鎖、またはトレイルから外れたラインについてお知らせください。すべての報告は Threkir の担当者が確認します。報告だけでコースが閉鎖されることはありません。';
+
+  @override
+  String get parkCourseReportReasonLegend => 'どのような問題ですか？';
+
+  @override
+  String get parkCourseReportReasonHazard => 'コース上の危険';
+
+  @override
+  String get parkCourseReportReasonClosure => 'コースまたはトレイルが閉鎖されている';
+
+  @override
+  String get parkCourseReportReasonOffTrail => 'ラインが指定のトレイルから外れている';
+
+  @override
+  String get parkCourseReportReasonLandManager => '管理者からの依頼';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      '公園または管理機関の職員の方へ。コースの掲載停止をご依頼いただければ、2営業日以内に閉鎖します。';
+
+  @override
+  String get parkCourseReportReasonOther => 'その他';
+
+  @override
+  String get parkCourseReportNotesLabel => 'どのような状況ですか？';
+
+  @override
+  String get parkCourseReportNotesHint => 'コースのどこで、何を、いつ見たか。';
+
+  @override
+  String get parkCourseReportEmailLabel => 'メールアドレス（任意）';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      '返信をご希望の場合のみ。この報告への返信に使い、対応完了から30日後に削除します。';
+
+  @override
+  String get parkCourseReportCancel => 'キャンセル';
+
+  @override
+  String get parkCourseReportSubmit => '報告を送信';
+
+  @override
+  String get parkCourseReportSent => 'ありがとうございます。報告は Threkir チームに届きました。';
+
+  @override
+  String get parkCourseReportErrorFailed => '報告を送信できませんでした。もう一度お試しください。';
+
+  @override
+  String get parkCourseReportErrorRateLimited => '現在報告が多すぎます。しばらくしてからお試しください。';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'このコースはすでに報告済みで、その報告はまだ対応中です。';
+
+  @override
+  String get parkCourseReportErrorNotFound => 'このコースは現在掲載されていません。';
+
+  @override
+  String get parkCourseReportErrorInvalid => '報告内容を確認して、もう一度お試しください。';
+
+  @override
+  String get parkCourseReportErrorEmail => 'メールアドレスが正しくないようです。';
+
+  @override
+  String get profileNotifParkCourseReport => '公園コースについて報告がありました';
 }

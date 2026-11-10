@@ -22047,4 +22047,89 @@ class AppLocalizationsEs extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at: meta.';
   }
+
+  @override
+  String get parkCourseReportAction =>
+      'Informar de un problema con este recorrido';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Cuéntanos si hay un peligro, un cierre o un trazado que se sale del sendero. Una persona de Threkir revisa cada aviso. Un aviso no cierra el recorrido por sí solo.';
+
+  @override
+  String get parkCourseReportReasonLegend => '¿Cuál es el problema?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'Un peligro en el recorrido';
+
+  @override
+  String get parkCourseReportReasonClosure =>
+      'El recorrido o el sendero está cerrado';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'El trazado se sale del sendero señalizado';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'Una solicitud de la administración del parque';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'Para el personal del parque o del organismo gestor. Pídenos que retiremos el recorrido y lo cerramos en un plazo de dos días hábiles.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Otra cosa';
+
+  @override
+  String get parkCourseReportNotesLabel => '¿Qué debemos saber?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Dónde en el recorrido, qué viste y cuándo.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Tu correo (opcional)';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Solo si quieres una respuesta. Lo usamos para responder a este aviso y lo borramos 30 días después de resolverlo.';
+
+  @override
+  String get parkCourseReportCancel => 'Cancelar';
+
+  @override
+  String get parkCourseReportSubmit => 'Enviar aviso';
+
+  @override
+  String get parkCourseReportSent =>
+      'Gracias. Tu aviso ya está con el equipo de Threkir.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'No se pudo enviar el aviso. Inténtalo de nuevo.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Hay demasiados avisos ahora mismo. Inténtalo más tarde.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'Ya informaste de este recorrido y ese aviso sigue abierto.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'Este recorrido ya no está disponible.';
+
+  @override
+  String get parkCourseReportErrorInvalid =>
+      'Revisa el aviso e inténtalo de nuevo.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'Esa dirección de correo no parece correcta.';
+
+  @override
+  String get profileNotifParkCourseReport =>
+      'Se informó de un problema en un recorrido de parque';
 }

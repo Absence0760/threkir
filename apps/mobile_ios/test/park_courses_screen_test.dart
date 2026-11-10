@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show FunctionException;
 import 'package:ui_kit/ui_kit.dart' show EmptyState;
 
 import '../lib/l10n/gen/app_localizations.dart';
@@ -129,6 +130,8 @@ class _ParksApi extends ApiClient {
   final bool emptyThisSeasonOnly;
   final List<int?> leaderboardSeasons = [];
   final List<int?> completionSeasons = [];
+  final List<Map<String, Object?>> reports = [];
+  FunctionException? reportRefusal;
 
   @override
   String? get userId => viewer;
@@ -147,6 +150,23 @@ class _ParksApi extends ApiClient {
   Future<List<ParkCourseListing>> fetchAllParkCourses() async {
     if (failAllCourses) throw StateError('courses network down');
     return courses;
+  }
+
+  @override
+  Future<void> submitParkCourseReport({
+    required String courseId,
+    required String reason,
+    required String notes,
+    String? contactEmail,
+  }) async {
+    final refusal = reportRefusal;
+    if (refusal != null) throw refusal;
+    reports.add({
+      'courseId': courseId,
+      'reason': reason,
+      'notes': notes,
+      'contactEmail': contactEmail,
+    });
   }
 
   @override
@@ -843,6 +863,125 @@ void main() {
       );
       await _settle(tester);
       expect(tester.takeException(), isNull);
+      await _unmount(tester);
+    });
+  });
+
+  group('report a problem with this course', () {
+    Future<void> openSheet(WidgetTester tester, _ParksApi api) async {
+      tester.view.physicalSize = const Size(800, 4000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: api,
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(routeId: 'route-1'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final entry = find.byKey(const Key('park-course-report'));
+      await tester.ensureVisible(entry);
+      await tester.tap(entry);
+      await _settle(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(const Key('park-course-report-sheet')), findsOneWidget);
+    }
+
+    testWidgets('sits at the foot of the page, after the boards, not beside Navigate', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(800, 4000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: _ParksApi(),
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(routeId: 'route-1'),
+          ),
+        ),
+      );
+      await _settle(tester);
+      final report = tester.getTopLeft(find.byKey(const Key('park-course-report')));
+      final navigate = tester.getTopLeft(find.byKey(const Key('park-course-navigate')));
+      final boards = tester.getTopLeft(find.byKey(const Key('park-board-controls')));
+      expect(report.dy, greaterThan(boards.dy));
+      expect(report.dy, greaterThan(navigate.dy));
+      expect(find.text('Report a problem with this course'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('files a land-manager request with its note and email', (
+      tester,
+    ) async {
+      final api = _ParksApi();
+      await openSheet(tester, api);
+      final submit = find.byKey(const Key('park-course-report-submit'));
+      expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+
+      await tester.tap(
+        find.byKey(const Key('park-course-report-reason-land_manager_request')),
+      );
+      await tester.enterText(
+        find.byKey(const Key('park-course-report-notes')),
+        'Please take this course down for restoration.',
+      );
+      await tester.enterText(
+        find.byKey(const Key('park-course-report-email')),
+        'not an email',
+      );
+      await tester.pump();
+      expect(find.text("That email address doesn't look right."), findsOneWidget);
+      expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('park-course-report-email')),
+        'ranger@park.example',
+      );
+      await tester.pump();
+      await tester.tap(submit);
+      await _settle(tester);
+
+      expect(api.reports, [
+        {
+          'courseId': 'c1',
+          'reason': 'land_manager_request',
+          'notes': 'Please take this course down for restoration.',
+          'contactEmail': 'ranger@park.example',
+        },
+      ]);
+      expect(find.byKey(const Key('park-course-report-sheet')), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets('a refusal is worded in the sheet and nothing is filed', (
+      tester,
+    ) async {
+      final api = _ParksApi()
+        ..reportRefusal = const FunctionException(
+          status: 409,
+          details: {'error': 'already_reported'},
+        );
+      await openSheet(tester, api);
+      await tester.enterText(
+        find.byKey(const Key('park-course-report-notes')),
+        'A tree is down.',
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('park-course-report-submit')));
+      await _settle(tester);
+      expect(
+        find.text(
+          "You've already reported this course, and that report is still open.",
+        ),
+        findsOneWidget,
+      );
+      expect(api.reports, isEmpty);
+      expect(find.byKey(const Key('park-course-report-sheet')), findsOneWidget);
       await _unmount(tester);
     });
   });

@@ -22071,4 +22071,87 @@ class AppLocalizationsDe extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at: Ziel.';
   }
+
+  @override
+  String get parkCourseReportAction => 'Ein Problem mit dieser Strecke melden';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Melde uns eine Gefahr, eine Sperrung oder eine Linie, die vom Weg abweicht. Jede Meldung wird von einer Person bei Threkir geprüft. Eine Meldung sperrt die Strecke nicht von selbst.';
+
+  @override
+  String get parkCourseReportReasonLegend => 'Was ist das Problem?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'Eine Gefahr auf der Strecke';
+
+  @override
+  String get parkCourseReportReasonClosure =>
+      'Die Strecke oder der Weg ist gesperrt';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'Die Linie verlässt den ausgewiesenen Weg';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'Eine Bitte der Parkverwaltung';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'Für Mitarbeitende des Parks oder der Behörde. Bitte uns, die Strecke zu entfernen, und wir sperren sie innerhalb von zwei Werktagen.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Etwas anderes';
+
+  @override
+  String get parkCourseReportNotesLabel => 'Was sollten wir wissen?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Wo auf der Strecke, was du gesehen hast und wann.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Deine E-Mail (optional)';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Nur wenn du eine Antwort möchtest. Wir nutzen sie, um auf diese Meldung zu antworten, und löschen sie 30 Tage nach der Bearbeitung.';
+
+  @override
+  String get parkCourseReportCancel => 'Abbrechen';
+
+  @override
+  String get parkCourseReportSubmit => 'Meldung senden';
+
+  @override
+  String get parkCourseReportSent =>
+      'Danke. Deine Meldung ist beim Threkir-Team.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'Die Meldung konnte nicht gesendet werden. Versuch es noch einmal.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Gerade gibt es zu viele Meldungen. Versuch es später noch einmal.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'Du hast diese Strecke bereits gemeldet, und die Meldung ist noch offen.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'Diese Strecke ist nicht mehr verfügbar.';
+
+  @override
+  String get parkCourseReportErrorInvalid =>
+      'Prüfe die Meldung und versuch es noch einmal.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'Diese E-Mail-Adresse sieht nicht richtig aus.';
+
+  @override
+  String get profileNotifParkCourseReport => 'Eine Parkstrecke wurde gemeldet';
 }

@@ -22088,4 +22088,88 @@ class AppLocalizationsFr extends AppLocalizations {
   String parkGuideFinish(String at) {
     return '$at : arrivée.';
   }
+
+  @override
+  String get parkCourseReportAction => 'Signaler un problème sur ce parcours';
+
+  @override
+  String get parkCourseReportExplainer =>
+      'Signalez-nous un danger, une fermeture ou un tracé qui quitte le sentier. Une personne chez Threkir examine chaque signalement. Un signalement ne ferme pas le parcours à lui seul.';
+
+  @override
+  String get parkCourseReportReasonLegend => 'Quel est le problème ?';
+
+  @override
+  String get parkCourseReportReasonHazard => 'Un danger sur le parcours';
+
+  @override
+  String get parkCourseReportReasonClosure =>
+      'Le parcours ou le sentier est fermé';
+
+  @override
+  String get parkCourseReportReasonOffTrail =>
+      'Le tracé quitte le sentier balisé';
+
+  @override
+  String get parkCourseReportReasonLandManager =>
+      'Une demande du gestionnaire du site';
+
+  @override
+  String get parkCourseReportReasonLandManagerHint =>
+      'Pour le personnel du parc ou de l\'organisme gestionnaire. Demandez-nous de retirer le parcours et nous le fermons sous deux jours ouvrés.';
+
+  @override
+  String get parkCourseReportReasonOther => 'Autre chose';
+
+  @override
+  String get parkCourseReportNotesLabel => 'Que devons-nous savoir ?';
+
+  @override
+  String get parkCourseReportNotesHint =>
+      'Où sur le parcours, ce que vous avez vu et quand.';
+
+  @override
+  String get parkCourseReportEmailLabel => 'Votre e-mail (facultatif)';
+
+  @override
+  String get parkCourseReportEmailHint =>
+      'Seulement si vous souhaitez une réponse. Nous l\'utilisons pour répondre à ce signalement et le supprimons 30 jours après son traitement.';
+
+  @override
+  String get parkCourseReportCancel => 'Annuler';
+
+  @override
+  String get parkCourseReportSubmit => 'Envoyer le signalement';
+
+  @override
+  String get parkCourseReportSent =>
+      'Merci. Votre signalement a été transmis à l\'équipe Threkir.';
+
+  @override
+  String get parkCourseReportErrorFailed =>
+      'Impossible d\'envoyer le signalement. Réessayez.';
+
+  @override
+  String get parkCourseReportErrorRateLimited =>
+      'Trop de signalements en ce moment. Réessayez plus tard.';
+
+  @override
+  String get parkCourseReportErrorAlreadyReported =>
+      'Vous avez déjà signalé ce parcours, et ce signalement est toujours en cours.';
+
+  @override
+  String get parkCourseReportErrorNotFound =>
+      'Ce parcours n\'est plus disponible.';
+
+  @override
+  String get parkCourseReportErrorInvalid =>
+      'Vérifiez le signalement et réessayez.';
+
+  @override
+  String get parkCourseReportErrorEmail =>
+      'Cette adresse e-mail ne semble pas valide.';
+
+  @override
+  String get profileNotifParkCourseReport =>
+      'Un parcours de parc a été signalé';
 }

@@ -36,6 +36,7 @@ import 'public_route_screen.dart';
 import '../widgets/head_to_head_card.dart' show showHeadToHeadSheet;
 import '../widgets/live_run_map.dart' show currentBasemapIsDark;
 import '../widgets/park_course_map.dart';
+import '../widgets/park_course_report_sheet.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import '../widgets/old_match_note.dart';
@@ -1115,6 +1116,25 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                 ],
                 const SizedBox(height: 24),
                 _buildBoards(context, l10n),
+                if (api != null) ...[
+                  const SizedBox(height: 24),
+                  // At the foot of the page, away from Navigate: it is for the
+                  // rare runner or land manager with a problem (decisions § 2449).
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      key: const Key('park-course-report'),
+                      onPressed: () => showParkCourseReportSheet(
+                        context,
+                        api: api,
+                        courseId: course.id,
+                        courseName: segment.name,
+                      ),
+                      icon: const Icon(Icons.flag_outlined),
+                      label: Text(l10n.parkCourseReportAction),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

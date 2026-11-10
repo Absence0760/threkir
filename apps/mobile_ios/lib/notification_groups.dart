@@ -68,6 +68,10 @@ String _targetKeyFor(NotificationRow n) {
       // Each is a reviewer's decision on one dispute, and a rename notice
       // carries its own deadline: never collapse two (decisions § 2441).
       return solo;
+    case 'park_course_report':
+      // An admin notice with no target: "and 1 other" would hide a
+      // land-manager deadline (decisions § 2449).
+      return solo;
     case 'plan_update':
     case 'plan_assigned':
     case 'plan_ai_edit':

@@ -203,6 +203,7 @@
   "dashboardHeroNothingPlanned": "今日は予定なし",
   "dashboardHeroRestDay": "休養日",
   "dashboardHeroRestDayBody": "今日はプランに予定がありません。",
+  "dashboardHeroRestDayGrisnir": "トールのヤギのように、朝には元どおり。",
   "dashboardHeroReadiness": "準備度 {score}",
   "dashboardHideFromHome": "ホームで非表示",
   "dashboardCardHidden": "{name}を非表示にしました。設定から再表示できます。",

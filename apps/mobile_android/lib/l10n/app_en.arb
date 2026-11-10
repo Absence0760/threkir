@@ -1114,6 +1114,10 @@
   "@dashboardHeroRestDayBody": {
     "description": "Line under the rest-day title in the Today hero"
   },
+  "dashboardHeroRestDayGrisnir": "Back by morning, like Thor's goats.",
+  "@dashboardHeroRestDayGrisnir": {
+    "description": "Grisnir the mascot's one dry line beside his resting art on a plan rest day; Norse lore: Thor's goats are eaten every night and are back by morning"
+  },
   "dashboardHeroReadiness": "Readiness {score}",
   "@dashboardHeroReadiness": {
     "description": "One-line readiness score in the Today hero; {score} is 0-100",

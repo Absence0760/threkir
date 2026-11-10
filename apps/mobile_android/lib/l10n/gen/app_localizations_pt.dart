@@ -828,6 +828,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get dashboardHeroRestDayBody => 'Nada no plano para hoje.';
 
   @override
+  String get dashboardHeroRestDayGrisnir =>
+      'De volta de manhã, como os bodes de Thor.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Prontidão $score';
   }
@@ -22592,6 +22596,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get dashboardHeroRestDayBody => 'Nada no plano para hoje.';
+
+  @override
+  String get dashboardHeroRestDayGrisnir =>
+      'De volta pela manhã, como os bodes de Thor.';
 
   @override
   String dashboardHeroReadiness(int score) {

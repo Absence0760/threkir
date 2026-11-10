@@ -1325,6 +1325,12 @@ abstract class AppLocalizations {
   /// **'Nothing on the plan today.'**
   String get dashboardHeroRestDayBody;
 
+  /// Grisnir the mascot's one dry line beside his resting art on a plan rest day; Norse lore: Thor's goats are eaten every night and are back by morning
+  ///
+  /// In en, this message translates to:
+  /// **'Back by morning, like Thor\'s goats.'**
+  String get dashboardHeroRestDayGrisnir;
+
   /// One-line readiness score in the Today hero; {score} is 0-100
   ///
   /// In en, this message translates to:

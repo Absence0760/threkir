@@ -826,6 +826,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboardHeroRestDayBody => 'Rien au programme aujourd\'hui.';
 
   @override
+  String get dashboardHeroRestDayGrisnir =>
+      'De retour au matin, comme les boucs de Thor.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Forme $score';
   }

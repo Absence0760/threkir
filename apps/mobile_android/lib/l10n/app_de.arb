@@ -203,6 +203,7 @@
   "dashboardHeroNothingPlanned": "Heute nichts geplant",
   "dashboardHeroRestDay": "Ruhetag",
   "dashboardHeroRestDayBody": "Heute steht nichts im Plan.",
+  "dashboardHeroRestDayGrisnir": "Morgen früh wieder da, wie Thors Böcke.",
   "dashboardHeroReadiness": "Bereitschaft {score}",
   "dashboardHideFromHome": "Auf der Startseite ausblenden",
   "dashboardCardHidden": "{name} ist ausgeblendet. In den Einstellungen kannst du es wieder einblenden.",

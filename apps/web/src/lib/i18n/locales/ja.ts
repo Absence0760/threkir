@@ -344,6 +344,7 @@ export const messages = {
 	"dash.completed": "完了",
 	"dash.restDay": "休息日",
 	"dash.noWorkoutScheduled": "予定されたワークアウトはありません。回復して明日に備えましょう。",
+	"dash.restDayGrisnir": "トールのヤギのように、朝には元どおり。",
 	"dash.viewFullPlan": "プラン全体を見る",
 	"dash.managePlans": "プランを管理",
 	"dash.trainingPlansKicker": "トレーニングプラン",

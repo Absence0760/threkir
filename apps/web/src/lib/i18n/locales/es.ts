@@ -349,6 +349,7 @@ export const messages = {
 	"dash.completed": "Completado",
 	"dash.restDay": "Día de descanso",
 	"dash.noWorkoutScheduled": "Sin entrenamiento programado: recupérate y sigue mañana.",
+	"dash.restDayGrisnir": "De vuelta por la mañana, como las cabras de Thor.",
 	"dash.viewFullPlan": "Ver plan completo",
 	"dash.managePlans": "Gestionar planes",
 	"dash.trainingPlansKicker": "PLANES DE ENTRENAMIENTO",

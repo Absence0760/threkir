@@ -203,6 +203,7 @@
   "dashboardHeroNothingPlanned": "Nada planejado para hoje",
   "dashboardHeroRestDay": "Dia de descanso",
   "dashboardHeroRestDayBody": "Nada no plano para hoje.",
+  "dashboardHeroRestDayGrisnir": "De volta pela manhã, como os bodes de Thor.",
   "dashboardHeroReadiness": "Prontidão {score}",
   "dashboardHideFromHome": "Ocultar do Início",
   "dashboardCardHidden": "{name} está oculto. Você pode trazê-lo de volta nas Configurações.",

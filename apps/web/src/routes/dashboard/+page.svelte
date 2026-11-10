@@ -91,6 +91,7 @@
 	import { breakState, type BreakContext } from '#lib/training/plan_break_state.ts';
 	import MissedWorkoutPrompt from '#lib/components/MissedWorkoutPrompt.svelte';
 	import PlanNudgeCard from '#lib/components/PlanNudgeCard.svelte';
+	import RestDayGrisnir from '#lib/components/RestDayGrisnir.svelte';
 	import { DISMISSED_NUDGES_KEY, parseDismissedNudges, workoutOverrunMetres } from '#lib/training/plan_nudges.ts';
 	import { plannedWalkRunPattern, plannedWorkoutSize } from '#lib/training/workout_summary.ts';
 	import { formatPlannedSize, formatWalkRunPattern } from '#lib/training/workout_summary_format.ts';
@@ -384,6 +385,10 @@
 	/// screen shows, a hide is "I never want this on Home", which is a choice
 	/// about the runner rather than the screen (decisions § 2386).
 	let hiddenCards = $state<HideableDashboardCard[]>([]);
+	/// Grisnir on a rest day (universal `show_mascot`, default on). Off until
+	/// the settings land, so a runner who hid him never sees him flash in; a
+	/// failed read leaves him out, which costs the page nothing.
+	let showMascot = $state(false);
 	const TREND_GROUP_TITLES: Record<HideableDashboardCard, MessageKey> = {
 		volume: 'dash.trendGroupVolume',
 		fitness: 'dash.trendGroupFitness',
@@ -879,6 +884,7 @@
 		primaryGoal = effective<string>(settings, PRIMARY_GOAL_KEY) ?? null;
 		trainingLoadExpanded = effective<boolean>(settings, TRAINING_LOAD_EXPANDED_KEY) === true;
 		hiddenCards = parseHiddenCards(effective<unknown>(settings, DASHBOARD_HIDDEN_CARDS_KEY));
+		showMascot = effective<boolean>(settings, 'show_mascot', true) !== false;
 		try {
 			// Layered resilience: a bad shape in the jsonb bag must
 			// not crash the dashboard. If the read or the validation
@@ -1528,6 +1534,9 @@
 						</div>
 					{/if}
 				</div>
+				{#if showMascot && (!t || t.kind === 'rest')}
+					<RestDayGrisnir />
+				{/if}
 				{/if}
 
 				{@render readinessLine()}

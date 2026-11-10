@@ -791,6 +791,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardHeroRestDayBody => '今日はプランに予定がありません。';
 
   @override
+  String get dashboardHeroRestDayGrisnir => 'トールのヤギのように、朝には元どおり。';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return '準備度 $score';
   }

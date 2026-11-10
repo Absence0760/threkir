@@ -362,6 +362,7 @@ export const en = {
 	"dash.completed": "Completed",
 	"dash.restDay": "Rest day",
 	"dash.noWorkoutScheduled": "No workout scheduled — recover and roll into tomorrow.",
+	"dash.restDayGrisnir": "Back by morning, like Thor's goats.",
 	"dash.viewFullPlan": "View full plan",
 	"dash.managePlans": "Manage plans",
 	"dash.trainingPlansKicker": "TRAINING PLANS",

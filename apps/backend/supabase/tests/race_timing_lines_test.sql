@@ -1,4 +1,4 @@
--- Pins migrations 20271212000001-000002 (#1307, timing lines phase 4): the
+-- Pins migrations 20271213001307-001308 (#1307, timing lines phase 4): the
 -- server derives a gun-mode result's times from the crossings the device
 -- claims, the normaliser clears them, the CHECKs hold, and the redacted view
 -- shows the organiser how each result was timed and nobody else anything new.

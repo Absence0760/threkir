@@ -3466,6 +3466,34 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runDetailMadePrivate => 'A corrida agora é privada';
 
   @override
+  String get runDetailMadePublic => 'A corrida agora é pública';
+
+  @override
+  String get runDetailVisibilityPublic => 'Público';
+
+  @override
+  String get runDetailVisibilityPrivate => 'Privado';
+
+  @override
+  String get runDetailVisibilityFollowers => 'Seguidores';
+
+  @override
+  String get runDetailVisibilityShared => 'Partilhado';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics =>
+      'Privado. Tornar esta corrida pública';
+
+  @override
+  String get runDetailVisibilityPublicSemantics =>
+      'Público. Tornar esta corrida privada';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level. Alterar quem pode ver esta corrida';
+  }
+
+  @override
   String get runDetailDeleteTitle => 'Eliminar corrida?';
 
   @override
@@ -25194,6 +25222,34 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runDetailMadePrivate => 'A corrida agora é privada';
+
+  @override
+  String get runDetailMadePublic => 'A corrida agora é pública';
+
+  @override
+  String get runDetailVisibilityPublic => 'Público';
+
+  @override
+  String get runDetailVisibilityPrivate => 'Privado';
+
+  @override
+  String get runDetailVisibilityFollowers => 'Seguidores';
+
+  @override
+  String get runDetailVisibilityShared => 'Compartilhado';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics =>
+      'Privado. Tornar esta corrida pública';
+
+  @override
+  String get runDetailVisibilityPublicSemantics =>
+      'Público. Tornar esta corrida privada';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level. Alterar quem pode ver esta corrida';
+  }
 
   @override
   String get runDetailDeleteTitle => 'Excluir corrida?';

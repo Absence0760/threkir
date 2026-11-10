@@ -3467,6 +3467,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get runDetailMadePrivate => 'La carrera ahora es privada';
 
   @override
+  String get runDetailMadePublic => 'La carrera ahora es pública';
+
+  @override
+  String get runDetailVisibilityPublic => 'Público';
+
+  @override
+  String get runDetailVisibilityPrivate => 'Privado';
+
+  @override
+  String get runDetailVisibilityFollowers => 'Seguidores';
+
+  @override
+  String get runDetailVisibilityShared => 'Compartido';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics =>
+      'Privado. Hacer pública esta carrera';
+
+  @override
+  String get runDetailVisibilityPublicSemantics =>
+      'Público. Hacer privada esta carrera';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level. Cambiar quién puede ver esta carrera';
+  }
+
+  @override
   String get runDetailDeleteTitle => '¿Eliminar carrera?';
 
   @override

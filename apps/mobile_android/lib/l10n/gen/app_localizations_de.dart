@@ -3470,6 +3470,34 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runDetailMadePrivate => 'Der Lauf ist jetzt privat';
 
   @override
+  String get runDetailMadePublic => 'Der Lauf ist jetzt öffentlich';
+
+  @override
+  String get runDetailVisibilityPublic => 'Öffentlich';
+
+  @override
+  String get runDetailVisibilityPrivate => 'Privat';
+
+  @override
+  String get runDetailVisibilityFollowers => 'Follower';
+
+  @override
+  String get runDetailVisibilityShared => 'Geteilt';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics =>
+      'Privat. Diesen Lauf öffentlich machen';
+
+  @override
+  String get runDetailVisibilityPublicSemantics =>
+      'Öffentlich. Diesen Lauf privat machen';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level. Ändern, wer diesen Lauf sehen kann';
+  }
+
+  @override
   String get runDetailDeleteTitle => 'Lauf löschen?';
 
   @override

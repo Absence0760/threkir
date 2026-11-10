@@ -62,6 +62,7 @@ import '../widgets/run_race_section.dart';
 import '../widgets/run_photos.dart';
 import '../widgets/run_segment_efforts.dart';
 import '../widgets/audience_sheet.dart';
+import '../audience_level.dart';
 import '../pr_card.dart';
 import '../widgets/run_share_card.dart';
 import '../park_courses.dart' show RunParkCourseTime, pickShareCourse;
@@ -298,10 +299,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   }
 
   /// Whether the run is public, read from the server because the mobile Run
-  /// model does not carry `is_public`. Null until known; "Make private" is
-  /// offered only on a known-public run, as on web. L4: a failed read leaves
-  /// the item hidden and nothing else.
+  /// model does not carry `is_public`. Null until known; the visibility chip
+  /// and the overflow's Make public / Make private wait for a known value, as
+  /// on web. L4: a failed read leaves them hidden and nothing else.
   bool? _isPublic;
+  bool _followersOnly = false;
+  int _shareCount = 0;
+
+  /// Whether audience sharing is live (decisions § 1874). When it is, the
+  /// visibility chip opens the "Who can see this" sheet instead of flipping
+  /// public / private itself.
+  bool _audienceOn = false;
 
   Future<void> _loadVisibility() async {
     final api = widget.apiClient;
@@ -309,11 +317,37 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     try {
       final cols = await api.fetchAudienceColumns(ShareableKind.run, run.id);
       if (!mounted) return;
-      setState(() => _isPublic = cols?.isPublic ?? false);
+      setState(() {
+        _isPublic = cols?.isPublic ?? false;
+        _followersOnly = cols?.followersOnly ?? false;
+      });
     } catch (e) {
       debugPrint('run visibility fetch failed: $e');
+      return;
     }
+    final audienceOn = await api.audienceSharingEnabled();
+    var shareCount = 0;
+    if (audienceOn) {
+      try {
+        shareCount = (await api.fetchShares(ShareableKind.run, run.id)).length;
+      } catch (e) {
+        debugPrint('run shares fetch failed: $e');
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _audienceOn = audienceOn;
+      _shareCount = shareCount;
+    });
   }
+
+  AudienceLevel? get _visibility => _isPublic == null
+      ? null
+      : audienceOf(
+          isPublic: _isPublic,
+          followersOnly: _followersOnly,
+          shareCount: _shareCount,
+        );
 
   /// The personal records this run set, for the PR card. L4: a failed read
   /// leaves the PR card unoffered and nothing else.
@@ -1155,6 +1189,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
               switch (action) {
                 case 'save_as_route':
                   _saveAsRoute();
+                case 'make_public':
+                  _makePublicFromControl();
                 case 'make_private':
                   _makePrivate();
                 case 'recalculate_distance':
@@ -1172,6 +1208,15 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                   title: Text(l10n.runDetailSaveAsRoute),
                 ),
               ),
+              if (widget.apiClient?.userId != null && _isPublic == false)
+                PopupMenuItem(
+                  value: 'make_public',
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.public),
+                    title: Text(l10n.runDetailMakePublic),
+                  ),
+                ),
               if (widget.apiClient?.userId != null && _isPublic == true)
                 PopupMenuItem(
                   value: 'make_private',
@@ -1527,6 +1572,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
           ],
         ),
       ),
+      ?_buildVisibilityChip(theme, l10n),
+
       if (_notes.isNotEmpty)
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -3050,16 +3097,163 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// the audience sheet when it is on (decisions § 1879), otherwise the
   /// make-public confirm, skipped when the run is already public.
   Future<void> _shareRunLink(ApiClient api) async {
-    if (_sharingLink) return;
-    _sharingLink = true;
+    if (_visibilityBusy) return;
+    _visibilityBusy = true;
     try {
       await _shareRunLinkOnce(api);
     } finally {
-      _sharingLink = false;
+      _visibilityBusy = false;
     }
   }
 
-  bool _sharingLink = false;
+  /// One visibility change at a time, whichever control started it: Share
+  /// link, the visibility chip or the overflow menu.
+  bool _visibilityBusy = false;
+
+  /// The visibility chip under the title. It is the control for who can see
+  /// the run, not a label: the owner could not find how to make a run public
+  /// when the only path was the Share sheet's link action.
+  Widget? _buildVisibilityChip(ThemeData theme, AppLocalizations l10n) {
+    final level = _visibility;
+    if (level == null || widget.apiClient?.userId == null) return null;
+    final isPublic = level == AudienceLevel.public;
+    final label = switch (level) {
+      AudienceLevel.public => l10n.runDetailVisibilityPublic,
+      AudienceLevel.followers => l10n.runDetailVisibilityFollowers,
+      AudienceLevel.specific => l10n.runDetailVisibilityShared,
+      AudienceLevel.private => l10n.runDetailVisibilityPrivate,
+    };
+    final icon = switch (level) {
+      AudienceLevel.public => Icons.public,
+      AudienceLevel.followers => Icons.group_outlined,
+      AudienceLevel.specific => Icons.person_add_alt,
+      AudienceLevel.private => Icons.lock_outline,
+    };
+    final semantics = _audienceOn
+        ? l10n.runDetailVisibilityAudienceSemantics(label)
+        : isPublic
+            ? l10n.runDetailVisibilityPublicSemantics
+            : l10n.runDetailVisibilityPrivateSemantics;
+    final fg = isPublic
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: Semantics(
+          button: true,
+          label: semantics,
+          excludeSemantics: true,
+          child: ActionChip(
+            key: const ValueKey('run-visibility-chip'),
+            avatar: Icon(icon, size: 18, color: fg),
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(label),
+                Icon(Icons.expand_more, size: 18, color: fg),
+              ],
+            ),
+            labelStyle: theme.textTheme.labelLarge?.copyWith(color: fg),
+            onPressed: _visibilityBusy ? null : _changeVisibility,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The chip's action: the audience sheet when audience sharing is on,
+  /// otherwise Make private on a public run and Make public on a private one,
+  /// each through the confirm the other controls use.
+  Future<void> _changeVisibility() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null) return;
+    if (!_audienceOn) {
+      if (_isPublic == true) {
+        await _makePrivate();
+      } else {
+        await _makePublicFromControl();
+      }
+      return;
+    }
+    if (_visibilityBusy) return;
+    _visibilityBusy = true;
+    setState(() {});
+    try {
+      final choice = await showAudienceSheet(
+        context,
+        backend: ApiAudienceBackend(api, ShareableKind.run, run.id),
+      );
+      if (!mounted) return;
+      unawaited(_loadVisibility());
+      if (choice == AudienceSheetResult.shareLink) {
+        await shareTextFrom(context,
+            text: audienceLinkUrl(ShareableKind.run, run.id), subject: _title);
+        return;
+      }
+      if (choice != AudienceSheetResult.requestPublic) return;
+      if (await _publish(api) && mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).runDetailMadePublic);
+      }
+    } finally {
+      _visibilityBusy = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// Make public from the chip or the overflow menu. Unlike Share link it
+  /// hands no link to the share sheet: changing who can see the run is not
+  /// sharing it.
+  Future<void> _makePublicFromControl() async {
+    final api = widget.apiClient;
+    if (api == null || api.userId == null || _visibilityBusy) return;
+    _visibilityBusy = true;
+    setState(() {});
+    try {
+      if (await _publish(api) && mounted) {
+        showTopBanner(
+            context, AppLocalizations.of(context).runDetailMadePublic);
+      }
+    } finally {
+      _visibilityBusy = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  /// The privacy-zone consent and the public flip, shared by every control
+  /// that makes the run public. True once the run is public.
+  Future<bool> _publish(ApiClient api) async {
+    final zones = await _knownPrivacyZones(fromServer: true);
+    if (!mounted) return false;
+    if (zones == null) {
+      showTopBanner(
+          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
+      return false;
+    }
+    final ok = await _confirmMakePublic(zones);
+    if (!ok) return false;
+    try {
+      await api.makeRunPublic(run.id);
+    } catch (e) {
+      debugPrint('makeRunPublic failed: $e');
+      if (!mounted) return false;
+      showTopBanner(
+        context,
+        AppLocalizations.of(context).runDetailMakePublicFailed(
+          friendlyError(AppLocalizations.of(context), e),
+        ),
+      );
+      return false;
+    }
+    if (!mounted) return false;
+    setState(() {
+      _isPublic = true;
+      _followersOnly = false;
+    });
+    return true;
+  }
 
   Future<void> _shareRunLinkOnce(ApiClient api) async {
     final link = audienceLinkUrl(ShareableKind.run, run.id);
@@ -3093,30 +3287,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         return;
       }
     }
-    final zones = await _knownPrivacyZones(fromServer: true);
-    if (!mounted) return;
-    if (zones == null) {
-      showTopBanner(
-          context, AppLocalizations.of(context).runDetailShareZonesUnknown);
-      return;
-    }
-    final ok = await _confirmMakePublic(zones);
-    if (!ok) return;
-    try {
-      await api.makeRunPublic(run.id);
-    } catch (e) {
-      debugPrint('makeRunPublic failed: $e');
-      if (!mounted) return;
-      showTopBanner(
-        context,
-        AppLocalizations.of(context).runDetailMakePublicFailed(
-          friendlyError(AppLocalizations.of(context), e),
-        ),
-      );
-      return;
-    }
-    if (!mounted) return;
-    setState(() => _isPublic = true);
+    if (!await _publish(api) || !mounted) return;
     await shareTextFrom(context, text: link, subject: _title);
   }
 
@@ -3184,7 +3355,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
   /// is_public past the stop). Offered only once [_isPublic] reads true.
   Future<void> _makePrivate() async {
     final api = widget.apiClient;
-    if (api == null || api.userId == null) return;
+    if (api == null || api.userId == null || _visibilityBusy) return;
     final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,

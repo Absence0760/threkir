@@ -5699,7 +5699,7 @@ abstract class AppLocalizations {
   /// **'Sharing flips this run to public so anyone with the link can view it — including the start and end points of your run. You have no privacy zones set up. Consider adding one around your home before sharing.'**
   String get runDetailMakePublicBodyNoZones;
 
-  /// Confirm action in the make-run-public dialog
+  /// Confirm action in the make-run-public dialog, and the run-detail overflow-menu item that opens it
   ///
   /// In en, this message translates to:
   /// **'Make public'**
@@ -5734,6 +5734,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Run is now private'**
   String get runDetailMadePrivate;
+
+  /// Banner shown after a run was made public from the visibility chip or the overflow menu
+  ///
+  /// In en, this message translates to:
+  /// **'Run is now public'**
+  String get runDetailMadePublic;
+
+  /// Run-detail visibility chip label for a public run
+  ///
+  /// In en, this message translates to:
+  /// **'Public'**
+  String get runDetailVisibilityPublic;
+
+  /// Run-detail visibility chip label for a private run
+  ///
+  /// In en, this message translates to:
+  /// **'Private'**
+  String get runDetailVisibilityPrivate;
+
+  /// Run-detail visibility chip label for a followers-only run
+  ///
+  /// In en, this message translates to:
+  /// **'Followers'**
+  String get runDetailVisibilityFollowers;
+
+  /// Run-detail visibility chip label for a run shared with named people
+  ///
+  /// In en, this message translates to:
+  /// **'Shared'**
+  String get runDetailVisibilityShared;
+
+  /// Screen-reader label of the run-detail visibility chip on a private run: the state, then what tapping does
+  ///
+  /// In en, this message translates to:
+  /// **'Private. Make this run public'**
+  String get runDetailVisibilityPrivateSemantics;
+
+  /// Screen-reader label of the run-detail visibility chip on a public run: the state, then what tapping does
+  ///
+  /// In en, this message translates to:
+  /// **'Public. Make this run private'**
+  String get runDetailVisibilityPublicSemantics;
+
+  /// Screen-reader label of the run-detail visibility chip when audience sharing is on; tapping opens Who can see this
+  ///
+  /// In en, this message translates to:
+  /// **'{level}. Change who can see this run'**
+  String runDetailVisibilityAudienceSemantics(String level);
 
   /// Title of the single-run delete confirmation dialog
   ///

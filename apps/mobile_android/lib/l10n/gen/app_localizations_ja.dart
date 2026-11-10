@@ -3299,6 +3299,32 @@ class AppLocalizationsJa extends AppLocalizations {
   String get runDetailMadePrivate => 'ランは非公開になりました';
 
   @override
+  String get runDetailMadePublic => 'ランを公開しました';
+
+  @override
+  String get runDetailVisibilityPublic => '公開';
+
+  @override
+  String get runDetailVisibilityPrivate => '非公開';
+
+  @override
+  String get runDetailVisibilityFollowers => 'フォロワー';
+
+  @override
+  String get runDetailVisibilityShared => '共有';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics => '非公開。このランを公開する';
+
+  @override
+  String get runDetailVisibilityPublicSemantics => '公開。このランを非公開にする';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level。このランを見られる人を変更';
+  }
+
+  @override
   String get runDetailDeleteTitle => 'ランを削除しますか？';
 
   @override

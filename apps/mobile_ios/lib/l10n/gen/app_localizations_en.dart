@@ -3432,6 +3432,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get runDetailMadePrivate => 'Run is now private';
 
   @override
+  String get runDetailMadePublic => 'Run is now public';
+
+  @override
+  String get runDetailVisibilityPublic => 'Public';
+
+  @override
+  String get runDetailVisibilityPrivate => 'Private';
+
+  @override
+  String get runDetailVisibilityFollowers => 'Followers';
+
+  @override
+  String get runDetailVisibilityShared => 'Shared';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics =>
+      'Private. Make this run public';
+
+  @override
+  String get runDetailVisibilityPublicSemantics =>
+      'Public. Make this run private';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level. Change who can see this run';
+  }
+
+  @override
   String get runDetailDeleteTitle => 'Delete run?';
 
   @override

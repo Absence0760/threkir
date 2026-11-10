@@ -3474,6 +3474,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String get runDetailMadePrivate => 'La course est désormais privée';
 
   @override
+  String get runDetailMadePublic => 'La course est désormais publique';
+
+  @override
+  String get runDetailVisibilityPublic => 'Public';
+
+  @override
+  String get runDetailVisibilityPrivate => 'Privé';
+
+  @override
+  String get runDetailVisibilityFollowers => 'Abonnés';
+
+  @override
+  String get runDetailVisibilityShared => 'Partagé';
+
+  @override
+  String get runDetailVisibilityPrivateSemantics =>
+      'Privé. Rendre cette course publique';
+
+  @override
+  String get runDetailVisibilityPublicSemantics =>
+      'Public. Rendre cette course privée';
+
+  @override
+  String runDetailVisibilityAudienceSemantics(String level) {
+    return '$level. Modifier qui peut voir cette course';
+  }
+
+  @override
   String get runDetailDeleteTitle => 'Supprimer la course ?';
 
   @override

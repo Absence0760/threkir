@@ -4541,7 +4541,7 @@
   },
   "runDetailMakePublic": "Make public",
   "@runDetailMakePublic": {
-    "description": "Confirm action in the make-run-public dialog"
+    "description": "Confirm action in the make-run-public dialog, and the run-detail overflow-menu item that opens it"
   },
   "runDetailMakePrivate": "Make private",
   "@runDetailMakePrivate": {
@@ -4567,6 +4567,43 @@
   "runDetailMadePrivate": "Run is now private",
   "@runDetailMadePrivate": {
     "description": "Banner shown after a run was flipped back to private"
+  },
+  "runDetailMadePublic": "Run is now public",
+  "@runDetailMadePublic": {
+    "description": "Banner shown after a run was made public from the visibility chip or the overflow menu"
+  },
+  "runDetailVisibilityPublic": "Public",
+  "@runDetailVisibilityPublic": {
+    "description": "Run-detail visibility chip label for a public run"
+  },
+  "runDetailVisibilityPrivate": "Private",
+  "@runDetailVisibilityPrivate": {
+    "description": "Run-detail visibility chip label for a private run"
+  },
+  "runDetailVisibilityFollowers": "Followers",
+  "@runDetailVisibilityFollowers": {
+    "description": "Run-detail visibility chip label for a followers-only run"
+  },
+  "runDetailVisibilityShared": "Shared",
+  "@runDetailVisibilityShared": {
+    "description": "Run-detail visibility chip label for a run shared with named people"
+  },
+  "runDetailVisibilityPrivateSemantics": "Private. Make this run public",
+  "@runDetailVisibilityPrivateSemantics": {
+    "description": "Screen-reader label of the run-detail visibility chip on a private run: the state, then what tapping does"
+  },
+  "runDetailVisibilityPublicSemantics": "Public. Make this run private",
+  "@runDetailVisibilityPublicSemantics": {
+    "description": "Screen-reader label of the run-detail visibility chip on a public run: the state, then what tapping does"
+  },
+  "runDetailVisibilityAudienceSemantics": "{level}. Change who can see this run",
+  "@runDetailVisibilityAudienceSemantics": {
+    "description": "Screen-reader label of the run-detail visibility chip when audience sharing is on; tapping opens Who can see this",
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
   },
   "runDetailDeleteTitle": "Delete run?",
   "@runDetailDeleteTitle": {

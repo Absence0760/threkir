@@ -3,16 +3,17 @@
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { routeSurfaceLabel } from '#lib/i18n/enum_labels.svelte.ts';
 	import { auth } from '#lib/stores/auth.svelte.ts';
-	import { distanceInPreferred, formatElevation } from '#lib/format/units.svelte.ts';
+	import { formatElevation, getUnit } from '#lib/format/units.svelte.ts';
 	import SharePageShell from '#lib/components/SharePageShell.svelte';
 	import RunMap from '#lib/components/RunMap.svelte';
-	import { isLongCourse, regionName } from '#lib/parks/park_courses.ts';
-	import {
-		ATTRIBUTION_LABEL,
-		DIFFICULTY_LABEL,
-		SHAPE_LABEL,
-		labelKey,
-	} from '#lib/parks/park_labels.ts';
+	import ElevationProfile from '#lib/components/ElevationProfile.svelte';
+	import ParkCourseNotices from '#lib/components/parks/ParkCourseNotices.svelte';
+	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
+	import { regionName } from '#lib/parks/park_courses.ts';
+	import { DIFFICULTY_LABEL, SHAPE_LABEL, courseCredit, labelKey } from '#lib/parks/park_labels.ts';
+	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
+	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
+	import { finishesAtStart } from '#lib/parks/course_map.ts';
 	import {
 		buildCourseJsonLd,
 		buildCourseShareCanonical,
@@ -40,14 +41,45 @@
 	let track = $derived<TrackPoint[]>(
 		(course?.segment.waypoints ?? []).map((w) => ({ lat: w.lat, lng: w.lng, ele: w.ele ?? undefined })),
 	);
-	let distanceLabel = $derived.by(() => {
-		if (!course) return '';
-		const { value, unit } = distanceInPreferred(course.segment.distance_m);
-		return `${value.toFixed(2)} ${unit}`;
-	});
-	const shapeKey = $derived(labelKey(SHAPE_LABEL, course?.course_shape));
+	let distanceLabel = $derived(course ? fmtCourseDistance(course.segment.distance_m) : '');
+	const shapeKey = $derived(courseShapeShown(course?.course_shape) ? labelKey(SHAPE_LABEL, course?.course_shape) : null);
+	const laps = $derived(courseLapsChip(course?.laps));
 	const difficultyKey = $derived(labelKey(DIFFICULTY_LABEL, course?.difficulty));
-	const attributionKey = $derived(labelKey(ATTRIBUTION_LABEL, course?.geometry_source));
+	const credit = $derived(courseCredit(course?.attribution, course?.geometry_source));
+	let chartHoverIdx = $state<number | null>(null);
+	// Checkpoints are not on the public lookup, so this key names only what
+	// the share map draws: the start and finish, the distance badges and the
+	// direction arrows.
+	const legendItems = $derived.by<ParkMapLegendItem[]>(() => {
+		const items: ParkMapLegendItem[] = finishesAtStart(track)
+			? [{ kind: 'startFinish', label: m('parks.legendStartFinish') }]
+			: [
+					{ kind: 'start', label: m('parks.legendStart') },
+					{ kind: 'finish', label: m('parks.legendFinish') },
+				];
+		const unitM = getUnit() === 'mi' ? 1609.344 : 1000;
+		if ((course?.segment.distance_m ?? 0) >= unitM) {
+			items.push({
+				kind: 'distance',
+				label: getUnit() === 'mi' ? m('parks.legendMileMarker') : m('parks.legendKmMarker'),
+			});
+		}
+		items.push({ kind: 'direction', label: m('parks.legendDirection') });
+		return items;
+	});
+	const elevations = $derived.by<number[] | null>(() => {
+		if (track.length < 2) return null;
+		const out: number[] = [];
+		let lo = Infinity;
+		let hi = -Infinity;
+		for (const p of track) {
+			if (p.ele == null || !Number.isFinite(p.ele)) return null;
+			out.push(p.ele);
+			if (p.ele < lo) lo = p.ele;
+			if (p.ele > hi) hi = p.ele;
+		}
+		return hi > lo ? out : null;
+	});
 </script>
 
 <svelte:head>
@@ -86,7 +118,10 @@
 			<dl class="stats">
 				<div>
 					<dt>{m('parks.statDistance')}</dt>
-					<dd>{distanceLabel}</dd>
+					<dd>
+						<span data-testid="share-course-distance">{distanceLabel}</span>
+						{#if laps}<span class="chip" data-testid="share-course-laps">{m('parks.lapsChip', { n: laps })}</span>{/if}
+					</dd>
 				</div>
 				{#if course.segment.elevation_m != null && course.segment.elevation_m > 0}
 					<div>
@@ -125,17 +160,29 @@
 		<section class="content">
 			{#if mounted && track.length >= 2}
 				<div class="map-container">
-					<RunMap {track} requireExplicitConsent />
+					<RunMap {track} requireExplicitConsent hoverIdx={chartHoverIdx} />
+				</div>
+				<ParkMapLegend items={legendItems} testid="share-course-legend" />
+			{/if}
+			{#if credit}
+				<p class="attribution" data-testid="share-course-attribution">
+					{'text' in credit ? credit.text : m(credit.key)}
+				</p>
+			{/if}
+			{#if mounted && elevations}
+				<div class="elevation" data-testid="share-course-elevation">
+					<h2 class="section-title">{m('parks.elevationTitle')}</h2>
+					<ElevationProfile
+						{elevations}
+						totalGain={course.segment.elevation_m}
+						totalDistance={course.segment.distance_m}
+						onhover={(idx) => (chartHoverIdx = idx)}
+					/>
 				</div>
 			{/if}
-			{#if attributionKey}
-				<p class="attribution" data-testid="share-course-attribution">{m(attributionKey)}</p>
-			{/if}
-			<p class="attribution" data-testid="share-course-not-affiliated">{m('parks.notAffiliated')}</p>
-			<p class="safety" data-testid="share-course-safety">{m('parks.safetyNotice')}</p>
-			{#if isLongCourse(course.segment.distance_m)}
-				<p class="safety" data-testid="share-course-long">{m('parks.longCourseNotice')}</p>
-			{/if}
+			<div class="notices-slot">
+				<ParkCourseNotices distanceM={course.segment.distance_m} testidPrefix="share-course" />
+			</div>
 		</section>
 	{:else}
 		<main class="content" id="main-content">
@@ -249,11 +296,29 @@
 		font-size: 0.75rem;
 		color: var(--color-text-tertiary);
 	}
-	.safety {
-		margin: var(--space-md) 0 0;
-		font-size: 0.85rem;
-		color: var(--color-text-secondary);
-		line-height: 1.5;
+	.stats dd {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--space-xs);
+	}
+	.chip {
+		padding: 0.05rem 0.5rem;
+		border-radius: var(--radius-pill);
+		background: var(--chip-bg);
+		color: var(--chip-fg);
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+	.elevation {
+		margin-top: var(--space-lg);
+	}
+	.section-title {
+		margin: 0 0 var(--space-sm);
+		font-size: var(--font-size-section-title);
+	}
+	.notices-slot {
+		margin-top: var(--space-lg);
 	}
 	.notfound-card {
 		background: var(--color-surface);

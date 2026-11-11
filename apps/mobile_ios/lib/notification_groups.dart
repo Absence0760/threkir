@@ -83,7 +83,15 @@ String _targetKeyFor(NotificationRow n) {
     case 'challenge_complete':
       return n.challengeId != null ? 'challenge:${n.challengeId}' : solo;
     case 'message':
+      // A group message is about its group, not its sender: two members
+      // writing in one group is one burst, and one person writing in two
+      // groups and to the viewer 1:1 is three (decisions § 2468).
+      if (n.conversationId != null) return 'group:${n.conversationId}';
       return n.actorId != null ? 'message:${n.actorId}' : solo;
+    case 'group_invite':
+      // Each is a decision to join or decline one group: "and 1 other"
+      // would hide an invitation.
+      return solo;
     case 'personal_record':
       // One per run (the trigger collapses the brackets a run improved),
       // and two runs are two records: "and 1 other" would hide one.

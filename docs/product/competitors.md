@@ -65,14 +65,13 @@ The Android app already covers a surprising amount of ground for an in-developme
 
 ### What's deliberately not in the app yet (and why)
 
-Most of what this section used to gate has shipped — OAuth (Google + Apple sign-in), Strava live OAuth + webhook sync, parkrun athlete-number import, BLE chest-strap HR, persistent disk tile cache, premium training endpoints + the matching UI (training plans, VDOT / VO₂ max, training load, recovery advice), the **live structured-workout execution loop** (Android — band overlay + planned-vs-actual review, see [workout_execution.md](../features/workout_execution.md)), **audio-coached / guided runs** (web preview library + mobile TTS execution), live spectator (Supabase Realtime path), segments + leaderboards (v1 + v2 tiered with KOM/QOM crowns), follows + kudos + comments + notifications inbox, clubs + events + posts, gear tracking, photos on runs, heatmap discovery (web + mobile). Today's genuinely deferred items, sourced from the `[ ]` rows in [roadmap.md](roadmap.md) Phase 3 + the unphased competitor-parity backlog:
+Most of what this section used to gate has shipped — OAuth (Google + Apple sign-in), Strava live OAuth + webhook sync, BLE chest-strap HR, persistent disk tile cache, premium training endpoints + the matching UI (training plans, VDOT / VO₂ max, training load, recovery advice), the **live structured-workout execution loop** (Android — band overlay + planned-vs-actual review, see [workout_execution.md](../features/workout_execution.md)), **audio-coached / guided runs** (web preview library + mobile TTS execution), live spectator (Supabase Realtime path), segments + leaderboards (v1 + v2 tiered with KOM/QOM crowns), follows + kudos + comments + notifications inbox, clubs + events + posts, gear tracking, photos on runs, heatmap discovery (web + mobile). Today's genuinely deferred items, sourced from the `[ ]` rows in [roadmap.md](roadmap.md) Phase 3 + the unphased competitor-parity backlog:
 
 - **Training-plan re-planning around missed sessions** — the generator emits a static plan and the adherence layer (`plan_adherence.ts`) now *detects* drift + a missed long run, but the plan doesn't auto-adjust. This is the last real training-engine gap and Runna's headline feature.
 - **Push notifications (FCM / APNs)** — `device_tokens` table is shipped; the sender + client-side token registration are blocked on user-supplied Firebase / APNs credentials.
 - **Garmin Connect OAuth** — hard-blocked on the multi-day Garmin Developer Program application.
 - **Live spectator transport upgrade** — the Realtime fallback is live and shipping; the Go WebSocket hub at `apps/job_worker/internal/livehub/` is code-complete and awaits a Fly deploy.
 - **Offline tile packs + turn-by-turn voice nav** — partial. Per-route "Save for offline" pin shipped (decisions.md § 64) — flags individual routes to keep on the phone — and the disk-backed tile cache is shipped for normal browsing. **Still pending:** pre-downloading a region's raster tiles before a no-signal trail run, plus turn-by-turn voice cues against a loaded route. The pin reserves the route data side; tile packs + cues are the remaining work.
-- **Race calendar + results** — needs a RunSignUp API key; otherwise patterned after the existing parkrun import.
 - **Phase 4: gym + nutrition modules** — see the [multi-modal section below](#multi-modal-competitive-landscape-phase-4--run--lift--meal) and [roadmap.md § Phase 4](roadmap.md#phase-4--multi-modal-gym--nutrition).
 
 ### Migration paths shipped today
@@ -311,7 +310,6 @@ Same legend as above. The **This app** column notes the platform(s) each feature
 | Community routes | ✓ (web, Android) | ✓ | — | — | ✓ | ✓ | — | — |
 | Route-condition reports | Backlog | — | — | — | ✓ | ✓ | — | — |
 | **Integrations & import** | | | | | | | | |
-| parkrun sync | ✓ | — | — | — | — | — | — | — |
 | Strava import | ✓ | Native | ✓ | ✓ | Limited | ✓ | ✓ | — (export-out only) |
 | HealthKit sync | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | ✓ |
 | Health Connect sync | ✓ | ✓ | ✓ | — | — | — | Partial | Partial |
@@ -416,7 +414,7 @@ The realistic upside is being the runner's chosen destination across all three m
 Strava profile pages are not well-indexed by Google. A public route library with proper metadata (location, distance, surface type, elevation) can rank for "[city] running routes" searches. Each user who shares a route creates an indexed page.
 
 ### parkrun community
-parkrun has millions of registered participants worldwide and a famously engaged community. Being "the app that actually tracks your parkrun history alongside your other runs" is a specific, shareable hook that no major app delivers.
+parkrun has millions of registered participants worldwide and a famously engaged community. The app carries a runner's parkrun barcode (their own number, nothing read from parkrun). Importing parkrun history is **not** on offer: parkrun has no API and opposes scraping, so the importer was removed ([decisions § SCRAPER_ADR](../architecture/decisions.md)). Revisit only with parkrun's written permission or an official API.
 
 ### Wear OS users with no good option
 NRC dropping Wear OS support leaves a gap. Android users with a Pixel Watch or Galaxy Watch running Wear OS have no dedicated running app with standalone GPS. The two strongest training-analytics ecosystems — Garmin and COROS — both refuse to run on any watch but their own, so neither helps a Wear OS owner. This is a specific, searchable pain point.

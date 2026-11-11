@@ -35,13 +35,13 @@ function stripComments(css: string): string {
 }
 
 function styleBlocks(source: string): string {
-	return [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]).join('\n');
+	return [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style(?=[\s/>])[^>]*>/g)].map((m) => m[1]).join('\n');
 }
 
 function markup(source: string): string {
 	return source
-		.replace(/<style[^>]*>[\s\S]*?<\/style>/g, '')
-		.replace(/<script[^>]*>[\s\S]*?<\/script>/g, '')
+		.replace(/<style[^>]*>[\s\S]*?<\/style(?=[\s/>])[^>]*>/g, '')
+		.replace(/<script[^>]*>[\s\S]*?<\/script(?=[\s/>])[^>]*>/g, '')
 		.replace(/<!--[\s\S]*?-->/g, '');
 }
 

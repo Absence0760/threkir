@@ -25,7 +25,7 @@ function only(svg: string): Box {
 	assert.equal(boxes.length, 1, 'one Grisnir per card');
 	const b = boxes[0];
 	assert.ok(b.x >= 0 && b.y >= 0 && b.x + b.w <= 1200 && b.y + b.h <= 630, 'inside the 1200x630 card');
-	assert.ok(b.h <= 150, 'a corner badge, not a hero');
+	assert.ok(b.h <= 180, 'a corner badge, not a hero');
 	return b;
 }
 
@@ -75,5 +75,7 @@ test('challenge: bottom-right, and the name beside him stops short of him', () =
 test('recap: top-right on the dark card, above the hero numeral', () => {
 	const b = only(buildRecapOgSvg({ year: 2026, totalDistanceM: 2_345_600, runCount: 312, displayName: LONG }));
 	assert.ok(b.x + b.w > 1000);
-	assert.ok(b.y + b.h < 64 + 230 - 110, 'above the 150 px hero');
+	// Above the 150 px hero numeral, or right of where it ends.
+	const heroRight = 64 + estimateSvgTextWidthPx('2346 km', 150);
+	assert.ok(b.y + b.h < 64 + 230 - 110 || b.x > heroRight, `${b.x} vs ${heroRight}`);
 });

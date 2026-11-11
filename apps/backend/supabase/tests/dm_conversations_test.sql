@@ -322,7 +322,7 @@ select is(
 
 -- A row neither branch can key (no recipient and no deleted-partner key) must
 -- fail the migration, not reach 20271105000011's validation.
-alter table direct_messages drop constraint direct_messages_deleted_partner_key_check;
+alter table direct_messages drop constraint direct_messages_audience_check;
 insert into direct_messages (id, sender_id, recipient_id, deleted_partner_key, body) values
   ('dc000000-0000-0000-0000-0000000000d5', 'dc000000-0000-0000-0000-00000000000d', null, null, 'unkeyed');
 select throws_ok(

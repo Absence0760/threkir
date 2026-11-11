@@ -1499,6 +1499,7 @@ class DirectMessageRow {
   static const String colKind = 'kind';
   static const String colCoachMessageId = 'coach_message_id';
   static const String colImageId = 'image_id';
+  static const String colIsGroup = 'is_group';
 
   final String id;
   final String senderId;
@@ -1516,6 +1517,7 @@ class DirectMessageRow {
   final String kind;
   final String? coachMessageId;
   final String? imageId;
+  final bool isGroup;
 
   const DirectMessageRow({
     required this.id,
@@ -1534,6 +1536,7 @@ class DirectMessageRow {
     required this.kind,
     this.coachMessageId,
     this.imageId,
+    required this.isGroup,
   });
 
   factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
@@ -1553,6 +1556,7 @@ class DirectMessageRow {
     kind: json['kind'] as String,
     coachMessageId: json['coach_message_id'] as String?,
     imageId: json['image_id'] as String?,
+    isGroup: (json['is_group'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1572,6 +1576,7 @@ class DirectMessageRow {
     colKind: kind,
     colCoachMessageId: coachMessageId,
     colImageId: imageId,
+    colIsGroup: isGroup,
   };
 
   DirectMessageRow copyWith({
@@ -1591,6 +1596,7 @@ class DirectMessageRow {
     String? kind,
     String? coachMessageId,
     String? imageId,
+    bool? isGroup,
   }) => DirectMessageRow(
     id: id ?? this.id,
     senderId: senderId ?? this.senderId,
@@ -1608,6 +1614,7 @@ class DirectMessageRow {
     kind: kind ?? this.kind,
     coachMessageId: coachMessageId ?? this.coachMessageId,
     imageId: imageId ?? this.imageId,
+    isGroup: isGroup ?? this.isGroup,
   );
 }
 

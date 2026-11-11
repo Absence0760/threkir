@@ -3210,7 +3210,7 @@
             "items": [
               "Si votre sortie passe plusieurs fois sur le segment, votre passage le plus rapide compte.",
               "Un échauffement qui repasse par la ligne de départ n'allonge pas votre temps : le chrono part de votre dernier franchissement de la ligne de départ avant la fin.",
-              "Sur une boucle dont le départ et la fin sont la même ligne, le franchissement qui termine un tour ne peut pas aussi lancer le suivant. Seul un tour sur deux est donc chronométré (le premier, le troisième, etc.), et le plus rapide d'entre eux compte. Une boucle qui commence et se termine sur des lignes différentes chronomètre chaque tour."
+              "Sur une boucle, chaque tour complet est chronométré et ton tour le plus rapide compte. Quand le départ et la fin sont la même ligne, le franchissement qui termine un tour lance aussi le suivant."
             ]
           }
         ]
@@ -3790,7 +3790,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Un parcours fermé garde ses temps et ses classements, mais merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois."
+            "text": "Un parcours fermé ne prend aucun nouveau temps : une sortie dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois."
           }
         ]
       },

@@ -3210,7 +3210,7 @@
             "items": [
               "Se a sua corrida passar pelo segmento mais do que uma vez, conta a sua passagem mais rápida.",
               "Um aquecimento que volta a passar pela linha de partida não aumenta o seu tempo: o tempo começa na sua última passagem pela linha de partida antes do fim.",
-              "Num circuito cuja partida e fim são a mesma linha, a passagem que termina uma volta não pode também iniciar a seguinte. Por isso, só é cronometrada uma volta sim, outra não (a primeira, a terceira e assim por diante), e conta a mais rápida dessas. Um circuito que começa e acaba em linhas diferentes cronometra todas as voltas."
+              "Num circuito, cada volta completa é cronometrada e conta a sua volta mais rápida. Quando a partida e o fim são a mesma linha, a passagem que termina uma volta também inicia a seguinte."
             ]
           }
         ]
@@ -3790,7 +3790,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Um percurso fechado mantém os tempos e as classificações, mas não o corra até reabrir. A página mostra quando o estado foi verificado pela última vez."
+            "text": "Um percurso fechado não aceita tempos novos: uma corrida nele enquanto está fechado não é cronometrada, e os tempos que já tem mantêm-se nas classificações. Não o corra até reabrir. A página mostra quando o estado foi verificado pela última vez."
           }
         ]
       },

@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 						"O **Guia do percurso** na página do percurso mostra onde estacionar e cada conversão na ordem, com o nome da trilha, além das pontes, vaus, mudanças de piso e subidas. Ele é feito a partir de dados do mapa; enquanto ninguém o conferir no parque, isso aparece acima da lista. O mesmo guia vai no arquivo GPX do percurso.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Um percurso fechado mantém os tempos e rankings, mas não corra nele até que reabra. A página mostra quando o status foi verificado pela última vez." },
+				{ type: 'note', tone: 'caution', text: "Um percurso fechado não recebe tempos novos: uma corrida nele enquanto está fechado não é cronometrada, e os tempos que ele já tem continuam nos rankings. Não corra nele até que reabra. A página mostra quando o status foi verificado pela última vez." },
 			],
 		},
 		{
@@ -78,7 +78,7 @@ export const translation: GuideTranslation = {
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",
 		"s0.b1.i3": "a75477f7d5a5a5bc",
-		"s0.b2": "6a9e63c1eec9c80f",
+		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",
 		"s1.b0": "f00cd3cca5bfc92f",
 		"s1.b1": "36e6dc7fd586b7d7",

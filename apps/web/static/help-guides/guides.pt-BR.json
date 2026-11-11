@@ -3210,7 +3210,7 @@
             "items": [
               "Se a sua corrida passar pelo segmento mais de uma vez, vale a sua passagem mais rápida.",
               "Um aquecimento que volta e cruza de novo a linha de largada não aumenta o seu tempo: o tempo começa no seu último cruzamento da linha de largada antes do fim.",
-              "Em um circuito cujo início e fim são a mesma linha, o cruzamento que encerra uma volta não pode também iniciar a seguinte. Por isso, só voltas alternadas são cronometradas (a primeira, a terceira e assim por diante), e vale a mais rápida delas. Um circuito que começa e termina em linhas diferentes cronometra todas as voltas."
+              "Em um circuito, cada volta completa é cronometrada e vale a sua volta mais rápida. Quando o início e o fim são a mesma linha, o cruzamento que encerra uma volta também inicia a seguinte."
             ]
           }
         ]
@@ -3790,7 +3790,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Um percurso fechado mantém os tempos e rankings, mas não corra nele até que reabra. A página mostra quando o status foi verificado pela última vez."
+            "text": "Um percurso fechado não recebe tempos novos: uma corrida nele enquanto está fechado não é cronometrada, e os tempos que ele já tem continuam nos rankings. Não corra nele até que reabra. A página mostra quando o status foi verificado pela última vez."
           }
         ]
       },

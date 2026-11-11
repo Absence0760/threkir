@@ -45,7 +45,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Führt dein Lauf mehr als einmal über das Segment, zählt dein schnellster Durchgang.',
 						'Ein Aufwärmen, das zurück über die Startlinie führt, verlängert deine Zeit nicht: Die Zeit beginnt mit deiner letzten Überquerung der Startlinie vor dem Ende.',
-						'Bei einem Rundkurs, dessen Start und Ende dieselbe Linie sind, kann die Überquerung, die eine Runde beendet, nicht zugleich die nächste starten. Deshalb wird nur jede zweite Runde gemessen (die erste, die dritte und so weiter), und die schnellste davon zählt. Ein Rundkurs mit getrennter Start- und Endlinie misst jede Runde.',
+						'Bei einem Rundkurs wird jede vollständige Runde gemessen, und deine schnellste Runde zählt. Sind Start und Ende dieselbe Linie, startet die Überquerung, die eine Runde beendet, zugleich die nächste.',
 					],
 				},
 			],
@@ -88,7 +88,7 @@ export const translation: GuideTranslation = {
 		's2.heading': '07aa1107fe80687c',
 		's2.b0.i0': 'd1cc20d8bffef410',
 		's2.b0.i1': '49b20e543d91d563',
-		's2.b0.i2': 'd8dc1f1202af2dc9',
+		's2.b0.i2': '768a4bc2c007e9bb',
 		's3.heading': '6ce1d76024b4fe1f',
 		's3.b0': '2f8dce267fbf234c',
 		's4.heading': 'f2e748afe43f1604',

@@ -45,7 +45,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Si tu carrera pasa por el segmento más de una vez, cuenta tu paso más rápido.',
 						'Un calentamiento que vuelve a pasar por la línea de salida no alarga tu tiempo: el tiempo empieza en tu último cruce de la línea de salida antes del final.',
-						'En un circuito cuya salida y final son la misma línea, el cruce que cierra una vuelta no puede abrir también la siguiente. Por eso solo se cronometra una vuelta de cada dos (la primera, la tercera, etc.), y cuenta la más rápida de ellas. Un circuito que empieza y termina en líneas distintas cronometra todas las vueltas.',
+						'En un circuito se cronometra cada vuelta completa y cuenta tu vuelta más rápida. Cuando la salida y el final son la misma línea, el cruce que cierra una vuelta abre también la siguiente.',
 					],
 				},
 			],
@@ -88,7 +88,7 @@ export const translation: GuideTranslation = {
 		's2.heading': '07aa1107fe80687c',
 		's2.b0.i0': 'd1cc20d8bffef410',
 		's2.b0.i1': '49b20e543d91d563',
-		's2.b0.i2': 'd8dc1f1202af2dc9',
+		's2.b0.i2': '768a4bc2c007e9bb',
 		's3.heading': '6ce1d76024b4fe1f',
 		's3.b0': '2f8dce267fbf234c',
 		's4.heading': 'f2e748afe43f1604',

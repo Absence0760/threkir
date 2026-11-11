@@ -113,10 +113,8 @@ type trackReplay struct {
 // stream would credit the chord across every pause the runner moved during,
 // and read a gap still open at a close as running on into the next segment.
 // A mark on a point without a timestamp starts the segment at the next point
-// that has one. The embedded-bests ports this follows
-// (`estimatorCumulativeMetres` in apps/mobile_android/lib/embedded_bests.dart
-// and apps/web/src/lib/integrations/garmin-fit.ts) replay phone tracks and
-// imports, which carry no marks, so they replay one stream.
+// that has one. The Dart and web `estimatorCumulativeMetres` replay only phone
+// tracks and imports, which carry no marks.
 func replayRecordedTrack(pts []RecordedTrackPoint, maxSpeedMps float64) trackReplay {
 	opts := gpsdistance.Options{
 		MaxSpeedMps:       maxSpeedMps,

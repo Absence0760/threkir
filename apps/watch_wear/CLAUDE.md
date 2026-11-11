@@ -671,7 +671,11 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   match and the post-run map take only fixes within 30 m (`SourceVerdict.track`): a 30-50 m
   canopy fix moves distance and pace and is stored in the track file flagged
   `"offTrack":true` (`TrackWriter.append(point, distM, offTrack)`), so the
-  server's replay sees every fix the estimator took; the finished run and the
+  server's replay sees every fix the estimator took. The first fix stored
+  after a pause or a source switch closes the estimator's segment is written
+  `"segmentStart":true` (`closeDistanceSegment` sets `markSegmentStart`,
+  `onGps` writes and clears it), so the server replays each segment apart
+  (spec v1.8); the finished run and the
   checkpoint carry `trackComplete` into `metadata.track_complete`
   (docs/features/gps_distance.md § Stored track). Each point now also carries the optional `accuracyMetres`,
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
@@ -687,8 +691,9 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   `distance_recompute` job, which replays this track and replaces
   `distance_m` with the smoothed figure (its gaps credited the larger of
   `distance_step_over_chord_m` and the run-total rule, or on an older run
-  the larger of their chords and the step-filled metres; a pause or source
-  switch inside a gap holds that close's trailing steps out of the key),
+  the larger of their chords and the step-filled metres; each segment is
+  replayed apart from its `segmentStart` fix, so a close's trailing steps
+  are banked whole),
   keeping the wrist's figure as `distance_recorded_m`
   ([gps_distance.md § Server recompute](../../docs/features/gps_distance.md#server-recompute),
   decisions § 1991).

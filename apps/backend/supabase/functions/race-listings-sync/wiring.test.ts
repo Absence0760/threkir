@@ -78,6 +78,12 @@ Deno.test('UltraSignup is gated on its own key pair; RunSignUp listings are keyl
 });
 
 Deno.test('the retired parkrun leg is gone: no flag, no feed, no provider', () => {
+  // The absences are read off the live provider selector, so a source that
+  // lost the selector cannot pass them by having nothing left to search.
+  assert(
+    SRC.includes("if (requested !== 'runsignup' && requested !== 'ultrasignup') {"),
+    'the provider selector the absences are read against is gone',
+  );
   for (const gone of ['PARKRUN_EVENTS_ENABLED', 'PARKRUN_USER_AGENT', 'images.parkrun.com', "'parkrun'", './parkrun.ts']) {
     assert(!SRC.includes(gone), `race-listings-sync still mentions ${gone}`);
   }

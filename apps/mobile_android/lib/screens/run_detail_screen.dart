@@ -27,6 +27,7 @@ import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
 import '../hr_zones.dart';
+import '../route_history.dart';
 import '../run_intensity.dart';
 import '../local_route_store.dart';
 import '../local_run_store.dart';
@@ -2291,25 +2292,18 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     if (run.routeId == null) return const [];
 
-    final thisActivity = run.metadata?[MetadataKeys.activityType] as String? ?? 'run';
+    final me = RouteHistoryRun.fromRun(run);
+    final thisActivity = me.activityType ?? 'run';
     // Reads the full-history index so the route PB isn't lost once the run
     // store windows — only routeId / distance / activityType / duration / id
     // are used, all carried by the summary (no track, no detail nav here).
-    final attempts = widget.runStore.summaryRuns
-        .where((r) =>
-            r.routeId == run.routeId &&
-            r.distanceMetres > 100 &&
-            isPlausibleRunDuration(r.duration.inSeconds) &&
-            (r.metadata?[MetadataKeys.activityType] as String? ?? 'run') == thisActivity)
-        .toList()
-      ..sort((a, b) => a.duration.compareTo(b.duration));
+    final attempts = qualifyingAttempts(
+        me, widget.runStore.summaryRuns.map(RouteHistoryRun.fromRun));
+    final summary = summariseHistory(run.id, attempts);
+    if (summary == null) return const [];
 
-    final rank = attempts.indexWhere((r) => r.id == run.id) + 1;
-    if (attempts.length < 2 || rank == 0) return const [];
-
-    final best = attempts.first;
-    final isBest = best.id == run.id;
-    final delta = run.duration - best.duration;
+    final isBest = summary.isPb;
+    final delta = Duration(seconds: summary.deltaSeconds);
 
     final routeName = _linkedRoute?.name ?? l10n.runDetailThisRoute;
 
@@ -2355,8 +2349,8 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  l10n.runDetailAttemptOf(
-                      rank, attempts.length, _formatDuration(best.duration)),
+                  l10n.runDetailAttemptOf(summary.rank, summary.total,
+                      _formatDuration(Duration(seconds: summary.pb.durationS))),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

@@ -57,6 +57,11 @@ class DmReactionChips extends StatelessWidget {
                 c.count,
               ),
               excludeSemantics: true,
+              // excludeSemantics drops the InkWell's own tap action, so the
+              // node carries it or a screen reader cannot toggle the chip.
+              onTap: canReact
+                  ? () => onSet(c.mine ? null : c.reaction)
+                  : null,
               child: InkWell(
                 key: ValueKey('dm-reaction-chip-${c.reaction}'),
                 borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -127,6 +132,7 @@ Future<String?> showDmReactionPicker(BuildContext context, {String? current}) {
                       selected: current == r,
                       label: dmReactionName(l10n, r),
                       excludeSemantics: true,
+                      onTap: () => Navigator.pop(ctx, r),
                       child: InkWell(
                         key: ValueKey('dm-reaction-option-$r'),
                         borderRadius: BorderRadius.circular(AppRadius.lg),

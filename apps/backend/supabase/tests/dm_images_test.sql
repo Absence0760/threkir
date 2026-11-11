@@ -6,7 +6,7 @@
 -- holds it, the report snapshot, and the orphan worklist.
 
 begin;
-select plan(40);
+select plan(41);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -106,6 +106,15 @@ select is(
      and payload ->> 'image_id' = (select id::text from img where k = 'one')),
   1,
   'the send queues the image for the worker');
+
+-- The link trigger is the backstop behind the send policy: a writer the
+-- policy does not apply to still cannot reuse a sent image.
+select throws_ok(
+  $$insert into direct_messages (sender_id, recipient_id, body, image_id)
+    select 'aaaa1216-1a6e-0000-0000-0000000000a1', 'aaaa1216-1a6e-0000-0000-0000000000b2', 'again', id
+      from img where k = 'one'$$,
+  '23505', 'direct_messages: that image is already sent or not yours',
+  'past the policy, the link trigger refuses an image already sent');
 
 -- ── a request carries no photo ──
 

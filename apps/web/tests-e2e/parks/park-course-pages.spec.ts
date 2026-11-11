@@ -140,7 +140,7 @@ test.describe('park course pages', () => {
 		await expect(cards.filter({ hasText: /\bLoop\b/ })).toHaveCount(0);
 		await expect(cards.nth(3)).toContainText('Out and back');
 
-		// Signed in with no efforts planted, each course says there is no record yet.
+		// Signed in with no efforts planted, each course says there is no time yet.
 		await expect(cards.first().getByTestId('park-course-record')).toContainText('No time yet this season');
 		await expect(page.getByTestId('park-not-affiliated')).toBeVisible();
 	});

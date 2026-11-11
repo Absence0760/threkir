@@ -123,7 +123,7 @@ test.describe('races & courses', () => {
 		await expect(page).toHaveTitle(/^Races & courses/);
 	});
 
-	test('both sections render, and Run any time lists a park course with its season record', async ({ page }) => {
+	test('both sections render, and Run any time lists a park course with its fastest time this season', async ({ page }) => {
 		let planted: Planted | null = null;
 		try {
 			planted = await plantCourse();
@@ -154,7 +154,7 @@ test.describe('races & courses', () => {
 			await expect(meta).not.toContainText('Loop');
 			await expect(card.getByTestId('races-any-time-laps')).toHaveCount(0);
 			await expect(card.getByTestId('races-any-time-record')).toHaveText(
-				new RegExp(`^\\d{4} record: 9:10 by ${holder?.display_name ?? ''}$`),
+				new RegExp(`^Fastest in \\d{4}: 9:10 by ${holder?.display_name ?? ''}$`),
 			);
 
 			await card.click();
@@ -228,7 +228,7 @@ test.describe('races & courses', () => {
 		await expect(page.getByTestId('races-any-time-all')).toHaveAttribute('href', '/parks');
 	});
 
-	test('failed records keep the courses listed, without records, and say so', async ({ page }) => {
+	test('failed fastest times keep the courses listed, without them, and say so', async ({ page }) => {
 		let planted: Planted | null = null;
 		try {
 			planted = await plantCourse();

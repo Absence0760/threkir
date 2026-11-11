@@ -324,10 +324,13 @@ These follow the owner-approved permit conditions (memo
 - **Times, not results.** Every course page and the `/share/course` page say,
   in the notices callout, that its times are Threkir times on these paths and
   not results of any event held on them (`parks.timesNotEventResults`). The
-  course boards say *time*, *fastest* and *most completions*, never *results*.
-  Open: **Run any time** on `/races` still labels a season's best "2027 record"
-  (`races.anyTimeRecord`, `racesAnyTimeRecord`), which the memo's "never
-  *course record*" rule asks to reword (e.g. "Fastest in 2027").
+  course boards say *time*, *fastest* and *most completions*, never *results*,
+  and a season's best reads "Fastest in 2027", never a *record*
+  (`races.anyTimeFastest` / `racesAnyTimeFastest` on **Run any time** and the
+  park page). `apps/web/src/lib/i18n/no_course_record_copy.test.ts` fails on
+  any park, segment, share-course or Run-any-time string, web or ARB, in any
+  locale, that calls a time a record (a runner's own *personal record* is
+  stripped first, being a different claim).
 - **Shared paths.** A course with `shared_use` adds a give-way note to the
   same callout, naming no one: `saturday_morning_group` reads "Organised groups
   use these paths on Saturday mornings. Give way, and avoid timing an effort

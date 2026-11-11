@@ -180,7 +180,7 @@ test('every Pocahontas course carries its guide, none yet checked on the ground'
 });
 
 test('a route guide the database would refuse is refused first', () => {
-	const withGuide = (/** @type {any} */ guide, checked = null) =>
+	const withGuide = (/** @type {any} */ guide, /** @type {string | null} */ checked = null) =>
 		() => cataloguePayload(manifest({ courses: [{ ...manifest().courses[0], route_guide: guide, route_guide_checked_at: checked }] }), squareOnly);
 	assert.throws(withGuide({ ...GUIDE, version: 2 }), /square: route_guide is not valid: version must be 1/);
 	assert.throws(withGuide({ ...GUIDE, steps: GUIDE.steps.slice(0, 2) }), /close with its one finish step/);

@@ -3061,6 +3061,10 @@ Migration `20270817000021`: `club_members` has a plain ascending btree on `(club
 
 Migration `20271116002390`: derived lines on a straight route, a loop and a route whose start the owner's zone clipped (no start line, a finish line), each at 15 m; `finish_line_self_cross` off for one lap and on for three; the organiser RPCs (a plain member and anon refused, no privacy-zone check, a routeless course takes both lines, the bearing normalised); a waypoint edit turning a derived line and leaving an organiser's; reset to the route or to none; a client's direct write to the line columns ignored; the RPC's and the table's CHECKs, the source allowlist validated; the frozen copy taken at Arm, holding the values of the moment and not moved by a later route edit, linked from `race_sessions_redacted`, its stamp guarded; and anon reading a public event's lines and copy but not a private club's.
 
+### `apps/backend/supabase/tests/race_lap_minimum_test.sql` — 12 tests
+
+Migration `20271222002472` ([decisions § 2472](../architecture/decisions.md)): `private.course_finish_min_coverage_m` on a closed lap raced three and two times (D − G / 2, never under 60 % of D), an open route raced past its drawn length (none), three laps drawn (the last two crossings' spacing scaled to D, and to the drawn length with no D), and no minimum for a single loop, a straight route, no route or no finish line; Arm freezing the lap course's minimum and none for a routeless course; the CHECK refusing a non-positive minimum.
+
 ### `apps/web/src/lib/races/course_gates.test.ts` — 11 tests
 
 The TS reader of `fixtures/course_gates_cases.json`, one test per section plus the section and constant checks: bearing normalisation, the half-width clamp, a line read off a row, bearings, line ends, the arrow tip, a line against a route, the editor's warnings and every row of the Arm preflight table under all three start modes.

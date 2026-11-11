@@ -605,7 +605,11 @@ The mobile group surfaces (issue #1365 slice 3, decisions § 2468) over an in-fi
 
 The Dart side of the `group_messages` parity pair (decisions § 2468), mirroring web's `group_messages.test.ts` case for case except its route helper, which is web-only.
 
-### `apps/mobile_ios/test/` — 879 files, byte-for-byte
+### `apps/mobile_android/test/group_errors_test.dart` — 10 tests
+
+The group error sentences (issue #1365 slice 3, decisions § 2468): each `GroupRefusal` reads its own string and one refusal stays one sentence whatever caused it, an action's own refused sentence wins, the throttle and offline read their own, anything unnamed reads the fallback; on send, the gate reads as not allowed (the photo variant with a photo), an unavailable photo and a failed upload read their own.
+
+### `apps/mobile_ios/test/` — 880 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 

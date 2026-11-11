@@ -6,7 +6,7 @@
 /// On denial the helper returns a 429 `Response` with a `Retry-After`
 /// header so the caller can `return` it directly:
 ///
-///   const denied = await checkRateLimit(supabase, user.id, 'parkrun-import', 4, 3600);
+///   const denied = await checkRateLimit(supabase, user.id, 'race-results-import', 8, 3600);
 ///   if (denied) return denied;
 ///
 /// On allow it returns null. EFs that don't have a user.id (cron-only

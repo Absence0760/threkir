@@ -1,32 +1,20 @@
-/// The last step both run importers share: a batch of `runs` rows about to be
-/// inserted in ONE statement, each carrying an `external_id`, reconciled
+/// The last step of the race-results importer: a batch of `runs` rows about to
+/// be inserted in ONE statement, each carrying an `external_id`, reconciled
 /// against the ids the caller already has stored.
 ///
-/// Both importers used to spell this inline, and both spelled only half of it.
-/// They compared the batch against the rows ALREADY stored — a
-/// `select external_id ... in (...)` plus a `Set` — and nothing compared the
-/// batch against ITSELF. `runs_user_external_id` (migration 20260528000003) is
-/// a per-user partial unique index over `(user_id, external_id)`, so two rows
-/// in one batch carrying the same id raise 23505 and take the WHOLE insert
-/// down, not the duplicate: the caller sees a bare 500, nothing is imported,
-/// and a retry produces the same 500 because the input has not changed.
+/// Comparing the batch against the rows ALREADY stored is half of it; the batch
+/// also has to be compared against ITSELF. `runs_user_external_id` (migration
+/// 20260528000003) is a per-user partial unique index over
+/// `(user_id, external_id)`, so two rows in one batch carrying the same id raise
+/// 23505 and take the WHOLE insert down, not the duplicate: the caller sees a
+/// bare 500, nothing is imported, and a retry produces the same 500 because the
+/// input has not changed.
 ///
-/// A collision is not hypothetical on either caller. RunSignUp returns results
-/// under `individual_results_sets[]` — one set per event, plus re-scored and
+/// A collision is not hypothetical. RunSignUp returns results under
+/// `individual_results_sets[]` — one set per event, plus re-scored and
 /// provisional sets — and `extractRunSignUpResults` flattens every one of them,
 /// so a runner appearing in two sets yields two rows whose id is
-/// `race:{name}:{date}:{bib}` with the same bib on both. The UltraSignup leg
-/// reads one ATHLETE's history and stamps every row with the single listing's
-/// name and date, so its ids differ by bib alone across races the runner may
-/// well have worn the same number in. And parkrun's scraper takes
-/// `table tbody tr` across every table on the page, so a result repeated in a
-/// second table is a second row with the same `parkrun:{event}:{date}`.
-///
-/// The importers' own comments already state the invariant this restores —
-/// "one junk row silently imported nothing for the athlete", "ONE
-/// unattributable date loses the whole race rather than one result". Both were
-/// closed by dropping the offending ROW. A duplicate is the same shape and had
-/// no such guard.
+/// `race:{name}:{date}:{bib}` with the same bib on both.
 ///
 /// `skipped` is returned rather than left to the caller to subtract, because
 /// that subtraction is the honesty half and it was written out twice. A row

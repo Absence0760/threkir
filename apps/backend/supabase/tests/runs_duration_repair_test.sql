@@ -8,7 +8,7 @@
 
 begin;
 
-select plan(19);
+select plan(24);
 
 select is(
   (select convalidated from pg_constraint
@@ -35,7 +35,7 @@ select tests.confirm_consent();
 alter table runs drop constraint runs_duration_s_max_check;
 
 -- 101: the issue's manual run, no track. 102: an app run with a track.
--- 103: an ordinary run.
+-- 103: an ordinary run. 104: a 10 km manual run, its owner's only one.
 insert into runs (id, user_id, started_at, duration_s, distance_m, source,
                   activity_type, track_url, metadata)
 values
@@ -48,10 +48,18 @@ values
    '{}'),
   ('d0000000-0000-0000-0000-0000000da103', 'd0000000-0000-0000-0000-0000000d0101',
    '2026-06-07 08:00:00+00', 1800, 5000, 'app', 'run', null,
-   '{"title": "Easy"}');
+   '{"title": "Easy"}'),
+  ('d0000000-0000-0000-0000-0000000da104', 'd0000000-0000-0000-0000-0000000d0101',
+   now() - interval '1 day', 3000000, 10000, 'app', 'run', null,
+   '{"manual_entry": true}');
 
-select is(private.cap_out_of_bound_run_durations(), 2,
-  'the repair caps the two out-of-bound rows and no others');
+-- 104 as stored before the improvement log existed (20271104000002): its
+-- insert just logged and notified it, which a production row never was.
+delete from notifications where run_id = 'd0000000-0000-0000-0000-0000000da104';
+delete from personal_record_improvements where run_id = 'd0000000-0000-0000-0000-0000000da104';
+
+select is(private.cap_out_of_bound_run_durations(), 3,
+  'the repair caps the three out-of-bound rows and no others');
 
 select is(
   (select duration_s from runs where id = 'd0000000-0000-0000-0000-0000000da101'),
@@ -123,6 +131,35 @@ select is(
   'a duration board sums the in-bound run and leaves both capped rows out'
 );
 
+-- ── the cap is no personal record ───────────────────────────────────────────
+select is(
+  (select count(*)::int from personal_records
+    where user_id = 'd0000000-0000-0000-0000-0000000d0101' and distance = '10k'),
+  0,
+  'a capped run alone in its bracket holds no PR at 240:00:00'
+);
+
+select is(
+  (select count(*)::int from personal_record_improvements
+    where run_id = 'd0000000-0000-0000-0000-0000000da104'),
+  0,
+  'capping a run is not logged as an improvement'
+);
+
+select is(
+  (select count(*)::int from notifications
+    where run_id = 'd0000000-0000-0000-0000-0000000da104' and kind = 'personal_record'),
+  0,
+  'nor notified as a new PR, though the run is from yesterday'
+);
+
+select is(
+  (select best_time_s from personal_records
+    where user_id = 'd0000000-0000-0000-0000-0000000d0101' and distance = '5k'),
+  1800,
+  'the in-bound 5 km run keeps the 5k PR'
+);
+
 -- ── the flag follows the duration ───────────────────────────────────────────
 update runs set metadata = '{"title": "Renamed"}'
  where id = 'd0000000-0000-0000-0000-0000000da101';
@@ -181,6 +218,22 @@ select is(
   1800 + 1294 + 2712,
   'both repaired durations now count'
 );
+
+-- A copy loaded while the run was capped (the batch sync's whole-row upsert,
+-- a backup restore), written back after the job replaced the cap.
+set local role authenticated;
+update runs
+   set duration_s = 864000,
+       metadata = '{"duration_repaired": true, "duration_s_original": 2000000, "title": "Synced"}'
+ where id = 'd0000000-0000-0000-0000-0000000da102';
+
+select is(
+  (select row(duration_s, metadata)::text from runs
+    where id = 'd0000000-0000-0000-0000-0000000da102'),
+  row(2712, '{"title": "Synced", "duration_s_original": 2000000}'::jsonb)::text,
+  'a stale copy of the capped row cannot write the cap or its flag back'
+);
+reset role;
 
 select * from finish();
 

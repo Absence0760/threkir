@@ -24,7 +24,6 @@ Seed user: `runner@test.com` / `testtest`. See [apps/backend/local_testing.md](.
 | **Run sync** | Real, against local Supabase | Background, foreground, on-connectivity, after-conflict |
 | **Strava import (ZIP)** | Real | Strava lets you export your own data as a ZIP from Settings → My Account → Download — drop the ZIP into the importer |
 | **Strava OAuth + webhook** | Stubbed (see below) | The Edge Function `strava-import` accepts a `connect` action; mock `STRAVA_OAUTH_URL` + a fixture access token |
-| **parkrun import** | Real | The scraper hits public profile pages; use your own athlete number or `A123` for the seed |
 | **Health Connect / HealthKit** | Real, on device | Emulator + real device both work for read; write isn't wired |
 | **AI Coach (Anthropic)** | Real with throwaway `sk-ant-` key, or stubbed (see below) | Real run on a sandbox API key burns ~$0.01 / chat at small context. Or set `COACH_PROVIDER=openai` + `OPENAI_BASE_URL=http://localhost:11434/v1` to point at local Ollama |
 | **AI Coach (OpenAI fallback)** | Stubbed via local Ollama | `COACH_PROVIDER=openai` + `OPENAI_BASE_URL=http://localhost:11434/v1` + `OPENAI_MODEL=llama3` — zero $ cost |
@@ -215,7 +214,7 @@ These can't be exercised on a laptop without the matching device + a sandbox tes
 
 ## Mocking outbound HTTP for Edge Functions
 
-For Strava / parkrun / Garmin / Anthropic happy-path tests where we don't want to hit the real provider, the Edge Function pattern is to inject the fetcher. Deno makes this easy because `fetch` is a globally-replaceable name. Example pattern in [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
+For Strava / Garmin / RunSignUp / Anthropic happy-path tests where we don't want to hit the real provider, the Edge Function pattern is to inject the fetcher. Deno makes this easy because `fetch` is a globally-replaceable name. Example pattern in [apps/backend/CLAUDE.md § Testing without real credentials](../../apps/backend/CLAUDE.md#testing-without-real-credentials).
 
 For per-test fixture servers, drop a tiny `python -m http.server` in `apps/backend/fixtures/` and override the relevant base URL via env.
 

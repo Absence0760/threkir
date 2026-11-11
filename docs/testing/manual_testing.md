@@ -25,7 +25,7 @@ For the unit / widget test suites that run automatically, see [testing.md](testi
 - [Segments](#segments)
 - [Photos on runs](#photos-on-runs)
 - [Live race spectator + race mode](#live-race-spectator--race-mode)
-- [Imports — Strava, Garmin, parkrun, Health Connect, HealthKit](#imports--strava-garmin-parkrun-health-connect-healthkit)
+- [Imports — Strava, Garmin, Health Connect, HealthKit](#imports--strava-garmin-health-connect-healthkit)
 - [Settings — preference pages](#settings--preference-pages)
 - [Privacy zones](#privacy-zones)
 - [Paywall and RevenueCat](#paywall-and-revenuecat)
@@ -473,7 +473,7 @@ It prints how many tracks it replayed, how many both detectors finished and how 
 
 ---
 
-## Imports — Strava, Garmin, parkrun, Health Connect, HealthKit
+## Imports — Strava, Garmin, Health Connect, HealthKit
 
 | Source | Surface | Steps | Pass |
 |---|---|---|---|
@@ -481,7 +481,6 @@ It prints how many tracks it replayed, how many both detectors finished and how 
 | Strava OAuth (Edge Function) | OAuth flow then `strava-import` EF | `{action: 'connect', code, scope}` after redirect, then `{action: 'sync'}` for backfill | Activities import; tokens land in Vault via `set_integration_tokens`; `metadata.title` + `metadata.elevation_m` populated when present (recently-fixed bug — these used to be written as columns that don't exist). |
 | Strava webhook | `strava-webhook` EF | Pass the secret as `X-Webhook-Secret: <STRAVA_WEBHOOK_SECRET>` — the query-string form still works (Strava can only be configured with a URL) but logs the secret on every call, so manual pokes should use the header. (a) send a `GET ?hub.mode=subscribe&hub.verify_token=<STRAVA_VERIFY_TOKEN>&hub.challenge=ping`; (b) send a `POST` event with `{object_type:'activity',aspect_type:'create',owner_id,object_id}` | (a) responds 200 with `{"hub.challenge":"ping"}`; (b) returns 200 (always — Strava retries on non-2xx) and an authed Run row appears for `owner_id` with `metadata.strava_id == object_id`. Replay the same POST → no duplicate (dedupe via `metadata.strava_id`). Activity types other than run/walk/hike are silently ignored. |
 | Garmin ZIP (web) | `/settings/integrations` → Garmin bulk | Upload either a single `.fit` or the Account Data `.zip` | Activities import via `garmin-zip.ts`; `metadata.garmin_id` set; routed inner GPX/TCX go through `parseRouteFile`. |
-| parkrun (mobile) | Settings → Import parkrun results → enter athlete number | Calls `parkrun-import` EF | New results land as runs with `source='parkrun'`; `metadata.event` + `metadata.position` + `metadata.age_grade` set. |
 | Health Connect (Android) | Settings → Import from Health Connect | Pick a date range | Workouts come in via `health_connect_importer.dart`; `metadata.health_connect_type` preserves the original enum. |
 | HealthKit (iOS) | Settings → Import from HealthKit | Same | Same shape via the `health` package's HealthKit backend. |
 

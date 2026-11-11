@@ -19245,7 +19245,8 @@
     "gapM": 0.0,
     "distanceM": 238.0,
     "unmarkedReplayedM": 235.519017,
-    "unmarkedGapM": 47.519017
+    "unmarkedGapM": 47.519017,
+    "unmarkedDistanceM": 238.0
    }
   },
   {
@@ -19361,7 +19362,8 @@
     "gapM": 0.0,
     "distanceM": 242.0,
     "unmarkedReplayedM": 235.518998,
-    "unmarkedGapM": 75.518998
+    "unmarkedGapM": 75.518998,
+    "unmarkedDistanceM": 242.0
    }
   },
   {
@@ -19516,7 +19518,8 @@
     "gapM": 0.0,
     "distanceM": 480.000002,
     "unmarkedReplayedM": 575.520544,
-    "unmarkedGapM": 95.520418
+    "unmarkedGapM": 95.520418,
+    "unmarkedDistanceM": 575.520544
    }
   }
  ]

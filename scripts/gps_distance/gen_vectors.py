@@ -299,10 +299,16 @@ def add_segmented(name, desc, segments, max_speed=10.0, interval=1.0, stride=Non
     fixes = [[x for x in seg["events"] if x["type"] == "fix"] for seg in segments]
     rp = ref.smooth_segments(fixes, max_speed, interval)
     whole = ref.smooth_segments([[x for f in fixes for x in f]], max_speed, interval)
-    got = ref.recompute_distance(rp["distance_m"], rp["gap_m"], rec["step_distance_m"], rec["step_over_chord_m"])
+    stored = sum(1 for f in fixes if f)
+    got = ref.recompute_distance(rp["distance_m"], rp["gap_m"], rec["step_distance_m"], rec["step_over_chord_m"],
+                                 rp["segments"], stored)
     # The replay is the smoother's figure and the recorder's the forward filter's: equal to the
     # vectors' tolerance on these straight lines.
     assert abs(got - rec["distance_m"]) < 1e-3, (name, got, rec["distance_m"])
+    # A track whose marks were lost replays as one segment, which the saved count refuses,
+    # so the key gives way to the run-total rule.
+    unmarked = ref.recompute_distance(whole["distance_m"], whole["gap_m"], rec["step_distance_m"],
+                                      rec["step_over_chord_m"], whole["segments"], stored)
     segmented.append({"name": name, "description": desc, "maxSpeedMps": max_speed,
                       "expectedIntervalS": interval, "initialStrideM": stride, "segments": segments,
                       "expected": {"distanceM": round(rec["distance_m"], 6),
@@ -311,7 +317,8 @@ def add_segmented(name, desc, segments, max_speed=10.0, interval=1.0, stride=Non
                       "recompute": {"replayedM": round(rp["distance_m"], 6), "gapM": round(rp["gap_m"], 6),
                                     "distanceM": round(got, 6),
                                     "unmarkedReplayedM": round(whole["distance_m"], 6),
-                                    "unmarkedGapM": round(whole["gap_m"], 6)}})
+                                    "unmarkedGapM": round(whole["gap_m"], 6),
+                                    "unmarkedDistanceM": round(unmarked, 6)}})
 
 
 def seg_fixes(ts, east_at):

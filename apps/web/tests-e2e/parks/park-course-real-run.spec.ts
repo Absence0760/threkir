@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { expect, test } from '../fixtures/test';
+import { readRows } from '../fixtures/db-read';
 import { getAdminClient, loadSupabaseEnv } from '../fixtures/local-supabase';
 import { deleteRun, insertRun } from '../fixtures/simulate';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
@@ -115,12 +116,11 @@ test.describe('a run over a real park course', () => {
 			is_public: true,
 			track,
 		});
-		const { data: jobs } = await admin
-			.from('jobs')
-			.select('id')
-			.eq('kind', 'segment_match')
-			.eq('payload->>run_id', runId);
-		expect(jobs?.length ?? 0).toBeGreaterThan(0);
+		const jobs = await readRows(
+			'segment_match jobs by run_id',
+			admin.from('jobs').select('id').eq('kind', 'segment_match').eq('payload->>run_id', runId),
+		);
+		expect(jobs.length).toBeGreaterThan(0);
 
 		const { url, serviceKey } = loadSupabaseEnv();
 		const res = await fetch(`${url}/functions/v1/segment-match`, {
@@ -130,14 +130,16 @@ test.describe('a run over a real park course', () => {
 		});
 		expect(res.status, await res.clone().text()).toBe(200);
 
-		const { data: efforts, error: effErr } = await admin
-			.from('global_segment_efforts')
-			.select('time_seconds, started_at, matched_by, user_id')
-			.eq('global_segment_id', seg.id)
-			.eq('run_id', runId);
-		if (effErr) throw effErr;
+		const efforts = await readRows(
+			'global_segment_efforts by run_id',
+			admin
+				.from('global_segment_efforts')
+				.select('time_seconds, started_at, matched_by, user_id')
+				.eq('global_segment_id', seg.id)
+				.eq('run_id', runId),
+		);
 		expect(efforts).toHaveLength(1);
-		const effort = efforts![0];
+		const effort = efforts[0] as { time_seconds: number | string; started_at: string; matched_by: string; user_id: string };
 		const recorded = clean.matched['beaver-lake-trail'];
 		expect(effort.matched_by).toBe('gate');
 		expect(effort.user_id).toBe(runner.id);

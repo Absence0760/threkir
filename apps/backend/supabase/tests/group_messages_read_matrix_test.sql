@@ -10,7 +10,7 @@
 -- sender was active.
 
 begin;
-select plan(86);
+select plan(90);
 
 insert into private.feature_flags (name, enabled) values ('group_messages', true)
 on conflict (name) do update set enabled = true;
@@ -185,6 +185,19 @@ select is(
     where conversation_id = 'c1365000-0000-0000-0000-000000000001' and body = 'still here'),
   1, 'the blocked member''s post lands in the group');
 
+set local "request.jwt.claims" = '{"sub":"a1365000-0000-0000-0000-0000000000a3","role":"authenticated"}';
+select is_empty(
+  $$select 1 from direct_message_reactions
+     where message_id = 'd1365000-0000-0000-0000-000000000005'
+       and user_id = 'a1365000-0000-0000-0000-0000000000a7'$$,
+  'the blocker never sees a reaction from the member they blocked');
+reset role;
+select is(
+  (select count(*)::int from direct_message_reactions
+    where message_id = 'd1365000-0000-0000-0000-000000000005' and user_id = 'a1365000-0000-0000-0000-0000000000a7'),
+  1, 'the blocked member''s reaction is stored, so nothing tells them about the block');
+set local role authenticated;
+
 -- ── a member who joined after a message ──
 
 set local "request.jwt.claims" = '{"sub":"a1365000-0000-0000-0000-0000000000a8","role":"authenticated"}';
@@ -264,6 +277,9 @@ select throws_ok(
 select throws_ok(
   $$select group_members('c1365000-0000-0000-0000-000000000001')$$,
   'P0002', null, 'a removed member cannot list the roster');
+select is_empty(
+  $$select 1 from conversations where id = 'c1365000-0000-0000-0000-000000000001'$$,
+  'a removed member cannot see the group''s conversation row or its title');
 select throws_ok(
   $$select hide_conversation('c1365000-0000-0000-0000-000000000001', 'd1365000-0000-0000-0000-000000000001')$$,
   'P0002', null, 'a removed member cannot hide through a message they can no longer read');
@@ -316,6 +332,9 @@ select is(
 select throws_ok(
   $$select group_members('c1365000-0000-0000-0000-000000000001')$$,
   'P0002', null, 'an invitee cannot list the member names before accepting');
+select is(
+  (select title from conversations where id = 'c1365000-0000-0000-0000-000000000001'),
+  'Tuesday tempo', 'an invitee with a live invite reads the group''s title');
 select throws_ok(
   $$insert into direct_messages (sender_id, conversation_id, body)
     values ('a1365000-0000-0000-0000-0000000000a4', 'c1365000-0000-0000-0000-000000000001', 'hi all')$$,

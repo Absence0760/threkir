@@ -84,7 +84,7 @@ test('the Pocahontas manifest maps to six loop courses with their distances', ()
 	assert.deepEqual(
 		payload.courses.map((c) => [c.slug, c.course_shape, c.distance_m, c.official_distance_m, c.checkpoints.length, c.laps]),
 		[
-			['beaver-lake-trail', 'loop', 3595, null, 3, 1],
+			['beaver-lake-trail', 'loop', 3595, null, 4, 1],
 			['swift-creek-5k', 'loop', 5000, 5000, 3, 1],
 			['swift-creek-10k', 'loop', 10000, 10000, 6, 2],
 			['swift-creek-half', 'loop', 21097.5, 21097.5, 6, 1],

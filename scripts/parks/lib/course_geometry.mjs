@@ -697,23 +697,52 @@ export function simplify(points, epsilonM) {
 }
 
 /**
- * Evenly spaced points along the course, by distance, excluding the start
- * and finish (the matcher already requires those). With three, a loop's
- * runner must pass the quarter, half and three-quarter marks in order, so no
- * cut across the middle earns a time.
+ * Where a course's checkpoints sit, in metres along it from the start. By
+ * default evenly spaced, excluding the start and finish (the matcher already
+ * requires those): with three, a loop's runner must pass the quarter, half
+ * and three-quarter marks in order, so no cut across the middle earns a time.
+ *
+ * Even spacing can land a checkpoint where a cut passes close by: on Beaver
+ * Lake the half mark sits where the trail doubles back across the straight
+ * line from about 1450 m to 2150 m, 22 m from it, inside the matcher's 35 m
+ * tolerance (decisions § 2463). `atM` names the positions instead: one per
+ * checkpoint, strictly increasing, each inside the course.
+ *
+ * @param {number} totalM the course's length
+ * @param {number} count how many checkpoints
+ * @param {number[] | undefined} [atM] explicit positions
+ * @returns {number[]}
+ */
+export function checkpointPositionsM(totalM, count, atM) {
+	if (atM === undefined) {
+		return Array.from({ length: count }, (_, k) => (totalM * (k + 1)) / (count + 1));
+	}
+	if (!Array.isArray(atM) || atM.length !== count) {
+		throw new Error(`checkpoint_at_m names ${Array.isArray(atM) ? atM.length : 'no'} positions for ${count} checkpoints`);
+	}
+	let prev = 0;
+	for (const m of atM) {
+		if (typeof m !== 'number' || !Number.isFinite(m) || m <= prev || m >= totalM) {
+			throw new Error(`checkpoint_at_m must increase strictly inside the course (0, ${Math.round(totalM)} m), got ${m}`);
+		}
+		prev = m;
+	}
+	return [...atM];
+}
+
+/**
+ * The points `atM` metres along the course.
  *
  * @param {LatLng[]} points
- * @param {number} count
+ * @param {number[]} atM increasing distances from the start
  * @returns {Array<{ lat: number, lng: number }>}
  */
-export function placeCheckpoints(points, count) {
-	const total = pathLengthM(points);
+export function placeCheckpoints(points, atM) {
 	/** @type {Array<{ lat: number, lng: number }>} */
 	const out = [];
 	let walked = 0;
 	let i = 1;
-	for (let k = 1; k <= count; k++) {
-		const target = (total * k) / (count + 1);
+	for (const target of atM) {
 		while (i < points.length) {
 			const step = haversineM(points[i - 1], points[i]);
 			if (walked + step >= target) {

@@ -97,6 +97,7 @@ test('the fixture covers every case issue #1342 step 5c lists', () => {
 		'50k_clean',
 		'beaver_canopy',
 		'beaver_shortcut',
+		'beaver_cut',
 		'beaver_wrong_way',
 		'beaver_short',
 		'beaver_nearby',
@@ -117,14 +118,30 @@ test('the fixture covers every case issue #1342 step 5c lists', () => {
 	}
 });
 
-test('the shortcut is refused by checkpoint 2 alone: without the checkpoints the same run is timed', () => {
-	const c = caseBy('beaver_shortcut');
+for (const key of ['beaver_shortcut', 'beaver_cut']) {
+	test(`${key} is refused by the checkpoints alone: without them the same run is timed`, () => {
+		const c = caseBy(key);
+		const beaver = geometries[slugs.indexOf('beaver-lake-trail')];
+		const track = decodeTrack(c.track, baseMs);
+		assert.equal(computeGlobalSegmentEfforts(track, [beaver])[0], null);
+		const unguarded = computeGlobalSegmentEfforts(track, [{ ...beaver, checkpoints: [] }])[0];
+		assert.ok(unguarded, 'the cut is inside the length guard, so only a checkpoint can refuse it');
+		assert.equal(unguarded.matched_by, 'gate');
+	});
+}
+
+// decisions § 2463: Beaver Lake's checkpoints used to sit at the quarter, half
+// and three-quarter marks. The half mark (1797 m) is where the trail doubles
+// back across the straight line from 1450 m to 2150 m, 22 m from it, so that
+// cut was timed. Checkpoints 2 and 3 now sit on the bends either side.
+test('the 1450 m to 2150 m cut was timed by the evenly spaced checkpoints, and is refused by the placed ones', () => {
 	const beaver = geometries[slugs.indexOf('beaver-lake-trail')];
-	const track = decodeTrack(c.track, baseMs);
+	const [first, , , last] = beaver.checkpoints ?? [];
+	const evenlySpaced = [first, { lat: 37.38116, lng: -77.591165 }, last];
+	const track = decodeTrack(caseBy('beaver_cut').track, baseMs);
+	const old = computeGlobalSegmentEfforts(track, [{ ...beaver, checkpoints: evenlySpaced }])[0];
+	assert.ok(old, 'the old half-mark checkpoint is within 35 m of the cut');
 	assert.equal(computeGlobalSegmentEfforts(track, [beaver])[0], null);
-	const unguarded = computeGlobalSegmentEfforts(track, [{ ...beaver, checkpoints: [] }])[0];
-	assert.ok(unguarded, 'the cut is inside the length guard, so only a checkpoint can refuse it');
-	assert.equal(unguarded.matched_by, 'gate');
 });
 
 test('the wrong way round is refused by the lines alone: it passes every checkpoint, in reverse', () => {

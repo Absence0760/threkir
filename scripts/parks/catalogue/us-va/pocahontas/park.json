@@ -112,7 +112,8 @@
         "getting_there": "Park at the CCC Museum lot and take the spur from the Beaver Lake trailhead. The course starts where the spur meets the loop.",
         "ground_checked_at": null
       },
-      "checkpoint_count": 3,
+      "checkpoint_count": 4,
+      "checkpoint_at_m": [899, 1635, 1955, 2696],
       "published": {
         "distance_mi": 2.3,
         "source": "https://www.dcr.virginia.gov/state-parks/hiking-central",

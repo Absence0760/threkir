@@ -5721,7 +5721,7 @@ export async function fetchRunRetimeContext(run: {
 	if (eventId === null || instanceStart === null) return null;
 
 	const [session, courses, event, attendee] = await Promise.all([
-		fetchRaceSession(eventId, instanceStart),
+		readRaceSession(eventId, instanceStart),
 		supabase
 			.from(TABLES.race_session_courses)
 			.select(
@@ -6111,12 +6111,27 @@ export async function fetchRaceSession(
 	// migration 20260813_001). Admin row-level mutations
 	// (armRace / startRace / endRace) below keep writing the base
 	// table so the columns reach Postgres unmasked.
-	const { data } = await supabase
+	try {
+		return await readRaceSession(eventId, instanceStart);
+	} catch (e) {
+		console.error('race session read failed', { code: (e as { code?: string }).code });
+		return null;
+	}
+}
+
+/// [fetchRaceSession] for a caller that must tell a failed read from no
+/// session: the read error throws.
+export async function readRaceSession(
+	eventId: string,
+	instanceStart: string
+): Promise<RaceSessionRow | null> {
+	const { data, error } = await supabase
 		.from('race_sessions_redacted')
 		.select('*')
 		.eq('event_id', eventId)
 		.eq('instance_start', instanceStart)
 		.maybeSingle();
+	if (error) throw dbError(error);
 	return (data as RaceSessionRow | null) ?? null;
 }
 

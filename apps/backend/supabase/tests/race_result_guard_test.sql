@@ -1,29 +1,37 @@
--- Pins migration 20270728000002 (decisions § 1849, § 1850) and the parts
--- of the 20270727000001 race guards race_courses_test does not reach.
+-- Pins migration 20270728000002 (decisions § 1849, § 1850), the parts
+-- of the 20270727000001 race guards race_courses_test does not reach, and
+-- 20271222002471's course / distance lock (decisions § 2471).
 --
---   1-2.   An armed race and a cancelled race do not close the result window.
---   3-4.   A second going upsert that omits the course keeps the stored one; a
+--   1-4.   An armed race and a cancelled race do not close the result window.
+--   5-6.   A second going upsert that omits the course keeps the stored one; a
 --          write that explicitly clears it is still refused.
---   5-8.   A runner's own timing write replaces the race columns it implies: a
+--   7-10.  A runner's own timing write replaces the race columns it implies: a
 --          DNF keeps none, a manual resubmit drops the stale gun time, and
 --          'host' never survives the runner's own write (sent or left over).
---   9-11.  Negative gun / chip times and an unknown finish method are refused.
---   12.    An organiser's edit of a bib-only row stamps finish_method host.
---   13-16. race_pending_dnf_count: the director's count; NULL for an organiser
+--   11-13. Negative gun / chip times and an unknown finish method are refused.
+--   14.    An organiser's edit of a bib-only row stamps finish_method host.
+--   15-18. race_pending_dnf_count: the director's count; NULL for an organiser
 --          who is not a director and for a non-member; anon cannot call it.
---   17-19. End files a DNF only for the pinged, non-declined attendee with no
+--   19-21. End files a DNF only for the pinged, non-declined attendee with no
 --          result, moves no finisher's rank, and a later update of the
 --          finished session files nothing more.
---   20.    A gun-time change more than 24 h after the finish is refused with
+--   22-24. Inside the 24 h window a racer moves their result to another course
+--          and changes its distance, and moves it back.
+--   25.    A gun-time change more than 24 h after the finish is refused with
 --          event_results_race_guard's race_result_window_closed message.
---   21-23. Past the window a racer's non-timing edit lands, the race director
---          corrects a racer's time, and an event organiser who is not a
---          director edits a bib-only time.
---   24.    event_results_redacted carries the four race columns.
---   25.    The NOT VALID constraints were validated by 20270727000002.
+--   26.    Past the window a racer's non-timing edit (a note) lands.
+--   27-29. Past the window a racer's course move and distance change are each
+--          refused with the same message, and the row keeps both.
+--   30-31. Past the window the race director corrects a racer's time, and an
+--          event organiser who is not a director edits a bib-only time.
+--   32-35. Past the window the race director moves a racer's result to another
+--          course with its distance, and an event organiser who is not a
+--          director does the same for a bib-only result.
+--   36.    event_results_redacted carries the four race columns.
+--   37.    The NOT VALID constraints were validated by 20270727000002.
 
 begin;
-select plan(27);
+select plan(37);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -379,7 +387,34 @@ select is(
   'a later update of the finished race files no second DNF'
 );
 
--- ── 20: the window 24 h after the finish ────────────────────────────────────
+-- ── 22-24: inside the window the course and distance still move ────────────
+set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000002","role":"authenticated"}';
+
+select lives_ok(
+  $$ update event_results
+        set course_id = 'e7281000-0000-0000-0000-0000000000a2', distance_m = 5000
+      where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+        and user_id = 'e7281000-0000-0000-0000-000000000002' $$,
+  'inside the window a racer moves their result to another course with its distance'
+);
+
+select is(
+  (select course_id::text || '|' || distance_m::int from event_results
+    where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+      and user_id = 'e7281000-0000-0000-0000-000000000002'),
+  'e7281000-0000-0000-0000-0000000000a2|5000',
+  'the in-window course move and distance change are stored'
+);
+
+select lives_ok(
+  $$ update event_results
+        set course_id = 'e7281000-0000-0000-0000-0000000000a1', distance_m = 10000
+      where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+        and user_id = 'e7281000-0000-0000-0000-000000000002' $$,
+  'inside the window the racer moves it back'
+);
+
+-- ── 25: the window 24 h after the finish ────────────────────────────────────
 set local role service_role;
 set local "request.jwt.claims" = '{"role":"service_role"}';
 update race_sessions set finished_at = now() - interval '25 hours'
@@ -409,6 +444,33 @@ select lives_ok(
   'a racer''s edit that changes no timing column still lands after the window'
 );
 
+-- ── 27-29: past the window the course and distance are locked ───────────────
+select throws_ok(
+  $$ update event_results set course_id = 'e7281000-0000-0000-0000-0000000000a2'
+      where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+        and user_id = 'e7281000-0000-0000-0000-000000000002' $$,
+  '23514',
+  current_setting('rg.window_closed'),
+  'a racer cannot move their result to another course more than 24 h after the finish'
+);
+
+select throws_ok(
+  $$ update event_results set distance_m = 9800
+      where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+        and user_id = 'e7281000-0000-0000-0000-000000000002' $$,
+  '23514',
+  current_setting('rg.window_closed'),
+  'a racer cannot change their result''s distance more than 24 h after the finish'
+);
+
+select is(
+  (select course_id::text || '|' || distance_m::int from event_results
+    where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+      and user_id = 'e7281000-0000-0000-0000-000000000002'),
+  'e7281000-0000-0000-0000-0000000000a1|10000',
+  'the refused writes leave the racer''s course and distance as they were'
+);
+
 set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000001","role":"authenticated"}';
 
 update event_results set duration_s = 1470, gun_time_s = 1470
@@ -435,7 +497,42 @@ select is(
   'an event organiser who is not a director still edits a bib-only time after the window'
 );
 
--- ── 24: the redacted read surface ───────────────────────────────────────────
+-- ── 32-35: the host still corrects a course after the window ────────────────
+set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000001","role":"authenticated"}';
+
+select lives_ok(
+  $$ update event_results
+        set course_id = 'e7281000-0000-0000-0000-0000000000a1', distance_m = 10000
+      where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+        and user_id = 'e7281000-0000-0000-0000-000000000003' $$,
+  'the race director moves a racer''s result to another course after the window'
+);
+
+select is(
+  (select course_id::text || '|' || distance_m::int from event_results
+    where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+      and user_id = 'e7281000-0000-0000-0000-000000000003'),
+  'e7281000-0000-0000-0000-0000000000a1|10000',
+  'the director''s course move and distance change are stored'
+);
+
+set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000006","role":"authenticated"}';
+
+select lives_ok(
+  $$ update event_results
+        set course_id = 'e7281000-0000-0000-0000-0000000000a2', distance_m = 5000
+      where event_id = 'e7281000-0000-0000-0000-0000000000e3' and bib = '77' $$,
+  'an event organiser who is not a director moves a bib-only result to a course after the window'
+);
+
+select is(
+  (select course_id::text || '|' || distance_m::int from event_results
+    where event_id = 'e7281000-0000-0000-0000-0000000000e3' and bib = '77'),
+  'e7281000-0000-0000-0000-0000000000a2|5000',
+  'the organiser''s course move and distance change are stored'
+);
+
+-- ── 36: the redacted read surface ───────────────────────────────────────────
 set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000007","role":"authenticated"}';
 
 select is(
@@ -448,7 +545,7 @@ select is(
   'another viewer reads a result''s course, gun time, chip time and method'
 );
 
--- ── 25: validated constraints ───────────────────────────────────────────────
+-- ── 37: validated constraints ───────────────────────────────────────────────
 set local role service_role;
 
 select is(

@@ -1,11 +1,9 @@
 /// What an importer says about how much of a history it read, and how much of
 /// it a client may believe.
 ///
-/// `parkrun-import` answers `{ imported, skipped, total, complete }` and
-/// `race-results-import` answers `complete` on every success shape. Neither
-/// count reveals a shortfall on its own: a parkrun history capped at
-/// `MAX_PARKRUN_ROWS` and a finisher field truncated at 2,000 both present as
-/// a successful import of everything that was there.
+/// `race-results-import` answers `complete` on every success shape. The count
+/// does not reveal a shortfall on its own: a finisher field truncated at 2,000
+/// presents as a successful import of everything that was there.
 ///
 /// Fail-closed — anything this parser cannot read as an explicit `true` is
 /// reported as partial. One transport per importer, shipped from this repo
@@ -20,7 +18,7 @@
 /// an import, and one home for the rule is what stops the two parsers reading
 /// the same malformed body differently. `strava_sync_result` composes on this
 /// module rather than the reverse: naming the general rule after one provider
-/// is what put parkrun and race-results grading in a file called
+/// is what put race-results grading in a file called
 /// `strava_sync_result` in the first place (decisions § 1014).
 
 /// A count the function sent. Only a non-negative integer is a count;

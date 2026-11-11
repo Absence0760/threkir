@@ -145,8 +145,8 @@
 			analytics), error logs, and — if you enable notifications — a push token.
 		</li>
 		<li>
-			<strong>Third-party imports</strong>: when you connect Strava, parkrun, Garmin, Health
-			Connect, or HealthKit, we receive the activity data they publish to us.
+			<strong>Third-party imports</strong>: when you connect Strava, Garmin, Health Connect, or
+			HealthKit, we receive the activity data they publish to us.
 		</li>
 		<li data-testid="signup-source">
 			<strong>How you found us</strong>: when you create an account on the website, where your
@@ -339,14 +339,12 @@
 			and body.
 		</li>
 		<li>
-			<strong>RunSignUp / ChronoTrack / UltraSignup</strong> — race-result import, only when you
-			import or link a race. We may send an optional race-platform user id and receive finisher
-			results (names, bib numbers, times). For UltraSignup we send the first and last name you
-			enter to find your profile, and keep the profile you pick with that name on your account
-			until you unlink it.
+			<strong>RunSignUp / ChronoTrack</strong> — race-result import, only when you import or link
+			a race. We may send an optional race-platform user id and receive finisher results (names,
+			bib numbers, times).
 		</li>
 		<li>
-			<strong>Strava / parkrun / Garmin Connect / Health Connect / HealthKit</strong> — only when
+			<strong>Strava / Garmin Connect / Health Connect / HealthKit</strong> — only when
 			you connect them. Receive OAuth tokens; return the activity data they publish to us.
 		</li>
 	</ul>

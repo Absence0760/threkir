@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { dbError, refusalCode } from '#lib/core/supabase_error.ts';
 	import { AppError } from '#lib/core/app_error.ts';
-	import { parseImportCompleteness } from '#lib/integrations/import_completeness.ts';
 	import { normalizeParkrunAthleteNumber } from '#lib/integrations/parkrun_barcode.ts';
 	import { activeFormatLocale } from '#lib/format/time.ts';
 	import { onDestroy, onMount, tick } from 'svelte';
@@ -127,8 +126,8 @@
 		restingHrParsed !== null && !isUsableRestingHrBpm(restingHrParsed)
 	);
 	const restingHrBounds = { min: RESTING_HR_BPM_MIN, max: RESTING_HR_BPM_MAX };
-	// The same rule `parkrun-import` enforces, so a number saved here is one the
-	// import and the barcode can both use.
+	// The same shape the `user_profiles.parkrun_number` CHECK accepts, so a
+	// number saved here is one the barcode can render.
 	const parkrunNormalized = $derived(normalizeParkrunAthleteNumber(parkrunNumber));
 	const parkrunNumberInvalid = $derived(parkrunNumber.trim().length > 0 && parkrunNormalized === null);
 	// Cycle/pregnancy-aware training inputs (persona runner-woman, decisions
@@ -261,59 +260,6 @@
 		emailEditing = false;
 		newEmail = '';
 		emailChangeError = null;
-	}
-
-	let parkrunImporting = $state(false);
-
-	/// Kick the existing `parkrun-import` Edge Function with the
-	/// user's stashed athlete number. The function does the scrape +
-	/// runs insert; we just surface a status toast with what came
-	/// back. One-button import — no OAuth, no tokens to manage.
-	async function handleParkrunImport() {
-		if (!parkrunNormalized || parkrunImporting) return;
-		parkrunImporting = true;
-		try {
-			const { data: { session } } = await supabase.auth.getSession();
-			if (!session) throw new AppError('settingsAccount.notSignedIn', { message: m('settingsAccount.notSignedIn') });
-			const url = `${PUBLIC_SUPABASE_URL}/functions/v1/parkrun-import`;
-			const resp = await fetch(url, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${session.access_token}`,
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ athleteNumber: parkrunNormalized }),
-			});
-			if (!resp.ok) {
-				const body = await resp.json().catch(() => ({}));
-				throw new Error(body.error ?? `HTTP ${resp.status}`);
-			}
-			const body = await resp.json().catch(() => ({}));
-			// A capped history and a whole one both arrive as a positive count,
-			// so the shortfall has to be said outright or the runner reads
-			// "Imported 40 results" as "your parkrun history is here"
-			// (decisions § 1014).
-			const result = parseImportCompleteness(body);
-			if (!result.complete) {
-				showToast(
-					result.total !== null
-						? m('integrations.importPartialOf', { n: result.imported, total: result.total })
-						: m('integrations.importPartial', { n: result.imported }),
-					'error',
-				);
-			} else {
-				showToast(
-					result.imported > 0
-						? m('settingsAccount.parkrunImported', { n: result.imported })
-						: m('settingsAccount.parkrunNoneNew'),
-					'success',
-				);
-			}
-		} catch (err) {
-			showToast(m('settingsAccount.parkrunImportFailed', { error: errorCopy(err, m, 'settingsAccount.parkrunImportFailed') }), 'error');
-		} finally {
-			parkrunImporting = false;
-		}
 	}
 
 	onMount(async () => {
@@ -1442,15 +1388,6 @@
 					/>
 					{#if parkrunNumberInvalid}
 						<span class="field-error" data-testid="parkrun-number-error">{m('settingsAccount.parkrunNumberInvalid')}</span>
-					{:else if parkrunNormalized}
-						<button
-							type="button"
-							class="btn btn-outline btn-sm parkrun-import-btn"
-							onclick={handleParkrunImport}
-							disabled={parkrunImporting}
-						>
-							{parkrunImporting ? m('settingsAccount.importing') : m('settingsAccount.pullParkrun')}
-						</button>
 					{/if}
 				</label>
 				<!-- Not consent-disabled: the column it writes is the under-18

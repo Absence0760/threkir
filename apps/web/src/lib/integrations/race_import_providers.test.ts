@@ -20,11 +20,11 @@ test('a listing provider resolves to its own leg', () => {
 });
 
 test('a listing provider with no import leg falls through to manual paste', () => {
-	// parkrun / manual / raceresult listings are real `race_listings.provider`
-	// values the Edge Function has no leg for. Answering with a leg would offer
-	// an import that 400s; answering null is what leaves the paste form as the
-	// only affordance, which is correct for them.
-	for (const p of ['parkrun', 'manual', 'raceresult']) {
+	// ultrasignup / manual / raceresult listings are real
+	// `race_listings.provider` values the Edge Function has no leg for. Answering
+	// with a leg would offer an import that 400s; answering null is what leaves
+	// the paste form as the only affordance, which is correct for them.
+	for (const p of ['ultrasignup', 'manual', 'raceresult']) {
 		assert.equal(raceImportLegFor(p), null);
 	}
 });
@@ -61,15 +61,8 @@ test('every leg carries its own explainer and its own test ids', () => {
 
 test('every leg has a pre-fetch scope gate, and the record says it is required', () => {
 	// A leg with no gate fetches an unscoped upstream page and then stamps the
-	// CALLER's user_id onto whatever comes back. UltraSignup shipped without one
-	// for exactly as long as nothing populated its listings: its branch fell back
-	// to the listing's `provider_race_id`, which is a RACE id by name and by every
-	// other provider's use of it, read as an athlete account id.
-	//
-	// The scope FIELD differs by leg (a bib narrows a race's results; UltraSignup
-	// is scoped by the person the runner linked in Settings) — that is not the
-	// invariant. The invariant is that every leg has a gate and the UI knows
-	// to demand the field before submitting.
+	// CALLER's user_id onto whatever comes back. The invariant is that every leg
+	// has a gate and the UI knows to demand the bib before submitting.
 	const lib = readFileSync(
 		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/lib.ts'),
 		'utf-8'
@@ -79,7 +72,7 @@ test('every leg has a pre-fetch scope gate, and the record says it is required',
 			match[1].toLowerCase()
 		)
 	);
-	assert.ok(gated.size >= 3, 'found no scope gates — the parser stopped matching');
+	assert.ok(gated.size >= 2, 'found no scope gates — the parser stopped matching');
 	for (const [leg, spec] of Object.entries(RACE_IMPORT_LEGS)) {
 		assert.ok(gated.has(leg), `${leg} has no ${leg}ScopeGate in the Edge Function`);
 		assert.equal(spec.scopeRequired, true, `${leg} is gated server-side but not in the UI`);
@@ -87,10 +80,10 @@ test('every leg has a pre-fetch scope gate, and the record says it is required',
 });
 
 test('every credential-gated leg the Edge Function ships has a row here', () => {
-	// The defect this module exists for: the function grew ultrasignup and
-	// chronotrack legs while the calendar's import modal still branched on
-	// runsignup alone, so provisioning either credential lit up a Settings card
-	// linking to a page where the built leg could not be reached.
+	// The defect this module exists for: the function grew a chronotrack leg
+	// while the calendar's import modal still branched on runsignup alone, so
+	// provisioning its credential lit up a Settings card linking to a page where
+	// the built leg could not be reached.
 	const source = readFileSync(
 		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/handler.ts'),
 		'utf-8'
@@ -107,47 +100,5 @@ test('every credential-gated leg the Edge Function ships has a row here', () => 
 		[...RACE_IMPORT_LEG_NAMES].sort(),
 		'race-results-import dispatches on a provider the race calendar cannot reach ' +
 			'(or offers one the function does not have).'
-	);
-});
-
-test('the UltraSignup card probes the results leg, as a client that speaks the person flow', () => {
-	// `race-listings-sync` gates UltraSignup on ULTRASIGNUP_API_KEY; the results
-	// leg reads a keyless feed and answers on its own opt-in (decisions § 1841),
-	// so the two can disagree and the card — which is about the results leg —
-	// must ask that one. It must also say it speaks the person flow: the probe
-	// keeps a client that would send the retired athlete id dark.
-	const index = readFileSync(
-		join(REPO_ROOT, 'apps/backend/supabase/functions/race-results-import/handler.ts'),
-		'utf8'
-	);
-	const probeAt = index.indexOf('if (isProbe) {');
-	assert.ok(
-		probeAt > -1,
-		'race-results-import no longer has a probe branch — reread it and re-anchor this guard'
-	);
-	const branch = index.slice(probeAt, index.indexOf("error: 'unknown_provider'", probeAt));
-	assert.ok(
-		/provider === 'ultrasignup'[\s\S]*ultraSignUpProbe\(/.test(branch),
-		'the probe no longer answers UltraSignup through its own gate'
-	);
-
-	const data = readFileSync(join(REPO_ROOT, 'apps/web/src/lib/core/data.ts'), 'utf8');
-	const fn = data.slice(
-		data.indexOf('export async function isUltraSignUpConfigured'),
-		data.indexOf('export async function isChronoTrackConfigured')
-	);
-	assert.ok(fn.length > 0, 'isUltraSignUpConfigured moved — re-anchor this guard');
-	assert.ok(
-		fn.includes("invoke('race-results-import'"),
-		'the UltraSignup card must ask the leg that would actually run'
-	);
-	assert.ok(
-		fn.includes('probe: true'),
-		'race-results-import only reports configuration in probe mode; without the flag ' +
-			'this becomes a real import with no listing'
-	);
-	assert.ok(
-		fn.includes("ultraSignUpFlow: 'person'"),
-		'without the flow flag the probe answers client_unsupported and the card never lights'
 	);
 });

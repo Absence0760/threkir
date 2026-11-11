@@ -461,6 +461,7 @@ Checks that the lines do not miss finishes the old 30 m circle caught, on the ow
      'finish_lat', coalesce(f.finish_lat, c.finish_lat),
      'finish_lng', coalesce(f.finish_lng, c.finish_lng),
      'finish_line_self_cross', coalesce(f.finish_line_self_cross, c.finish_line_self_cross),
+     'finish_min_coverage_m', f.finish_min_coverage_m,
      'start_gate_lat', coalesce(f.start_gate_lat, c.start_gate_lat),
      'start_gate_lng', coalesce(f.start_gate_lng, c.start_gate_lng),
      'start_gate_bearing_deg', coalesce(f.start_gate_bearing_deg, c.start_gate_bearing_deg),

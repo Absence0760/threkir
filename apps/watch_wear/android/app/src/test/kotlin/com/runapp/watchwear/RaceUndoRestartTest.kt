@@ -177,6 +177,9 @@ class RaceUndoRestartTest {
         assertNull(rearmedLineFinish(crossing(at(2000), 6_000.0, GateDirection.BACKWARD), start, undone, 5000.0))
         assertNull(rearmedLineFinish(crossing(at(2000), 6_000.0), start, undone, null))
         assertNotNull("from the Start press without a start", rearmedLineFinish(crossing(at(2000), 4_500.0), null, undone, 5000.0))
+        // A lap minimum above the 90 % share raises the bar (decisions § 2472).
+        assertNull("90 % is not the lap minimum", rearmedLineFinish(crossing(at(2000), 30.0 + 4_500.0), start, undone, 5000.0, 4_750.0))
+        assertNotNull(rearmedLineFinish(crossing(at(2000), 30.0 + 4_750.0), start, undone, 5000.0, 4_750.0))
     }
 
     @Test

@@ -44,7 +44,7 @@ internal fun raceSinceStartLineS(start: RaceFinish.Start?, nowMs: Long): Int? {
 /// ([DEVICE]).
 internal enum class RaceStartDetection(val wire: String) { GATE("gate"), DEVICE("device") }
 
-/// `race_finish v2` over this course, or null when it cannot finish itself:
+/// `race_finish v3` over this course, or null when it cannot finish itself:
 /// no distance, no finish, or a finish line the route crosses before its end,
 /// which finishes by hand only. A course with neither line in a gun mode is
 /// v1's closest approach. Mirrors the phone's `_buildDetector`.
@@ -66,6 +66,7 @@ internal fun raceDetectorFor(
         finishGate = course.finishGate,
         mode = if (selfTimed) RaceFinish.StartMode.SELF_TIMED else RaceFinish.StartMode.GUN,
         goAtMs = if (selfTimed) null else goDeviceMs,
+        minCoverageM = course.minCoverageM,
     )
 }
 
@@ -75,18 +76,21 @@ internal fun raceDetectorFor(
 /// from the kept [start] (from the Start press without one). The share a
 /// finish with no start line needs, not the 60 % a committed start earns, so
 /// the early crossing that was taken back cannot finish again; the phone's
-/// re-armed detector counts the same way. Null otherwise, and for a course
-/// with no usable distance.
+/// re-armed detector counts the same way. A lap minimum the race froze
+/// ([minCoverageM]) raises that bar as it does the detector's. Null otherwise,
+/// and for a course with no usable distance.
 internal fun rearmedLineFinish(
     x: GateCrossing,
     start: RaceFinish.Start?,
     undoneFinishMs: Long,
     courseDistanceM: Double?,
+    minCoverageM: Double? = null,
 ): RaceFinish.Finish? {
     if (x.direction != GateDirection.FORWARD || x.tMs <= undoneFinishMs.toDouble()) return null
     val d = courseDistanceM ?: return null
     if (!d.isFinite() || d <= 0.0) return null
-    if (x.coveredM - (start?.coveredM ?: 0.0) < d * RaceFinish.MIN_DISTANCE_FRACTION) return null
+    val need = maxOf(d * RaceFinish.MIN_DISTANCE_FRACTION, minCoverageM?.takeIf { it.isFinite() } ?: 0.0)
+    if (x.coveredM - (start?.coveredM ?: 0.0) < need) return null
     return RaceFinish.Finish(
         epochMs = Math.round(x.tMs),
         distanceToFinishM = abs(x.offsetM),
@@ -344,7 +348,7 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
     private fun offerRearmed(line: GateCrossingDetector, fix: RaceFinish.Fix): RaceFinish.Finish? {
         val r = rearm ?: return null
         val x = line.offer(GateFix(fix.lat, fix.lng, fix.epochMs.toDouble(), fix.coveredM)) ?: return null
-        val f = rearmedLineFinish(x, r.start, r.undoneFinishMs, course?.distanceM) ?: return null
+        val f = rearmedLineFinish(x, r.start, r.undoneFinishMs, course?.distanceM, course?.minCoverageM) ?: return null
         return onFinish(f)
     }
 

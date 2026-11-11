@@ -5585,7 +5585,7 @@ export async function fetchRunRetimeContext(run: {
 		supabase
 			.from(TABLES.race_session_courses)
 			.select(
-				'course_id, distance_m, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_lat, finish_lng, finish_line_self_cross'
+				'course_id, distance_m, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_lat, finish_lng, finish_line_self_cross, finish_min_coverage_m'
 			)
 			.eq('event_id', eventId)
 			.eq('instance_start', instanceStart),

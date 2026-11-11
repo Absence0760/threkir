@@ -64,7 +64,7 @@ Cross-service operator runbooks:
                    ├── Auth (email + Google + Apple)
                    ├── Storage (runs/, route-files/, run-photos/)
                    ├── Realtime
-                   ├── Edge Functions (parkrun-import, refresh-tokens,
+                   ├── Edge Functions (refresh-tokens,
                    │                   strava-import, strava-webhook,
                    │                   revenuecat-webhook, delete-account,
                    │                   export-data)
@@ -857,9 +857,16 @@ The CTL/ATL/TSB direction gate on the adaptive re-plan (decisions § 144, § 197
 
 The "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976) is built on web and mobile and off. Off, neither surface reads a body weight, the toggle is hidden, and the flat fluid rate stands whatever `?bw=1` a link carries. Flip `PUBLIC_WEIGHT_FLUID_ENABLED` (web build, under `web_env` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md)) and `WEIGHT_FLUID_ENABLED` (the mobile dotenv, [apps/mobile_android/deployment.md](../../apps/mobile_android/deployment.md)) together, only after its [pre-deploy checklist](../features/race_fueling_plan.md) item lands: the CISO / counsel review of a new Art 9 use of body weight against the health-data consent copy. If the review finds the consent copy lists its uses exhaustively, fuelling is added to it before the flip.
 
-### Upcoming parkruns — after parkrun's written permission
+### Retired scraper functions and secrets
 
-The parkrun leg of `race-listings-sync` and `race-listings-sweep` (decisions § 1958) is off unless the function secret `PARKRUN_EVENTS_ENABLED` is the literal `true`; off, the sweep makes no parkrun request. Get parkrun's written permission to list its events (issue #1148 step 1), land whatever it asks for (attribution, link wording; see the [followups](../product/followups.md) entry), then add `"PARKRUN_EVENTS_ENABLED": { "enabled": true, "signoff": "<link to parkrun's permission>" }` to `function_env` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR; the next backend release sets the function secret with `supabase secrets set` and reports `set` / `unchanged`. It rides the RunSignUp sweep below, so that sweep must be armed first. The same edit with `"enabled": false` turns the leg off again.
+[decisions § SCRAPER_ADR](../architecture/decisions.md) removed every integration that scraped a third party's website: the `parkrun-import` Edge Function, the parkrun events leg of `race-listings-sync` / `race-listings-sweep`, and the UltraSignup results leg of `race-results-import`. Removing the code does not remove what is deployed: the release workflow (`release-backend.yml`) deploys every directory under `supabase/functions/` and never deletes one, so `parkrun-import` keeps answering in prod until an operator deletes it. Once, per project, after the backend release that carries migration `20271216170001`:
+
+```bash
+supabase functions delete parkrun-import --project-ref <ref>
+supabase secrets unset PARKRUN_USER_AGENT PARKRUN_EVENTS_ENABLED ULTRASIGNUP_RESULTS_ENABLED --project-ref <ref>
+```
+
+Unsetting a secret that was never set is harmless. Verify with `supabase functions list --project-ref <ref>` (no `parkrun-import`) and `supabase secrets list --project-ref <ref>` (none of the three). `function_env` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) no longer admits any of them, so prod-sync will not set them again. Tracked in [followups.md](../product/followups.md) until done.
 
 ### Security emails — two auth settings, no new secret
 

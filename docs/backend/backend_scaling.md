@@ -583,7 +583,7 @@ Aligned with the existing product roadmap.
 
 **Migrate from Edge Functions:** Strava webhook, token refresh, data export. All three moved, and all three are still deployed as the rollback path.
 
-The "only parkrun import remains" this line used to carry was never true and is now wrong by an order of magnitude: **twenty-four** Edge Functions ship today (every directory under `apps/backend/supabase/functions/` except `_shared/`; `parkrun-import` was one until its removal, decisions § SCRAPER_ADR). Migrating three jobs to Go did not make Edge Functions a residue — everything webhook-shaped, Stripe-shaped, or auth-shaped since has landed as one, because a function that must answer a third party's HTTP callback wants Supabase's JWT + service-role context far more than it wants the worker's queue.
+The "only parkrun import remains" this line used to carry was never true and is now wrong by an order of magnitude: **twenty-five** Edge Functions ship today (every directory under `apps/backend/supabase/functions/` except `_shared/`; `parkrun-import` was one until its removal, decisions § SCRAPER_ADR). Migrating three jobs to Go did not make Edge Functions a residue — everything webhook-shaped, Stripe-shaped, or auth-shaped since has landed as one, because a function that must answer a third party's HTTP callback wants Supabase's JWT + service-role context far more than it wants the worker's queue.
 
 **Database:**
 - [x] Add `personal_records` summary table with trigger (`20260508_001`)

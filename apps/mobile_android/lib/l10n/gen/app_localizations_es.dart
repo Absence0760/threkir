@@ -1884,10 +1884,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sube la exportación que Strava te envía por correo, con todas las actividades que has registrado';
 
   @override
-  String get setupImportParkrunDesc =>
-      'Importa todos tus resultados de parkrun con tu número de atleta';
-
-  @override
   String get setupDoneTitle => 'Todo listo';
 
   @override
@@ -8864,13 +8860,6 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get integrationsParkrunTitle => 'Importar resultados de parkrun';
-
-  @override
-  String get integrationsParkrunBody =>
-      'Introduce tu número de atleta de parkrun (p. ej. A123456). Recuperaremos tu historial de llegadas y añadiremos los nuevos resultados a tu lista de carreras.';
-
-  @override
   String get integrationsParkrunFieldLabel => 'Número de atleta';
 
   @override
@@ -8931,29 +8920,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Se muestra la copia guardada en este teléfono.';
 
   @override
-  String get integrationsImport => 'Importar';
-
-  @override
-  String get integrationsParkrunImporting =>
-      'Importando resultados de parkrun…';
-
-  @override
-  String integrationsParkrunImported(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count resultados de parkrun importados.',
-      one: '$count resultado de parkrun importado.',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String integrationsImportPartialOf(int n, int total) {
-    return 'Solo se pudo importar parte de tu historial: $n de $total.';
-  }
-
-  @override
   String integrationsImportPartial(int n) {
     return 'No se pudieron leer todos los resultados. Importados: $n.';
   }
@@ -8961,15 +8927,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get integrationsImportTruncated =>
       'La lista de resultados era demasiado larga para leerla hasta el final, así que no se pudo confirmar tu resultado. Introdúcelo manualmente.';
-
-  @override
-  String get integrationsParkrunNoneNew =>
-      'No hay nuevos resultados de parkrun desde la última importación.';
-
-  @override
-  String integrationsImportFailed(Object error) {
-    return 'Error en la importación: $error';
-  }
 
   @override
   String get integrationsStravaName => 'Strava';
@@ -9015,22 +8972,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get integrationsSyncNow => 'Sincronizar ahora';
 
   @override
-  String get integrationsParkrunName => 'parkrun';
-
-  @override
-  String get integrationsParkrunTileSubtitle =>
-      'Importar resultados por número de atleta';
-
-  @override
-  String get integrationsParkrunRegionNote =>
-      'parkrun solo está presente en algunos países y puede que no haya eventos cerca de ti — aun así puedes importar resultados con un ID de atleta de parkrun.';
-
-  @override
   String get integrationsSignInTitle => 'Inicia sesión para conectar servicios';
 
   @override
   String get integrationsSignInSubtitle =>
-      'Strava + parkrun requieren una cuenta para que las actividades sincronizadas lleguen a tu historial.';
+      'Strava requiere una cuenta para que las actividades sincronizadas lleguen a tu historial.';
 
   @override
   String get integrationsHealthConnectTitle =>
@@ -15505,23 +15451,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Introduce tu dorsal para importar solo tu resultado, no toda la clasificación.';
 
   @override
-  String racesUltraSignUpImportingAs(String name, String id) {
-    return 'Importando como $name (UltraSignup #$id)';
-  }
-
-  @override
-  String get racesUltraSignUpLinkedHint =>
-      'Solo se trae tu resultado de esta carrera, cotejado con el ID de carrera y la fecha de UltraSignup.';
-
-  @override
-  String get racesUltraSignUpNotLinked =>
-      'Primero vincula tu perfil de UltraSignup y luego importa desde aquí.';
-
-  @override
-  String get racesUltraSignUpPersonNotFound =>
-      'UltraSignup ya no muestra tu perfil vinculado con ese nombre. Vuelve a vincularlo en Ajustes.';
-
-  @override
   String get racesPasteResultHint =>
       'Introduce los datos de tu llegada desde la página de resultados de la carrera.';
 
@@ -15583,16 +15512,8 @@ class AppLocalizationsEs extends AppLocalizations {
       'Strava es una app popular para grabar y compartir carreras. Al conectarla se copian tus actividades de Strava: primero los últimos 90 días y después cada actividad nueva según aparece. Iniciarás sesión en Strava y darás permiso; puedes desconectarla cuando quieras.';
 
   @override
-  String get integrationsParkrunInfo =>
-      'parkrun es un 5k gratuito y cronometrado que se celebra cada semana en parques de todo el mundo. Toca esta ficha e introduce el número de atleta de tu código de barras de parkrun (el que empieza por A) para traer todos los parkrun que has terminado, con tu tiempo y tu grado por edad.';
-
-  @override
   String get integrationsRunsignupInfo =>
       'RunSignUp gestiona inscripciones y resultados de miles de carreras en asfalto. Si corriste una, búscala en el calendario de carreras e introduce el dorsal que llevabas: tu tiempo oficial y tus parciales se asocian a esa carrera.';
-
-  @override
-  String get integrationsUltrasignupInfo =>
-      'UltraSignup gestiona inscripciones y resultados de carreras de trail y ultra. Vincula aquí tu perfil de UltraSignup una vez y luego importa el resultado de una carrera desde el calendario.';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -15600,96 +15521,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsRunsignupUnavailable =>
-      'La importación de RunSignUp aún no está disponible. parkrun y el pegado manual siguen funcionando.';
-
-  @override
-  String get integrationsUltrasignup => 'UltraSignup';
-
-  @override
-  String get integrationsUltrasignupConnect =>
-      'Importa resultados de trail y ultra desde UltraSignup.';
-
-  @override
-  String get integrationsUltrasignupOpen => 'Abrir el calendario de carreras';
-
-  @override
-  String get integrationsUltrasignupUnavailable =>
-      'La importación de UltraSignup aún no está disponible. parkrun y el pegado manual siguen funcionando.';
-
-  @override
-  String get integrationsUltrasignupFindLabel =>
-      'Encuentra tu perfil de UltraSignup';
-
-  @override
-  String get integrationsUltrasignupFirstName => 'Nombre';
-
-  @override
-  String get integrationsUltrasignupLastName => 'Apellido';
-
-  @override
-  String get integrationsUltrasignupNameHint =>
-      'Usa el nombre con el que te inscribes en las carreras. UltraSignup muestra a todas las personas con ese nombre y tú eliges cuál eres.';
-
-  @override
-  String get integrationsUltrasignupFind => 'Buscarme';
-
-  @override
-  String get integrationsUltrasignupSearching => 'Buscando en UltraSignup…';
-
-  @override
-  String get integrationsUltrasignupNoMatches =>
-      'UltraSignup no tiene a nadie con ese nombre. Revisa cómo lo escribes al inscribirte.';
-
-  @override
-  String get integrationsUltrasignupPickPrompt =>
-      '¿Cuál de estas personas eres tú?';
-
-  @override
-  String integrationsUltrasignupCandidateAge(int age) {
-    return 'Edad $age';
-  }
-
-  @override
-  String integrationsUltrasignupCandidateResults(int n) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n resultados',
-      one: '$n resultado',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get integrationsUltrasignupThisIsMe => 'Soy yo';
-
-  @override
-  String integrationsUltrasignupLinkedAs(String name, String id) {
-    return 'Vinculado como $name (UltraSignup #$id)';
-  }
-
-  @override
-  String get integrationsUltrasignupUnlink => 'Desvincular';
-
-  @override
-  String get integrationsUltrasignupLinked =>
-      'Perfil de UltraSignup vinculado.';
-
-  @override
-  String get integrationsUltrasignupLinkFailed =>
-      'No se pudo vincular tu perfil de UltraSignup. Inténtalo de nuevo.';
-
-  @override
-  String get integrationsUltrasignupLookupFailed =>
-      'No se pudo buscar en UltraSignup. Inténtalo de nuevo en un momento.';
-
-  @override
-  String get integrationsUltrasignupUnlinked =>
-      'Perfil de UltraSignup desvinculado. Las carreras que ya importaste se quedan.';
-
-  @override
-  String get integrationsUltrasignupUnlinkFailed =>
-      'No se pudo desvincular tu perfil de UltraSignup. Inténtalo de nuevo.';
+      'La importación de RunSignUp aún no está disponible. El pegado manual sigue funcionando.';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -15703,7 +15535,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get integrationsChronotrackUnavailable =>
-      'La importación de ChronoTrack aún no está disponible. parkrun y el pegado manual siguen funcionando.';
+      'La importación de ChronoTrack aún no está disponible. El pegado manual sigue funcionando.';
 
   @override
   String get routeConditionsTitle => 'Condiciones';

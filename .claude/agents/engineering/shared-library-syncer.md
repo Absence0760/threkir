@@ -257,6 +257,7 @@ Not web↔mobile, so not in the table above, which `scripts/check_parity_pair_re
 |---|---|---|
 | `apps/mobile_android/lib/race_finish.dart` | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/RaceFinish.kt` | `test/race_finish_test.dart` ↔ `apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/RaceFinishTest.kt`, both reading `fixtures/race_finish_cases.json` |
 | `apps/mobile_android/lib/gate_crossing.dart` | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/GateCrossing.kt` | `test/gate_crossing_test.dart` ↔ `apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/GateCrossingTest.kt`, both reading `fixtures/gate_crossing_cases.json` |
+| `apps/mobile_android/lib/line_calibration.dart` | `apps/watch_wear/android/app/src/main/kotlin/com/runapp/watchwear/LineCalibration.kt` | `test/line_calibration_test.dart` ↔ `apps/watch_wear/android/app/src/test/kotlin/com/runapp/watchwear/LineCalibrationTest.kt`; no case table, the Kotlin suite restates the Dart cases and values. Wear's carry is `wear_wrist` only |
 
 ## When you fire
 

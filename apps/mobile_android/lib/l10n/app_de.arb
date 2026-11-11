@@ -3319,7 +3319,7 @@
   "raceDistanceMarathon": "Marathon",
   "settingsTabAccountSubtitle": "Anmeldung, Profil, Import und Backup, Konto löschen",
   "settingsTabPreferencesSubtitle": "Einheiten, Design, Aufzeichnung, Training, Datenschutz",
-  "settingsTabIntegrationsSubtitle": "Strava, parkrun, Rennkalender, Herzfrequenzgurt, Laufband, Uhr",
+  "settingsTabIntegrationsSubtitle": "Strava, Rennkalender, Herzfrequenzgurt, Laufband, Uhr",
   "settingsTabDevicesSubtitle": "Wo du angemeldet bist, plus geräteweise Überschreibungen — Gurt oder Laufband koppelst du unter Integrationen",
   "settingsTabGearSubtitle": "Schuhe + Räder und Laufleistung pro Artikel verfolgen",
   "settingsTabCoachingSubtitle": "Athleten betreuen oder dem eigenen Coach folgen",

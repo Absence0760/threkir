@@ -12332,7 +12332,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava, parkrun, calendrier des courses, ceinture cardio, tapis de course, montre';
+      'Strava, calendrier des courses, ceinture cardio, tapis de course, montre';
 
   @override
   String get settingsTabDevicesSubtitle =>

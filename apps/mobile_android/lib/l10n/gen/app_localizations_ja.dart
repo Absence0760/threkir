@@ -11680,7 +11680,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava、parkrun、レースカレンダー、心拍ベルト、トレッドミル、ウォッチ';
+      'Strava、レースカレンダー、心拍ベルト、トレッドミル、ウォッチ';
 
   @override
   String get settingsTabDevicesSubtitle =>

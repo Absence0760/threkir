@@ -12305,7 +12305,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava, parkrun, calendário de provas, cinta cardíaca, passadeira, relógio';
+      'Strava, calendário de provas, cinta cardíaca, passadeira, relógio';
 
   @override
   String get settingsTabDevicesSubtitle =>
@@ -34401,7 +34401,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava, parkrun, calendário de corridas, cinta cardíaca, esteira, relógio';
+      'Strava, calendário de corridas, cinta cardíaca, esteira, relógio';
 
   @override
   String get settingsTabDevicesSubtitle =>

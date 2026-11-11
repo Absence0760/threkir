@@ -12317,7 +12317,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava, parkrun, Rennkalender, Herzfrequenzgurt, Laufband, Uhr';
+      'Strava, Rennkalender, Herzfrequenzgurt, Laufband, Uhr';
 
   @override
   String get settingsTabDevicesSubtitle =>

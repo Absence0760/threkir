@@ -16616,7 +16616,7 @@
   "@settingsTabPreferencesSubtitle": {
     "description": "Settings landing: Preferences tile subtitle"
   },
-  "settingsTabIntegrationsSubtitle": "Strava, parkrun, race calendar, heart-rate strap, treadmill, watch",
+  "settingsTabIntegrationsSubtitle": "Strava, race calendar, heart-rate strap, treadmill, watch",
   "@settingsTabIntegrationsSubtitle": {
     "description": "Settings landing: Integrations tile subtitle"
   },

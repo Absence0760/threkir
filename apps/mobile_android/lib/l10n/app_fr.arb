@@ -3319,7 +3319,7 @@
   "raceDistanceMarathon": "Marathon",
   "settingsTabAccountSubtitle": "Connexion, profil, import et sauvegarde, suppression du compte",
   "settingsTabPreferencesSubtitle": "Unités, thème, enregistrement, entraînement, confidentialité",
-  "settingsTabIntegrationsSubtitle": "Strava, parkrun, calendrier des courses, ceinture cardio, tapis de course, montre",
+  "settingsTabIntegrationsSubtitle": "Strava, calendrier des courses, ceinture cardio, tapis de course, montre",
   "settingsTabDevicesSubtitle": "Où vous êtes connecté et les réglages par appareil — appairez une ceinture ou un tapis dans Intégrations",
   "settingsTabGearSubtitle": "Suivez chaussures + vélos et le kilométrage par article",
   "settingsTabCoachingSubtitle": "Encadrez des athlètes ou suivez votre propre coach",

@@ -3319,7 +3319,7 @@
   "raceDistanceMarathon": "マラソン",
   "settingsTabAccountSubtitle": "サインイン、プロフィール、インポートとバックアップ、アカウント削除",
   "settingsTabPreferencesSubtitle": "単位、テーマ、記録、トレーニング、プライバシー",
-  "settingsTabIntegrationsSubtitle": "Strava、parkrun、レースカレンダー、心拍ベルト、トレッドミル、ウォッチ",
+  "settingsTabIntegrationsSubtitle": "Strava、レースカレンダー、心拍ベルト、トレッドミル、ウォッチ",
   "settingsTabDevicesSubtitle": "サインイン中の場所とデバイスごとの上書き設定。ベルトやトレッドミルのペアリングは「連携」から",
   "settingsTabGearSubtitle": "シューズ・バイクとアイテムごとの走行距離を記録",
   "settingsTabCoachingSubtitle": "アスリートを指導したり、自分のコーチをフォロー",

@@ -12301,7 +12301,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava, parkrun, calendario de carreras, banda de frecuencia cardíaca, cinta de correr, reloj';
+      'Strava, calendario de carreras, banda de frecuencia cardíaca, cinta de correr, reloj';
 
   @override
   String get settingsTabDevicesSubtitle =>

@@ -19806,7 +19806,7 @@ abstract class AppLocalizations {
   /// Settings landing: Integrations tile subtitle
   ///
   /// In en, this message translates to:
-  /// **'Strava, parkrun, race calendar, heart-rate strap, treadmill, watch'**
+  /// **'Strava, race calendar, heart-rate strap, treadmill, watch'**
   String get settingsTabIntegrationsSubtitle;
 
   /// Settings landing: Devices tile subtitle when signed in

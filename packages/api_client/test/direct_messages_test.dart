@@ -1110,4 +1110,209 @@ void main() {
       expect(fake.requests, isEmpty);
     });
   });
+
+  group('group conversations', () {
+    test('dm_threads maps a group row: title, size, membership, the rename line',
+        () async {
+      await _signIn(client);
+      fake.bodyByPath[_threadsPath] = [
+        {
+          'conversation_id': 'g-1',
+          'partner_id': null,
+          'kind': 'group',
+          'title': 'Tuesday tempo',
+          'member_count': 6,
+          'membership_state': 'active',
+          'last_body': 'Tempo club',
+          'last_kind': 'group_renamed',
+          'last_at': '2026-11-10T09:30:00Z',
+          'last_from_me': false,
+          'unread': 2,
+        },
+        {
+          'conversation_id': 'g-2',
+          'partner_id': null,
+          'kind': 'group',
+          'title': null,
+          'member_count': null,
+          'membership_state': 'left',
+          'last_body': 'bye',
+          'last_at': '2026-11-09T09:30:00Z',
+          'last_from_me': true,
+          'unread': 0,
+        },
+      ];
+
+      final threads = await api.fetchDmThreads();
+
+      expect(fake.to(_profilesPath), isEmpty, reason: 'a group names no partner');
+      expect(threads.map((t) => t.isGroup), [true, true]);
+      expect(threads.map((t) => t.threadKey), ['group/g-1', 'group/g-2']);
+      expect(threads.first.title, 'Tuesday tempo');
+      expect(threads.first.memberCount, 6);
+      expect(threads.first.lastKind, 'group_renamed');
+      expect(threads.map((t) => t.membershipState), ['active', 'left']);
+    });
+
+    test('a group thread reads its conversation\'s group rows, oldest first',
+        () async {
+      await _signIn(client);
+      fake.bodyByPath[_messagesPath] = [
+        {..._message('m-2', createdAt: '2026-11-10T08:02:00Z'), 'recipient_id': null},
+        {..._message('m-1', createdAt: '2026-11-10T08:01:00Z'), 'recipient_id': null},
+      ];
+
+      final page = await api.fetchGroupThread('g-1', limit: 2);
+
+      final q = fake.to(_messagesPath).single.url.queryParameters;
+      expect(q['conversation_id'], 'eq.g-1');
+      expect(q['is_group'], 'eq.true');
+      expect(q['order'], 'created_at.desc.nullslast,id.desc.nullslast');
+      expect(q['limit'], '3');
+      expect(page.messages.map((m) => m.id), ['m-1', 'm-2']);
+      expect(page.hasMore, isFalse);
+    });
+
+    test('a group send names the conversation and no recipient', () async {
+      await _signIn(client);
+      fake.bodyByPath[_messagesPath] = {
+        ..._message('m-9'),
+        'recipient_id': null,
+        'conversation_id': 'g-1',
+      };
+
+      await api.sendGroupMessage('g-1', '  hello all  ');
+
+      final req = fake.to(_messagesPath).single as http.Request;
+      expect(req.method, 'POST');
+      final body = jsonDecode(req.body) as Map<String, dynamic>;
+      expect(body, {
+        'sender_id': 'user-1',
+        'conversation_id': 'g-1',
+        'body': 'hello all',
+      });
+    });
+
+    test('a refused group send is GroupActionRefused, the throttle stays a '
+        'PostgrestException', () async {
+      await _signIn(client);
+      fake.statusByPath[_messagesPath] = 403;
+      fake.bodyByPath[_messagesPath] = {
+        'code': '42501',
+        'message': 'new row violates row-level security policy',
+      };
+      await expectLater(
+        api.sendGroupMessage('g-1', 'hi'),
+        throwsA(isA<GroupActionRefused>()
+            .having((e) => e.reason, 'reason', GroupRefusal.refused)),
+      );
+      fake.statusByPath[_messagesPath] = 400;
+      fake.bodyByPath[_messagesPath] = {
+        'code': 'P0001',
+        'message': 'rate limit exceeded for send_direct_message, retry after 30 seconds',
+      };
+      await expectLater(api.sendGroupMessage('g-1', 'hi'),
+          throwsA(isA<PostgrestException>()));
+    });
+
+    test('create sends the title and invitees and maps the seat cap', () async {
+      await _signIn(client);
+      const path = '/rest/v1/rpc/create_group_conversation';
+      fake.bodyByPath[path] = 'g-new';
+
+      expect(await api.createGroupConversation('Tempo', ['a', 'b']), 'g-new');
+      final req = fake.to(path).single as http.Request;
+      expect(jsonDecode(req.body), {
+        'p_title': 'Tempo',
+        'p_invitees': ['a', 'b'],
+      });
+
+      fake.statusByPath[path] = 400;
+      fake.bodyByPath[path] = {'code': '54000', 'message': 'group is full'};
+      await expectLater(
+        api.createGroupConversation('Tempo', ['a', 'b']),
+        throwsA(isA<GroupActionRefused>()
+            .having((e) => e.reason, 'reason', GroupRefusal.capReached)),
+      );
+    });
+
+    test('the roster reads roles, invitations and names; outside it is notFound',
+        () async {
+      await _signIn(client);
+      const path = '/rest/v1/rpc/group_members';
+      fake.bodyByPath[path] = [
+        {'user_id': 'user-1', 'role': 'owner', 'membership_state': 'active'},
+        {'user_id': 'p-2', 'role': null, 'membership_state': 'invited'},
+      ];
+      fake.bodyByPath[_profilesPath] = [
+        {'id': 'p-2', 'display_name': 'Grace', 'avatar_url': null},
+      ];
+
+      final members = await api.fetchGroupMembers('g-1');
+
+      expect(fake.to(path).single.method, 'GET');
+      expect(members.map((m) => m.role), ['owner', null]);
+      expect(members.map((m) => m.invited), [false, true]);
+      expect(members.last.name, 'Grace');
+
+      fake.statusByPath[path] = 404;
+      fake.bodyByPath[path] = {'code': 'P0002', 'message': 'not found'};
+      await expectLater(
+        api.fetchGroupMembers('g-1'),
+        throwsA(isA<GroupActionRefused>()
+            .having((e) => e.reason, 'reason', GroupRefusal.notFound)),
+      );
+    });
+
+    test('the flag fails closed', () async {
+      await _signIn(client);
+      const path = '/rest/v1/rpc/group_messages_enabled';
+      fake.bodyByPath[path] = true;
+      expect(await api.fetchGroupMessagesEnabled(), isTrue);
+      fake.statusByPath[path] = 500;
+      fake.bodyByPath[path] = {'message': 'boom'};
+      expect(await api.fetchGroupMessagesEnabled(), isFalse);
+    });
+
+    test('a search hit in a group names the group, not a partner', () async {
+      await _signIn(client);
+      fake.bodyByPath['/rest/v1/rpc/search_direct_messages'] = [
+        {
+          'id': 'm-1',
+          'conversation_id': 'g-1',
+          'sender_id': 'p-2',
+          'recipient_id': null,
+          'deleted_partner_key': null,
+          'body': 'tempo tonight',
+          'created_at': '2026-11-10T08:00:00Z',
+        },
+      ];
+      fake.bodyByPath['/rest/v1/conversations'] = [
+        {'id': 'g-1', 'title': 'Tuesday tempo'},
+      ];
+
+      final hits = await api.searchDms('tempo');
+
+      expect(hits.single.isGroup, isTrue);
+      expect(hits.single.partnerId, isNull);
+      expect(hits.single.groupTitle, 'Tuesday tempo');
+      expect(fake.to(_profilesPath), isEmpty);
+    });
+
+    test('placeholders are read inside the loaded window', () async {
+      await _signIn(client);
+      const path = '/rest/v1/rpc/group_blocked_placeholders';
+      fake.bodyByPath[path] = [
+        {'id': 'm-4', 'created_at': '2026-11-10T08:04:00Z'},
+      ];
+
+      final rows = await api.fetchGroupBlockedPlaceholders(
+          'g-1', DateTime.utc(2026, 11, 10, 8));
+
+      final q = fake.to(path).single.url.queryParameters;
+      expect(q['p_conversation_id'], 'g-1');
+      expect(q['p_since'], '2026-11-10T08:00:00.000Z');
+      expect(rows.single.id, 'm-4');
+    });
+  });
 }

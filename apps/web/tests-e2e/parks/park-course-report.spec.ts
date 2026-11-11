@@ -19,9 +19,11 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
  *   reports a hazard on another course as themselves; a site admin sees the
  *   land-manager request in /admin/reports with its deadline, closes the
  *   course with a note, and the course page then shows it closed with that
- *   note.
+ *   note. A signed-out rights holder files a request on a third course, which
+ *   the form will not send without an address, and the admin queue shows it
+ *   with its answer-by date (decisions § 2469).
  *
- * Two courses are planted (service role) in one park under a unique slug, at
+ * Three courses are planted (service role) in one park under a unique slug, at
  * (37.6, -78.6), which no seed row or other spec uses, and removed afterwards
  * with the reports filed on them.
  */
@@ -34,6 +36,7 @@ const PARK_SLUG = `e2e-report-park-${TAG}`;
 const COURSES = [
 	{ slug: 'lake-loop', name: `Lake Loop ${TAG}` },
 	{ slug: 'ridge-loop', name: `Ridge Loop ${TAG}` },
+	{ slug: 'meadow-loop', name: `Meadow Loop ${TAG}` },
 ] as const;
 const CLOSE_NOTE = `Closed at the park's request for trail restoration ${TAG}.`;
 
@@ -201,6 +204,65 @@ test.describe.serial('report a problem with a park course', () => {
 				.eq('target_id', courseIds[1]),
 		);
 		expect(rows).toEqual([{ reporter_id: runner.id, signed_out: false, reason: 'course_hazard' }]);
+	});
+
+	test('a signed-out rights holder must leave an address, and the request is filed', async ({ browser }) => {
+		const ctx = await anonymousContext(browser);
+		try {
+			const page = await ctx.newPage();
+			await page.goto(`/parks/us-va/${PARK_SLUG}/${COURSES[2].slug}`);
+			await page.getByTestId('park-course-report').click();
+			const dialog = page.getByTestId('park-course-report-dialog');
+			await dialog.getByTestId('park-course-report-reason-rights_holder_request').check();
+			await expect(dialog).toContainText('We answer within two business days.');
+			await expect(dialog.getByTestId('park-course-report-email-hint')).toContainText(
+				'Needed for a rights-holder request so we can answer it.',
+			);
+			await dialog.getByTestId('park-course-report-notes').fill('This course description uses our event name.');
+			await expect(dialog.getByTestId('park-course-report-submit')).toBeDisabled();
+			await dialog.getByTestId('park-course-report-email').fill('legal@brand-e2e.example');
+			await dialog.getByTestId('park-course-report-submit').click();
+			await expect(page.getByText('Thanks. Your report is with the Threkir team.')).toBeVisible({ timeout: 10_000 });
+		} finally {
+			await ctx.close();
+		}
+
+		const rows = await readRows(
+			'the rights-holder request',
+			getAdminClient()
+				.from('reports')
+				.select('reporter_id, signed_out, reason, contact_email, status')
+				.eq('target_kind', 'park_course')
+				.eq('target_id', courseIds[2]),
+		);
+		expect(rows).toEqual([
+			{
+				reporter_id: null,
+				signed_out: true,
+				reason: 'rights_holder_request',
+				contact_email: 'legal@brand-e2e.example',
+				status: 'pending',
+			},
+		]);
+	});
+
+	test('the admin queue shows a rights-holder request with its answer-by date', async ({ browser }) => {
+		const ctx = await signedInContext(browser, users[1]);
+		try {
+			const page = await ctx.newPage();
+			await page.goto('/admin/reports');
+			const row = page.getByTestId('admin-queue-row').filter({ hasText: courseIds[2].slice(0, 8) });
+			await expect(row).toBeVisible({ timeout: 15_000 });
+			await expect(row.getByTestId('admin-rights-holder-row')).toContainText('Rights-holder request');
+			await expect(row.getByTestId('admin-rights-holder-due')).toContainText('Answer by');
+			await expect(row.getByTestId('admin-land-manager-row')).toHaveCount(0);
+			await row.getByTestId('admin-queue-review').click();
+			await expect(page.getByTestId('admin-rights-holder-hint')).toBeVisible();
+			await expect(page.getByTestId('admin-rights-holder-panel-due')).toContainText('Answer by');
+			await expect(page.getByTestId('admin-report-contact')).toContainText('legal@brand-e2e.example');
+		} finally {
+			await ctx.close();
+		}
 	});
 
 	test('the admin closes the course from the land-manager request', async ({ browser }) => {

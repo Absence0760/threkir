@@ -14,6 +14,7 @@
 		COURSE_REPORT_REASONS,
 		COURSE_REPORT_REASON_LABELS,
 		courseReportEmailOk,
+		courseReportEmailRequired,
 		type CourseReportReason,
 	} from '#lib/parks/course_report.ts';
 
@@ -33,7 +34,11 @@
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 
-	const emailOk = $derived(courseReportEmailOk(email));
+	const emailRequired = $derived(courseReportEmailRequired(reason));
+	const emailOk = $derived(courseReportEmailOk(email, reason));
+	// An empty required field is not yet a mistake: say what it is for until
+	// something is typed, and keep Send disabled meanwhile.
+	const emailShapeOk = $derived(courseReportEmailOk(email));
 	const canSubmit = $derived(!busy && notes.trim().length > 0 && emailOk);
 
 	function reset() {
@@ -80,6 +85,8 @@
 					<strong>{m(COURSE_REPORT_REASON_LABELS[r])}</strong>
 					{#if r === 'land_manager_request'}
 						<span class="hint">{m('parks.report.reasonLandManagerHint')}</span>
+					{:else if r === 'rights_holder_request'}
+						<span class="hint">{m('parks.report.reasonRightsHolderHint')}</span>
 					{/if}
 				</span>
 			</label>
@@ -98,18 +105,22 @@
 	</label>
 
 	<label class="field">
-		<span class="section-label">{m('parks.report.emailLabel')}</span>
+		<span class="section-label">
+			{emailRequired ? m('parks.report.emailLabelRequired') : m('parks.report.emailLabel')}
+		</span>
 		<input
 			type="email"
 			autocomplete="email"
 			bind:value={email}
 			maxlength={COURSE_REPORT_EMAIL_MAX}
-			aria-invalid={!emailOk}
+			required={emailRequired}
+			aria-required={emailRequired}
+			aria-invalid={!emailShapeOk}
 			aria-describedby="course-report-email-hint"
 			data-testid="park-course-report-email"
 		/>
-		<span class="hint" id="course-report-email-hint">
-			{#if !emailOk}{m('parks.report.errorEmail')}{:else}{m('parks.report.emailHint')}{/if}
+		<span class="hint" id="course-report-email-hint" data-testid="park-course-report-email-hint">
+			{#if !emailShapeOk}{m('parks.report.errorEmail')}{:else if emailRequired}{m('parks.report.emailHintRequired')}{:else}{m('parks.report.emailHint')}{/if}
 			<a href="/privacy">{m('parks.report.privacyLink')}</a>
 		</span>
 	</label>

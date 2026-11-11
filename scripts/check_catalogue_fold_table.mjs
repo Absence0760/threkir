@@ -27,7 +27,7 @@
 //      `CI gate` aggregator's `needs:` list.
 // Unit tests: `node --test scripts/check_catalogue_fold_table.test.mjs`
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -148,4 +148,4 @@ function main() {
 	console.log(`${OUTPUT_PATH} matches its generator (Unicode ${process.versions.unicode}).`);
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

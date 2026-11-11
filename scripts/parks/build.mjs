@@ -26,6 +26,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
 	PUBLISHED_DISTANCE_TOLERANCE,
@@ -397,4 +398,4 @@ function main() {
 	if (stale > 0) process.exit(1);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

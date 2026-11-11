@@ -44,7 +44,7 @@
 //      counts a skip as a pass).
 // Unit tests: `node --test scripts/check_parity_ios_column.test.mjs`
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -376,7 +376,7 @@ export function audit(text) {
 	return { errors, rows: rows.length, marked };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const path = process.argv[2] ?? MATRIX_PATH;
 	const { errors, rows, marked } = audit(readFileSync(path, 'utf8'));
 	if (errors.length > 0) {

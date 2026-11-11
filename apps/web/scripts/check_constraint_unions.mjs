@@ -43,7 +43,7 @@
 // CI:  invoked from the parity-types job alongside gen:types:check.
 // Unit tests: `node --test apps/web/scripts/check_constraint_unions.test.mjs`
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -2289,4 +2289,4 @@ function main() {
 	return errors.length > 0 ? 1 : 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.exit(main());
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exit(main());

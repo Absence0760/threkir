@@ -26,6 +26,7 @@
 
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 import { officialCatalogueStage } from '../official/sync.mjs';
 import { parkCatalogueStage } from '../parks/sync.mjs';
@@ -85,4 +86,4 @@ function main() {
 	}
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

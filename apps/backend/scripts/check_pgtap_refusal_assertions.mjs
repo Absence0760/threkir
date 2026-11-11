@@ -59,7 +59,7 @@
 // inert. The default is the mutation run, and needs the local stack.
 
 import { spawnSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -3214,4 +3214,4 @@ function main() {
   );
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

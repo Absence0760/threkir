@@ -347,14 +347,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     setState(() => _trendOpen = stored);
   }
 
-  /// Trend groups hidden from Home (`dashboard_hidden_cards`, universal,
-  /// decisions § 2386). An unreadable bag hides nothing.
   /// Grisnir on a rest day: the universal `show_mascot`, on unless it is
   /// literally `false`, as web reads it.
   bool get _showMascot =>
       widget.settingsSync?.service?.effective<Object>(SettingsKeys.showMascot) !=
       false;
 
+  /// Trend groups hidden from Home (`dashboard_hidden_cards`, universal,
+  /// decisions § 2386). An unreadable bag hides nothing.
   List<String> get _hiddenCards {
     final local = _hiddenCardsLocal;
     if (local != null) return local;

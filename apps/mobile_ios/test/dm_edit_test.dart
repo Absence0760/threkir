@@ -19,6 +19,7 @@ DirectMessageRow _msg({
 }) =>
     DirectMessageRow(
       kind: kind,
+      isGroup: false,
       id: 'm-1',
       conversationId: 'c-1',
       senderId: sender,

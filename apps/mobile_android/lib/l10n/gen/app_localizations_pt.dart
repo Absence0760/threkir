@@ -22198,6 +22198,16 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String rateLimitCreateGroup(String wait) {
+    return 'Está a criar grupos demasiado depressa — aguarde $wait e tente novamente.';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return 'Enviou muitos convites para grupos hoje — aguarde $wait e tente novamente.';
+  }
+
+  @override
   String get prefsMessageRequests => 'Pedidos de mensagem';
 
   @override
@@ -44476,6 +44486,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String rateLimitPhotoUpload(String wait) {
     return 'Você enviou muitas fotos — espere $wait e tente de novo.';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'Você está criando grupos rápido demais — espere $wait e tente de novo.';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return 'Você enviou muitos convites para grupos hoje — espere $wait e tente de novo.';
   }
 
   @override

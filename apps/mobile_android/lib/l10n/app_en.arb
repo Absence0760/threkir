@@ -29252,6 +29252,24 @@
       }
     }
   },
+  "rateLimitCreateGroup": "You're creating groups too quickly — please wait {wait} and try again.",
+  "@rateLimitCreateGroup": {
+    "description": "Rate-limit refusal when the create_group_conversation bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitInviteToGroup": "You've sent a lot of group invitations today — please wait {wait} and try again.",
+  "@rateLimitInviteToGroup": {
+    "description": "Rate-limit refusal when the invite_to_group bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
   "prefsMessageRequests": "Message requests",
   "@prefsMessageRequests": {
     "description": "Settings switch: let people you share a club or an event with message you first"

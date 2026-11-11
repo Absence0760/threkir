@@ -22198,6 +22198,16 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String rateLimitCreateGroup(String wait) {
+    return 'Estás creando grupos demasiado rápido: espera $wait y vuelve a intentarlo.';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return 'Hoy has enviado muchas invitaciones a grupos: espera $wait y vuelve a intentarlo.';
+  }
+
+  @override
   String get prefsMessageRequests => 'Solicitudes de mensaje';
 
   @override

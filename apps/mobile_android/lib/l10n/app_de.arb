@@ -6127,6 +6127,8 @@
   "profileNotifParkCourseReport": "Eine Parkstrecke wurde gemeldet",
   "rateLimitReaction": "Du reagierst zu schnell – bitte warte {wait} und versuche es erneut.",
   "rateLimitPhotoUpload": "Du hast viele Fotos gesendet – bitte warte {wait} und versuche es erneut.",
+  "rateLimitCreateGroup": "Du erstellst zu schnell Gruppen – bitte warte {wait} und versuche es erneut.",
+  "rateLimitInviteToGroup": "Du hast heute viele Gruppeneinladungen verschickt – bitte warte {wait} und versuche es erneut.",
   "prefsMessageRequests": "Nachrichtenanfragen",
   "prefsMessageRequestsHint": "Personen, mit denen du einen Club oder ein Event teilst, dürfen dir zuerst schreiben. Wenn du das ausschaltest, können nur Personen, denen du folgst oder die dir folgen, eine Unterhaltung mit dir beginnen.",
   "prefsMessageRequestsFailed": "Nachrichtenanfragen konnten nicht geändert werden.",

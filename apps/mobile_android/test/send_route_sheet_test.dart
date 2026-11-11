@@ -94,6 +94,7 @@ class _FakeApi extends ApiClient {
     if (sendError != null) throw sendError!;
     return DirectMessageRow(
       kind: 'text',
+      isGroup: false,
       id: 'm-${sent.length}',
       conversationId: 'c-$recipientId',
       senderId: _me,

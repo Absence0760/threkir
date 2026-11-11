@@ -35663,6 +35663,18 @@ abstract class AppLocalizations {
   /// **'You\'ve sent a lot of photos — please wait {wait} and try again.'**
   String rateLimitPhotoUpload(String wait);
 
+  /// Rate-limit refusal when the create_group_conversation bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re creating groups too quickly — please wait {wait} and try again.'**
+  String rateLimitCreateGroup(String wait);
+
+  /// Rate-limit refusal when the invite_to_group bucket is spent
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve sent a lot of group invitations today — please wait {wait} and try again.'**
+  String rateLimitInviteToGroup(String wait);
+
   /// Settings switch: let people you share a club or an event with message you first
   ///
   /// In en, this message translates to:

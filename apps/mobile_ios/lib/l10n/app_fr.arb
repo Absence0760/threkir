@@ -6127,6 +6127,8 @@
   "profileNotifParkCourseReport": "Un parcours de parc a été signalé",
   "rateLimitReaction": "Vous réagissez trop rapidement — veuillez patienter {wait} et réessayer.",
   "rateLimitPhotoUpload": "Vous avez envoyé beaucoup de photos — veuillez patienter {wait} et réessayer.",
+  "rateLimitCreateGroup": "Vous créez des groupes trop vite — veuillez patienter {wait} et réessayer.",
+  "rateLimitInviteToGroup": "Vous avez envoyé beaucoup d'invitations de groupe aujourd'hui — veuillez patienter {wait} et réessayer.",
   "prefsMessageRequests": "Demandes de message",
   "prefsMessageRequestsHint": "Permet aux personnes avec qui vous partagez un club ou un événement de vous écrire en premier. Si vous désactivez cette option, seules les personnes que vous suivez, ou qui vous suivent, pourront démarrer une conversation avec vous.",
   "prefsMessageRequestsFailed": "Impossible de modifier les demandes de message.",

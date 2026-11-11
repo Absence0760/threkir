@@ -6127,6 +6127,8 @@
   "profileNotifParkCourseReport": "公園コースについて報告がありました",
   "rateLimitReaction": "リアクションの送信が速すぎます。{wait}待ってから、もう一度お試しください。",
   "rateLimitPhotoUpload": "写真を多く送信しています。{wait}待ってから、もう一度お試しください。",
+  "rateLimitCreateGroup": "グループの作成が速すぎます。{wait}待ってからもう一度お試しください。",
+  "rateLimitInviteToGroup": "今日はグループへの招待を多く送っています。{wait}待ってからもう一度お試しください。",
   "prefsMessageRequests": "メッセージリクエスト",
   "prefsMessageRequestsHint": "同じクラブやイベントに参加している人が、あなたに先にメッセージを送れるようにします。オフにすると、あなたがフォローしている人、またはあなたのフォロワーだけがあなたとの会話を始められます。",
   "prefsMessageRequestsFailed": "メッセージリクエストの設定を変更できませんでした。",

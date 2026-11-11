@@ -152,6 +152,7 @@ DirectMessageRow _share(
   bool unsent = false,
 }) => DirectMessageRow(
   kind: 'coach_share',
+  isGroup: false,
   id: id,
   conversationId: 'c-1',
   senderId: from,
@@ -169,6 +170,7 @@ DirectMessageRow _assisted(
   bool unsent = false,
 }) => DirectMessageRow(
   kind: 'ai_assisted',
+  isGroup: false,
   id: id,
   conversationId: 'c-1',
   senderId: from,

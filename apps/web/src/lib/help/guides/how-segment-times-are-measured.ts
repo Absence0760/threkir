@@ -50,7 +50,7 @@ export const guide: Guide = {
 					items: [
 						'If your run passes the segment more than once, your fastest pass counts.',
 						'A warm-up that loops back over the start line does not lengthen your time: the time starts from your last crossing of the start line before the end.',
-						'On a loop whose start and end are the same line, the crossing that ends one lap cannot also start the next. So only every other lap is timed (the first, the third and so on), and your fastest of those counts. A loop that starts and ends at different lines times every lap.',
+						'On a loop, every complete lap is timed and your fastest lap counts. Where the start and end are the same line, the crossing that ends one lap also starts the next.',
 					],
 				},
 			],

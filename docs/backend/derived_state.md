@@ -499,23 +499,34 @@ matcher over a stored track, which SQL cannot run (decisions § 2392).
   sidecar the run's metadata names for those bytes), scored against
   `global_segments_in_bbox(extent, 50 m)` minus courses whose checkpoints do not
   parse. For each such candidate, the effort row must exist iff the matcher
-  times the run, with that time and start.
+  times the run, with that time and start. A park course that is `closed` is
+  no candidate and its rows are frozen as they were when it closed: no writer
+  inserts, corrects or deletes one (`private.global_segment_course_closed`,
+  `20271219001313`, decisions § 2465), so the contract holds only for the
+  segments that are not closed.
 - **Writers:** the `segment-match` Edge Function, through
   `record_segment_match` (service role), for a `segment_match` job queued by
   `runs_enqueue_segment_match` (a new `track_url`) or
   `runs_track_object_enqueue_segment_match` (the bytes uploaded or rewritten).
   A result for bytes that are no longer stored is refused and the job retried.
-  The web run-detail fallback (`computeGlobalSegmentEffortsForRun`) still
-  inserts missing rows as the owner, never updating or removing one.
-- **Not recomputed on:** a segment's geometry being edited or a new segment
-  being added. That is the launch backfill below, an explicit operator step.
+  The web run-detail fallback (`computeGlobalSegmentEffortsForRun`) reconciles
+  the owner's run the same way, by delete then insert (there is no client
+  UPDATE), when the catalogue grew or the run's matcher stamp is behind.
+- **Not recomputed on:** a segment's geometry being edited, a new segment being
+  added, or a matcher version change. The park sync queues the backfill for a
+  created or redrawn course; a matcher change ships a one-off ops task that
+  queues it for every active segment not on a closed course
+  (`apps/backend/ops/tasks/20271219001313_rematch_segments_matcher_v3.sql`);
+  anything else is the manual rebuild below. A course reopening is not
+  re-scored either.
 - **Manual rebuild:** one run, `insert into jobs (kind, payload) values
   ('segment_match', jsonb_build_object('run_id', '<run>'))`; one segment over
   all history, `select enqueue_segment_backfill('<segment>')`.
 - **Retention:** both cascade from `runs`, so a deleted run or account takes
   them. `run_track_extents` is location-derived, has no client grant, and is
   not exported (the export carries the track it is derived from).
-- **pgtap:** `segment_match_jobs_test.sql`.
+- **pgtap:** `segment_match_jobs_test.sql`; the closed-course rule in
+  `park_course_boards_test.sql`.
 
 ## Adding a new derived cache
 

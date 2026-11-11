@@ -414,7 +414,7 @@ The realistic upside is being the runner's chosen destination across all three m
 Strava profile pages are not well-indexed by Google. A public route library with proper metadata (location, distance, surface type, elevation) can rank for "[city] running routes" searches. Each user who shares a route creates an indexed page.
 
 ### parkrun community
-parkrun has millions of registered participants worldwide and a famously engaged community. The app carries a runner's parkrun barcode (their own number, nothing read from parkrun). Importing parkrun history is **not** on offer: parkrun has no API and opposes scraping, so the importer was removed ([decisions § SCRAPER_ADR](../architecture/decisions.md)). Revisit only with parkrun's written permission or an official API.
+parkrun has millions of registered participants worldwide and a famously engaged community. The app carries a runner's parkrun barcode (their own number, nothing read from parkrun). Importing parkrun history is **not** on offer: parkrun has no API and opposes scraping, so the importer was removed ([decisions § 2465](../architecture/decisions.md)). Revisit only with parkrun's written permission or an official API.
 
 ### Wear OS users with no good option
 NRC dropping Wear OS support leaves a gap. Android users with a Pixel Watch or Galaxy Watch running Wear OS have no dedicated running app with standalone GPS. The two strongest training-analytics ecosystems — Garmin and COROS — both refuse to run on any watch but their own, so neither helps a Wear OS owner. This is a specific, searchable pain point.

@@ -9,7 +9,7 @@ misleads the exact people who care most.
 ## What ships
 
 - **parkrun imports** (runs imported before that import was removed,
-  [decisions § SCRAPER_ADR](../architecture/decisions.md)) carry a scraped `metadata.age_grade` string (e.g.
+  [decisions § 2465](../architecture/decisions.md)) carry a scraped `metadata.age_grade` string (e.g.
   `"54.23%"`). That value is authoritative and always wins when present; nothing
   writes it any more.
 - **Every other standard-distance race** — a manual entry, a Strava/Garmin/FIT

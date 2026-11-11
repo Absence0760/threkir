@@ -95,7 +95,7 @@ create index runs_public on runs (is_public, started_at desc) where is_public = 
 | `healthconnect` | Imported from Android Health Connect |
 | `strava` | Synced from Strava API |
 | `garmin` | Synced from Garmin Connect API |
-| `parkrun` | Imported from parkrun before that import was removed ([decisions § SCRAPER_ADR](../architecture/decisions.md)); legacy, no writer since 2026-11-10 |
+| `parkrun` | Imported from parkrun before that import was removed ([decisions § 2465](../architecture/decisions.md)); legacy, no writer since 2026-11-10 |
 | `race` | A race result from RunSignUp's or ChronoTrack's API, or pasted by the runner |
 
 **`track` shape:**
@@ -2296,7 +2296,7 @@ Imports an official race result onto a `source='race'` run, or enriches an exist
 2. `provider='runsignup'`: **keyless** (decisions § 1903; the key pair is appended only when both halves are set). A request without a `bib` is `400 runsignup_bib_required` before any fetch — the feed ignores `user_id`, so a bib is the only scope. Read `GET /Rest/race/{provider_race_id}`, take the in-person running events whose start date is the listing's `race_date` (`404 runsignup_event_not_found` when none), and ask each `get-results?event_id=…&bib_num=…`, listing distance first, until one answers; map the row to a run (`source='race'`, `external_id=race:{name}:{date}:{bib}`, the owner-only race metadata, `distance_m` from the event that answered). A non-2xx, a non-JSON body, or RunSignUp's HTTP-200 error envelope is a `502`.
 3. `provider='chronotrack'`: **fail closed** — if `CHRONOTRACK_CLIENT_ID`/`CHRONOTRACK_USER_ID`/`CHRONOTRACK_PASSWORD` are unset return `503 {error:'provider_not_configured'}`; else call the ChronoTrack Live results endpoint (event id = the listing's `provider_race_id`), map each finisher with the same shaping as RunSignUp. Fail-loud on a non-2xx upstream (502).
 4. `provider='paste'`: map the single pasted result row. With a bib it is `race:{name}:{date}:{bib}`, the provider's id; without one, `race:{name}:{date}::{finish}` — chip / gun seconds and overall place, the readings `isSameFinish` compares (decisions § 1920).
-5. Any other `provider` (including `ultrasignup`, whose results leg read UltraSignup's internal name-keyed feed and was removed with its `lookup` mode and `race-results-import:lookup` bucket, [decisions § SCRAPER_ADR](../architecture/decisions.md)) is `400 unsupported provider`; on a probe, `400 unknown_provider`.
+5. Any other `provider` (including `ultrasignup`, whose results leg read UltraSignup's internal name-keyed feed and was removed with its `lookup` mode and `race-results-import:lookup` bucket, [decisions § 2465](../architecture/decisions.md)) is `400 unsupported provider`; on a probe, `400 unknown_provider`.
 6. `probe=true`: report provider availability without a listing — `503 provider_not_configured` when `provider='chronotrack'` is unconfigured, else `{configured:true}` — RunSignUp is always configured since decisions § 1903. Drives every race-import Settings card: mobile probes both legs here since decisions § 1041, web ChronoTrack (its RunSignUp check still asks `race-listings-sync`).
 7. `matchRunId` set → merge the metadata + set `race_listing_id` onto that owner-scoped run (no duplicate). Else dedup per-user against existing `external_id`s, then against the caller's runs under the listing by `isSameFinish` (a bib-less run that a provider result names is written onto, decisions § 1912), and insert the fresh rows.
 

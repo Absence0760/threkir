@@ -484,7 +484,7 @@ final workouts = await health.getHealthDataFromTypes(...);
 
 ### No scraping
 
-No integration scrapes a third party's website ([decisions § SCRAPER_ADR](decisions.md)). The parkrun results import, the parkrun events feed and the UltraSignup results import were removed on 2026-11-10 for that reason; runs already imported keep `source = 'parkrun'`. Race results come from RunSignUp's and ChronoTrack's APIs or manual paste ([integrations.md](../features/integrations.md#removed-scraped-integrations)).
+No integration scrapes a third party's website ([decisions § 2465](decisions.md)). The parkrun results import, the parkrun events feed and the UltraSignup results import were removed on 2026-11-10 for that reason; runs already imported keep `source = 'parkrun'`. Race results come from RunSignUp's and ChronoTrack's APIs or manual paste ([integrations.md](../features/integrations.md#removed-scraped-integrations)).
 
 ### Garmin Connect (official developer program)
 

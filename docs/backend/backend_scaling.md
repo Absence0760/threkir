@@ -13,7 +13,7 @@ The plan below starts from the Phase 1 backend: a single Supabase project. (For 
 - **Postgres** — runs, routes, integrations, user profiles
 - **Auth** — Apple Sign-In, Google Sign-In
 - **Storage** — GPX files, data exports, avatars
-- **Edge Functions** — Strava sync, token refresh, data export (and, until its removal as a scraper in decisions § SCRAPER_ADR, the parkrun import)
+- **Edge Functions** — Strava sync, token refresh, data export (and, until its removal as a scraper in decisions § 2465, the parkrun import)
 
 This was the right choice for Phase 1: it handles CRUD, auth, and storage with zero ops. The issues below become real at scale — they didn't need fixing on day one, but the architecture anticipated them, and the Go worker + job queue (May 2026) and the live hub (deployed 2026-07-21) are this plan made real.
 
@@ -419,7 +419,7 @@ Replaces Supabase Edge Functions for operations that need retries, long runtimes
 
 **Queue implementation:** a Postgres-backed queue — no extra infrastructure needed. Jobs are stored in a `jobs` table with status, retry count, and scheduled time. The Go service polls the queue.
 
-**Shipped without River.** The `e.g., River for Go` this line used to recommend was never taken up: `apps/job_worker/go.mod` has no `riverqueue/river`, and the queue is a hand-rolled claim-and-dispatch loop (`internal/worker.go:359`) over the `jobs` table `20260609_001` created. The table below is the Phase-2 sketch, not the built set — parkrun import in particular never moved; it stayed the `parkrun-import` Edge Function until it was removed outright on 2026-11-10 (decisions § SCRAPER_ADR). The authoritative list of what the worker actually drains is the `switch` at `internal/worker.go:359`, enumerated in the status banner at the top of this file.
+**Shipped without River.** The `e.g., River for Go` this line used to recommend was never taken up: `apps/job_worker/go.mod` has no `riverqueue/river`, and the queue is a hand-rolled claim-and-dispatch loop (`internal/worker.go:359`) over the `jobs` table `20260609_001` created. The table below is the Phase-2 sketch, not the built set — parkrun import in particular never moved; it stayed the `parkrun-import` Edge Function until it was removed outright on 2026-11-10 (decisions § 2465). The authoritative list of what the worker actually drains is the `switch` at `internal/worker.go:359`, enumerated in the status banner at the top of this file.
 
 ```sql
 create table jobs (
@@ -583,7 +583,7 @@ Aligned with the existing product roadmap.
 
 **Migrate from Edge Functions:** Strava webhook, token refresh, data export. All three moved, and all three are still deployed as the rollback path.
 
-The "only parkrun import remains" this line used to carry was never true and is now wrong by an order of magnitude: **twenty-five** Edge Functions ship today (every directory under `apps/backend/supabase/functions/` except `_shared/`; `parkrun-import` was one until its removal, decisions § SCRAPER_ADR). Migrating three jobs to Go did not make Edge Functions a residue — everything webhook-shaped, Stripe-shaped, or auth-shaped since has landed as one, because a function that must answer a third party's HTTP callback wants Supabase's JWT + service-role context far more than it wants the worker's queue.
+The "only parkrun import remains" this line used to carry was never true and is now wrong by an order of magnitude: **twenty-five** Edge Functions ship today (every directory under `apps/backend/supabase/functions/` except `_shared/`; `parkrun-import` was one until its removal, decisions § 2465). Migrating three jobs to Go did not make Edge Functions a residue — everything webhook-shaped, Stripe-shaped, or auth-shaped since has landed as one, because a function that must answer a third party's HTTP callback wants Supabase's JWT + service-role context far more than it wants the worker's queue.
 
 **Database:**
 - [x] Add `personal_records` summary table with trigger (`20260508_001`)

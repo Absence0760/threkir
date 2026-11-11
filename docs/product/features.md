@@ -673,7 +673,7 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 **Stub:** plan → weeks → workouts data model (already partially sketched in `roadmap.md § Premium tier`); web plan editor; "today's workout" dashboard card; execution loop in the run screen; auto-match planned vs actual.
 
 ### External platform sync (OAuth)
-**Closes:** Strava, Garmin Connect, Apple Health, Health Connect, RunSignUp. (parkrun was here until its scraped import was removed, [decisions § SCRAPER_ADR](../architecture/decisions.md).)
+**Closes:** Strava, Garmin Connect, Apple Health, Health Connect, RunSignUp. (parkrun was here until its scraped import was removed, [decisions § 2465](../architecture/decisions.md).)
 **Stub:** one OAuth Edge Function per provider with token refresh, webhook or polling ingest, bidirectional for Strava. Garmin Connect is gated on business approval — do not block on it.
 
 ### Segments + leaderboards

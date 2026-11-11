@@ -168,7 +168,7 @@ done
   from RunSignUp on a five-minute schedule once its Vault URL is armed (`deployment.md`
   § RunSignUp race calendar).
   No leg scrapes a third party's site; the parkrun and UltraSignup results imports
-  were removed ([decisions § SCRAPER_ADR](../architecture/decisions.md)).
+  were removed ([decisions § 2465](../architecture/decisions.md)).
   Audience sharing (followers level + named-person shares) needs no deploy step and
   ships closed; opening its `private.feature_flags` row waits on the CISO / Security
   Analyst review in [deployment.md § Audience sharing](deployment.md#audience-sharing--after-the-ciso--security-analyst-review).

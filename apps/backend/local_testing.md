@@ -52,7 +52,7 @@ This drops and recreates the local database using the migration files in `supaba
 - Email: `runner@test.com`
 - Password: `testtest`
 
-The seed includes 12 runs (across app, Strava, parkrun, HealthKit sources), 5 routes, a user profile, and 2 connected integrations. This is enough to test the dashboard, run history, route library, and all other pages with real data.
+The seed includes 12 runs (across app, Strava, parkrun, HealthKit sources), 5 routes, a user profile, and a connected Strava integration. The parkrun runs stand for history imported before the parkrun import was removed (decisions § SCRAPER_ADR). This is enough to test the dashboard, run history, route library, and all other pages with real data.
 
 ### Regenerate client row types
 
@@ -83,11 +83,11 @@ Functions are now available at `http://localhost:24321/functions/v1/{function-na
 You can test them with curl:
 
 ```bash
-# Example: test parkrun import
-curl -X POST http://localhost:24321/functions/v1/parkrun-import \
+# Example: ask race-results-import whether the RunSignUp leg is available
+curl -X POST http://localhost:24321/functions/v1/race-results-import \
   -H "Authorization: Bearer <user-jwt>" \
   -H "Content-Type: application/json" \
-  -d '{"athleteNumber": "A123456"}'
+  -d '{"provider": "runsignup", "probe": true}'
 ```
 
 ---
@@ -109,7 +109,7 @@ Open `http://localhost:24323` in your browser to:
 |---|---|---|
 | `STRAVA_CLIENT_ID` | `apps/backend/.env.local` | From Strava developer portal (optional) |
 | `STRAVA_CLIENT_SECRET` | `apps/backend/.env.local` | From Strava developer portal (optional) |
-| `PARKRUN_USER_AGENT` | `apps/backend/.env.local` | Any user agent string |
+| `RACE_IMPORT_USER_AGENT` | `apps/backend/.env.local` | Any user agent string (optional; defaults to `RunApp/1.0`) |
 
 ---
 

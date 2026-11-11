@@ -285,7 +285,7 @@ class RaceCourse {
     this.startGate,
     this.finishGate,
     this.finishLineSelfCross = false,
-    this.minCoverageM,
+    this.lapCount,
   });
 
   /// Null for an event with no `event_courses` rows, raced on the event's
@@ -307,9 +307,9 @@ class RaceCourse {
   /// hand only.
   final bool finishLineSelfCross;
 
-  /// The lap minimum the race froze (decisions § 2472), handed to the
+  /// The lap count the race froze (decisions § 2472), handed to the
   /// detector; null when there is none and the detector measures the lap.
-  final double? minCoverageM;
+  final int? lapCount;
 
   bool get hasFinish => finishLat != null && finishLng != null;
   bool get hasStart => startLat != null && startLng != null;
@@ -324,7 +324,7 @@ class RaceCourse {
         'start_gate': _gateJson(startGate),
         'finish_gate': _gateJson(finishGate),
         'finish_line_self_cross': finishLineSelfCross,
-        'min_coverage_m': minCoverageM,
+        'lap_count': lapCount,
       };
 
   /// A cached [toJson]; null when it is not one.
@@ -342,7 +342,7 @@ class RaceCourse {
       startGate: _gateFromJson(j['start_gate']),
       finishGate: _gateFromJson(j['finish_gate']),
       finishLineSelfCross: j['finish_line_self_cross'] == true,
-      minCoverageM: n(j['min_coverage_m']),
+      lapCount: j['lap_count'] is int ? j['lap_count'] as int : null,
     );
   }
 
@@ -798,9 +798,24 @@ class RaceController extends ChangeNotifier {
       !_raceEnded &&
       _detector?.candidate == null;
 
-  /// Whether [coveredM] clears the 90% gate on this racer's course.
+  /// Whether [coveredM] finishes this racer's course by hand: the 90% gate,
+  /// and on a lap course every lap run ([RaceFinishDetector.lapsMet]).
   bool coverageMet(double coveredM) =>
-      raceCoverageMet(coveredM, _course?.distanceM);
+      raceCoverageMet(coveredM, _course?.distanceM) &&
+      _lapsMet(coveredM) != false;
+
+  /// The detector's lap rule at [coveredM]; null without one. A detector
+  /// re-armed after an undo counts from the kept start and knows no laps.
+  bool? _lapsMet(double coveredM) {
+    final d = _detector;
+    if (d == null || _detectorUndone != null) return null;
+    try {
+      return d.lapsMet(coveredM);
+    } catch (e) {
+      debugPrint('[RaceController.lapsMet] ${safeErrorLabel(e)}');
+      return null;
+    }
+  }
 
   /// Gun time to [finishAtDevice], or null with no GO on record.
   int? gunTimeTo(DateTime finishAtDevice) {
@@ -1526,7 +1541,7 @@ class RaceController extends ChangeNotifier {
       finishGate: course.finishGate,
       mode: selfTimed ? RaceStartMode.selfTimed : RaceStartMode.gun,
       goAt: selfTimed ? null : goDevice,
-      minCoverageM: course.minCoverageM,
+      lapCount: course.lapCount,
     );
   }
 
@@ -1548,7 +1563,6 @@ class RaceController extends ChangeNotifier {
       courseDistanceM: distance,
       finishGate: line,
       goAt: undone.keptStart?.at ?? goDevice,
-      minCoverageM: course.minCoverageM,
     );
   }
 
@@ -1789,7 +1803,7 @@ class RaceController extends ChangeNotifier {
           startGate: frozen.startGate,
           finishGate: frozen.finishGate,
           finishLineSelfCross: frozen.finishLineSelfCross,
-          minCoverageM: frozen.finishMinCoverageM,
+          lapCount: frozen.finishLapCount,
         );
       }
       return RaceCourse(
@@ -1885,6 +1899,7 @@ class RaceController extends ChangeNotifier {
       coveredM: coveredM,
       courseDistanceM: _course?.distanceM,
       now: now ?? DateTime.now(),
+      lapsMet: _lapsMet(coveredM),
     );
     _outcome = o;
     if (o.method == RaceFinishMethod.auto) _finish = settled;

@@ -297,6 +297,7 @@ for (const c of section('stopOutcome')) {
 			num(c.coveredM),
 			numOrNull(c, 'courseDistanceM'),
 			t0 + num(c.nowMs),
+			req(c, 'lapsMet') as boolean | null,
 		);
 		const e = c.expect as Obj;
 		assert.equal(o.finisherStatus, e.finisherStatus);
@@ -345,7 +346,7 @@ for (const c of section('lines')) {
 			finishGate: gateOf(req(c, 'finishGate')),
 			mode: c.mode === 'selfTimed' ? 'selfTimed' : 'gun',
 			goAtMs: goS !== null && goAfter === null ? t0 + goS * 1000 : null,
-			minCoverageM: numOrNull(c, 'minCoverageM'),
+			lapCount: numOrNull(c, 'lapCount'),
 		});
 		let finalisedAt: number | null = null;
 		let finish: RaceFinish | null = null;
@@ -359,6 +360,8 @@ for (const c of section('lines')) {
 		assert.equal(finalisedAt, req(e, 'finalisesAtFix'));
 		assertFinish(finish, req(e, 'finish'), 'finish');
 		assertStart(d.start, req(e, 'start'), 'start');
+		const fixes = c.fixes as Obj[];
+		assert.equal(d.lapsMet(num(fixes[fixes.length - 1].coveredM)), req(e, 'lapsMet'), 'lapsMet');
 		const candidateAtS = req(e, 'candidateAtS');
 		assert.equal(d.candidate === null ? null : (d.candidate.atMs - t0) / 1000, candidateAtS);
 

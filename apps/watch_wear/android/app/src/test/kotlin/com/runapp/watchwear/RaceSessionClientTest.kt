@@ -238,7 +238,7 @@ class RaceSessionClientTest {
                     """[{"course_id":"c1","distance_m":5000,"finish_lat":51.1,"finish_lng":0.2,
                         "start_gate_lat":51.01,"start_gate_lng":0.11,"start_gate_bearing_deg":90,"start_gate_half_width_m":15,
                         "finish_gate_lat":51.1,"finish_gate_lng":0.2,"finish_gate_bearing_deg":90,"finish_gate_half_width_m":15,
-                        "finish_line_self_cross":true,"finish_min_coverage_m":4700.5}]""",
+                        "finish_line_self_cross":true,"finish_lap_count":3}]""",
             ),
             seen,
         )
@@ -252,8 +252,8 @@ class RaceSessionClientTest {
         val frozen = seen.single { it.contains("/rest/v1/race_session_courses") }
         assertTrue(frozen.contains("course_id=eq.c1") && frozen.contains("%2B00%3A00"))
         assertTrue(frozen.contains("finish_line_self_cross"))
-        assertEquals("the frozen lap minimum (decisions § 2472)", 4700.5, course.minCoverageM!!, 0.0)
-        assertTrue(frozen.contains("finish_min_coverage_m"))
+        assertEquals("the frozen lap count (decisions § 2472)", 3, course.lapCount)
+        assertTrue(frozen.contains("finish_lap_count"))
     }
 
     @Test
@@ -272,7 +272,7 @@ class RaceSessionClientTest {
         assertEquals(Gate(51.1, 0.2, 90.0, 15.0), course.finishGate)
         assertNull("a line missing a column is no line", course.startGate)
         assertFalse(course.finishLineSelfCross)
-        assertNull("the live row has no lap minimum", course.minCoverageM)
+        assertNull("the live row has no lap count", course.lapCount)
     }
 
     @Test

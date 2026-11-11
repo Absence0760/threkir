@@ -10,6 +10,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import java.net.URLEncoder
@@ -65,8 +66,8 @@ class RaceSessionClient(
     /// (`race_session_courses`, decisions § 2391) when it has one, so a course
     /// edited mid-race moves only the next race. Serializable so the course is
     /// cached on the watch and a race times by its lines with no signal.
-    /// [minCoverageM] is the lap minimum the race froze
-    /// (`finish_min_coverage_m`, decisions § 2472); the live row has none.
+    /// [lapCount] is the lap count the race froze (`finish_lap_count`,
+    /// decisions § 2472); the live row has none.
     @Serializable
     data class RaceCourse(
         val id: String,
@@ -79,7 +80,7 @@ class RaceSessionClient(
         val startGate: Gate? = null,
         val finishGate: Gate? = null,
         val finishLineSelfCross: Boolean = false,
-        val minCoverageM: Double? = null,
+        val lapCount: Int? = null,
     ) {
         val hasStart: Boolean get() = startLat != null && startLng != null
     }
@@ -136,7 +137,7 @@ class RaceSessionClient(
                 "$baseUrl/rest/v1/race_session_courses?event_id=eq.${enc(eventId)}" +
                     "&instance_start=eq.${enc(instanceStart)}" +
                     "&course_id=eq.${enc(courseId)}" +
-                    "&select=course_id,finish_lat,finish_lng,distance_m,finish_min_coverage_m,$GATE_COLUMNS",
+                    "&select=course_id,finish_lat,finish_lng,distance_m,finish_lap_count,$GATE_COLUMNS",
                 accessToken,
             )
         }.getOrNull()?.let(::parseFrozenCourse)
@@ -358,7 +359,7 @@ class RaceSessionClient(
             val startGate: Gate?,
             val finishGate: Gate?,
             val finishLineSelfCross: Boolean,
-            val minCoverageM: Double? = null,
+            val lapCount: Int? = null,
         )
 
         @JvmStatic
@@ -375,8 +376,7 @@ class RaceSessionClient(
                 startGate = parseGate(row, "start_gate"),
                 finishGate = parseGate(row, "finish_gate"),
                 finishLineSelfCross = selfCross(row),
-                minCoverageM = row["finish_min_coverage_m"]?.jsonPrimitive?.doubleOrNull
-                    ?.takeIf { it.isFinite() && it > 0.0 },
+                lapCount = row["finish_lap_count"]?.jsonPrimitive?.intOrNull?.takeIf { it >= 2 },
             )
         }
 
@@ -393,7 +393,7 @@ class RaceSessionClient(
                     startGate = frozen.startGate,
                     finishGate = frozen.finishGate,
                     finishLineSelfCross = frozen.finishLineSelfCross,
-                    minCoverageM = frozen.minCoverageM,
+                    lapCount = frozen.lapCount,
                 )
             }
 

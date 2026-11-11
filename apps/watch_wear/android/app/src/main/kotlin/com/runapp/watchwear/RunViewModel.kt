@@ -1418,6 +1418,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 coveredM = _state.value.distanceM,
                 courseDistanceM = race.course?.distanceM,
                 stoppedAtMs = raceStoppedAtMs ?: System.currentTimeMillis(),
+                lapsMet = raceLapsMet(_state.value.distanceM),
             ),
         )
     }
@@ -1427,6 +1428,15 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private fun markRaceStopped() {
         if (boundRace == null || raceStopDecision != null) return
         if (raceStoppedAtMs == null) raceStoppedAtMs = System.currentTimeMillis()
+    }
+
+    /// The lap rule at [coveredM] for a hand finish; null (the distance
+    /// decides) when the timer has none or fails.
+    private fun raceLapsMet(coveredM: Double): Boolean? = try {
+        raceTimer.lapsMet(coveredM)
+    } catch (e: Throwable) {
+        Log.w(TAG, "race lap rule failed; judged by distance", e)
+        null
     }
 
     private fun settleRaceTimer(): RaceFinish.Finish? = try {
@@ -2172,6 +2182,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                         coveredM = m.distanceM,
                         courseDistanceM = race.course?.distanceM,
                         stoppedAtMs = stoppedAt ?: System.currentTimeMillis(),
+                        lapsMet = raceLapsMet(m.distanceM),
                     ),
                     userId = uidForRace,
                     runId = runId,

@@ -40,8 +40,8 @@ export interface RetimeCourse extends CourseGateColumns {
 	finish_lat: number | null;
 	finish_lng: number | null;
 	finish_line_self_cross: boolean;
-	/** The lap minimum the race froze (decisions § 2472); null for none. */
-	finish_min_coverage_m: number | null;
+	/** The lap count the race froze (decisions § 2472); null for none. */
+	finish_lap_count: number | null;
 }
 
 /** The session columns a re-time reads (`race_sessions_redacted`). */
@@ -386,7 +386,7 @@ export function computeRetime(i: RetimeInput): RetimeOutcome {
 		finishGate,
 		mode: selfTimed ? 'selfTimed' : 'gun',
 		goAtMs: goMs,
-		minCoverageM: course.finish_min_coverage_m,
+		lapCount: course.finish_lap_count,
 	});
 	let finish: RaceFinish | null = null;
 	for (const f of fixes) {

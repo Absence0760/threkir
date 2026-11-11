@@ -4704,10 +4704,10 @@ export type Database = {
           finish_gate_half_width_m: number | null
           finish_gate_lat: number | null
           finish_gate_lng: number | null
+          finish_lap_count: number | null
           finish_lat: number | null
           finish_line_self_cross: boolean
           finish_lng: number | null
-          finish_min_coverage_m: number | null
           frozen_at: string
           instance_start: string
           start_gate_bearing_deg: number | null
@@ -4723,10 +4723,10 @@ export type Database = {
           finish_gate_half_width_m?: number | null
           finish_gate_lat?: number | null
           finish_gate_lng?: number | null
+          finish_lap_count?: number | null
           finish_lat?: number | null
           finish_line_self_cross?: boolean
           finish_lng?: number | null
-          finish_min_coverage_m?: number | null
           frozen_at?: string
           instance_start: string
           start_gate_bearing_deg?: number | null
@@ -4742,10 +4742,10 @@ export type Database = {
           finish_gate_half_width_m?: number | null
           finish_gate_lat?: number | null
           finish_gate_lng?: number | null
+          finish_lap_count?: number | null
           finish_lat?: number | null
           finish_line_self_cross?: boolean
           finish_lng?: number | null
-          finish_min_coverage_m?: number | null
           frozen_at?: string
           instance_start?: string
           start_gate_bearing_deg?: number | null

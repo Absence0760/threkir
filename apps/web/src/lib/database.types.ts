@@ -3773,6 +3773,7 @@ export type Database = {
           route_guide: Json | null
           route_guide_checked_at: string | null
           route_id: string | null
+          shared_use: string | null
           slug: string
           source_checked_at: string | null
           source_ref: string | null
@@ -3794,6 +3795,7 @@ export type Database = {
           route_guide?: Json | null
           route_guide_checked_at?: string | null
           route_id?: string | null
+          shared_use?: string | null
           slug: string
           source_checked_at?: string | null
           source_ref?: string | null
@@ -3815,6 +3817,7 @@ export type Database = {
           route_guide?: Json | null
           route_guide_checked_at?: string | null
           route_id?: string | null
+          shared_use?: string | null
           slug?: string
           source_checked_at?: string | null
           source_ref?: string | null

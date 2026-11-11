@@ -11,6 +11,7 @@
 
 import { RACE_DISTANCES_M, haversineM, pathLengthM } from './course_geometry.mjs';
 import { routeGuideRefusal } from './route_guide.mjs';
+import { assertNoThirdPartyMarks } from './third_party_marks.mjs';
 
 /** @typedef {import('./course_geometry.mjs').LatLng} LatLng */
 
@@ -19,6 +20,8 @@ export const COURSE_SHAPES = ['loop', 'out_and_back', 'point_to_point'];
 export const GEOMETRY_SOURCES = ['osm', 'nps', 'agency', 'traced'];
 export const COURSE_DIFFICULTIES = ['easy', 'moderate', 'hard'];
 export const ROUTE_SURFACES = ['road', 'trail', 'mixed'];
+/** When an organised group uses a course's paths; each client renders a give-way note naming no one (`park_courses.shared_use`). */
+export const SHARED_USES = ['saturday_morning_group'];
 
 export const MAX_CHECKPOINTS = 50;
 export const MAX_SOURCE_REF_LENGTH = 8000;
@@ -68,7 +71,7 @@ const RACE_DISTANCE_WORDS = Object.freeze({
  *   distance_m: number, elevation_m: number | null, official_distance_m: number | null,
  *   description: string | null, laps: number | null, checkpoints: { lat: number, lng: number }[], waypoints: LatLng[],
  *   start_gate: PayloadGate | null, end_gate: PayloadGate | null,
- *   route_guide: object | null, route_guide_checked_at: string | null,
+ *   route_guide: object | null, route_guide_checked_at: string | null, shared_use: string | null,
  * }} PayloadCourse
  * @typedef {{ lat: number, lng: number, bearing_deg: number, half_width_m: number }} PayloadGate
  * @typedef {{
@@ -165,6 +168,9 @@ function payloadCourse(entry, line, shape) {
 		`${slug}: laps must be a whole number from 1 to ${MAX_LAPS}`,
 	);
 
+	const sharedUse = entry.shared_use ?? null;
+	check(sharedUse === null || SHARED_USES.includes(sharedUse), `${slug}: shared_use ${sharedUse} is not one of ${SHARED_USES.join(', ')}`);
+
 	const guide = entry.route_guide ?? null;
 	const guideRefusal = guide === null ? null : routeGuideRefusal(guide);
 	check(guideRefusal === null, `${slug}: route_guide is not valid: ${guideRefusal}; rebuild it`);
@@ -213,6 +219,7 @@ function payloadCourse(entry, line, shape) {
 		end_gate: curatedGate(entry.end_gate, line[line.length - 1], `${slug}: end_gate`),
 		route_guide: guide,
 		route_guide_checked_at: guideCheckedAt,
+		shared_use: sharedUse,
 	};
 }
 
@@ -237,6 +244,7 @@ function trailLaps(entry) {
 export function cataloguePayload(manifest, readGeojson) {
 	const park = manifest?.park;
 	check(park && typeof park === 'object', 'the manifest has no park');
+	assertNoThirdPartyMarks(manifest, `${park.slug} manifest.json`);
 	check(typeof park.slug === 'string' && SLUG.test(park.slug) && park.slug.length <= 80, `park slug ${park.slug} is not a lower-case hyphenated slug`);
 	check(typeof park.name === 'string' && park.name.length >= 1 && park.name.length <= 120, 'park name must be 1-120 characters');
 	check(PARK_AGENCIES.includes(park.agency), `park agency ${park.agency} is not one of ${PARK_AGENCIES.join(', ')}`);

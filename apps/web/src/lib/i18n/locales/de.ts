@@ -7890,6 +7890,8 @@ export const messages = {
 	"parks.safetyNotice": "Bleib auf dem markierten Weg. Die Zeitmessung braucht jeden Kontrollpunkt, eine Abkürzung zählt also nie. Das ist ein Zeitfahren, kein Rennen: Der Weg bleibt für alle offen und wird nicht betreut.",
 	"parks.notAffiliated": "Threkir veröffentlicht diese Strecken. Sie werden nicht vom Park oder seiner Verwaltungsbehörde organisiert, gesponsert oder empfohlen. Es gelten die Regeln, Öffnungszeiten, Gebühren und Sperrungen des Parks.",
 	"parks.longCourseNotice": "Lange Strecke. Starte früh genug, um vor der Schließung des Parks fertig zu sein. Rechne mit Wegen, die du mit Radfahrern und Reitern teilst, und mit Bachquerungen, die nach Regen unpassierbar sein können.",
+	"parks.timesNotEventResults": "Die Zeiten hier sind Threkir-Zeiten auf diesen Wegen. Sie sind keine Ergebnisse einer Veranstaltung, die auf ihnen stattfindet.",
+	"parks.sharedUseSaturdayMorningGroup": "Organisierte Gruppen nutzen diese Wege samstagmorgens. Lass ihnen den Vortritt und vermeide es, mitten durch sie hindurch auf Zeit zu laufen.",
 	"parks.attributionOsm": "Streckenverlauf © OpenStreetMap-Mitwirkende",
 	"parks.attributionNps": "Streckenverlauf aus Wegdaten des National Park Service",
 	"parks.attributionAgency": "Streckenverlauf aus den Wegdaten des Parks",

@@ -5193,6 +5193,7 @@ class ParkCourseRow {
   static const String colAttribution = 'attribution';
   static const String colRouteGuide = 'route_guide';
   static const String colRouteGuideCheckedAt = 'route_guide_checked_at';
+  static const String colSharedUse = 'shared_use';
 
   final String id;
   final String parkId;
@@ -5213,6 +5214,7 @@ class ParkCourseRow {
   final String? attribution;
   final dynamic routeGuide;
   final DateTime? routeGuideCheckedAt;
+  final String? sharedUse;
 
   const ParkCourseRow({
     required this.id,
@@ -5234,6 +5236,7 @@ class ParkCourseRow {
     this.attribution,
     this.routeGuide,
     this.routeGuideCheckedAt,
+    this.sharedUse,
   });
 
   factory ParkCourseRow.fromJson(Map<String, dynamic> json) => ParkCourseRow(
@@ -5256,6 +5259,7 @@ class ParkCourseRow {
     attribution: json['attribution'] as String?,
     routeGuide: json['route_guide'],
     routeGuideCheckedAt: parseIsoStrictValue(json['route_guide_checked_at']),
+    sharedUse: json['shared_use'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5278,6 +5282,7 @@ class ParkCourseRow {
     colAttribution: attribution,
     colRouteGuide: routeGuide,
     colRouteGuideCheckedAt: routeGuideCheckedAt?.toIso8601String(),
+    colSharedUse: sharedUse,
   };
 
   ParkCourseRow copyWith({
@@ -5300,6 +5305,7 @@ class ParkCourseRow {
     String? attribution,
     dynamic routeGuide,
     DateTime? routeGuideCheckedAt,
+    String? sharedUse,
   }) => ParkCourseRow(
     id: id ?? this.id,
     parkId: parkId ?? this.parkId,
@@ -5320,6 +5326,7 @@ class ParkCourseRow {
     attribution: attribution ?? this.attribution,
     routeGuide: routeGuide ?? this.routeGuide,
     routeGuideCheckedAt: routeGuideCheckedAt ?? this.routeGuideCheckedAt,
+    sharedUse: sharedUse ?? this.sharedUse,
   );
 }
 

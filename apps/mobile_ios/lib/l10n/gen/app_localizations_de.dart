@@ -21377,6 +21377,14 @@ class AppLocalizationsDe extends AppLocalizations {
       'Lange Strecke. Starte früh genug, um vor der Schließung des Parks fertig zu sein. Rechne mit Wegen, die du mit Radfahrern und Reitern teilst, und mit Bachquerungen, die nach Regen unpassierbar sein können.';
 
   @override
+  String get parksTimesNotEventResults =>
+      'Die Zeiten hier sind Threkir-Zeiten auf diesen Wegen. Sie sind keine Ergebnisse einer Veranstaltung, die auf ihnen stattfindet.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Organisierte Gruppen nutzen diese Wege samstagmorgens. Lass ihnen den Vortritt und vermeide es, mitten durch sie hindurch auf Zeit zu laufen.';
+
+  @override
   String get parksAttributionOsm =>
       'Streckenverlauf © OpenStreetMap-Mitwirkende';
 

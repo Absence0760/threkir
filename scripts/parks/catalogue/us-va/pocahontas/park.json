@@ -9,6 +9,9 @@
     "website_url": "https://www.dcr.virginia.gov/state-parks/pocahontas",
     "osm_boundary": "relation/3144509"
   },
+  "release": {
+    "status": "live"
+  },
   "trail_review": {
     "checked_at": "2026-11-09",
     "source_urls": [

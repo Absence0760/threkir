@@ -34421,6 +34421,18 @@ abstract class AppLocalizations {
   /// **'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.'**
   String get parksLongCourseNotice;
 
+  /// Park course page notice, on every course: the times on its boards are Threkir's own, never the results of an organised event (a weekly community run, say) that uses the same paths. Names no event.
+  ///
+  /// In en, this message translates to:
+  /// **'Times here are Threkir times on these paths. They are not results of any event held on them.'**
+  String get parksTimesNotEventResults;
+
+  /// Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation.
+  ///
+  /// In en, this message translates to:
+  /// **'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.'**
+  String get parksSharedUseSaturdayMorningGroup;
+
   /// Park courses (#1313): web key parks.attributionOsm.
   ///
   /// In en, this message translates to:

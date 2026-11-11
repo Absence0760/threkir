@@ -34,6 +34,7 @@ function c(over: Partial<SharedCourse> = {}): SharedCourse {
 		attribution: '© OpenStreetMap contributors (ODbL)',
 		route_guide: null,
 		route_guide_checked_at: null,
+		shared_use: null,
 		segment: {
 			name: 'Lake Loop',
 			description: 'Around the lake.',

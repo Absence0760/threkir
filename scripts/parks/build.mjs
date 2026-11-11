@@ -45,8 +45,11 @@ import {
 	traceVia,
 	trimToDistance,
 } from './lib/course_geometry.mjs';
+import { SHARED_USES } from './lib/catalogue_payload.mjs';
+import { parseRelease } from './lib/catalogue_release.mjs';
 import { readIfExists } from './lib/read_if_exists.mjs';
 import { buildRouteGuide } from './lib/route_guide.mjs';
+import { assertNoThirdPartyMarks } from './lib/third_party_marks.mjs';
 
 const METERS_PER_MILE = 1609.344;
 
@@ -59,6 +62,8 @@ const SIMPLIFY_EPSILON_M = 1;
  */
 export function buildPark(dir) {
 	const spec = JSON.parse(fs.readFileSync(path.join(dir, 'park.json'), 'utf8'));
+	assertNoThirdPartyMarks(spec, path.join(dir, 'park.json'));
+	const release = parseRelease(spec.release, path.join(dir, 'park.json'));
 	const snapshot = JSON.parse(fs.readFileSync(path.join(dir, 'snapshot.json'), 'utf8'));
 	/** @type {Map<string, string>} */
 	const outputs = new Map();
@@ -141,6 +146,7 @@ export function buildPark(dir) {
 			direction: course.direction,
 			surface: course.surface,
 			difficulty: course.difficulty,
+			...sharedUseOrThrow(course),
 			...(fords.length > 0 ? { fords } : {}),
 			geometry_source: 'osm',
 			source_ref: course.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
@@ -240,6 +246,7 @@ export function buildPark(dir) {
 			start_line_from_lead_in_start_m: Math.round(trimEachEndM * 10) / 10,
 			start_finish: startFinish,
 			surface: race.surface,
+			...sharedUseOrThrow(race),
 			...(fords.length > 0 ? { fords } : {}),
 			geometry_source: 'osm',
 			source_ref: race.osm_ways.map((/** @type {number} */ id) => `way/${id}`).join(','),
@@ -255,11 +262,13 @@ export function buildPark(dir) {
 
 	const manifest = {
 		park: spec.park,
+		release,
 		attribution: '© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP',
 		snapshot_fetched_at: snapshot.fetched_at,
 		courses,
 		...(raceCourses.length > 0 ? { race_courses: raceCourses } : {}),
 	};
+	assertNoThirdPartyMarks(manifest, path.join(dir, 'manifest.json'));
 	outputs.set(path.join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 	return outputs;
 }
@@ -292,6 +301,21 @@ function trailReviewOrThrow(slug, sequence, ways, review) {
 }
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A course's `shared_use`, when the spec gives one: a vocabulary key naming
+ * when an organised group uses the paths, which each client renders as a
+ * give-way note naming no one.
+ *
+ * @param {{ slug: string, shared_use?: unknown }} course
+ */
+function sharedUseOrThrow(course) {
+	if (course.shared_use == null) return {};
+	if (typeof course.shared_use !== 'string' || !SHARED_USES.includes(course.shared_use)) {
+		throw new Error(`${course.slug}: shared_use ${JSON.stringify(course.shared_use)} is not one of ${SHARED_USES.join(', ')}`);
+	}
+	return { shared_use: course.shared_use };
+}
 
 /**
  * A course's route guide and the date a person last checked it on the

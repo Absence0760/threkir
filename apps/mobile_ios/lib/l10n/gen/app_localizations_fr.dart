@@ -21393,6 +21393,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Parcours long. Partez assez tôt pour finir avant la fermeture du parc. Attendez-vous à partager le sentier avec des vélos et des chevaux, et à des passages à gué parfois infranchissables après la pluie.';
 
   @override
+  String get parksTimesNotEventResults =>
+      'Les temps affichés ici sont des temps Threkir sur ces chemins. Ce ne sont les résultats d\'aucun événement qui s\'y déroule.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Des groupes organisés empruntent ces chemins le samedi matin. Cédez-leur le passage et évitez de chronométrer un effort au milieu d\'eux.';
+
+  @override
   String get parksAttributionOsm =>
       'Tracé du parcours © contributeurs d\'OpenStreetMap';
 

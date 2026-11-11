@@ -7889,6 +7889,8 @@ export const messages = {
 	"parks.safetyNotice": "Mantenha-se no trilho marcado. A cronometragem exige todos os pontos de controlo, por isso um atalho nunca conta. É um contrarrelógio, não uma prova: o trilho continua aberto a todos e ninguém o vigia.",
 	"parks.notAffiliated": "A Threkir publica estes percursos. Não são organizados, patrocinados nem apoiados pelo parque ou pela entidade que o gere. Aplicam-se as regras, os horários, as taxas e os encerramentos do parque.",
 	"parks.longCourseNotice": "Percurso longo. Comece cedo o suficiente para terminar antes de o parque fechar. Conte com trilhos partilhados com bicicletas e cavalos, e travessias de água que podem ficar intransitáveis depois da chuva.",
+	"parks.timesNotEventResults": "Os tempos aqui apresentados são tempos do Threkir nestes trilhos. Não são resultados de nenhum evento realizado neles.",
+	"parks.sharedUseSaturdayMorningGroup": "Há grupos organizados que usam estes trilhos aos sábados de manhã. Dê-lhes passagem e evite fazer uma tentativa cronometrada no meio deles.",
 	"parks.attributionOsm": "Traçado do percurso © colaboradores do OpenStreetMap",
 	"parks.attributionNps": "Traçado do percurso a partir dos dados de trilhos do National Park Service",
 	"parks.attributionAgency": "Traçado do percurso a partir dos dados de trilhos do próprio parque",

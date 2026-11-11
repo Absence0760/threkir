@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { cataloguePayload, loadSql } from './lib/catalogue_payload.mjs';
+import { parseRelease } from './lib/catalogue_release.mjs';
 
 const USAGE =
 	'usage: node scripts/parks/load.mjs <catalogue/park dir> --club-id <uuid> --author-id <uuid> [--enqueue-backfill]';
@@ -53,11 +54,37 @@ export function readPayload(dir) {
 	});
 }
 
+/**
+ * The park's `release` from its built manifest (decisions § 2460).
+ *
+ * @param {string} dir
+ */
+export function readRelease(dir) {
+	const manifest = JSON.parse(fs.readFileSync(path.join(dir, 'manifest.json'), 'utf8'));
+	return parseRelease(manifest.release, path.join(dir, 'manifest.json'));
+}
+
+/**
+ * The one park's load statement, refused for a staged park: this fallback
+ * holds a park back exactly as the release sync does.
+ *
+ * @param {string} dir
+ * @param {{ clubId: string, authorId: string, enqueueBackfill: boolean }} opts
+ */
+export function parkLoadSql(dir, opts) {
+	const release = readRelease(dir);
+	const payload = readPayload(dir);
+	if (release.status === 'staged') {
+		throw new Error(`${payload.park.slug} is staged and does not load until its park.json release is { "status": "live" }. Reason: ${release.reason}`);
+	}
+	return { payload, sql: loadSql(payload, opts) };
+}
+
 function main() {
 	try {
 		const { dir, clubId, authorId, enqueueBackfill } = parseArgs(process.argv.slice(2));
-		const payload = readPayload(dir);
-		process.stdout.write(loadSql(payload, { clubId, authorId, enqueueBackfill }));
+		const { payload, sql } = parkLoadSql(dir, { clubId, authorId, enqueueBackfill });
+		process.stdout.write(sql);
 		console.error(
 			`${payload.park.slug}: ${payload.courses.length} courses (${payload.courses.map((c) => c.slug).join(', ')})`,
 		);

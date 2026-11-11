@@ -21353,6 +21353,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Percurso longo. Comece cedo o suficiente para terminar antes de o parque fechar. Conte com trilhos partilhados com bicicletas e cavalos, e travessias de água que podem ficar intransitáveis depois da chuva.';
 
   @override
+  String get parksTimesNotEventResults =>
+      'Os tempos aqui apresentados são tempos do Threkir nestes trilhos. Não são resultados de nenhum evento realizado neles.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Há grupos organizados que usam estes trilhos aos sábados de manhã. Dê-lhes passagem e evite fazer uma tentativa cronometrada no meio deles.';
+
+  @override
   String get parksAttributionOsm =>
       'Traçado do percurso © colaboradores do OpenStreetMap';
 
@@ -43625,6 +43633,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get parksLongCourseNotice =>
       'Percurso longo. Comece cedo o bastante para terminar antes de o parque fechar. Espere trilhas compartilhadas com bicicletas e cavalos, e travessias de água que podem ficar intransitáveis depois da chuva.';
+
+  @override
+  String get parksTimesNotEventResults =>
+      'Os tempos aqui são tempos do Threkir nestas trilhas. Não são resultados de nenhum evento realizado nelas.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Grupos organizados usam estas trilhas aos sábados de manhã. Dê passagem e evite cronometrar um esforço no meio deles.';
 
   @override
   String get parksAttributionOsm =>

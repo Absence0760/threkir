@@ -7885,6 +7885,8 @@ export const messages = {
 	"parks.safetyNotice": "標識のあるトレイルから外れないでください。計測にはすべてのチェックポイントが必要なので、近道は記録になりません。これはレースではなくタイムトライアルです。トレイルは誰にでも開かれており、係員はいません。",
 	"parks.notAffiliated": "これらのコースはThrekirが公開しています。公園やその管理機関が主催・後援・推奨するものではありません。公園の規則、開園時間、料金、閉鎖情報に従ってください。",
 	"parks.longCourseNotice": "長いコースです。閉園時間までに走り終えられるよう、早めにスタートしてください。自転車や馬と共用のトレイルや、雨の後は渡れなくなることがある渡渉箇所があります。",
+	"parks.timesNotEventResults": "ここに表示されるタイムは、この道をThrekirで記録したタイムです。この道で開催されるいかなるイベントの結果でもありません。",
+	"parks.sharedUseSaturdayMorningGroup": "土曜日の朝は、団体がこの道を利用します。道を譲り、その中を走り抜けてタイムを計測するのは避けてください。",
 	"parks.attributionOsm": "コースライン © OpenStreetMap contributors",
 	"parks.attributionNps": "コースラインは国立公園局のトレイルデータに基づきます",
 	"parks.attributionAgency": "コースラインは公園のトレイルデータに基づきます",

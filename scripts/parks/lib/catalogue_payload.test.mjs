@@ -8,7 +8,8 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { parseArgs, readPayload } from '../load.mjs';
-import { MAX_CHECKPOINTS, cataloguePayload, courseLine, loadSql } from './catalogue_payload.mjs';
+import { MAX_CHECKPOINTS, SHARED_USES, cataloguePayload, courseLine, loadSql } from './catalogue_payload.mjs';
+import { THIRD_PARTY_MARK, assertNoThirdPartyMarks, thirdPartyMarks } from './third_party_marks.mjs';
 
 const POCAHONTAS = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'catalogue', 'us-va', 'pocahontas');
 const CLUB = '11111111-1111-4111-8111-111111111111';
@@ -149,6 +150,7 @@ test('a valid manifest maps every field the load writes', () => {
 		end_gate: null,
 		route_guide: null,
 		route_guide_checked_at: null,
+		shared_use: null,
 	});
 	assert.equal(payload.attribution, '© OpenStreetMap contributors (ODbL)');
 });
@@ -372,4 +374,80 @@ test('parseArgs takes a park dir, both ids and the backfill flag', () => {
 	assert.throws(() => parseArgs(['dir', '--club-id', CLUB]), /usage/);
 	assert.throws(() => parseArgs(['dir', '--club-id', '--author-id', AUTHOR]), /--club-id needs a value/);
 	assert.throws(() => parseArgs(['dir', '--club', CLUB, '--author-id', AUTHOR]), /unknown option --club/);
+});
+
+test('a third-party event mark is found in any spelling, and plain park words are not', () => {
+	for (const text of [
+		'parkrun',
+		'Deep Run parkrun loop',
+		'PARKRUN',
+		'Park Run 5k',
+		'park-run',
+		'park_run',
+		'(not)parkrun',
+		'junior parkrun',
+		'parkwalk',
+		'Park Walk',
+		'https://www.parkrun.us/deeprun/course/',
+		'eventsupport@parkrun.com',
+	]) {
+		assert.ok(THIRD_PARTY_MARK.test(text), text);
+	}
+	for (const text of [
+		'Deep Run Park, 5 km',
+		'deep-run-park-5k',
+		'Run around the park',
+		'Park at the lot and run to the pond',
+		'Swift Creek Loop, 5 km',
+		'The park runs along the creek',
+		'Cross the park walkway',
+	]) {
+		assert.ok(!THIRD_PARTY_MARK.test(text), text);
+	}
+	assert.equal(thirdPartyMarks({ a: 'ｐａｒｋｒｕｎ', b: 'park\u200brun', c: 'parkrunner' }).length, 3, 'full-width, zero-width and longer forms');
+});
+
+test('every string in a spec or manifest is checked, keys and nested lists included, with its path', () => {
+	assert.deepEqual(
+		thirdPartyMarks({ park: { name: 'X' }, courses: [{ name: 'ok', route_guide: { getting_there: 'Meet the parkrun crowd' } }] }),
+		[{ path: 'courses[0].route_guide.getting_there', text: 'Meet the parkrun crowd' }],
+	);
+	assert.deepEqual(thirdPartyMarks({ notes: { parkrun: 1 } }), [{ path: 'notes.parkrun', text: 'parkrun' }]);
+	assert.throws(
+		() => assertNoThirdPartyMarks({ published: { source: 'https://www.parkrun.us/deeprun/course/' } }, 'park.json'),
+		/park\.json names a third-party event .* published\.source = "https:\/\/www\.parkrun\.us/,
+	);
+	assert.doesNotThrow(() => assertNoThirdPartyMarks({ name: 'Deep Run Park, 5 km', n: 5, ok: true, z: null }, 'x'));
+});
+
+test('a manifest naming a third-party event anywhere is refused before it can load', () => {
+	assert.throws(() => cataloguePayload(manifest({ courses: [{ ...manifest().courses[0], name: 'Square parkrun' }] }), squareOnly), /courses\[0\]\.name/);
+	assert.throws(() => cataloguePayload(manifest({ park: { ...manifest().park, name: 'Test Park Run' } }), squareOnly), /park\.name/);
+	assert.throws(
+		() => cataloguePayload(manifest({ park: { ...manifest().park, website_url: 'https://www.parkrun.us/test/' } }), squareOnly),
+		/park\.website_url/,
+	);
+	assert.throws(() => cataloguePayload(manifest({ attribution: '© OpenStreetMap contributors; route from parkrun' }), squareOnly), /attribution/);
+});
+
+test('every committed manifest and spec is free of third-party event marks', () => {
+	const root = path.join(POCAHONTAS, '..', '..');
+	for (const region of fs.readdirSync(root)) {
+		for (const park of fs.readdirSync(path.join(root, region))) {
+			for (const file of ['park.json', 'manifest.json']) {
+				assertNoThirdPartyMarks(JSON.parse(fs.readFileSync(path.join(root, region, park, file), 'utf8')), `${region}/${park}/${file}`);
+			}
+		}
+	}
+});
+
+test('a course may name when an organised group shares its paths, from the vocabulary only', () => {
+	const course = manifest().courses[0];
+	assert.equal(cataloguePayload(manifest(), squareOnly).courses[0].shared_use, null);
+	assert.deepEqual(SHARED_USES, ['saturday_morning_group']);
+	assert.equal(
+		cataloguePayload(manifest({ courses: [{ ...course, shared_use: 'saturday_morning_group' }] }), squareOnly).courses[0].shared_use,
+		'saturday_morning_group',
+	);
+	assert.throws(() => cataloguePayload(manifest({ courses: [{ ...course, shared_use: 'Saturday 8am group' }] }), squareOnly), /shared_use Saturday 8am group is not one of/);
 });

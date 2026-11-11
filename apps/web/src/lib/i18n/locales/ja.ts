@@ -2759,6 +2759,7 @@ export const messages = {
 	"metric.easyHrDrift.label": "イージーランの心拍ドリフト",
 	"metric.missStreak.label": "連続未実施",
 	"metric.missStreak.definition": "昨日からさかのぼって、ランの記録がないまま過ぎた予定ワークアウトの連続数です。スキップしたワークアウトや休養日は数えず、連続も途切れません。完了したワークアウトで連続は終わります。",
+	"metric.routeHistory.definition": "試技とは、このルートで同じアクティビティ種別のランのうち、100 m を超えて移動し、記録されたタイム（0 より大きく 10 日未満）があるものです。試技は速い順に並び、同じタイムは同じ順位になります。そのため、ベストタイムに並んだランも自己ベストです。",
 	"coaching.roster.riskLow": "低",
 	"coaching.roster.riskOptimal": "最適",
 	"coaching.roster.riskElevated": "やや高",

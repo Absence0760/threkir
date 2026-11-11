@@ -30,6 +30,7 @@ enum Metric {
   rpe,
   easyHrDrift,
   missStreak,
+  routeHistory,
 }
 
 /// Pre-formatted values a catalogue string interpolates, keyed by placeholder.
@@ -224,6 +225,14 @@ final Map<Metric, MetricEntry> kMetrics = {
       'chip': L10nKey('coachingRosterMissStreak',
           (l, a) => l.coachingRosterMissStreak(int.parse(a['n']!))),
     },
+  ),
+  // No term: "route history" is two ordinary words. The definition is what
+  // counts as an attempt and how tied times rank (`route_history.dart`).
+  Metric.routeHistory: MetricEntry(
+    label: L10nKey(
+        'runDetailSectionRouteHistory', (l, a) => l.runDetailSectionRouteHistory),
+    definition: L10nKey('metricRouteHistoryDefinition',
+        (l, a) => l.metricRouteHistoryDefinition),
   ),
 };
 

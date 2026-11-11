@@ -14079,6 +14079,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Séances prévues d\'affilée, en remontant depuis hier, passées sans course enregistrée. Une séance ignorée ou un jour de repos ne compte pas et n\'interrompt pas la série ; une séance faite y met fin.';
 
   @override
+  String get metricRouteHistoryDefinition =>
+      'Une tentative est une course sur cet itinéraire, du même type d\'activité, qui a parcouru plus de 100 m et a un temps enregistré (supérieur à zéro, inférieur à dix jours). Les tentatives sont classées de la plus rapide à la plus lente ; des temps égaux partagent un rang, donc une course qui égale le meilleur temps est aussi un record.';
+
+  @override
   String get coachingRosterRiskLow => 'Faible';
 
   @override

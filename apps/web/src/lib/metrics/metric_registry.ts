@@ -149,6 +149,12 @@ export const METRICS = {
 		definition: 'metric.missStreak.definition',
 		variants: { chip: 'coaching.roster.missStreak' },
 	},
+	// No term: "route history" is two ordinary words. The definition is what
+	// counts as an attempt and how tied times rank (`routes/route_history.ts`).
+	routeHistory: {
+		label: 'runDetail.routeHistory',
+		definition: 'metric.routeHistory.definition',
+	},
 	kom: {
 		label: 'metric.kom.label',
 		definition: 'metric.kom.definition',

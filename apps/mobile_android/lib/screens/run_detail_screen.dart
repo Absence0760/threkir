@@ -33,6 +33,7 @@ import '../local_route_store.dart';
 import '../local_run_store.dart';
 import '../manual_duration_input.dart';
 import '../metrics.dart';
+import '../widgets/metric_label.dart';
 import '../pace_analysis.dart';
 import '../preferences.dart';
 import '../privacy.dart';
@@ -2308,9 +2309,16 @@ class _RunDetailScreenState extends State<RunDetailScreen>
 
     return [
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        child: Text(l10n.runDetailSectionRouteHistory,
-            style: theme.textTheme.titleMedium),
+        padding: const EdgeInsets.fromLTRB(20, 16, 8, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(metricText(l10n, Metric.routeHistory),
+                  style: theme.textTheme.titleMedium),
+            ),
+            const MetricInfoButton(metric: Metric.routeHistory),
+          ],
+        ),
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),

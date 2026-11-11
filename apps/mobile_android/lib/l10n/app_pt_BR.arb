@@ -3915,6 +3915,7 @@
   "metricEasyHrDriftLabel": "Deriva da FC em corridas leves",
   "metricMissStreakLabel": "Perdidos seguidos",
   "metricMissStreakDefinition": "Treinos planejados seguidos, contando para trás a partir de ontem, que passaram sem corrida registrada. Um treino ignorado ou um dia de descanso não conta nem interrompe a sequência; um treino concluído a encerra.",
+  "metricRouteHistoryDefinition": "Uma tentativa é uma corrida neste percurso, do mesmo tipo de atividade, que percorreu mais de 100 m e tem um tempo registrado (acima de zero, abaixo de dez dias). As tentativas são ordenadas da mais rápida para a mais lenta; tempos iguais dividem a posição, então uma corrida que iguala o melhor tempo também é um recorde pessoal.",
   "coachingRosterRiskLow": "Baixo",
   "coachingRosterRiskOptimal": "Ótimo",
   "coachingRosterRiskElevated": "Elevado",

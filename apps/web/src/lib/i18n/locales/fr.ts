@@ -2764,6 +2764,7 @@ export const messages = {
 	"metric.easyHrDrift.label": "Dérive cardiaque en endurance",
 	"metric.missStreak.label": "Manqués d'affilée",
 	"metric.missStreak.definition": "Séances prévues d'affilée, en remontant depuis hier, passées sans course enregistrée. Une séance ignorée ou un jour de repos ne compte pas et n'interrompt pas la série ; une séance faite y met fin.",
+	"metric.routeHistory.definition": "Une tentative est une course sur cet itinéraire, du même type d'activité, qui a parcouru plus de 100 m et a un temps enregistré (supérieur à zéro, inférieur à dix jours). Les tentatives sont classées de la plus rapide à la plus lente ; des temps égaux partagent un rang, donc une course qui égale le meilleur temps est aussi un record.",
 	"coaching.roster.riskLow": "Faible",
 	"coaching.roster.riskOptimal": "Optimal",
 	"coaching.roster.riskElevated": "Élevé",

@@ -114,6 +114,11 @@ export const EXPECTED_SURVIVORS = [
     name: "the root supabase-js pin is apps/web's own release, so npm installs one copy",
     reason: "its subject is the root and apps/web package.json manifests, which the mutation leaves intact; a drift between them doubles supabase-js in the web bundle (decisions § 2341)",
   },
+  {
+    file: './supabase/functions/segment-match/park_course_runs.test.ts',
+    name: 'the net reaches the function with a timed run on every course',
+    reason: "its subject is fixtures/park_course_runs.json's coverage (every course has a timed run to replay), which the mutation leaves intact; the cases that replay those runs through the matcher are the ones that test the function",
+  },
 ];
 
 /**

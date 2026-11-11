@@ -7509,8 +7509,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# weeks',
-      one: '# week',
+      other: '$n weeks',
+      one: '$n week',
     );
     return 'You\'ve been away from the plan for $_temp0. There\'s a suggested change so the weeks ahead build back up from what you last ran.';
   }
@@ -7576,8 +7576,8 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# weeks',
-      one: '# week',
+      other: '$n weeks',
+      one: '$n week',
     );
     return 'You\'ve been away from the plan for $_temp0. These weeks restart at about half of the $km you last ran in a week and build about 10% a week. The taper stays as planned.';
   }

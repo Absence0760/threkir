@@ -7159,7 +7159,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planNudgeAnchorReturnBody(int n) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#週間');
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n週間');
     return '$_temp0プランから離れていました。この先の週を最後に走った量から積み上げ直す変更案があります。';
   }
 
@@ -7220,7 +7220,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planDetailAnchorReturnNote(int n, String km) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#週間');
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n週間');
     return '$_temp0プランから離れていました。これからの週は最後に1週間で走った$kmの約半分から再開し、週に約10%ずつ増やします。テーパーは計画どおりです。';
   }
 

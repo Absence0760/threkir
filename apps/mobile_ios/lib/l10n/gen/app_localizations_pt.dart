@@ -7582,8 +7582,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semanas',
-      one: '# semana',
+      other: '$n semanas',
+      one: '$n semana',
     );
     return 'Esteve afastado do plano durante $_temp0. Há uma alteração sugerida para que as próximas semanas voltem a subir a partir do que correu por último.';
   }
@@ -7649,8 +7649,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semanas',
-      one: '# semana',
+      other: '$n semanas',
+      one: '$n semana',
     );
     return 'Esteve afastado do plano durante $_temp0. Estas semanas recomeçam em cerca de metade dos $km que correu na sua última semana e sobem cerca de 10 % por semana. O afinamento mantém-se como planeado.';
   }
@@ -30075,8 +30075,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semanas',
-      one: '# semana',
+      other: '$n semanas',
+      one: '$n semana',
     );
     return 'Você ficou fora do plano por $_temp0. Há uma mudança sugerida para que as próximas semanas voltem a subir a partir do que você correu por último.';
   }
@@ -30142,8 +30142,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semanas',
-      one: '# semana',
+      other: '$n semanas',
+      one: '$n semana',
     );
     return 'Você ficou fora do plano por $_temp0. Estas semanas recomeçam em cerca de metade dos $km que você correu na sua última semana e sobem cerca de 10 % por semana. O polimento continua como planejado.';
   }

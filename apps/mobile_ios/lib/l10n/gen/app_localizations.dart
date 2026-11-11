@@ -12073,7 +12073,7 @@ abstract class AppLocalizations {
   /// Home plan card body: back after n weeks away from the plan (comeback ramp)
   ///
   /// In en, this message translates to:
-  /// **'You\'ve been away from the plan for {n, plural, one {# week} other {# weeks}}. There\'s a suggested change so the weeks ahead build back up from what you last ran.'**
+  /// **'You\'ve been away from the plan for {n, plural, one {{n} week} other {{n} weeks}}. There\'s a suggested change so the weeks ahead build back up from what you last ran.'**
   String planNudgeAnchorReturnBody(int n);
 
   /// Home plan card title: last week well over plan
@@ -12163,7 +12163,7 @@ abstract class AppLocalizations {
   /// Plan-detail re-plan preview note after weeks away from the plan: n weeks away, km is the last week run
   ///
   /// In en, this message translates to:
-  /// **'You\'ve been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.'**
+  /// **'You\'ve been away from the plan for {n, plural, one {{n} week} other {{n} weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.'**
   String planDetailAnchorReturnNote(int n, String km);
 
   /// Plan-detail adherence/replan/duplicate

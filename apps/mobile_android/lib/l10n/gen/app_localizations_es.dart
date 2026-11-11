@@ -7575,8 +7575,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semanas',
-      one: '# semana',
+      other: '$n semanas',
+      one: '$n semana',
     );
     return 'Has estado fuera del plan $_temp0. Hay un cambio sugerido para que las próximas semanas se reconstruyan desde lo último que corriste.';
   }
@@ -7642,8 +7642,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semanas',
-      one: '# semana',
+      other: '$n semanas',
+      one: '$n semana',
     );
     return 'Has estado fuera del plan $_temp0. Estas semanas vuelven a empezar en aproximadamente la mitad de los $km que corriste en tu última semana y suben alrededor de un 10 % por semana. La puesta a punto se mantiene como estaba.';
   }

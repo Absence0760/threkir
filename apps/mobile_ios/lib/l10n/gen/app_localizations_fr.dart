@@ -7597,8 +7597,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semaines',
-      one: '# semaine',
+      other: '$n semaines',
+      one: '$n semaine',
     );
     return 'Vous avez quitté le plan pendant $_temp0. Une modification est proposée pour que les semaines à venir repartent de ce que vous avez couru en dernier.';
   }
@@ -7664,8 +7664,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semaines',
-      one: '# semaine',
+      other: '$n semaines',
+      one: '$n semaine',
     );
     return 'Vous avez quitté le plan pendant $_temp0. Ces semaines reprennent à environ la moitié des $km courus lors de votre dernière semaine, puis progressent d\'environ 10 % par semaine. L\'affûtage reste tel que prévu.';
   }

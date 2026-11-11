@@ -221,8 +221,19 @@ test('the entry point connects without the password on the command line and summ
 	// each reads absent and no delete or unset is sent.
 	assert.ok(r.summary.includes('| function | parkrun-import | absent |'));
 	assert.ok(!/functions delete|secrets unset/.test(r.supabase), r.supabase);
-	for (const call of ['private.apply_feature_flag(', 'private.arm_cron_url(', 'private.begin_ops_task(', 'private.ops_task_runs']) {
+	for (const call of ['private.apply_feature_flag(', 'private.arm_cron_url(']) {
 		assert.ok(!r.stdin.includes(call), `the committed config sends no ${call}`);
+	}
+	// Each committed one-off task is sent once: the stub ledger records none,
+	// so every task reads as not yet run.
+	const tasks = fs
+		.readdirSync(path.join(REPO, 'apps', 'backend', 'ops', 'tasks'))
+		.filter((f) => f.endsWith('.sql'))
+		.map((f) => f.replace(/\.sql$/, ''));
+	assert.equal(tasks.length > 0, r.stdin.includes('private.ops_task_runs'), 'the ledger is read only when a task is committed');
+	for (const name of tasks) {
+		assert.equal(r.stdin.split(`private.begin_ops_task('${name}'`).length - 1, 1, name);
+		assert.match(r.summary, new RegExp(`\\| ${name} \\| [0-9a-f]{12} \\| ran \\|`), name);
 	}
 });
 

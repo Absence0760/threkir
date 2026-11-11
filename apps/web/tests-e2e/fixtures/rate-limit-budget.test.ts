@@ -124,6 +124,12 @@ const NOT_SPENT_BY_SPECS: Record<string, string> = {
 		'so the 20-a-day bucket it spends is its own and cannot reach another spec.',
 	send_direct_message_burst:
 		'The per-minute companion to send_direct_message, spent by the same saga-user sends.',
+	dm_reaction:
+		'messages/dm-reactions.spec.ts reacts only as ephemeral saga users minted per test, so the ' +
+		'bucket it spends is its own and cannot reach another spec.',
+	dm_image_upload:
+		'messages/dm-photos-links.spec.ts uploads only as ephemeral saga users minted per test, so ' +
+		'the bucket it spends is its own and cannot reach another spec.',
 	edit_direct_message:
 		'messages/dm-edit.spec.ts edits only as ephemeral saga users minted per test, so the ' +
 		'bucket it spends is its own; dm_edit_test.sql covers the RPC.',

@@ -1022,7 +1022,7 @@
 				<input
 					bind:this={photoInput}
 					type="file"
-					accept="image/*"
+					accept="image/jpeg,image/png,image/webp"
 					class="visually-hidden"
 					tabindex="-1"
 					onchange={(e) => void pickPhoto(e)}

@@ -2303,7 +2303,6 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     if (summary == null) return const [];
 
     final isBest = summary.isPb;
-    final delta = Duration(seconds: summary.deltaSeconds);
 
     final routeName = _linkedRoute?.name ?? l10n.runDetailThisRoute;
 
@@ -2336,7 +2335,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
                         isBest
                             ? l10n.runDetailPersonalBest(routeName)
                             : l10n.runDetailBehindPb(
-                                _formatDeltaDuration(delta)),
+                                formatSignedDelta(summary.deltaSeconds)),
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: isBest
@@ -2378,17 +2377,6 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       const SizedBox(height: 8),
       const Divider(),
     ];
-  }
-
-  static String _formatDeltaDuration(Duration d) {
-    final total = d.abs();
-    final h = total.inHours;
-    final m = total.inMinutes % 60;
-    final s = total.inSeconds % 60;
-    final prefix = d.isNegative ? '-' : '+';
-    if (h > 0) return '$prefix${h}h ${m}m';
-    if (m > 0) return '$prefix${m}m ${s}s';
-    return '$prefix${s}s';
   }
 
   List<Widget> _buildHrZoneBreakdown(ThemeData theme, AppLocalizations l10n) {

@@ -87,6 +87,13 @@ void main() {
     expect(got.map((r) => r.id).toList(), ['fast', 'medium', 'slow']);
   });
 
+  test('qualifyingAttempts keeps tied durations in input order', () {
+    final me = baseRun(id: 'me');
+    final ids = List.generate(40, (i) => 't$i');
+    final others = [for (final id in ids) baseRun(id: id, durationS: 1500)];
+    expect(qualifyingAttempts(me, others).map((r) => r.id).toList(), ids);
+  });
+
   test('summariseHistory returns null for fewer than 2 attempts', () {
     final only = [baseRun(id: 'me', durationS: 1500)];
     expect(summariseHistory('me', only), isNull);
@@ -125,5 +132,13 @@ void main() {
       baseRun(id: 'b', durationS: 1500),
     ];
     expect(summariseHistory('not-in-list', attempts), isNull);
+  });
+
+  test('formatSignedDelta renders signs and unit boundaries', () {
+    expect(formatSignedDelta(0), '0:00');
+    expect(formatSignedDelta(5), '+0:05');
+    expect(formatSignedDelta(-5), '\u22120:05');
+    expect(formatSignedDelta(83), '+1:23');
+    expect(formatSignedDelta(-3725), '\u22121:02:05');
   });
 }

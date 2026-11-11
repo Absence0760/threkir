@@ -69,6 +69,8 @@ void main() {
 
     expect(find.text('Route History'), findsOneWidget);
     expect(find.textContaining('Attempt 2 of 2'), findsOneWidget);
+    // The gap prints as web's `formatSignedDelta` does, not as "+3m 0s".
+    expect(find.text('+3:00 behind PB'), findsOneWidget);
   });
 
   testWidgets('a capped run gets no route ranking of its own', (tester) async {

@@ -48,6 +48,8 @@ const BUCKET_KEY: Record<string, MessageKey> = {
 	open_message_request: 'rateLimit.openMessageRequest',
 	dm_reaction: 'rateLimit.reaction',
 	dm_image_upload: 'rateLimit.photoUpload',
+	create_group_conversation: 'rateLimit.createGroup',
+	invite_to_group: 'rateLimit.inviteToGroup',
 	send_direct_message: 'rateLimit.sendMessage',
 	send_direct_message_burst: 'rateLimit.sendMessage',
 };

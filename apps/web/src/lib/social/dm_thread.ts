@@ -94,11 +94,26 @@ export type DmThreadTarget =
 
 const DELETED_ROUTE_PREFIX = 'deleted-';
 
-/** The `/messages/[id]` segment for a thread. */
+/**
+ * The path under `/messages/` for a group conversation (decisions § 2463): its
+ * own route, `/messages/group/[id]`, since a group has no partner to name.
+ */
+export const GROUP_ROUTE_PREFIX = 'group/';
+
+/**
+ * The path under `/messages/` for a thread: the `[id]` segment of a direct
+ * conversation, or `group/<conversation>` for a group.
+ */
 export function dmThreadRouteId(t: {
 	partnerId: string | null;
 	deletedPartnerKey: string | null;
+	conversationId?: string;
+	kind?: 'direct' | 'group';
+	isGroup?: boolean;
 }): string {
+	if ((t.kind === 'group' || t.isGroup === true) && t.conversationId) {
+		return `${GROUP_ROUTE_PREFIX}${t.conversationId}`;
+	}
 	if (t.partnerId) return t.partnerId;
 	if (t.deletedPartnerKey) return `${DELETED_ROUTE_PREFIX}${t.deletedPartnerKey}`;
 	throw new Error('dm thread: neither a partner nor a deleted-partner key');

@@ -40,6 +40,8 @@ const BUCKETS = [
 	'open_message_request',
 	'dm_reaction',
 	'dm_image_upload',
+	'create_group_conversation',
+	'invite_to_group',
 ] as const;
 
 async function translatorFor(loc: Locale): Promise<Translate> {

@@ -9,6 +9,7 @@ import {
 	RACE_FINISH_MIN_COVERAGE_WITH_START,
 	RACE_FINISH_ZONE_M,
 	RACE_LATE_START_AFTER_MS,
+	RACE_LAP_SHORT_SHARE,
 	RACE_LATE_START_FAR_M,
 	RACE_START_COMMIT_M,
 	RaceFinishDetector,
@@ -173,6 +174,7 @@ test('the constants match the file', () => {
 	assert.equal(RACE_FINISH_MIN_COVERAGE, num(constants.MIN_COVERAGE));
 	assert.equal(RACE_FINISH_MIN_COVERAGE_WITH_START, num(constants.MIN_COVERAGE_WITH_START));
 	assert.equal(RACE_START_COMMIT_M, num(constants.START_COMMIT_M));
+	assert.equal(RACE_LAP_SHORT_SHARE, num(constants.LAP_SHORT_SHARE));
 	assert.equal(RACE_LATE_START_AFTER_MS, num(constants.LATE_START_AFTER_MS));
 	assert.equal(RACE_LATE_START_FAR_M, num(constants.LATE_START_FAR_M));
 	assert.equal(GATE_EARTH_RADIUS_M, num(constants.GATE_EARTH_RADIUS_M));

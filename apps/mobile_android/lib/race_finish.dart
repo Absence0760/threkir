@@ -41,6 +41,14 @@ const double kRaceFinishMinCoverageWithStart = 0.6;
 /// commits. Provisional until the #1304 calibration session.
 const double kRaceStartCommitM = 50;
 
+/// Share of one lap a lap course's last lap must show when its count is one
+/// pass short (a crossing dropped by a wide pass or a fix gap), and the share
+/// of a lap a gun runner must cover after GO before their first start
+/// crossing is taken for a missed one. Between the honest pass a lap early,
+/// a whole lap short, and the finish, with three quarters of a lap of GPS
+/// margin.
+const double kRaceLapShortShare = 0.75;
+
 /// A recording that starts this long after GO is flagged as a late start.
 const Duration kRaceLateStartAfter = Duration(minutes: 5);
 
@@ -202,8 +210,12 @@ bool raceCoverageMet(double coveredM, double? courseDistanceM) {
 ///   `race_session_courses.finish_lap_count`) the line finish is the pass
 ///   that brings the count to it, the share kept as a floor. With none, from
 ///   the second pass on the share's floor rises to the course distance less
-///   half the lap just run. [lapsMet] applies the same rule to a stop and
-///   to the zone.
+///   half the lap just run. [lapsMet] is the lap rule for a stop and the
+///   zone: every pass, or one short with the course within
+///   [kRaceLapShortShare] of a lap (a dropped crossing); with none frozen,
+///   the course less [kRaceLapShortShare] of the lap just run. A gun runner
+///   who covers [kRaceLapShortShare] of a lap after GO before a start
+///   crossing missed one, and starts at GO.
 /// - The zone with a finish line decides only on [settle], and only for a
 ///   runner inside it at that moment; leaving it finishes nobody. Without a
 ///   finish line the zone is v1's closest approach. The zone always needs
@@ -457,7 +469,13 @@ class RaceFinishDetector {
     switch (_state) {
       case _StartState.seeking:
       case _StartState.pending:
-        if (x.direction == GateDirection.forward) {
+        if (x.direction == GateDirection.forward &&
+            _missedStart(x.coveredM)) {
+          _committed = RaceStart(
+              at: _goAt!, coveredM: _goCoveredM, kind: RaceStartKind.go);
+          _pending = null;
+          _state = _StartState.committed;
+        } else if (x.direction == GateDirection.forward) {
           _pending = x;
           _state = _StartState.pending;
         } else {
@@ -498,7 +516,7 @@ class RaceFinishDetector {
     final base = _base(t);
     final qualifies = raceInFinishZone(d) &&
         base != null &&
-        _covers(base.fromM, fix.coveredM, kRaceFinishMinCoverage) &&
+        _coversShare(base.fromM, fix.coveredM, kRaceFinishMinCoverage) &&
         lapsMet(fix.coveredM) != false;
     final best = _best;
     if (finishGate != null) {
@@ -584,29 +602,54 @@ class RaceFinishDetector {
   }
 
   /// Whether [coveredM] completes the laps, for a stop or a zone finish:
-  /// with a lap count, every pass but the last made and half a lap since it
-  /// (the lap measured as the runner's own mean), or every pass made; with
-  /// none, from the second pass on, the coverage rule scaled by the lap just
-  /// run. Null when no lap rule applies (no lap known, or no committed start
-  /// to count from).
+  /// with a lap count, [_lapsCounted]; with none, from the second pass on,
+  /// the course less [kRaceLapShortShare] of the lap just run (a wider
+  /// margin than the line's half lap, so a GPS that under-reads is not a DNF
+  /// at the stop). Null when no lap rule applies (no lap known, or no
+  /// committed start to count from).
   bool? lapsMet(double coveredM) {
     final b = _base(double.infinity);
     if (b == null) return null;
+    if (lapCount != null) {
+      return b.start == null ? null : _lapsCounted(b.fromM, coveredM);
+    }
+    final d = courseDistanceM;
+    final lap = _lapM;
+    if (_passes < 2 || lap == null || !d.isFinite || d <= 0) return null;
+    return coveredM - b.fromM >= d - kRaceLapShortShare * lap;
+  }
+
+  /// Every lap counted, or one short (a crossing dropped by a wide pass or a
+  /// fix gap) with the course, less the lines' separation, covered within
+  /// [kRaceLapShortShare] of a lap of the frozen count's own (D / k): an
+  /// honest pass a lap early is a whole lap short, so it is not taken. Only
+  /// a stop and the zone use the one-short path; the line finish needs every
+  /// pass, because against a GPS that over-reads the path's margin is
+  /// 0.25 / (k - 1) of the course (2.8 % at 10 laps, 1 % at 25), too thin
+  /// for a finish nobody asked for.
+  bool _lapsCounted(double fromM, double coveredM) {
     final k = lapCount;
-    if (k != null) {
-      if (b.start == null) return null;
-      if (_passes >= k) return true;
-      final last = _lastPassM;
-      if (_passes == k - 1 && last != null) {
-        final mean = (last - b.fromM - _sepM) / _passes;
-        return coveredM - last >= mean / 2;
-      }
+    if (k == null) return false;
+    if (_passes >= k) return true;
+    final d = courseDistanceM;
+    if (_passes < k - 1 || !d.isFinite || d <= 0) return false;
+    return coveredM - fromM - _sepM >= d - kRaceLapShortShare * d / k;
+  }
+
+  /// A gun runner on a counted lap course whose first forward start crossing
+  /// comes [kRaceLapShortShare] of a lap or more after GO crossed the line
+  /// once already unseen: their start is GO, so the lap is not lost.
+  bool _missedStart(double coveredM) {
+    final k = lapCount;
+    final d = courseDistanceM;
+    if (mode != RaceStartMode.gun ||
+        k == null ||
+        _goAt == null ||
+        _committed != null) {
       return false;
     }
-    if (_passes >= 2) {
-      return _covers(b.fromM, coveredM, kRaceFinishMinCoverage);
-    }
-    return null;
+    if (!d.isFinite || d <= 0) return false;
+    return coveredM - _goCoveredM >= kRaceLapShortShare * d / k;
   }
 
   /// Covered distance from the base a finish needs at [share]; null when
@@ -629,6 +672,13 @@ class RaceFinishDetector {
   bool _covers(double fromM, double coveredM, double share) {
     final need = _required(share);
     return need == null || coveredM - fromM >= need;
+  }
+
+  /// The share alone, without the line's lap floor: the zone's distance
+  /// gate, beside [lapsMet].
+  bool _coversShare(double fromM, double coveredM, double share) {
+    final d = courseDistanceM;
+    return !d.isFinite || d <= 0 || coveredM - fromM >= d * share;
   }
 
   RaceFinish _finalise(RaceFix best) => _result = RaceFinish(

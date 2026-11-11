@@ -115,6 +115,7 @@ class RaceFinishTest {
         assertEquals(c["EARTH_RADIUS_M"]!!.jsonPrimitive.double, RaceFinish.EARTH_RADIUS_M, 0.0)
         assertEquals(c["MIN_COVERAGE_WITH_START"]!!.jsonPrimitive.double, RaceFinish.MIN_COVERAGE_WITH_START, 0.0)
         assertEquals(c["START_COMMIT_M"]!!.jsonPrimitive.double, RaceFinish.START_COMMIT_M, 0.0)
+        assertEquals(c["LAP_SHORT_SHARE"]!!.jsonPrimitive.double, RaceFinish.LAP_SHORT_SHARE, 0.0)
         assertEquals(c["GATE_EARTH_RADIUS_M"]!!.jsonPrimitive.double, GATE_EARTH_RADIUS_M, 0.0)
     }
 

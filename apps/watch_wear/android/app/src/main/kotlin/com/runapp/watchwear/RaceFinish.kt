@@ -39,6 +39,12 @@ object RaceFinish {
     /// followed by, with no backward crossing, before it is the runner's
     /// start. Provisional until the #1304 calibration session.
     const val START_COMMIT_M = 50.0
+
+    /// Share of one lap a lap course's last lap must show when its count is
+    /// one pass short (a crossing dropped by a wide pass or a fix gap), and
+    /// the share of a lap a gun runner must cover after GO before their first
+    /// start crossing is taken for a missed one.
+    const val LAP_SHORT_SHARE = 0.75
     const val LATE_START_AFTER_MS = 300_000L
     const val LATE_START_FAR_M = 200.0
     const val EARTH_RADIUS_M = 6_371_000.0
@@ -479,7 +485,12 @@ class RaceFinishDetector(
             return
         }
         if (state != StartState.SEEKING && state != StartState.PENDING) return
-        if (x.direction == GateDirection.FORWARD) {
+        val go = goMs
+        if (x.direction == GateDirection.FORWARD && go != null && missedStart(x.coveredM)) {
+            committed = RaceFinish.Start(go, goCoveredM, RaceFinish.StartKind.GO)
+            pending = null
+            state = StartState.COMMITTED
+        } else if (x.direction == GateDirection.FORWARD) {
             pending = x
             state = StartState.PENDING
         } else {
@@ -512,7 +523,7 @@ class RaceFinishDetector(
         val d = RaceFinish.distanceM(fix.lat, fix.lng, finishLat, finishLng)
         val base = base(fix.epochMs.toDouble())
         val qualifies = RaceFinish.inFinishZone(d) && base != null &&
-            covers(base.fromM, fix.coveredM, RaceFinish.MIN_DISTANCE_FRACTION) &&
+            coversShare(base.fromM, fix.coveredM, RaceFinish.MIN_DISTANCE_FRACTION) &&
             lapsMet(fix.coveredM) != false
         val current = best
         if (finishGate != null) {
@@ -590,26 +601,44 @@ class RaceFinishDetector(
     }
 
     /// Whether [coveredM] completes the laps, for a stop or a zone finish:
-    /// with a lap count, every pass but the last made and half a lap since it
-    /// (the lap measured as the runner's own mean), or every pass made; with
-    /// none, from the second pass on, the coverage rule scaled by the lap just
-    /// run. Null when no lap rule applies (no lap known, or no committed start
-    /// to count from).
+    /// with a lap count, [lapsCounted]; with none, from the second pass on,
+    /// the course less [RaceFinish.LAP_SHORT_SHARE] of the lap just run (a
+    /// wider margin than the line's half lap, so a GPS that under-reads is not
+    /// a DNF at the stop). Null when no lap rule applies (no lap known, or no
+    /// committed start to count from).
     fun lapsMet(coveredM: Double): Boolean? {
         val b = base(Double.POSITIVE_INFINITY) ?: return null
-        val k = lapCount
-        if (k != null) {
-            if (b.start == null) return null
-            if (passes >= k) return true
-            val last = lastPassM
-            if (passes == k - 1 && last != null) {
-                val mean = (last - b.fromM - sepM) / passes
-                return coveredM - last >= mean / 2
-            }
-            return false
-        }
-        if (passes >= 2) return covers(b.fromM, coveredM, RaceFinish.MIN_DISTANCE_FRACTION)
-        return null
+        if (lapCount != null) return if (b.start == null) null else lapsCounted(b.fromM, coveredM)
+        val d = courseDistanceM
+        val lap = lapM
+        if (passes < 2 || lap == null || !d.isFinite() || d <= 0.0) return null
+        return coveredM - b.fromM >= d - RaceFinish.LAP_SHORT_SHARE * lap
+    }
+
+    /// Every lap counted, or one short (a crossing dropped by a wide pass or
+    /// a fix gap) with the course, less the lines' separation, covered within
+    /// [RaceFinish.LAP_SHORT_SHARE] of a lap of the frozen count's own (D / k):
+    /// an honest pass a lap early is a whole lap short, so it is not taken.
+    /// Only a stop and the zone use the one-short path; the line finish needs
+    /// every pass, because against a GPS that over-reads the path's margin is
+    /// 0.25 / (k - 1) of the course, too thin for a finish nobody asked for.
+    private fun lapsCounted(fromM: Double, coveredM: Double): Boolean {
+        val k = lapCount ?: return false
+        if (passes >= k) return true
+        val d = courseDistanceM
+        if (passes < k - 1 || !d.isFinite() || d <= 0.0) return false
+        return coveredM - fromM - sepM >= d - RaceFinish.LAP_SHORT_SHARE * d / k
+    }
+
+    /// A gun runner on a counted lap course whose first forward start
+    /// crossing comes [RaceFinish.LAP_SHORT_SHARE] of a lap or more after GO
+    /// crossed the line once already unseen: their start is GO.
+    private fun missedStart(coveredM: Double): Boolean {
+        val k = lapCount ?: return false
+        if (mode != RaceFinish.StartMode.GUN || goMs == null || committed != null) return false
+        val d = courseDistanceM
+        if (!d.isFinite() || d <= 0.0) return false
+        return coveredM - goCoveredM >= RaceFinish.LAP_SHORT_SHARE * d / k
     }
 
     /// Covered distance from the base a finish needs at [share]; null when
@@ -628,6 +657,13 @@ class RaceFinishDetector(
     private fun covers(fromM: Double, coveredM: Double, share: Double): Boolean {
         val need = required(share) ?: return true
         return coveredM - fromM >= need
+    }
+
+    /// The share alone, without the line's lap floor: the zone's distance
+    /// gate, beside [lapsMet].
+    private fun coversShare(fromM: Double, coveredM: Double, share: Double): Boolean {
+        val d = courseDistanceM
+        return !d.isFinite() || d <= 0.0 || coveredM - fromM >= d * share
     }
 
     private fun lineStart(x: GateCrossing) =

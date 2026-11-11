@@ -39,6 +39,15 @@ export const RACE_FINISH_MIN_COVERAGE_WITH_START = 0.6;
  */
 export const RACE_START_COMMIT_M = 50;
 
+/**
+ * Share of one lap a lap course's last lap must show when its count is one
+ * pass short (a crossing dropped by a wide pass or a fix gap), and the share
+ * of a lap a gun runner must cover after GO before their first start crossing
+ * is taken for a missed one. Between the honest pass a lap early, a whole lap
+ * short, and the finish, with three quarters of a lap of GPS margin.
+ */
+export const RACE_LAP_SHORT_SHARE = 0.75;
+
 /** A recording that starts more than this long after GO is a late start. */
 export const RACE_LATE_START_AFTER_MS = 300_000;
 
@@ -384,6 +393,12 @@ export class RaceFinishDetector {
 			return;
 		}
 		if (this.state !== 'seeking' && this.state !== 'pending') return;
+		if (x.direction === 'forward' && this.missedStart(x.coveredM)) {
+			this.committed = { atMs: this.goMs as number, coveredM: this.goCoveredM, kind: 'go', gapped: false };
+			this.pending = null;
+			this.state = 'committed';
+			return;
+		}
 		if (x.direction === 'forward') {
 			this.pending = x;
 			this.state = 'pending';
@@ -419,7 +434,7 @@ export class RaceFinishDetector {
 		const qualifies =
 			raceInFinishZone(d) &&
 			base !== null &&
-			this.covers(base.fromM, fix.coveredM, RACE_FINISH_MIN_COVERAGE) &&
+			this.coversShare(base.fromM, fix.coveredM, RACE_FINISH_MIN_COVERAGE) &&
 			this.lapsMet(fix.coveredM) !== false;
 		const best = this.best;
 		if (this.finishGate !== null) {
@@ -501,28 +516,52 @@ export class RaceFinishDetector {
 
 	/**
 	 * Whether coveredM completes the laps, for a stop or a zone finish: with a
-	 * lap count, every pass but the last made and half a lap since it (the lap
-	 * measured as the runner's own mean), or every pass made; with none, from
-	 * the second pass on, the coverage rule scaled by the lap just run. Null
-	 * when no lap rule applies (no lap known, or no committed start to count
-	 * from).
+	 * lap count, lapsCounted; with none, from the second pass on, the course
+	 * less RACE_LAP_SHORT_SHARE of the lap just run (a wider margin than the
+	 * line's half lap, so a GPS that under-reads is not a DNF at the stop).
+	 * Null when no lap rule applies (no lap known, or no committed start to
+	 * count from).
 	 */
 	lapsMet(coveredM: number): boolean | null {
 		const b = this.base(Infinity);
 		if (b === null) return null;
+		if (this.lapCount !== null) return b.start === null ? null : this.lapsCounted(b.fromM, coveredM);
+		const d = this.courseDistanceM;
+		const lap = this.lapM;
+		if (this.passes < 2 || lap === null || !Number.isFinite(d) || d <= 0) return null;
+		return coveredM - b.fromM >= d - RACE_LAP_SHORT_SHARE * lap;
+	}
+
+	/**
+	 * Every lap counted, or one short (a crossing dropped by a wide pass or a
+	 * fix gap) with the course, less the lines' separation, covered within
+	 * RACE_LAP_SHORT_SHARE of a lap of the frozen count's own (D / k): an
+	 * honest pass a lap early is a whole lap short, so it is not taken. Only a
+	 * stop and the zone use the one-short path; the line finish needs every
+	 * pass, because against a GPS that over-reads the path's margin is
+	 * 0.25 / (k - 1) of the course (2.8 % at 10 laps, 1 % at 25), too thin for
+	 * a finish nobody asked for.
+	 */
+	private lapsCounted(fromM: number, coveredM: number): boolean {
 		const k = this.lapCount;
-		if (k !== null) {
-			if (b.start === null) return null;
-			if (this.passes >= k) return true;
-			const last = this.lastPassM;
-			if (this.passes === k - 1 && last !== null) {
-				const mean = (last - b.fromM - this.sepM) / this.passes;
-				return coveredM - last >= mean / 2;
-			}
-			return false;
-		}
-		if (this.passes >= 2) return this.covers(b.fromM, coveredM, RACE_FINISH_MIN_COVERAGE);
-		return null;
+		if (k === null) return false;
+		if (this.passes >= k) return true;
+		const d = this.courseDistanceM;
+		if (this.passes < k - 1 || !Number.isFinite(d) || d <= 0) return false;
+		return coveredM - fromM - this.sepM >= d - (RACE_LAP_SHORT_SHARE * d) / k;
+	}
+
+	/**
+	 * A gun runner on a counted lap course whose first forward start crossing
+	 * comes RACE_LAP_SHORT_SHARE of a lap or more after GO crossed the line
+	 * once already unseen: their start is GO, so the lap is not lost.
+	 */
+	private missedStart(coveredM: number): boolean {
+		const k = this.lapCount;
+		const d = this.courseDistanceM;
+		if (this.mode !== 'gun' || k === null || this.goMs === null || this.committed !== null) return false;
+		if (!Number.isFinite(d) || d <= 0) return false;
+		return coveredM - this.goCoveredM >= (RACE_LAP_SHORT_SHARE * d) / k;
 	}
 
 	/**
@@ -545,6 +584,12 @@ export class RaceFinishDetector {
 	private covers(fromM: number, coveredM: number, share: number): boolean {
 		const need = this.required(share);
 		return need === null || coveredM - fromM >= need;
+	}
+
+	/** The share alone, without the line's lap floor: the zone's distance gate, beside lapsMet. */
+	private coversShare(fromM: number, coveredM: number, share: number): boolean {
+		const d = this.courseDistanceM;
+		return !Number.isFinite(d) || d <= 0 || coveredM - fromM >= d * share;
 	}
 
 	private zoneFinish(best: RaceFix): RaceFinish {

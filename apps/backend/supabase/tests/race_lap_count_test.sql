@@ -11,9 +11,15 @@
 --   12-13. Arm freezes it per course: the lap course's count, and null for a
 --          routeless course.
 --   14.    The CHECK refuses a count under 2.
+--   15-16. A closed lap with a start line 300 m away (an undrawn lead-in) has
+--          no count; the same lap with the start line on the finish has one.
+--   17-19. A closed lap counted around the loop: its own line, and an
+--          organiser's line 10 m and 25 m past the route's end, each 3.
+--   20-23. The backfill: an armed session's copy takes its count, a running
+--          session's and one whose live course has moved are left alone.
 
 begin;
-select plan(14);
+select plan(23);
 
 -- The drawn length the function measures: gate_plane_xy between neighbours.
 create function pg_temp.geom_len(p jsonb) returns double precision
@@ -36,6 +42,9 @@ select '[[41.0,-75.0],[41.0,-74.99],[41.01,-74.99],[41.01,-75.0],[41.0,-75.0]]':
        '[[40.991,-75.0],[41.0,-75.0],[41.0,-74.99],[41.01,-74.99],[41.01,-75.0],[41.0,-75.0]]'::jsonb as open,
        -- Starts on the line, but runs on 556 m south past it at the end.
        '[[41.0,-75.0],[41.0,-74.99],[41.01,-74.99],[41.01,-75.0],[40.995,-75.0]]'::jsonb as runs_on,
+       -- The square entered half way up its west side, heading south, so the
+       -- route runs on past its start the way it arrives.
+       '[[41.005,-75.0],[41.0,-75.0],[41.0,-74.99],[41.01,-74.99],[41.01,-75.0],[41.005,-75.0]]'::jsonb as mid,
        -- A square about 11 m by 8 m.
        '[[41.0,-75.0],[41.0,-74.9999],[41.0001,-74.9999],[41.0001,-75.0],[41.0,-75.0]]'::jsonb as tiny;
 
@@ -167,6 +176,82 @@ select throws_ok(
   '23514', null,
   '14: the lap-count CHECK refuses a count under 2');
 reset role;
+
+-- ── 15-16: a start line away from the lap ───────────────────────────────────
+
+select is(
+  (select private.course_finish_lap_count(one, 41.0, -75.0, 180, 15, 40.9973, -75.0, 5.4 * pg_temp.geom_len(one))
+     from lap_geom),
+  null,
+  '15: a closed lap with its start line 300 m off has an undrawn lead-in: no count');
+
+select is(
+  (select private.course_finish_lap_count(one, 41.0, -75.0, 180, 15, 41.0, -75.0, 5.4 * pg_temp.geom_len(one))
+     from lap_geom),
+  5,
+  '16: the same lap with the start line on the finish counts round(5.4) = 5');
+
+-- ── 17-19: counted around the loop ─────────────────────────────────────────
+-- 10 m and 25 m south of the route's end (41.005, -75.0), the way it arrives.
+
+select is(
+  (select private.course_finish_lap_count(mid, 41.005, -75.0, 180, 15, 41.005, -75.0, 3 * pg_temp.geom_len(mid))
+     from lap_geom),
+  3,
+  '17: a closed lap whose line sits on its end: 3');
+
+select is(
+  (select private.course_finish_lap_count(mid, 41.005 - 10 / 111195.0, -75.0, 180, 15,
+                                           41.005, -75.0, 3 * pg_temp.geom_len(mid))
+     from lap_geom),
+  3,
+  '18: an organiser''s line 10 m past the route''s end meets the loop once a lap: 3');
+
+select is(
+  (select private.course_finish_lap_count(mid, 41.005 - 25 / 111195.0, -75.0, 180, 15,
+                                           41.005, -75.0, 3 * pg_temp.geom_len(mid))
+     from lap_geom),
+  3,
+  '19: and 25 m past it: 3');
+
+-- ── 20-23: the backfill ─────────────────────────────────────────────────────
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"e2472000-0000-0000-0000-000000000001","role":"authenticated"}';
+insert into race_sessions (event_id, instance_start, status)
+values ('e2472000-0000-0000-0000-0000000000e1', '2026-09-08 08:00+00', 'armed'),
+       ('e2472000-0000-0000-0000-0000000000e1', '2026-09-15 08:00+00', 'armed');
+reset role;
+
+-- As a copy frozen before the count existed: none on any of the three.
+update race_session_courses set finish_lap_count = null
+ where event_id = 'e2472000-0000-0000-0000-0000000000e1';
+-- The first races; the third's course has moved since it was frozen.
+update race_sessions set status = 'running', started_at = now()
+ where event_id = 'e2472000-0000-0000-0000-0000000000e1' and instance_start = '2026-09-01 08:00+00';
+update race_session_courses set distance_m = 12000
+ where event_id = 'e2472000-0000-0000-0000-0000000000e1' and instance_start = '2026-09-15 08:00+00'
+   and course_id = 'e2472000-0000-0000-0000-0000000000a1';
+
+select is(private.backfill_race_lap_counts(), 1, '20: the backfill fills one row');
+
+select is(
+  (select finish_lap_count from race_session_courses
+    where instance_start = '2026-09-08 08:00+00' and course_id = 'e2472000-0000-0000-0000-0000000000a1'),
+  3,
+  '21: an armed session''s copy takes its count');
+
+select is(
+  (select finish_lap_count from race_session_courses
+    where instance_start = '2026-09-01 08:00+00' and course_id = 'e2472000-0000-0000-0000-0000000000a1'),
+  null,
+  '22: a running session''s copy is left as frozen');
+
+select is(
+  (select finish_lap_count from race_session_courses
+    where instance_start = '2026-09-15 08:00+00' and course_id = 'e2472000-0000-0000-0000-0000000000a1'),
+  null,
+  '23: a copy whose course has moved since it was frozen is left alone');
 
 select * from finish();
 rollback;

@@ -10,7 +10,7 @@
 -- sender was active.
 
 begin;
-select plan(90);
+select plan(96);
 
 insert into private.feature_flags (name, enabled) values ('group_messages', true)
 on conflict (name) do update set enabled = true;
@@ -447,9 +447,29 @@ reset role;
 
 -- ── flag off: fail closed ──
 
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"a1365000-0000-0000-0000-0000000000a3","role":"authenticated"}';
+select is(group_messages_enabled(), true, 'with the flag on a member reads it as on');
+select isnt_empty(
+  $$select 1 from group_blocked_placeholders('c1365000-0000-0000-0000-000000000001')$$,
+  'with the flag on the blocker gets a placeholder for the blocked member''s message');
+reset role;
+
 update private.feature_flags set enabled = false where name = 'group_messages';
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"a1365000-0000-0000-0000-0000000000a3","role":"authenticated"}';
+select is(group_messages_enabled(), false, 'with the flag off a member reads it as off');
+select throws_ok(
+  $$select edit_direct_message('d1365000-0000-0000-0000-000000000010', 'edited with the flag off')$$,
+  '55000', 'edit_direct_message: message can no longer be edited',
+  'with the flag off a member cannot edit their own group message inside the window');
+select throws_ok(
+  $$select set_direct_message_reaction('d1365000-0000-0000-0000-000000000010', 'fire')$$,
+  '55000', 'set_direct_message_reaction: this message cannot take a reaction',
+  'with the flag off a member cannot react to a group message');
+select is_empty(
+  $$select 1 from group_blocked_placeholders('c1365000-0000-0000-0000-000000000001')$$,
+  'with the flag off group_blocked_placeholders returns nothing');
 select is_empty(
   $$select 1 from direct_messages
      where conversation_id = 'c1365000-0000-0000-0000-000000000001'

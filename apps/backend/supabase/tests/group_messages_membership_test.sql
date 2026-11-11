@@ -4,10 +4,13 @@
 -- message 1:1, never across a block, 32 seats including live invites, 14-day
 -- expiry), accepting with a server-stamped window, declining, leaving,
 -- removing by rank, roles, ownership, renaming, a re-join that does not bring
--- the earlier window back, the uniform not-found, and the default-off flag.
+-- the earlier window back, the uniform not-found, and the default-off flag:
+-- every group RPC that creates or widens group content refuses with 0A000
+-- while it is off, public.group_messages_enabled() reads it (off with no row),
+-- and anon cannot call it.
 
 begin;
-select plan(70);
+select plan(78);
 
 insert into private.feature_flags (name, enabled) values ('group_messages', true)
 on conflict (name) do update set enabled = true;
@@ -336,20 +339,43 @@ select is(
 
 -- ── flag off ──
 
+set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-0000000000b1","role":"authenticated"}';
+select is(group_messages_enabled(), true, 'with the flag on a signed-in caller reads it as on');
 reset role;
 update private.feature_flags set enabled = false where name = 'group_messages';
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-0000000000b1","role":"authenticated"}';
+select is(group_messages_enabled(), false, 'with the flag off a signed-in caller reads it as off');
 select throws_ok(
   $$select create_group_conversation('Off', array['b1365000-0000-0000-0000-0000000000b2', 'b1365000-0000-0000-0000-0000000000b3']::uuid[])$$,
-  '0A000', null, 'with the flag off no group can be created');
+  '0A000', 'create_group_conversation: group conversations are not available',
+  'with the flag off no group can be created');
 select throws_ok(
   $$select invite_to_group((select id from g where k = 'cap'), array['b1365000-0000-0000-0000-000000000140']::uuid[])$$,
-  '0A000', null, 'with the flag off nobody can be invited');
+  '0A000', 'invite_to_group: group conversations are not available',
+  'with the flag off nobody can be invited');
+set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-0000000000b2","role":"authenticated"}';
+select throws_ok(
+  $$select rename_group((select id from g where k = 'main'), 'Off run')$$,
+  '0A000', 'rename_group: group conversations are not available',
+  'with the flag off a group cannot be renamed');
+select throws_ok(
+  $$select set_group_member_role((select id from g where k = 'main'), 'b1365000-0000-0000-0000-0000000000b1', 'admin')$$,
+  '0A000', 'set_group_member_role: group conversations are not available',
+  'with the flag off no role can change');
+select throws_ok(
+  $$select remove_group_member((select id from g where k = 'main'), 'b1365000-0000-0000-0000-0000000000b1')$$,
+  '0A000', 'remove_group_member: group conversations are not available',
+  'with the flag off nobody can be removed');
+select throws_ok(
+  $$select transfer_group_ownership((select id from g where k = 'main'), 'b1365000-0000-0000-0000-0000000000b1')$$,
+  '0A000', 'transfer_group_ownership: group conversations are not available',
+  'with the flag off ownership cannot move');
 set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-000000000103","role":"authenticated"}';
 select throws_ok(
   $$select accept_group_invite((select id from g where k = 'cap'))$$,
-  '0A000', null, 'with the flag off an invite cannot be accepted');
+  '0A000', 'accept_group_invite: group conversations are not available',
+  'with the flag off an invite cannot be accepted');
 select lives_ok(
   $$select decline_group_invite((select id from g where k = 'cap'))$$,
   'with the flag off an invite can still be declined');
@@ -365,6 +391,17 @@ select is(
   (select membership_state from conversation_participants
     where conversation_id = (select id from g where k = 'main') and user_id = 'b1365000-0000-0000-0000-0000000000b1'),
   'left', 'the flag-off leave took effect');
+
+-- ── no flag row at all is off, and anon cannot read the flag ──
+
+reset role;
+delete from private.feature_flags where name = 'group_messages';
+set local role authenticated;
+select is(group_messages_enabled(), false, 'with no flag row the feature reads as off');
+set local role anon;
+set local "request.jwt.claims" = '{"role":"anon"}';
+select throws_ok($$select group_messages_enabled()$$, '42501', null,
+  'anon cannot call group_messages_enabled');
 
 select * from finish();
 rollback;

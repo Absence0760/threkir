@@ -13910,6 +13910,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Planned workouts in a row, counting back from yesterday, that passed with no run logged. A skipped workout or a rest day doesn\'t count and doesn\'t break the run; a done workout ends it.';
 
   @override
+  String get metricRouteHistoryDefinition =>
+      'An attempt is a run on this route with the same activity type that covered more than 100 m and has a recorded time (above zero, under ten days). Attempts rank fastest first; equal times share a rank, so a run that ties the best time is a PB too.';
+
+  @override
   String get coachingRosterRiskLow => 'Low';
 
   @override

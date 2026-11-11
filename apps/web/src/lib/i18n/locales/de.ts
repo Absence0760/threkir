@@ -2764,6 +2764,7 @@ export const messages = {
 	"metric.easyHrDrift.label": "Puls-Drift bei lockeren Läufen",
 	"metric.missStreak.label": "Verpasst in Folge",
 	"metric.missStreak.definition": "Geplante Einheiten in Folge, von gestern rückwärts gezählt, die ohne erfassten Lauf vergangen sind. Eine übersprungene Einheit oder ein Ruhetag zählt nicht und unterbricht die Folge nicht; eine erledigte Einheit beendet sie.",
+	"metric.routeHistory.definition": "Ein Versuch ist ein Lauf auf dieser Route mit derselben Aktivitätsart, der mehr als 100 m zurückgelegt hat und eine erfasste Zeit hat (über null, unter zehn Tagen). Die Versuche sind nach Zeit geordnet, der schnellste zuerst; gleiche Zeiten teilen sich einen Rang, also ist auch ein Lauf, der die Bestzeit einstellt, eine Bestleistung.",
 	"coaching.roster.riskLow": "Niedrig",
 	"coaching.roster.riskOptimal": "Optimal",
 	"coaching.roster.riskElevated": "Erhöht",

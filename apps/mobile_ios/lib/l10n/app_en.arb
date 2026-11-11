@@ -18455,6 +18455,10 @@
   "@metricMissStreakDefinition": {
     "description": "Definition of the coach roster's consecutive-missed-workouts flag"
   },
+  "metricRouteHistoryDefinition": "An attempt is a run on this route with the same activity type that covered more than 100 m and has a recorded time (above zero, under ten days). Attempts rank fastest first; equal times share a rank, so a run that ties the best time is a PB too.",
+  "@metricRouteHistoryDefinition": {
+    "description": "Definition behind the run-detail Route History heading: what counts as an attempt on the route and how tied times rank"
+  },
   "coachingRosterRiskLow": "Low",
   "@coachingRosterRiskLow": {
     "description": "Injury-risk band: low"

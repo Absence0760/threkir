@@ -2448,7 +2448,7 @@
 		</section>
 		{#if run.route_id}
 			<section class="section">
-				<h2>{m('runDetail.routeHistory')}</h2>
+				<h2><MetricLabel metric="routeHistory" /></h2>
 				<RouteHistory
 					currentRunId={run.id}
 					routeId={run.route_id}

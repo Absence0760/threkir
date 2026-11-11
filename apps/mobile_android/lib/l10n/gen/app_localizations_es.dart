@@ -14046,6 +14046,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Entrenamientos planificados seguidos, contando hacia atrás desde ayer, que pasaron sin una carrera registrada. Un entrenamiento omitido o un día de descanso no cuenta ni corta la racha; uno completado la termina.';
 
   @override
+  String get metricRouteHistoryDefinition =>
+      'Un intento es una carrera en esta ruta con el mismo tipo de actividad que recorrió más de 100 m y tiene un tiempo registrado (mayor que cero y menor de diez días). Los intentos se ordenan del más rápido al más lento; los tiempos iguales comparten puesto, así que una carrera que iguala el mejor tiempo también es una marca personal.';
+
+  @override
   String get coachingRosterRiskLow => 'Bajo';
 
   @override

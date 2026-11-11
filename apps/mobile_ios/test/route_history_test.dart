@@ -27,6 +27,12 @@ void main() {
     expect(qualifyingAttempts(me, others), isEmpty);
   });
 
+  test('qualifyingAttempts treats an empty route_id as no route', () {
+    final me = baseRun(id: 'me', routeId: '');
+    final others = [baseRun(id: 'a', routeId: ''), baseRun(id: 'b', routeId: '')];
+    expect(qualifyingAttempts(me, others), isEmpty);
+  });
+
   test('qualifyingAttempts filters to same route_id', () {
     final me = baseRun(id: 'me', routeId: 'route-1');
     final others = [
@@ -76,6 +82,12 @@ void main() {
         isNull);
   });
 
+  test('qualifyingAttempts leaves out a run with distance and no time', () {
+    final me = baseRun(id: 'me', durationS: 1500);
+    final others = [me, baseRun(id: 'untimed', durationS: 0)];
+    expect(qualifyingAttempts(me, others).map((r) => r.id).toList(), ['me']);
+  });
+
   test('qualifyingAttempts sorts by duration ascending', () {
     final me = baseRun(id: 'me');
     final others = [
@@ -85,13 +97,6 @@ void main() {
     ];
     final got = qualifyingAttempts(me, others);
     expect(got.map((r) => r.id).toList(), ['fast', 'medium', 'slow']);
-  });
-
-  test('qualifyingAttempts keeps tied durations in input order', () {
-    final me = baseRun(id: 'me');
-    final ids = List.generate(40, (i) => 't$i');
-    final others = [for (final id in ids) baseRun(id: id, durationS: 1500)];
-    expect(qualifyingAttempts(me, others).map((r) => r.id).toList(), ids);
   });
 
   test('summariseHistory returns null for fewer than 2 attempts', () {
@@ -123,6 +128,37 @@ void main() {
     expect(s.total, 3);
     expect(s.deltaSeconds, 83);
     expect(s.pb.id, 'pb');
+  });
+
+  test('summariseHistory makes a run tied with the fastest time a PB too', () {
+    for (final order in [
+      ['first', 'me'],
+      ['me', 'first'],
+    ]) {
+      final attempts = [
+        for (final id in order) baseRun(id: id, durationS: 1200),
+        baseRun(id: 'slow', durationS: 1500),
+      ];
+      final s = summariseHistory('me', attempts)!;
+      expect(s.isPb, true);
+      expect(s.rank, 1);
+      expect(s.deltaSeconds, 0);
+    }
+  });
+
+  test('summariseHistory gives tied times the same competition rank', () {
+    final attempts = [
+      baseRun(id: 'a', durationS: 1500),
+      baseRun(id: 'b', durationS: 1600),
+      baseRun(id: 'c', durationS: 1600),
+      baseRun(id: 'd', durationS: 1700),
+    ];
+    expect(
+        ['a', 'b', 'c', 'd']
+            .map((id) => summariseHistory(id, attempts)!.rank)
+            .toList(),
+        [1, 2, 2, 4]);
+    expect(summariseHistory('c', attempts)!.isPb, false);
   });
 
   test('summariseHistory returns null when current run is not in attempts list',

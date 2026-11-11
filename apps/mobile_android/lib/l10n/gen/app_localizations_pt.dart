@@ -14052,6 +14052,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Treinos planeados seguidos, a contar para trás a partir de ontem, que passaram sem corrida registada. Um treino ignorado ou um dia de descanso não conta nem interrompe a sequência; um treino feito termina-a.';
 
   @override
+  String get metricRouteHistoryDefinition =>
+      'Uma tentativa é uma corrida neste percurso, do mesmo tipo de atividade, que percorreu mais de 100 m e tem um tempo registado (acima de zero, abaixo de dez dias). As tentativas ordenam-se da mais rápida para a mais lenta; tempos iguais partilham a posição, por isso uma corrida que iguala o melhor tempo também é um recorde pessoal.';
+
+  @override
   String get coachingRosterRiskLow => 'Baixo';
 
   @override
@@ -36530,6 +36534,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get metricMissStreakDefinition =>
       'Treinos planejados seguidos, contando para trás a partir de ontem, que passaram sem corrida registrada. Um treino ignorado ou um dia de descanso não conta nem interrompe a sequência; um treino concluído a encerra.';
+
+  @override
+  String get metricRouteHistoryDefinition =>
+      'Uma tentativa é uma corrida neste percurso, do mesmo tipo de atividade, que percorreu mais de 100 m e tem um tempo registrado (acima de zero, abaixo de dez dias). As tentativas são ordenadas da mais rápida para a mais lenta; tempos iguais dividem a posição, então uma corrida que iguala o melhor tempo também é um recorde pessoal.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';

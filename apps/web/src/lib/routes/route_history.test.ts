@@ -22,6 +22,12 @@ test('qualifyingAttempts excludes runs without a route_id', () => {
 	assert.deepEqual(qualifyingAttempts(me, others), []);
 });
 
+test('qualifyingAttempts treats an empty route_id as no route', () => {
+	const me = baseRun({ id: 'me', route_id: '' });
+	const others = [baseRun({ id: 'a', route_id: '' }), baseRun({ id: 'b', route_id: '' })];
+	assert.deepEqual(qualifyingAttempts(me, others), []);
+});
+
 test('qualifyingAttempts filters to same route_id', () => {
 	const me = baseRun({ id: 'me', route_id: 'route-1' });
 	const others = [
@@ -73,6 +79,15 @@ test('qualifyingAttempts leaves out a run holding the ten-day repair placeholder
 	assert.equal(summariseHistory(capped.id, qualifyingAttempts(capped, others)), null);
 });
 
+test('qualifyingAttempts leaves out a run with distance and no time', () => {
+	const me = baseRun({ id: 'me', duration_s: 1500 });
+	const others = [me, baseRun({ id: 'untimed', duration_s: 0 })];
+	assert.deepEqual(
+		qualifyingAttempts(me, others).map((r) => r.id),
+		['me'],
+	);
+});
+
 test('qualifyingAttempts sorts by duration ascending', () => {
 	const me = baseRun({ id: 'me' });
 	const others = [
@@ -84,16 +99,6 @@ test('qualifyingAttempts sorts by duration ascending', () => {
 	assert.deepEqual(
 		got.map((r) => r.id),
 		['fast', 'medium', 'slow'],
-	);
-});
-
-test('qualifyingAttempts keeps tied durations in input order', () => {
-	const me = baseRun({ id: 'me' });
-	const ids = Array.from({ length: 40 }, (_, i) => `t${i}`);
-	const others = ids.map((id) => baseRun({ id, duration_s: 1500 }));
-	assert.deepEqual(
-		qualifyingAttempts(me, others).map((r) => r.id),
-		ids,
 	);
 });
 
@@ -126,6 +131,34 @@ test('summariseHistory computes delta and rank for non-PB run', () => {
 	assert.equal(s.total, 3);
 	assert.equal(s.deltaSeconds, 83);
 	assert.equal(s.pb.id, 'pb');
+});
+
+test('summariseHistory makes a run tied with the fastest time a PB too', () => {
+	for (const order of [
+		['first', 'me'],
+		['me', 'first'],
+	]) {
+		const attempts = order.map((id) => baseRun({ id, duration_s: 1200 }));
+		attempts.push(baseRun({ id: 'slow', duration_s: 1500 }));
+		const s = summariseHistory('me', attempts)!;
+		assert.equal(s.isPb, true);
+		assert.equal(s.rank, 1);
+		assert.equal(s.deltaSeconds, 0);
+	}
+});
+
+test('summariseHistory gives tied times the same competition rank', () => {
+	const attempts = [
+		baseRun({ id: 'a', duration_s: 1500 }),
+		baseRun({ id: 'b', duration_s: 1600 }),
+		baseRun({ id: 'c', duration_s: 1600 }),
+		baseRun({ id: 'd', duration_s: 1700 }),
+	];
+	assert.deepEqual(
+		['a', 'b', 'c', 'd'].map((id) => summariseHistory(id, attempts)!.rank),
+		[1, 2, 2, 4],
+	);
+	assert.equal(summariseHistory('c', attempts)!.isPb, false);
 });
 
 test('summariseHistory returns null when current run is not in attempts list', () => {

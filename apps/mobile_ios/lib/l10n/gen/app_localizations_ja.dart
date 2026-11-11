@@ -13362,6 +13362,10 @@ class AppLocalizationsJa extends AppLocalizations {
       '昨日からさかのぼって、ランの記録がないまま過ぎた予定ワークアウトの連続数です。スキップしたワークアウトや休養日は数えず、連続も途切れません。完了したワークアウトで連続は終わります。';
 
   @override
+  String get metricRouteHistoryDefinition =>
+      '試技とは、このルートで同じアクティビティ種別のランのうち、100 m を超えて移動し、記録されたタイム（0 より大きく 10 日未満）があるものです。試技は速い順に並び、同じタイムは同じ順位になります。そのため、ベストタイムに並んだランも自己ベストです。';
+
+  @override
   String get coachingRosterRiskLow => '低';
 
   @override

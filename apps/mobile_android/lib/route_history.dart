@@ -51,33 +51,35 @@ class RouteHistorySummary {
 }
 
 /// Attempts on the same route and activity type (null reads as `'run'`) that
-/// moved more than 100 m and hold a plausible duration — a run still carrying
-/// the ten-day repair placeholder has no time to rank — fastest first, with
-/// tied durations kept in input order. JS's `Array.prototype.sort` is stable;
-/// Dart's `List.sort` is not past 32 elements, so the tie-break is explicit.
+/// moved more than 100 m and hold a real time, `0 < durationS < 864000` — a
+/// run with distance and no time would be a permanent PB, and one still
+/// carrying the ten-day repair placeholder has no time to rank — fastest
+/// first. An empty route id is no route. Tied times are decided in
+/// [summariseHistory], not by where the sort leaves them.
 List<RouteHistoryRun> qualifyingAttempts(
   RouteHistoryRun currentRun,
   Iterable<RouteHistoryRun> allRuns,
 ) {
-  if (currentRun.routeId == null) return const [];
+  final routeId = currentRun.routeId;
+  if (routeId == null || routeId.isEmpty) return const [];
   final thisActivity = currentRun.activityType ?? 'run';
-  final kept = allRuns
+  return allRuns
       .where((r) =>
-          r.routeId == currentRun.routeId &&
+          r.routeId == routeId &&
           r.distanceM > 100 &&
+          r.durationS > 0 &&
           isPlausibleRunDuration(r.durationS) &&
           (r.activityType ?? 'run') == thisActivity)
-      .toList();
-  final order = List<int>.generate(kept.length, (i) => i)
-    ..sort((a, b) {
-      final byDuration = kept[a].durationS.compareTo(kept[b].durationS);
-      return byDuration != 0 ? byDuration : a.compareTo(b);
-    });
-  return [for (final i in order) kept[i]];
+      .toList()
+    ..sort((a, b) => a.durationS.compareTo(b.durationS));
 }
 
 /// The current run's standing among [attempts], or null when there is
 /// nothing to show — fewer than two attempts, or the run is not among them.
+///
+/// Ties take standard competition ranking: rank is one plus the attempts
+/// strictly faster, so 1500 / 1600 / 1600 / 1700 rank 1, 2, 2, 4, and a run
+/// tied with the fastest time is a PB rather than "+0:00 behind" it.
 RouteHistorySummary? summariseHistory(
   String currentRunId,
   List<RouteHistoryRun> attempts,
@@ -87,12 +89,13 @@ RouteHistorySummary? summariseHistory(
   final idx = attempts.indexWhere((r) => r.id == currentRunId);
   if (idx < 0) return null;
   final current = attempts[idx];
+  final deltaSeconds = current.durationS - pb.durationS;
   return RouteHistorySummary(
-    rank: idx + 1,
+    rank: 1 + attempts.where((r) => r.durationS < current.durationS).length,
     total: attempts.length,
     pb: pb,
-    isPb: pb.id == currentRunId,
-    deltaSeconds: current.durationS - pb.durationS,
+    isPb: deltaSeconds == 0,
+    deltaSeconds: deltaSeconds,
   );
 }
 

@@ -22719,6 +22719,12 @@ abstract class AppLocalizations {
   /// **'Planned workouts in a row, counting back from yesterday, that passed with no run logged. A skipped workout or a rest day doesn\'t count and doesn\'t break the run; a done workout ends it.'**
   String get metricMissStreakDefinition;
 
+  /// Definition behind the run-detail Route History heading: what counts as an attempt on the route and how tied times rank
+  ///
+  /// In en, this message translates to:
+  /// **'An attempt is a run on this route with the same activity type that covered more than 100 m and has a recorded time (above zero, under ten days). Attempts rank fastest first; equal times share a rank, so a run that ties the best time is a PB too.'**
+  String get metricRouteHistoryDefinition;
+
   /// Injury-risk band: low
   ///
   /// In en, this message translates to:

@@ -194,7 +194,15 @@ An unchanged catalogue writes nothing. The rest apply
 Edge Function toggles (`supabase secrets set`, compared by digest), cron URL
 entries in Vault (each newly armed one invoked once and required to answer
 2xx), and the one-off tasks in `apps/backend/ops/tasks/`, each run once
-against the `private.ops_task_runs` ledger. Last, it publishes the official
+against the `private.ops_task_runs` ledger (after the functions deploy, which
+is what `20271219001313_rematch_segments_matcher_v3` relies on: it re-matches
+every open park segment under matcher v3 and fails, staying pending, if the
+migration that defines `private.global_segment_course_closed` has not
+applied; [decisions § 2465](../architecture/decisions.md)). The same stage
+retires the Edge Functions and secrets listed under `retired_functions` /
+`retired_function_env`; the one-time `parkrun-import` retirement and its
+check are in [deployment.md § Retired scraper functions and secrets](deployment.md)
+([decisions § 2467](../architecture/decisions.md)). Last, it publishes the official
 content catalogue (`scripts/official/`, [decisions § 2446](../architecture/decisions.md),
 [official_content.md](../features/official_content.md)) through
 `private.load_official_catalogue`: library plans, gym routines and challenge
@@ -444,7 +452,7 @@ and install from there.
   `metadata.distance_segments`, and banks each segment's
   `distance_step_over_chord_m` whole, which is exact only when the replay
   ends each segment at its own last fix.
-  1. **`job_worker@*` first.** A worker that predates the marks replays the
+  1. **`worker@*` first.** A worker that predates the marks replays the
      track as one stream and ignores the count, so it credits the chord of a
      gap still open at a pause or a Wear OS source switch on top of those
      steps (a handover in a gap: 285.52 m against the wrist's 238.00 m),

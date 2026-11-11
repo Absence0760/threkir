@@ -2763,7 +2763,7 @@ export const messages = {
 	"metric.easyHrDrift.label": "Deriva da FC em corridas leves",
 	"metric.missStreak.label": "Perdidos seguidos",
 	"metric.missStreak.definition": "Treinos planejados seguidos, contando para trás a partir de ontem, que passaram sem corrida registrada. Um treino ignorado ou um dia de descanso não conta nem interrompe a sequência; um treino concluído a encerra.",
-	"metric.routeHistory.definition": "Uma tentativa é uma corrida neste percurso, do mesmo tipo de atividade, que percorreu mais de 100 m e tem um tempo registrado (acima de zero, abaixo de dez dias). As tentativas são ordenadas da mais rápida para a mais lenta; tempos iguais dividem a posição, então uma corrida que iguala o melhor tempo também é um recorde pessoal.",
+	"metric.routeHistory.definition": "Uma tentativa é uma corrida nesta rota, do mesmo tipo de atividade, com mais de 100 m e um tempo registrado (superior a zero, inferior a dez dias). As tentativas são ordenadas da mais rápida para a mais lenta; tempos iguais dividem a posição, então uma corrida que iguala o melhor tempo também é um recorde pessoal.",
 	"coaching.roster.riskLow": "Baixo",
 	"coaching.roster.riskOptimal": "Ótimo",
 	"coaching.roster.riskElevated": "Elevado",

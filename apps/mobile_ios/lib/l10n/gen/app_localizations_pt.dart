@@ -14053,7 +14053,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get metricRouteHistoryDefinition =>
-      'Uma tentativa é uma corrida neste percurso, do mesmo tipo de atividade, que percorreu mais de 100 m e tem um tempo registado (acima de zero, abaixo de dez dias). As tentativas ordenam-se da mais rápida para a mais lenta; tempos iguais partilham a posição, por isso uma corrida que iguala o melhor tempo também é um recorde pessoal.';
+      'Uma tentativa é uma corrida nesta rota, do mesmo tipo de atividade, com mais de 100 m e um tempo registado (superior a zero, inferior a dez dias). As tentativas ordenam-se da mais rápida para a mais lenta; tempos iguais partilham a posição, por isso uma corrida que iguala o melhor tempo também é um recorde pessoal.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';
@@ -36537,7 +36537,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get metricRouteHistoryDefinition =>
-      'Uma tentativa é uma corrida neste percurso, do mesmo tipo de atividade, que percorreu mais de 100 m e tem um tempo registrado (acima de zero, abaixo de dez dias). As tentativas são ordenadas da mais rápida para a mais lenta; tempos iguais dividem a posição, então uma corrida que iguala o melhor tempo também é um recorde pessoal.';
+      'Uma tentativa é uma corrida nesta rota, do mesmo tipo de atividade, com mais de 100 m e um tempo registrado (superior a zero, inferior a dez dias). As tentativas são ordenadas da mais rápida para a mais lenta; tempos iguais dividem a posição, então uma corrida que iguala o melhor tempo também é um recorde pessoal.';
 
   @override
   String get coachingRosterRiskLow => 'Baixo';

@@ -14080,7 +14080,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get metricRouteHistoryDefinition =>
-      'Une tentative est une course sur cet itinéraire, du même type d\'activité, qui a parcouru plus de 100 m et a un temps enregistré (supérieur à zéro, inférieur à dix jours). Les tentatives sont classées de la plus rapide à la plus lente ; des temps égaux partagent un rang, donc une course qui égale le meilleur temps est aussi un record.';
+      'Une tentative est une course sur cet itinéraire, du même type d\'activité, qui fait plus de 100 m et a un temps enregistré (supérieur à zéro, inférieur à dix jours). Les tentatives sont classées de la plus rapide à la plus lente ; les temps égaux se partagent le même rang, donc une course qui égale le meilleur temps est aussi un record personnel.';
 
   @override
   String get coachingRosterRiskLow => 'Faible';

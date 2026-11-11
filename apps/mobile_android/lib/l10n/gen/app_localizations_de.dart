@@ -14068,7 +14068,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get metricRouteHistoryDefinition =>
-      'Ein Versuch ist ein Lauf auf dieser Route mit derselben Aktivitätsart, der mehr als 100 m zurückgelegt hat und eine erfasste Zeit hat (über null, unter zehn Tagen). Die Versuche sind nach Zeit geordnet, der schnellste zuerst; gleiche Zeiten teilen sich einen Rang, also ist auch ein Lauf, der die Bestzeit einstellt, eine Bestleistung.';
+      'Ein Versuch ist ein Lauf auf dieser Route mit demselben Aktivitätstyp, mehr als 100 m Distanz und einer erfassten Zeit (über null, unter zehn Tagen). Die Versuche sind nach Zeit geordnet, der schnellste zuerst; gleiche Zeiten teilen sich einen Rang, also zählt auch ein Lauf, der die Bestzeit einstellt, als persönliche Bestzeit.';
 
   @override
   String get coachingRosterRiskLow => 'Niedrig';

@@ -64,6 +64,72 @@ data class CachedRaceCourse(
     val course: RaceSessionClient.RaceCourse,
 )
 
+/// The scheduled or self-timed race this account last found, kept beside its
+/// course so a watch restarted with no signal still knows which race to time
+/// and when GO is (#1307 offline). One entry, keyed to its account; the race
+/// key (account, event, instance) is also the course cache's key, and
+/// [courseId] is the course it was found with. Mirrors the phone's
+/// `race_active_cache`.
+@Serializable
+data class CachedActiveRace(
+    val userId: String,
+    val eventId: String,
+    val instanceStart: String,
+    val status: String,
+    val startMode: String,
+    val startedAtMs: Long? = null,
+    val eventTitle: String? = null,
+    val startInstantMs: Long? = null,
+    val windowClosesAtMs: Long? = null,
+    val courseId: String? = null,
+)
+
+/// What the watch keeps of the race a poll found: nothing for no race, and
+/// nothing for a Host GO race, whose GO only the host knows — the phone keeps
+/// none either.
+internal fun activeRaceCacheEntry(userId: String, race: ActiveRaceState?): CachedActiveRace? {
+    val r = race?.takeIf { it.startMode != "host_go" } ?: return null
+    return CachedActiveRace(
+        userId = userId,
+        eventId = r.eventId,
+        instanceStart = r.instanceStart,
+        status = r.status,
+        startMode = r.startMode,
+        startedAtMs = r.startedAtMs,
+        eventTitle = r.eventTitle,
+        startInstantMs = r.startInstantMs,
+        windowClosesAtMs = r.windowClosesAtMs,
+        courseId = r.course?.id,
+    )
+}
+
+/// The cached race as the watch's active race at [nowMs], or null: another
+/// account's entry, a Host GO race, and a race finished, cancelled or whose
+/// window has closed by now are not restored. The attempt toggle is not kept:
+/// a self-timed attempt is armed again by hand, as on the phone.
+internal fun restorableActiveRace(
+    entry: CachedActiveRace?,
+    userId: String,
+    nowMs: Long,
+    course: RaceSessionClient.RaceCourse? = null,
+): ActiveRaceState? {
+    val e = entry ?: return null
+    if (e.userId != userId || e.startMode == "host_go") return null
+    val status = raceEffectiveStatus(e.status, e.startMode, e.startInstantMs, e.windowClosesAtMs, nowMs)
+    if (status != "armed" && status != "running") return null
+    return ActiveRaceState(
+        eventId = e.eventId,
+        instanceStart = e.instanceStart,
+        status = e.status,
+        startedAtMs = e.startedAtMs,
+        eventTitle = e.eventTitle,
+        course = course?.takeIf { e.courseId == null || it.id == e.courseId },
+        startMode = e.startMode,
+        startInstantMs = e.startInstantMs,
+        windowClosesAtMs = e.windowClosesAtMs,
+    )
+}
+
 /// Whether a failed upsert is worth replaying. The body is the problem on a
 /// 400 / 403 / 404 / 422 and a replay sends the same body; everything else —
 /// offline, 5xx, a 409 on a run that has not uploaded yet, an expired token —
@@ -100,6 +166,7 @@ private val Context.raceResultDataStore by preferencesDataStore(name = "watch_we
 private val KEY_PENDING: Preferences.Key<String> = stringPreferencesKey("pending_race_results_v1")
 private val KEY_VOIDS: Preferences.Key<String> = stringPreferencesKey("pending_race_voids_v1")
 private val KEY_COURSE: Preferences.Key<String> = stringPreferencesKey("race_course_cache_v1")
+private val KEY_ACTIVE: Preferences.Key<String> = stringPreferencesKey("race_active_cache_v1")
 private val pendingJson = Json { ignoreUnknownKeys = true }
 private val pendingSerializer = ListSerializer(PendingRaceResult.serializer())
 private val voidSerializer = ListSerializer(PendingRaceVoid.serializer())
@@ -201,13 +268,45 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
         return entry.course.takeIf { mine }
     }
 
-    /// Sign-out: every queued result, withdrawn finish and cached course, for
-    /// every account.
+    /// Keep [entry] as the one cached race; null forgets it.
+    suspend fun cacheActiveRace(entry: CachedActiveRace?) {
+        dataStore.edit { prefs ->
+            if (entry == null) {
+                prefs.remove(KEY_ACTIVE)
+            } else {
+                prefs[KEY_ACTIVE] = pendingJson.encodeToString(CachedActiveRace.serializer(), entry)
+            }
+        }
+    }
+
+    /// The cached race, whoever's it is, or null.
+    suspend fun cachedActiveRace(): CachedActiveRace? {
+        val raw = dataStore.data.first()[KEY_ACTIVE] ?: return null
+        return runCatching { pendingJson.decodeFromString(CachedActiveRace.serializer(), raw) }
+            .getOrElse { e ->
+                Log.w("RaceResultStore", "cached race unreadable, ignoring", e)
+                null
+            }
+    }
+
+    /// After a restart: this account's cached race at [nowMs] with its cached
+    /// course, so detection and binding resume with no signal. Null when there
+    /// is none to restore ([restorableActiveRace]).
+    suspend fun restoreActiveRace(userId: String, nowMs: Long): ActiveRaceState? {
+        val entry = cachedActiveRace() ?: return null
+        if (restorableActiveRace(entry, userId, nowMs) == null) return null
+        val course = cachedCourse(userId, entry.eventId, entry.instanceStart)
+        return restorableActiveRace(entry, userId, nowMs, course)
+    }
+
+    /// Sign-out: every queued result, withdrawn finish, cached course and
+    /// cached race, for every account.
     suspend fun clear() {
         dataStore.edit { prefs ->
             prefs.remove(KEY_PENDING)
             prefs.remove(KEY_VOIDS)
             prefs.remove(KEY_COURSE)
+            prefs.remove(KEY_ACTIVE)
         }
     }
 }

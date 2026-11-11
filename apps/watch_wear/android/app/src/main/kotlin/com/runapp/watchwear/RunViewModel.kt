@@ -530,6 +530,16 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private var boundRunId: String? = null
     /// A run the host ended the race under; it is never re-bound.
     private var raceEndedRunId: String? = null
+    /// The race kept on the watch is read back once per session, so a
+    /// restart with no signal still times it (#1307 offline).
+    private var raceRestoreTried = false
+    /// What the watch's race cache was last written to, so an unchanged poll
+    /// writes nothing; [raceCacheWritten] false until the first write.
+    private var raceCacheEntry: CachedActiveRace? = null
+    private var raceCacheWritten = false
+    /// The active race whose course came off the watch's cache at restore,
+    /// re-read from the server on the first poll with signal.
+    private var raceCourseFromCacheKey: String? = null
     /// Timing by the lines from the recording's Start (#1307), bound to a
     /// race or not yet.
     private val raceTimer = RaceLineTimer().apply {
@@ -828,10 +838,44 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private fun observeRace() {
         racePollJob = launchGuarded {
             while (true) {
+                if (authReady.value) restoreCachedRace()
                 kotlinx.coroutines.delay(5_000)
                 if (authReady.value) refreshRace()
                 kotlinx.coroutines.delay(25_000)
             }
+        }
+    }
+
+    /// After a restart the watch knows its race before any poll answers: the
+    /// one kept at the last poll, with its course, unless it has finished or
+    /// its window has closed since. The poll replaces it once it has signal.
+    private suspend fun restoreCachedRace() {
+        if (raceRestoreTried || boundRace != null || _state.value.activeRace != null) return
+        val uid = supabase.authedUserId ?: return
+        raceRestoreTried = true
+        val restored = try {
+            raceResults.restoreActiveRace(uid, System.currentTimeMillis() + (serverClock.offsetMs ?: 0L))
+        } catch (e: Throwable) {
+            Log.w(TAG, "cached race unreadable; the race is found by the next poll", e)
+            null
+        } ?: return
+        if (boundRace != null || _state.value.activeRace != null) return
+        if (restored.course != null) raceCourseFromCacheKey = "${restored.eventId}|${restored.instanceStart}"
+        _state.value = _state.value.copy(activeRace = restored)
+    }
+
+    /// Keep the race this poll found on the watch, or forget it; a write only
+    /// when it changed. L4: a failed write leaves the race timed while the
+    /// app runs.
+    private suspend fun cacheActiveRace(uid: String?, race: ActiveRaceState?) {
+        val entry = uid?.let { activeRaceCacheEntry(it, race) }
+        if (raceCacheWritten && entry == raceCacheEntry) return
+        try {
+            raceResults.cacheActiveRace(entry)
+            raceCacheEntry = entry
+            raceCacheWritten = true
+        } catch (e: Throwable) {
+            Log.w(TAG, "race not cached; it is still timed while the app runs", e)
         }
     }
 
@@ -851,25 +895,34 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 val sameRace = previous != null &&
                     previous.eventId == it.eventId &&
                     previous.instanceStart == it.instanceStart
+                val key = "${it.eventId}|${it.instanceStart}"
+                // A course restored off the cache is read again now there
+                // is signal; one read this session is kept.
+                val keepCourse = sameRace && raceCourseFromCacheKey != key
+                raceCourseFromCacheKey = null
                 ActiveRaceState(
                     eventId = it.eventId,
                     instanceStart = it.instanceStart,
                     status = it.status,
                     startedAtMs = it.startedAtIso?.let(::parseServerInstantMs),
                     eventTitle = it.eventTitle,
-                    course = previous?.course?.takeIf { sameRace }
+                    course = previous?.course?.takeIf { keepCourse }
                         ?: loadRaceCourse(token, uid, it.eventId, it.instanceStart),
                     startMode = it.startMode,
                     startInstantMs = it.startInstantIso?.let(::parseServerInstantMs),
                     attemptArmed = sameRace && previous?.attemptArmed == true,
+                    windowClosesAtMs = it.windowClosesAtIso?.let(::parseServerInstantMs),
                 )
             }
             if (newState != _state.value.activeRace) {
                 _state.value = _state.value.copy(activeRace = newState)
             }
+            cacheActiveRace(uid, newState)
         } catch (_: Throwable) {
             // Polling is advisory; swallow failures so a flaky connection
-            // doesn't spam the UI with errors.
+            // doesn't spam the UI with errors. With no signal the race kept
+            // on the watch stands in.
+            restoreCachedRace()
         }
     }
 
@@ -937,7 +990,13 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /// The host ended the race: a restart must not bring it back.
+    private fun forgetCachedRace() {
+        launchGuarded { cacheActiveRace(null, null) }
+    }
+
     private fun onRaceEndedAfterStop() {
+        forgetCachedRace()
         raceEndedAfterStop = true
         _state.value = _state.value.copy(
             activeRace = null,
@@ -946,6 +1005,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun onRaceEndedByHost() {
+        forgetCachedRace()
         raceEndedAfterStop = false
         raceStoppedAtMs = null
         raceEndedRunId = boundRunId
@@ -1330,9 +1390,16 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         // so it goes with the account that ran it.
         forgetLastRun { lastRunStore.clear() }
         authReady.value = false
+        raceRestoreTried = false
+        raceCacheEntry = null
+        raceCacheWritten = false
+        raceCourseFromCacheKey = null
         _state.value = _state.value.copy(
             authed = false,
             authFault = null,
+            // The race found for the account leaving goes with it, as its
+            // cached copy did above.
+            activeRace = null,
             stage = Stage.PreRun,
             routes = emptyList(),
             selectedRoute = null,

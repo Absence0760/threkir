@@ -3122,7 +3122,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     };
     final icon = switch (level) {
       AudienceLevel.public => Icons.public,
-      AudienceLevel.followers => Icons.group_outlined,
+      AudienceLevel.followers => Icons.group,
       AudienceLevel.specific => Icons.person_add_alt,
       AudienceLevel.private => Icons.lock_outline,
     };
@@ -3167,12 +3167,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final api = widget.apiClient;
     if (api == null || api.userId == null) return;
     if (!_audienceOn) {
-      if (_isPublic == true) {
-        await _makePrivate();
-      } else {
-        await _makePublicFromControl();
-      }
-      return;
+      return _isPublic == true ? _makePrivate() : _makePublicFromControl();
     }
     if (_visibilityBusy) return;
     _visibilityBusy = true;

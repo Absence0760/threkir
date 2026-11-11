@@ -147,6 +147,7 @@ actor SupabaseService {
                 distance_step_over_chord_m: run.distanceStepFilledMetres > 0
                     ? run.distanceStepOverChordMetres.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil }
                     : nil,
+                distance_segments: run.distanceEstimator == nil ? nil : run.distanceSegments.flatMap { $0 >= 1 ? $0 : nil },
                 track_complete: run.trackComplete ? true : nil,
                 plan_workout_id: run.workoutReview?.planWorkoutId,
                 workout_adherence: run.workoutReview?.adherence,
@@ -236,6 +237,9 @@ actor SupabaseService {
         /// credited; sent only beside it (docs/features/gps_distance.md
         /// § Server recompute).
         let distance_step_over_chord_m: Double?
+        /// The estimator segments the uploaded track holds, which the server
+        /// matches against its replay before it reads the key above.
+        let distance_segments: Int?
         /// Present (true) only when the uploaded track holds every fix the
         /// estimator took (docs/features/gps_distance.md § Stored track).
         let track_complete: Bool?

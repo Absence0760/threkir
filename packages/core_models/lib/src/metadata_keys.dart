@@ -28,6 +28,7 @@ class MetadataKeys {
   static const String distanceSource = 'distance_source';
   static const String distanceStepFilledM = 'distance_step_filled_m';
   static const String distanceStepOverChordM = 'distance_step_over_chord_m';
+  static const String distanceSegments = 'distance_segments';
   static const String elevationM = 'elevation_m';
   static const String event = 'event';
   static const String eventId = 'event_id';

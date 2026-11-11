@@ -173,6 +173,13 @@ struct ContentView: View {
             // can tell a v1 figure from a hop-sum one. A recovered run from a
             // pre-estimator checkpoint carries none (docs/features/gps_distance.md).
             if let estimator = run.distanceEstimator { metadata["distance_estimator"] = estimator }
+            // How many estimator segments the track holds: the server reads
+            // `distance_step_over_chord_m` only when its replay finds as many,
+            // so a track that lost its `segmentStart` marks keeps the
+            // run-total rule.
+            if run.distanceEstimator != nil, let segments = run.distanceSegments, segments >= 1 {
+                metadata["distance_segments"] = segments
+            }
             if run.distanceStepFilledMetres > 0 {
                 metadata["distance_step_filled_m"] = run.distanceStepFilledMetres
                 if let over = run.distanceStepOverChordMetres, over.isFinite, over >= 0 {

@@ -189,6 +189,27 @@ class TrackWriterTest {
             listOf(RouteMath.LatLng(51.5, -0.1), RouteMath.LatLng(51.5009, -0.1), RouteMath.LatLng(51.501, -0.1)),
             trackLineLatLngs(out),
         )
+        assertEquals(2, w.segmentCount)
+    }
+
+    @Test
+    fun `the segment count is the server replay's, a marked first fix opening only one`() {
+        // metadata.distance_segments: the replay starts a segment at the
+        // track's first fix and at every later mark, so a mark on the first
+        // fix (a pause before any fix) opens no second one.
+        val w = TrackWriter(trackFile)
+        w.open()
+        assertEquals(0, w.segmentCount)
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 1_716_000_000_000), segmentStart = true)
+        assertEquals(1, w.segmentCount)
+        w.append(GpsPoint(lat = 51.5001, lng = -0.1, ele = null, epochMs = 1_716_000_001_000))
+        w.append(GpsPoint(lat = 51.5002, lng = -0.1, ele = null, epochMs = 1_716_000_060_000), segmentStart = true)
+        w.append(GpsPoint(lat = 51.5003, lng = -0.1, ele = null, epochMs = 1_716_000_120_000), segmentStart = true)
+        assertEquals(3, w.segmentCount)
+        w.close()
+        w.open()
+        assertEquals("a fresh run counts from zero", 0, w.segmentCount)
+        w.close()
     }
 
     @Test

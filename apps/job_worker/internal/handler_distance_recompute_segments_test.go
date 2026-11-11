@@ -38,6 +38,7 @@ type segmentedRun struct {
 		DistanceM         float64 `json:"distanceM"`
 		UnmarkedReplayedM float64 `json:"unmarkedReplayedM"`
 		UnmarkedGapM      float64 `json:"unmarkedGapM"`
+		UnmarkedDistanceM float64 `json:"unmarkedDistanceM"`
 	} `json:"recompute"`
 }
 
@@ -85,16 +86,33 @@ func (s segmentedRun) storedTrack(marked bool) (track []RecordedTrackPoint, firs
 // handover inside a gap (238.00 m), a pause inside a gap (242.00 m) and a
 // runner who walks while paused (480.00 m). The replay of the same track as
 // one stream, every track before v1.8, is pinned beside it.
+//
+// A v1.8 track that lost its marks on the way to storage replays as one
+// segment while distance_segments says two, so the key, which banks the steps
+// each close committed past its segment's last fix, gives way to the run-total
+// rule: 235.52 + max(47.52, 50) - 47.52 = 238.00 m and 235.52 + max(75.52, 82)
+// - 75.52 = 242.00 m (reference.py recompute_distance), where the key over the
+// one-stream replay would read 285.52 m and 317.52 m. The walk while paused
+// reads 575.52 m either way: its key is 0, and no gap rule can take back the
+// chord the one-stream replay credits across the pause.
 func TestDistanceRecompute_SegmentedWatchRunsMatchTheRecorder(t *testing.T) {
 	want := map[string]float64{
 		"segments_handover_open_gap": 238.00,
 		"segments_pause_in_gap":      242.00,
 		"segments_pause_moved":       480.00,
 	}
+	wantUnmarked := map[string]float64{
+		"segments_handover_open_gap": 238.00,
+		"segments_pause_in_gap":      242.00,
+		"segments_pause_moved":       575.52,
+	}
 	for _, s := range segmentedRuns(t) {
 		t.Run(s.Name, func(t *testing.T) {
 			if w, ok := want[s.Name]; ok && math.Abs(s.Expected.DistanceM-w) > 0.005 {
 				t.Fatalf("vector's recorder figure %.3f, want %.2f", s.Expected.DistanceM, w)
+			}
+			if w, ok := wantUnmarked[s.Name]; ok && math.Abs(s.Recompute.UnmarkedDistanceM-w) > 0.005 {
+				t.Fatalf("vector's unmarked recompute %.3f, want %.2f", s.Recompute.UnmarkedDistanceM, w)
 			}
 			track, first := s.storedTrack(true)
 			replay := replayRecordedTrack(track, 10)
@@ -114,8 +132,8 @@ func TestDistanceRecompute_SegmentedWatchRunsMatchTheRecorder(t *testing.T) {
 				}
 			}
 
-			meta := fmt.Sprintf(`{"distance_step_filled_m":%v,"distance_step_over_chord_m":%v}`,
-				s.Expected.StepDistanceM, s.Expected.StepOverChordM)
+			meta := fmt.Sprintf(`{"distance_step_filled_m":%v,"distance_step_over_chord_m":%v,"distance_segments":%d}`,
+				s.Expected.StepDistanceM, s.Expected.StepOverChordM, len(s.Segments))
 			got, _ := recomputeWatchTrack(t, meta, track)
 			if math.Abs(got-s.Expected.DistanceM) > 0.005+1e-3 {
 				t.Errorf("recomputed %.2f m, the recorder credited %.3f m", got, s.Expected.DistanceM)
@@ -128,6 +146,13 @@ func TestDistanceRecompute_SegmentedWatchRunsMatchTheRecorder(t *testing.T) {
 				math.Abs(old.GapM-s.Recompute.UnmarkedGapM) > 1e-3 {
 				t.Errorf("unmarked: %d segments, %.4f m, gaps %.4f m; reference one stream %.4f m, %.4f m",
 					old.Segments, old.SmoothedM, old.GapM, s.Recompute.UnmarkedReplayedM, s.Recompute.UnmarkedGapM)
+			}
+			lost, _ := recomputeWatchTrack(t, meta, unmarked)
+			if math.Abs(lost-s.Recompute.UnmarkedDistanceM) > 0.005+1e-3 {
+				t.Errorf("marks lost: recomputed %.2f m, want the run-total rule's %.3f m", lost, s.Recompute.UnmarkedDistanceM)
+			}
+			if s.Expected.StepOverChordM > 0 && lost > s.Expected.DistanceM+0.005 {
+				t.Errorf("marks lost: recomputed %.2f m, past the recorder's %.3f m", lost, s.Expected.DistanceM)
 			}
 		})
 	}

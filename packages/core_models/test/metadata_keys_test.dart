@@ -22,6 +22,7 @@ void main() {
         MetadataKeys.distanceStepOverChordM,
         'distance_step_over_chord_m',
       );
+      expect(MetadataKeys.distanceSegments, 'distance_segments');
       expect(MetadataKeys.locationProvider, 'location_provider');
       expect(MetadataKeys.gnssSignal, 'gnss_signal');
       expect(MetadataKeys.isDnf, 'is_dnf');
@@ -52,6 +53,7 @@ void main() {
         MetadataKeys.distanceSource,
         MetadataKeys.distanceStepFilledM,
         MetadataKeys.distanceStepOverChordM,
+        MetadataKeys.distanceSegments,
         MetadataKeys.elevationM,
         MetadataKeys.event,
         MetadataKeys.fastest10kS,

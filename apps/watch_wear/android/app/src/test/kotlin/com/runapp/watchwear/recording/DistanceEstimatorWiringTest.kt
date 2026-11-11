@@ -147,6 +147,12 @@ class DistanceEstimatorWiringTest {
         val stop = body(serviceSrc, "private fun stopRecording()")
         assertTrue(stop.contains("distanceStepFilledM = stepFilledM"))
         assertTrue(stop.contains("distanceStepOverChordM = stepOverChordM"))
+        // Counted before the writer closes, so the server can tell a track
+        // that lost its segment marks (metadata.distance_segments).
+        assertTrue(stop.indexOf("trackWriter?.segmentCount") in 0 until stop.indexOf("trackWriter?.close()"))
+        assertTrue(stop.contains("distanceSegments = storedSegments"))
+        val checkpoint = body(serviceSrc, "private suspend fun writeCheckpoint()")
+        assertTrue(checkpoint.contains("distanceSegments = file.segmentCount"))
     }
 
     /// A pause or source switch banks each segment's step-over-chord metres

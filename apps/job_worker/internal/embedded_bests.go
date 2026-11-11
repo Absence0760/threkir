@@ -137,6 +137,11 @@ func replayRecordedTrack(pts []RecordedTrackPoint, maxSpeedMps float64) trackRep
 			return
 		}
 		events = append(events, gpsdistance.Event{Kind: gpsdistance.EventFinish, T: lastT})
+		// Post-hoc stop detection is decided per segment: a segment with no
+		// Doppler fix (a fused stretch after a Wear OS handover) gets the stop
+		// hints even when another segment carried Doppler, where a one-stream
+		// replay of the same track would run none. The track's median interval
+		// is still the whole run's.
 		res := gpsdistance.SmoothDistance(events, opts)
 		sm, fw := out.SmoothedM, out.ForwardM
 		for i := segStart; i < segEnd; i++ {

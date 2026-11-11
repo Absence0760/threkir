@@ -42,6 +42,10 @@ object RecordingRepository {
         /// not have credited (`GpsDistanceEstimator.stepOverChordM`). Written
         /// with it, and null at every other stage.
         val distanceStepOverChordM: Double? = null,
+        /// The estimator segments a FINISHED run's track holds
+        /// (`TrackWriter.segmentCount`). Written with it, and null at every
+        /// other stage.
+        val distanceSegments: Int? = null,
         /// Which stream recorded a FINISHED run's track (`gps` / `fused` /
         /// `mixed`, see `LocationSourceArbiter`). Written once, at the
         /// `Finished` transition, and null at every other stage or when the

@@ -642,6 +642,7 @@ class RunRecordingService : Service() {
             review
         }
         val storedPoints = trackWriter?.pointCount ?: 0
+        val storedSegments = trackWriter?.segmentCount
         val locationProvider = locationProviderForTrack(storedPoints)
         val file = trackWriter?.close()
         trackWriter = null
@@ -653,6 +654,7 @@ class RunRecordingService : Service() {
                 distanceM = finishDistanceM,
                 distanceStepFilledM = stepFilledM,
                 distanceStepOverChordM = stepOverChordM,
+                distanceSegments = storedSegments,
                 locationProvider = locationProvider,
                 gnssSignal = gnssSignalSummary(),
                 finishedHr = hr,
@@ -956,6 +958,7 @@ class RunRecordingService : Service() {
                 distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                 distanceStepFilledM = stepFilledM,
                 distanceStepOverChordM = stepOverChordM,
+                distanceSegments = file.segmentCount,
                 locationProvider = locationProviderForTrack(file.pointCount),
                 gnssSignal = gnssSignalSummary(),
                 trackComplete = file.pointCount > 0,

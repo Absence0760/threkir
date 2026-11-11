@@ -641,7 +641,7 @@ The UltraSignup person link's Dart half (decisions § 1841): the name-ready chec
 
 Smoke tests for the `@visibleForTesting ApiClient.withClient(SupabaseClient)` named constructor — the DI seam that lets tests inject a fake `SupabaseClient` without booting `Supabase.initialize`. Pins: `userId` reads from the injected client (null when not signed in), `userEmail` reads from the injected client, two `withClient` instances stay independent (the override is an instance field, not static), and the default `ApiClient()` constructor still falls back to the global (which throws when `Supabase.initialize` hasn't run — the throw is the test value, confirming the seam only fires for `withClient`).
 
-### `packages/api_client/test/api_client_codecs_test.dart` — 50 tests
+### `packages/api_client/test/api_client_codecs_test.dart` — 51 tests
 
 Covers the four pure helpers on `ApiClient` exposed via `@visibleForTesting` static accessors (`debugWaypointToJson`, `debugWaypointFromJson`, `debugRunFromRow`, `debugRouteFromRow`). The methods drive the wire format for the gzipped track blob in the `runs` Storage bucket and the row-to-domain conversion that powers every list / detail screen — code that previously had no direct coverage because it hides behind `Supabase.instance.client`.
 
@@ -1096,7 +1096,7 @@ Every static-map image on web renders through `StaticMapImage.svelte`, which swa
 
 `activityUsesSpeed`: only `cycle` reads by speed, the twin of core_models' `ActivityType.usesSpeed`, and an untagged or unknown activity reads by pace. Drives the pace-or-speed key-stat tile on `/runs/[id]`.
 
-### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 1245 Wear OS Kotlin/JUnit tests across 113 files
+### `apps/watch_wear/android/app/src/test/kotlin/**/*Test.kt` — 1249 Wear OS Kotlin/JUnit tests across 113 files
 
 Run with `cd apps/watch_wear/android && ./gradlew testDebugUnitTest`. Pure-JVM tests — no Android instrumentation, no Robolectric. **Six of them read files outside this Gradle build** (the phone's two `Wear*Bridge.kt`, `apps/web/src/lib/core/env_flag.ts`, `docs/backend/metadata.md`, the `activity_type` migration and the two client label catalogues), plus the manifest, and none was a declared input of the test task until [decisions § 946](../architecture/decisions.md) — so a local run reported UP-TO-DATE and SUCCESSFUL on exactly the drift those guards exist to catch. They are declared now; if you add a guard that reads anything outside `app/src`, add it to `guardedCrossTreeFiles` / `guardedCrossTreeSets` in `app/build.gradle.kts` in the same change or it will not re-run when its subject changes. `ScreenWiringTest` also now pins the pre-run signed-out notice ([decisions § 948](../architecture/decisions.md)): the `!authed` branch renders `not_signed_in` and NOT `offline`, read branch-scoped so the sibling `!online && authed` branch a few lines above cannot satisfy it — two conditions sharing one string breaks nothing, so only an assertion about which branch says which can see it. The team deliberately avoided UI-test infrastructure (see `apps/watch_wear/CLAUDE.md`'s "layouts can't be unit-tested without Robolectric"); the pattern is to extract pure helpers from the Android-bound classes and exercise them at the JVM level.
 

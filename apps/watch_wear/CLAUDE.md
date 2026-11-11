@@ -675,7 +675,9 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   after a pause or a source switch closes the estimator's segment is written
   `"segmentStart":true` (`closeDistanceSegment` sets `markSegmentStart`,
   `onGps` writes and clears it), so the server replays each segment apart
-  (spec v1.8); the finished run and the
+  (spec v1.8), and `TrackWriter.segmentCount` counts the segments the file
+  holds into `metadata.distance_segments`, which the server matches against
+  its replay before it reads the gap key; the finished run and the
   checkpoint carry `trackComplete` into `metadata.track_complete`
   (docs/features/gps_distance.md § Stored track). Each point now also carries the optional `accuracyMetres`,
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
@@ -690,8 +692,9 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   `runs_enqueue_watch_distance_recompute` trigger queues a
   `distance_recompute` job, which replays this track and replaces
   `distance_m` with the smoothed figure (its gaps credited the larger of
-  `distance_step_over_chord_m` and the run-total rule, or on an older run
-  the larger of their chords and the step-filled metres; each segment is
+  `distance_step_over_chord_m` and the run-total rule when
+  `distance_segments` matches the replay, otherwise the run-total rule, the
+  larger of their chords and the step-filled metres; each segment is
   replayed apart from its `segmentStart` fix, so a close's trailing steps
   are banked whole),
   keeping the wrist's figure as `distance_recorded_m`

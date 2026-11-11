@@ -753,9 +753,11 @@ def smooth_segments(segment_fixes, max_speed_mps=10.0, expected_interval_s=1.0):
     segment_fixes: one list of fix events per segment, as stored (no steps). Each is
     replayed apart, ending at its own last fix, so no chord is credited across a
     pause or a source switch. A track with no marks is one segment. Returns
-    distance_m (the smoothed figures summed) and gap_m (the chords its gaps were
-    credited, summed: SmoothResult.GapM)."""
+    distance_m (the smoothed figures summed), gap_m (the chords its gaps were
+    credited, summed: SmoothResult.GapM) and segments (how many segments held a
+    fix: trackReplay.Segments)."""
     dist = gap = 0.0
+    segments = 0
     for fixes in segment_fixes:
         if not fixes:
             continue
@@ -763,16 +765,23 @@ def smooth_segments(segment_fixes, max_speed_mps=10.0, expected_interval_s=1.0):
                              max_speed_mps, expected_interval_s)
         dist += sm["distance_m"]
         gap += sum(c for c, _ in sm["gap_credits"])
-    return {"distance_m": dist, "gap_m": gap}
+        segments += 1
+    return {"distance_m": dist, "gap_m": gap, "segments": segments}
 
 
-def recompute_distance(replayed_m, gap_m, step_filled_m, step_over_chord_m=None):
+def recompute_distance(replayed_m, gap_m, step_filled_m, step_over_chord_m=None,
+                       replayed_segments=None, saved_segments=None):
     """The worker's figure (gapStepCreditM): the replay, plus the larger of the saved
     step_over_chord_m (capped at step_filled_m) and the run-total rule
     max(gap_m, step_filled_m) - gap_m. Neither adds more than the steps credited
     beyond the replay's chords; on a marked track whose replayed gaps are the
-    recorder's the key is exact and never below the run-total rule."""
+    recorder's the key is exact and never below the run-total rule.
+    The key is read only when saved_segments (metadata.distance_segments, the
+    segments the watch stored) equals replayed_segments (the segments the replay
+    found): a v1.8 key banks the steps a close committed past a segment's last fix
+    whole, which a replay that lost the marks reads as running on into the next
+    segment and credits its chord besides. Otherwise the run-total rule."""
     run_total = max(gap_m, step_filled_m) - gap_m
-    if step_over_chord_m is None:
+    if step_over_chord_m is None or saved_segments is None or saved_segments != replayed_segments:
         return replayed_m + run_total
     return replayed_m + max(min(step_over_chord_m, step_filled_m), run_total)

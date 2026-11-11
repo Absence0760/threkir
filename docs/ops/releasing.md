@@ -470,6 +470,17 @@ and install from there.
      uploads directly, so only step 1 gates it.
 
   After the first release of each, nothing to do.
+- **`race_finish v3` and the result course lock ship with the `backend@*`
+  release before any client build that reads them** (migrations
+  `20271222002471`, `20271222002472` + `…012472`, decisions § 2471 / § 2472).
+  A v3 client reads `race_session_courses.finish_min_coverage_m`, which
+  exists only after the migration; a race Armed before it has the column
+  null, and v3 then keeps the old coverage rule (or measures the lap on the
+  device when the lines coincide). An older client keeps working against the
+  new database: it never reads the column, and the only change it meets is
+  the course/distance refusal after the 24 h window, which it surfaces as
+  the window-closed error it already handles. Order: `backend@*`, then
+  `web@*`, the store builds and the Wear build in any order.
 - **The job_worker that handles `duration_repair` ships before the
   `backend@*` release carrying `20271218000001`–`…03`** (issue #1300 § 5,
   [decisions § 2464](../architecture/decisions.md)). `…02` caps every run

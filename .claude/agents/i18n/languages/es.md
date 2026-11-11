@@ -61,7 +61,7 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | pace | Ritmo | all stat labels |
 | split | Parciales | |
 | lap | Vuelta / Vueltas | |
-| personal record / PR | Récord personal / Récords personales; badge **PR** (web) / "RP" (mobile `gymPrBadge`) | mobile `dashboardSectionPersonalBests` "Mejores marcas personales"; "marca" for a time |
+| personal record / PR | Récord personal / Récords personales; badge **PR** (web `gym.pr.badge` and mobile `gymPrBadge`); a route's best = "mejor marca personal" (`routeHistory.personalBest` / `runDetailPersonalBest`) | mobile `dashboardSectionPersonalBests` "Mejores marcas personales"; "marca" for a time |
 | tempo run | Tempo | |
 | interval | Intervalo (a step) / **Series** (workout kind) | |
 | long run | Tirada larga | |
@@ -78,7 +78,10 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 | segment | Segmento / Segmentos | |
 | club | Club / Clubes | |
 | event | Evento / Eventos | |
-| gym | **Gimnasio** (mobile) / **Gym** (web `nav.gym`, `gym.title`) | inconsistency 2 |
+| gym | **Gym** as the feature and tab name (web `nav.gym`, `gym.title`; mobile `gymTitle`, `fitnessTabGym`, "pestaña Gym"); a gym workout is an **entreno**; prose may keep "sesiones de gimnasio" | settled 2026-11-10, phone aligned to web |
+| gun time / chip time | **Tiempo bruto** / Tiempo chip (`races.gunTime`, `racesGunTime`, "¡Meta! Tiempo bruto {time}") | settled 2026-11-10; never "Tiempo oficial" for gun time (web `clubEvent.timeSplitGun*` still says "oficial", open) |
+| RSVP "I'm in" | **Me apunto** (`clubEvent.imIn`, `eventRsvpGoing`) | settled 2026-11-10; never "Voy" |
+| segment effort | **intento** ("No hay intentos de segmento") | web `segments.*` / `segmentEfforts.*`; phone aligned 2026-11-10 |
 | nutrition | Nutrición | |
 | log (verb) | Registrar | `navLog` |
 | streak | Racha | |
@@ -101,11 +104,10 @@ no accent on `solo` or demonstratives; opening `¿` and `¡` always (106 /
 1. **run vs race are both "Carrera(s)".** Web `runSurface.tabRuns` and
    `runSurface.tabRaces` render "Carreras" twice on one tab bar
    (`RunSurfaceTabs.svelte`); `nav.races` / `navRaces` (unused) too.
-2. **gym**: "Gimnasio" (mobile `gymTitle`, `fitnessTabGym`) vs "Gym" (web
-   `nav.gym`, `gym.title`).
+2. ~~**gym**~~: resolved 2026-11-10, the phone says "Gym" like the web.
 3. **settings**: "Ajustes" (mobile `navSettings`, web `prefs.kicker`) vs
    "Configuración" (web `shell.settings`).
-4. **PR badge**: "RP" (mobile `gymPrBadge`) vs "PR" (web `gym.pr.badge`).
+4. ~~**PR badge**~~: resolved 2026-11-10, "PR" on both.
 5. **elevation gain** — five renderings, see table.
 6. **VO₂ max**: "VO₂ máx" (`metric.vo2max.label`, `fitnessStatVo2Max`) vs
    "VO2 máx." (`watchMetricVo2Max`).

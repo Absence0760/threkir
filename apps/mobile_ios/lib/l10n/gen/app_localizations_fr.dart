@@ -2082,7 +2082,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — en attente du départ';
+    return '$label — en attente du GO';
   }
 
   @override
@@ -6287,7 +6287,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventRsvpDeclined => 'Pas dispo';
 
   @override
-  String get eventRaceArmed => 'Armé — en attente du GO';
+  String get eventRaceArmed => 'Armée — en attente du GO';
 
   @override
   String get eventRaceRunning => 'En cours — en direct';
@@ -6299,7 +6299,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventRaceCancelled => 'Annulé';
 
   @override
-  String get eventRaceNotArmed => 'Non armé';
+  String get eventRaceNotArmed => 'Non armée';
 
   @override
   String get eventRaceControlLabel => 'CONTRÔLE DE COURSE';
@@ -6313,10 +6313,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'Appuyez sur Lancer le Go quand la course commence. Les montres des participants affichent maintenant la bannière « armé ».';
+      'Appuyez sur GO quand la course commence. Les montres des participants affichent maintenant la bannière « COURSE ARMÉE ».';
 
   @override
-  String get eventRaceFireGo => 'Lancer le Go';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Annuler';
@@ -17639,7 +17639,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      'Départ tardif : vous êtes parti plus de 5 minutes après le départ ou loin de la ligne de départ.';
+      'Départ tardif : vous êtes parti plus de 5 minutes après le GO ou loin de la ligne de départ.';
 
   @override
   String get eventCoursesTitle => 'Parcours';
@@ -21469,7 +21469,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Carte de la ligne d’arrivée du parcours';
 
   @override
-  String get eventRacePreflightTitle => 'Vérifiez les parcours avant d’armer';
+  String get eventRacePreflightTitle => 'Vérifiez les parcours avant d\'armer';
 
   @override
   String get eventRacePreflightBlockedTitle =>
@@ -21492,7 +21492,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String eventRacePreflightNoStart(String course) {
-    return '$course : pas de ligne de départ. Une course chronométrée par chacun en a besoin.';
+    return '$course : pas de ligne de départ. Une course en chrono libre en a besoin.';
   }
 
   @override

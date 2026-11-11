@@ -83,6 +83,7 @@ import {
 } from '../social/event_courses';
 import type { CourseGateColumns, GateWhich, SessionStartMode } from '../races/course_gates';
 import { parseStartMode } from '../races/race_start_modes';
+import { raceOccurrenceForRun, type RetimeCandidate, type RetimeCourse, type RetimeCurrent } from '../races/race_retime';
 import type { Gate } from '../geo/gate_crossing';
 import { parseHostEarningsRow, type HostEarningsInstance } from '../social/host_earnings';
 import { parseHeadToHeadRows, type HeadToHeadKind, type HeadToHeadRow } from '../social/head_to_head';
@@ -5642,6 +5643,178 @@ export async function submitEventResult(params: {
 			.eq('id', params.runId)
 			.eq('user_id', userId);
 	}
+}
+
+/// The runner's own result row as a re-time reads it: the timing columns
+/// `event_results_redacted` shows its runner, `clock_offset_ms` included.
+export interface RetimeResultRow extends RetimeCurrent {
+	event_id: string;
+	instance_start: string;
+	course_id: string | null;
+	run_id: string | null;
+	organiser_approved: boolean | null;
+}
+
+/// Everything "Re-time from my track" reads besides the track: the race the
+/// run belongs to, its session, the course from its frozen snapshot (never the
+/// live course) and the runner's current row, which is null when the race has
+/// none yet.
+export interface RunRetimeContext {
+	eventId: string;
+	instanceStart: string;
+	eventTitle: string | null;
+	current: RetimeResultRow | null;
+	session: RaceSessionRow | null;
+	course: RetimeCourse | null;
+}
+
+const RETIME_RESULT_COLS =
+	'event_id, instance_start, course_id, run_id, organiser_approved, finisher_status, finish_method, start_detection, finish_detection, needs_review, duration_s, gun_time_s, chip_time_s, clock_offset_ms';
+
+/// A run's race for re-timing (#1307 M11): the result row linked to the run,
+/// else the occurrence of the run's event (`runs.event_id`) whose race the run
+/// falls in, so a DNF the close-time fill wrote without a run, or a result the
+/// watch never filed, can still be re-timed. Null when the run has no race.
+/// Owner only; a read failure throws, so the panel can say so.
+export async function fetchRunRetimeContext(run: {
+	id: string;
+	event_id: string | null;
+	started_at: string;
+}): Promise<RunRetimeContext | null> {
+	const userId = auth.user?.id;
+	if (!userId) return null;
+	const linked = await supabase
+		.from('event_results_redacted')
+		.select(RETIME_RESULT_COLS)
+		.eq('user_id', userId)
+		.eq('run_id', run.id)
+		.limit(1)
+		.maybeSingle();
+	if (linked.error) throw dbError(linked.error);
+	let current = (linked.data as RetimeResultRow | null) ?? null;
+	let eventId = current?.event_id ?? null;
+	let instanceStart = current?.instance_start ?? null;
+
+	if (current === null && run.event_id) {
+		const { data: sessions, error } = await supabase
+			.from('race_sessions_redacted')
+			.select('instance_start, window_opens_at, window_closes_at')
+			.eq('event_id', run.event_id);
+		if (error) throw dbError(error);
+		instanceStart = raceOccurrenceForRun(sessions ?? [], run.started_at);
+		if (instanceStart === null) return null;
+		eventId = run.event_id;
+		const own = await supabase
+			.from('event_results_redacted')
+			.select(RETIME_RESULT_COLS)
+			.eq('user_id', userId)
+			.eq('event_id', eventId)
+			.eq('instance_start', instanceStart)
+			.maybeSingle();
+		if (own.error) throw dbError(own.error);
+		current = (own.data as RetimeResultRow | null) ?? null;
+	}
+	if (eventId === null || instanceStart === null) return null;
+
+	const [session, courses, event, attendee] = await Promise.all([
+		fetchRaceSession(eventId, instanceStart),
+		supabase
+			.from(TABLES.race_session_courses)
+			.select(
+				'course_id, distance_m, start_gate_lat, start_gate_lng, start_gate_bearing_deg, start_gate_half_width_m, finish_gate_lat, finish_gate_lng, finish_gate_bearing_deg, finish_gate_half_width_m, finish_lat, finish_lng, finish_line_self_cross'
+			)
+			.eq('event_id', eventId)
+			.eq('instance_start', instanceStart),
+		supabase.from('events').select('title').eq('id', eventId).maybeSingle(),
+		supabase
+			.from(TABLES.event_attendees)
+			.select('course_id')
+			.eq('event_id', eventId)
+			.eq('instance_start', instanceStart)
+			.eq('user_id', userId)
+			.maybeSingle(),
+	]);
+	if (courses.error) throw dbError(courses.error);
+	if (event.error) throw dbError(event.error);
+	if (attendee.error) throw dbError(attendee.error);
+	const frozen = courses.data ?? [];
+	// The course the result names, else the one the runner chose at RSVP, else
+	// the only one; the same order the race guard fills `course_id` in.
+	const courseId = current?.course_id ?? attendee.data?.course_id ?? null;
+	const course =
+		(courseId !== null ? frozen.find((c) => c.course_id === courseId) : undefined) ??
+		(frozen.length === 1 ? frozen[0] : null);
+	return {
+		eventId,
+		instanceStart,
+		eventTitle: event.data?.title ?? null,
+		current,
+		session,
+		course: course ?? null,
+	};
+}
+
+/// File a re-timed result (#1307 M11): an upsert of the runner's own row with
+/// the crossings, inside the 24 h write window (§ 1849). The race guard
+/// re-derives the gun and chip time from `finish_at` / `start_at`, applies the
+/// Self-timed lock rule (keeping a faster protected row by returning it
+/// unchanged), sets `needs_review` and resets approval on a race that is not
+/// auto-approved, so the row read back afterwards is the answer, not the
+/// payload. A write past the window is refused as `race_result_window_closed`.
+export async function retimeEventResult(params: {
+	eventId: string;
+	instanceStart: string;
+	runId: string;
+	distanceM: number;
+	courseId: string | null;
+	candidate: RetimeCandidate;
+}): Promise<RetimeResultRow | null> {
+	const userId = auth.user?.id;
+	if (!userId) throw new Error('Not authenticated');
+	const c = params.candidate;
+	const { error } = await supabase.from(TABLES.event_results).upsert(
+		{
+			event_id: params.eventId,
+			instance_start: params.instanceStart,
+			user_id: userId,
+			run_id: params.runId,
+			distance_m: params.distanceM,
+			finisher_status: 'finished',
+			finish_method: 'auto',
+			duration_s: c.durationS,
+			gun_time_s: c.gunTimeS,
+			chip_time_s: c.chipTimeS,
+			start_at: c.startAt,
+			finish_at: c.finishAt,
+			start_detection: c.startDetection,
+			finish_detection: c.finishDetection,
+			...(c.clockOffsetMs !== null ? { clock_offset_ms: c.clockOffsetMs } : {}),
+			...(params.courseId !== null ? { course_id: params.courseId } : {}),
+			updated_at: new Date().toISOString(),
+		},
+		{ onConflict: 'event_id,instance_start,user_id' }
+	);
+	if (error) {
+		if (typeof error.message === 'string' && error.message.startsWith('race_result_window_closed')) {
+			throw new Error('race_result_window_closed');
+		}
+		throw dbError(error);
+	}
+	markListsStale('runs', 'history', 'routes');
+	await supabase
+		.from(TABLES.runs)
+		.update({ event_id: params.eventId })
+		.eq('id', params.runId)
+		.eq('user_id', userId);
+	const { data, error: readError } = await supabase
+		.from('event_results_redacted')
+		.select(RETIME_RESULT_COLS)
+		.eq('user_id', userId)
+		.eq('event_id', params.eventId)
+		.eq('instance_start', params.instanceStart)
+		.maybeSingle();
+	if (readError) throw dbError(readError);
+	return (data as RetimeResultRow | null) ?? null;
 }
 
 export async function removeEventResult(

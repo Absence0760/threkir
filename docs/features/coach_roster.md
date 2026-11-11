@@ -214,7 +214,7 @@ Built on web, off everywhere. In a conversation with an athlete they actively co
   - [ ] **DPIA** section completed and signed ([dpia.md](../compliance/dpia.md#coach-assistant-issue-1215-phase-4)).
   - [ ] Sub-processor changelog entry published and its 30-day notice run.
   - [ ] Then set `PUBLIC_COACH_ASSIST_ENABLED` and `COACH_ASSIST_ENABLED` together ([deployment.md § Coach assistant](../ops/deployment.md#coach-assistant--after-the-ciso--counsel-sign-off-and-the-dpia-update)).
-- **Tests:** unit `src/lib/coach/assist/assist.test.ts` (consent ladder, registry, every gate, refunds); pgtap `coach_assist_test.sql`; Playwright `tests-e2e/messages/coach-assist-off.spec.ts` (gate off) and `tests-e2e/configured/coach-assist.spec.ts` (gate on, endpoint mocked); Flutter coaching screen and thread marker tests.
+- **Tests:** unit `src/lib/coach/assist/assist.test.ts` (consent ladder, registry, every gate, refunds); `src/lib/coach/assist/client_request.test.ts` (what the panel receives for every answer: each 4xx, the athlete-consent refusal, the 401 refresh-and-retry, a 5xx, a network failure, an empty draft); pgtap `coach_assist_test.sql`; Playwright `tests-e2e/messages/coach-assist-off.spec.ts` (gate off) and `tests-e2e/configured/coach-assist.spec.ts` (gate on, endpoint mocked); Flutter coaching screen and thread marker tests.
 
 ## Effort targets, roster flags and the medication flag (decisions § 2092)
 

@@ -5,19 +5,17 @@ import { deleteRaceListing, insertRaceListing } from '../fixtures/simulate';
 import { USER_A } from '../fixtures/users';
 
 /**
- * UltraSignup fail-closed gate (race_calendar.md / decisions §186, § 1841). With
- * ULTRASIGNUP_RESULTS_ENABLED unset (the dev/CI default), the race-results-import
- * probe (provider='ultrasignup') returns 503 provider_not_configured, so the Settings
- * → Integrations UltraSignup card shows the unavailable explainer instead of an
- * open-the-calendar action — and the page does not crash. parkrun + manual
- * paste stay available, mirroring the RunSignUp gate.
+ * UltraSignup is a race LISTING source only. Its results leg read UltraSignup's
+ * internal name-keyed feed and was removed with the other scrapers, so an
+ * UltraSignup race offers manual paste alone — exactly like a manual or
+ * RaceResult listing — and Settings has no UltraSignup card at all.
  */
 
-test.describe('UltraSignup gate (leg not opted in)', () => {
+test.describe('UltraSignup listing (no results leg)', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
 	const stamp = Date.now();
-	const raceName = `E2E UltraSignup Gate ${stamp}`;
+	const raceName = `E2E UltraSignup Listing ${stamp}`;
 	let listingId: string | null = null;
 
 	test.beforeAll(async () => {
@@ -33,19 +31,15 @@ test.describe('UltraSignup gate (leg not opted in)', () => {
 		if (listingId) await deleteRaceListing(listingId);
 	});
 
-	test('the settings card is not offered at all', async ({ page }) => {
-		// The card used to render with an explainer where its action would be.
-		// It is now filtered out of the page entirely: Settings offers what this
-		// deployment can honour, and the explainer a runner actually needs lives
-		// on the race whose result they are trying to import (asserted below).
+	test('the settings page offers no UltraSignup card', async ({ page }) => {
 		await page.goto('/settings/integrations');
-		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('integration-strava')).toBeVisible({ timeout: 10_000 });
 
 		await expect(page.getByTestId('ultrasignup-card')).toHaveCount(0);
 		await expect(page.getByTestId('ultrasignup-open')).toHaveCount(0);
 	});
 
-	test('the race calendar import modal names UltraSignup, not RunSignUp', async ({ page }) => {
+	test('the race calendar import modal offers paste only', async ({ page }) => {
 		await page.goto('/races');
 		await page.getByTestId('races-search').fill(raceName);
 
@@ -53,13 +47,9 @@ test.describe('UltraSignup gate (leg not opted in)', () => {
 		await expect(card).toBeVisible({ timeout: 15_000 });
 		await card.getByTestId('race-import').click();
 
-		// Its OWN explainer: a runner told RunSignUp is unavailable about a
-		// UltraSignup-timed race learns nothing true.
-		await expect(page.getByTestId('race-ultrasignup-unavailable')).toBeVisible({ timeout: 15_000 });
-		await expect(page.getByTestId('race-runsignup-unavailable')).toHaveCount(0);
+		await expect(page.getByTestId('paste-save')).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('race-ultrasignup-unavailable')).toHaveCount(0);
 		await expect(page.getByTestId('race-import-ultrasignup')).toHaveCount(0);
-
-		// The manual paste form is the universal fallback and stays available.
-		await expect(page.getByTestId('paste-save')).toBeVisible();
+		await expect(page.getByTestId('race-runsignup-unavailable')).toHaveCount(0);
 	});
 });

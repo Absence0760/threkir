@@ -37,6 +37,7 @@ import {
 	elevationGainM,
 	lapCourse,
 	pathLengthM,
+	checkpointPositionsM,
 	placeCheckpoints,
 	round6,
 	simplify,
@@ -96,7 +97,8 @@ export function buildPark(dir) {
 			);
 		}
 		const gainM = Math.round(elevationGainM(raw));
-		const checkpoints = placeCheckpoints(raw, course.checkpoint_count);
+		const checkpointAtM = checkpointPositionsOrThrow(course.slug, distanceM, course.checkpoint_count, course.checkpoint_at_m);
+		const checkpoints = placeCheckpoints(raw, checkpointAtM);
 		const waypoints = simplify(raw, SIMPLIFY_EPSILON_M).map((p) => ({
 			lat: round6(p.lat),
 			lng: round6(p.lng),
@@ -109,7 +111,7 @@ export function buildPark(dir) {
 			ways,
 			allWays: Object.values(snapshot.ways),
 			lengthM: distanceM,
-			checkpointCount: course.checkpoint_count,
+			checkpointAtM,
 			laps: null,
 			water: snapshot.water,
 		});
@@ -183,7 +185,8 @@ export function buildPark(dir) {
 		const lapM = pathLengthM(toPoints(loop, snapshot.nodes));
 		const { points: raw, trimEachEndM } = trimToDistance(full, targetM, leadInM);
 		const gainM = Math.round(elevationGainM(raw));
-		const checkpoints = placeCheckpoints(raw, race.checkpoints_per_lap * race.laps);
+		const checkpointAtM = checkpointPositionsOrThrow(race.slug, pathLengthM(raw), race.checkpoints_per_lap * race.laps, undefined);
+		const checkpoints = placeCheckpoints(raw, checkpointAtM);
 		const waypoints = simplify(raw, SIMPLIFY_EPSILON_M).map((p) => ({
 			lat: round6(p.lat),
 			lng: round6(p.lng),
@@ -197,7 +200,7 @@ export function buildPark(dir) {
 			allWays: Object.values(snapshot.ways),
 			offsetM: trimEachEndM,
 			lengthM: pathLengthM(raw),
-			checkpointCount: race.checkpoints_per_lap * race.laps,
+			checkpointAtM,
 			laps: { count: race.laps, firstStartM: leadInM, lapM },
 			water: snapshot.water,
 		});
@@ -338,6 +341,20 @@ function routeGuideOrThrow(slug, spec, input) {
 			route_guide: buildRouteGuide({ ...input, lang: 'en', gettingThere: spec?.getting_there ?? null }),
 			route_guide_checked_at: checkedAt,
 		};
+	} catch (err) {
+		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
+	}
+}
+
+/**
+ * @param {string} slug
+ * @param {number} totalM
+ * @param {number} count
+ * @param {number[] | undefined} atM
+ */
+function checkpointPositionsOrThrow(slug, totalM, count, atM) {
+	try {
+		return checkpointPositionsM(totalM, count, atM);
 	} catch (err) {
 		throw new Error(`${slug}: ${/** @type {Error} */ (err).message}`);
 	}

@@ -7,9 +7,9 @@
 /// bypass by adding `readJsonWithLimit` / `readTextWithLimit` which
 /// count bytes as they read and cancel the source on overflow.
 ///
-/// All seven Edge Function callers (parkrun-import, delete-account,
-/// export-data, strava-import, strava-webhook, revenuecat-webhook,
-/// clip-public-track) migrated to these helpers.
+/// Every Edge Function that reads a body (delete-account, export-data,
+/// strava-import, strava-webhook, revenuecat-webhook, clip-public-track,
+/// among others) goes through these helpers.
 
 import {
   assertEquals,

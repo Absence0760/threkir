@@ -15,7 +15,6 @@ import { readCount } from '../fixtures/db-read';
  *      activity is in flight from `strava-webhook`.
  *   2. Two browser tabs both press "Sync" within the same second.
  *   3. A retry on a flaky network races itself.
- *   4. parkrun's bulk import fans out one user's events twice.
  *
  * The DB defence is `runs_external_id_key` — a UNIQUE constraint on
  * `external_id` (since 20260405_001_initial_schema.sql) plus the
@@ -27,7 +26,7 @@ import { readCount } from '../fixtures/db-read';
  * 23505 as a no-op (the activity already exists, semantically a
  * success). The strava-import EF reads existing strava_ids into a
  * Set before fetching; strava-webhook's `ingestActivity` catches and
- * counts the dupe; the parkrun importer skips on conflict. A
+ * counts the dupe. A
  * regression that surfaced 23505 as a fatal error to the caller
  * would crash a sync mid-page.
  *

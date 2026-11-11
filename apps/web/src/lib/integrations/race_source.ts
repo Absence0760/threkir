@@ -10,7 +10,6 @@ const PROVIDER_NAMES: Record<RaceProvider, string | null> = {
 	ultrasignup: 'UltraSignup',
 	chronotrack: 'ChronoTrack',
 	raceresult: 'RaceResult',
-	parkrun: 'parkrun',
 	manual: null
 };
 

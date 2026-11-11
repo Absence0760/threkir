@@ -15,7 +15,7 @@ enum IntegrationGate {
   /// A build-time env var decides it (Strava's `STRAVA_CLIENT_ID` in dotenv).
   env,
 
-  /// An Edge Function probe decides it (parkrun, the three race-results legs).
+  /// An Edge Function probe decides it (the race-results legs).
   probe,
 
   /// Nothing to configure: the work happens entirely on the device.

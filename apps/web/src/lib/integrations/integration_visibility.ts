@@ -1,14 +1,14 @@
 /// Whether an integration is offered to this runner, on this deployment.
 ///
-/// Every provider surface used to decide this for itself, and the four answers
-/// did not agree. Strava checked its client ID only INSIDE the click handler,
-/// so an unconfigured deployment rendered a live Connect button whose sole
-/// disclosure was the error toast it raised after the tap. The three race legs
-/// probed their Edge Function properly. parkrun, Garmin Connect and Apple
-/// HealthKit checked nothing at all — and two of those can never work from a
-/// browser, whatever is configured: HealthKit is an on-device iOS API with no
-/// web binding, and Garmin Connect OAuth is blocked on Garmin's developer
-/// programme rather than on a key anyone can set.
+/// Every provider surface used to decide this for itself, and the answers did
+/// not agree. Strava checked its client ID only INSIDE the click handler, so an
+/// unconfigured deployment rendered a live Connect button whose sole disclosure
+/// was the error toast it raised after the tap. The race legs probed their Edge
+/// Function properly. Garmin Connect and Apple HealthKit checked nothing at all
+/// — and neither can ever work from a browser, whatever is configured:
+/// HealthKit is an on-device iOS API with no web binding, and Garmin Connect
+/// OAuth is blocked on Garmin's developer programme rather than on a key anyone
+/// can set.
 ///
 /// This module is the one place that grades them. It is deliberately pure —
 /// it takes a resolved verdict rather than reaching for `$app/env` or supabase-js —
@@ -25,7 +25,7 @@ export type IntegrationGate =
 	/// A build-time public env var decides it (Strava's `PUBLIC_STRAVA_CLIENT_ID`).
 	/// Resolves synchronously, so such a card never flashes in and out.
 	| 'env'
-	/// An Edge Function probe decides it (parkrun, the three race-results legs).
+	/// An Edge Function probe decides it (the race-results legs).
 	/// Resolves over the network, so the verdict is null until it lands.
 	| 'probe'
 	/// Nothing to configure: the work happens entirely in the browser. The bulk

@@ -955,7 +955,9 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 				AccuracyM: e.Acc, SpeedMps: e.Speed, SpeedAccuracyMps: e.SpeedAcc, BearingDeg: e.Bearing,
 			})
 		}
-		recompute := func(withOverChord bool) float64 {
+		// recompute returns the figure the job writes and the gap rule it
+		// credited by (gapStepCreditM over the same replay and metadata).
+		recompute := func(withOverChord, withSegments bool) (float64, string) {
 			t.Helper()
 			md := map[string]any{
 				"distance_estimator":     "kalman_v4",
@@ -965,7 +967,16 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 			if withOverChord {
 				md["distance_step_over_chord_m"] = s.Expected.StepOverChordM
 			}
+			if withSegments {
+				md["distance_segments"] = 1
+			}
 			meta, _ := json.Marshal(md)
+			decoded, err := decodeRunMetadata(meta)
+			if err != nil {
+				t.Fatalf("%s: %v", s.Name, err)
+			}
+			replay := replayRecordedTrack(track, maxSpeedMpsForActivity("run"))
+			_, rule := gapStepCreditM(decoded, replay.GapM, replay.Segments)
 			run := appRun(string(meta))
 			run.Source = "watch"
 			w, b := distanceWorker(t, run, track)
@@ -975,18 +986,30 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 			if len(b.distance.updates) != 1 {
 				t.Fatalf("%s: updates = %d", s.Name, len(b.distance.updates))
 			}
-			return b.distance.updates[0].DistanceM
+			return b.distance.updates[0].DistanceM, rule
 		}
 		// distance_m is written to the centimetre.
-		if got := recompute(true); math.Abs(got-s.Smoothed.DistanceM) > 0.006 {
-			t.Errorf("%s: with distance_step_over_chord_m %.3f m the recompute = %.3f m, want the recorder's %.3f m",
-				s.Name, s.Expected.StepOverChordM, got, s.Smoothed.DistanceM)
+		if got, rule := recompute(true, true); math.Abs(got-s.Smoothed.DistanceM) > 0.006 ||
+			(rule != gapRuleStepOverChord && rule != gapRuleRunTotalOverKey) {
+			t.Errorf("%s: with distance_step_over_chord_m %.3f m the recompute = %.3f m (%s), want the recorder's %.3f m",
+				s.Name, s.Expected.StepOverChordM, got, rule, s.Smoothed.DistanceM)
 		}
 		// The run-total rule is never long of the recorder (legacyWant <=
 		// DistanceM holds by construction).
-		if got := recompute(false); math.Abs(got-legacyWant) > 0.006 {
-			t.Errorf("%s: with the run total alone the recompute = %.3f m, want %.3f m (recorder's smoothed figure %.3f m, step-filled %.3f m)",
-				s.Name, got, legacyWant, s.Smoothed.DistanceM, s.Smoothed.StepDistanceM)
+		if got, rule := recompute(false, false); math.Abs(got-legacyWant) > 0.006 || rule != gapRuleRunTotal {
+			t.Errorf("%s: with the run total alone the recompute = %.3f m (%s), want %.3f m (%s) (recorder's smoothed figure %.3f m, step-filled %.3f m)",
+				s.Name, got, rule, legacyWant, gapRuleRunTotal, s.Smoothed.DistanceM, s.Smoothed.StepDistanceM)
+		}
+		// A v1.7 row: the key with no distance_segments beside it. The worker
+		// cannot tell it from a v1.8 run whose marks and count were lost, so
+		// it keeps the run-total rule (decisions § 2465).
+		got, rule := recompute(true, false)
+		if math.Abs(got-legacyWant) > 0.006 || rule != gapRuleSegmentsUnknown {
+			t.Errorf("%s: with the key and no segment count the recompute = %.3f m (%s), want %.3f m (%s)",
+				s.Name, got, rule, legacyWant, gapRuleSegmentsUnknown)
+		}
+		if s.Name == "gap_steps_open_gap_cap" && math.Abs(got-486.00) > 0.006 {
+			t.Errorf("%s: a v1.7 row recomputes to %.3f m, want the run-total rule's 486.00 m", s.Name, got)
 		}
 		checked[s.Name] = true
 	}
@@ -1001,43 +1024,59 @@ func TestDistanceRecompute_GapWithStepsMatchesTheRecorder(t *testing.T) {
 }
 
 // distance_step_over_chord_m is a part of distance_step_filled_m, so it is
-// read only as a finite number from 0 up to it; anything else, and its
-// absence, keeps the run-total rule, which also wins when it credits more.
+// read only as a finite number from 0 up to it, and only beside a
+// distance_segments equal to the segments the replay found; anything else,
+// and its absence, keeps the run-total rule, which also wins when it credits
+// more.
 func TestGapStepCreditM(t *testing.T) {
 	const gapM = 37.52
 	for _, c := range []struct {
 		meta     string
+		segments int
 		want     float64
 		wantRule string
 	}{
-		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352}`, 352, gapRuleStepOverChord},
-		{`{"distance_step_filled_m":30,"distance_step_over_chord_m":0}`, 0, gapRuleStepOverChord},
-		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":386.005}`, 386, gapRuleStepOverChord},
-		{`{"distance_step_filled_m":386}`, 348.48, gapRuleRunTotal},
-		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":null}`, 348.48, gapRuleRunTotal},
-		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":-1}`, 348.48, gapRuleRejected},
-		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":"352"}`, 348.48, gapRuleRejected},
-		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":386.02}`, 348.48, gapRuleRejected},
-		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":1e400}`, 348.48, gapRuleRejected},
-		{`{"distance_step_over_chord_m":5}`, 0, gapRuleRejected},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352,"distance_segments":1}`, 1, 352, gapRuleStepOverChord},
+		{`{"distance_step_filled_m":30,"distance_step_over_chord_m":0,"distance_segments":1}`, 1, 0, gapRuleStepOverChord},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":386.005,"distance_segments":1}`, 1, 386, gapRuleStepOverChord},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352,"distance_segments":3}`, 3, 352, gapRuleStepOverChord},
+		{`{"distance_step_filled_m":386}`, 1, 348.48, gapRuleRunTotal},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":null,"distance_segments":1}`, 1, 348.48, gapRuleRunTotal},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":-1,"distance_segments":1}`, 1, 348.48, gapRuleRejected},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":"352","distance_segments":1}`, 1, 348.48, gapRuleRejected},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":386.02,"distance_segments":1}`, 1, 348.48, gapRuleRejected},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":1e400,"distance_segments":1}`, 1, 348.48, gapRuleRejected},
+		{`{"distance_step_over_chord_m":5,"distance_segments":1}`, 1, 0, gapRuleRejected},
+		// No count beside the key: a v1.7 watch, or a v1.8 run whose phone
+		// dropped it.
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352}`, 1, 348.48, gapRuleSegmentsUnknown},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352,"distance_segments":null}`, 1, 348.48, gapRuleSegmentsUnknown},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352,"distance_segments":0}`, 1, 348.48, gapRuleSegmentsUnknown},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352,"distance_segments":1.5}`, 1, 348.48, gapRuleSegmentsUnknown},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352,"distance_segments":"1"}`, 1, 348.48, gapRuleSegmentsUnknown},
+		// The watch stored more segments than the replay found: the marks
+		// were lost, and fewer is no better.
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352,"distance_segments":2}`, 1, 348.48, gapRuleSegmentsMismatch},
+		{`{"distance_step_filled_m":386,"distance_step_over_chord_m":352,"distance_segments":1}`, 2, 348.48, gapRuleSegmentsMismatch},
 	} {
 		meta, err := decodeRunMetadata(json.RawMessage(c.meta))
 		if err != nil {
 			t.Fatalf("%s: %v", c.meta, err)
 		}
-		got, rule := gapStepCreditM(meta, gapM)
+		got, rule := gapStepCreditM(meta, gapM, c.segments)
 		if math.Abs(got-c.want) > 1e-9 || rule != c.wantRule {
-			t.Errorf("%s: %v (%s), want %v (%s)", c.meta, got, rule, c.want, c.wantRule)
+			t.Errorf("%s over %d segments: %v (%s), want %v (%s)", c.meta, c.segments, got, rule, c.want, c.wantRule)
 		}
 	}
-	// A Wear OS handover inside a gap (reference: fixes to 20 s, steps to
-	// 32.5 s, fused fixes from 33 s; the recorder credits 238.00 m): the 50 m
-	// of steps the closing segment committed are held out of the key, and the
-	// replay's one gap across the boundary has a 47.52 m chord, so the run
-	// total, 2.48 m, is the exact credit and wins over the key's 0.
+	// A v1.7 Wear OS handover inside a gap (reference: fixes to 20 s, steps
+	// to 32.5 s, fused fixes from 33 s; the recorder credits 238.00 m): its
+	// track marks no segments and it saved no count, so the run total, 2.48 m
+	// over the replay's 47.52 m chord across the boundary, is the credit, and
+	// the exact one. A v1.8 watch marks the segment, banks the 50 m and saves
+	// the count (TestDistanceRecompute_SegmentedWatchRunsMatchTheRecorder).
 	meta, _ := decodeRunMetadata(json.RawMessage(`{"distance_step_filled_m":50,"distance_step_over_chord_m":0}`))
-	if got, rule := gapStepCreditM(meta, 47.52); math.Abs(got-2.48) > 1e-9 || rule != gapRuleRunTotalOverKey {
-		t.Errorf("handover in a gap: %v (%s), want 2.48 (%s)", got, rule, gapRuleRunTotalOverKey)
+	if got, rule := gapStepCreditM(meta, 47.52, 1); math.Abs(got-2.48) > 1e-9 || rule != gapRuleSegmentsUnknown {
+		t.Errorf("handover in a gap: %v (%s), want 2.48 (%s)", got, rule, gapRuleSegmentsUnknown)
 	}
 }
 

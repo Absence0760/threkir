@@ -125,8 +125,9 @@ EffortResult? _effortFromIndex(
 /// The catalogue matcher's version. Mirrors `GLOBAL_SEGMENT_MATCHER_VERSION`
 /// in `apps/web/src/lib/segments/segments.ts`: 1 was the circles-only
 /// matcher; 2 times a segment with a usable pair of lines by its line
-/// crossings and reads only on-track fixes (issue #1308).
-const int kGlobalSegmentMatcherVersion = 2;
+/// crossings and reads only on-track fixes (issue #1308); 3 times every
+/// complete lap of a loop, so a run's fastest lap is its effort (§ 2463).
+const int kGlobalSegmentMatcherVersion = 3;
 
 /// Covered distance between the start and end must be within this fraction
 /// of the segment's stored length, whichever way the segment is matched.
@@ -188,11 +189,12 @@ class GlobalSegmentGeometry {
 ///   of the end line later in the run, with the covered distance between them
 ///   within 25% of the segment's length and every checkpoint passed in order
 ///   between them. The time is the interpolated end crossing minus the
-///   interpolated start crossing. Where the run makes more than one such pass
-///   the fastest counts, and the crossing that ends one pass never also starts
-///   the next, which on a loop whose start and end lines coincide means
-///   consecutive laps are not both passes. A run that never crosses the lines
-///   is not matched by the circles instead: no circle fallback.
+///   interpolated start crossing. Every complete lap is a candidate and the
+///   fastest counts. Laps never overlap: once a lap closes, only a start
+///   crossing at or after its finish can open the next, and on a loop whose
+///   end line is its start line ([linesChain]) the finish itself opens it
+///   (decisions § 2463). A run that never crosses the lines is not matched by
+///   the circles instead: no circle fallback.
 /// - **Circles** (no usable pair of lines): the v1 CURATED end-to-end match:
 ///   the run must approach the segment's START within [toleranceM], then
 ///   reach its END within [toleranceM] LATER in the track, with the same
@@ -272,6 +274,23 @@ List<GlobalSegmentEffortResult?> computeGlobalSegmentEfforts(
   return out;
 }
 
+/// Whether a segment's end line is also its start line: the end line's
+/// centre within the start line's reach, facing within 90° of it. A loop whose
+/// two lines are derived from one closed polyline is the usual case (Beaver
+/// Lake); a lollipop or out-and-back finishes facing the other way and is not,
+/// since the runner turns before starting again. On such a loop the crossing
+/// that finishes a lap also starts the next, whichever fix the start line's
+/// own crossing falls on. Mirrors `linesChain` in
+/// `apps/web/src/lib/segments/segments.ts`.
+bool linesChain(Gate start, Gate end) {
+  if (haversineMetres(start.lat, start.lng, end.lat, end.lng) >
+      start.halfWidthM) {
+    return false;
+  }
+  final turn = (((end.bearingDeg - start.bearingDeg) % 360) + 540) % 360 - 180;
+  return turn.abs() < 90;
+}
+
 class _PendingStart {
   final GateCrossing crossing;
 
@@ -294,6 +313,7 @@ GlobalSegmentEffortResult? _scoreByGates(
   final startDetector = GateCrossingDetector(startGate);
   final endDetector = GateCrossingDetector(endGate);
 
+  final chained = linesChain(startGate, endGate);
   var pending = <_PendingStart>[];
   double? bestStartMs;
   double? bestEndMs;
@@ -313,19 +333,22 @@ GlobalSegmentEffortResult? _scoreByGates(
     final fix = GateFix(lat: lat, lng: lng, tMs: tMs, coveredM: index.cum[i]);
     final endCrossing = endDetector.offer(fix);
     final startCrossing = startDetector.offer(fix);
+    final endForward =
+        endCrossing != null && endCrossing.direction == GateDirection.forward
+            ? endCrossing
+            : null;
 
-    var closed = false;
-    if (endCrossing != null &&
-        endCrossing.direction == GateDirection.forward) {
+    GateCrossing? closedBy;
+    if (endForward != null) {
       pending = [
         for (final s in pending)
-          if (endCrossing.coveredM - s.crossing.coveredM <= maxCovered) s,
+          if (endForward.coveredM - s.crossing.coveredM <= maxCovered) s,
       ];
       // Pending starts are in time order, so the last valid one is the latest
-      // start and so the fastest pass ending here.
+      // start and so the fastest lap ending here.
       _PendingStart? pick;
       for (final s in pending) {
-        if (endCrossing.coveredM - s.crossing.coveredM < minCovered) continue;
+        if (endForward.coveredM - s.crossing.coveredM < minCovered) continue;
         if (!_passesCheckpoints(
             line, segment.checkpoints, s.fromIdx, i, toleranceM)) {
           continue;
@@ -334,20 +357,27 @@ GlobalSegmentEffortResult? _scoreByGates(
       }
       if (pick != null) {
         final startMs = pick.crossing.tMs;
-        final endMs = endCrossing.tMs;
+        final endMs = endForward.tMs;
         if (endMs > startMs &&
             (bestStartMs == null ||
                 endMs - startMs < bestEndMs! - bestStartMs)) {
           bestStartMs = startMs;
           bestEndMs = endMs;
         }
+        // Laps never overlap: nothing that started before this finish can
+        // start the next lap.
         pending = [];
-        closed = true;
+        closedBy = endForward;
       }
+    }
+    // On a loop whose end line is its start line, the finish opens the next
+    // lap; any start crossing at or after it is a later candidate start.
+    if (closedBy != null && chained) {
+      pending.add(_PendingStart(closedBy, prevIdx));
     }
     if (startCrossing != null &&
         startCrossing.direction == GateDirection.forward &&
-        !closed) {
+        (closedBy == null || startCrossing.tMs >= closedBy.tMs)) {
       pending.add(_PendingStart(startCrossing, prevIdx));
     }
     prevIdx = i;

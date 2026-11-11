@@ -2331,7 +2331,7 @@
     "id": "race-results-explained",
     "lang": "pt-BR",
     "title": "Como funcionam os resultados de prova",
-    "summary": "O que significam tempo bruto e tempo líquido, como as colocações são calculadas por percurso e o que dizem as marcas Manual, Organizador, DNF, DNS e pendente.",
+    "summary": "O que significam tempo bruto e tempo líquido, como as colocações são calculadas, o que dizem as marcas Manual, Organizador, DNF, DNS e pendente, e como recronometrar pelo seu trajeto.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -2344,7 +2344,8 @@
     ],
     "routes": [
       "/clubs/[slug]/events/[id]",
-      "/live/event/[id]/[instance]"
+      "/live/event/[id]/[instance]",
+      "/runs/[id]"
     ],
     "sections": [
       {
@@ -2354,7 +2355,8 @@
             "type": "list",
             "items": [
               "O **Tempo bruto** é medido do momento em que o organizador deu o GO até o momento em que você cruzou a chegada. O GO é registrado pelo nosso servidor, então todos na prova compartilham a mesma largada.",
-              "O **Tempo líquido** é medido de quando você pressionou Iniciar no seu próprio dispositivo até a sua chegada, incluindo as pausas.",
+              "O **Tempo líquido** é medido de quando você cruzou a linha de largada do percurso até a sua chegada. Se seu celular ou relógio não detectou nenhum cruzamento da linha de largada, ele conta a partir de quando você pressionou Iniciar no seu próprio dispositivo, incluindo as pausas.",
+              "Uma prova de tempo próprio não tem GO, então não tem tempo bruto: a classificação dela mostra seu tempo líquido, da linha de largada até a linha de chegada.",
               "O tempo em destaque na classificação é o seu tempo bruto quando a prova teve um GO; caso contrário, é o seu tempo líquido. As colocações são calculadas a partir desse tempo em destaque."
             ]
           },
@@ -2383,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Sem marcação**: o celular ou relógio do corredor detectou a linha de chegada. Esse é o caso normal, então nem a web nem o app do celular o marcam.",
+              "**Sem marcação**: o celular ou relógio do corredor registrou a chegada, no momento em que ele cruzou a linha de chegada, ou no círculo de 30 m em volta da chegada, em um percurso sem linha de chegada. Esse é o caso normal, então nem a web nem o app do celular o marcam.",
               "**Manual**: o corredor finalizou manualmente, com **Finalizar prova** depois de cobrir pelo menos 90% do percurso, ou usando **Enviar meu tempo** na web durante a prova.",
               "**Organizador** (na web, **Editado pelo organizador**): o organizador inseriu ou corrigiu este resultado, ou o corredor foi marcado como DNF quando o organizador encerrou a prova."
             ]
@@ -2418,12 +2420,37 @@
         ]
       },
       {
+        "heading": "Recronometrar pelo seu trajeto",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Se o seu celular não detectou uma linha, se o seu resultado é um DNF que você não esperava ou se você correu a prova com um Apple Watch, é possível cronometrar seu resultado de novo a partir da corrida que você gravou. Abra a corrida na web: se ela pertence a uma prova, mostra **Recronometrar pelo meu trajeto** com seu resultado atual ao lado do resultado que o seu trajeto dá."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Confira as duas colunas: tempo bruto, tempo líquido e se a largada e a chegada foram cronometradas pela linha.",
+              "Escolha **Recronometrar resultado** e depois **Substituir resultado**."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "Ele cronometra seu trajeto pelas linhas de largada e chegada com que a prova foi disputada, usando o mesmo horário de referência que seu celular ou relógio usou durante a prova.",
+              "Você pode recronometrar até 24 horas depois do fim da prova. Depois disso, só o organizador pode mudar um tempo.",
+              "Ele substitui um DNF, um tempo de chegada manual e um resultado aguardando revisão. Ele nunca substitui um tempo definido pelo organizador nem um resultado já cronometrado pelas duas linhas; em uma prova de tempo próprio, só uma tentativa mais rápida cronometrada pelas duas linhas o substitui.",
+              "Se o organizador aprovar os resultados manualmente, um resultado recronometrado volta para a aprovação dele."
+            ]
+          }
+        ]
+      },
+      {
         "heading": "Algo parece errado",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Nenhum resultado? Se o seu dispositivo estava sem sinal na chegada, ele envia o resultado quando se reconectar, em até 24 horas depois do fim da prova.",
+              "Nenhum resultado? Se o seu dispositivo estava sem sinal na chegada, ele envia o resultado quando se reconectar, em até 24 horas depois do fim da prova. Nessas mesmas 24 horas, você também pode recronometrá-lo pelo seu trajeto.",
               "Um DNF que você acha que está errado, ou um tempo incorreto? Fale com o organizador. Ele pode corrigir na web, e o resultado passa a mostrar a marca de organizador."
             ]
           },
@@ -2445,7 +2472,7 @@
     "id": "racing-in-a-race",
     "lang": "pt-BR",
     "title": "Correr uma prova ao vivo",
-    "summary": "Inscreva-se, escolha seu percurso, comece a gravar na largada ou depois do GO e deixe seu celular ou relógio cronometrar você na linha de chegada.",
+    "summary": "Inscreva-se, escolha seu percurso, comece a gravar antes da linha de largada e deixe seu celular ou relógio cronometrar você da linha de largada até a linha de chegada.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2469,11 +2496,11 @@
           {
             "type": "list",
             "items": [
-              "App para Android: suporte completo. Mostra o banner da prova, envia sua posição ao vivo e registra sua chegada automaticamente.",
+              "App para Android: suporte completo. Mostra o banner da prova, envia sua posição ao vivo e cronometra você pelas linhas de largada e chegada.",
               "App para iPhone: roda o mesmo código do Android, mas ainda não foi testado em um iPhone em uma prova real.",
-              "Relógio Wear OS: suporte completo no pulso, incluindo a chegada automática. Você ainda se inscreve e escolhe seu percurso na web ou no celular.",
-              "Apple Watch: apenas suporte inicial. Mostra o banner da prova, envia sua posição e informa seu tempo pelo iPhone, mas não tem chegada automática e ainda não foi comprovado em uma prova real. Leve o celular como reserva.",
-              "Web: use para se inscrever, escolher um percurso e ver os resultados. Um navegador não consegue gravar uma corrida."
+              "Relógio Wear OS: suporte completo no pulso, incluindo a cronometragem pelas linhas. Você ainda se inscreve e escolhe seu percurso na web ou no celular.",
+              "Apple Watch: apenas suporte inicial. Mostra o banner da prova, envia sua posição e informa seu tempo pelo iPhone, mas não detecta as linhas de largada e chegada, então não tem chegada automática, e ainda não foi comprovado em uma prova real. Leve o celular como reserva ou, depois, recronometre seu resultado pelo seu trajeto na web.",
+              "Web: use para se inscrever, escolher um percurso, ver os resultados e recronometrar um resultado pelo trajeto de uma corrida. Um navegador não consegue gravar uma corrida."
             ]
           }
         ]
@@ -2505,7 +2532,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Seu celular ou relógio não começa a gravar sozinho: pressione Iniciar você mesmo. Você pode começar na linha de largada enquanto a prova mostra **Prova preparada**, ou quando vir **Prova AO VIVO**. Uma gravação iniciada antes entra na prova no GO, no celular e no relógio Wear OS, e seu tempo líquido passa a contar a partir do GO, e não de quando você pressionou Iniciar."
+            "text": "Seu celular ou relógio não começa a gravar sozinho: pressione Iniciar você mesmo, antes de chegar à linha de largada. Você pode começar enquanto a prova mostra **Prova preparada**, ou quando vir **Prova AO VIVO**. Uma gravação iniciada antes entra na prova no GO, no celular e no relógio Wear OS."
           },
           {
             "type": "p",
@@ -2514,27 +2541,54 @@
         ]
       },
       {
-        "heading": "Chegada automática",
+        "heading": "Cruzar a linha de largada",
         "blocks": [
           {
             "type": "p",
-            "text": "Você não precisa pressionar nada na chegada. Seu celular ou relógio Wear OS registra sua chegada quando as duas condições abaixo são verdadeiras:"
+            "text": "Quando seu percurso tem uma linha de largada, a aba Corrida mostra a que distância ela está, por exemplo “120 m até a linha de largada”. Passe por ela no sentido do percurso. Depois do GO, seu celular ou relógio Wear OS vibra, diz “Linha de largada cruzada, cronometrando” se os avisos de voz estiverem ativados, e seu tempo líquido passa a contar a partir desse momento."
           },
           {
             "type": "list",
             "items": [
-              "você está a até 30 m da linha de chegada, e",
-              "você cobriu pelo menos 90% da distância do seu percurso."
+              "Já tinha passado da linha de largada quando foi dado o GO? Sua largada é o próprio GO.",
+              "Cruzar a linha antes do GO, por exemplo durante o aquecimento, não conta. Depois do GO, sua largada conta quando você já avançou cerca de 50 m no percurso sem voltar a cruzar a linha.",
+              "Se seu celular ou relógio nunca detectar você cruzando a linha de largada, seu tempo líquido passa a contar a partir de quando você pressionou Iniciar."
             ]
+          }
+        ]
+      },
+      {
+        "heading": "Chegada automática",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Você não precisa pressionar nada na chegada. Quando seu percurso tem uma linha de chegada, seu celular ou relógio Wear OS registra sua chegada no momento em que você passa por ela no sentido do percurso, desde que já tenha coberto o suficiente do percurso: 60% da distância desde que cruzou a linha de largada, ou 90% quando nenhum cruzamento da linha de largada foi detectado. Isso evita que um percurso em circuito, que começa onde termina, registre sua chegada logo na saída."
           },
           {
             "type": "p",
-            "text": "Seu tempo é registrado no momento em que você esteve mais perto da chegada, não no primeiro momento em que ficou a menos de 30 m. A regra dos 90% evita que um percurso em circuito, que começa onde termina, registre sua chegada no primeiro segundo. O celular mostra “Chegada!” com o seu tempo bruto, e a gravação para."
+            "text": "Passar ao lado da linha de chegada, por um caminho paralelo, não conta, porque você nunca passa por ela. Seu tempo é registrado no momento em que você cruzou a linha. O celular vibra e mostra “Chegada!” com o seu tempo bruto."
+          },
+          {
+            "type": "p",
+            "text": "Um percurso com ponto de chegada, mas sem linha de chegada, mantém a regra antiga: sua chegada é registrada quando você está a até 30 m da chegada e cobriu 90% do percurso, com o tempo do momento em que você esteve mais perto dela. Em um percurso com linha de chegada, esse círculo de 30 m só conta se você pressionar Parar ou **Finalizar prova** dentro dele."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Se o seu percurso não tem rota nem distância, não há chegada automática. Use Parar e depois **Finalizar prova** quando cruzar a linha."
+            "text": "Não há chegada automática se o seu percurso não tem distância, não tem nem linha nem ponto de chegada, ou tem uma rota que cruza a própria linha de chegada antes do fim, como um percurso de voltas. Use Parar e depois **Finalizar prova** quando cruzar a linha."
+          }
+        ]
+      },
+      {
+        "heading": "Não terminou? Retomar",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Uma chegada pela linha é enviada na hora e sua gravação é pausada. Nos 60 segundos seguintes, a aba Corrida oferece **Não terminou? Retomar**, no celular e no relógio Wear OS. Se você não terminou, por exemplo porque cruzou a linha antes da hora em uma volta, toque nele: seu resultado é retirado e a gravação continua. Se você não fizer nada, a gravação para e o resultado vale."
+          },
+          {
+            "type": "p",
+            "text": "Depois de desfazer uma chegada, termine o resto da prova manualmente: toque em Parar e depois em **Finalizar prova** quando realmente terminar. Se o app reiniciar antes disso, ele volta a observar a linha de chegada, mas nunca conta a chegada que você desfez."
           }
         ]
       },
@@ -2580,7 +2634,7 @@
             "type": "list",
             "items": [
               "O **Tempo bruto** vai do momento em que o organizador deu o GO até a sua chegada. É o tempo usado na sua classificação.",
-              "O **Tempo líquido** vai de quando você pressionou Iniciar até a sua chegada, incluindo as pausas. Se você pressionou Iniciar antes do GO, ele conta a partir do GO, então nunca é maior que o seu tempo bruto.",
+              "O **Tempo líquido** vai do seu cruzamento da linha de largada até a sua chegada. Se nenhum cruzamento da linha de largada foi detectado, ele conta a partir de quando você pressionou Iniciar, ou a partir do GO se você pressionou Iniciar antes. Ele nunca é maior que o seu tempo bruto.",
               "Se você largar mais de 5 minutos depois do GO, ou se sua primeira posição estiver a mais de 200 m da largada do percurso, o app do celular mostra um aviso de largada tardia e um relógio Wear OS mantém **Largada tardia** abaixo do relógio da prova. Seu tempo bruto continua contando a partir do GO, então uma largada tardia o deixa maior que o seu tempo líquido."
             ]
           },
@@ -2693,6 +2747,27 @@
           {
             "type": "p",
             "text": "O que significam os tempos na classificação está em [[guide:race-results-explained|Como funcionam os resultados de prova]]."
+          }
+        ]
+      },
+      {
+        "heading": "Se o seu celular não detectou uma linha",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Seu celular ou relógio diz “Linha de largada cruzada, cronometrando” quando detecta que você cruzou a linha de largada, e registra sua chegada na linha de chegada. Se ele não detectar uma delas, por exemplo sob árvores ou quando você larga um pouco ao lado da linha:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Na chegada, toque em Parar e depois em **Finalizar prova**. Se você já cobriu 90% do percurso, isso envia seu tempo, e o organizador o revisa antes que ele conte.",
+              "Ou, depois, recronometre sua tentativa pelo trajeto dela: abra a corrida na web e escolha **Recronometrar pelo meu trajeto**. Isso cronometra o trajeto pelas linhas da prova e substitui um resultado aguardando revisão ou um mais lento. Você pode fazer isso até 24 horas depois que a janela fechar.",
+              "Correu com um Apple Watch? Ele não detecta as linhas, então recronometrar pelo seu trajeto é a forma de a sua tentativa receber um resultado cronometrado pelas linhas."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Mais sobre recronometragem em [[guide:race-results-explained|Como funcionam os resultados de prova]]."
           }
         ]
       }
@@ -3279,96 +3354,6 @@
     ],
     "related": [
       "record-your-first-run",
-      "link-ultrasignup-results",
-      "your-data-and-privacy"
-    ]
-  },
-  {
-    "id": "link-ultrasignup-results",
-    "lang": "pt-BR",
-    "title": "Vincular seus resultados do UltraSignup",
-    "summary": "Encontre o seu perfil do UltraSignup pelo nome, confirme qual pessoa é você e depois importe um resultado de ultra ou trail pelo calendário de provas.",
-    "kind": "how-to",
-    "category": "running",
-    "audience": [
-      "runner"
-    ],
-    "platforms": [
-      "web"
-    ],
-    "routes": [
-      "/settings/integrations",
-      "/races",
-      "/runs/[id]"
-    ],
-    "sections": [
-      {
-        "heading": "Antes de começar",
-        "blocks": [
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "A importação do UltraSignup é só na web e fica desativada até ser habilitada. Se o cartão do UltraSignup não aparecer em Integrações, ou disser **A importação do UltraSignup ainda não está disponível. O parkrun e a colagem manual continuam funcionando.**, você ainda pode adicionar um resultado colando-o no calendário de provas."
-          },
-          {
-            "type": "p",
-            "text": "O UltraSignup cuida das inscrições e dos resultados de muitas provas de trail e ultra. Vincular o seu perfil uma vez significa que você nunca mais digita o seu nome ou número de peito ao importar um resultado."
-          }
-        ]
-      },
-      {
-        "heading": "Vincular seu perfil",
-        "blocks": [
-          {
-            "type": "steps",
-            "items": [
-              "Abra [[route:/settings/integrations|Integrações]] em Configurações e encontre o cartão do UltraSignup.",
-              "Em **Encontre o seu perfil do UltraSignup**, digite o seu **Nome** e **Sobrenome** exatamente como você usa nas inscrições e selecione **Encontrar**.",
-              "O UltraSignup lista todas as pessoas com esse nome. Use a idade, o número de resultados e as provas mais recentes de cada uma para se encontrar.",
-              "Em **Qual destas pessoas é você?**, selecione **Sou eu** na sua entrada."
-            ]
-          },
-          {
-            "type": "p",
-            "text": "O cartão agora mostra **Vinculado como** com o seu nome e o seu número no UltraSignup. Se você escolheu a pessoa errada, selecione **Desvincular** e pesquise de novo. As corridas que você já importou continuam quando você desvincula."
-          },
-          {
-            "type": "note",
-            "tone": "tip",
-            "text": "Se aparecer **O UltraSignup não tem ninguém com esse nome. Confira a grafia que você usa nas inscrições.**, tente a grafia exata das suas inscrições em provas, incluindo nomes do meio ou hífens."
-          }
-        ]
-      },
-      {
-        "heading": "Importar um resultado do calendário de provas",
-        "blocks": [
-          {
-            "type": "steps",
-            "items": [
-              "Abra [[route:/races|Corridas]] e encontre a prova que você correu.",
-              "Selecione **Importar meu resultado**. O importador mostra em nome de quem está importando.",
-              "Confirme a importação. Só o seu próprio resultado daquela prova é trazido, identificado pelo id da prova no UltraSignup e pela data da prova."
-            ]
-          },
-          {
-            "type": "p",
-            "text": "O resultado chega como uma corrida com o seu tempo oficial e as suas classificações. Se você mesmo gravou a prova, abra essa corrida: quando ela corresponde a uma prova do calendário, a corrida pergunta se foi aquela prova, e selecionar **Importar resultado** adiciona o resultado oficial à corrida que você já tem, em vez de criar uma segunda."
-          },
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "Só são importados resultados de quem concluiu a prova, e uma prova cujo id ou data não corresponde é ignorada em vez de adivinhada. Pouquíssimas provas do UltraSignup estão no calendário por enquanto, então a sua prova pode não estar listada; nesse caso, use **Colar seu resultado** no calendário de provas."
-          },
-          {
-            "type": "p",
-            "text": "Se aparecer **Vincule primeiro o seu perfil do UltraSignup em Configurações e depois importe por aqui.**, vincule o seu perfil como descrito acima e volte."
-          }
-        ]
-      }
-    ],
-    "related": [
-      "import-your-history",
-      "racing-in-a-race",
       "your-data-and-privacy"
     ]
   },

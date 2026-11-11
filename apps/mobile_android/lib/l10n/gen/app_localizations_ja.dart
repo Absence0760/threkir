@@ -1820,9 +1820,6 @@ class AppLocalizationsJa extends AppLocalizations {
       'これまで記録したすべてのアクティビティを含む、Stravaからメールで届くアーカイブをアップロードします';
 
   @override
-  String get setupImportParkrunDesc => 'アスリート番号でparkrunの全結果を取り込みます';
-
-  @override
   String get setupDoneTitle => '準備完了';
 
   @override
@@ -2001,7 +1998,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — スタート待ち';
+    return '$label — GO待ち';
   }
 
   @override
@@ -5961,7 +5958,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'レース開始時に「GO」をタップしてください。参加者のウォッチに準備バナーが表示されます。';
+      'レース開始時に「GO」をタップしてください。参加者のウォッチに準備完了バナーが表示されます。';
 
   @override
   String get eventRaceFireGo => 'GO';
@@ -8397,13 +8394,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get integrationsParkrunTitle => 'parkrunの結果をインポート';
-
-  @override
-  String get integrationsParkrunBody =>
-      'parkrunのアスリート番号（例：A123456）を入力してください。フィニッシュ履歴を取得し、新しい結果をランのリストに追加します。';
-
-  @override
   String get integrationsParkrunFieldLabel => 'アスリート番号';
 
   @override
@@ -8459,27 +8449,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parkrunBarcodeOfflineCopy => 'この端末に保存されたコピーを表示しています。';
 
   @override
-  String get integrationsImport => 'インポート';
-
-  @override
-  String get integrationsParkrunImporting => 'parkrunの結果をインポートしています…';
-
-  @override
-  String integrationsParkrunImported(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'parkrunの結果を$count件インポートしました。',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String integrationsImportPartialOf(int n, int total) {
-    return '履歴の一部のみインポートできました: $total 件中 $n 件。';
-  }
-
-  @override
   String integrationsImportPartial(int n) {
     return 'すべての結果を読み取ることはできませんでした。インポート: $n 件。';
   }
@@ -8487,14 +8456,6 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get integrationsImportTruncated =>
       '結果リストが長すぎて最後まで読み取れなかったため、記録を確認できませんでした。代わりに手動で入力してください。';
-
-  @override
-  String get integrationsParkrunNoneNew => '前回のインポート以降、新しいparkrunの結果はありません。';
-
-  @override
-  String integrationsImportFailed(Object error) {
-    return 'インポートに失敗しました：$error';
-  }
 
   @override
   String get integrationsStravaName => 'Strava';
@@ -8537,21 +8498,11 @@ class AppLocalizationsJa extends AppLocalizations {
   String get integrationsSyncNow => '今すぐ同期';
 
   @override
-  String get integrationsParkrunName => 'parkrun';
-
-  @override
-  String get integrationsParkrunTileSubtitle => 'アスリート番号で結果をインポート';
-
-  @override
-  String get integrationsParkrunRegionNote =>
-      'parkrun は一部の国でのみ開催されており、お近くにイベントがない場合があります。parkrun のアスリート番号があれば結果をインポートできます。';
-
-  @override
   String get integrationsSignInTitle => 'サインインしてサービスを接続';
 
   @override
   String get integrationsSignInSubtitle =>
-      '同期したアクティビティを履歴に取り込むには、Strava + parkrunにアカウントが必要です。';
+      '同期したアクティビティを履歴に取り込むには、Stravaにアカウントが必要です。';
 
   @override
   String get integrationsHealthConnectTitle => 'ランをヘルスコネクトに書き込む';
@@ -11747,7 +11698,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get settingsTabIntegrationsSubtitle =>
-      'Strava、parkrun、レースカレンダー、心拍ベルト、トレッドミル、ウォッチ';
+      'Strava、レースカレンダー、心拍ベルト、トレッドミル、ウォッチ';
 
   @override
   String get settingsTabDevicesSubtitle =>
@@ -14787,23 +14738,6 @@ class AppLocalizationsJa extends AppLocalizations {
       '全体ではなくあなたの結果だけをインポートするため、ゼッケン番号を入力してください。';
 
   @override
-  String racesUltraSignUpImportingAs(String name, String id) {
-    return '$name（UltraSignup #$id）としてインポート';
-  }
-
-  @override
-  String get racesUltraSignUpLinkedHint =>
-      'このレースのあなたの結果だけを、UltraSignup のレース ID と日付で照合して取り込みます。';
-
-  @override
-  String get racesUltraSignUpNotLinked =>
-      '先に UltraSignup のプロフィールを連携してから、ここでインポートしてください。';
-
-  @override
-  String get racesUltraSignUpPersonNotFound =>
-      '連携した UltraSignup のプロフィールがその名前で見つからなくなりました。設定でもう一度連携してください。';
-
-  @override
   String get racesPasteResultHint => 'レースの結果ページから完走の詳細を入力してください。';
 
   @override
@@ -14861,16 +14795,8 @@ class AppLocalizationsJa extends AppLocalizations {
       'Strava はランの記録と共有に広く使われているアプリです。連携すると Strava のアクティビティが取り込まれます。まず直近 90 日分、その後は新しいアクティビティが出るたびに取り込まれます。Strava にサインインしてアクセスを許可します。連携はいつでも解除できます。';
 
   @override
-  String get integrationsParkrunInfo =>
-      'parkrun は世界各地の公園で毎週開催される、無料で計測付きの 5km ランです。このタイルをタップし、parkrun のバーコードにあるアスリート番号（A で始まる番号）を入力すると、完走したすべての parkrun をタイムとエイジグレードつきで取り込めます。';
-
-  @override
   String get integrationsRunsignupInfo =>
       'RunSignUp は数千のロードレースのエントリーと結果を扱っています。出走したレースをレースカレンダーで探し、着けていたゼッケン番号を入力すると、公式タイムとスプリットがそのランに紐づきます。';
-
-  @override
-  String get integrationsUltrasignupInfo =>
-      'UltraSignup はトレイル・ウルトラレースのエントリーと結果を扱っています。ここで UltraSignup のプロフィールを一度連携すると、レースカレンダーからレースの結果をインポートできます。';
 
   @override
   String get integrationsChronotrackInfo =>
@@ -14878,92 +14804,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get integrationsRunsignupUnavailable =>
-      'RunSignUpのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。';
-
-  @override
-  String get integrationsUltrasignup => 'UltraSignup';
-
-  @override
-  String get integrationsUltrasignupConnect =>
-      'UltraSignupからトレイル・ウルトラの結果をインポートします。';
-
-  @override
-  String get integrationsUltrasignupOpen => 'レースカレンダーを開く';
-
-  @override
-  String get integrationsUltrasignupUnavailable =>
-      'UltraSignupのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。';
-
-  @override
-  String get integrationsUltrasignupFindLabel => 'UltraSignup のプロフィールを探す';
-
-  @override
-  String get integrationsUltrasignupFirstName => '名';
-
-  @override
-  String get integrationsUltrasignupLastName => '姓';
-
-  @override
-  String get integrationsUltrasignupNameHint =>
-      'レースのエントリーに使っている名前を入力してください。UltraSignup にその名前で登録されている全員が表示されるので、あなた自身を選んでください。';
-
-  @override
-  String get integrationsUltrasignupFind => '検索';
-
-  @override
-  String get integrationsUltrasignupSearching => 'UltraSignup を検索中…';
-
-  @override
-  String get integrationsUltrasignupNoMatches =>
-      'UltraSignup にその名前の人は見つかりませんでした。エントリー時のつづりを確認してください。';
-
-  @override
-  String get integrationsUltrasignupPickPrompt => 'どれがあなたですか？';
-
-  @override
-  String integrationsUltrasignupCandidateAge(int age) {
-    return '$age歳';
-  }
-
-  @override
-  String integrationsUltrasignupCandidateResults(int n) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n件の結果',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get integrationsUltrasignupThisIsMe => 'これが自分';
-
-  @override
-  String integrationsUltrasignupLinkedAs(String name, String id) {
-    return '$name（UltraSignup #$id）として連携済み';
-  }
-
-  @override
-  String get integrationsUltrasignupUnlink => '連携を解除';
-
-  @override
-  String get integrationsUltrasignupLinked => 'UltraSignup のプロフィールを連携しました。';
-
-  @override
-  String get integrationsUltrasignupLinkFailed =>
-      'UltraSignup のプロフィールを連携できませんでした。もう一度お試しください。';
-
-  @override
-  String get integrationsUltrasignupLookupFailed =>
-      'UltraSignup を検索できませんでした。しばらくしてからもう一度お試しください。';
-
-  @override
-  String get integrationsUltrasignupUnlinked =>
-      'UltraSignup のプロフィールの連携を解除しました。インポート済みのランはそのまま残ります。';
-
-  @override
-  String get integrationsUltrasignupUnlinkFailed =>
-      'UltraSignup のプロフィールの連携を解除できませんでした。もう一度お試しください。';
+      'RunSignUpのインポートはまだ利用できません。手動での貼り付けは引き続き利用できます。';
 
   @override
   String get integrationsChronotrack => 'ChronoTrack';
@@ -14977,7 +14818,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get integrationsChronotrackUnavailable =>
-      'ChronoTrackのインポートはまだ利用できません。parkrunと手動での貼り付けは引き続き利用できます。';
+      'ChronoTrackのインポートはまだ利用できません。手動での貼り付けは引き続き利用できます。';
 
   @override
   String get routeConditionsTitle => 'コンディション';
@@ -16802,7 +16643,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      '遅れスタート：スタートから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
+      '遅れスタート：GOから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
 
   @override
   String get eventCoursesTitle => 'コース';
@@ -20412,16 +20253,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventCourseLinesMapFinish => 'コースのフィニッシュラインの地図';
 
   @override
-  String get eventRacePreflightTitle => '準備完了にする前にコースを確認';
+  String get eventRacePreflightTitle => 'レースを準備する前にコースを確認';
 
   @override
-  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備完了にできません';
+  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備できません';
 
   @override
   String get eventRacePreflightFixOnWeb => 'コースのラインはウェブのイベントエディターで編集します。';
 
   @override
-  String get eventRaceArmAnyway => 'このまま準備完了にする';
+  String get eventRaceArmAnyway => 'このまま準備する';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -20550,7 +20391,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String eventRaceSelfTimedParticipant(String time) {
-    return 'セルフタイムのレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
+    return 'セルフタイム方式のレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
   }
 
   @override
@@ -21096,6 +20937,16 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String rateLimitPhotoUpload(String wait) {
     return '写真を多く送信しています。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'グループの作成が速すぎます。$wait待ってからもう一度お試しください。';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return '今日はグループへの招待を多く送っています。$wait待ってからもう一度お試しください。';
   }
 
   @override

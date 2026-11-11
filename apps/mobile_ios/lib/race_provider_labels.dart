@@ -6,7 +6,7 @@ import 'l10n/gen/app_localizations.dart';
 /// [raceImportProviders] uses.
 ///
 /// Split from that catalogue so `race_service.dart` stays clear of the widget
-/// layer: the wire facts (probe, scope, fail-closed exception) live beside the
+/// layer: the wire facts (probe, fail-closed exception) live beside the
 /// calls that need them, the icon and the sentences live here, and
 /// `settings_integrations_race_calendar_test.dart` renders a tile per catalogue
 /// entry so a provider added without a row here fails a test rather than
@@ -41,14 +41,6 @@ Map<String, RaceProviderLabels> raceProviderLabels(AppLocalizations l10n) => {
         unavailable: l10n.integrationsRunsignupUnavailable,
         open: l10n.integrationsRunsignupOpen,
         info: l10n.integrationsRunsignupInfo,
-      ),
-      'ultrasignup': RaceProviderLabels(
-        icon: Icons.terrain,
-        name: l10n.integrationsUltrasignup,
-        connect: l10n.integrationsUltrasignupConnect,
-        unavailable: l10n.integrationsUltrasignupUnavailable,
-        open: l10n.integrationsUltrasignupOpen,
-        info: l10n.integrationsUltrasignupInfo,
       ),
       'chronotrack': RaceProviderLabels(
         icon: Icons.timer,

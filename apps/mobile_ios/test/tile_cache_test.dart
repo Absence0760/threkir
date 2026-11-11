@@ -107,6 +107,7 @@ Future<ui.Image> _resolveTile(TileLayer layer, TileCoordinates coords) {
 }
 
 void main() {
+  setUpAll(() => TileCache.debugTileProviderOverride = null);
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory cacheRoot;
 

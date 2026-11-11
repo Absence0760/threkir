@@ -214,23 +214,9 @@ Deno.test('an unreachable RunSignUp feed is a 502 the request answers, not an ex
   assertEquals(h.writes, []);
 });
 
-Deno.test('the UltraSignup lookup and import and the ChronoTrack import read through the same deadline', async () => {
-  const ultra = { ULTRASIGNUP_RESULTS_ENABLED: 'true' };
+Deno.test('the ChronoTrack import reads through the same deadline', async () => {
   const ct = { CHRONOTRACK_CLIENT_ID: 'c', CHRONOTRACK_USER_ID: 'u', CHRONOTRACK_PASSWORD: 'p' };
   const cases: Array<[string, unknown, Record<string, string>, Record<string, unknown>]> = [
-    ['ultrasignup', {
-      provider: 'ultrasignup',
-      lookup: true,
-      ultraSignUpFirstName: 'Alex',
-      ultraSignUpLastName: 'Sample',
-    }, ultra, RUNSIGNUP_LISTING],
-    ['ultrasignup', {
-      provider: 'ultrasignup',
-      listingId: LISTING_ID,
-      ultraSignUpPersonId: '900001',
-      ultraSignUpFirstName: 'Alex',
-      ultraSignUpLastName: 'Sample',
-    }, ultra, { ...RUNSIGNUP_LISTING, provider: 'ultrasignup', provider_race_id: '500101' }],
     ['chronotrack', { provider: 'chronotrack', listingId: LISTING_ID, bib: '336' }, ct, {
       ...RUNSIGNUP_LISTING,
       provider: 'chronotrack',

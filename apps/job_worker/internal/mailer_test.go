@@ -359,6 +359,11 @@ func TestPathForKind(t *testing.T) {
 		{"club_verification", "club_verification", NotificationRow{ClubID: &club}, base + "/clubs/c1"},
 		{"organiser_dispute", "organiser_dispute", NotificationRow{ClubID: &club}, base + "/disputes"},
 		{"park_course_report", "park_course_report", NotificationRow{}, base + "/admin/reports"},
+		// A group message opens its group, a 1:1 one the inbox; an invite the
+		// Requests list, where accept and decline sit (decisions § 2463).
+		{"group message", "message", NotificationRow{ConversationID: &club}, base + "/messages/group/c1"},
+		{"direct message", "message", NotificationRow{}, base + "/messages"},
+		{"group_invite", "group_invite", NotificationRow{ConversationID: &club}, base + "/messages?view=requests"},
 		// Engagement on the recipient's OWN run → the owner-scoped detail page.
 		// comment_reply folds to run.
 		{"kudos", "kudos", NotificationRow{RunID: &run}, base + "/runs/r1"},

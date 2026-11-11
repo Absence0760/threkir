@@ -12,7 +12,7 @@ Audit every Edge Function under `apps/backend/supabase/functions/` for the stand
 
 1. **Auth.** Either verifies a Supabase JWT (`Deno.env.get('SUPABASE_ANON_KEY')` + `verify_jwt: true` in `config.toml` or manual `getUser()` from the authorization header) **or** explicitly opts out with a documented reason (e.g. cron-only, or webhook from a trusted external service that authenticates with HMAC).
 2. **Input validation.** Body parsed via Zod / manual checks. Rejects missing fields, invalid types, oversized payloads. Implicit limit: `Deno.serve` accepts up to ~6 MB by default; functions that don't need that should cap earlier.
-3. **HMAC for webhooks.** Strava, parkrun, RevenueCat, Apple/Google push receipts — anything posted by an external service must verify a signature using `crypto.subtle.timingSafeEqual` (or equivalent), not raw `===` on the digest.
+3. **HMAC for webhooks.** Strava, RevenueCat, Stripe, Apple/Google push receipts — anything posted by an external service must verify a signature using `crypto.subtle.timingSafeEqual` (or equivalent), not raw `===` on the digest.
 4. **Error shape.** Errors return JSON `{ error: string }` with 4xx/5xx status — not raw exception messages that leak schema or stack traces.
 5. **Service-role key boundary.** `SUPABASE_SERVICE_ROLE_KEY` only used for operations that genuinely need to bypass RLS. Anywhere it's used in a code path that touches the caller's data, the caller's identity must be re-validated against the resource owner.
 
@@ -36,7 +36,7 @@ For each: function name, file:line, the missing check, what an attacker could do
 - `apps/backend/supabase/functions/` — every function
 - `apps/backend/supabase/config.toml` — per-function `verify_jwt` settings
 - `apps/backend/CLAUDE.md` — function-by-function notes
-- `docs/features/integrations.md` — third-party integration shapes (Strava OAuth, parkrun)
+- `docs/features/integrations.md` — third-party integration shapes (Strava OAuth, RunSignUp / ChronoTrack race results)
 - `docs/architecture/decisions.md` — search "Edge Function" for relevant ADRs
 - The recent `fix(backend): auth-guard refresh-tokens Edge Function` commit (b3373c6) — the canonical pattern to mirror
 

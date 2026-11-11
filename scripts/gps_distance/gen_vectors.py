@@ -289,12 +289,74 @@ add("gap_steps_open_gap_cap", "v1.6: nine 12 s gaps whose fixes zigzag 10 m apar
 add("steps_without_any_fix", "v1.6: initialStrideM 1.0 and steps but no fix at all; steps before a stretch's first fix are never credited, which leaves a run GPS never reached to the pedometer's indoor estimate",
     line([], [t + 0.5 for t in range(30)], finish=30.0), stride=1.0, learn_stride=False)
 
+# v1.8: watch runs over several estimator segments. The recorder runs a fresh
+# estimator per segment and saves the totals; the stored track marks each later
+# segment's first fix, and the server replays the segments apart. Every port's
+# estimator is unchanged by this; the job_worker's recompute test replays these.
+segmented = []
+def add_segmented(name, desc, segments, max_speed=10.0, interval=1.0, stride=None):
+    rec = ref.record_segments(segments, max_speed, interval, stride)
+    fixes = [[x for x in seg["events"] if x["type"] == "fix"] for seg in segments]
+    rp = ref.smooth_segments(fixes, max_speed, interval)
+    whole = ref.smooth_segments([[x for f in fixes for x in f]], max_speed, interval)
+    stored = sum(1 for f in fixes if f)
+    got = ref.recompute_distance(rp["distance_m"], rp["gap_m"], rec["step_distance_m"], rec["step_over_chord_m"],
+                                 rp["segments"], stored)
+    # The replay is the smoother's figure and the recorder's the forward filter's: equal to the
+    # vectors' tolerance on these straight lines.
+    assert abs(got - rec["distance_m"]) < 1e-3, (name, got, rec["distance_m"])
+    # A track whose marks were lost replays as one segment, which the saved count refuses,
+    # so the key gives way to the run-total rule.
+    unmarked = ref.recompute_distance(whole["distance_m"], whole["gap_m"], rec["step_distance_m"],
+                                      rec["step_over_chord_m"], whole["segments"], stored)
+    segmented.append({"name": name, "description": desc, "maxSpeedMps": max_speed,
+                      "expectedIntervalS": interval, "initialStrideM": stride, "segments": segments,
+                      "expected": {"distanceM": round(rec["distance_m"], 6),
+                                   "stepDistanceM": round(rec["step_distance_m"], 6),
+                                   "stepOverChordM": round(rec["step_over_chord_m"], 6)},
+                      "recompute": {"replayedM": round(rp["distance_m"], 6), "gapM": round(rp["gap_m"], 6),
+                                    "distanceM": round(got, 6),
+                                    "unmarkedReplayedM": round(whole["distance_m"], 6),
+                                    "unmarkedGapM": round(whole["gap_m"], 6),
+                                    "unmarkedDistanceM": round(unmarked, 6)}})
+
+
+def seg_fixes(ts, east_at):
+    return line(list(ts), [], east_at=east_at)
+
+
+def seg_steps(fix_ts, step_ts, east_at, finish, count_at):
+    ev = line(list(fix_ts), [], east_at=east_at)
+    ev += [{"type": "steps", "t": float(t), "count": count_at(t)} for t in step_ts]
+    ev.sort(key=lambda e: (e["t"], e["type"] != "steps"))
+    ev.append({"type": "finish", "t": float(finish)})
+    return ev
+
+
+add_segmented("segments_handover_open_gap",
+              "v1.8: a Wear OS receiver-to-fused handover inside a gap: receiver fixes 0-20 s at 4 m/s, the steps run on to 32.5 s, and the source switch at 33 s closes the segment, whose finish commits the 50 m of steps past the last fix; fused fixes from 33 s open the next. Replayed apart the segments read 80 m and 108 m and the key adds the 50 m: 238.00 m, the recorder's figure. Replayed as one stream the track credits the 47.52 m chord from 20 s to 33 s as well",
+              [{"learnStride": False, "events": seg_steps(range(21), [t + 0.5 for t in range(33)],
+                                                          {t: 4.0 * t for t in range(21)}, 33.0, lambda t: int(4 * (t - 0.5) + 2))},
+               {"learnStride": False, "events": seg_fixes(range(33, 61), {t: 4.0 * t for t in range(33, 61)}) + [{"type": "finish", "t": 60.0}]}],
+              stride=1.0)
+add_segmented("segments_pause_in_gap",
+              "v1.8: a pause inside a gap: fixes 0-20 s at 4 m/s, the steps run on to 40.5 s and the pause at 40.9 s commits their 82 m; the run resumes at 100 s where it paused, 160 m east, for 20 s more. Replayed apart: 80 m + 80 m + the key's 82 m = 242.00 m, the recorder's figure. Replayed as one stream the 80 s from 20 s to 100 s is one gap credited its 75.52 m chord",
+              [{"learnStride": False, "events": seg_steps(range(21), [t + 0.5 for t in range(41)],
+                                                          {t: 4.0 * t for t in range(21)}, 40.9, lambda t: int(4 * (t - 0.5) + 2))},
+               {"learnStride": False, "events": seg_fixes(range(100, 121), {t: 160.0 + 4.0 * (t - 100) for t in range(100, 121)}) + [{"type": "finish", "t": 120.0}]}],
+              stride=1.0)
+add_segmented("segments_pause_moved",
+              "v1.8: a runner who walks 100 m while paused: fixes 0-60 s at 4 m/s, a pause from 60 s to 180 s, and the run resumes 100 m further on for 60 s more, no pedometer. The recorder credits nothing across the pause (480.00 m); replayed apart the track reads the same, where replayed as one stream it credits the walk's chord, 95.52 m",
+              [{"learnStride": True, "events": seg_fixes(range(61), {t: 4.0 * t for t in range(61)}) + [{"type": "finish", "t": 60.5}]},
+               {"learnStride": True, "events": seg_fixes(range(180, 241), {t: 340.0 + 4.0 * (t - 180) for t in range(180, 241)}) + [{"type": "finish", "t": 240.0}]}])
+
 doc = {"spec": "gps-distance-estimator v" + ref.SPEC_VERSION,
        "reference": "docs/features/gps_distance.md",
        "tolerance_m": 0.001,
        "position_tolerance_deg": 1e-8,
        "constants": {k: getattr(ref, k) for k in dir(ref) if k.isupper() and k != "SPEC_VERSION"},
-       "scenarios": scen}
+       "scenarios": scen,
+       "segmentedRuns": segmented}
 def dump(o, ind=0):
     """indent=1 JSON, but each event, position pair and number list on one line."""
     pad = " " * (ind + 1)
@@ -312,3 +374,8 @@ for s in scen:
     print(f'{s["name"]:30s} fwd={x["distanceAfterEachEventM"][-1]:9.2f} smooth={m["distanceM"]:9.2f} '
           f'steps={x["stepDistanceM"]:7.2f} stride={x["strideM"]} rej={x["rejectedFixes"]} zupt={x["zuptFixes"]} '
           f'rScale={x["rScale"]:.3f} trusted={x["dopplerTrusted"]} scale={x["dopplerScale"]:.3f} stopped={m["stoppedFixes"]}')
+for s in segmented:
+    x, r = s["expected"], s["recompute"]
+    print(f'{s["name"]:30s} rec={x["distanceM"]:9.2f} steps={x["stepDistanceM"]:7.2f} over={x["stepOverChordM"]:7.2f} '
+          f'replay={r["replayedM"]:9.2f} gap={r["gapM"]:7.2f} recompute={r["distanceM"]:9.2f} '
+          f'unmarked={r["unmarkedReplayedM"]:9.2f} unmarkedGap={r["unmarkedGapM"]:7.2f}')

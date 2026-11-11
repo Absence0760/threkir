@@ -163,6 +163,106 @@ class TrackWriterTest {
     }
 
     @Test
+    fun `a segment's first fix is stored marked and every other omits the key`() {
+        // docs/features/gps_distance.md § Stored track (spec v1.8): the first
+        // fix after a pause or a source switch is `"segmentStart":true`, so
+        // the server replays each segment apart; never written `false`, so
+        // every older track reads as one segment.
+        val w = TrackWriter(trackFile)
+        w.open()
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 1_716_000_000_000), distM = 0.0)
+        w.append(
+            GpsPoint(lat = 51.5009, lng = -0.1, ele = null, epochMs = 1_716_000_120_000),
+            distM = 11.1,
+            segmentStart = true,
+        )
+        w.append(GpsPoint(lat = 51.501, lng = -0.1, ele = null, epochMs = 1_716_000_121_000), distM = 22.2)
+        val out = w.close().readText()
+        val arr = Json.parseToJsonElement(out).jsonArray
+        assertEquals(3, arr.size)
+        assertNull(arr[0].jsonObject["segmentStart"])
+        assertEquals("true", arr[1].jsonObject["segmentStart"]!!.jsonPrimitive.content)
+        assertNull(arr[1].jsonObject["offTrack"])
+        assertNull(arr[2].jsonObject["segmentStart"])
+        assertFalse(out.contains("\"segmentStart\":false"))
+        assertEquals(
+            listOf(RouteMath.LatLng(51.5, -0.1), RouteMath.LatLng(51.5009, -0.1), RouteMath.LatLng(51.501, -0.1)),
+            trackLineLatLngs(out),
+        )
+        assertEquals(2, w.segmentCount)
+    }
+
+    @Test
+    fun `the segment count is the server replay's, a marked first fix opening only one`() {
+        // metadata.distance_segments: the replay starts a segment at the
+        // track's first fix and at every later mark, so a mark on the first
+        // fix (a pause before any fix) opens no second one.
+        val w = TrackWriter(trackFile)
+        w.open()
+        assertEquals(0, w.segmentCount)
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 1_716_000_000_000), segmentStart = true)
+        assertEquals(1, w.segmentCount)
+        w.append(GpsPoint(lat = 51.5001, lng = -0.1, ele = null, epochMs = 1_716_000_001_000))
+        w.append(GpsPoint(lat = 51.5002, lng = -0.1, ele = null, epochMs = 1_716_000_060_000), segmentStart = true)
+        w.append(GpsPoint(lat = 51.5003, lng = -0.1, ele = null, epochMs = 1_716_000_120_000), segmentStart = true)
+        assertEquals(3, w.segmentCount)
+        w.close()
+        w.open()
+        assertEquals("a fresh run counts from zero", 0, w.segmentCount)
+        w.close()
+    }
+
+    @Test
+    fun `a stored track file counts its segments as the writer did`() {
+        val w = TrackWriter(trackFile)
+        w.open()
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 1_716_000_000_000))
+        w.append(GpsPoint(lat = 51.5001, lng = -0.1, ele = null, epochMs = 1_716_000_060_000), segmentStart = true)
+        w.append(GpsPoint(lat = 51.5002, lng = -0.1, ele = null, epochMs = 1_716_000_061_000), offTrack = true)
+        w.append(GpsPoint(lat = 51.5003, lng = -0.1, ele = null, epochMs = 1_716_000_120_000), segmentStart = true)
+        w.close()
+        assertEquals(w.segmentCount, trackFileSegmentCount(trackFile))
+        assertEquals(3, trackFileSegmentCount(trackFile))
+    }
+
+    @Test
+    fun `a recovered file is counted after sealing, its later marks included`() {
+        // A process killed mid-run leaves the array unclosed; the fixes
+        // written after the last checkpoint are on disk and counted.
+        trackFile.parentFile!!.mkdirs()
+        trackFile.writeText(
+            """[{"lat":1.0,"lng":2.0,"ele":null,"ts":"2026-11-11T07:00:00Z"},""" +
+                """{"lat":1.1,"lng":2.0,"ele":null,"ts":"2026-11-11T07:01:00Z","segmentStart":true}""",
+        )
+        assertEquals(2, trackFileSegmentCount(sealTrackFileOrNull(trackFile)!!))
+    }
+
+    @Test
+    fun `the file count follows the replay on marks it cannot place`() {
+        // A mark on a point with no timestamp starts the segment at the next
+        // point that has one; a mark on the first placed point opens only it.
+        trackFile.parentFile!!.mkdirs()
+        trackFile.writeText(
+            """[{"lat":1.0,"lng":2.0,"ts":"2026-11-11T07:00:00Z","segmentStart":true},""" +
+                """{"lat":1.1,"lng":2.0,"segmentStart":true},""" +
+                """{"lat":1.2,"lng":2.0,"ts":"2026-11-11T07:02:00Z"},""" +
+                """{"lat":1.3,"lng":2.0,"ts":"2026-11-11T07:03:00Z"}]""",
+        )
+        assertEquals(2, trackFileSegmentCount(trackFile))
+    }
+
+    @Test
+    fun `an empty, missing or unreadable file gives no count`() {
+        trackFile.parentFile!!.mkdirs()
+        trackFile.writeText("[]")
+        assertEquals(0, trackFileSegmentCount(trackFile))
+        trackFile.writeText("""[{"lat":1.0,"lng":2.0,"ts":"2026-11-11T07:00:00Z"},{"lat":1.1,"lng":]""")
+        assertNull(trackFileSegmentCount(trackFile))
+        trackFile.delete()
+        assertNull(trackFileSegmentCount(trackFile))
+    }
+
+    @Test
     fun `the line skips off-track fixes and keeps the order of the rest`() {
         val raw = """[{"lat":1.0,"lng":2.0},{"lat":1.1,"lng":2.0,"offTrack":true},""" +
             """{"lat":1.2,"lng":2.0,"offTrack":false},{"lat":"x","lng":2.0}]"""

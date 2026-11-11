@@ -2209,8 +2209,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     return (d * 100).round();
   }
 
-  /// Age grade shown on the secondary-stat tile. Prefers the parkrun importer's
-  /// scraped metadata.age_grade string; otherwise computes it for any standard
+  /// Age grade shown on the secondary-stat tile. Prefers a metadata.age_grade
+  /// string a run from the retired parkrun import still carries; otherwise
+  /// computes it for any standard
   /// race distance from the runner's DOB + sex + distance + duration via the
   /// shared age_grade helper (twin of web). Null when neither is available.
   /// See metadata.md + docs/features/age_grade.md.
@@ -2298,16 +2299,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         .where((r) =>
             r.routeId == run.routeId &&
             r.distanceMetres > 100 &&
+            isPlausibleRunDuration(r.duration.inSeconds) &&
             (r.metadata?[MetadataKeys.activityType] as String? ?? 'run') == thisActivity)
         .toList()
       ..sort((a, b) => a.duration.compareTo(b.duration));
 
-    if (attempts.length < 2) return const [];
+    final rank = attempts.indexWhere((r) => r.id == run.id) + 1;
+    if (attempts.length < 2 || rank == 0) return const [];
 
     final best = attempts.first;
     final isBest = best.id == run.id;
     final delta = run.duration - best.duration;
-    final rank = attempts.indexWhere((r) => r.id == run.id) + 1;
 
     final routeName = _linkedRoute?.name ?? l10n.runDetailThisRoute;
 

@@ -720,12 +720,18 @@ export const PAIRS = [
 				file: 'apps/mobile_android/lib/notification_groups.dart',
 				decl: '_targetKeyFor',
 				shape: 'switch',
-				allowMissing: ['content_hidden', 'data_export_ready', 'refund_failed'],
+				// group_invite: the mobile group surfaces are #1365 slice 3, and
+				// the default-off group_messages flag holds every invite back
+				// until they ship; the default arm keeps one solo meanwhile.
+				allowMissing: ['content_hidden', 'data_export_ready', 'refund_failed', 'group_invite'],
 			},
 			{
 				file: 'apps/mobile_android/lib/screens/profile_screen.dart',
 				decl: '_verbFor',
 				shape: 'switch',
+				// #1365 slice 3 adds the verb with the mobile group surfaces; the
+				// default-off group_messages flag raises no invite before then.
+				allowMissing: ['group_invite'],
 			},
 		],
 	},

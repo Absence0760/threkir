@@ -74,10 +74,11 @@ func maxSpeedMpsForActivity(activityType string) float64 {
 	}
 }
 
-// handleDistanceRecompute replays a stored track through the spec-v1.2
-// smoother and rewrites runs.distance_m, keeping the originally
-// recorded figure in metadata.distance_recorded_m, and rewrites the four
-// fastest_* embedded bests from the same replay's cumulative distance.
+// handleDistanceRecompute replays a stored track through the smoother,
+// segment by segment where a watch marked them, and rewrites
+// runs.distance_m, keeping the originally recorded figure in
+// metadata.distance_recorded_m, and rewrites the four fastest_* embedded
+// bests from the same replay's cumulative distance.
 // When it keeps the smoothed pass it also writes the smoothed-position
 // sidecar (smoothed_sidecar.go) and records its hash in the same write.
 func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
@@ -127,10 +128,14 @@ func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
 		if pass == EstimatorPassForward {
 			rawDistanceM, cum = replay.ForwardM, replay.ForwardCumM
 		}
-		topUpM, gapRule := gapStepCreditM(meta, replay.GapM)
-		if gapRule == gapRuleRejected {
+		topUpM, gapRule := gapStepCreditM(meta, replay.GapM, replay.Segments)
+		switch gapRule {
+		case gapRuleRejected:
 			w.Log.Warn("distance recompute ignored an unusable distance_step_over_chord_m; keeping the run-total rule",
 				"run_id", run.ID)
+		case gapRuleSegmentsMismatch:
+			w.Log.Warn("distance recompute found a different segment count from the watch's; keeping the run-total rule",
+				"run_id", run.ID, "replayed_segments", replay.Segments)
 		}
 		rawDistanceM += topUpM
 		distanceM := math.Round(rawDistanceM*100) / 100
@@ -241,35 +246,66 @@ const (
 	gapRuleRejected      = "run_total_bad_step_over_chord"
 	// The key was usable but the run-total rule credited more.
 	gapRuleRunTotalOverKey = "run_total_over_step_over_chord"
+	// The key was usable but no usable distance_segments sat beside it.
+	gapRuleSegmentsUnknown = "run_total_no_segment_count"
+	// The key was usable but the replay found a different number of
+	// segments from distance_segments: the track lost its marks.
+	gapRuleSegmentsMismatch = "run_total_segment_count_mismatch"
 )
 
 // gapStepCreditM is what the recompute adds to a replayed pass for the
-// pedometer's share of the run's GPS gaps, and which rule gave it. A watch
-// from spec v1.7 on saves distance_step_over_chord_m, the steps' credit over
-// each gap's chord summed, which is what the stepless replay lacks. It is read
-// only when it is a finite number from 0 to distance_step_filled_m
-// (stepOverChordSlackM over), since it is a part of those metres; anything
-// else, and a run saved before the key, falls back to the run-total rule,
-// gapStepTopUpM. A usable key is credited as the larger of the two: neither
-// adds more than the steps credited beyond the replay's chords, and the key
-// holds back the steps a pause or source switch committed across a gap the
-// replay runs on into the next segment (the track has no segment marks),
-// where the run-total rule can be the exact one.
-func gapStepCreditM(meta map[string]json.RawMessage, gapM float64) (float64, string) {
+// pedometer's share of the run's GPS gaps, and which rule gave it.
+// replayedSegments is trackReplay.Segments. A watch from spec v1.7 on saves
+// distance_step_over_chord_m, the steps' credit over each gap's chord summed,
+// which is what the stepless replay lacks. It is read only when it is a finite
+// number from 0 to distance_step_filled_m (stepOverChordSlackM over), since it
+// is a part of those metres; anything else, and a run saved before the key,
+// falls back to the run-total rule, gapStepTopUpM.
+//
+// From spec v1.8 the watch banks the steps a close commits past a segment's
+// last fix whole, which is right only on a replay that ends the segment there
+// too: a track that lost its segmentStart marks (an older phone re-encoding
+// it on the way to storage) replays as one stream, credits that gap's chord as
+// well, and the key would count it twice (285.52 m against the recorder's
+// 238.00 m). So the key is read only when distance_segments, the segments the
+// watch stored, equals the segments the replay found; when it is absent (a
+// v1.7 watch, whose key held those steps back, is indistinguishable from a
+// v1.8 run whose phone dropped the count) or differs, the run-total rule
+// stands, which is short and never long. A matched key is credited as the
+// larger of the two: on a marked track the replay's gaps are the recorder's,
+// so the key is exact and never below the run-total rule.
+func gapStepCreditM(meta map[string]json.RawMessage, gapM float64, replayedSegments int) (float64, string) {
 	stepFilledM := metaStepFilledM(meta)
+	runTotal := gapStepTopUpM(gapM, stepFilledM)
 	raw, present := meta[schema.MetaDistanceStepOverChordM]
 	if !present || isJSONNull(raw) {
-		return gapStepTopUpM(gapM, stepFilledM), gapRuleRunTotal
+		return runTotal, gapRuleRunTotal
 	}
 	var v float64
 	if json.Unmarshal(raw, &v) != nil || math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > stepFilledM+stepOverChordSlackM {
-		return gapStepTopUpM(gapM, stepFilledM), gapRuleRejected
+		return runTotal, gapRuleRejected
 	}
-	runTotal := gapStepTopUpM(gapM, stepFilledM)
+	saved, ok := metaSegmentCount(meta)
+	if !ok {
+		return runTotal, gapRuleSegmentsUnknown
+	}
+	if saved != replayedSegments {
+		return runTotal, gapRuleSegmentsMismatch
+	}
 	if v = math.Min(v, stepFilledM); v >= runTotal {
 		return v, gapRuleStepOverChord
 	}
 	return runTotal, gapRuleRunTotalOverKey
+}
+
+// metaSegmentCount is metadata.distance_segments when it is a whole number of
+// 1 or more.
+func metaSegmentCount(meta map[string]json.RawMessage) (int, bool) {
+	var v float64
+	if json.Unmarshal(meta[schema.MetaDistanceSegments], &v) != nil || v < 1 || v != math.Trunc(v) || v > math.MaxInt32 {
+		return 0, false
+	}
+	return int(v), true
 }
 
 func metaString(meta map[string]json.RawMessage, key string) string {

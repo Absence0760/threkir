@@ -144,6 +144,28 @@ final class WorkoutManagerTrackJSONTests: XCTestCase {
         XCTAssertEqual(raw?[1]["distM"] as? Double, 11.1)
     }
 
+    func testASegmentsFirstFixRidesTheWireMarkedAndTheOthersOmitTheKey() throws {
+        // docs/features/gps_distance.md § Stored track (spec v1.8): the phone
+        // forwards the file's text and the server replays each segment apart
+        // from `segmentStart: true`; absent on every other fix, never false.
+        let id = "json-\(UUID().uuidString.lowercased())"
+        let wm = WorkoutManager()
+        wm.finishedRun = makeRun(id: id, points: [
+            TrackPointRecord(lat: 51.4513, lng: -0.1962, ele: nil, ts: "2026-04-15T07:30:01Z", distM: 0),
+            TrackPointRecord(
+                lat: 51.4524, lng: -0.1961, ele: nil, ts: "2026-04-15T07:32:01Z",
+                distM: 2.8, segmentStart: true
+            ),
+        ])
+        let url = try wm.writeTrackJSON()
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let raw = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [[String: Any]]
+        XCTAssertNil(raw?[0]["segmentStart"])
+        XCTAssertEqual(raw?[1]["segmentStart"] as? Bool, true)
+        XCTAssertNil(raw?[1]["offTrack"])
+    }
+
     func testEmptyTrackWritesValidEmptyArray() throws {
         // Indoor / no-GPS run: zero points must still produce a valid `[]`
         // file the phone can upload without special-casing.

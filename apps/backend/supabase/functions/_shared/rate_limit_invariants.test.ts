@@ -37,12 +37,12 @@ const DENIED = { data: [{ allowed: false, retry_after_seconds: 42 }], error: nul
 
 Deno.test('checkRateLimit — the caller\'s bucket, ceiling and window reach the RPC verbatim', () => {
   const { client, calls } = recordingSupabase(ALLOWED);
-  return checkRateLimit(client, 'u-1', 'parkrun-import', 4, 3600).then(() => {
+  return checkRateLimit(client, 'u-1', 'race-results-import', 4, 3600).then(() => {
     assertEquals(calls.length, 1);
     assertEquals(calls[0].name, 'check_rate_limit');
     assertEquals(calls[0].args, {
       p_user_id: 'u-1',
-      p_bucket: 'parkrun-import',
+      p_bucket: 'race-results-import',
       p_max: 4,
       p_window_seconds: 3600,
     });

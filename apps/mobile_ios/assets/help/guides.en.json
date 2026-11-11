@@ -2331,7 +2331,7 @@
     "id": "race-results-explained",
     "lang": "en",
     "title": "Race results explained",
-    "summary": "What gun and chip time mean, how places are worked out per course, and what the Manual, Host, DNF, DNS and pending marks say.",
+    "summary": "What gun and chip time mean, how places are worked out, what the Manual, Host, DNF, DNS and pending marks say, and how to re-time from your track.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -2344,7 +2344,8 @@
     ],
     "routes": [
       "/clubs/[slug]/events/[id]",
-      "/live/event/[id]/[instance]"
+      "/live/event/[id]/[instance]",
+      "/runs/[id]"
     ],
     "sections": [
       {
@@ -2354,7 +2355,8 @@
             "type": "list",
             "items": [
               "**Gun time** is measured from the moment the host fired GO to the moment you crossed the finish. GO is stamped by our server, so everyone in the race shares the same start.",
-              "**Chip time** is measured from when you pressed Start on your own device to your finish, including any pauses.",
+              "**Chip time** is measured from when you crossed the course's start line to your finish. If your phone or watch saw no start-line crossing, it runs from when you pressed Start on your own device, including any pauses.",
+              "A self-timed race has no GO, so it has no gun time: its board shows your chip time, from the start line to the finish line.",
               "The big time on the board is your gun time when the race had a GO, otherwise your chip time. Places are worked out from that big time."
             ]
           },
@@ -2383,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**No badge**: the racer's phone or watch detected the finish line. This is the normal case, so neither the web nor the phone app marks it.",
+              "**No badge**: the racer's phone or watch timed the finish, at the moment they crossed the finish line, or at the 30 m circle around the finish on a course with no finish line. This is the normal case, so neither the web nor the phone app marks it.",
               "**Manual**: the racer finished by hand, either with **Finish race** after covering at least 90% of the course, or by using **Submit my time** on the web during the race.",
               "**Host** (on the web, **Host edited**): the host entered or corrected this result, or the racer was marked DNF when the host ended the race."
             ]
@@ -2418,12 +2420,37 @@
         ]
       },
       {
+        "heading": "Re-time from your track",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "If your phone missed a line, your result is a DNF you did not expect, or you raced with an Apple Watch, you can time your result again from the run you recorded. Open the run on the web: if it belongs to a race, it shows **Re-time from my track** with your current result beside the one your track gives."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Check the two columns: gun time, chip time, and whether the start and the finish were timed by the line.",
+              "Choose **Re-time result**, then **Replace result**."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "It times your track by the start and finish lines the race was run with, on the same clock your phone or watch used during the race.",
+              "You can re-time until 24 hours after the race finished. After that, only the organiser can change a time.",
+              "It replaces a DNF, a time finished by hand and a result waiting for review. It never replaces a time the organiser set, or a result already timed by both lines; in a self-timed race, only a faster attempt timed by both lines replaces it.",
+              "If the organiser approves results by hand, a re-timed result goes back to them for approval."
+            ]
+          }
+        ]
+      },
+      {
         "heading": "Something looks wrong",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "No result at all? If your device had no signal at the finish, it sends the result when it reconnects, within 24 hours of the race ending.",
+              "No result at all? If your device had no signal at the finish, it sends the result when it reconnects, within 24 hours of the race ending. Within the same 24 hours you can also re-time it from your track.",
               "A DNF you think is wrong, or a time that is off? Ask the host. They can correct it on the web, and the result will then show the host mark."
             ]
           },
@@ -2445,7 +2472,7 @@
     "id": "racing-in-a-race",
     "lang": "en",
     "title": "Racing in a live race",
-    "summary": "Sign up, pick your course, start recording on the line or after GO and let your phone or watch time you over the finish line.",
+    "summary": "Sign up, pick your course, start recording before the start line and let your phone or watch time you from the start line to the finish line.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2469,11 +2496,11 @@
           {
             "type": "list",
             "items": [
-              "Android phone app: full support. It shows the race banner, sends your live position and finishes you automatically.",
+              "Android phone app: full support. It shows the race banner, sends your live position and times you by the start and finish lines.",
               "iPhone app: runs the same code as Android, but it has not been tested on an iPhone in a real race yet.",
-              "Wear OS watch: full support on the wrist, including the automatic finish. You still sign up and choose your course on the web or the phone.",
-              "Apple Watch: early support only. It shows the race banner, sends your position and reports your time through your iPhone, but it has no automatic finish and has not been proven in a real race. Carry your phone as a backup.",
-              "Web: use it to sign up, pick a course and see results. A browser cannot record a run."
+              "Wear OS watch: full support on the wrist, including timing by the lines. You still sign up and choose your course on the web or the phone.",
+              "Apple Watch: early support only. It shows the race banner, sends your position and reports your time through your iPhone, but it does not detect the start and finish lines, so it has no automatic finish, and it has not been proven in a real race. Carry your phone as a backup, or re-time your result from your track on the web afterwards.",
+              "Web: use it to sign up, pick a course, see results and re-time a result from a run's track. A browser cannot record a run."
             ]
           }
         ]
@@ -2505,7 +2532,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Your phone or watch does not start recording by itself: press Start yourself. You can start on the line while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch, and your chip time then counts from GO rather than from when you pressed Start."
+            "text": "Your phone or watch does not start recording by itself: press Start yourself, before you reach the start line. You can start while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch."
           },
           {
             "type": "p",
@@ -2514,27 +2541,54 @@
         ]
       },
       {
-        "heading": "Finishing automatically",
+        "heading": "Crossing the start line",
         "blocks": [
           {
             "type": "p",
-            "text": "You do not need to press anything at the finish. Your phone or Wear OS watch finishes you when both of these are true:"
+            "text": "When your course has a start line, the Run screen shows how far away it is, for example \"120 m to the start line\". Run through it the way the course goes. After GO, your phone or Wear OS watch then buzzes, says \"Start line crossed, timing\" if voice cues are on, and your chip time runs from that moment."
           },
           {
             "type": "list",
             "items": [
-              "you are within 30 m of the finish line, and",
-              "you have covered at least 90% of your course distance."
+              "Already past the start line when GO sounds? Your start is GO itself.",
+              "Crossing the line before GO, for example while warming up, does not count. After GO, your start counts once you are about 50 m down the course without coming back over the line.",
+              "If your phone or watch never sees you cross the start line, your chip time runs from when you pressed Start instead."
             ]
+          }
+        ]
+      },
+      {
+        "heading": "Finishing automatically",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "You do not need to press anything at the finish. When your course has a finish line, your phone or Wear OS watch finishes you the moment you run through it the way the course goes, once you have covered enough of the course: 60% of its distance since your start-line crossing, or 90% when no start-line crossing was seen. That stops a loop course, which starts where it finishes, from finishing you on the way out."
           },
           {
             "type": "p",
-            "text": "Your time is taken at the moment you were closest to the finish, not the first moment you came within 30 m. The 90% rule stops a loop course, which starts where it finishes, from finishing you in the first second. The phone shows \"Finished!\" with your gun time, and your recording stops."
+            "text": "Running past the finish line on a path beside it does not count, because you never pass through it. Your time is taken at the moment you crossed the line. The phone buzzes and shows \"Finished!\" with your gun time."
+          },
+          {
+            "type": "p",
+            "text": "A course with a finish point but no finish line keeps the older rule: you finish once you are within 30 m of the finish and have covered 90% of the course, timed at the moment you were closest to it. On a course with a finish line, that 30 m circle counts only if you press Stop or **Finish race** inside it."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "If your course has no route or no distance, there is no automatic finish. Use Stop and then **Finish race** when you cross the line."
+            "text": "There is no automatic finish if your course has no distance, has neither a finish line nor a finish point, or has a route that crosses its own finish line before the end, as a course of laps does. Use Stop and then **Finish race** when you cross the line."
+          }
+        ]
+      },
+      {
+        "heading": "Not finished? Resume",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "A finish by the line is sent straight away and your recording pauses. For the next 60 seconds the Run screen offers **Not finished? Resume**, on the phone and on a Wear OS watch. If you are not finished, for example you crossed the line early on a lap, tap it: your result is taken back and recording carries on. If you do nothing, the recording stops and the result stands."
+          },
+          {
+            "type": "p",
+            "text": "After you undo a finish, finish the rest of the race by hand: tap Stop, then **Finish race**, when you really finish. If the app restarts before then, it watches the finish line again, but never counts the finish you undid."
           }
         ]
       },
@@ -2580,7 +2634,7 @@
             "type": "list",
             "items": [
               "**Gun time** runs from the moment the host fired GO to your finish. It is the time you are ranked on.",
-              "**Chip time** runs from when you pressed Start to your finish, including any pauses. If you pressed Start before GO, it runs from GO, so it is never longer than your gun time.",
+              "**Chip time** runs from your start-line crossing to your finish. If no start-line crossing was seen, it runs from when you pressed Start, or from GO if you pressed Start earlier. It is never longer than your gun time.",
               "If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice and a Wear OS watch keeps **Late start** under the race clock. Your gun time still counts from GO, so a late start makes it longer than your chip time."
             ]
           },
@@ -2693,6 +2747,27 @@
           {
             "type": "p",
             "text": "What the times on the board mean is in [[guide:race-results-explained|Race results explained]]."
+          }
+        ]
+      },
+      {
+        "heading": "If your phone missed a line",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Your phone or watch says \"Start line crossed, timing\" when it sees you cross the start line, and finishes you at the finish line. If it misses one, for example under trees or when you start a little to the side of the line:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "At the finish, tap Stop, then **Finish race**. Once you have covered 90% of the course, that sends your time, and the organiser reviews it before it counts.",
+              "Or re-time your attempt from its track afterwards: open the run on the web and choose **Re-time from my track**. It times the track by the race's lines and replaces a result waiting for review, or a slower one. You can do this until 24 hours after the window closes.",
+              "Raced with an Apple Watch? It does not detect the lines, so re-timing from your track is how your attempt gets a line-timed result."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "More on re-timing in [[guide:race-results-explained|Race results explained]]."
           }
         ]
       }
@@ -3135,7 +3210,7 @@
             "items": [
               "If your run passes the segment more than once, your fastest pass counts.",
               "A warm-up that loops back over the start line does not lengthen your time: the time starts from your last crossing of the start line before the end.",
-              "On a loop whose start and end are the same line, the crossing that ends one lap cannot also start the next. So only every other lap is timed (the first, the third and so on), and your fastest of those counts. A loop that starts and ends at different lines times every lap."
+              "On a loop, every complete lap is timed and your fastest lap counts. Where the start and end are the same line, the crossing that ends one lap also starts the next."
             ]
           }
         ]
@@ -3279,96 +3354,6 @@
     ],
     "related": [
       "record-your-first-run",
-      "link-ultrasignup-results",
-      "your-data-and-privacy"
-    ]
-  },
-  {
-    "id": "link-ultrasignup-results",
-    "lang": "en",
-    "title": "Link your UltraSignup results",
-    "summary": "Find your UltraSignup profile by name, confirm which person is you, then import an ultra or trail result from the race calendar.",
-    "kind": "how-to",
-    "category": "running",
-    "audience": [
-      "runner"
-    ],
-    "platforms": [
-      "web"
-    ],
-    "routes": [
-      "/settings/integrations",
-      "/races",
-      "/runs/[id]"
-    ],
-    "sections": [
-      {
-        "heading": "Before you start",
-        "blocks": [
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "UltraSignup import is web-only and is switched off until it has been enabled. If the UltraSignup card is missing from Integrations, or says **UltraSignup import isn't available yet. parkrun and manual paste still work.**, you can still add a result by pasting it on the race calendar."
-          },
-          {
-            "type": "p",
-            "text": "UltraSignup handles entries and results for many trail and ultra races. Linking your profile once means you never type your name or bib again when importing a result."
-          }
-        ]
-      },
-      {
-        "heading": "Link your profile",
-        "blocks": [
-          {
-            "type": "steps",
-            "items": [
-              "Open [[route:/settings/integrations|Integrations]] in Settings and find the UltraSignup card.",
-              "Under **Find your UltraSignup profile**, enter your **First name** and **Last name** exactly as you enter races, then select **Find me**.",
-              "UltraSignup lists everyone with that name. Use each person's age, number of results and most recent races to spot yourself.",
-              "Under **Which of these is you?**, select **This is me** on your entry."
-            ]
-          },
-          {
-            "type": "p",
-            "text": "The card now shows **Linked as** with your name and UltraSignup number. If you picked the wrong person, select **Unlink** and search again. Runs you already imported stay when you unlink."
-          },
-          {
-            "type": "note",
-            "tone": "tip",
-            "text": "If you see **UltraSignup has nobody by that name. Check the spelling you race under.**, try the exact spelling on your race entries, including any middle name or hyphen."
-          }
-        ]
-      },
-      {
-        "heading": "Import a result from the race calendar",
-        "blocks": [
-          {
-            "type": "steps",
-            "items": [
-              "Open [[route:/races|Races]] and find the race you ran.",
-              "Select **Import my result**. The importer shows who it is importing as.",
-              "Confirm the import. Only your own result for that race comes across, matched on UltraSignup's race id and the race date."
-            ]
-          },
-          {
-            "type": "p",
-            "text": "The result arrives as a run with your official time and placings. If you recorded the race yourself, open that run instead: when it matches a race in the calendar, the run asks whether this was that race, and selecting **Import result** adds the official result to the run you already have rather than creating a second one."
-          },
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "Only finished results are imported, and a race whose id or date doesn't match is skipped rather than guessed. Very few UltraSignup races are in the calendar yet, so your race may not be listed; use **Paste your result** on the race calendar instead."
-          },
-          {
-            "type": "p",
-            "text": "If you see **Link your UltraSignup profile in Settings first, then import from here.**, link your profile as above and come back."
-          }
-        ]
-      }
-    ],
-    "related": [
-      "import-your-history",
-      "racing-in-a-race",
       "your-data-and-privacy"
     ]
   },
@@ -3805,7 +3790,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "A closed course keeps its times and boards, but please don't run it until it reopens. The page shows when its status was last checked."
+            "text": "A closed course takes no new times: a run over it while it is closed is not timed, and the times it already has stay on its boards. Please don't run it until it reopens. The page shows when its status was last checked."
           }
         ]
       },

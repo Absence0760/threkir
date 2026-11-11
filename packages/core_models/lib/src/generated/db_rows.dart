@@ -4807,6 +4807,7 @@ class NotificationRow {
   static const String colRefunded = 'refunded';
   static const String colEventTitle = 'event_title';
   static const String colCourseAlertId = 'course_alert_id';
+  static const String colConversationId = 'conversation_id';
 
   final String id;
   final String userId;
@@ -4830,6 +4831,7 @@ class NotificationRow {
   final bool refunded;
   final String? eventTitle;
   final String? courseAlertId;
+  final String? conversationId;
 
   const NotificationRow({
     required this.id,
@@ -4854,6 +4856,7 @@ class NotificationRow {
     required this.refunded,
     this.eventTitle,
     this.courseAlertId,
+    this.conversationId,
   });
 
   factory NotificationRow.fromJson(Map<String, dynamic> json) => NotificationRow(
@@ -4879,6 +4882,7 @@ class NotificationRow {
     refunded: (json['refunded'] as bool?) ?? false,
     eventTitle: json['event_title'] as String?,
     courseAlertId: json['course_alert_id'] as String?,
+    conversationId: json['conversation_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4904,6 +4908,7 @@ class NotificationRow {
     colRefunded: refunded,
     colEventTitle: eventTitle,
     colCourseAlertId: courseAlertId,
+    colConversationId: conversationId,
   };
 
   NotificationRow copyWith({
@@ -4929,6 +4934,7 @@ class NotificationRow {
     bool? refunded,
     String? eventTitle,
     String? courseAlertId,
+    String? conversationId,
   }) => NotificationRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -4952,6 +4958,7 @@ class NotificationRow {
     refunded: refunded ?? this.refunded,
     eventTitle: eventTitle ?? this.eventTitle,
     courseAlertId: courseAlertId ?? this.courseAlertId,
+    conversationId: conversationId ?? this.conversationId,
   );
 }
 

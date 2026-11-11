@@ -695,7 +695,7 @@
             "items": [
               "**Admin**: ändert die Einstellungen des Clubs, verwaltet Mitglieder und ihre Rollen, leitet Events und Rennen und genehmigt Ergebnisse.",
               "**Eventorganisator**: erstellt, bearbeitet und löscht Events und fügt Teilnehmende hinzu, ohne Zugriff auf Club-Einstellungen oder Mitglieder.",
-              "**Renndirektor**: stellt Rennen scharf, startet und beendet sie und genehmigt oder lehnt Ergebnisse ab.",
+              "**Renndirektor**: schaltet Rennen scharf, startet und beendet sie und genehmigt oder lehnt Ergebnisse ab.",
               "**Mitglied**: schreibt Antworten, gibt bei Events Rückmeldung zur Teilnahme und reicht eigene Rennergebnisse ein."
             ]
           },
@@ -1826,14 +1826,14 @@
           {
             "type": "list",
             "items": [
-              "**GO durch Veranstalter**: Du stellst das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.",
+              "**GO durch Veranstalter**: Du schaltest das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.",
               "**Geplanter GO**: Das Rennen startet zur eingestellten Zeit von selbst. Nutze das, wenn die Startzeit feststeht, du aber vielleicht nicht an der Linie bist oder selbst mitlaufen möchtest. Bis dahin kannst du den Start verschieben oder das Rennen absagen.",
               "**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Bruttozeit."
             ]
           },
           {
             "type": "p",
-            "text": "Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Renntag leiten (früher scharfstellen, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt."
+            "text": "Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Renntag leiten (früher scharf schalten, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt."
           }
         ]
       },
@@ -1863,7 +1863,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Du stellst das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
+            "text": "Du schaltest das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
           }
         ]
       },
@@ -1874,7 +1874,7 @@
             "type": "list",
             "items": [
               "Du musst nichts tun. Das Rennen wird etwa einen Tag vor dem Start angelegt und startet zur geplanten Zeit von selbst.",
-              "Um die Linien der Strecken früher zu prüfen, wähle **Früher scharfstellen**.",
+              "Um die Linien der Strecken früher zu prüfen, wähle **Früher scharf schalten**.",
               "Vor dem Start zeigt der Rennbereich **Start um** mit der Uhrzeit und einem Countdown. Um den Start nach hinten zu verschieben, gib die Minuten ein und wähle **Start verschieben**; alle, die dabei sind, erfahren, dass der Start verschoben wurde. Wähle **Abbrechen**, um das Rennen abzusagen.",
               "Sobald die Startzeit vorbei ist, kann das Rennen nicht mehr abgesagt werden. Es endet von selbst, wenn seine Zeit abgelaufen ist, oder du wählst **Rennen beenden**, um es früher zu beenden.",
               "Die Handys der Teilnehmenden zählen nach der Serveruhr bis zum Start herunter und sagen die letzten Sekunden an, sodass alle gemeinsam starten."
@@ -2063,8 +2063,8 @@
           {
             "type": "list",
             "items": [
-              "**Vor dem Rennen**: Der Veranstalter hat die Rennuhr noch nicht scharfgestellt.",
-              "**Bereit**: Die Uhr ist scharfgestellt und wartet auf den Start.",
+              "**Vor dem Rennen**: Der Veranstalter hat die Rennuhr noch nicht scharf geschaltet.",
+              "**Bereit**: Die Uhr ist scharf geschaltet und wartet auf den Start.",
               "**Läuft**: Das Rennen ist im Gange, mit der verstrichenen Zeit.",
               "**Beendet**: Das Rennen ist vorbei.",
               "**Abgesagt**: Der Veranstalter hat das Rennen abgesagt."
@@ -2090,7 +2090,7 @@
           },
           {
             "type": "p",
-            "text": "Die Karte zeichnet außerdem die Start- und Ziellinien jeder Strecke ein, und zwar die, mit denen das Rennen scharfgestellt wurde."
+            "text": "Die Karte zeichnet außerdem die Start- und Ziellinien jeder Strecke ein, und zwar die, mit denen das Rennen scharf geschaltet wurde."
           }
         ]
       },
@@ -2154,7 +2154,7 @@
     "id": "race-day-for-hosts",
     "lang": "de",
     "title": "Renntag für Veranstalter",
-    "summary": "Stell das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.",
+    "summary": "Schalte das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2186,7 +2186,7 @@
           {
             "type": "illustration",
             "id": "race-day-for-hosts",
-            "alt": "Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, GO geben, live verfolgen und es dann im Ziel beenden."
+            "alt": "Der Renntag in vier Schritten von links nach rechts: das Rennen scharf schalten, GO geben, live verfolgen und es dann im Ziel beenden."
           },
           {
             "type": "p",
@@ -2195,14 +2195,14 @@
         ]
       },
       {
-        "heading": "1. Rennen scharfstellen",
+        "heading": "1. Rennen scharf schalten",
         "blocks": [
           {
             "type": "steps",
             "items": [
               "Öffne das Event und wähle den heutigen Termin, falls es sich wiederholt.",
               "Lass **Eingereichte Ergebnisse automatisch genehmigen** angehakt, um Ergebnisse bei Eingang zu veröffentlichen, oder entferne den Haken, um jedes selbst zu genehmigen. (In der Handy-App heißt es **Eingereichte Zeiten automatisch genehmigen**.)",
-              "Wähle **Rennen scharfstellen**, wenn alle versammelt sind."
+              "Wähle **Rennen scharf schalten**, wenn alle versammelt sind."
             ]
           },
           {
@@ -2212,11 +2212,11 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst."
+            "text": "Ein scharf geschaltetes Rennen wartet nur: Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst."
           },
           {
             "type": "p",
-            "text": "Bevor das Rennen scharfgestellt wird, werden die Start- und Ziellinien jeder Strecke geprüft, und alles, was einen Blick wert ist, steht unter **Bevor du das Rennen scharfstellst**. Bei einer Warnung kannst du **Trotzdem scharfstellen**; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]. Das Scharfstellen friert außerdem die Linien für dieses Rennen ein."
+            "text": "Bevor das Rennen scharf geschaltet wird, werden die Start- und Ziellinien jeder Strecke geprüft, und alles, was einen Blick wert ist, steht unter **Bevor du das Rennen scharf schaltest**. Bei einer Warnung kannst du **Trotzdem scharf schalten**; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]. Das Scharfschalten friert außerdem die Linien für dieses Rennen ein."
           }
         ]
       },
@@ -2234,7 +2234,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharfgestellt ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten."
+            "text": "GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharf geschaltet ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten."
           }
         ]
       },
@@ -2273,7 +2273,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Das Beenden kann nicht rückgängig gemacht werden. Danach erwarten die Geräte der Teilnehmenden kein Ergebnis mehr. Um denselben Termin erneut zu laufen, stell eine neue Sitzung scharf."
+            "text": "Das Beenden kann nicht rückgängig gemacht werden. Danach erwarten die Geräte der Teilnehmenden kein Ergebnis mehr. Um denselben Termin erneut zu laufen, schalte eine neue Sitzung scharf."
           }
         ]
       },
@@ -2282,7 +2282,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden."
+            "text": "Du kannst nur absagen, solange das Rennen scharf geschaltet ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden."
           },
           {
             "type": "p",
@@ -2331,7 +2331,7 @@
     "id": "race-results-explained",
     "lang": "de",
     "title": "Rennergebnisse erklärt",
-    "summary": "Was Brutto- und Nettozeit bedeuten, wie Platzierungen pro Strecke ermittelt werden und was die Kennzeichnungen Manuell, Veranstalter, DNF, DNS und ausstehend aussagen.",
+    "summary": "Was Brutto- und Nettozeit bedeuten, wie Platzierungen ermittelt werden, was die Kennzeichnungen Manuell, Veranstalter, DNF, DNS und ausstehend aussagen und wie du aus deinem Track neu misst.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -2344,7 +2344,8 @@
     ],
     "routes": [
       "/clubs/[slug]/events/[id]",
-      "/live/event/[id]/[instance]"
+      "/live/event/[id]/[instance]",
+      "/runs/[id]"
     ],
     "sections": [
       {
@@ -2354,7 +2355,8 @@
             "type": "list",
             "items": [
               "**Bruttozeit** wird von dem Moment, in dem der Veranstalter GO gegeben hat, bis zu dem Moment gemessen, in dem du das Ziel überquert hast. GO wird von unserem Server gestempelt, daher haben alle im Rennen denselben Start.",
-              "**Nettozeit** wird von dem Moment, in dem du auf deinem eigenen Gerät auf Start gedrückt hast, bis zu deinem Zieleinlauf gemessen, einschließlich aller Pausen.",
+              "**Nettozeit** wird von dem Moment, in dem du die Startlinie der Strecke überquert hast, bis zu deinem Zieleinlauf gemessen. Hat dein Handy oder deine Uhr kein Überqueren der Startlinie erkannt, läuft sie ab dem Moment, in dem du auf deinem eigenen Gerät auf Start gedrückt hast, einschließlich aller Pausen.",
+              "Ein selbstgestopptes Rennen hat keinen GO und daher keine Bruttozeit: Seine Liste zeigt deine Nettozeit, von der Startlinie bis zur Ziellinie.",
               "Die große Zeit in der Liste ist deine Bruttozeit, wenn es im Rennen einen GO gab, sonst deine Nettozeit. Die Platzierungen werden aus dieser großen Zeit ermittelt."
             ]
           },
@@ -2383,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Kein Abzeichen**: Das Handy oder die Uhr der teilnehmenden Person hat die Ziellinie erkannt. Das ist der Normalfall, daher kennzeichnen ihn weder das Web noch die Handy-App.",
+              "**Kein Abzeichen**: Das Handy oder die Uhr der teilnehmenden Person hat den Zieleinlauf gestoppt, in dem Moment, in dem sie die Ziellinie überquert hat, oder am 30-m-Kreis um das Ziel bei einer Strecke ohne Ziellinie. Das ist der Normalfall, daher kennzeichnen ihn weder das Web noch die Handy-App.",
               "**Manuell**: Die teilnehmende Person hat das Rennen von Hand beendet, entweder mit **Rennen beenden** nach mindestens 90 % der Strecke oder während des Rennens mit **Meine Zeit einreichen** im Web.",
               "**Veranstalter** (im Web **Vom Veranstalter bearbeitet**): Der Veranstalter hat dieses Ergebnis eingetragen oder korrigiert, oder die teilnehmende Person wurde als DNF markiert, als der Veranstalter das Rennen beendet hat."
             ]
@@ -2418,12 +2420,37 @@
         ]
       },
       {
+        "heading": "Aus deinem Track neu messen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Hat dein Handy eine Linie verpasst, ist dein Ergebnis ein unerwartetes DNF oder bist du mit einer Apple Watch gelaufen, kannst du dein Ergebnis aus dem aufgezeichneten Lauf neu messen. Öffne den Lauf im Web: Gehört er zu einem Rennen, zeigt er **Aus meinem Track neu messen** mit deinem aktuellen Ergebnis neben dem, das dein Track ergibt."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Prüfe die beiden Spalten: Bruttozeit, Nettozeit und ob Start und Ziel über die Linie gestoppt wurden.",
+              "Wähle **Ergebnis neu messen** und dann **Ergebnis ersetzen**."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "Dein Track wird anhand der Start- und Ziellinie gemessen, mit denen das Rennen ausgetragen wurde, und mit derselben Uhrzeit, die dein Handy oder deine Uhr während des Rennens verwendet hat.",
+              "Neu messen kannst du bis 24 Stunden nach dem Ende des Rennens. Danach kann nur noch der Veranstalter eine Zeit ändern.",
+              "Eine Neumessung ersetzt ein DNF, eine von Hand beendete Zeit und ein Ergebnis, das auf Prüfung wartet. Sie ersetzt nie eine Zeit, die der Veranstalter festgelegt hat, oder ein Ergebnis, das bereits über beide Linien gestoppt wurde; in einem selbstgestoppten Rennen ersetzt nur ein schnellerer, über beide Linien gestoppter Versuch ein solches Ergebnis.",
+              "Genehmigt der Veranstalter Ergebnisse von Hand, geht ein neu gemessenes Ergebnis zur Genehmigung an ihn zurück."
+            ]
+          }
+        ]
+      },
+      {
         "heading": "Etwas sieht falsch aus",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Gar kein Ergebnis? Hatte dein Gerät im Ziel kein Signal, sendet es das Ergebnis, sobald es wieder verbunden ist, innerhalb von 24 Stunden nach Rennende.",
+              "Gar kein Ergebnis? Hatte dein Gerät im Ziel kein Signal, sendet es das Ergebnis, sobald es wieder verbunden ist, innerhalb von 24 Stunden nach Rennende. Innerhalb derselben 24 Stunden kannst du es auch aus deinem Track neu messen.",
               "Ein DNF, das du für falsch hältst, oder eine Zeit, die nicht stimmt? Frag den Veranstalter. Er kann es im Web korrigieren, und das Ergebnis trägt dann die Veranstalter-Kennzeichnung."
             ]
           },
@@ -2445,7 +2472,7 @@
     "id": "racing-in-a-race",
     "lang": "de",
     "title": "Bei einem Live-Rennen mitlaufen",
-    "summary": "Melde dich an, wähle deine Strecke, starte die Aufzeichnung an der Startlinie oder nach GO und lass dein Handy oder deine Uhr deine Zeit an der Ziellinie nehmen.",
+    "summary": "Melde dich an, wähle deine Strecke, starte die Aufzeichnung vor der Startlinie und lass dein Handy oder deine Uhr deine Zeit von der Startlinie bis zur Ziellinie nehmen.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2469,11 +2496,11 @@
           {
             "type": "list",
             "items": [
-              "Android-App: volle Unterstützung. Sie zeigt das Renn-Banner, sendet deine Live-Position und wertet deinen Zieleinlauf automatisch.",
+              "Android-App: volle Unterstützung. Sie zeigt das Renn-Banner, sendet deine Live-Position und nimmt deine Zeit an der Start- und Ziellinie.",
               "iPhone-App: Sie läuft mit demselben Code wie Android, wurde aber noch nicht in einem echten Rennen auf einem iPhone getestet.",
-              "Wear-OS-Uhr: volle Unterstützung am Handgelenk, einschließlich des automatischen Zieleinlaufs. Anmelden und deine Strecke wählen musst du trotzdem im Web oder auf dem Handy.",
-              "Apple Watch: nur frühe Unterstützung. Sie zeigt das Renn-Banner, sendet deine Position und meldet deine Zeit über dein iPhone, hat aber keinen automatischen Zieleinlauf und wurde noch nicht in einem echten Rennen erprobt. Nimm dein Handy zur Sicherheit mit.",
-              "Web: Damit meldest du dich an, wählst eine Strecke und siehst Ergebnisse. Ein Browser kann keinen Lauf aufzeichnen."
+              "Wear-OS-Uhr: volle Unterstützung am Handgelenk, einschließlich der Zeitnahme an den Linien. Anmelden und deine Strecke wählen musst du trotzdem im Web oder auf dem Handy.",
+              "Apple Watch: nur frühe Unterstützung. Sie zeigt das Renn-Banner, sendet deine Position und meldet deine Zeit über dein iPhone, erkennt aber die Start- und Ziellinie nicht, hat also keinen automatischen Zieleinlauf, und wurde noch nicht in einem echten Rennen erprobt. Nimm dein Handy zur Sicherheit mit oder miss dein Ergebnis danach im Web aus deinem Track neu.",
+              "Web: Damit meldest du dich an, wählst eine Strecke, siehst Ergebnisse und misst ein Ergebnis aus dem Track eines Laufs neu. Ein Browser kann keinen Lauf aufzeichnen."
             ]
           }
         ]
@@ -2500,12 +2527,12 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Wenn der Veranstalter das Rennen scharfstellt, zeigt der Lauf-Tab der Handy-App **Rennen bereit** mit „warten auf GO“. Die Wear-OS-Uhr zeigt „RENNEN BEREIT“ über ihrer Start-Taste. Wenn der Veranstalter GO gibt, wechselt die Anzeige zu **Rennen LIVE** („RENNEN LÄUFT“ auf der Uhr) mit der verstrichenen Zeit und „auf Start tippen“."
+            "text": "Wenn der Veranstalter das Rennen scharf schaltet, zeigt der Lauf-Tab der Handy-App **Rennen bereit** mit „warten auf GO“. Die Wear-OS-Uhr zeigt „RENNEN BEREIT“ über ihrer Start-Taste. Wenn der Veranstalter GO gibt, wechselt die Anzeige zu **Rennen LIVE** („RENNEN LÄUFT“ auf der Uhr) mit der verstrichenen Zeit und „auf Start tippen“."
           },
           {
             "type": "note",
             "tone": "caution",
-            "text": "Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start. Du kannst an der Startlinie starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei GO mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr, und deine Nettozeit zählt dann ab GO statt ab dem Moment, in dem du auf Start gedrückt hast."
+            "text": "Dein Handy oder deine Uhr startet die Aufzeichnung nicht von selbst: Drück selbst auf Start, bevor du die Startlinie erreichst. Du kannst starten, während das Rennen **Rennen bereit** zeigt, oder sobald du **Rennen LIVE** siehst. Eine früh gestartete Aufzeichnung wird bei GO mit dem Rennen verknüpft, auf dem Handy und auf einer Wear-OS-Uhr."
           },
           {
             "type": "p",
@@ -2514,27 +2541,54 @@
         ]
       },
       {
-        "heading": "Automatischer Zieleinlauf",
+        "heading": "Die Startlinie überqueren",
         "blocks": [
           {
             "type": "p",
-            "text": "Im Ziel musst du nichts drücken. Dein Handy oder deine Wear-OS-Uhr wertet deinen Zieleinlauf, wenn beides zutrifft:"
+            "text": "Hat deine Strecke eine Startlinie, zeigt der Laufbildschirm, wie weit sie entfernt ist, zum Beispiel „120 m bis zur Startlinie“. Lauf in Richtung der Strecke durch sie hindurch. Nach GO vibriert dann dein Handy oder deine Wear-OS-Uhr, sagt „Startlinie überquert, Zeitmessung läuft“, wenn Sprachansagen eingeschaltet sind, und deine Nettozeit läuft ab diesem Moment."
           },
           {
             "type": "list",
             "items": [
-              "du bist höchstens 30 m von der Ziellinie entfernt, und",
-              "du hast mindestens 90 % der Distanz deiner Strecke zurückgelegt."
+              "Bist du schon über die Startlinie hinaus, wenn GO ertönt? Dann ist GO selbst dein Start.",
+              "Wenn du die Linie vor GO überquerst, etwa beim Aufwärmen, zählt das nicht. Nach GO zählt dein Start, sobald du etwa 50 m auf der Strecke zurückgelegt hast, ohne wieder über die Linie zurückzukommen.",
+              "Erkennt dein Handy oder deine Uhr nie, dass du die Startlinie überquerst, läuft deine Nettozeit stattdessen ab dem Moment, in dem du auf Start gedrückt hast."
             ]
+          }
+        ]
+      },
+      {
+        "heading": "Automatischer Zieleinlauf",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Im Ziel musst du nichts drücken. Hat deine Strecke eine Ziellinie, wertet dein Handy oder deine Wear-OS-Uhr deinen Zieleinlauf in dem Moment, in dem du in Richtung der Strecke durch sie hindurchläufst, sobald du genug von der Strecke zurückgelegt hast: 60 % ihrer Distanz seit dem Überqueren der Startlinie, oder 90 %, wenn kein Überqueren der Startlinie erkannt wurde. So bringt dich eine Rundstrecke, die dort startet, wo sie endet, nicht schon auf dem Hinweg ins Ziel."
           },
           {
             "type": "p",
-            "text": "Deine Zeit wird in dem Moment genommen, in dem du dem Ziel am nächsten warst, nicht im ersten Moment innerhalb von 30 m. Die 90-%-Regel verhindert, dass dich eine Rundstrecke, die dort startet, wo sie endet, schon in der ersten Sekunde ins Ziel bringt. Das Handy zeigt „Im Ziel!“ mit deiner Bruttozeit, und deine Aufzeichnung stoppt."
+            "text": "Wenn du auf einem Weg neben der Ziellinie an ihr vorbeiläufst, zählt das nicht, weil du nie durch sie hindurchläufst. Deine Zeit wird in dem Moment genommen, in dem du die Linie überquert hast. Das Handy vibriert und zeigt „Im Ziel!“ mit deiner Bruttozeit."
+          },
+          {
+            "type": "p",
+            "text": "Bei einer Strecke mit Zielpunkt, aber ohne Ziellinie gilt die ältere Regel: Du bist im Ziel, sobald du höchstens 30 m vom Ziel entfernt bist und 90 % der Strecke zurückgelegt hast, und die Zeit wird in dem Moment genommen, in dem du ihm am nächsten warst. Auf einer Strecke mit Ziellinie zählt dieser 30-m-Kreis nur, wenn du darin Stopp oder **Rennen beenden** drückst."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Hat deine Strecke keine Route oder keine Distanz, gibt es keinen automatischen Zieleinlauf. Nutze Stopp und dann **Rennen beenden**, wenn du die Linie überquerst."
+            "text": "Es gibt keinen automatischen Zieleinlauf, wenn deine Strecke keine Distanz hat, weder eine Ziellinie noch einen Zielpunkt hat oder eine Route hat, die ihre eigene Ziellinie vor dem Ende überquert, wie es eine Strecke aus Runden tut. Nutze Stopp und dann **Rennen beenden**, wenn du die Linie überquerst."
+          }
+        ]
+      },
+      {
+        "heading": "Nicht im Ziel? Fortsetzen",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Ein Zieleinlauf über die Linie wird sofort gesendet, und deine Aufzeichnung pausiert. In den nächsten 60 Sekunden bietet der Laufbildschirm **Nicht im Ziel? Fortsetzen** an, auf dem Handy und auf einer Wear-OS-Uhr. Bist du noch nicht im Ziel, weil du die Linie etwa in einer Runde zu früh überquert hast, tippe darauf: Dein Ergebnis wird zurückgenommen, und die Aufzeichnung läuft weiter. Tust du nichts, stoppt die Aufzeichnung, und das Ergebnis bleibt bestehen."
+          },
+          {
+            "type": "p",
+            "text": "Nachdem du einen Zieleinlauf rückgängig gemacht hast, beendest du den Rest des Rennens von Hand: Tippe auf Stopp und dann auf **Rennen beenden**, wenn du wirklich im Ziel bist. Startet die App vorher neu, beobachtet sie die Ziellinie wieder, zählt aber nie den Zieleinlauf, den du rückgängig gemacht hast."
           }
         ]
       },
@@ -2580,7 +2634,7 @@
             "type": "list",
             "items": [
               "**Bruttozeit** läuft ab dem Moment, in dem der Veranstalter GO gegeben hat, bis zu deinem Zieleinlauf. Nach ihr wirst du platziert.",
-              "**Nettozeit** läuft ab dem Moment, in dem du auf Start gedrückt hast, bis zu deinem Zieleinlauf, einschließlich aller Pausen. Hast du vor GO auf Start gedrückt, läuft sie ab GO, sodass sie nie länger als deine Bruttozeit ist.",
+              "**Nettozeit** läuft ab dem Überqueren der Startlinie bis zu deinem Zieleinlauf. Wurde kein Überqueren der Startlinie erkannt, läuft sie ab dem Moment, in dem du auf Start gedrückt hast, oder ab GO, wenn du früher auf Start gedrückt hast. Sie ist nie länger als deine Bruttozeit.",
               "Startest du mehr als 5 Minuten nach GO oder ist deine erste Position mehr als 200 m vom Start der Strecke entfernt, zeigt die Handy-App einen Hinweis auf den späten Start, und eine Wear-OS-Uhr zeigt unter der Rennuhr dauerhaft **Später Start**. Deine Bruttozeit zählt trotzdem ab GO, sodass ein später Start sie länger macht als deine Nettozeit."
             ]
           },
@@ -2695,6 +2749,27 @@
             "text": "Was die Zeiten in der Rangliste bedeuten, steht in [[guide:race-results-explained|Rennergebnisse erklärt]]."
           }
         ]
+      },
+      {
+        "heading": "Wenn dein Handy eine Linie verpasst hat",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Dein Handy oder deine Uhr sagt „Startlinie überquert, Zeitmessung läuft“, wenn es erkennt, dass du die Startlinie überquerst, und wertet deinen Zieleinlauf an der Ziellinie. Verpasst es eine davon, etwa unter Bäumen oder wenn du etwas neben der Linie startest:"
+          },
+          {
+            "type": "list",
+            "items": [
+              "Tippe im Ziel auf Stopp und dann auf **Rennen beenden**. Hast du 90 % der Strecke zurückgelegt, sendet das deine Zeit, und der Veranstalter prüft sie, bevor sie zählt.",
+              "Oder miss deinen Versuch danach aus seinem Track neu: Öffne den Lauf im Web und wähle **Aus meinem Track neu messen**. Der Track wird anhand der Linien des Rennens gemessen und ersetzt ein Ergebnis, das auf Prüfung wartet, oder ein langsameres. Das geht bis 24 Stunden nach dem Schließen des Zeitraums.",
+              "Mit einer Apple Watch gelaufen? Sie erkennt die Linien nicht, daher bekommt dein Versuch durch das Neumessen aus deinem Track ein per Linie gestopptes Ergebnis."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Mehr zum Neumessen findest du in [[guide:race-results-explained|Rennergebnisse erklärt]]."
+          }
+        ]
       }
     ],
     "related": [
@@ -2728,7 +2803,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfstellen, GO, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
+            "text": "Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfschalten, GO, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
           },
           {
             "type": "p",
@@ -2819,7 +2894,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Kurz bevor du das Rennen scharfstellst, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
+            "text": "Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
           },
           {
             "type": "p",
@@ -2955,7 +3030,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Wenn du ein Rennen scharfstellst (bei einem selbstgestoppten Rennen, wenn sein Zeitraum öffnet), werden die Linien jeder Strecke für dieses Rennen kopiert. Alle Teilnehmenden überqueren dann dieselben Linien, egal was sich während des Rennens ändert. Eine spätere Änderung gilt ab dem nächsten Rennen. Die Event-Seite und die Live-Rennseite zeigen die Linien, mit denen das Rennen scharfgestellt wurde."
+            "text": "Wenn du ein Rennen scharf schaltest (bei einem selbstgestoppten Rennen, wenn sein Zeitraum öffnet), werden die Linien jeder Strecke für dieses Rennen kopiert. Alle Teilnehmenden überqueren dann dieselben Linien, egal was sich während des Rennens ändert. Eine spätere Änderung gilt ab dem nächsten Rennen. Die Event-Seite und die Live-Rennseite zeigen die Linien, mit denen das Rennen scharf geschaltet wurde."
           }
         ]
       },
@@ -2964,7 +3039,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Bevor ein Rennen scharfgestellt wird, werden die Linien jeder Strecke geprüft, im Web und in der Handy-App. Bei einer Warnung kannst du **Trotzdem scharfstellen**; ein mit **Muss behoben werden:** markiertes Problem verhindert das Scharfstellen, bis du es im Event-Editor im Web behebst."
+            "text": "Bevor ein Rennen scharf geschaltet wird, werden die Linien jeder Strecke geprüft, im Web und in der Handy-App. Bei einer Warnung kannst du **Trotzdem scharf schalten**; ein mit **Muss behoben werden:** markiertes Problem verhindert das Scharfschalten, bis du es im Event-Editor im Web behebst."
           },
           {
             "type": "list",
@@ -3279,96 +3354,6 @@
     ],
     "related": [
       "record-your-first-run",
-      "link-ultrasignup-results",
-      "your-data-and-privacy"
-    ]
-  },
-  {
-    "id": "link-ultrasignup-results",
-    "lang": "de",
-    "title": "Deine UltraSignup-Ergebnisse verknüpfen",
-    "summary": "Finde dein UltraSignup-Profil über deinen Namen, bestätige, welche Person du bist, und importiere dann ein Ultra- oder Trail-Ergebnis aus dem Rennkalender.",
-    "kind": "how-to",
-    "category": "running",
-    "audience": [
-      "runner"
-    ],
-    "platforms": [
-      "web"
-    ],
-    "routes": [
-      "/settings/integrations",
-      "/races",
-      "/runs/[id]"
-    ],
-    "sections": [
-      {
-        "heading": "Bevor du beginnst",
-        "blocks": [
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "Der UltraSignup-Import ist nur im Web verfügbar und bleibt ausgeschaltet, bis er aktiviert wurde. Fehlt die UltraSignup-Karte unter Integrationen oder zeigt sie **UltraSignup-Import ist noch nicht verfügbar. parkrun und manuelles Einfügen funktionieren weiterhin.**, kannst du ein Ergebnis trotzdem hinzufügen, indem du es im Rennkalender einfügst."
-          },
-          {
-            "type": "p",
-            "text": "UltraSignup verwaltet Anmeldungen und Ergebnisse vieler Trail- und Ultraläufe. Wenn du dein Profil einmal verknüpfst, musst du beim Importieren eines Ergebnisses nie wieder deinen Namen oder deine Startnummer eingeben."
-          }
-        ]
-      },
-      {
-        "heading": "Dein Profil verknüpfen",
-        "blocks": [
-          {
-            "type": "steps",
-            "items": [
-              "Öffne [[route:/settings/integrations|Integrationen]] in den Einstellungen und suche die UltraSignup-Karte.",
-              "Gib unter **Dein UltraSignup-Profil finden** in **Vorname** und **Nachname** deinen Namen genau so ein, wie du dich zu Rennen anmeldest, und wähle dann **Mich finden**.",
-              "UltraSignup listet alle Personen mit diesem Namen auf. Erkenne dich am Alter, an der Anzahl der Ergebnisse und an den letzten Rennen jeder Person.",
-              "Wähle unter **Wer davon bist du?** bei deinem Eintrag **Das bin ich**."
-            ]
-          },
-          {
-            "type": "p",
-            "text": "Die Karte zeigt jetzt **Verknüpft als** mit deinem Namen und deiner UltraSignup-Nummer. Hast du die falsche Person gewählt, wähle **Verknüpfung lösen** und suche erneut. Bereits importierte Läufe bleiben erhalten, wenn du die Verknüpfung löst."
-          },
-          {
-            "type": "note",
-            "tone": "tip",
-            "text": "Wenn du **Bei UltraSignup gibt es niemanden mit diesem Namen. Prüf die Schreibweise, unter der du läufst.** siehst, versuche die genaue Schreibweise aus deinen Rennanmeldungen, einschließlich eines zweiten Vornamens oder Bindestrichs."
-          }
-        ]
-      },
-      {
-        "heading": "Ein Ergebnis aus dem Rennkalender importieren",
-        "blocks": [
-          {
-            "type": "steps",
-            "items": [
-              "Öffne [[route:/races|Rennen]] und suche das Rennen, das du gelaufen bist.",
-              "Wähle **Mein Ergebnis importieren**. Der Import zeigt an, unter welchem Namen er importiert.",
-              "Bestätige den Import. Übernommen wird nur dein eigenes Ergebnis für dieses Rennen, abgeglichen über die Renn-ID von UltraSignup und das Renndatum."
-            ]
-          },
-          {
-            "type": "p",
-            "text": "Das Ergebnis kommt als Lauf mit deiner offiziellen Zeit und deinen Platzierungen an. Wenn du das Rennen selbst aufgezeichnet hast, öffne stattdessen diesen Lauf: Passt er zu einem Rennen im Kalender, fragt der Lauf, ob es dieses Rennen war, und **Ergebnis importieren** fügt das offizielle Ergebnis deinem vorhandenen Lauf hinzu, statt einen zweiten anzulegen."
-          },
-          {
-            "type": "note",
-            "tone": "caution",
-            "text": "Es werden nur Ergebnisse mit Zieleinlauf importiert, und ein Rennen, dessen ID oder Datum nicht passt, wird übersprungen statt geraten. Bisher sind nur sehr wenige UltraSignup-Rennen im Kalender, daher ist dein Rennen möglicherweise nicht aufgeführt; nutze stattdessen **Ergebnis einfügen** im Rennkalender."
-          },
-          {
-            "type": "p",
-            "text": "Wenn du **Verknüpfe zuerst dein UltraSignup-Profil in den Einstellungen und importiere dann hier.** siehst, verknüpfe dein Profil wie oben beschrieben und komm zurück."
-          }
-        ]
-      }
-    ],
-    "related": [
-      "import-your-history",
-      "racing-in-a-race",
       "your-data-and-privacy"
     ]
   },

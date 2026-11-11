@@ -28,8 +28,8 @@ select tests.confirm_consent();
 select is(
   (select convalidated from pg_constraint
     where conname = 'runs_duration_s_max_check' and conrelid = 'runs'::regclass),
-  false,
-  'the bound ships NOT VALID; VALIDATE waits for the owner-reviewed repair'
+  true,
+  'the bound is validated (20271218000003, after the 20271218000002 repair)'
 );
 
 set local role authenticated;
@@ -64,8 +64,9 @@ select throws_ok(
 
 reset role;
 
-select ok(private.run_duration_in_bound(864000), 'ten days is in bound');
-select ok(not private.run_duration_in_bound(864001), 'one second more is not');
+select ok(private.run_duration_in_bound(863999), 'just under ten days is in bound');
+select ok(not private.run_duration_in_bound(864000),
+  'ten days exactly is the repair''s placeholder and is not (20271218000002)');
 
 -- ── the read side: a pre-constraint row cannot swamp a duration board ───────
 alter table runs drop constraint runs_duration_s_max_check;

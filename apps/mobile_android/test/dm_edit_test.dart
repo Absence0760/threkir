@@ -19,6 +19,7 @@ DirectMessageRow _msg({
 }) =>
     DirectMessageRow(
       kind: kind,
+      isGroup: false,
       id: 'm-1',
       conversationId: 'c-1',
       senderId: sender,
@@ -71,6 +72,7 @@ void main() {
 
   test('not a shared AI Coach answer', () {
     expect(canEditDm(_msg(kind: 'coach_share'), _me, _at(1)), isFalse);
+    expect(canEditDm(_msg(kind: 'group_renamed'), _me, _at(1)), isFalse);
     expect(canEditDm(_msg(kind: 'text'), _me, _at(1)), isTrue);
   });
 

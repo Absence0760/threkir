@@ -162,14 +162,13 @@ done
   mobile client speaks only the queued rail, so without the worker its Account export
   tile has no service to call and says so — the on-device Full backup is what mobile
   gets on this tier, and it does not carry the personal-data table set. `race-results-import` +
-  `race-listings-sync` — the parkrun, manual-paste and RunSignUp legs work keyless
-  (RunSignUp's feeds are public, decisions § 1903); the UltraSignup / ChronoTrack
-  legs answer 503 `provider_not_configured`. `race-listings-sweep` fills the calendar
+  `race-listings-sync` — the manual-paste and RunSignUp legs work keyless
+  (RunSignUp's feeds are public, decisions § 1903); the ChronoTrack results leg and
+  the UltraSignup listings leg answer 503 `provider_not_configured`. `race-listings-sweep` fills the calendar
   from RunSignUp on a five-minute schedule once its Vault URL is armed (`deployment.md`
   § RunSignUp race calendar).
-  UltraSignup needs no key — it is opted in with `ULTRASIGNUP_RESULTS_ENABLED=true`, which
-  sends the runner's name to UltraSignup, so it waits on CISO/counsel sign-off
-  ([decisions § 1841](../architecture/decisions.md)).
+  No leg scrapes a third party's site; the parkrun and UltraSignup results imports
+  were removed ([decisions § 2467](../architecture/decisions.md)).
   Audience sharing (followers level + named-person shares) needs no deploy step and
   ships closed; opening its `private.feature_flags` row waits on the CISO / Security
   Analyst review in [deployment.md § Audience sharing](deployment.md#audience-sharing--after-the-ciso--security-analyst-review).

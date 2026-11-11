@@ -1380,7 +1380,7 @@ void main() {
       // the mobile race-control card used to fire _raceMutation(end) /
       // _raceMutation(cancel) on a single tap. The fix requires both
       // destructive arms to route through a _confirmRaceAction dialog;
-      // Arm / Fire Go stay one-tap. Catches a regression that drops the
+      // Arm / GO stay one-tap. Catches a regression that drops the
       // confirm or wires a button straight to _raceMutation.
       final source =
           File('lib/screens/event_detail_screen.dart').readAsStringSync();
@@ -1409,7 +1409,7 @@ void main() {
         reason: 'Cancel must go through _confirmRaceAction, not call '
             '_raceMutation(_RaceAction.cancel) directly from a button.',
       );
-      // Arm / Fire Go remain one-tap (non-destructive) — guard that the
+      // Arm / GO remain one-tap (non-destructive) — guard that the
       // confirm wrapper is reserved for the destructive arms by pinning
       // the localized confirm-body keys.
       expect(source, contains('eventRaceEndConfirmBody'));
@@ -5691,9 +5691,7 @@ void main() {
       // the backup, and the copy says so.
       'screens/settings_account_screen.dart::l10n.settingsAccountRestoreTitle': 1,
       // Every integration here reconnects in one tap.
-      'screens/settings_integrations_screen.dart::(no title)': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsHrTitle': 1,
-      'screens/settings_integrations_screen.dart::l10n.integrationsParkrunTitle': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsStravaDisconnectTitle': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsTreadmillTitle': 1,
       // The athlete-number form on the barcode screen: it opens prefilled with
@@ -6581,14 +6579,17 @@ void main() {
     /// European/Brazilian word pairs that differ by the same one-letter ending
     /// an imperative does and are not verbs at all, so the derived scan below
     /// cannot tell them apart on shape. `equipa`/`equipe` is *team*;
-    /// `este`/`esta` and `deste`/`desta` are demonstratives agreeing with a
-    /// noun whose gender the variants disagree on (`o ecrã` against `a tela`,
-    /// the § 760 rule). `aceite`/`aceita` is the participle *accepted*, not
-    /// an imperative. Each is asserted to still be in use.
+    /// `este`/`esta`, `esse`/`essa` and `deste`/`desta` are demonstratives
+    /// agreeing with a noun whose gender the variants disagree on (`o ecrã`
+    /// against `a tela`, the § 760 rule; `essa comunicação` against `esse
+    /// relato`). `aceite`/`aceita` is the participle *accepted*, not an
+    /// imperative. Each is asserted to still be in use.
     const variantWordPairs = <String, String>{
       'equipa': 'equipe',
       'este': 'esta',
       'esta': 'este',
+      'essa': 'esse',
+      'esse': 'essa',
       'nesta': 'neste',
       'deste': 'desta',
       'aceite': 'aceita',
@@ -6913,6 +6914,38 @@ void main() {
           reason: 'user-facing copy names a tab the app no longer has — name a '
               'surface that exists, and give the string a CTA if it is the '
               'only instruction someone gets');
+    });
+  });
+
+  group('no integration scrapes a third party\'s website', () {
+    // parkrun-import read parkrun's results pages against its terms, and the
+    // UltraSignup results leg read UltraSignup's internal name-keyed feed.
+    // Both were removed on mobile and web; nothing here may call either again.
+    // The parkrun barcode and an UltraSignup race LISTING stay — neither
+    // fetches anything from those sites.
+    final roots = [Directory('lib'), Directory('../../packages/api_client/lib')];
+    final banned = <Pattern>[
+      RegExp(r'parkrun-import(?![a-z])'),
+      'importParkrunResults',
+      RegExp(r'UltraSignUp|ultraSignUp'),
+      'historybyname',
+    ];
+
+    test('no client source names a removed scraper leg', () {
+      final hits = <String>[];
+      for (final root in roots) {
+        expect(root.existsSync(), isTrue, reason: '${root.path} moved');
+        for (final f in root.listSync(recursive: true).whereType<File>()) {
+          if (!f.path.endsWith('.dart')) continue;
+          final src = f.readAsStringSync();
+          for (final p in banned) {
+            if (p.allMatches(src).isNotEmpty) hits.add('${f.path}: $p');
+          }
+        }
+      }
+      expect(hits, isEmpty,
+          reason: 'a removed scraper integration is back. parkrun results and '
+              'UltraSignup results are entered by manual paste, not fetched');
     });
   });
 }

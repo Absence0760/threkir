@@ -4038,8 +4038,8 @@ jobs:
       # runs, and fail loudly + early if the deps genuinely can't be had.
       #
       # Every `.ts`, not only the test files: the typecheck below reads the
-      # whole tree, and several non-test deps (cheerio in parkrun-import) are
-      # reachable from no test file at all.
+      # whole tree, and some non-test deps are reachable from no test file at
+      # all.
       #
       # `--no-check` skips TYPECHECKING, not type RESOLUTION — this step walks
       # the declaration graph and fetches it, so the typecheck below adds no
@@ -4177,7 +4177,6 @@ jobs:
           # webhook/index.ts`). 24-char placeholder hit the 503
           # webhook_not_configured branch on CI run 26473953318.
           STRAVA_WEBHOOK_SECRET=ci-strava-webhook-secret-32chars-ok
-          PARKRUN_USER_AGENT=ci-parkrun-ua
           REVENUECAT_WEBHOOK_SECRET=ci-revenuecat-secret
           CRON_SECRET=ci-cron-secret-at-least-32-chars-ok
           STRIPE_EVENTS_WEBHOOK_SECRET=ci-stripe-events-secret
@@ -4326,7 +4325,7 @@ jobs:
         # picks up every `*.test.ts` file. Self-audit (May 2026) caught
         # that the prior shape hardcoded three test paths and silently
         # missed any new *.test.ts file added under supabase/functions/
-        # (parkrun-import/lib.test.ts, export-data/decode_track.test.ts,
+        # (export-data/decode_track.test.ts,
         # delete-account/lib.test.ts, delete-account/wiring.test.ts).
         #
         # Permissions:

@@ -249,6 +249,16 @@ class QueuedRunSerializationTest {
         assertNull(decoded.distanceEstimator)
         assertNull(decoded.distanceStepFilledM)
         assertNull(decoded.distanceStepOverChordM)
+        assertNull(decoded.distanceSegments)
+    }
+
+    @Test
+    fun `the segment count round-trips through the queue`() {
+        val decoded = json.decodeFromString(
+            QueuedRun.serializer(),
+            json.encodeToString(QueuedRun.serializer(), sample.copy(distanceSegments = 2)),
+        )
+        assertEquals(2, decoded.distanceSegments)
     }
 
     @Test

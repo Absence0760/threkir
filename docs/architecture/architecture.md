@@ -107,7 +107,7 @@ run-app/                          # Monorepo root
 ┌──────────────────────────────────▼──────────────────────────────┐
 │  External integrations                                          │
 │  MapLibre GL JS │ Strava API │ Garmin Connect │ HealthKit      │
-│  Health Connect  │ parkrun    │ RunSignUp      │ Elevation API  │
+│  Health Connect  │ ChronoTrack│ RunSignUp      │ Elevation API  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -174,7 +174,7 @@ A standalone SvelteKit app at `apps/web/`, deployed to AWS (S3 + CloudFront + La
 **Key responsibilities:**
 - Full-screen route builder (the best route planning experience in the product)
 - Deep run analytics dashboard — charts, splits, personal records
-- Account and integrations management (Strava, Garmin, parkrun)
+- Account and integrations management (Strava, Garmin, RunSignUp / ChronoTrack, the parkrun barcode)
 - Public shareable pages for routes and runs (SEO-indexed)
 
 **Auth:** Supabase Auth with `@supabase/ssr` — server-side session management via cookies. No separate auth system — same user accounts as mobile.
@@ -210,7 +210,7 @@ src/routes/
     ├── +layout.svelte           # Tabbed settings layout
     ├── account/+page.svelte     # Profile, sign-in methods (link Google/Apple), data export
     ├── preferences/+page.svelte # Units, map style, activity defaults, coach tone, HR zones
-    ├── integrations/+page.svelte # Connect Strava, Garmin, parkrun
+    ├── integrations/+page.svelte # Connect Strava, Garmin; parkrun barcode
     ├── devices/+page.svelte     # Per-device settings
     └── upgrade/+page.svelte     # Pro tier ($9.99 / mo or $79.99 / yr) + one-off donate
 ```
@@ -422,7 +422,6 @@ Thin TypeScript functions deployed to Supabase Edge Functions (Deno runtime).
 |---|---|---|---|
 | `strava-webhook` | POST (Strava push) | Receive activity created/updated event, fetch full activity, save run | **Deprecated** — superseded by `POST /v1/strava/webhook` on the Go worker (`apps/job_worker/internal/stravahook/`); EF kept as rollback |
 | `strava-import` | POST (user action) | OAuth token exchange, backfill last 90 days of activities | Active |
-| `parkrun-import` | POST (user action) | Fetch athlete results page by athlete number, parse HTML, save runs | Active |
 | `refresh-tokens` | Scheduled (pg_cron, every 4h) | Refresh expiring Strava access tokens before they expire | **Deprecated** — superseded by `token_refresh` job kind on the Go worker; EF kept as rollback |
 | `export-data` | POST (user action) | Export all user runs as GPX zip or CSV (GDPR Art 20) | **Deprecated** — superseded by the Go worker's queued rail, `POST /v1/export/jobs` + `GET /v1/export/jobs/latest` (`apps/job_worker/internal/dataexport/`, decisions §717 + §724); EF kept as rollback and is the only synchronous export rail left |
 | `revenuecat-webhook` | POST (RevenueCat push) | Update `subscription_tier` on purchase/renewal/cancellation | Active |
@@ -433,7 +432,7 @@ Thin TypeScript functions deployed to Supabase Edge Functions (Deno runtime).
 | `events-checkout` | POST (buyer action) | Open a Stripe-hosted Checkout Session as a destination charge against the host's connected account, insert a `pending` `event_orders` row holding a soft capacity reservation (club_events.md P1) | Active (gated on Stripe keys + sign-off) |
 | `stripe-events-webhook` | POST (Stripe push) | Idempotent writer of order status — CAS `pending`→`paid` on `checkout.session.completed`, etc. (club_events.md P1) | Active (gated on Stripe keys + sign-off) |
 
-User-facing functions (`parkrun-import`, `strava-import`, `export-data`, `delete-account`) gate on a per-user fixed-window rate limit via `check_rate_limit` and the shared `_shared/rate_limit.ts` helper — denials return 429 with `Retry-After`. Skipped on `refresh-tokens` (cron, no user.id), `revenuecat-webhook` (HMAC-validated server-to-server), and `strava-webhook` (URL-secret guarded server-to-server). See [decisions.md § 42](decisions.md#42-edge-function-rate-limits-live-in-a-postgres-counter-not-deno-kv-or-in-memory) and [api_database.md § rate_limits](../backend/api_database.md).
+User-facing functions (`strava-import`, `race-results-import`, `export-data`, `delete-account`) gate on a per-user fixed-window rate limit via `check_rate_limit` and the shared `_shared/rate_limit.ts` helper — denials return 429 with `Retry-After`. Skipped on `refresh-tokens` (cron, no user.id), `revenuecat-webhook` (HMAC-validated server-to-server), and `strava-webhook` (URL-secret guarded server-to-server). See [decisions.md § 42](decisions.md#42-edge-function-rate-limits-live-in-a-postgres-counter-not-deno-kv-or-in-memory) and [api_database.md § rate_limits](../backend/api_database.md).
 
 ---
 
@@ -483,16 +482,9 @@ Same `health` package — single Dart API abstracts both platforms.
 final workouts = await health.getHealthDataFromTypes(...);
 ```
 
-### parkrun (scrape by athlete number)
+### No scraping
 
-```
-User enters athlete number (e.g. A123456)
-  → Edge Function fetches parkrun.org.uk/results/athleteresultshistory/?athleteNumber=A123456
-  → Parse HTML results table (BeautifulSoup / Cheerio)
-  → Extract: event, date, time, position, age grade
-  → Save as Run objects with source='parkrun'
-  → Deduplicate by external_id = parkrun event + date
-```
+No integration scrapes a third party's website ([decisions § 2467](decisions.md)). The parkrun results import, the parkrun events feed and the UltraSignup results import were removed on 2026-11-10 for that reason; runs already imported keep `source = 'parkrun'`. Race results come from RunSignUp's and ChronoTrack's APIs or manual paste ([integrations.md](../features/integrations.md#removed-scraped-integrations)).
 
 ### Garmin Connect (official developer program)
 
@@ -586,7 +578,7 @@ Web app deploys to AWS via `.github/workflows/release-web.yml`, which uses GitHu
 
 - **Row-level security** enforced on all Supabase tables — no user can access another user's data even if they have a valid JWT
 - **Strava tokens** stored server-side in the `integrations` table, never sent to the client
-- **parkrun athlete numbers** are public — no passwords stored
+- **parkrun athlete numbers** are stored only for the on-device barcode (owner-only column); nothing is fetched from parkrun
 - **GPS data** stored as JSONB blobs in Postgres, encrypted at rest by Supabase
 - **Apple Sign-In** on iOS 13+ — no email/password surface to attack
 - **Web app sessions** managed via `@supabase/ssr` — auth cookies are httpOnly and not accessible to JavaScript

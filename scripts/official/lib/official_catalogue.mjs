@@ -33,7 +33,7 @@ export const CHALLENGE_METRICS = ['distance', 'duration', 'vert', 'activity_coun
 export const CHALLENGE_ACTIVITY_TYPES = ['run', 'walk', 'hike', 'cycle', 'stroller'];
 export const RECURRENCES = ['monthly', 'yearly'];
 export const ROUTE_SURFACES = ['road', 'trail', 'mixed'];
-export const RACE_PROVIDERS = ['runsignup', 'parkrun', 'manual', 'chronotrack', 'raceresult', 'ultrasignup'];
+export const RACE_PROVIDERS = ['runsignup', 'manual', 'chronotrack', 'raceresult', 'ultrasignup'];
 
 /** The shortest window a recurrence can have, in days, which caps a streak goal. */
 const SHORTEST_WINDOW_DAYS = { monthly: 28, yearly: 365 };

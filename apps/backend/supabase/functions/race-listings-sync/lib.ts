@@ -35,11 +35,7 @@ export const MAX_LISTING_LOCATION_LEN = 80;
 /// The providers whose feeds this function knows how to read. A subset of
 /// `race_listings_provider_check` — `manual`, `chronotrack` and `raceresult`
 /// reach the calendar by other paths.
-export type ListingSyncProvider = 'runsignup' | 'ultrasignup' | 'parkrun';
-
-/// The providers whose feed is a list of race rows read by `readProviderRace`.
-/// parkrun's is a GeoJSON event list read by ./parkrun.ts instead.
-export type RaceRowProvider = Exclude<ListingSyncProvider, 'parkrun'>;
+export type ListingSyncProvider = 'runsignup' | 'ultrasignup';
 
 /// A provider row reduced to exactly what a listing needs. Each provider's
 /// reader produces one of these or null; nothing downstream sees a provider's
@@ -53,9 +49,6 @@ export interface NormalisedRace {
   /// The US ZIP the race is held in, when the feed names one: the key its
   /// `location_point` is looked up by (`us_zcta_points`, decisions § 1901).
   postalCode: string | null;
-  /// The race's own coordinates, when the feed carries them (parkrun). Placed
-  /// directly, ahead of any ZIP lookup.
-  point?: { lat: number; lng: number } | null;
   entryUrl: string | null;
   resultsUrl: string | null;
 }
@@ -100,9 +93,8 @@ export function listingUrl(raw: unknown): string | null {
 /// Two forms are accepted and the second is the interesting one. An ISO date is
 /// unambiguous and is taken whole, with any time-of-day suffix discarded — the
 /// column is a `date`. A slash date is read as **US month-first**, which is a
-/// provider-specific reading (RunSignUp and UltraSignup are US platforms, and
-/// `parseParkrunDate` already reads the UK site's slashes day-first for the
-/// mirror-image reason) — but only when the first component can BE a month.
+/// provider-specific reading (RunSignUp and UltraSignup are US platforms) — but
+/// only when the first component can BE a month.
 /// `13/06/2027` is refused rather than reinterpreted as 6 January, so a feed
 /// that turns out to be day-first announces itself on the first race past the
 /// 12th of a month instead of silently seeding the calendar with transposed
@@ -459,7 +451,7 @@ export function extractProviderRaces(payload: unknown): Record<string, unknown>[
 }
 
 export function readProviderRace(
-  provider: RaceRowProvider,
+  provider: ListingSyncProvider,
   row: Record<string, unknown>,
 ): RaceReading {
   return provider === 'ultrasignup' ? readUltraSignUpRace(row) : readRunSignUpRace(row);
@@ -668,14 +660,10 @@ export function parseNearHint(
 
 /// Whether `provider` can search by the hint it was given. RunSignUp needs a
 /// US ZIP (see `NearHint`); UltraSignup's endpoint is declared with a point.
-/// parkrun REQUIRES a point: its feed is one global file of ~3,000 events, so
-/// a sync with no region would be a capped slice of the world filed as if it
-/// were somebody's neighbourhood.
 export function nearHintError(
   provider: ListingSyncProvider,
   near: NearHint | null,
 ): string | null {
-  if (provider === 'parkrun') return near?.point ? null : 'near_point_required';
   if (near === null) return null;
   if (provider === 'runsignup') {
     if (near.postalCode === null) return 'near_postal_code_required';
@@ -699,7 +687,7 @@ const MILES_M = 1609.344;
 /// alphabetical slice. UltraSignup's endpoint stays unverified and keyed; the
 /// caller refuses it without a credential before this is built.
 export function providerRacesUrl(opts: {
-  provider: RaceRowProvider;
+  provider: ListingSyncProvider;
   apiKey: string | null;
   apiSecret: string | null;
   near: NearHint | null;

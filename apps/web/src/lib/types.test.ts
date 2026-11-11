@@ -99,7 +99,7 @@ test('parseActivityType — an unknown, empty, null or mis-cased value reads as 
 });
 
 test('parseIntegrationProvider — every valid IntegrationProvider passes through', () => {
-	const all: IntegrationProvider[] = ['strava', 'garmin', 'parkrun', 'runsignup', 'ultrasignup'];
+	const all: IntegrationProvider[] = ['strava', 'garmin', 'runsignup'];
 	for (const p of all) assert.equal(parseIntegrationProvider(p), p);
 });
 
@@ -108,6 +108,8 @@ test('parseIntegrationProvider — an unrecognised provider is null, not a guess
 	// a row this build has no branch for renders as nothing either way, so
 	// dropping it is honest where mistyping it is not.
 	assert.equal(parseIntegrationProvider('polar'), null);
+	assert.equal(parseIntegrationProvider('parkrun'), null);
+	assert.equal(parseIntegrationProvider('ultrasignup'), null);
 	assert.equal(parseIntegrationProvider(''), null);
 	assert.equal(parseIntegrationProvider(null), null);
 	assert.equal(parseIntegrationProvider('Strava'), null);

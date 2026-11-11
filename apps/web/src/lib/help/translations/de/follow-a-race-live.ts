@@ -19,8 +19,8 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Vor dem Rennen**: Der Veranstalter hat die Rennuhr noch nicht scharfgestellt.',
-						'**Bereit**: Die Uhr ist scharfgestellt und wartet auf den Start.',
+						'**Vor dem Rennen**: Der Veranstalter hat die Rennuhr noch nicht scharf geschaltet.',
+						'**Bereit**: Die Uhr ist scharf geschaltet und wartet auf den Start.',
 						'**Läuft**: Das Rennen ist im Gange, mit der verstrichenen Zeit.',
 						'**Beendet**: Das Rennen ist vorbei.',
 						'**Abgesagt**: Der Veranstalter hat das Rennen abgesagt.',
@@ -46,7 +46,7 @@ export const translation: GuideTranslation = {
 				},
 				{
 					type: 'p',
-					text: 'Die Karte zeichnet außerdem die Start- und Ziellinien jeder Strecke ein, und zwar die, mit denen das Rennen scharfgestellt wurde.',
+					text: 'Die Karte zeichnet außerdem die Start- und Ziellinien jeder Strecke ein, und zwar die, mit denen das Rennen scharf geschaltet wurde.',
 				},
 			],
 		},

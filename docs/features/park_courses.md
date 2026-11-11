@@ -116,16 +116,34 @@ Every run is scored on the server (decisions § 2392):
   timed from its forward crossing of the start line to its forward crossing of
   the end line, interpolated between fixes, with the covered distance within
   25 % of the course length and every checkpoint passed in order between the
-  two; the fastest pass counts. A loop course is two lines on one point; the
-  crossing that ends one lap never starts the next. A run that never crosses
+  two. Every complete lap is a candidate and the fastest counts: laps never
+  overlap, and where the end line is the start line (centres within the start
+  line's reach, facing within 90 degrees) the crossing that ends one lap starts
+  the next (matcher version 3, decisions § 2465). A run that never crosses
   the lines gets no time, whatever circle it passed through. Only a segment
   without both lines is still matched by the 35 m circles (decisions § 2402).
+- **A closed course takes no new effort** (owner, #1313, 2026-11-10; migration
+  `20271219001313`, decisions § 2465). `private.global_segment_course_closed`
+  is read at every write path: `global_segments_in_bbox` leaves a closed course
+  out of both scorers' candidates, `record_segment_match` never inserts,
+  corrects or deletes an effort on one whatever its payload names, and the run
+  owner's insert policy refuses one. The efforts a course already has stay on
+  its boards. A `seasonal` course keeps timing. The status is read when the
+  effort would be written and no closure history is kept, so a run recorded
+  during a closure and re-scored after the course reopens (a backfill for
+  redrawn geometry, a matcher-version re-match) is timed then.
 - **Fallback.** Run detail still scores the owner's run on view
   (`computeGlobalSegmentEffortsForRun`), now with the same bbox candidates. It
   also re-matches an effort an older matcher wrote (its run's
   `global_segments_matcher_version` stamp is behind), by delete then insert,
   and the board says while any visible effort is still a circle match
   (decisions § 2403). It goes once the job has run in production.
+- **A matcher change.** The web fallback re-matches a run its owner opens; the
+  runs nobody opens are re-scored by a one-off ops task the release runs after
+  deploying the functions (`apps/backend/ops/tasks/`), which queues
+  `enqueue_segment_backfill` for every active segment not on a closed course.
+  Matcher version 3 ships with `20271219001313_rematch_segments_matcher_v3`
+  (decisions § 2465); a later version bump adds its own task.
 - **Launch backfill.** After loading a course, run
   `select enqueue_segment_backfill('<global_segment_id>');` as an admin or the
   service role. It scores existing runs 20 a job in id order, each batch queueing
@@ -280,7 +298,8 @@ The surfaces say *course* and *time trial*, never *race*, *compete* or
 *register*. Every course page carries the stay-on-trail notice and the
 geometry attribution (`osm` credits OpenStreetMap contributors, `nps` the
 National Park Service). A closed course shows a banner and hides "Navigate
-this course"; its times and boards stay.
+this course"; its times and boards stay, and a run over it while it is closed
+is not timed (see *Matching*).
 
 These follow the owner-approved permit conditions (memo
 `reviews/legal-park-course-permit.md`, items 5 and 8; decision on #1097):
@@ -479,8 +498,8 @@ Race courses (`race_courses` in the manifest, the Swift Creek 5K to 50K) load
 as standing park courses with calendar-year boards, not as self-timed races.
 Each is a `loop` course, because its start and finish are one line on the
 lead-in: the start line faces out along the lead-in and the end line faces
-back in (on the 10K both are curated, its line sitting 14 m before a bend), and the matcher never lets the crossing that ends a pass start
-the next. Its route carries the race distance as `official_distance_m`.
+back in (on the 10K both are curated, its line sitting 14 m before a bend), and every complete lap is timed with the fastest counting
+(decisions § 2465). Its route carries the race distance as `official_distance_m`.
 
 Shipping a park, or a change to one:
 
@@ -689,12 +708,12 @@ These gate going live, not the code:
       The code is built and fail-closed: without the key it asks NPS nothing
       and logs why. Respect the NPS API terms (key in a header, one request per
       ten parks a day).
-- [ ] After `20271122002402` reaches production and the `segment-match`
-      function carrying the line matcher is deployed, run
-      `select enqueue_segment_backfill(id) from global_segments where is_active;`
-      once as the service role, so runs nobody reopens are re-matched by their
-      lines on the server rather than waiting for an owner view (decisions
-      § 2403). Until then their boards show the "measured the old way" note.
+- [x] The one-off backfill over every active segment (decisions § 2403) is no
+      longer a hand step: the ops task
+      `20271219001313_rematch_segments_matcher_v3` queues that backfill (minus
+      closed courses) in the release that ships matcher version 3, after the
+      functions deploy (decisions § 2465). Until it has run, boards may still
+      show the "measured the old way" note.
 
 ## Tests
 
@@ -771,7 +790,9 @@ These gate going live, not the code:
   fixture's, lands each run as a phone sync does and records its efforts,
   then reads the season board, completions, `park_course_records()` and
   `run_park_course_times` back (with a private run, a 23:30 31 December run
-  and a closed course). Playwright `tests-e2e/parks/park-course-real-run.spec.ts`
+  and a closed course: a closed course times no new run, from the scorer, a
+  payload naming it or the owner's insert, keeps the effort it has through a
+  re-match, and times again once seasonal). Playwright `tests-e2e/parks/park-course-real-run.spec.ts`
   plants the real Beaver Lake line, uploads the clean run and calls the
   `segment-match` function as the job worker does; the course board shows the
   time and the share page names nobody. `park_courses_screen_test.dart` shows

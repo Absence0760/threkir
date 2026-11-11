@@ -1258,48 +1258,54 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
           Wrap(
             spacing: 8,
             children: [
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _gender,
-                  isDense: true,
-                  hint: Text(l10n.segmentsPanelAllGenders),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.segmentsPanelAllGenders),
-                    ),
-                    DropdownMenuItem(
-                      value: 'male',
-                      child: Text(l10n.segmentsPanelGenderMen),
-                    ),
-                    DropdownMenuItem(
-                      value: 'female',
-                      child: Text(l10n.segmentsPanelGenderWomen),
-                    ),
-                  ],
-                  onChanged: (v) {
-                    setState(() => _gender = v);
-                    _refreshBoard();
-                  },
+              IntrinsicWidth(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: _gender,
+                    isDense: true,
+                    isExpanded: true,
+                    hint: Text(l10n.segmentsPanelAllGenders),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.segmentsPanelAllGenders),
+                      ),
+                      DropdownMenuItem(
+                        value: 'male',
+                        child: Text(l10n.segmentsPanelGenderMen),
+                      ),
+                      DropdownMenuItem(
+                        value: 'female',
+                        child: Text(l10n.segmentsPanelGenderWomen),
+                      ),
+                    ],
+                    onChanged: (v) {
+                      setState(() => _gender = v);
+                      _refreshBoard();
+                    },
+                  ),
                 ),
               ),
-              DropdownButtonHideUnderline(
-                child: DropdownButton<String?>(
-                  value: _ageBand,
-                  isDense: true,
-                  hint: Text(l10n.segmentsPanelAllAges),
-                  items: [
-                    DropdownMenuItem(
-                      value: null,
-                      child: Text(l10n.segmentsPanelAllAges),
-                    ),
-                    for (final b in kSegmentAgeBands)
-                      DropdownMenuItem(value: b, child: Text(b)),
-                  ],
-                  onChanged: (v) {
-                    setState(() => _ageBand = v);
-                    _refreshBoard();
-                  },
+              IntrinsicWidth(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: _ageBand,
+                    isDense: true,
+                    isExpanded: true,
+                    hint: Text(l10n.segmentsPanelAllAges),
+                    items: [
+                      DropdownMenuItem(
+                        value: null,
+                        child: Text(l10n.segmentsPanelAllAges),
+                      ),
+                      for (final b in kSegmentAgeBands)
+                        DropdownMenuItem(value: b, child: Text(b)),
+                    ],
+                    onChanged: (v) {
+                      setState(() => _ageBand = v);
+                      _refreshBoard();
+                    },
+                  ),
                 ),
               ),
             ],

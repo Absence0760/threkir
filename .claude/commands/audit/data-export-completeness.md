@@ -16,7 +16,7 @@ GDPR Art 20 (portability) and CCPA right-to-know both require the export to be *
 4. **Third-party-linked state.**
    - Strava tokens → not user content, but the *fact* of the integration is. Include `integrations` row (sans the encrypted token).
    - RevenueCat subscriber id + tier → include.
-   - parkrun athlete number → include.
+   - parkrun athlete number (`user_profiles.parkrun_number`, kept for the barcode) → include.
    - Coach chat history → `coach_messages` is the largest under-the-radar PII pile. Verify.
    - Notifications, kudos, comments (both as author and as recipient) — confirm both halves of the relation appear.
 5. **Derived data.** Personal records, fitness snapshots, training-load curves are derived. GDPR doesn't strictly require derived data in the export, but UX-wise it's expected. Note any gap.

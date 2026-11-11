@@ -23,9 +23,11 @@ void main() {
         _failed(ManualDurationError.tooLong));
   });
 
-  test('the bound itself is allowed and one second past it is not', () {
-    expect(validateManualDuration('240', '0', '0'), _ok(864000));
-    expect(validateManualDuration('240', '0', '1'),
+  test(
+      'the bound itself is the repair placeholder and refused; '
+      'one second under it is not', () {
+    expect(validateManualDuration('239', '59', '59'), _ok(863999));
+    expect(validateManualDuration('240', '0', '0'),
         _failed(ManualDurationError.tooLong));
     expect(validateManualDuration('112', '0', '0'), _ok(403200));
   });
@@ -63,10 +65,10 @@ void main() {
     expect(validateManualDuration('0000000000001', '', ''), _ok(3600));
   });
 
-  test('isPlausibleRunDuration is the inclusive 0..bound range', () {
+  test('isPlausibleRunDuration is 0 up to, not including, the bound', () {
     expect(isPlausibleRunDuration(0), isTrue);
-    expect(isPlausibleRunDuration(864000), isTrue);
-    expect(isPlausibleRunDuration(864001), isFalse);
+    expect(isPlausibleRunDuration(863999), isTrue);
+    expect(isPlausibleRunDuration(864000), isFalse);
     expect(isPlausibleRunDuration(44400094), isFalse);
     expect(isPlausibleRunDuration(-1), isFalse);
     expect(isPlausibleRunDuration(double.nan), isFalse);

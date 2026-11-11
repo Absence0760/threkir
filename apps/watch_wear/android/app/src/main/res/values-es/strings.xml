@@ -96,18 +96,18 @@
     </plurals>
     <string name="offline">Sin conexión</string>
     <string name="not_signed_in">Sesión no iniciada</string>
-    <string name="race_armed">CARRERA LISTA</string>
+    <string name="race_armed">CARRERA PREPARADA</string>
     <string name="race_live">CARRERA EN VIVO</string>
     <string name="event">Evento</string>
-    <string name="race_wait_for_go">%1$s · espera la salida</string>
+    <string name="race_wait_for_go">%1$s · espera el GO</string>
     <string name="race_self_timed">CRONO PROPIO</string>
-    <string name="race_self_timed_how">%1$s · toca Intento, luego Iniciar, y cruza la línea de salida</string>
+    <string name="race_self_timed_how">%1$s · toca Intento, luego Empezar, y cruza la línea de salida</string>
     <string name="race_attempt">Esta carrera es mi intento</string>
-    <string name="race_attempt_ready">Intento listo · toca Iniciar</string>
+    <string name="race_attempt_ready">Intento listo · toca Empezar</string>
     <string name="race_tap_start">%1$s · toca Empezar</string>
     <string name="race_finish_short">Meta</string>
     <string name="cd_finish_race">Terminar carrera</string>
-    <string name="race_ended">Carrera terminada</string>
+    <string name="race_ended">Carrera finalizada</string>
     <string name="race_late_start">Salida tardía</string>
     <string name="race_clock">Carrera %1$s</string>
     <string name="race_result_finished">Meta %1$s</string>

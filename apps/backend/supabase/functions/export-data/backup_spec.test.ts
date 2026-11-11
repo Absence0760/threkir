@@ -601,14 +601,14 @@ Deno.test('integrations spec includes disconnect timestamps (GDPR Art 15)', () =
 	assertEquals(integ.select.includes('disconnected_reason'), true);
 });
 
-Deno.test('integrations spec includes the provider-side name an identity was found by', () => {
-	// 20270726000003 stores the name an UltraSignup person was looked up under
-	// beside its id. It is the runner's own name as they typed it, so it is
-	// personal data the right-of-access export must carry.
+Deno.test('integrations spec no longer reads the retired UltraSignup name columns', () => {
+	// 20271216170001 deleted every UltraSignup identity, so both columns are NULL
+	// on every row and are dropped by a later migration. An export that still
+	// selected them would 400 the moment they go.
 	const integ = buildBackupSpecs(TEST_UID).find((s) => s.entry === 'integrations.json');
 	assertExists(integ);
-	assertEquals(integ.select.includes('external_first_name'), true);
-	assertEquals(integ.select.includes('external_last_name'), true);
+	assertEquals(integ.select.includes('external_first_name'), false);
+	assertEquals(integ.select.includes('external_last_name'), false);
 });
 
 Deno.test('device_tokens spec carries a token-redactor', () => {

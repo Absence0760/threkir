@@ -1,11 +1,9 @@
 /// What an importer says about how much of a history it read, and how much of
 /// it a client may believe.
 ///
-/// `parkrun-import` answers `{ imported, skipped, total, complete }` and
-/// `race-results-import` answers `complete` on every success shape. Neither
-/// count reveals a shortfall on its own: a parkrun history capped at
-/// `MAX_PARKRUN_ROWS` and a finisher field truncated at 2,000 both present as
-/// a successful import of everything that was there.
+/// `race-results-import` answers `complete` on every success shape. The count
+/// does not reveal a shortfall on its own: a finisher field truncated at 2,000
+/// presents as a successful import of everything that was there.
 ///
 /// Fail-closed — anything this parser cannot read as an explicit `true` is
 /// reported as partial. One transport per importer, shipped from this repo
@@ -19,14 +17,14 @@
 /// IS an import, and one home for that rule is what stops the two parsers
 /// reading the same malformed body differently. `strava_sync_result` composes
 /// on this library rather than the reverse: naming the general rule after one
-/// provider is what put parkrun and race-results grading in a file called
+/// provider is what put race-results grading in a file called
 /// `strava_sync_result` in the first place (decisions § 1014).
 ///
 /// TS↔Dart parity pair with
 /// `apps/web/src/lib/integrations/import_completeness.ts`. Lives in the SHARED
 /// core_models package rather than under `apps/mobile_android/lib/` because
-/// `api_client` consumes it, so it needs no iOS-twin mirror — same placement
-/// as `profile_query.dart` and `strava_sync_result.dart`.
+/// `strava_sync_result.dart` composes on it, so it needs no iOS-twin mirror —
+/// same placement as `profile_query.dart`.
 library;
 
 /// A count the function sent. Only a non-negative integer is a count;
@@ -54,18 +52,12 @@ class ImportCompleteness {
   final int imported;
   final int skipped;
 
-  /// How many rows the page actually carried, when the function said. Null
-  /// when it did not, so a caller can tell "12 of 60" from "12, and there may
-  /// be more" rather than printing a fabricated denominator.
-  final int? total;
-
   /// Only an explicit `true` earns it.
   final bool complete;
 
   const ImportCompleteness({
     required this.imported,
     required this.skipped,
-    required this.total,
     required this.complete,
   });
 }
@@ -73,8 +65,7 @@ class ImportCompleteness {
 /// Grade an importer's response. Never throws.
 ImportCompleteness parseImportCompleteness(Object? data) {
   if (data is! Map) {
-    return const ImportCompleteness(
-        imported: 0, skipped: 0, total: null, complete: false);
+    return const ImportCompleteness(imported: 0, skipped: 0, complete: false);
   }
   final imported = importResponseCount(data['imported']);
   final skipped = importResponseCount(data['skipped']);
@@ -83,19 +74,6 @@ ImportCompleteness parseImportCompleteness(Object? data) {
   // not finish.
   final complete =
       importResponseText(data['error']) == null && data['complete'] == true;
-  final rawTotal = data['total'];
-  final total = rawTotal is num &&
-          rawTotal.isFinite &&
-          rawTotal >= 0 &&
-          rawTotal == rawTotal.roundToDouble()
-      ? rawTotal.toInt()
-      : null;
   return ImportCompleteness(
-    imported: imported,
-    skipped: skipped,
-    // A total below what was already processed is not a total — reporting
-    // "12 of 5" is worse than reporting no denominator at all.
-    total: total != null && total >= imported + skipped ? total : null,
-    complete: complete,
-  );
+      imported: imported, skipped: skipped, complete: complete);
 }

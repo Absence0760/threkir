@@ -137,11 +137,6 @@ final Map<Metric, MetricEntry> kMetrics = {
           'dashboardPbAgeGrade', (l, a) => l.dashboardPbAgeGrade(a['percent']!)),
     },
     term: RegExp(r'\b[Aa]ge grade\b'),
-    allowedIn: const {
-      'integrationsParkrunInfo':
-          'the parkrun tile\'s own explanation, already behind a disclosure of '
-              'its own, naming what the import brings back',
-    },
   ),
   Metric.vert: MetricEntry(
     label: L10nKey('metricVertLabel', (l, a) => l.metricVertLabel),

@@ -86,18 +86,9 @@ const String setupWizardImportStep = 'import';
 ///
 /// The health platform (`healthkit` on iOS, `health_connect` on Android —
 /// never both) and `strava` (the archive upload) live on the Import screen,
-/// which needs nothing from the deployment. `parkrun` lives on the
-/// Integrations screen and waits on its Edge Function probe, so a probe that
-/// has not answered yet hides it the way a refused one does.
-List<String> setupWizardImportSources({
-  required bool isIOS,
-  required bool parkrunAvailable,
-}) =>
-    [
-      isIOS ? 'healthkit' : 'health_connect',
-      'strava',
-      if (parkrunAvailable) 'parkrun',
-    ];
+/// which needs nothing from the deployment.
+List<String> setupWizardImportSources({required bool isIOS}) =>
+    [isIOS ? 'healthkit' : 'health_connect', 'strava'];
 
 /// A create-plan preset derived from a primary-goal answer — twin of web's
 /// `PlanPreset`.

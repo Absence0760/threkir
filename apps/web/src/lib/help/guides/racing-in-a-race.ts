@@ -3,7 +3,7 @@ import type { Guide } from '../types';
 export const guide: Guide = {
 	id: 'racing-in-a-race',
 	title: 'Racing in a live race',
-	summary: 'Sign up, pick your course, start recording on the line or after GO and let your phone or watch time you over the finish line.',
+	summary: 'Sign up, pick your course, start recording before the start line and let your phone or watch time you from the start line to the finish line.',
 	kind: 'how-to',
 	category: 'races',
 	audience: ['participant', 'runner'],
@@ -16,11 +16,11 @@ export const guide: Guide = {
 				{
 					type: 'list',
 					items: [
-						'Android phone app: full support. It shows the race banner, sends your live position and finishes you automatically.',
+						'Android phone app: full support. It shows the race banner, sends your live position and times you by the start and finish lines.',
 						'iPhone app: runs the same code as Android, but it has not been tested on an iPhone in a real race yet.',
-						'Wear OS watch: full support on the wrist, including the automatic finish. You still sign up and choose your course on the web or the phone.',
-						'Apple Watch: early support only. It shows the race banner, sends your position and reports your time through your iPhone, but it has no automatic finish and has not been proven in a real race. Carry your phone as a backup.',
-						'Web: use it to sign up, pick a course and see results. A browser cannot record a run.'
+						'Wear OS watch: full support on the wrist, including timing by the lines. You still sign up and choose your course on the web or the phone.',
+						'Apple Watch: early support only. It shows the race banner, sends your position and reports your time through your iPhone, but it does not detect the start and finish lines, so it has no automatic finish, and it has not been proven in a real race. Carry your phone as a backup, or re-time your result from your track on the web afterwards.',
+						'Web: use it to sign up, pick a course, see results and re-time a result from a run\'s track. A browser cannot record a run.'
 					]
 				}
 			]
@@ -52,7 +52,7 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: "Your phone or watch does not start recording by itself: press Start yourself. You can start on the line while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch, and your chip time then counts from GO rather than from when you pressed Start."
+					text: "Your phone or watch does not start recording by itself: press Start yourself, before you reach the start line. You can start while the race shows **Race armed**, or once you see **Race LIVE**. A recording started early joins the race at GO, on the phone and on a Wear OS watch."
 				},
 				{
 					type: 'p',
@@ -61,27 +61,54 @@ export const guide: Guide = {
 			]
 		},
 		{
-			heading: 'Finishing automatically',
+			heading: 'Crossing the start line',
 			blocks: [
 				{
 					type: 'p',
-					text: 'You do not need to press anything at the finish. Your phone or Wear OS watch finishes you when both of these are true:'
+					text: 'When your course has a start line, the Run screen shows how far away it is, for example "120 m to the start line". Run through it the way the course goes. After GO, your phone or Wear OS watch then buzzes, says "Start line crossed, timing" if voice cues are on, and your chip time runs from that moment.'
 				},
 				{
 					type: 'list',
 					items: [
-						'you are within 30 m of the finish line, and',
-						'you have covered at least 90% of your course distance.'
+						'Already past the start line when GO sounds? Your start is GO itself.',
+						'Crossing the line before GO, for example while warming up, does not count. After GO, your start counts once you are about 50 m down the course without coming back over the line.',
+						'If your phone or watch never sees you cross the start line, your chip time runs from when you pressed Start instead.'
 					]
+				}
+			]
+		},
+		{
+			heading: 'Finishing automatically',
+			blocks: [
+				{
+					type: 'p',
+					text: 'You do not need to press anything at the finish. When your course has a finish line, your phone or Wear OS watch finishes you the moment you run through it the way the course goes, once you have covered enough of the course: 60% of its distance since your start-line crossing, or 90% when no start-line crossing was seen. That stops a loop course, which starts where it finishes, from finishing you on the way out.'
 				},
 				{
 					type: 'p',
-					text: "Your time is taken at the moment you were closest to the finish, not the first moment you came within 30 m. The 90% rule stops a loop course, which starts where it finishes, from finishing you in the first second. The phone shows \"Finished!\" with your gun time, and your recording stops."
+					text: 'Running past the finish line on a path beside it does not count, because you never pass through it. Your time is taken at the moment you crossed the line. The phone buzzes and shows "Finished!" with your gun time.'
+				},
+				{
+					type: 'p',
+					text: 'A course with a finish point but no finish line keeps the older rule: you finish once you are within 30 m of the finish and have covered 90% of the course, timed at the moment you were closest to it. On a course with a finish line, that 30 m circle counts only if you press Stop or **Finish race** inside it.'
 				},
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'If your course has no route or no distance, there is no automatic finish. Use Stop and then **Finish race** when you cross the line.'
+					text: 'There is no automatic finish if your course has no distance, has neither a finish line nor a finish point, or has a route that crosses its own finish line before the end, as a course of laps does. Use Stop and then **Finish race** when you cross the line.'
+				}
+			]
+		},
+		{
+			heading: 'Not finished? Resume',
+			blocks: [
+				{
+					type: 'p',
+					text: 'A finish by the line is sent straight away and your recording pauses. For the next 60 seconds the Run screen offers **Not finished? Resume**, on the phone and on a Wear OS watch. If you are not finished, for example you crossed the line early on a lap, tap it: your result is taken back and recording carries on. If you do nothing, the recording stops and the result stands.'
+				},
+				{
+					type: 'p',
+					text: 'After you undo a finish, finish the rest of the race by hand: tap Stop, then **Finish race**, when you really finish. If the app restarts before then, it watches the finish line again, but never counts the finish you undid.'
 				}
 			]
 		},
@@ -127,7 +154,7 @@ export const guide: Guide = {
 					type: 'list',
 					items: [
 						'**Gun time** runs from the moment the host fired GO to your finish. It is the time you are ranked on.',
-						'**Chip time** runs from when you pressed Start to your finish, including any pauses. If you pressed Start before GO, it runs from GO, so it is never longer than your gun time.',
+						'**Chip time** runs from your start-line crossing to your finish. If no start-line crossing was seen, it runs from when you pressed Start, or from GO if you pressed Start earlier. It is never longer than your gun time.',
 						'If you start more than 5 minutes after GO, or your first position is more than 200 m from the course start, the phone app shows a late-start notice and a Wear OS watch keeps **Late start** under the race clock. Your gun time still counts from GO, so a late start makes it longer than your chip time.'
 					]
 				},

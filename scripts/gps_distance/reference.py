@@ -1,4 +1,4 @@
-"""GPS distance estimator — reference implementation, spec v1.7.
+"""GPS distance estimator — reference implementation, spec v1.8.
 
 Every port (Dart, TypeScript, Deno, Kotlin, Swift, Rust, Go) must reproduce
 gps_distance_vectors.json to 1e-3 m. Operation order matters only at the
@@ -9,10 +9,17 @@ Two entry points:
   GpsDistanceEstimator  the forward (causal) filter every live screen runs.
   smooth_distance       the saved / recomputed figure: a forward pass plus a
                         Rauch-Tung-Striebel backward pass over the whole run.
+
+v1.8 adds the watch run's segments, which the estimator itself does not see: a
+watch closes its estimator at a pause, a Wear OS source switch or a continued
+run and opens a fresh one, and marks the next segment's first stored fix.
+  record_segments       the watch recorder over its segments: the totals it saves.
+  smooth_segments       the server replay of a marked track, segment by segment.
+  recompute_distance    the worker's figure from that replay and the saved keys.
 """
 import math
 
-SPEC_VERSION = "1.7"
+SPEC_VERSION = "1.8"
 
 EARTH_RADIUS_M = 6371008.8
 Q_ACCEL = 0.6                     # m^2/s^3, white-acceleration spectral density (unvalidated, see doc)
@@ -713,3 +720,68 @@ def smooth_distance(events, max_speed_mps=10.0, expected_interval_s=1.0, initial
             "cumulative_m": cumulative,
             "positions": positions, "stopped_fixes": len(hints),
             "gap_credits": list(est.gap_credits.values())}
+
+
+def record_segments(segments, max_speed_mps=10.0, expected_interval_s=1.0, initial_stride_m=None):
+    """v1.8: a watch run as its recorder runs it. segments: [{"learnStride": bool,
+    "events": [...]}], each ending in the finish its close calls. Each segment runs on
+    a fresh estimator that keeps only the stride the last one learned (the ports'
+    next_segment), so nothing is credited across a close. Returns the totals the
+    watch saves: distance_m, step_distance_m (metadata.distance_step_filled_m) and
+    step_over_chord_m (metadata.distance_step_over_chord_m)."""
+    stride = initial_stride_m
+    out = {"distance_m": 0.0, "step_distance_m": 0.0, "step_over_chord_m": 0.0}
+    for seg in segments:
+        e = GpsDistanceEstimator(max_speed_mps, expected_interval_s, stride,
+                                 learn_stride=seg.get("learnStride", True))
+        for x in seg["events"]:
+            if x["type"] == "fix":
+                e.add_fix(x["t"], x["lat"], x["lng"], x["acc"], x["speed"], x["speedAcc"], x["bearing"])
+            elif x["type"] == "steps":
+                e.add_steps(x["t"], x["count"])
+            else:
+                e.finish(x["t"])
+        out["distance_m"] += e.distance_m
+        out["step_distance_m"] += e.step_distance_m
+        out["step_over_chord_m"] += e.step_over_chord_m
+        stride = e.stride_m
+    return out
+
+
+def smooth_segments(segment_fixes, max_speed_mps=10.0, expected_interval_s=1.0):
+    """v1.8: the server replay of a stored watch track whose segments are marked.
+    segment_fixes: one list of fix events per segment, as stored (no steps). Each is
+    replayed apart, ending at its own last fix, so no chord is credited across a
+    pause or a source switch. A track with no marks is one segment. Returns
+    distance_m (the smoothed figures summed), gap_m (the chords its gaps were
+    credited, summed: SmoothResult.GapM) and segments (how many segments held a
+    fix: trackReplay.Segments)."""
+    dist = gap = 0.0
+    segments = 0
+    for fixes in segment_fixes:
+        if not fixes:
+            continue
+        sm = smooth_distance(list(fixes) + [{"type": "finish", "t": fixes[-1]["t"]}],
+                             max_speed_mps, expected_interval_s)
+        dist += sm["distance_m"]
+        gap += sum(c for c, _ in sm["gap_credits"])
+        segments += 1
+    return {"distance_m": dist, "gap_m": gap, "segments": segments}
+
+
+def recompute_distance(replayed_m, gap_m, step_filled_m, step_over_chord_m=None,
+                       replayed_segments=None, saved_segments=None):
+    """The worker's figure (gapStepCreditM): the replay, plus the larger of the saved
+    step_over_chord_m (capped at step_filled_m) and the run-total rule
+    max(gap_m, step_filled_m) - gap_m. Neither adds more than the steps credited
+    beyond the replay's chords; on a marked track whose replayed gaps are the
+    recorder's the key is exact and never below the run-total rule.
+    The key is read only when saved_segments (metadata.distance_segments, the
+    segments the watch stored) equals replayed_segments (the segments the replay
+    found): a v1.8 key banks the steps a close committed past a segment's last fix
+    whole, which a replay that lost the marks reads as running on into the next
+    segment and credits its chord besides. Otherwise the run-total rule."""
+    run_total = max(gap_m, step_filled_m) - gap_m
+    if step_over_chord_m is None or saved_segments is None or saved_segments != replayed_segments:
+        return replayed_m + run_total
+    return replayed_m + max(min(step_over_chord_m, step_filled_m), run_total)

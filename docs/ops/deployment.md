@@ -64,7 +64,7 @@ Cross-service operator runbooks:
                    ├── Auth (email + Google + Apple)
                    ├── Storage (runs/, route-files/, run-photos/)
                    ├── Realtime
-                   ├── Edge Functions (parkrun-import, refresh-tokens,
+                   ├── Edge Functions (refresh-tokens,
                    │                   strava-import, strava-webhook,
                    │                   revenuecat-webhook, delete-account,
                    │                   export-data)
@@ -864,7 +864,7 @@ A linked coach's clipped view of the athlete's run map ([coach_roster.md § Coac
 
 ### Group conversations — after the DPIA, the privacy notice and the owner's sign-off
 
-Group conversations (issue #1365, migrations `20271216000001`–`…10`, [group_messages.md](../features/group_messages.md)) ship closed: no migration writes the `group_messages` row of `private.feature_flags` (`seed.sql` opens it for local and CI), so `create_group_conversation`, `invite_to_group`, `accept_group_invite`, the group roles, rename and remove answer 0A000, a group send is refused, and a group message is readable only by its sender. Open it only after security memo condition C12 is met: a DPIA section for group messaging in [dpia.md](../compliance/dpia.md), a `/privacy` update (groups, and that an export carries only the subject's own group messages), the group rows in [retention.md](../compliance/retention.md) (done in slice 1), both audit command lists (done in slice 1), and the owner's sign-off recorded on #1097. Then add `"group_messages": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. Closing it again hides every group message from everyone but its sender; leaving and unsending keep working.
+Group conversations (issue #1365, migrations `20271216000001`–`…10`, [group_messages.md](../features/group_messages.md)) ship closed: no migration writes the `group_messages` row of `private.feature_flags` (`seed.sql` opens it for local and CI), so `create_group_conversation`, `invite_to_group`, `accept_group_invite`, the group roles, rename and remove answer 0A000, a group send is refused, and a group message is readable only by its sender. Open it only after security memo condition C12 is met (**docs done 2026-11-10, owner sign-off pending at flag-open**): a DPIA section for group messaging in [dpia.md](../compliance/dpia.md), a `/privacy` update (groups, and that an export carries only the subject's own group messages), the group rows in [retention.md](../compliance/retention.md) (done in slice 1), both audit command lists (done in slice 1), and the owner's sign-off recorded on #1097. Then add `"group_messages": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. Closing it again hides every group message from everyone but its sender; leaving and unsending keep working. **Also before opening (slice 2, [decisions § 2463](../architecture/decisions.md)):** the mobile group surfaces (slice 3) must be released, since the phone has no group thread and its notification switches draw a `group_invite` with the default arm; and the job worker running in prod must be the release that selects `notifications.conversation_id` (migration `20271217000001`), or a group message goes out with the 1:1 "direct message" copy and the inbox link. Web needs no extra step: with the flag closed `dm_threads()` and `group_invites()` list no group and `group_messages_enabled()` hides every surface.
 
 ### Photos in direct messages — after the CISO / Security Analyst reviews the image path
 
@@ -928,9 +928,22 @@ The CTL/ATL/TSB direction gate on the adaptive re-plan (decisions § 144, § 197
 
 The "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decisions § 1976) is built on web and mobile and off. Off, neither surface reads a body weight, the toggle is hidden, and the flat fluid rate stands whatever `?bw=1` a link carries. Flip `PUBLIC_WEIGHT_FLUID_ENABLED` (web build, under `web_env` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md)) and `WEIGHT_FLUID_ENABLED` (the mobile dotenv, [apps/mobile_android/deployment.md](../../apps/mobile_android/deployment.md)) together, only after its [pre-deploy checklist](../features/race_fueling_plan.md) item lands: the CISO / counsel review of a new Art 9 use of body weight against the health-data consent copy. If the review finds the consent copy lists its uses exhaustively, fuelling is added to it before the flip.
 
-### Upcoming parkruns — after parkrun's written permission
+### Retired scraper functions and secrets
 
-The parkrun leg of `race-listings-sync` and `race-listings-sweep` (decisions § 1958) is off unless the function secret `PARKRUN_EVENTS_ENABLED` is the literal `true`; off, the sweep makes no parkrun request. Get parkrun's written permission to list its events (issue #1148 step 1), land whatever it asks for (attribution, link wording; see the [followups](../product/followups.md) entry), then add `"PARKRUN_EVENTS_ENABLED": { "enabled": true, "signoff": "<link to parkrun's permission>" }` to `function_env` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR; the next backend release sets the function secret with `supabase secrets set` and reports `set` / `unchanged`. It rides the RunSignUp sweep below, so that sweep must be armed first. The same edit with `"enabled": false` turns the leg off again.
+[decisions § 2467](../architecture/decisions.md) removed every integration that scraped a third party's website: the `parkrun-import` Edge Function, the parkrun events leg of `race-listings-sync` / `race-listings-sweep`, and the UltraSignup results leg of `race-results-import`. Removing the code does not remove what is deployed: `supabase functions deploy` adds and updates a function but never deletes one, and nothing unsets a secret. So [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) declares them retired — `retired_functions: ["parkrun-import"]` and `retired_function_env: ["PARKRUN_EVENTS_ENABLED", "PARKRUN_USER_AGENT", "ULTRASIGNUP_RESULTS_ENABLED"]` — and the backend release that carries this change retires them automatically: the production sync's **Retired Edge Functions and secrets** stage runs after Deploy Edge Functions in `release-backend.yml`, lists what is deployed or set, and deletes or unsets each name still present.
+
+**Operator check, once, after that release:** read the stage's table in the run's step summary. Each row should read `deleted` / `unset`, or `absent` if it was already gone (a secret that was never set reads `absent`). A dry-run dispatch reads `would delete` / `would unset` and changes nothing.
+
+**Fallback, only if the stage fails** (a `failed` row, or a non-zero `supabase … list`), run by hand against the project, then re-check:
+
+```bash
+supabase functions delete parkrun-import --project-ref <ref>
+supabase secrets unset PARKRUN_USER_AGENT PARKRUN_EVENTS_ENABLED ULTRASIGNUP_RESULTS_ENABLED --project-ref <ref>
+supabase functions list --project-ref <ref>   # no parkrun-import
+supabase secrets list --project-ref <ref>     # none of the three
+```
+
+Retiring an Edge Function in general: delete its directory and add its name to `retired_functions` in the same PR ([apps/backend/ops/README.md](../../apps/backend/ops/README.md)).
 
 ### Security emails — two auth settings, no new secret
 

@@ -6,7 +6,7 @@ Audit for secrets / env vars / API keys that should be server-only but are reach
 
 ## Goal
 
-The Supabase anon key is fine in the client bundle by design. The service-role key is not. Anthropic / OpenAI / OSRM / MapTiler / Strava / parkrun keys depend on which side of the trust boundary they sit on. Find any key that's on the wrong side.
+The Supabase anon key is fine in the client bundle by design. The service-role key is not. Anthropic / OpenAI / OSRM / MapTiler / Strava / RunSignUp / ChronoTrack keys depend on which side of the trust boundary they sit on. Find any key that's on the wrong side.
 
 ## What to check
 

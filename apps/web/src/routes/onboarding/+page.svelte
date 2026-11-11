@@ -21,7 +21,6 @@
 	import { supabase } from '#lib/core/supabase.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { updateUniversal } from '#lib/settings/settings.ts';
-	import { isParkrunConfigured } from '#lib/core/data.ts';
 	import type { PrefsBag } from '#lib/settings/settings.ts';
 	import type { Updatable } from '#lib/core/database.ts';
 	import {
@@ -31,11 +30,11 @@
 		getCurrentSubscription,
 	} from '#lib/util/push.ts';
 	import {
+		ONBOARDING_IMPORT_SOURCES,
 		ONBOARDING_STEPS,
 		PRIMARY_GOAL_KEY,
 		PRIMARY_GOAL_VALUES,
 		visibleOnboardingSteps,
-		visibleImportSources,
 		type OnboardingImportSource,
 		type OnboardingStep,
 		type PrimaryGoal,
@@ -130,9 +129,6 @@
 	// back here from every other page, so a row finishes setup first (the same
 	// save Open dashboard does) and then goes, exactly as the done step's
 	// create-plan CTA does — there is no half-finished wizard to resume.
-	// parkrun waits on its probe; until it answers, its row stays hidden.
-	let parkrunAvailable = $state(false);
-	const importSources = $derived(visibleImportSources(parkrunAvailable));
 
 	let saving = $state(false);
 
@@ -173,11 +169,6 @@
 			subscribed: pushSubscribed,
 		});
 		ready = true;
-		// Not awaited: the import step is near the end, and a probe that never
-		// answers must not hold the wizard's first paint.
-		isParkrunConfigured()
-			.then((ok) => (parkrunAvailable = ok))
-			.catch(() => (parkrunAvailable = false));
 	});
 
 	// Which way the last step change went, so the incoming step slides in
@@ -241,7 +232,6 @@
 	const IMPORT_SOURCE = {
 		strava: { name: 'Strava', icon: 'directions_run', desc: 'onboarding.importStravaDesc' },
 		garmin: { name: 'Garmin', icon: 'watch', desc: 'onboarding.importGarminDesc' },
-		parkrun: { name: 'parkrun', icon: 'emoji_events', desc: 'onboarding.importParkrunDesc' },
 	} as const satisfies Record<OnboardingImportSource, { name: string; icon: string; desc: string }>;
 
 	// Skip means "leave this one unanswered", so it discards the step's
@@ -765,7 +755,7 @@
 				<h1 id="step-import-title" tabindex="-1">{m('onboarding.importTitle')}</h1>
 				<p class="hint" id="onboarding-import-hint">{m('onboarding.importHint')}</p>
 				<ul class="privacy-list import-list" aria-labelledby="step-import-title" aria-describedby="onboarding-import-hint">
-					{#each importSources as option (option.source)}
+					{#each ONBOARDING_IMPORT_SOURCES as option (option.source)}
 						{@const src = IMPORT_SOURCE[option.source]}
 						<li>
 							<button

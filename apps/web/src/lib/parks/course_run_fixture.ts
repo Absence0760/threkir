@@ -464,8 +464,8 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 	clean('swift-creek-marathon', 315, 105);
 	clean('swift-creek-50k', 360, 106);
 
-	// Beaver Lake: a stop at the bridge, and the woods past checkpoint 2 thin
-	// the fixes to one every 8 s with the error 1.6 times larger.
+	// Beaver Lake: a stop at the bridge, and the woods over checkpoints 2 and 3
+	// thin the fixes to one every 8 s with the error 1.6 times larger.
 	{
 		const v = paceMps(360);
 		const L = beaver.lineM;
@@ -473,7 +473,7 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 			key: 'beaver_canopy',
 			name: 'beaver-lake-trail: a stop and a stretch of sparse fixes under the trees',
 			course: beaver.slug,
-			why: 'a 45 s stop at 2600 m with the recorder running, fixes every 8 s from 1500 m to 2100 m (checkpoint 2 is at 1797 m)',
+			why: 'a 45 s stop at 2600 m with the recorder running, fixes every 8 s from 1500 m to 2100 m (checkpoints 2 and 3 are at 1635 m and 1955 m)',
 			plan: {
 				seed: 111,
 				steps: [
@@ -493,7 +493,7 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 			key: 'beaver_shortcut',
 			name: 'beaver-lake-trail: a shortcut across the loop that skips checkpoint 2',
 			course: beaver.slug,
-			why: 'the loop to 1245 m, straight across the neck of the spur checkpoint 2 sits on (125 m from it at the closest) to 1945 m, the rest of the loop: 407 m short, inside the 25 % length guard, so only the checkpoint refuses it',
+			why: 'the loop to 1245 m, straight across the neck of the spur checkpoint 2 sits on (173 m from it at the closest) to 1945 m, the rest of the loop: 407 m short, inside the 25 % length guard, so only the checkpoint refuses it',
 			plan: {
 				seed: 112,
 				steps: [
@@ -501,6 +501,23 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 					{ kind: 'move', path: slice(beaver.line, 0, 1245), speedMps: v },
 					{ kind: 'move', path: [slice(beaver.line, 1245, 1246)[0], slice(beaver.line, 1945, 1946)[0]], speedMps: v },
 					{ kind: 'move', path: slice(beaver.line, 1945, L), speedMps: v, endMark: 'finish' },
+					...leave(beaver.line[beaver.line.length - 1], beaver.gates.end.bearingDeg, v),
+				],
+			},
+			want: { effort: false },
+		});
+		defs.push({
+			key: 'beaver_cut',
+			name: 'beaver-lake-trail: the straight cut from 1450 m to 2150 m',
+			course: beaver.slug,
+			why: 'the loop to 1450 m, straight across the trail where it doubles back on itself to 2150 m, the rest of the loop: 336 m short, inside the 25 % length guard. The line crosses the trail at about 1825 m, 22 m from where the evenly spaced checkpoint 2 sat; checkpoints 2 and 3 sit on the two bends either side of it (104 m and 93 m off the line)',
+			plan: {
+				seed: 117,
+				steps: [
+					...arrive(beaver, v),
+					{ kind: 'move', path: slice(beaver.line, 0, 1450), speedMps: v },
+					{ kind: 'move', path: [slice(beaver.line, 1450, 1451)[0], slice(beaver.line, 2150, 2151)[0]], speedMps: v },
+					{ kind: 'move', path: slice(beaver.line, 2150, L), speedMps: v, endMark: 'finish' },
 					...leave(beaver.line[beaver.line.length - 1], beaver.gates.end.bearingDeg, v),
 				],
 			},
@@ -562,26 +579,25 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 			},
 			want: { effort: false },
 		});
-		// Three laps back to back, the second fastest. On a loop whose start and
-		// end lines sit on one point, the crossing that closes a lap never opens
-		// the next, so laps 1 and 3 are passes and lap 2 is not (decisions
-		// § 2402, m6). The fastest of 1 and 3 is the time.
+		// Three laps back to back, the second fastest. Every complete lap is
+		// timed and the finish of one is the start of the next, so the fastest
+		// lap is the time wherever it falls (decisions § 2463).
 		defs.push({
 			key: 'beaver_three_laps',
 			name: 'beaver-lake-trail: three laps back to back, the middle one fastest',
 			course: beaver.slug,
-			why: 'laps at 6:00, 4:30 and 5:30/km with no stop between: the lap that closes a pass never opens the next',
+			why: 'laps at 6:00, 4:30 and 5:30/km with no stop between: every lap is timed, so the second, the fastest, is the time',
 			plan: {
 				seed: 116,
 				steps: [
 					...arrive(beaver, paceMps(360), 'lap1_start'),
 					{ kind: 'move', path: beaver.line, speedMps: paceMps(360), endMark: 'lap1_end' },
-					{ kind: 'move', path: beaver.line.slice(1), speedMps: paceMps(270), endMark: 'lap2_end' },
-					{ kind: 'move', path: beaver.line.slice(1), speedMps: paceMps(330), endMark: 'lap3_end' },
+					{ kind: 'move', path: beaver.line, speedMps: paceMps(270), endMark: 'lap2_end' },
+					{ kind: 'move', path: beaver.line, speedMps: paceMps(330), endMark: 'lap3_end' },
 					...leave(beaver.line[beaver.line.length - 1], beaver.gates.end.bearingDeg, paceMps(330)),
 				],
 			},
-			want: { effort: true, from: 'lap2_end', to: 'lap3_end' },
+			want: { effort: true, from: 'lap1_end', to: 'lap2_end' },
 		});
 	}
 

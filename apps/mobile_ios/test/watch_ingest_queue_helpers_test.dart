@@ -243,6 +243,28 @@ void main() {
       expect(alone.metadata, isNull);
     });
 
+    test('forwards a whole segment count of one or more beside the estimator',
+        () {
+      final run = runFromWatchPayload(_basePayload()
+        ..['distance_estimator'] = 'kalman_v4'
+        ..['distance_segments'] = 3);
+      expect(run.metadata![MetadataKeys.distanceSegments], 3);
+      final whole = runFromWatchPayload(_basePayload()
+        ..['distance_estimator'] = 'kalman_v4'
+        ..['distance_segments'] = 2.0);
+      expect(whole.metadata![MetadataKeys.distanceSegments], 2);
+      for (final bad in <Object>[0, -1, 1.5, '2', double.nan]) {
+        final r = runFromWatchPayload(_basePayload()
+          ..['distance_estimator'] = 'kalman_v4'
+          ..['distance_segments'] = bad);
+        expect(r.metadata!.containsKey(MetadataKeys.distanceSegments), isFalse,
+            reason: '$bad');
+      }
+      final alone =
+          runFromWatchPayload(_basePayload()..['distance_segments'] = 2);
+      expect(alone.metadata, isNull);
+    });
+
     test('keeps an off-track fix flagged, in order, and forwards track_complete',
         () {
       final raw = _basePayload()
@@ -264,6 +286,25 @@ void main() {
       expect(run.track[1].cumulativeDistanceMetres, 11.1);
       expect(trackLine(run.track), hasLength(2));
       expect(run.metadata![MetadataKeys.trackComplete], isTrue);
+    });
+
+    test('keeps a segment-start fix marked, in order, as the watch wrote it',
+        () {
+      final raw = _basePayload()
+        ..['track'] = [
+          {'lat': 40.0, 'lng': -75.0, 'ts': '2026-04-15T07:30:00Z', 'distM': 0},
+          {
+            'lat': 40.001,
+            'lng': -75.0,
+            'ts': '2026-04-15T07:32:00Z',
+            'distM': 80,
+            'segmentStart': true,
+          },
+          {'lat': 40.0011, 'lng': -75.0, 'ts': '2026-04-15T07:32:01Z', 'distM': 84},
+        ];
+      final run = runFromWatchPayload(raw);
+      expect(run.track.map((w) => w.segmentStart), [false, true, false]);
+      expect(trackLine(run.track), hasLength(3));
     });
 
     test('an older watch payload reads as all on-track and claims nothing', () {

@@ -61,6 +61,9 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
+  -- Serialised per group, so two accepts into an ownerless group cannot both
+  -- promote and trip the one-owner index.
+  perform pg_advisory_xact_lock(hashtextextended('group_owner:' || p_conversation_id::text, 0));
   if exists (
     select 1 from conversation_participants p
      where p.conversation_id = p_conversation_id
@@ -128,7 +131,8 @@ begin
   -- invited back into the same group for 14 days, by anyone, and the refusal
   -- is the same 42501 as any other. A removal was the group's choice, not
   -- theirs, so it does not hold them out.
-  if v_state = 'left' and v_removed_by is null and v_left_at > now() - c_reinvite_cooldown then
+  if (v_state = 'left' and v_removed_by is null and v_left_at > now() - c_reinvite_cooldown)
+     or (v_state = 'invited' and v_invited_at > now() - c_invite_ttl - c_reinvite_cooldown) then
     raise exception 'invite_to_group: you cannot invite this person' using errcode = '42501';
   end if;
 

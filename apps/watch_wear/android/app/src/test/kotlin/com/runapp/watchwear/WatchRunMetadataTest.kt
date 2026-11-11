@@ -382,6 +382,25 @@ class WatchRunMetadataTest {
     }
 
     @Test
+    fun `distance_segments rides with the estimator stamp, one or more`() {
+        fun md(estimator: String?, segments: Int?) = buildRunMetadata(
+            activityType = "run",
+            avgBpm = null,
+            hrCoverage = null,
+            steps = null,
+            laps = emptyList(),
+            lastModifiedAtIso = isoStamp,
+            distanceEstimator = estimator,
+            distanceSegments = segments,
+        )
+        assertEquals(3, md("kalman_v4", 3)["distance_segments"]!!.jsonPrimitive.int)
+        assertEquals(1, md("kalman_v4", 1)["distance_segments"]!!.jsonPrimitive.int)
+        assertFalse(md("kalman_v4", 0).containsKey("distance_segments"))
+        assertFalse(md("kalman_v4", null).containsKey("distance_segments"))
+        assertFalse(md(null, 2).containsKey("distance_segments"))
+    }
+
+    @Test
     fun `a run queued by a hop-summing build claims no estimator`() {
         val md = withEstimator(null, null)
         assertFalse(md.containsKey("distance_estimator"))

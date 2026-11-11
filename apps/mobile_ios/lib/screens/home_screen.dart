@@ -433,14 +433,6 @@ class _HomeScreenState extends State<HomeScreen>
             preferences: widget.preferences,
             settingsSync: widget.settingsSync,
           ),
-          integrationsScreenBuilder: (_) => SettingsIntegrationsScreen(
-            apiClient: api,
-            heartRate: widget.heartRate,
-            treadmill: widget.treadmill,
-            preferences: widget.preferences,
-            settingsSync: widget.settingsSync,
-          ),
-          probeParkrun: RaceService().isParkrunConfigured,
         ),
       ),
     );

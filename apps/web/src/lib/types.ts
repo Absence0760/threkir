@@ -112,6 +112,12 @@ export type TrackPoint = {
 	/// other point. Line readers go through `trackLine`
 	/// (lib/runs/track_line.ts).
 	offTrack?: boolean;
+	/// The first fix of a watch run's segment after its first: the watch
+	/// restarted its distance estimator here after a pause, a Wear OS source
+	/// switch or a continued run, so the server's distance replay restarts
+	/// here too (docs/features/gps_distance.md § Stored track, spec v1.8).
+	/// Absent, never `false`, on every other point; on the line like any fix.
+	segmentStart?: boolean;
 };
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped
@@ -180,7 +186,6 @@ export type RouteMarker = Omit<RouteMarkerRow, 'kind' | 'meta'> & {
 // the narrow union enforced by the CHECK constraint + check_constraint_unions.mjs.
 export type RaceProvider =
 	| 'runsignup'
-	| 'parkrun'
 	| 'manual'
 	| 'chronotrack'
 	| 'raceresult'
@@ -324,7 +329,7 @@ export function parseRouteSurface(raw: string | null | undefined): RouteSurface 
 	}
 }
 
-export type IntegrationProvider = 'strava' | 'garmin' | 'parkrun' | 'runsignup' | 'ultrasignup';
+export type IntegrationProvider = 'strava' | 'garmin' | 'runsignup';
 export type PreferredUnit = 'km' | 'mi';
 export type Gender = 'male' | 'female' | 'prefer_not_to_say';
 export type SubscriptionTier = 'free' | 'pro' | 'lifetime';
@@ -359,9 +364,7 @@ export function parseIntegrationProvider(
 	switch (raw) {
 		case 'strava':
 		case 'garmin':
-		case 'parkrun':
 		case 'runsignup':
-		case 'ultrasignup':
 			return raw;
 		default:
 			return null;
@@ -687,7 +690,8 @@ export type NotificationKind =
 	| 'organiser_dispute'
 	| 'park_course_report'
 	| 'race_starting_soon'
-	| 'race_start_moved';
+	| 'race_start_moved'
+	| 'group_invite';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

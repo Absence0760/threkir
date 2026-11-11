@@ -19,7 +19,6 @@ import '../widgets/help_button.dart';
 import '../widgets/provenance_badge.dart';
 import '../widgets/run_any_time_section.dart';
 import '../widgets/top_banner.dart';
-import '../widgets/ultrasignup_link.dart';
 import 'plan_new_screen.dart';
 import 'race_detail_screen.dart';
 
@@ -822,7 +821,7 @@ class _RaceImportFormState extends State<_RaceImportForm> {
   final _place = TextEditingController();
   bool _busy = false;
 
-  /// Null for a listing whose provider has no import leg at all (parkrun,
+  /// Null for a listing whose provider has no import leg at all (ultrasignup,
   /// manual, raceresult) — manual paste still applies to every one of them.
   late final RaceImportProvider? _provider =
       raceImportProviderFor(widget.race.provider);
@@ -832,24 +831,10 @@ class _RaceImportFormState extends State<_RaceImportForm> {
   /// on it — paste is offered throughout.
   bool? _available;
 
-  /// Who an UltraSignup import is for: the person the runner picked in
-  /// Settings (decisions § 1841). Read only for a listing whose leg is scoped
-  /// that way, and shared with the finder this sheet can open, so a link made
-  /// from here is the one the import sends.
-  final _person = UltraSignUpLinkModel();
-
   @override
   void initState() {
     super.initState();
     _probe();
-    if (_provider?.scope == RaceImportScope.linkedPerson) {
-      _person.addListener(_onPerson);
-      _person.load(widget.service);
-    }
-  }
-
-  void _onPerson() {
-    if (mounted) setState(() {});
   }
 
   /// A probe is a network call (L4): a failure degrades this listing's
@@ -868,8 +853,6 @@ class _RaceImportFormState extends State<_RaceImportForm> {
 
   @override
   void dispose() {
-    _person.removeListener(_onPerson);
-    _person.dispose();
     _bib.dispose();
     _chip.dispose();
     _gun.dispose();
@@ -880,21 +863,12 @@ class _RaceImportFormState extends State<_RaceImportForm> {
   bool get _canPaste =>
       !_busy && (_chip.text.trim().isNotEmpty || _gun.text.trim().isNotEmpty);
 
-  /// Whether this runner's pull is scoped. Every leg refuses without it
-  /// client-side, mirroring the Edge Function's own pre-fetch gate (issue
-  /// #360): a bib typed per race, or the person picked once in Settings. The
-  /// person-scoped leg deliberately has no fallback onto the listing's
-  /// `provider_race_id`, which holds a RACE id.
-  bool get _scoped => switch (_provider?.scope) {
-        RaceImportScope.bib => _blank(_bib.text) != null,
-        RaceImportScope.linkedPerson => _person.link != null,
-        null => false,
-      };
+  /// Whether this runner's pull is scoped by their bib. Every leg refuses
+  /// without one client-side, mirroring the Edge Function's own pre-fetch gate
+  /// (issue #360).
+  bool get _scoped => _provider != null && _blank(_bib.text) != null;
 
   bool get _canProviderImport => !_busy && _available == true && _scoped;
-
-  Future<void> _findPerson() =>
-      showUltraSignUpLink(context, service: widget.service, model: _person);
 
   Future<void> _providerImport() async {
     final spec = _provider;
@@ -905,9 +879,7 @@ class _RaceImportFormState extends State<_RaceImportForm> {
       final outcome = await widget.service.importRaceResult(
         provider: spec.provider,
         listingId: widget.race.id,
-        bib: spec.scope == RaceImportScope.bib ? _blank(_bib.text) : null,
-        ultraSignUpPerson:
-            spec.scope == RaceImportScope.linkedPerson ? _person.link : null,
+        bib: _blank(_bib.text),
         matchRunId: widget.matchRunId,
       );
       if (!mounted) return;
@@ -921,15 +893,6 @@ class _RaceImportFormState extends State<_RaceImportForm> {
       if (!mounted) return;
       setState(() => _busy = false);
       showTopBanner(context, l.integrationsImportTruncated);
-    } on UltraSignUpNotLinked {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      _person.set(null);
-      showTopBanner(context, l.racesUltraSignUpNotLinked);
-    } on UltraSignUpPersonNotFound {
-      if (!mounted) return;
-      setState(() => _busy = false);
-      showTopBanner(context, l.racesUltraSignUpPersonNotFound);
     } catch (e) {
       if (!mounted) return;
       // The service throws the catalogue's own const instance, so identity is
@@ -977,36 +940,6 @@ class _RaceImportFormState extends State<_RaceImportForm> {
 
   String? _blank(String s) => s.trim().isEmpty ? null : s.trim();
 
-  /// Nothing until the stored link has been read, so the finder is never
-  /// offered to a runner who is already linked; then either who the import is
-  /// for, or the way to say so.
-  List<Widget> _personScope(AppLocalizations l, RaceImportProvider spec) {
-    final small = Theme.of(context).textTheme.bodySmall;
-    if (!_person.loaded) return const [];
-    final link = _person.link;
-    if (link != null) {
-      return [
-        Text(
-          l.racesUltraSignUpImportingAs(
-              '${link.firstName} ${link.lastName}', link.personId),
-          key: Key('${spec.provider}-linked-person'),
-        ),
-        Text(l.racesUltraSignUpLinkedHint, style: small),
-      ];
-    }
-    return [
-      Text(l.racesUltraSignUpNotLinked,
-          key: Key('${spec.provider}-not-linked'), style: small),
-      Align(
-        alignment: AlignmentDirectional.centerStart,
-        child: TextButton(
-          onPressed: _busy ? null : _findPerson,
-          child: Text(l.integrationsUltrasignupFindLabel),
-        ),
-      ),
-    ];
-  }
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -1019,16 +952,8 @@ class _RaceImportFormState extends State<_RaceImportForm> {
           children: [
             if (_provider case final spec?) ...[
               if (_available == true) ...[
-                // Exhaustive on purpose: a scope added to the catalogue must
-                // fail to compile here rather than inherit a hint about a
-                // field it does not have.
-                ...switch (spec.scope) {
-                  RaceImportScope.bib => [
-                      Text(l.racesRunSignUpBibHint,
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ],
-                  RaceImportScope.linkedPerson => _personScope(l, spec),
-                },
+                Text(l.racesRunSignUpBibHint,
+                    style: Theme.of(context).textTheme.bodySmall),
                 FilledButton(
                   onPressed: _canProviderImport ? _providerImport : null,
                   child: Text(l.racesImportResult),

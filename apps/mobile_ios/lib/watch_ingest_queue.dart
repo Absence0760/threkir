@@ -379,6 +379,9 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
           // A fix the wrist's estimator took past its 30 m track gate,
           // stored for the server's replay and skipped by every line reader.
           offTrack: p['offTrack'] == true,
+          // The first fix of a segment after a pause or a source switch
+          // (spec v1.8): the server replays each segment apart from it.
+          segmentStart: p['segmentStart'] == true,
         ));
       }
     }
@@ -419,6 +422,17 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
   final estimator = raw['distance_estimator'];
   if (estimator is String && estimator.isNotEmpty) {
     metadata[cm.MetadataKeys.distanceEstimator] = estimator;
+    // How many estimator segments the wrist stored. The server reads
+    // `distance_step_over_chord_m` only when its replay of the uploaded
+    // track finds as many, so a track that lost its `segmentStart` marks
+    // keeps the run-total rule; dropping this key costs the same fallback.
+    final segments = raw['distance_segments'];
+    if (segments is num &&
+        segments.isFinite &&
+        segments >= 1 &&
+        segments == segments.truncate()) {
+      metadata[cm.MetadataKeys.distanceSegments] = segments.toInt();
+    }
   }
   // The wrist stored every fix its estimator took, off-track ones flagged,
   // so the server replay of this track sees the watch's own input.

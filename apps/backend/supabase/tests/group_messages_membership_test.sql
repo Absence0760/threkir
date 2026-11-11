@@ -7,7 +7,7 @@
 -- the earlier window back, the uniform not-found, and the default-off flag.
 
 begin;
-select plan(69);
+select plan(70);
 
 insert into private.feature_flags (name, enabled) values ('group_messages', true)
 on conflict (name) do update set enabled = true;
@@ -299,6 +299,9 @@ set local role authenticated;
 select is(
   invite_to_group((select id from g where k = 'cap'), array['b1365000-0000-0000-0000-000000000132']::uuid[]),
   1, 'an expired invite frees its seat');
+select throws_ok(
+  $$select invite_to_group((select id from g where k = 'cap'), array['b1365000-0000-0000-0000-000000000131']::uuid[])$$,
+  '42501', null, 'a lapsed invite cannot be sent again within 14 days of lapsing');
 
 -- ── one not-found for a group the caller is not in and one that does not exist (C5) ──
 

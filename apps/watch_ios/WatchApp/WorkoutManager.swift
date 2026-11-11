@@ -163,12 +163,17 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// Nil when it cannot be known: a run continued from a checkpoint that
     /// predates the field but had already filled a gap.
     private var bankedStepOverChordMetres: Double? = 0
-    /// Step metres a pause committed across a gap still open at it, held out
-    /// of `bankedStepOverChordMetres`: the stored track has no segment marks,
-    /// so the server's replay reads that gap as running on to the next
-    /// segment's first fix and credits its chord. Dropped once a later segment
-    /// takes a fix; added back if the run stops with none after them.
-    private var heldBoundaryStepMetres: Double = 0
+    /// Set when a segment closes mid-run (a pause, or a continued run's
+    /// restore), cleared by the next stored fix, which is stored
+    /// `segmentStart: true` so the server replays each segment apart, as the
+    /// watch credited it (spec v1.8, docs/features/gps_distance.md § Stored
+    /// track).
+    private var markSegmentStart = false
+    /// The estimator segments the track file holds
+    /// (`TrackPointRecord.opensSegment`), counted as each fix is stored and
+    /// recounted from the file when a run is continued. Becomes
+    /// `FinishedRun.distanceSegments`.
+    private var storedSegmentCount = 0
     /// Whether the track file holds every fix the estimator took this run:
     /// true from `start()`, and on a continued run only when its checkpoint
     /// said so. Becomes `FinishedRun.trackComplete`.
@@ -255,6 +260,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         /// stepless replay needs. Sent with `distanceStepFilledMetres`; nil
         /// when unknown, which leaves the server its run-total rule.
         var distanceStepOverChordMetres: Double? = nil
+        /// `metadata.distance_segments`: the estimator segments the stored
+        /// track holds, which the server matches against its replay before it
+        /// reads `distanceStepOverChordMetres`. Nil for a run with no track.
+        var distanceSegments: Int? = nil
         /// `metadata.track_complete`: the track file holds every fix the
         /// estimator took, off-track ones flagged, and is not empty.
         var trackComplete: Bool = false
@@ -278,6 +287,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         var bearingDeg: Double? = nil
         var distM: Double? = nil
         var offTrack: Bool? = nil
+        var segmentStart: Bool? = nil
     }
 
     /// Bytes buffered before `writeTrackJSON` flushes to the output handle.
@@ -332,7 +342,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 speedAccuracyMps: record.speedAccuracyMps,
                 bearingDeg: record.bearingDeg,
                 distM: record.distM,
-                offTrack: record.offTrack
+                offTrack: record.offTrack,
+                segmentStart: record.segmentStart
             )
             guard let encoded = try? encoder.encode(point) else { return }
             if wroteAny { buffer.append(comma) }
@@ -643,7 +654,6 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         bankedStepFilledMetres = cp.distanceStepFilledMetres ?? 0
         bankedStepOverChordMetres = cp.distanceStepOverChordMetres
             ?? (bankedStepFilledMetres > 0 ? nil : 0)
-        heldBoundaryStepMetres = 0
         distanceMetres = bankedDistanceMetres
         lapMarks = cp.laps ?? []
         steps = cp.steps
@@ -656,8 +666,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         checkpointStore = store
         var trail = MiniMapTrail()
         var count = 0
+        var segments = 0
         var last: TrackPointRecord?
         store.forEachTrackPoint { record in
+            if record.opensSegment(pointsBefore: count) { segments += 1 }
             count += 1
             // The map is the line; a fix stored only for the server's
             // distance replay is not on it.
@@ -666,6 +678,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             last = record
         }
         trackPointCount = count
+        storedSegmentCount = segments
+        // The fresh estimator above is a new segment of the same track.
+        markSegmentStart = count > 0
         mapTrail = trail
         mapPosition = last.map { MiniMapPoint(latitude: $0.lat, longitude: $0.lng) }
 
@@ -747,9 +762,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         healthKit.stopWorkout()
         pedometer.stop()
         if state == .recording {
-            sealDistanceSegment(endOfRun: true)
-        } else {
-            releaseHeldBoundarySteps()
+            sealDistanceSegment()
         }
 
         // The full run stays on disk — nothing here materialises it. Close the append
@@ -798,6 +811,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             distanceEstimator: Self.distanceEstimatorTag,
             distanceStepFilledMetres: distanceStepFilledMetres,
             distanceStepOverChordMetres: distanceStepOverChordMetres,
+            distanceSegments: storedSegmentCount > 0 ? storedSegmentCount : nil,
             trackComplete: storedTrackComplete && trackPointCount > 0,
             workoutReview: workoutRunner?.review() ?? carriedWorkoutReview
         )
@@ -1026,7 +1040,8 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         bankedDistanceMetres = 0
         bankedStepFilledMetres = 0
         bankedStepOverChordMetres = 0
-        heldBoundaryStepMetres = 0
+        markSegmentStart = false
+        storedSegmentCount = 0
         lastEstimatorFixT = nil
         paceWindow.seal()
     }
@@ -1034,39 +1049,19 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// Close the active segment at a pause or stop: commit any steps buffered
     /// across a trailing gap, bank the segment, and start the next one fresh
     /// but keeping the learned stride, so a GPS gap right after a resume is
-    /// still step-filled.
-    /// `endOfRun` is the stop, after which the replay sees no gap past the
-    /// last fix.
-    private func sealDistanceSegment(endOfRun: Bool = false) {
-        if distanceEstimator.lastFixT != nil { heldBoundaryStepMetres = 0 }
-        let overBeforeFinish = distanceEstimator.stepOverChordM
+    /// still step-filled. The next stored fix is marked `segmentStart`, so the
+    /// server's replay ends this segment at its last fix as the watch did and
+    /// the steps `finish` committed past it are all over-chord.
+    private func sealDistanceSegment() {
         distanceEstimator.finish(t: ProcessInfo.processInfo.systemUptime)
         bankedDistanceMetres += distanceEstimator.distanceM
         bankedStepFilledMetres += distanceEstimator.stepDistanceM
-        let trailing = distanceEstimator.stepOverChordM - overBeforeFinish
-        if endOfRun {
-            bankedStepOverChordMetres = bankedStepOverChordMetres.map {
-                $0 + distanceEstimator.stepOverChordM + heldBoundaryStepMetres
-            }
-            heldBoundaryStepMetres = 0
-        } else {
-            bankedStepOverChordMetres = bankedStepOverChordMetres.map { $0 + overBeforeFinish }
-            heldBoundaryStepMetres += trailing
-        }
+        bankedStepOverChordMetres = bankedStepOverChordMetres.map { $0 + distanceEstimator.stepOverChordM }
         distanceEstimator = distanceEstimator.nextSegment()
+        markSegmentStart = true
         lastEstimatorFixT = nil
         paceWindow.seal()
         distanceMetres = bankedDistanceMetres
-    }
-
-    /// A run stopped while paused: the segment the pause opened took no fix,
-    /// so the steps the pause held lie past the run's last fix, where the
-    /// replay credits nothing, and go back into the bank.
-    private func releaseHeldBoundarySteps() {
-        if distanceEstimator.lastFixT == nil {
-            bankedStepOverChordMetres = bankedStepOverChordMetres.map { $0 + heldBoundaryStepMetres }
-        }
-        heldBoundaryStepMetres = 0
     }
 
     /// The fix's own time on the uptime clock. Each fix keeps its spacing from
@@ -1153,7 +1148,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             let onLine = location.horizontalAccuracy < Self.trackAccuracyGateM
             if onLine { lastAcceptedFix = location }
 
-            newPoints.append(TrackPointRecord(
+            let point = TrackPointRecord(
                 lat: location.coordinate.latitude,
                 lng: location.coordinate.longitude,
                 ele: location.altitude > -999 ? location.altitude : nil,
@@ -1163,8 +1158,12 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 speedAccuracyMps: Self.speedAccuracy(of: location),
                 bearingDeg: Self.bearing(of: location),
                 distM: Self.storedDistance(distanceMetres),
-                offTrack: onLine ? nil : true
-            ))
+                offTrack: onLine ? nil : true,
+                segmentStart: markSegmentStart ? true : nil
+            )
+            if point.opensSegment(pointsBefore: trackPointCount + newPoints.count) { storedSegmentCount += 1 }
+            newPoints.append(point)
+            markSegmentStart = false
         }
 
         if fedEstimator {
@@ -1275,7 +1274,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // Counted off the file rather than taken from `cp.trackPointCount`:
         // fixes appended since the last 15 s checkpoint are on disk but not
         // in the checkpoint's own figure.
-        let count = store.countTrackPoints()
+        let (count, segments) = store.countTrackPointsAndSegments()
         trackPointCount = count
         let marks = cp.laps ?? []
         lapMarks = marks
@@ -1313,6 +1312,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             distanceEstimator: cp.distanceEstimator,
             distanceStepFilledMetres: cp.distanceStepFilledMetres ?? 0,
             distanceStepOverChordMetres: cp.distanceStepOverChordMetres,
+            distanceSegments: segments > 0 ? segments : nil,
             trackComplete: (cp.trackComplete ?? false) && count > 0,
             workoutReview: cp.workoutReview
         )

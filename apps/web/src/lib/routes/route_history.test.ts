@@ -58,6 +58,21 @@ test('qualifyingAttempts filters by activity_type (defaulting to run)', () => {
 	);
 });
 
+test('qualifyingAttempts leaves out a run holding the ten-day repair placeholder', () => {
+	const me = baseRun({ id: 'me', duration_s: 1500 });
+	const others = [
+		me,
+		baseRun({ id: 'capped', duration_s: 864000 }),
+		baseRun({ id: 'slow', duration_s: 863999 }),
+	];
+	assert.deepEqual(
+		qualifyingAttempts(me, others).map((r) => r.id),
+		['me', 'slow'],
+	);
+	const capped = others[1];
+	assert.equal(summariseHistory(capped.id, qualifyingAttempts(capped, others)), null);
+});
+
 test('qualifyingAttempts sorts by duration ascending', () => {
 	const me = baseRun({ id: 'me' });
 	const others = [

@@ -12,14 +12,18 @@
 library;
 
 /// Every `direct_messages.kind` the CHECK admits.
-const List<String> kDmKinds = ['text', 'coach_share', 'ai_assisted'];
+const List<String> kDmKinds = ['text', 'coach_share', 'ai_assisted', 'group_renamed'];
 
 /// Must equal the 4000-character cap share_coach_message enforces.
 const int kCoachShareMaxChars = 4000;
 
 /// A row's `kind`, read at the boundary. Anything unknown is drawn as text.
+/// `group_renamed` is the system line rename_group writes in a group, its body
+/// the new title (migration 20271217000004).
 String parseDmKind(Object? raw) =>
-    raw == 'coach_share' || raw == 'ai_assisted' ? raw! as String : 'text';
+    raw == 'coach_share' || raw == 'ai_assisted' || raw == 'group_renamed'
+        ? raw! as String
+        : 'text';
 
 final RegExp _edge = RegExp(r'^[ \t\n\r]+|[ \t\n\r]+$');
 

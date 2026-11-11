@@ -40,6 +40,24 @@ const kRaceCourseCacheKey = 'race_course_cache';
 /// finish the runner withdrew.
 const kPendingRaceVoidsKey = 'race_pending_voids';
 
+/// SharedPreferences key holding the best device-to-server clock offset this
+/// device measured, with the sample's round trip and when it was taken, so a
+/// process restart mid-race times by it before the next round trip.
+const kServerClockOffsetKey = 'race_clock_offset';
+
+/// How long a remembered clock offset is trusted after its sample was taken,
+/// on the device clock. A day covers a restart anywhere in a single-day race;
+/// past it, or when the device clock now reads before the sample, the offset
+/// is dropped and the device clock is trusted until the next round trip.
+const Duration kServerClockOffsetMaxAge = Duration(hours: 24);
+
+/// SharedPreferences key holding a line finish the runner undid with "Not
+/// finished? Resume": the account, race, recording, the undone instant and
+/// the start it was measured from. After a process restart the same
+/// recording keeps that start and re-arms the finish line for a later
+/// crossing, instead of finishing again on the undone one.
+const kRaceUndoneFinishKey = 'race_undone_finish';
+
 /// How long "Not finished? Resume" is offered after a line finish (#1307
 /// m11).
 const Duration kRaceUndoWindow = Duration(seconds: 60);
@@ -128,14 +146,17 @@ bool isRetryableRaceResultFailure(Object e) {
   return status == null || !const {400, 403, 404, 422}.contains(status);
 }
 
-/// Remove every queued finisher time. Called on sign-out: the queue is the
-/// one place a departing account's results would otherwise wait for the
-/// next account to sign in. Never throws.
+/// Remove every queued finisher time, the undone finish and the remembered
+/// clock offset. Called on sign-out: the queue is the one place a departing
+/// account's results would otherwise wait for the next account to sign in.
+/// Never throws.
 Future<void> clearPendingRaceResults() async {
   try {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(kPendingRaceResultsKey);
     await prefs.remove(kPendingRaceVoidsKey);
+    await prefs.remove(kRaceUndoneFinishKey);
+    await prefs.remove(kServerClockOffsetKey);
   } catch (e) {
     debugPrint('[clearPendingRaceResults] ${safeErrorLabel(e)}');
   }
@@ -528,6 +549,91 @@ Map<String, dynamic> racePingRow({
       if (sinceStartLineS != null) 'since_start_line_s': sinceStartLineS,
     };
 
+/// A line finish the runner undid, as [kRaceUndoneFinishKey] holds it.
+class _UndoneFinish {
+  const _UndoneFinish({
+    required this.userId,
+    required this.race,
+    required this.recordingStartedAt,
+    required this.undoneAt,
+    required this.keptStart,
+  });
+
+  final String userId;
+
+  /// `eventId|instance`, like [RaceController._detKey].
+  final String race;
+
+  /// The recording's Start, device clock: a restart resumes the same
+  /// recording with the same Start, and nothing else adopts this.
+  final DateTime recordingStartedAt;
+
+  /// The undone finish instant, device clock.
+  final DateTime undoneAt;
+
+  /// The start the undone finish was measured from; null for the Start
+  /// press.
+  final RaceStart? keptStart;
+
+  /// To the second: the recovered run's Start may round-trip through a
+  /// format that keeps less than the device's microseconds.
+  bool sameRecording(DateTime startedAt) =>
+      recordingStartedAt.millisecondsSinceEpoch ~/ 1000 ==
+      startedAt.millisecondsSinceEpoch ~/ 1000;
+
+  Map<String, dynamic> toJson() => {
+        'user_id': userId,
+        'race': race,
+        'recording_started_at': recordingStartedAt.toUtc().toIso8601String(),
+        'undone_at': undoneAt.toUtc().toIso8601String(),
+        'kept_start': switch (keptStart) {
+          null => null,
+          final k => {
+              'at': k.at.toUtc().toIso8601String(),
+              'covered_m': k.coveredM,
+              'kind': k.kind.name,
+              'gapped': k.gapped,
+            },
+        },
+      };
+
+  static _UndoneFinish? fromJson(Object? j) {
+    if (j is! Map) return null;
+    final userId = j['user_id'];
+    final race = j['race'];
+    final began = parseIsoStrictValue(j['recording_started_at']);
+    final undoneAt = parseIsoStrictValue(j['undone_at']);
+    if (userId is! String || race is! String || began == null || undoneAt == null) {
+      return null;
+    }
+    RaceStart? kept;
+    final k = j['kept_start'];
+    if (k is Map) {
+      final at = parseIsoStrictValue(k['at']);
+      final covered = k['covered_m'];
+      final kind = RaceStartKind.values.where((v) => v.name == k['kind']);
+      if (at == null || covered is! num || !covered.isFinite || kind.isEmpty) {
+        return null;
+      }
+      kept = RaceStart(
+        at: at,
+        coveredM: covered.toDouble(),
+        kind: kind.single,
+        gapped: k['gapped'] == true,
+      );
+    } else if (k != null) {
+      return null;
+    }
+    return _UndoneFinish(
+      userId: userId,
+      race: race,
+      recordingStartedAt: began,
+      undoneAt: undoneAt,
+      keptStart: kept,
+    );
+  }
+}
+
 class RaceController extends ChangeNotifier {
   RaceController(this._social);
 
@@ -608,6 +714,20 @@ class RaceController extends ChangeNotifier {
   /// undo is still timed from the start line, not the Start press.
   RaceStart? _keptStart;
 
+  /// A finish this recording undid before a process restart, read back at
+  /// [beginRecording]. It outlives [_resetDetection]; the recording ending,
+  /// a filing, or the race being forgotten clears it.
+  _UndoneFinish? _undone;
+
+  /// The latest line finish this recording undid, device clock: kept past a
+  /// filing and the stored undo's clearing, until the recording ends, so the
+  /// saved run can carry it.
+  DateTime? _latestUndoneAt;
+
+  /// The undo the current detector was re-armed after: it sees only fixes
+  /// after the undone instant, with coverage counted from the kept start.
+  _UndoneFinish? _detectorUndone;
+
   /// The outcome already filed by [fileOutcomeNow], so Stop does not file it
   /// twice, and the write in flight that a void must wait for.
   RaceOutcome? _filedOutcome;
@@ -686,11 +806,31 @@ class RaceController extends ChangeNotifier {
     );
   }
 
+  /// The latest line finish this recording undid, on the server clock under
+  /// the offset a result filed now would carry (whole milliseconds, as
+  /// `finish_at`); null when none was. The run screen writes it on the saved
+  /// run as `race_undone_finish_at`, so a re-time from the track skips it.
+  DateTime? get undoneFinishAt {
+    final at = _latestUndoneAt;
+    if (at == null) return null;
+    return at
+        .add(Duration(milliseconds: clockOffset.offset.inMilliseconds))
+        .toUtc();
+  }
+
+  void _noteUndone(DateTime at) {
+    final latest = _latestUndoneAt;
+    if (latest == null || at.isAfter(latest)) _latestUndoneAt = at;
+  }
+
   /// Attach the controller to a user session. Starts polling for armed
   /// sessions on events the user has RSVP'd to. Idempotent.
   Future<void> start() async {
     if (_pollTimer != null) return;
     _attachWatchRelays();
+    // Before the first poll: an offline restart restores the race off the
+    // cache and judges its window on the server clock.
+    await restoreClockOffset();
     await _refresh();
     // Realtime on race_sessions handles the live case (any change fires
     // a refresh). The 60 s timer is a watchdog for when the channel
@@ -768,6 +908,9 @@ class RaceController extends ChangeNotifier {
       _setActive(next);
       unawaited(_writeActiveCache(next));
       if (next != null) unawaited(_prefetchCourse(next));
+      await _forgetUndoneUnless({
+        for (final r in rows) _raceKey(r.eventId, r.instanceStart),
+      });
     } catch (e) {
       debugPrint('[RaceController._refresh] ${safeErrorLabel(e)}');
       // Offline: a self-timed or scheduled race found earlier still stands
@@ -792,7 +935,7 @@ class RaceController extends ChangeNotifier {
     for (final row in (raw as List).cast<Map<String, dynamic>>()) {
       final serverNow = parseIsoStrictValue(row['server_now']);
       if (serverNow != null) {
-        clockOffset.addSample(
+        addClockSample(
             sentAt: sentAt, receivedAt: receivedAt, serverAt: serverNow);
       }
       final race = ActiveRace.fromJson(row);
@@ -850,6 +993,81 @@ class RaceController extends ChangeNotifier {
     } catch (e) {
       debugPrint('[RaceController._readActiveCache] $e');
       return null;
+    }
+  }
+
+  /// One round trip's sample for [clockOffset]; the offset it keeps is
+  /// remembered on the device whenever a sample replaces it.
+  void addClockSample({
+    required DateTime sentAt,
+    required DateTime receivedAt,
+    required DateTime serverAt,
+  }) {
+    final wasKnown = clockOffset.known;
+    final before = clockOffset.offset;
+    clockOffset.addSample(
+        sentAt: sentAt, receivedAt: receivedAt, serverAt: serverAt);
+    if (wasKnown && clockOffset.offset == before) return;
+    final offset = clockOffset.offset;
+    final rtt = receivedAt.difference(sentAt);
+    // In order, so a slower write cannot land a replaced sample last.
+    _offsetWrite = (_offsetWrite ?? Future<void>.value())
+        .then((_) => _writeClockOffset(offset, rtt, receivedAt));
+  }
+
+  Future<void>? _offsetWrite;
+
+  Future<void> _writeClockOffset(
+      Duration offset, Duration rtt, DateTime sampledAt) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kServerClockOffsetKey, jsonEncode({
+        'offset_us': offset.inMicroseconds,
+        'rtt_us': rtt.inMicroseconds,
+        'sampled_at': sampledAt.toUtc().toIso8601String(),
+      }));
+    } catch (e) {
+      debugPrint('[RaceController._writeClockOffset] $e');
+    }
+  }
+
+  /// Seed [clockOffset] with the offset remembered before a restart, as the
+  /// sample it was, so a live sample replaces it by the usual shortest round
+  /// trip rule. One older than [kServerClockOffsetMaxAge], or taken after
+  /// the device clock's now, is dropped. Never throws.
+  Future<void> restoreClockOffset() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(kServerClockOffsetKey);
+      if (raw == null) return;
+      final j = jsonDecode(raw);
+      final offsetUs = j is Map ? j['offset_us'] : null;
+      final rttUs = j is Map ? j['rtt_us'] : null;
+      final sampledAt = j is Map ? parseIsoStrictValue(j['sampled_at']) : null;
+      final age = sampledAt == null
+          ? null
+          : (nowReader ?? DateTime.now)().difference(sampledAt);
+      if (offsetUs is! int ||
+          rttUs is! int ||
+          rttUs < 0 ||
+          sampledAt == null ||
+          age == null ||
+          age.isNegative ||
+          age > kServerClockOffsetMaxAge) {
+        await prefs.remove(kServerClockOffsetKey);
+        return;
+      }
+      final rtt = Duration(microseconds: rttUs);
+      final sentAt = sampledAt.subtract(rtt);
+      clockOffset.addSample(
+        sentAt: sentAt,
+        receivedAt: sampledAt,
+        serverAt: sentAt
+            .add(Duration(microseconds: rttUs ~/ 2))
+            .add(Duration(microseconds: offsetUs)),
+      );
+    } catch (e) {
+      debugPrint('[RaceController.restoreClockOffset] $e');
     }
   }
 
@@ -1090,7 +1308,72 @@ class RaceController extends ChangeNotifier {
     _attachLogIndex = 0;
     _recording = true;
     _recordingStartedAt = startedAt;
+    _undone = null;
+    _latestUndoneAt = null;
     _detectionChanged();
+    unawaited(_adoptUndone(startedAt));
+  }
+
+  /// A recording resumed after a process restart picks up the finish it
+  /// undid before (decisions § 2450, restart): the committed start is kept
+  /// and the finish line re-armed for a later crossing. An entry for any
+  /// other recording or account is stale and dropped. L4.
+  Future<void> _adoptUndone(DateTime startedAt) async {
+    final stored = await _readUndone();
+    if (stored == null) return;
+    if (!stored.sameRecording(startedAt) || stored.userId != _signedInUserId) {
+      await _clearUndone();
+      return;
+    }
+    final began = _recordingStartedAt;
+    if (!_recording || began == null || !stored.sameRecording(began)) return;
+    _undone = stored;
+    _noteUndone(stored.undoneAt);
+    if (_outcome == null && !_autoFinishVoided) _detector = null;
+    _detectionChanged();
+  }
+
+  Future<_UndoneFinish?> _readUndone() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(kRaceUndoneFinishKey);
+      return raw == null ? null : _UndoneFinish.fromJson(jsonDecode(raw));
+    } catch (e) {
+      debugPrint('[RaceController._readUndone] $e');
+      return null;
+    }
+  }
+
+  Future<void> _writeUndone(_UndoneFinish undone) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(kRaceUndoneFinishKey, jsonEncode(undone.toJson()));
+    } catch (e) {
+      debugPrint('[RaceController._writeUndone] $e');
+    }
+  }
+
+  Future<void> _clearUndone() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(kRaceUndoneFinishKey);
+    } catch (e) {
+      debugPrint('[RaceController._clearUndone] $e');
+    }
+  }
+
+  /// A poll that answered without the undone finish's race, while no
+  /// recording is bound to it, forgets the undo: the race is over or gone.
+  Future<void> _forgetUndoneUnless(Set<String> live) async {
+    final stored = _undone ?? await _readUndone();
+    if (stored == null || live.contains(stored.race)) return;
+    final eid = _hostingEventId;
+    final inst = _hostingInstance;
+    if (eid != null && inst != null && _raceKey(eid, inst) == stored.race) {
+      return;
+    }
+    _undone = null;
+    await _clearUndone();
   }
 
   void detachRecorder() {
@@ -1111,6 +1394,11 @@ class RaceController extends ChangeNotifier {
     _firstFixLng = null;
     _pingTimer?.cancel();
     _pingTimer = null;
+    _latestUndoneAt = null;
+    if (_undone != null) {
+      _undone = null;
+      unawaited(_clearUndone());
+    }
   }
 
   void _resetDetection() {
@@ -1122,6 +1410,7 @@ class RaceController extends ChangeNotifier {
     _pendingFinish = null;
     _autoFinishVoided = false;
     _keptStart = null;
+    _detectorUndone = null;
     _filedOutcome = null;
     _filing = null;
     _startCued = false;
@@ -1187,6 +1476,8 @@ class RaceController extends ChangeNotifier {
       _detKey = key;
       _course = _courseCache[key];
     }
+    final undone = _undone?.race == key ? _undone : null;
+    if (undone != null) _keptStart ??= undone.keptStart;
     final course = _course;
     if (course == null || _autoFinishVoided || _outcome != null) return;
     final goDevice = r.goAt?.subtract(clockOffset.offset);
@@ -1195,9 +1486,12 @@ class RaceController extends ChangeNotifier {
       // A gun race waits for GO; a recording already bound (whose GO may
       // never have been on record) times as it always did.
       if (!r.selfTimed && goDevice == null && !isHosting) return;
-      final built = _buildDetector(course, r.selfTimed, goDevice);
+      final built = undone != null
+          ? _buildRearmedDetector(course, undone, goDevice)
+          : _buildDetector(course, r.selfTimed, goDevice);
       if (built == null) return;
       _detector = built;
+      _detectorUndone = undone;
       _replayLog(goDevice);
     } else if (!r.selfTimed && goDevice != null) {
       final f = d.setGo(goDevice);
@@ -1228,6 +1522,42 @@ class RaceController extends ChangeNotifier {
     );
   }
 
+  /// The finish line alone, for a recording restarted after an undo: its
+  /// start is the one already committed, which no fix after the restart can
+  /// show the start line again, so coverage is counted from it by
+  /// [_detectorFix], at the share a finish with no start line needs.
+  RaceFinishDetector? _buildRearmedDetector(
+      RaceCourse course, _UndoneFinish undone, DateTime? goDevice) {
+    final line = course.finishGate;
+    if (course.finishLineSelfCross || line == null || !raceLineUsable(line)) {
+      return null;
+    }
+    final distance = course.distanceM;
+    if (distance == null || !distance.isFinite || distance <= 0) return null;
+    return RaceFinishDetector(
+      finishLat: course.finishLat ?? line.lat,
+      finishLng: course.finishLng ?? line.lng,
+      courseDistanceM: distance,
+      finishGate: line,
+      goAt: undone.keptStart?.at ?? goDevice,
+    );
+  }
+
+  /// [fix] as the current detector takes it: as it is, or for one re-armed
+  /// after an undo, only after the undone instant and covered from the kept
+  /// start. Null when it is not offered.
+  RaceFix? _detectorFix(RaceFix fix) {
+    final undone = _detectorUndone;
+    if (undone == null) return fix;
+    if (!fix.at.isAfter(undone.undoneAt)) return null;
+    return RaceFix(
+      lat: fix.lat,
+      lng: fix.lng,
+      at: fix.at,
+      coveredM: fix.coveredM - (undone.keptStart?.coveredM ?? 0),
+    );
+  }
+
   static bool _isV1(RaceFinishDetector d) =>
       d.mode == RaceStartMode.gun && d.startGate == null && d.finishGate == null;
 
@@ -1245,7 +1575,9 @@ class RaceController extends ChangeNotifier {
     for (var i = 0; i < _fixLog.length; i++) {
       final fix = _fixLog[i];
       if (v1 && !_v1Sees(fix, i, goDevice)) continue;
-      final f = d.offer(fix);
+      final offered = _detectorFix(fix);
+      if (offered == null) continue;
+      final f = d.offer(offered);
       if (f != null) {
         _onDetectedFinish(f, live: false);
         break;
@@ -1282,7 +1614,10 @@ class RaceController extends ChangeNotifier {
 
   void _updateDistanceToStart(double lat, double lng) {
     final gate = _course?.startGate;
-    if (gate == null || _detector?.start != null || _outcome != null) {
+    if (gate == null ||
+        _detector?.start != null ||
+        _keptStart != null ||
+        _outcome != null) {
       if (distanceToStartM.value != null) distanceToStartM.value = null;
       return;
     }
@@ -1496,7 +1831,9 @@ class RaceController extends ChangeNotifier {
             _gunAt?.subtract(clockOffset.offset))) {
       return null;
     }
-    final finish = d.offer(fix);
+    final offered = _detectorFix(fix);
+    if (offered == null) return null;
+    final finish = d.offer(offered);
     _checkStartCue();
     if (finish == null) return null;
     return _onDetectedFinish(finish, live: true);
@@ -1628,7 +1965,7 @@ class RaceController extends ChangeNotifier {
     final receivedAt = DateTime.now();
     final serverAt = parseIsoStrictValue(res?['at']);
     if (serverAt != null) {
-      clockOffset.addSample(
+      addClockSample(
           sentAt: sentAt, receivedAt: receivedAt, serverAt: serverAt);
     }
   }
@@ -1712,6 +2049,10 @@ class RaceController extends ChangeNotifier {
       return Future<void>.value();
     }
     _filedOutcome = outcome;
+    if (_undone != null) {
+      _undone = null;
+      unawaited(_clearUndone());
+    }
     final filing = _file(_resultFor(
       owner: owner,
       eventId: eid,
@@ -1742,17 +2083,32 @@ class RaceController extends ChangeNotifier {
     }
     final filed = _filedOutcome != null;
     final filing = _filing;
-    _keptStart = _finish?.start ?? _detector?.start;
+    _keptStart = _finish?.start ?? _detector?.start ?? _keptStart;
     _outcome = null;
     _finish = null;
     _pendingFinish = null;
     _filedOutcome = null;
     _filing = null;
     _detector = null;
+    _detectorUndone = null;
     _autoFinishVoided = true;
     notifyListeners();
-    if (!filed) return true;
     final owner = _hostingUserId ?? _signedInUserId;
+    final began = _recordingStartedAt;
+    final undoneAt = outcome.finishAt;
+    if (undoneAt != null) _noteUndone(undoneAt);
+    if (owner != null && began != null && undoneAt != null) {
+      final undone = _UndoneFinish(
+        userId: owner,
+        race: _raceKey(eid, inst),
+        recordingStartedAt: began,
+        undoneAt: undoneAt,
+        keptStart: _keptStart,
+      );
+      _undone = undone;
+      await _writeUndone(undone);
+    }
+    if (!filed) return true;
     _voiding = true;
     try {
       try {

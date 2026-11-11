@@ -51,6 +51,7 @@ test('an unknown kind is drawn as text', () => {
 	assert.equal(parseDmKind('coach_share'), 'coach_share');
 	assert.equal(parseDmKind('text'), 'text');
 	assert.equal(parseDmKind('ai_assisted'), 'ai_assisted');
+	assert.equal(parseDmKind('group_renamed'), 'group_renamed');
 	assert.equal(parseDmKind('ai_reply'), 'text');
 	assert.equal(parseDmKind(null), 'text');
 });

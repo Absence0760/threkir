@@ -178,6 +178,11 @@ const (
 	// A watch recorder writes it beside distance_step_filled_m, and it is
 	// exactly what a stepless replay of the track lacks.
 	MetaDistanceStepOverChordM = "distance_step_over_chord_m"
+	// How many estimator segments a watch stored, each later one's first fix
+	// marked segmentStart (spec v1.8). distance_step_over_chord_m is read only
+	// when the replay finds as many, so a track that lost its marks on the way
+	// to storage keeps the run-total rule.
+	MetaDistanceSegments = "distance_segments"
 	// Stamped true by a recorder whose stored track holds every fix its
 	// distance estimator took, the off-track ones flagged `offTrack`. A
 	// live watch stamp from spec v1.4 on without it names a track that
@@ -200,6 +205,11 @@ const (
 	// measured on. Written with it; the runs_road_distance_matches_track
 	// trigger drops the pair when it no longer names the stored object.
 	MetaDistanceMapMatchedTrackVersion = "distance_map_matched_track_version"
+	// Set true by migration 20271218000002 on a run it capped at the
+	// ten-day bound, while duration_s is that placeholder. Read by the
+	// duration repair (kind='duration_repair'); the runs_keep_duration_repair
+	// trigger drops it on the write that changes duration_s.
+	MetaDurationRepaired = "duration_repaired"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

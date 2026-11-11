@@ -20,6 +20,8 @@ export interface NotificationLinkInput {
 		achievement_id: string | null;
 		challenge_id: string | null;
 		course_alert_id?: string | null;
+		/// The group a message or invite is about (migration 20271217000001).
+		conversation_id?: string | null;
 	};
 	event_club_slug: string | null;
 	club_slug: string | null;
@@ -71,7 +73,13 @@ export function notificationLinkFor(item: NotificationLinkInput): string | null 
 		case 'workout_reminder':
 			return r.plan_id ? `/plans/${r.plan_id}` : null;
 		case 'message':
+			// A group message opens its group, never a 1:1 thread with the sender.
+			if (r.conversation_id) return `/messages/group/${r.conversation_id}`;
 			return r.actor_id ? `/messages/${r.actor_id}` : null;
+		case 'group_invite':
+			// Accept and decline sit in the inbox's Requests list; the group itself
+			// opens only once accepted (decisions § 2463).
+			return '/messages?view=requests';
 		case 'club_post':
 		case 'club_join_approved':
 		case 'club_join_request':

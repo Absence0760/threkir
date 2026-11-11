@@ -8,7 +8,7 @@
 /// Usage:
 ///
 ///   import { withSentry } from '../_shared/sentry.ts';
-///   serve(withSentry('parkrun-import', async (req) => { ... }));
+///   serve(withSentry('export-data', async (req) => { ... }));
 
 import * as Sentry from 'https://deno.land/x/sentry@8.40.0/index.mjs';
 import { sanitizeErrorForCapture } from './sentry_scrub.ts';

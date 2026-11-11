@@ -33,16 +33,20 @@
       "published_source": "https://www.dcr.virginia.gov/state-parks/hiking-central",
       "checkpoints": [
         {
-          "lat": 37.384173,
-          "lng": -77.585804
+          "lat": 37.384171,
+          "lng": -77.585807
         },
         {
-          "lat": 37.38116,
-          "lng": -77.591165
+          "lat": 37.382147,
+          "lng": -77.590548
+        },
+        {
+          "lat": 37.380315,
+          "lng": -77.590315
         },
         {
           "lat": 37.383646,
-          "lng": -77.590445
+          "lng": -77.590446
         }
       ],
       "waypoint_count": 172,
@@ -82,13 +86,19 @@
             "kind": "checkpoint",
             "at_m": 899,
             "order": 1,
-            "of": 3
+            "of": 4
           },
           {
             "kind": "checkpoint",
-            "at_m": 1797,
+            "at_m": 1635,
             "order": 2,
-            "of": 3
+            "of": 4
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1955,
+            "order": 3,
+            "of": 4
           },
           {
             "kind": "crossing",
@@ -98,8 +108,8 @@
           {
             "kind": "checkpoint",
             "at_m": 2696,
-            "order": 3,
-            "of": 3
+            "order": 4,
+            "of": 4
           },
           {
             "kind": "finish",

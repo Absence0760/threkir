@@ -14,7 +14,10 @@
 	import { DM_INBOX_POLL_MS, dmThreadRouteId } from '#lib/social/dm_thread.ts';
 	import { coachInboxPreview, inboxEntries, partitionArchived } from '#lib/social/messages_inbox.ts';
 	import { dmSearchSnippet, normalizeDmSearchQuery } from '#lib/social/dm_search.ts';
-	import { searchDms, type DmSearchHit } from '#lib/core/data.ts';
+	import { searchDms, type DmSearchHit, type GroupInvite } from '#lib/core/data.ts';
+	import { goto } from '$app/navigation';
+	import ConfirmDialog from '#lib/components/ConfirmDialog.svelte';
+	import GroupCreateDialog from '#lib/components/GroupCreateDialog.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -63,15 +66,25 @@
 	const coachPath = '/messages/coach';
 	const onCoach = $derived(page.url.pathname === coachPath);
 	// The open conversation: a DM partner (or deleted-partner key) from the
-	// `[[id]]` page, or the Coach.
-	const activeId = $derived(page.params.id ?? null);
+	// `[[id]]` page, a group from `/messages/group/[id]` (as `group/<id>`, the
+	// row's dmThreadRouteId), or the Coach.
+	const activeId = $derived(
+		page.params.id
+			? page.route.id === '/messages/group/[id]'
+				? `group/${page.params.id}`
+				: page.params.id
+			: null,
+	);
 	const hasActive = $derived(activeId !== null || onCoach);
 
 	// Archived conversations sit in their own list until a newer message
 	// arrives (dm_threads() decides that), and message requests the runner has
 	// not answered sit in Requests. The Coach row belongs to the inbox.
 	const split = $derived(partitionArchived(messagesInbox.threads));
-	const showingRequests = $derived(messagesInbox.showingRequests && split.requests.length > 0);
+	// Group invites sit in Requests beside message requests (decisions § 2463).
+	const invites = $derived(messagesInbox.groupsEnabled ? messagesInbox.invites : []);
+	const requestCount = $derived(split.requests.length + invites.length);
+	const showingRequests = $derived(messagesInbox.showingRequests && requestCount > 0);
 	const showingArchived = $derived(
 		!showingRequests && messagesInbox.showingArchived && split.archived.length > 0,
 	);
@@ -129,7 +142,53 @@
 		loadedFor = uid;
 		void messagesInbox.loadThreads();
 		void messagesInbox.loadCoach();
+		void messagesInbox.loadGroups();
 	});
+
+	// A group invite notification links to `/messages?view=requests`.
+	$effect(() => {
+		if (page.url.searchParams.get('view') === 'requests') messagesInbox.showingRequests = true;
+	});
+
+	let creatingGroup = $state(false);
+	let inviteBusy = $state<string | null>(null);
+	let declineTarget = $state<GroupInvite | null>(null);
+
+	async function acceptInvite(invite: GroupInvite) {
+		if (inviteBusy) return;
+		inviteBusy = invite.conversationId;
+		try {
+			await messagesInbox.acceptInvite(invite.conversationId);
+			showToast(m('groups.inviteAcceptedToast', { title: invite.title }), 'success');
+			messagesInbox.showingRequests = false;
+			await goto(`/messages/group/${invite.conversationId}`);
+		} catch (e) {
+			showToast(m('groups.inviteActionFailed', { error: errorCopy(e, m, 'groups.inviteActionFailed') }), 'error');
+			void messagesInbox.refreshInvites();
+		} finally {
+			inviteBusy = null;
+		}
+	}
+
+	async function confirmDeclineInvite() {
+		const invite = declineTarget;
+		declineTarget = null;
+		if (!invite || inviteBusy) return;
+		inviteBusy = invite.conversationId;
+		try {
+			await messagesInbox.declineInvite(invite.conversationId);
+			showToast(m('groups.inviteDeclinedToast'), 'success');
+		} catch (e) {
+			showToast(m('groups.inviteActionFailed', { error: errorCopy(e, m, 'groups.inviteActionFailed') }), 'error');
+			void messagesInbox.refreshInvites();
+		} finally {
+			inviteBusy = null;
+		}
+	}
+
+	function inviteTime(iso: string): string {
+		return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+	}
 
 	// The inbox re-reads every 30 s while the tab is visible, as mobile's does.
 	$effect(() => {
@@ -184,6 +243,17 @@
 						</button>
 					{:else}
 						<h2>{m('messages.heading')}</h2>
+						{#if messagesInbox.groupsEnabled}
+							<button
+								type="button"
+								class="btn btn-secondary btn-sm new-group"
+								data-testid="inbox-new-group"
+								onclick={() => (creatingGroup = true)}
+							>
+								<span class="material-symbols" aria-hidden="true">group_add</span>
+								{m('groups.newGroup')}
+							</button>
+						{/if}
 					{/if}
 				</header>
 				{#if !showingArchived && !showingRequests}
@@ -225,7 +295,13 @@
 										>
 											<span class="thread-text">
 												<span class="thread-top">
-													<strong>{hit.partnerId ? (hit.partnerName ?? m('messages.runnerFallback')) : m('messages.deletedAccount')}</strong>
+													<strong
+														>{hit.isGroup
+															? (hit.groupTitle ?? m('groups.groupFallback'))
+															: hit.partnerId
+																? (hit.partnerName ?? m('messages.runnerFallback'))
+																: m('messages.deletedAccount')}</strong
+													>
 													<span class="muted">{searchTime(hit.createdAt)}</span>
 												</span>
 												<span class="preview"
@@ -246,6 +322,49 @@
 							{m('messages.retry')}
 						</button>
 					</p>
+				{/if}
+				{#if showingRequests && invites.length > 0}
+					<ul class="invites" aria-label={m('groups.invitesHeading')} data-testid="inbox-group-invites">
+						{#each invites as invite (invite.conversationId)}
+							<li class="invite" data-testid="inbox-group-invite">
+								<span class="group-avatar" aria-hidden="true">
+									<span class="material-symbols">group</span>
+								</span>
+								<span class="thread-body">
+									<span class="thread-top">
+										<strong>{invite.title}</strong>
+										<span class="muted">{inviteTime(invite.invitedAt)}</span>
+									</span>
+									<span class="preview invite-line"
+										>{m('groups.inviteLine', {
+											name: invite.inviterName ?? m('messages.runnerFallback'),
+											count: invite.memberCount,
+										})}</span
+									>
+									<span class="invite-actions">
+										<button
+											type="button"
+											class="btn btn-primary btn-sm"
+											data-testid="group-invite-accept"
+											disabled={inviteBusy !== null}
+											onclick={() => void acceptInvite(invite)}
+										>
+											{m('groups.inviteAccept')}
+										</button>
+										<button
+											type="button"
+											class="btn btn-secondary btn-sm"
+											data-testid="group-invite-decline"
+											disabled={inviteBusy !== null}
+											onclick={() => (declineTarget = invite)}
+										>
+											{m('groups.inviteDecline')}
+										</button>
+									</span>
+								</span>
+							</li>
+						{/each}
+					</ul>
 				{/if}
 				{#if entries.length > 0}
 					<ul>
@@ -293,22 +412,41 @@
 								{@const t = entry.thread}
 								{@const routeId = dmThreadRouteId(t)}
 								{@const unread = Math.max(t.unread, t.markedUnread ? 1 : 0)}
-								{@const name = t.partnerId
-									? (t.partnerName ?? m('messages.runnerFallback'))
-									: m('messages.deletedAccount')}
+								{@const isGroup = t.kind === 'group'}
+								{@const name = isGroup
+									? (t.title ?? m('groups.groupFallback'))
+									: t.partnerId
+										? (t.partnerName ?? m('messages.runnerFallback'))
+										: m('messages.deletedAccount')}
 								<li>
-									<a class="thread" class:active={routeId === activeId} href={`/messages/${routeId}`}>
-										<Avatar
-											url={t.partnerAvatar}
-											name={t.partnerId ? t.partnerName : null}
-											size="2.2rem"
-											font="0.9rem"
-											bg="seed"
-											seedHue={hashHue(routeId)}
-										/>
+									<a
+										class="thread"
+										class:active={routeId === activeId}
+										href={`/messages/${routeId}`}
+										data-testid={isGroup ? 'inbox-group-row' : undefined}
+									>
+										{#if isGroup}
+											<span class="group-avatar" aria-hidden="true">
+												<span class="material-symbols">group</span>
+											</span>
+										{:else}
+											<Avatar
+												url={t.partnerAvatar}
+												name={t.partnerId ? t.partnerName : null}
+												size="2.2rem"
+												font="0.9rem"
+												bg="seed"
+												seedHue={hashHue(routeId)}
+											/>
+										{/if}
 										<span class="thread-body">
 											<span class="thread-top">
 												<strong>{name}</strong>
+												{#if isGroup && t.memberCount !== null}
+													<span class="member-count" data-testid="inbox-group-members"
+														>{m('groups.memberCount', { count: t.memberCount })}</span
+													>
+												{/if}
 												{#if t.muted}
 													<span class="muted-mark" title={m('messages.mutedMark')} data-testid="inbox-muted-mark">
 														<span class="material-symbols" aria-hidden="true">notifications_off</span>
@@ -317,11 +455,19 @@
 												{/if}
 												{#if unread > 0}<span class="badge" class:quiet={t.muted} data-testid="inbox-unread-count">{unread}</span>{/if}
 											</span>
-											<span class="preview" class:unsent={t.lastUnsent}
-												>{#if t.lastKind === 'coach_share' && !t.lastUnsent}<AiTag />&nbsp;{/if}{t.lastFromMe ? m('messages.youPrefix') : ''}{t.lastUnsent
-													? m('messages.unsentPlaceholder')
-													: (t.lastBody ?? (t.lastImage ? m('messages.photoPreview') : ''))}</span
-											>
+											{#if isGroup && t.membershipState === 'left'}
+												<span class="preview unsent" data-testid="inbox-group-left">{m('groups.youLeftPreview')}</span>
+											{:else if isGroup && t.lastKind === 'group_renamed' && !t.lastUnsent}
+												<span class="preview">{m('groups.renamedPreview', { title: t.lastBody ?? '' })}</span>
+											{:else if isGroup && t.lastBody === null && !t.lastImage && !t.lastUnsent}
+												<span class="preview">{m('groups.noMessagesYet')}</span>
+											{:else}
+												<span class="preview" class:unsent={t.lastUnsent}
+													>{#if t.lastKind === 'coach_share' && !t.lastUnsent}<AiTag />&nbsp;{/if}{t.lastFromMe ? m('messages.youPrefix') : ''}{t.lastUnsent
+														? m('messages.unsentPlaceholder')
+														: (t.lastBody ?? (t.lastImage ? m('messages.photoPreview') : ''))}</span
+												>
+											{/if}
 										</span>
 									</a>
 								</li>
@@ -332,7 +478,7 @@
 				{#if !messagesInbox.threadsError && split.inbox.length === 0 && !showingArchived && !showingRequests}
 					<p class="muted empty">{m('messages.emptyThreads')}</p>
 				{/if}
-				{#if !showingArchived && !showingRequests && split.requests.length > 0}
+				{#if !showingArchived && !showingRequests && requestCount > 0}
 					<button
 						type="button"
 						class="archived-toggle"
@@ -340,7 +486,7 @@
 						onclick={() => (messagesInbox.showingRequests = true)}
 					>
 						<span class="material-symbols" aria-hidden="true">person_add</span>
-						{m('messages.requestsCount', { count: split.requests.length })}
+						{m('messages.requestsCount', { count: requestCount })}
 					</button>
 				{/if}
 				{#if !showingArchived && !showingRequests && split.archived.length > 0}
@@ -361,6 +507,20 @@
 				{@render children()}
 			</section>
 		</div>
+		{#if messagesInbox.groupsEnabled}
+			<GroupCreateDialog open={creatingGroup} onclose={() => (creatingGroup = false)} />
+		{/if}
+		<ConfirmDialog
+			open={declineTarget !== null}
+			danger
+			title={m('groups.inviteDeclineConfirmTitle', { title: declineTarget?.title ?? '' })}
+			message={m('groups.inviteDeclineConfirmMessage')}
+			confirmLabel={m('groups.inviteDecline')}
+			cancelLabel={m('profile.cancel')}
+			onconfirm={confirmDeclineInvite}
+			oncancel={() => (declineTarget = null)}
+			data-testid="group-invite-decline-confirm"
+		/>
 	{/if}
 </div>
 
@@ -430,6 +590,56 @@
 	.pane-head h2 {
 		margin: 0;
 		font-size: 1rem;
+	}
+	.pane-head:has(.new-group) {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-sm);
+	}
+	.new-group {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		min-height: 2.75rem;
+	}
+	.new-group .material-symbols {
+		font-size: 1.1rem;
+	}
+	.group-avatar {
+		flex: 0 0 auto;
+		width: 2.2rem;
+		height: 2.2rem;
+		border-radius: 50%;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		background: var(--color-bg-secondary);
+		color: var(--color-text-secondary);
+	}
+	.group-avatar .material-symbols {
+		font-size: 1.25rem;
+	}
+	.member-count {
+		flex: 0 0 auto;
+		font-size: var(--font-size-section-label);
+		color: var(--color-text-tertiary);
+	}
+	.invite {
+		display: flex;
+		gap: 0.6rem;
+		align-items: flex-start;
+		padding: var(--space-sm) var(--space-lg);
+		border-bottom: 1px solid var(--color-border);
+	}
+	.invite-line {
+		white-space: normal;
+	}
+	.invite-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-sm);
+		margin-top: var(--space-xs);
 	}
 	.threads ul {
 		list-style: none;

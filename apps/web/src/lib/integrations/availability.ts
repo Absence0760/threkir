@@ -4,14 +4,9 @@
 /// Split from `integration_visibility.ts` on purpose: the rules live there and
 /// are unit-testable, while this half reaches for `$app/env` and supabase-js and so
 /// can only be exercised through the browser. Keep decisions out of here — this
-/// file should read as a table plus four calls.
+/// file should read as a table plus the calls that resolve it.
 
-import {
-	isChronoTrackConfigured,
-	isParkrunConfigured,
-	isRunSignUpConfigured,
-	isUltraSignUpConfigured
-} from '#lib/core/data.ts';
+import { isChronoTrackConfigured, isRunSignUpConfigured } from '#lib/core/data.ts';
 import { isStravaConfigured } from './strava';
 import type { GateVerdict, IntegrationGate } from './integration_visibility';
 
@@ -30,7 +25,6 @@ export interface IntegrationSpec {
 /// The account-connection cards. Order is the render order.
 export const CONNECT_INTEGRATIONS: readonly IntegrationSpec[] = [
 	{ provider: 'strava', gate: 'env', icon: 'directions_run', name: 'Strava' },
-	{ provider: 'parkrun', gate: 'probe', icon: 'emoji_events', name: 'parkrun' },
 	// Garmin Connect's OAuth + webhook sync is blocked on Garmin's developer
 	// programme (NDA, multi-week review) — neither leg can be implemented
 	// client-side, so no operator can configure this into existence. The card
@@ -50,15 +44,12 @@ export const CONNECT_INTEGRATIONS: readonly IntegrationSpec[] = [
 /// is separately credential-gated server-side.
 export const RACE_INTEGRATIONS: readonly IntegrationSpec[] = [
 	{ provider: 'runsignup', gate: 'probe', icon: 'flag', name: 'RunSignUp' },
-	{ provider: 'ultrasignup', gate: 'probe', icon: 'terrain', name: 'UltraSignup' },
 	{ provider: 'chronotrack', gate: 'probe', icon: 'timer', name: 'ChronoTrack' }
 ];
 
 /// Every probe the page runs, keyed by provider.
 const PROBES: Record<string, () => Promise<boolean>> = {
-	parkrun: isParkrunConfigured,
 	runsignup: isRunSignUpConfigured,
-	ultrasignup: isUltraSignUpConfigured,
 	chronotrack: isChronoTrackConfigured
 };
 

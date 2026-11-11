@@ -5,6 +5,7 @@ import com.runapp.watchwear.GpsPoint
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
+import java.io.IOException
 import java.io.PrintWriter
 import java.time.Instant
 import kotlinx.serialization.json.Json
@@ -28,9 +29,16 @@ import kotlinx.serialization.json.booleanOrNull
 class TrackWriter(private val file: File) {
     private var writer: PrintWriter? = null
     private var count = 0
+    private var segments = 0
     private var open = false
 
     val pointCount: Int get() = count
+    /// The estimator segments the file holds: its first fix opens one and
+    /// every fix written `segmentStart` another, which is how the server's
+    /// replay counts them. Saved as `metadata.distance_segments`, so the
+    /// server can tell a track that lost its marks on the way to storage
+    /// (`docs/features/gps_distance.md` § Server recompute).
+    val segmentCount: Int get() = segments
     val path: String get() = file.absolutePath
 
     fun open() {
@@ -41,6 +49,7 @@ class TrackWriter(private val file: File) {
         pw.flush()
         writer = pw
         count = 0
+        segments = 0
         open = true
     }
 
@@ -50,8 +59,16 @@ class TrackWriter(private val file: File) {
     /// fix the distance estimator took past the 30 m track gate: stored so the
     /// server's replay sees every estimator input, written as `"offTrack":true`
     /// and omitted otherwise, and skipped by every reader that draws the line
-    /// (`docs/features/gps_distance.md` § Stored track).
-    fun append(point: GpsPoint, distM: Double? = null, offTrack: Boolean = false) {
+    /// (`docs/features/gps_distance.md` § Stored track). [segmentStart] marks
+    /// the first fix after a pause or a source switch closed the estimator's
+    /// segment, written as `"segmentStart":true` and omitted otherwise, so the
+    /// server replays each segment apart (spec v1.8).
+    fun append(
+        point: GpsPoint,
+        distM: Double? = null,
+        offTrack: Boolean = false,
+        segmentStart: Boolean = false,
+    ) {
         val w = writer ?: return
         if (count > 0) w.print(",")
         val ts = Instant.ofEpochMilli(point.epochMs)
@@ -67,8 +84,10 @@ class TrackWriter(private val file: File) {
                 optionalField("bearingDeg", point.bearingDeg) +
                 optionalField("distM", distM?.takeIf { it.isFinite() && it >= 0 }?.let { Math.round(it * 100) / 100.0 }) +
                 (if (offTrack) ",\"offTrack\":true" else "") +
+                (if (segmentStart) ",\"segmentStart\":true" else "") +
                 "}"
         )
+        if (count == 0 || segmentStart) segments++
         count++
         if (count % FLUSH_EVERY == 0) w.flush()
     }
@@ -120,5 +139,79 @@ fun trackLineLatLngs(raw: String): List<RouteMath.LatLng> {
         val lat = (obj["lat"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return@mapNotNull null
         val lng = (obj["lng"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return@mapNotNull null
         RouteMath.LatLng(lat, lng)
+    }
+}
+
+/// The estimator segments a stored track [file] holds, counted as the
+/// server's replay counts them: the first point carrying a coordinate and a
+/// timestamp opens one, and so does every later such point at or after a
+/// `"segmentStart":true` (a mark on a point the replay skips carries to the
+/// next it reads). [TrackWriter.segmentCount] gives the same figure while the
+/// file is written; this is the count for a run recovered from a checkpoint,
+/// whose file holds fixes the last checkpoint never saw. Streams one point at
+/// a time, since a 100-hour track is tens of megabytes. Null when the file is
+/// missing or a point does not parse, so the run omits
+/// `metadata.distance_segments` and the server keeps its run-total rule.
+fun trackFileSegmentCount(file: File): Int? {
+    if (!file.exists()) return null
+    return try {
+        file.bufferedReader().use { reader ->
+            var points = 0
+            var segments = 0
+            var markPending = false
+            val open = ArrayDeque<Char>()
+            var inString = false
+            var escaped = false
+            val point = StringBuilder()
+            while (true) {
+                val c = reader.read()
+                if (c < 0) break
+                val ch = c.toChar()
+                if (open.size >= 2) point.append(ch)
+                if (inString) {
+                    when {
+                        escaped -> escaped = false
+                        ch == '\\' -> escaped = true
+                        ch == '"' -> inString = false
+                    }
+                    continue
+                }
+                when (ch) {
+                    '"' -> inString = true
+                    '[', '{' -> {
+                        open.addLast(ch)
+                        if (open.size == 2) {
+                            point.setLength(0)
+                            point.append(ch)
+                        }
+                    }
+                    ']', '}' -> {
+                        // A point cut off mid-write and then sealed closes
+                        // with the wrong bracket: its count is unknown.
+                        if (open.removeLastOrNull() != (if (ch == ']') '[' else '{')) return null
+                        if (open.size == 1 && ch == '}') {
+                            val obj = Json.parseToJsonElement(point.toString()) as? JsonObject ?: return null
+                            markPending = markPending ||
+                                (obj["segmentStart"] as? JsonPrimitive)?.booleanOrNull == true
+                            val placed = (obj["lat"] as? JsonPrimitive)?.content?.toDoubleOrNull() != null &&
+                                (obj["lng"] as? JsonPrimitive)?.content?.toDoubleOrNull() != null &&
+                                (obj["ts"] as? JsonPrimitive)?.isString == true
+                            if (placed) {
+                                if (points == 0 || markPending) segments++
+                                markPending = false
+                                points++
+                            }
+                        }
+                    }
+                }
+            }
+            if (open.isNotEmpty() || inString) null else segments
+        }
+    } catch (e: IOException) {
+        null
+    } catch (e: IllegalArgumentException) {
+        // kotlinx.serialization's SerializationException: a point that is
+        // not JSON.
+        null
     }
 }

@@ -43,7 +43,6 @@ const _providerNames = {
   'ultrasignup': 'UltraSignup',
   'chronotrack': 'ChronoTrack',
   'raceresult': 'RaceResult',
-  'parkrun': 'parkrun',
 };
 
 @visibleForTesting

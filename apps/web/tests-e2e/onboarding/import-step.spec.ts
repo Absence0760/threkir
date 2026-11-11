@@ -5,7 +5,6 @@ import { expect, test } from '../fixtures/test';
 import { USER_A } from '../fixtures/users';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { readRow } from '../fixtures/db-read';
-import type { MockRoute } from '../fixtures/mock-route';
 
 /**
  * /onboarding — the "Bring your running history" step (issue #1190 § 6).
@@ -19,25 +18,6 @@ import type { MockRoute } from '../fixtures/mock-route';
  * Borrows USER_A with onboarded_at nulled, and restores every row the wizard
  * can write in afterEach, the same way wizard.spec.ts does.
  */
-
-const PARKRUN_PROBE = '**/functions/v1/parkrun-import';
-
-/** Answer the parkrun probe the step runs, so the test decides the gate. */
-async function parkrunProbe(page: Page, mockRoute: MockRoute, available: boolean): Promise<void> {
-	await mockRoute(page, PARKRUN_PROBE, (route) =>
-		available
-			? route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: '{"ok":true}',
-				})
-			: route.fulfill({
-					status: 404,
-					contentType: 'application/json',
-					body: '{"error":"not found"}',
-				}),
-	);
-}
 
 /** Walk name → track with every step left at its default. */
 async function walkToImport(page: Page, displayName: string): Promise<void> {
@@ -94,8 +74,7 @@ test.describe('/onboarding import step', () => {
 		}
 	});
 
-	test('sits between track and done, in the rail and the count', async ({ page, mockRoute }) => {
-		await parkrunProbe(page, mockRoute, false);
+	test('sits between track and done, in the rail and the count', async ({ page }) => {
 		await page.setViewportSize({ width: 1440, height: 900 });
 		await walkToImport(page, 'E2E Import Rail');
 		await expect(page.getByRole('progressbar', { name: 'Step 7 of 8' })).toBeVisible();
@@ -103,11 +82,7 @@ test.describe('/onboarding import step', () => {
 		await expect(page.getByRole('heading', { name: /Bring your running history/i })).toBeFocused();
 	});
 
-	test('offers Strava and Garmin, no health platform, and parkrun only once its probe says yes', async ({
-		page,
-		mockRoute,
-	}) => {
-		await parkrunProbe(page, mockRoute, false);
+	test('offers Strava and Garmin, no health platform, and no parkrun', async ({ page }) => {
 		await walkToImport(page, 'E2E Import Sources');
 		await expect(page.getByTestId('onboarding-import-strava')).toBeVisible();
 		await expect(page.getByTestId('onboarding-import-garmin')).toBeVisible();
@@ -121,15 +96,8 @@ test.describe('/onboarding import step', () => {
 		).toBeVisible();
 	});
 
-	test('the parkrun row appears when the probe answers yes', async ({ page, mockRoute }) => {
-		await parkrunProbe(page, mockRoute, true);
-		await walkToImport(page, 'E2E Import Parkrun Shown');
-		await expect(page.getByTestId('onboarding-import-parkrun')).toBeVisible();
-	});
-
-	test('Skip for now is one tap and onboarding still completes', async ({ page, mockRoute }) => {
+	test('Skip for now is one tap and onboarding still completes', async ({ page }) => {
 		test.setTimeout(45_000);
-		await parkrunProbe(page, mockRoute, false);
 		await walkToImport(page, 'E2E Import Skipped');
 		// One forward button, and it says what it does.
 		await expect(page.getByRole('button', { name: 'Continue' })).toHaveCount(0);
@@ -161,14 +129,11 @@ test.describe('/onboarding import step', () => {
 			url: /\/settings\/integrations$/,
 			heading: /Bulk import from a Garmin export/i,
 		},
-		{ source: 'parkrun', url: /\/settings\/account$/, heading: null },
 	] as const) {
 		test(`the ${source} row saves setup and lands on its existing import surface`, async ({
 			page,
-			mockRoute,
 		}) => {
 			test.setTimeout(45_000);
-			await parkrunProbe(page, mockRoute, true);
 			const name = `E2E Import ${source}`;
 			await walkToImport(page, name);
 			await page.getByTestId(`onboarding-import-${source}`).click();
@@ -186,11 +151,7 @@ test.describe('/onboarding import step', () => {
 			);
 			expect(profile.onboarded_at).not.toBeNull();
 			expect(profile.display_name).toBe(name);
-			if (heading) {
-				await expect(page.getByRole('heading', { name: heading })).toBeVisible();
-			} else {
-				await expect(page.getByTestId('parkrun-number')).toBeVisible();
-			}
+			await expect(page.getByRole('heading', { name: heading })).toBeVisible();
 			await expect(page).toHaveURL(url);
 		});
 	}

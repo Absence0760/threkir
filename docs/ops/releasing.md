@@ -194,7 +194,15 @@ An unchanged catalogue writes nothing. The rest apply
 Edge Function toggles (`supabase secrets set`, compared by digest), cron URL
 entries in Vault (each newly armed one invoked once and required to answer
 2xx), and the one-off tasks in `apps/backend/ops/tasks/`, each run once
-against the `private.ops_task_runs` ledger. Last, it publishes the official
+against the `private.ops_task_runs` ledger (after the functions deploy, which
+is what `20271219001313_rematch_segments_matcher_v3` relies on: it re-matches
+every open park segment under matcher v3 and fails, staying pending, if the
+migration that defines `private.global_segment_course_closed` has not
+applied; [decisions § 2465](../architecture/decisions.md)). The same stage
+retires the Edge Functions and secrets listed under `retired_functions` /
+`retired_function_env`; the one-time `parkrun-import` retirement and its
+check are in [deployment.md § Retired scraper functions and secrets](deployment.md)
+([decisions § 2467](../architecture/decisions.md)). Last, it publishes the official
 content catalogue (`scripts/official/`, [decisions § 2446](../architecture/decisions.md),
 [official_content.md](../features/official_content.md)) through
 `private.load_official_catalogue`: library plans, gym routines and challenge
@@ -436,6 +444,46 @@ and install from there.
   key credits the run's gaps by the run-total rule, stamps it, and the run is
   never queued again. Check the deployed worker carries `gapStepCreditM`
   before tagging the first such watch release; after that, nothing to do.
+- **GPS distance spec v1.8 ships in three steps: the job_worker that reads
+  the segment marks, then the phone builds that keep them, then the watch
+  builds that write them** (issue #1361, [decisions
+  § 2466](../architecture/decisions.md)). A v1.8 watch marks each segment's
+  first stored fix `segmentStart`, saves the count as
+  `metadata.distance_segments`, and banks each segment's
+  `distance_step_over_chord_m` whole, which is exact only when the replay
+  ends each segment at its own last fix.
+  1. **`worker@*` first.** A worker that predates the marks replays the
+     track as one stream and ignores the count, so it credits the chord of a
+     gap still open at a pause or a Wear OS source switch on top of those
+     steps (a handover in a gap: 285.52 m against the wrist's 238.00 m),
+     stamps the run, and it is never queued again. Confirm the deployed
+     worker's `replayRecordedTrack` reads `SegmentStart` and its
+     `gapStepCreditM` reads `distance_segments`.
+  2. **Then the phones** (`mobile_android@*`, `mobile_ios@*`) whose watch
+     ingest keeps `segmentStart` and forwards `distance_segments`. A watch run
+     that reaches Storage through an older phone loses both, and the worker
+     keeps the run-total rule for it: never long, but short of the wrist where
+     its gaps fall on both sides of their chords, and stamped. `mobile_ios@*`
+     carries the Apple Watch app too, so the watchOS half of step 3 can ship
+     in the same release.
+  3. **Then the watches** (`watch_wear@*`, and the watchOS app). Wear OS
+     uploads directly, so only step 1 gates it.
+
+  After the first release of each, nothing to do.
+- **The job_worker that handles `duration_repair` ships before the
+  `backend@*` release carrying `20271218000001`–`…03`** (issue #1300 § 5,
+  [decisions § 2464](../architecture/decisions.md)). `…02` caps every run
+  stored above ten days and enqueues one `duration_repair` job per capped run
+  that has a track; a worker without the handler fails each one as an unknown
+  kind, and nothing enqueues them again. Order: tag `worker@*` (the
+  job_worker's release tag, `release-worker.yml`), confirm the deployed
+  worker's dispatch has `case "duration_repair"`, then tag `backend@*`. `…03` validates `runs_duration_s_max_check` in the same
+  release; it does not wait for the jobs, because the cap alone satisfies
+  it. After the release, a capped run with no usable track keeps the cap and
+  `metadata.duration_repaired` until its owner edits the duration; to see
+  which remain:
+  `select id, user_id, metadata->>'duration_s_original' from runs where metadata ? 'duration_repaired';`
+  (read-only).
 - **Health Connect permission changes block the Android release.** If the
   diff since the last `mobile_android@*` tag adds or removes an
   `android.permission.health.*` entry in `AndroidManifest.xml` /

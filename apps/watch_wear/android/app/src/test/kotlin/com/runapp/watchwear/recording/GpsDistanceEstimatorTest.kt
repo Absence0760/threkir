@@ -42,8 +42,8 @@ class GpsDistanceEstimatorTest {
 
     @Test
     fun `the fixture is spec v1_4 and every constant matches it`() {
-        assertEquals("gps-distance-estimator v1.7", fixture["spec"]!!.jsonPrimitive.content)
-        assertEquals("1.7", GpsDistanceEstimator.SPEC_VERSION)
+        assertEquals("gps-distance-estimator v1.8", fixture["spec"]!!.jsonPrimitive.content)
+        assertEquals("1.8", GpsDistanceEstimator.SPEC_VERSION)
         val constants = fixture["constants"]!!.jsonObject
         assertFalse("port declares no constants", GpsDistanceEstimator.CONSTANTS.isEmpty())
         for ((name, value) in GpsDistanceEstimator.CONSTANTS) {

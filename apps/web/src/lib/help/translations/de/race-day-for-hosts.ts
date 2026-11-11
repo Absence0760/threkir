@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-day-for-hosts',
 	title: 'Renntag für Veranstalter',
-	summary: 'Stell das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.',
+	summary: 'Schalte das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.',
 	sections: [
 		{
 			heading: 'Wer ein Rennen leiten kann',
@@ -19,7 +19,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'illustration',
 					id: 'race-day-for-hosts',
-					alt: 'Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, GO geben, live verfolgen und es dann im Ziel beenden.',
+					alt: 'Der Renntag in vier Schritten von links nach rechts: das Rennen scharf schalten, GO geben, live verfolgen und es dann im Ziel beenden.',
 				},
 				{
 					type: 'p',
@@ -28,14 +28,14 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
-			heading: '1. Rennen scharfstellen',
+			heading: '1. Rennen scharf schalten',
 			blocks: [
 				{
 					type: 'steps',
 					items: [
 						'Öffne das Event und wähle den heutigen Termin, falls es sich wiederholt.',
 						'Lass **Eingereichte Ergebnisse automatisch genehmigen** angehakt, um Ergebnisse bei Eingang zu veröffentlichen, oder entferne den Haken, um jedes selbst zu genehmigen. (In der Handy-App heißt es **Eingereichte Zeiten automatisch genehmigen**.)',
-						'Wähle **Rennen scharfstellen**, wenn alle versammelt sind.',
+						'Wähle **Rennen scharf schalten**, wenn alle versammelt sind.',
 					],
 				},
 				{
@@ -45,11 +45,11 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'tip',
-					text: 'Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst.',
+					text: 'Ein scharf geschaltetes Rennen wartet nur: Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst.',
 				},
 				{
 					type: 'p',
-					text: 'Bevor das Rennen scharfgestellt wird, werden die Start- und Ziellinien jeder Strecke geprüft, und alles, was einen Blick wert ist, steht unter **Bevor du das Rennen scharfstellst**. Bei einer Warnung kannst du **Trotzdem scharfstellen**; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]. Das Scharfstellen friert außerdem die Linien für dieses Rennen ein.',
+					text: 'Bevor das Rennen scharf geschaltet wird, werden die Start- und Ziellinien jeder Strecke geprüft, und alles, was einen Blick wert ist, steht unter **Bevor du das Rennen scharf schaltest**. Bei einer Warnung kannst du **Trotzdem scharf schalten**; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]. Das Scharfschalten friert außerdem die Linien für dieses Rennen ein.',
 				},
 			],
 		},
@@ -67,7 +67,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharfgestellt ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten.',
+					text: 'GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharf geschaltet ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten.',
 				},
 			],
 		},
@@ -106,7 +106,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'Das Beenden kann nicht rückgängig gemacht werden. Danach erwarten die Geräte der Teilnehmenden kein Ergebnis mehr. Um denselben Termin erneut zu laufen, stell eine neue Sitzung scharf.',
+					text: 'Das Beenden kann nicht rückgängig gemacht werden. Danach erwarten die Geräte der Teilnehmenden kein Ergebnis mehr. Um denselben Termin erneut zu laufen, schalte eine neue Sitzung scharf.',
 				},
 			],
 		},
@@ -115,7 +115,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden.',
+					text: 'Du kannst nur absagen, solange das Rennen scharf geschaltet ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden.',
 				},
 				{
 					type: 'p',

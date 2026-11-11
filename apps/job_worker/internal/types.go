@@ -193,6 +193,10 @@ type NotificationRow struct {
 	// CourseAlertID names an organiser's course alert (migration
 	// 20271124002408); pathForKind links it through /course-alerts/{id}.
 	CourseAlertID *string `json:"course_alert_id"`
+	// ConversationID names the group a 'message' or 'group_invite' row is
+	// about (migration 20271217000001); null on a 1:1 message. copyKeyFor
+	// reads it for the group wording and pathForKind for the group's thread.
+	ConversationID *string `json:"conversation_id"`
 	// Refunded is set on an event_cancel row whose recipient held a paid order
 	// on the cancelled occurrence (migration 20270725000002); copyKeyFor reads
 	// it to pick the copy that says the payment is being refunded.

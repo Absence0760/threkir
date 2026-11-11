@@ -16,6 +16,7 @@ import com.runapp.watchwear.recording.RecordingRepository
 import com.runapp.watchwear.recording.RecoveryAction
 import com.runapp.watchwear.recording.recoveryActionFor
 import com.runapp.watchwear.recording.sealTrackFileOrNull
+import com.runapp.watchwear.recording.trackFileSegmentCount
 import com.runapp.watchwear.recording.RunRecordingService
 import com.runapp.watchwear.recording.TrackStorage
 import com.runapp.watchwear.recording.sweepOrphanTracks
@@ -523,8 +524,13 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     // (layer L4): a fault in any of it is caught where it happens and leaves
     // the recording, the foreground service and the queued run untouched.
     /// Server-minus-device clock offset, sampled off every race ping's
-    /// server-stamped `at`.
-    private val serverClock = ServerClockOffset()
+    /// server-stamped `at`, or restored off the watch after a restart.
+    private var serverClock = ServerClockOffset()
+    /// The round trip of the offset [serverClock] holds, so a sample that
+    /// beats it is kept on the watch; null until one lands or is restored.
+    private var serverClockRttMs: Long? = null
+    /// The kept offset is read back once per session, before the race is.
+    private var clockRestoreTried = false
     /// The race the current recording belongs to.
     private var boundRace: ActiveRaceState? = null
     private var boundRunId: String? = null
@@ -548,6 +554,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
     /// The run [raceTimer] follows; a new run id starts it afresh.
     private var raceTimerRunId: String? = null
+    /// The line finish the runner took back on this recording, kept on the
+    /// watch so a restart mid-recording keeps its start and re-arms the line.
+    private var raceUndone: UndoneRaceFinish? = null
+    /// The latest finish taken back on this recording (device clock), kept
+    /// past a later finish so the saved run still names it.
+    private var raceUndoneAtMs: Long? = null
     /// Closes "Not finished? Resume" and stops the run when it runs out.
     private var raceUndoJob: Job? = null
     /// The line finish filed at the crossing, so an undo waits for it.
@@ -740,6 +752,30 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                         } catch (e: Throwable) {
                             Log.w(TAG, "race finish tracking failed; the run records on", e)
                         }
+                        // Debug builds only: the line-calibration capture
+                        // (#1304 § 6) takes fixes by the race feed's own rule.
+                        try {
+                            if (BuildConfig.DEBUG) {
+                                val p = m.latestPoint
+                                if (p != null) LineCalibrationCapture.shared.offer(
+                                    runId = m.runId,
+                                    recording = m.stage == RecordingRepository.Stage.Recording,
+                                    fixKey = p.epochMs,
+                                    fix = GateFix(
+                                        p.lat,
+                                        p.lng,
+                                        raceFixDeviceMs(
+                                            fixElapsedRealtimeMs = p.elapsedRealtimeMs,
+                                            nowWallMs = System.currentTimeMillis(),
+                                            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                                        ).toDouble(),
+                                        m.distanceM,
+                                    ),
+                                )
+                            }
+                        } catch (e: Throwable) {
+                            Log.w(TAG, "line calibration capture failed; the run records on", e)
+                        }
                     }
                     RecordingRepository.Stage.Finished -> handleFinishedRun(m)
                     RecordingRepository.Stage.Idle -> Unit
@@ -780,13 +816,55 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun onClockSample(sample: RaceSessionClient.ClockSample) {
+        val wins = clockSampleWins(sample.receivedAtMs - sample.sentAtMs, serverClockRttMs)
         serverClock.addSample(sample.sentAtMs, sample.receivedAtMs, sample.serverAtMs)
+        if (wins) rememberClockOffset(sample)
         val race = boundRace ?: return
         val run = _state.value.raceRun ?: return
         val gun = gunStartDeviceMs(race.goAtMs, serverClock.offsetMs)
         if (gun != run.gunStartDeviceMs) {
             _state.value = _state.value.copy(raceRun = run.copy(gunStartDeviceMs = gun))
         }
+    }
+
+    /// Keep the offset a winning sample gave on the watch, so a restart with
+    /// no signal still knows it. L4: a failed write costs only that.
+    private fun rememberClockOffset(sample: RaceSessionClient.ClockSample) {
+        val entry = clockOffsetEntry(sample) ?: return
+        serverClockRttMs = entry.rttMs
+        if (supabase.authedUserId == null) return
+        launchGuarded {
+            try {
+                raceResults.cacheClockOffset(entry)
+            } catch (e: Throwable) {
+                Log.w(TAG, "clock offset not kept; it holds while the app runs", e)
+            }
+        }
+    }
+
+    /// After a restart, the offset kept within the last day stands in until a
+    /// ping measures one, so the restored race is judged on the server clock.
+    private suspend fun restoreClockOffset() {
+        if (clockRestoreTried) return
+        clockRestoreTried = true
+        val kept = try {
+            raceResults.cachedClockOffset()
+        } catch (e: Throwable) {
+            Log.w(TAG, "kept clock offset unreadable; the next ping measures one", e)
+            null
+        } ?: return
+        val entry = restorableClockOffset(kept, System.currentTimeMillis())
+        if (entry == null) {
+            try {
+                raceResults.cacheClockOffset(null)
+            } catch (e: Throwable) {
+                Log.w(TAG, "stale clock offset not dropped; it is ignored again next time", e)
+            }
+            return
+        }
+        if (serverClock.offsetMs != null) return
+        serverClock.seed(entry)
+        serverClockRttMs = entry.rttMs
     }
 
     /// `Flow.catch` was the wrong operator here and its cost was total: catch
@@ -850,6 +928,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// one kept at the last poll, with its course, unless it has finished or
     /// its window has closed since. The poll replaces it once it has signal.
     private suspend fun restoreCachedRace() {
+        restoreClockOffset()
         if (raceRestoreTried || boundRace != null || _state.value.activeRace != null) return
         val uid = supabase.authedUserId ?: return
         raceRestoreTried = true
@@ -918,6 +997,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 _state.value = _state.value.copy(activeRace = newState)
             }
             cacheActiveRace(uid, newState)
+            forgetUndoneUnlessPolled(newState)
         } catch (_: Throwable) {
             // Polling is advisory; swallow failures so a flaky connection
             // doesn't spam the UI with errors. With no signal the race kept
@@ -1006,6 +1086,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun onRaceEndedByHost() {
         forgetCachedRace()
+        forgetUndoneFinish()
         raceEndedAfterStop = false
         raceStoppedAtMs = null
         raceEndedRunId = boundRunId
@@ -1032,7 +1113,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             alreadyBound = boundRace != null,
             runId = m.runId,
             endedRunId = raceEndedRunId,
-            active = _state.value.activeRace,
+            active = raceToRebindAfterUndo(_state.value.activeRace, raceUndone),
         ) ?: return
         boundRace = race
         boundRunId = m.runId
@@ -1088,6 +1169,76 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         raceTimerRunId = id
         lastRaceFixKey = Long.MIN_VALUE
         raceTimer.beginRecording()
+        raceUndone = null
+        raceUndoneAtMs = null
+        restoreUndoneFinish(id)
+    }
+
+    /// The app restarted mid-recording after an undo: the start that finish
+    /// was measured from stands, and the finish line is armed again for a
+    /// later crossing, never the one taken back (#1307 m11). L4: an unreadable
+    /// entry leaves the recording timed as a fresh one.
+    private fun restoreUndoneFinish(runId: String) {
+        launchGuarded {
+            val stored = try {
+                raceResults.undoneFinish()
+            } catch (e: Throwable) {
+                Log.w(TAG, "undone race finish unreadable; this recording times afresh", e)
+                null
+            } ?: return@launchGuarded
+            val entry = undoneFinishFor(stored, runId)
+            if (entry == null) {
+                dropKeptUndone()
+                return@launchGuarded
+            }
+            if (raceTimerRunId != runId) return@launchGuarded
+            raceUndone = entry
+            raceUndoneAtMs = maxOf(raceUndoneAtMs ?: entry.undoneFinishMs, entry.undoneFinishMs)
+            raceTimer.restoreUndone("${entry.eventId}|${entry.instanceStart}", entry.start?.toStart(), entry.undoneFinishMs)
+        }
+    }
+
+    /// Keep the finish just taken back with its race, recording and start.
+    private fun keepUndoneFinish(entry: UndoneRaceFinish?) {
+        raceUndone = entry ?: return
+        launchGuarded {
+            try {
+                raceResults.keepUndoneFinish(entry)
+            } catch (e: Throwable) {
+                Log.w(TAG, "undone race finish not kept; a restart would time this run afresh", e)
+            }
+        }
+    }
+
+    /// The undo no longer applies: the race finished, ended, or the recording
+    /// did.
+    private fun forgetUndoneFinish() {
+        if (raceUndone == null) return
+        raceUndone = null
+        launchGuarded { dropKeptUndone() }
+    }
+
+    private suspend fun dropKeptUndone() {
+        try {
+            raceResults.keepUndoneFinish(null)
+        } catch (e: Throwable) {
+            Log.w(TAG, "undone race finish not forgotten; it names a recording that is over", e)
+        }
+    }
+
+    /// A poll with no recording bound that no longer finds the undone
+    /// finish's race forgets it: that race is over or gone.
+    private suspend fun forgetUndoneUnlessPolled(active: ActiveRaceState?) {
+        if (boundRace != null) return
+        val kept = raceUndone ?: try {
+            raceResults.undoneFinish()
+        } catch (e: Throwable) {
+            Log.w(TAG, "undone race finish unreadable; left for the next poll", e)
+            return
+        } ?: return
+        if (undoneFinishOutlivesPoll(kept, active)) return
+        raceUndone = null
+        dropKeptUndone()
     }
 
     /// The race the timer follows, its course (off the bound race, the
@@ -1161,6 +1312,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     private fun onRaceAutoFinish(finish: RaceFinish.Finish, m: RecordingRepository.Metrics) {
         val race = boundRace ?: return
         val decision = RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, finish.epochMs, finish.coveredM, finish)
+        forgetUndoneFinish()
         cueRaceCrossing(RunRecordingService.RACE_CUE_FINISH)
         if (finish.detection != RaceFinish.FinishDetection.GATE) {
             stopForRace(decision)
@@ -1210,7 +1362,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         raceUndoJob?.cancel()
         raceUndoJob = null
         val race = boundRace
+        val undoneAtMs = raceStopDecision?.finishEpochMs
+        if (undoneAtMs != null) raceUndoneAtMs = undoneAtMs
         raceTimer.voidAutoFinish()
+        keepUndoneFinish(undoneRaceFinishEntry(race, boundRunId, undoneAtMs, raceTimer.start))
         raceStopDecision = null
         raceStoppedAtMs = null
         _state.value = _state.value.copy(raceRun = _state.value.raceRun?.copy(undoOpen = false))
@@ -1222,6 +1377,22 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             filing?.join()
             raceOutbox.void(supabase.currentAccessToken, uid, race.eventId, race.instanceStart)
         }
+    }
+
+    /// One round trip to the server clock, for the debug calibration screen.
+    suspend fun sampleServerClock(): RaceSessionClient.ClockSample? = try {
+        raceClient.sampleServerNow(supabase.currentAccessToken)
+    } catch (e: Throwable) {
+        Log.w(TAG, "server clock sample failed", e)
+        null
+    }
+
+    /// The watch's last known position, for centring a line where it stands.
+    suspend fun lastKnownPosition(): GpsPoint? = try {
+        gpsForPrefetch.lastLocation()
+    } catch (e: Throwable) {
+        Log.w(TAG, "no last known position", e)
+        null
     }
 
     /// The haptic and the spoken line for a start- or finish-line crossing,
@@ -1391,6 +1562,10 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         forgetLastRun { lastRunStore.clear() }
         authReady.value = false
         raceRestoreTried = false
+        serverClock = ServerClockOffset()
+        serverClockRttMs = null
+        clockRestoreTried = false
+        raceUndone = null
         raceCacheEntry = null
         raceCacheWritten = false
         raceCourseFromCacheKey = null
@@ -1547,6 +1722,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 _state.value = _state.value.copy(pendingRecovery = null)
                 return@launchGuarded
             }
+            // Counted off the sealed file, as the server's replay will count
+            // it: fixes written after the last checkpoint can open a segment.
+            val segments = withContext(Dispatchers.IO) { trackFileSegmentCount(sealed) }
             store.save(
                 QueuedRun(
                     id = cp.runId,
@@ -1567,6 +1745,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceEstimator = cp.distanceEstimator,
                     distanceStepFilledM = cp.distanceStepFilledM,
                     distanceStepOverChordM = cp.distanceStepOverChordM,
+                    distanceSegments = segments?.takeIf { it >= 1 },
                     locationProvider = cp.locationProvider,
                     gnssSignal = cp.gnssSignal,
                     trackComplete = cp.trackComplete,
@@ -1967,6 +2146,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         // pressed at its Stop, or now. Settled before the timer is released.
         val settled = if (race != null && decision == null) settleRaceTimer() else null
         val start = raceTimer.start
+        val undoneFinishAt = raceUndoneFinishAtIso(raceUndoneAtMs, serverClock.offsetMs)
+        raceUndoneAtMs = null
         raceUndoJob?.cancel()
         raceUndoJob = null
         boundRace = null
@@ -1977,6 +2158,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         lastRaceFixKey = Long.MIN_VALUE
         raceTimer.endRecording()
         raceTimerRunId = null
+        forgetUndoneFinish()
         val uidForRace = supabase.authedUserId
         val raceResult = if (race != null && uidForRace != null) {
             try {
@@ -2066,10 +2248,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                     distanceStepFilledM = m.distanceStepFilledM,
                     distanceStepOverChordM = m.distanceStepOverChordM,
+                    distanceSegments = m.distanceSegments,
                     locationProvider = m.locationProvider,
                     gnssSignal = m.gnssSignal,
                     trackComplete = m.trackComplete,
                     workoutReview = m.workoutReview,
+                    raceUndoneFinishAt = undoneFinishAt,
                 )
             )
             rememberLastRun(m, runId, durationS)
@@ -2478,10 +2662,12 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             distanceEstimator = run.distanceEstimator,
             distanceStepFilledM = run.distanceStepFilledM,
             distanceStepOverChordM = run.distanceStepOverChordM,
+            distanceSegments = run.distanceSegments,
             locationProvider = run.locationProvider,
             gnssSignal = run.gnssSignal,
             trackComplete = run.trackComplete && trackFile != null,
             workout = run.workoutReview,
+            raceUndoneFinishAt = run.raceUndoneFinishAt,
         )
         supabase.saveRun(
             runId = run.id,

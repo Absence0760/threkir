@@ -326,11 +326,9 @@ Nothing here is Supabase Auth configuration — push is a consumer of the `notif
 
 **Status today:** `device_tokens` table rows write correctly (covered by spec); actual delivery is gated on real upstream credentials. Today there's no automated push-delivery test.
 
-### 11. parkrun — no sandbox available
+### 11. parkrun — nothing to provision
 
-**Status today:** parkrun is a public scraper, no API/sandbox. The `parkrun-import` Edge Function takes an athlete number; testing requires a real athlete number that's run real events. Use your own number for manual testing.
-
-**Test strategy:** mock the upstream fetch in the Edge Function via dependency injection (the function is already structured for this; `apps/backend/CLAUDE.md` § Testing without real credentials documents the pattern).
+**Status today:** the parkrun results import was removed on 2026-11-10 ([decisions § 2467](../architecture/decisions.md)), so there is no parkrun account or sandbox to set up. The parkrun barcode needs only a typed athlete number and is covered by the barcode unit tests and its web e2e spec.
 
 ### 12. RunSignUp — no account needed (public feeds)
 

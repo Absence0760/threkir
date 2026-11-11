@@ -344,9 +344,19 @@ class CheckpointStore {
     /// Number of decodable points on disk. Streams — the count is never
     /// derived from an array that had to exist first.
     func countTrackPoints() -> Int {
-        var count = 0
-        forEachTrackPoint { _ in count += 1 }
-        return count
+        countTrackPointsAndSegments().points
+    }
+
+    /// The decodable points on disk and the estimator segments they hold
+    /// (`TrackPointRecord.opensSegment`), in one streamed pass.
+    func countTrackPointsAndSegments() -> (points: Int, segments: Int) {
+        var points = 0
+        var segments = 0
+        forEachTrackPoint { record in
+            if record.opensSegment(pointsBefore: points) { segments += 1 }
+            points += 1
+        }
+        return (points, segments)
     }
 
     func clear() {
@@ -401,6 +411,20 @@ struct TrackPointRecord: Codable {
     /// other reader of the line. Nil, and so omitted, on every other fix
     /// (docs/features/gps_distance.md § Stored track).
     var offTrack: Bool? = nil
+    /// `true` on the first fix after a pause or a continued run closed the
+    /// distance estimator's segment, so the server replays each segment apart
+    /// (spec v1.8, docs/features/gps_distance.md § Stored track). Nil, and so
+    /// omitted, on every other fix.
+    var segmentStart: Bool? = nil
 
     var isOffTrack: Bool { offTrack == true }
+
+    /// Whether this point opens an estimator segment as the server's replay
+    /// counts them: the track's first point, and every later one marked
+    /// `segmentStart`. Summed into `metadata.distance_segments`, so the server
+    /// can tell a track that lost its marks on the way to storage
+    /// (docs/features/gps_distance.md § Server recompute).
+    func opensSegment(pointsBefore: Int) -> Bool {
+        pointsBefore == 0 || segmentStart == true
+    }
 }

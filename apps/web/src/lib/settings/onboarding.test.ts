@@ -6,7 +6,6 @@ import {
 	ONBOARDING_TOTAL_STEPS,
 	visibleOnboardingSteps,
 	ONBOARDING_IMPORT_SOURCES,
-	visibleImportSources,
 	PRIMARY_GOAL_KEY,
 	PRIMARY_GOAL_VALUES,
 	planPresetForGoal,
@@ -112,13 +111,11 @@ test('granted but not yet subscribed still offers the step', () => {
 
 test('the import step hands each source to the import surface that already exists', () => {
 	// The step builds no importer: Strava (connection + archive upload) and the
-	// Garmin export upload live on /settings/integrations, parkrun's
-	// athlete-number import on /settings/account.
+	// Garmin export upload live on /settings/integrations.
 	const hrefs = Object.fromEntries(ONBOARDING_IMPORT_SOURCES.map((s) => [s.source, s.href]));
 	assert.deepEqual(hrefs, {
 		strava: '/settings/integrations',
 		garmin: '/settings/integrations',
-		parkrun: '/settings/account',
 	});
 });
 
@@ -128,17 +125,6 @@ test('the web import step offers no health platform', () => {
 	for (const health of ['healthkit', 'health_connect', 'health']) {
 		assert.ok(!sources.includes(health), health);
 	}
-});
-
-test('parkrun is offered only once its probe says the import can run', () => {
-	assert.deepEqual(
-		visibleImportSources(false).map((s) => s.source),
-		['strava', 'garmin'],
-	);
-	assert.deepEqual(
-		visibleImportSources(true).map((s) => s.source),
-		['strava', 'garmin', 'parkrun'],
-	);
 });
 
 test('every import source has a translated description', () => {

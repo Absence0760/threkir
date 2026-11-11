@@ -130,6 +130,75 @@ internal fun restorableActiveRace(
     )
 }
 
+/// A committed start as the watch keeps it: [RaceFinish.Start], its kind by
+/// name.
+@Serializable
+data class KeptRaceStart(
+    val epochMs: Long,
+    val coveredM: Double,
+    val kind: String,
+    val gapped: Boolean = false,
+)
+
+internal fun keptRaceStart(start: RaceFinish.Start): KeptRaceStart =
+    KeptRaceStart(start.epochMs, start.coveredM, start.kind.name, start.gapped)
+
+/// The start back, or null for a kind this build does not know, which then
+/// times from the Start press.
+internal fun KeptRaceStart.toStart(): RaceFinish.Start? {
+    val k = RaceFinish.StartKind.values().firstOrNull { it.name == kind } ?: return null
+    return RaceFinish.Start(epochMs, coveredM, k, gapped)
+}
+
+/// A line finish the runner took back ("Not finished? Resume", #1307 m11) on
+/// a recording still running, kept so the app restarted mid-recording neither
+/// finds that finish again nor loses the start it was measured from. One
+/// entry, keyed to its recording: [runId] is the recording, [eventId] /
+/// [instanceStart] the race, [undoneFinishMs] the finish taken back on the
+/// device clock and [start] the committed start it was measured from (null for
+/// the Start press).
+@Serializable
+data class UndoneRaceFinish(
+    val runId: String,
+    val eventId: String,
+    val instanceStart: String,
+    val undoneFinishMs: Long,
+    val start: KeptRaceStart? = null,
+)
+
+/// What an undo keeps, or null when there is no race, recording or finish to
+/// key it to.
+internal fun undoneRaceFinishEntry(
+    race: ActiveRaceState?,
+    runId: String?,
+    undoneFinishMs: Long?,
+    start: RaceFinish.Start?,
+): UndoneRaceFinish? {
+    val r = race ?: return null
+    val id = runId ?: return null
+    val at = undoneFinishMs ?: return null
+    return UndoneRaceFinish(id, r.eventId, r.instanceStart, at, start?.let(::keptRaceStart))
+}
+
+/// The kept undo if it belongs to the recording [runId], else null.
+internal fun undoneFinishFor(entry: UndoneRaceFinish?, runId: String?): UndoneRaceFinish? =
+    entry?.takeIf { runId != null && it.runId == runId }
+
+/// Whether a poll that found [active] while no recording is bound leaves the
+/// kept undo standing: only while it still finds that undo's race.
+internal fun undoneFinishOutlivesPoll(entry: UndoneRaceFinish?, active: ActiveRaceState?): Boolean =
+    entry != null && active != null && active.eventId == entry.eventId && active.instanceStart == entry.instanceStart
+
+/// The race a restarted recording binds to: [active], and for the race its
+/// undone finish was on, a self-timed window's attempt armed again, since this
+/// recording already was the attempt. Any other race binds as it would.
+internal fun raceToRebindAfterUndo(active: ActiveRaceState?, undone: UndoneRaceFinish?): ActiveRaceState? {
+    val a = active ?: return null
+    val u = undone ?: return a
+    if (a.eventId != u.eventId || a.instanceStart != u.instanceStart || !a.isSelfTimed) return a
+    return a.copy(attemptArmed = true)
+}
+
 /// How long a kept server clock offset is trusted after the sample it came
 /// from: a day. Past it, or on a device clock set back since, the offset is
 /// unknown again until a ping measures it, as the phone's cache does.
@@ -213,6 +282,7 @@ private val KEY_VOIDS: Preferences.Key<String> = stringPreferencesKey("pending_r
 private val KEY_COURSE: Preferences.Key<String> = stringPreferencesKey("race_course_cache_v1")
 private val KEY_ACTIVE: Preferences.Key<String> = stringPreferencesKey("race_active_cache_v1")
 private val KEY_CLOCK: Preferences.Key<String> = stringPreferencesKey("race_clock_offset_v1")
+private val KEY_UNDONE: Preferences.Key<String> = stringPreferencesKey("race_undone_finish_v1")
 private val pendingJson = Json { ignoreUnknownKeys = true }
 private val pendingSerializer = ListSerializer(PendingRaceResult.serializer())
 private val voidSerializer = ListSerializer(PendingRaceVoid.serializer())
@@ -366,8 +436,29 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
             }
     }
 
+    /// Keep [entry] as the one undone finish; null forgets it.
+    suspend fun keepUndoneFinish(entry: UndoneRaceFinish?) {
+        dataStore.edit { prefs ->
+            if (entry == null) {
+                prefs.remove(KEY_UNDONE)
+            } else {
+                prefs[KEY_UNDONE] = pendingJson.encodeToString(UndoneRaceFinish.serializer(), entry)
+            }
+        }
+    }
+
+    /// The kept undone finish, whichever recording's, or null.
+    suspend fun undoneFinish(): UndoneRaceFinish? {
+        val raw = dataStore.data.first()[KEY_UNDONE] ?: return null
+        return runCatching { pendingJson.decodeFromString(UndoneRaceFinish.serializer(), raw) }
+            .getOrElse { e ->
+                Log.w("RaceResultStore", "undone race finish unreadable, ignoring", e)
+                null
+            }
+    }
+
     /// Sign-out: every queued result, withdrawn finish, cached course, cached
-    /// race and the kept clock offset, for every account.
+    /// race, undone finish and the kept clock offset, for every account.
     suspend fun clear() {
         dataStore.edit { prefs ->
             prefs.remove(KEY_PENDING)
@@ -375,6 +466,7 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
             prefs.remove(KEY_COURSE)
             prefs.remove(KEY_ACTIVE)
             prefs.remove(KEY_CLOCK)
+            prefs.remove(KEY_UNDONE)
         }
     }
 }

@@ -29,7 +29,7 @@ export const guide: Guide = {
 				{
 					type: 'note',
 					tone: 'caution',
-					text: 'A closed course keeps its times and boards, but please don\'t run it until it reopens. The page shows when its status was last checked.',
+					text: 'A closed course takes no new times: a run over it while it is closed is not timed, and the times it already has stay on its boards. Please don\'t run it until it reopens. The page shows when its status was last checked.',
 				},
 			],
 		},

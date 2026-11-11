@@ -70,6 +70,7 @@ class NextRunLifecycleTest {
                 stage = RecordingRepository.Stage.Finished,
                 distanceStepFilledM = 12.0,
                 distanceStepOverChordM = 4.0,
+                distanceSegments = 2,
                 finishedHr = HeartRateClaim(avgBpm = 151.0, coverage = 0.97),
             )
         }
@@ -147,6 +148,7 @@ class NextRunLifecycleTest {
         assertNull("a finished claim on a live run would be stamped on the wrong run", m.finishedHr)
         assertNull(m.distanceStepFilledM)
         assertNull(m.distanceStepOverChordM)
+        assertNull(m.distanceSegments)
         assertNull(m.offRouteDistanceM)
         assertNull(m.routeRemainingM)
         assertTrue(m.trackOverlayPoints.isEmpty())

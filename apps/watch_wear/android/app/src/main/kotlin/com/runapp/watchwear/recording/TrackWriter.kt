@@ -28,9 +28,16 @@ import kotlinx.serialization.json.booleanOrNull
 class TrackWriter(private val file: File) {
     private var writer: PrintWriter? = null
     private var count = 0
+    private var segments = 0
     private var open = false
 
     val pointCount: Int get() = count
+    /// The estimator segments the file holds: its first fix opens one and
+    /// every fix written `segmentStart` another, which is how the server's
+    /// replay counts them. Saved as `metadata.distance_segments`, so the
+    /// server can tell a track that lost its marks on the way to storage
+    /// (`docs/features/gps_distance.md` § Server recompute).
+    val segmentCount: Int get() = segments
     val path: String get() = file.absolutePath
 
     fun open() {
@@ -41,6 +48,7 @@ class TrackWriter(private val file: File) {
         pw.flush()
         writer = pw
         count = 0
+        segments = 0
         open = true
     }
 
@@ -78,6 +86,7 @@ class TrackWriter(private val file: File) {
                 (if (segmentStart) ",\"segmentStart\":true" else "") +
                 "}"
         )
+        if (count == 0 || segmentStart) segments++
         count++
         if (count % FLUSH_EVERY == 0) w.flush()
     }

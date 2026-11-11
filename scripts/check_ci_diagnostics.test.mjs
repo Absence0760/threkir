@@ -682,7 +682,7 @@ const OFF_THE_GATE = new Map([
 			'`promote` / `advance` act on Google Play with the service account key CI does not ' +
 			'hold. What the gate holds instead is its SUITE, which drives every subcommand ' +
 			'against an in-memory Edits API and reads both workflows\' wiring, in the ' +
-			'`workflow-lint` job of ci.yml (decisions § 2432).',
+			'`workflow-lint` job of ci.yml (decisions § 2433).',
 	],
 	[
 		'scripts/check_compliance_drift.mjs',

@@ -6,7 +6,7 @@ name: Release Android
 # there's an audit trail, uploads it to the Play Internal track, and sends it
 # to production as a staged rollout (1% on approval; play-rollout.yml walks it
 # up the ramp once a day). The `production` environment's approval is the
-# human gate, as on iOS (decisions § 2040, § 2432). The Release body must
+# human gate, as on iOS (decisions § 2040, § 2433). The Release body must
 # carry an owner-written `## What's New` section of at most 500 characters,
 # which becomes the en-US Play release notes; the job fails in its first
 # minute without one.

@@ -457,7 +457,7 @@ jobs:
       # mobile_android release and on play-rollout.yml's cron, against Google
       # Play. This drives both against an in-memory Edits API and pins the
       # wiring in both workflows, so a regression fails a PR instead of a
-      # release (decisions.md § 2432).
+      # release (decisions.md § 2433).
       - name: The Android release still goes to Play production as a staged rollout
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |

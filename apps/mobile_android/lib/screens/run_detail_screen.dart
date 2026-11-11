@@ -3167,12 +3167,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     final api = widget.apiClient;
     if (api == null || api.userId == null) return;
     if (!_audienceOn) {
-      if (_isPublic == true) {
-        await _makePrivate();
-      } else {
-        await _makePublicFromControl();
-      }
-      return;
+      return _isPublic == true ? _makePrivate() : _makePublicFromControl();
     }
     if (_visibilityBusy) return;
     _visibilityBusy = true;

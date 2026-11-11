@@ -609,7 +609,39 @@ The Dart side of the `group_messages` parity pair (decisions § 2468), mirroring
 
 The group error sentences (issue #1365 slice 3, decisions § 2468): each `GroupRefusal` reads its own string and one refusal stays one sentence whatever caused it, an action's own refused sentence wins, the throttle and offline read their own, anything unnamed reads the fallback; on send, the gate reads as not allowed (the photo variant with a photo), an unavailable photo and a failed upload read their own.
 
-### `apps/mobile_ios/test/` — 880 files, byte-for-byte
+### `apps/mobile_android/test/park_course_report_sheet_test.dart` — 11 tests
+
+"Report a problem with this course" (issue #1346, decisions § 2449 + § 2469) over an in-file fake `ApiClient`: all six reasons offered in `kCourseReportReasons` order with the land-manager and rights-holder hints, the first one picked; the note and email fields carry the server's 1000 / 254 limits and the note is cut at 1000; Send waits for a non-blank note; the email is optional for every reason but a rights holder, whose request keeps Send disabled until a valid address is typed while the helper reads the required wording, a malformed address shows the error instead, and switching reason flips the rule; a malformed optional address also blocks Send; a filing sends course, reason, note and email, closes the sheet and thanks the runner, and a second tap mid-flight sends nothing. One looped declaration runs each refusal (already reported, rate limited, `email_required`, `invalid_email`, course gone, an invalid report, an unknown code, offline) and requires its own sentence with the sheet and the typed note still up. Two pure cases pin `courseReportRefusal`'s code map and `courseReportEmailOk`'s shape and length rule. Eleven declarations, 18 cases at run time.
+
+### `apps/mobile_android/test/group_people_picker_test.dart` — 9 tests
+
+`GroupPeoplePicker` (issue #1365 slice 3): both directions of the follow graph offered once each and never the viewer; search narrows the list and says when nothing matches; the selection count follows ticks and unticks; the seat cap counts invitations (`groupSeatsLeft(29, 1)` takes two more, then every unticked row locks, the full notice shows and unticking frees the seat); a full group locks everyone; members and invitees are not offered, and everyone already in reads as nobody to invite; `disabled` locks every row; a failed load says so, distinct from the empty state, and Retry loads again.
+
+### `apps/mobile_android/test/dm_bubble_test.dart` — 9 tests
+
+Smoke tests for `DmBubble`, shared by the 1:1 and group threads (decisions § 2468): the viewer's own message right-aligned in the primary colour, someone else's left with their name and avatar, never a name or avatar on the viewer's own; the edited mark only on an edited message; the unsent placeholder in place of the body; the seen line; a long press reaching its handler, and a message still sending dimmed with no long press.
+
+### `apps/mobile_android/test/dm_reaction_chips_test.dart` — 7 tests
+
+Smoke tests for `DmReactionChips`: one chip per reaction on this message with its count and glyph (another message's rows ignored); the viewer's own reaction highlighted and announced as a selected button with its count; a tap on another reaction sets it and a tap on the viewer's own clears it; a screen reader's tap action does the same on a chip and on a reaction-picker option (both had none: `excludeSemantics` dropped the `InkWell`'s, fixed in the same commit); a viewer who cannot react sees the chips but taps do nothing; no reactions draws nothing.
+
+### `apps/mobile_android/test/coach_assist_consent_switch_test.dart` — 7 tests
+
+Smoke tests for `CoachAssistConsentSwitch` (issue #1215 Phase 4) over an in-file fake: off with no consent and named for the coach, on with one; turning it on saves `kCoachAssistConsentVersion` and turning it off withdraws with null, each reported to the host; a save in flight shows the new value and locks the switch; a refused save puts the switch back with the error, cleared on the next attempt; the explainer names every lane the drafting endpoint sends.
+
+### `apps/mobile_android/test/dm_message_text_test.dart` — 6 tests
+
+`DmMessageText` (issue #1216): plain text (markup included) is one plain `Text`; an http(s) link gets its text plus a chip naming the domain (`www.` and the port dropped) and a tap opens its href; links number in order. One looped declaration runs seven bodies that must stay text — `ftp:`, `mailto:`, `javascript:`, a Latin and a Cyrillic look-alike host, a `user@host` authority and a dotless host. A refused link beside a good one leaves only the good one, and a link with no handler draws without a tap target. Six declarations, 12 cases at run time.
+
+### `apps/mobile_android/test/fitness_surface_requests_test.dart` — 6 tests
+
+`FitnessSurfaceRequests` (decisions § 2437): with nobody listening a request is refused and nothing is parked; a listener is told and `take` hands the tab over once; the same tab can be asked for twice running; an undrained request is replaced by the newest. `openFitnessSurface` hands the tab to a listening shell without pushing anything, and pushes the fallback screen when no shell listens.
+
+### `apps/mobile_android/test/ai_disclosure_notice_test.dart` — 3 tests
+
+`AiDisclosureNotice`, the one copy of the AI-processing disclosure: the intro (naming Anthropic) and the processing terms (pointing at Settings → Account and the privacy policy); every `coachConsentBullet*` key in `app_en.arb` rendered as a bullet and no other bullet, so a lane added to the catalogue without the notice fails; the lane the current version (`kAiDisclosureCurrentVersion`, the coach assistant) added is among them.
+
+### `apps/mobile_ios/test/` — 888 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 

@@ -229,7 +229,7 @@ class ParkCourseMap extends StatelessWidget {
                         width: 24,
                         height: 24,
                         child: _EndMarker(
-                          icon: Icons.flag,
+                          icon: Icons.flag_outlined,
                           fill: ends.danger,
                           ink: ends.onDanger,
                           ring: ring,
@@ -240,7 +240,7 @@ class ParkCourseMap extends StatelessWidget {
                       width: 24,
                       height: 24,
                       child: _EndMarker(
-                        icon: shared ? Icons.flag : Icons.play_arrow,
+                        icon: shared ? Icons.flag_outlined : Icons.play_arrow,
                         fill: ends.success,
                         ink: ends.onSuccess,
                         ring: ring,
@@ -303,7 +303,7 @@ class ParkCourseMapLegend extends StatelessWidget {
             item(
               const Key('park-course-legend-start-finish'),
               _EndMarker(
-                icon: Icons.flag,
+                icon: Icons.flag_outlined,
                 fill: ends.success,
                 ink: ends.onSuccess,
                 ring: ring,
@@ -324,7 +324,7 @@ class ParkCourseMapLegend extends StatelessWidget {
             item(
               const Key('park-course-legend-finish'),
               _EndMarker(
-                icon: Icons.flag,
+                icon: Icons.flag_outlined,
                 fill: ends.danger,
                 ink: ends.onDanger,
                 ring: ring,

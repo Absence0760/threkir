@@ -94,7 +94,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Ele cronometra seu trajeto pelas linhas de largada e chegada com que a prova foi disputada, usando o mesmo horário de referência que seu celular ou relógio usou durante a prova.',
-						'Você pode recronometrar até 24 horas depois do fim da prova. Depois disso, só o organizador pode mudar um tempo.',
+						'Você pode recronometrar até 24 horas depois do fim da prova. Depois disso, seu tempo, seu percurso e sua distância ficam bloqueados, e só o organizador pode mudar seu tempo.',
 						'Ele substitui um DNF, um tempo de chegada manual e um resultado aguardando revisão. Ele nunca substitui um tempo definido pelo organizador nem um resultado já cronometrado pelas duas linhas; em uma prova de tempo próprio, só uma tentativa mais rápida cronometrada pelas duas linhas o substitui.',
 						'Se o organizador aprovar os resultados manualmente, um resultado recronometrado volta para a aprovação dele.',
 					],
@@ -146,7 +146,7 @@ export const translation: GuideTranslation = {
 		's5.b1.i0': 'd6fc360bf0506c2c',
 		's5.b1.i1': 'b0eb18e5a8270886',
 		's5.b2.i0': '7b1ea13025902315',
-		's5.b2.i1': '7e44288e6edf8a96',
+		's5.b2.i1': 'a97c00d0cbdf91fc',
 		's5.b2.i2': '8a9c94b45aba53b2',
 		's5.b2.i3': '84812a40e9aafb58',
 		's6.heading': 'badeb43244f6c195',

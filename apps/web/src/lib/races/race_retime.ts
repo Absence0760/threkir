@@ -1,5 +1,5 @@
 // Re-time a race result from the run's stored track (issue #1307 M11,
-// decisions § 2457). Pure: the track, the race's frozen course, its session
+// decisions § 2458). Pure: the track, the race's frozen course, its session
 // and the runner's current row go in; what a re-time would write, or why it
 // cannot, comes out. The writing is data.ts's `retimeEventResult`; the server's
 // race guard derives the gun and chip time again from the crossings written.

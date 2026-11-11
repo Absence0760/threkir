@@ -687,7 +687,8 @@ export type NotificationKind =
 	| 'organiser_dispute'
 	| 'park_course_report'
 	| 'race_starting_soon'
-	| 'race_start_moved';
+	| 'race_start_moved'
+	| 'group_invite';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

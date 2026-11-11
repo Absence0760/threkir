@@ -206,7 +206,11 @@
 			case 'workout_reminder':
 				return m('notificationBell.workoutReminder');
 			case 'message':
-				return m('notificationBell.message', { name });
+				return item.row.conversation_id
+					? m('notificationBell.groupMessage', { name })
+					: m('notificationBell.message', { name });
+			case 'group_invite':
+				return m('notificationBell.groupInvite', { name });
 			case 'club_post':
 				return item.club_name
 					? m('notificationBell.clubPostNamed', { name, club: item.club_name })

@@ -53,6 +53,7 @@ test('not an unsent message', () => {
 
 test('not a shared AI Coach answer', () => {
 	assert.equal(canEditDm(msg({ kind: 'coach_share' }), me, at(1)), false);
+	assert.equal(canEditDm(msg({ kind: 'group_renamed' }), me, at(1)), false);
 	assert.equal(canEditDm(msg({ kind: 'text' }), me, at(1)), true);
 });
 

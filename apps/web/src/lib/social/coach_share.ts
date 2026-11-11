@@ -15,17 +15,21 @@
  * (docs/architecture/parity_pairs.md).
  */
 
-export type DmKind = 'text' | 'coach_share' | 'ai_assisted';
+export type DmKind = 'text' | 'coach_share' | 'ai_assisted' | 'group_renamed';
 
 /** Every `direct_messages.kind` the CHECK admits. */
-export const DM_KINDS = ['text', 'coach_share', 'ai_assisted'] as const satisfies readonly DmKind[];
+export const DM_KINDS = ['text', 'coach_share', 'ai_assisted', 'group_renamed'] as const satisfies readonly DmKind[];
 
 /** Must equal the 4000-character cap share_coach_message enforces. */
 export const COACH_SHARE_MAX_CHARS = 4000;
 
-/** A row's `kind`, read at the boundary. Anything unknown is drawn as text. */
+/**
+ * A row's `kind`, read at the boundary. Anything unknown is drawn as text.
+ * `group_renamed` is the system line rename_group writes in a group, its body
+ * the new title (migration 20271217000004).
+ */
 export function parseDmKind(raw: unknown): DmKind {
-	return raw === 'coach_share' || raw === 'ai_assisted' ? raw : 'text';
+	return raw === 'coach_share' || raw === 'ai_assisted' || raw === 'group_renamed' ? raw : 'text';
 }
 
 const EDGE = /^[ \t\n\r]+|[ \t\n\r]+$/g;

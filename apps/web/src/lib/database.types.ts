@@ -3343,6 +3343,7 @@ export type Database = {
           challenge_id: string | null
           club_id: string | null
           comment_id: string | null
+          conversation_id: string | null
           course_alert_id: string | null
           created_at: string
           email_sent_at: string | null
@@ -3367,6 +3368,7 @@ export type Database = {
           challenge_id?: string | null
           club_id?: string | null
           comment_id?: string | null
+          conversation_id?: string | null
           course_alert_id?: string | null
           created_at?: string
           email_sent_at?: string | null
@@ -3391,6 +3393,7 @@ export type Database = {
           challenge_id?: string | null
           club_id?: string | null
           comment_id?: string | null
+          conversation_id?: string | null
           course_alert_id?: string | null
           created_at?: string
           email_sent_at?: string | null
@@ -3441,6 +3444,13 @@ export type Database = {
             columns: ["comment_id"]
             isOneToOne: false
             referencedRelation: "run_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
           {
@@ -7625,6 +7635,14 @@ export type Database = {
           reversed_fee_cents: number
         }[]
       }
+      admin_report_conversation: {
+        Args: { p_message_id: string }
+        Returns: {
+          kind: string
+          member_count: number
+          title: string
+        }[]
+      }
       admin_review_park_nps_alert: {
         Args: { p_action: string; p_id: number; p_note?: string }
         Returns: number
@@ -8571,6 +8589,13 @@ export type Database = {
         }
       }
       grant_health_data_consent: { Args: never; Returns: string }
+      group_blocked_placeholders: {
+        Args: { p_conversation_id: string; p_since: string }
+        Returns: {
+          created_at: string
+          id: string
+        }[]
+      }
       group_invites: {
         Args: never
         Returns: {

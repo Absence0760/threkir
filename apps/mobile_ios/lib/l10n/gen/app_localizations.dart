@@ -1331,6 +1331,42 @@ abstract class AppLocalizations {
   /// **'Back by morning, like Thor\'s goats.'**
   String get dashboardHeroRestDayGrisnir;
 
+  /// Grisnir the mascot's one dry line beside his hop when a run is the runner's first ever
+  ///
+  /// In en, this message translates to:
+  /// **'First run in. That\'s the hard one.'**
+  String get mascotMilestoneFirstRun;
+
+  /// Grisnir's line when a run is the runner's first 5 km; never a nag
+  ///
+  /// In en, this message translates to:
+  /// **'Your first 5K. That counts.'**
+  String get mascotMilestoneFirst5k;
+
+  /// Grisnir's line when a run unlocked a badge
+  ///
+  /// In en, this message translates to:
+  /// **'Badge earned. Worth a hop.'**
+  String get mascotMilestoneBadge;
+
+  /// Grisnir's line when a run set a new best time at a personal-record distance
+  ///
+  /// In en, this message translates to:
+  /// **'A new best. Worth a hop.'**
+  String get mascotMilestoneBest;
+
+  /// Grisnir's line when a run is the runner's longest so far
+  ///
+  /// In en, this message translates to:
+  /// **'Your longest run yet.'**
+  String get mascotMilestoneLongest;
+
+  /// Line under Grisnir waiting by a trail sign on the onboarding screen; Grisnir is the mascot's name, keep it
+  ///
+  /// In en, this message translates to:
+  /// **'Grisnir waits at the trailhead.'**
+  String get mascotOnboardingLine;
+
   /// One-line readiness score in the Today hero; {score} is 0-100
   ///
   /// In en, this message translates to:

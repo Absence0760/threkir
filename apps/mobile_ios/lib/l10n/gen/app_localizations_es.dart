@@ -830,6 +830,25 @@ class AppLocalizationsEs extends AppLocalizations {
       'De vuelta por la mañana, como las cabras de Thor.';
 
   @override
+  String get mascotMilestoneFirstRun =>
+      'Primera carrera hecha. Era la más difícil.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Tu primer 5K. Eso cuenta.';
+
+  @override
+  String get mascotMilestoneBadge => 'Insignia conseguida. Merece un salto.';
+
+  @override
+  String get mascotMilestoneBest => 'Nueva mejor marca. Merece un salto.';
+
+  @override
+  String get mascotMilestoneLongest => 'Tu carrera más larga hasta ahora.';
+
+  @override
+  String get mascotOnboardingLine => 'Grisnir espera al inicio del sendero.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Preparación $score';
   }

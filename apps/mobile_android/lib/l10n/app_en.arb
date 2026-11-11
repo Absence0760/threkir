@@ -1118,6 +1118,30 @@
   "@dashboardHeroRestDayGrisnir": {
     "description": "Grisnir the mascot's one dry line beside his resting art on a plan rest day; Norse lore: Thor's goats are eaten every night and are back by morning"
   },
+  "mascotMilestoneFirstRun": "First run in. That's the hard one.",
+  "@mascotMilestoneFirstRun": {
+    "description": "Grisnir the mascot's one dry line beside his hop when a run is the runner's first ever"
+  },
+  "mascotMilestoneFirst5k": "Your first 5K. That counts.",
+  "@mascotMilestoneFirst5k": {
+    "description": "Grisnir's line when a run is the runner's first 5 km; never a nag"
+  },
+  "mascotMilestoneBadge": "Badge earned. Worth a hop.",
+  "@mascotMilestoneBadge": {
+    "description": "Grisnir's line when a run unlocked a badge"
+  },
+  "mascotMilestoneBest": "A new best. Worth a hop.",
+  "@mascotMilestoneBest": {
+    "description": "Grisnir's line when a run set a new best time at a personal-record distance"
+  },
+  "mascotMilestoneLongest": "Your longest run yet.",
+  "@mascotMilestoneLongest": {
+    "description": "Grisnir's line when a run is the runner's longest so far"
+  },
+  "mascotOnboardingLine": "Grisnir waits at the trailhead.",
+  "@mascotOnboardingLine": {
+    "description": "Line under Grisnir waiting by a trail sign on the onboarding screen; Grisnir is the mascot's name, keep it"
+  },
   "dashboardHeroReadiness": "Readiness {score}",
   "@dashboardHeroReadiness": {
     "description": "One-line readiness score in the Today hero; {score} is 0-100",

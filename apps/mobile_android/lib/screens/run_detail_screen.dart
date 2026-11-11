@@ -1,3 +1,5 @@
+import '../mascot.dart';
+import '../widgets/grisnir_moments.dart';
 import '../activity_type_labels.dart';
 import '../elevation_profile.dart';
 import 'dart:async';
@@ -368,8 +370,38 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       if (!mounted) return;
       setState(() => _runRecords = entries);
       if (widget.openPrCard && entries.isNotEmpty) unawaited(_sharePrCard());
+      unawaited(_loadMilestone(api, entries));
     } catch (e) {
       debugPrint('run personal records fetch failed: $e');
+    }
+  }
+
+  /// The one milestone this run earned, for Grisnir's hop above the stats.
+  MilestoneKind? _milestone;
+
+  /// L4: the milestone is decoration; a failed badge read shows none. The
+  /// run counts come from the local store, which holds every run the phone
+  /// has synced.
+  Future<void> _loadMilestone(ApiClient api, List<PrCardEntry> entries) async {
+    try {
+      final runId = run.id;
+      final badges = await api.fetchMyBadges();
+      final runs = widget.runStore.runs;
+      var longest = 0.0;
+      for (final r in runs) {
+        if (r.distanceMetres > longest) longest = r.distanceMetres;
+      }
+      final kind = pickMilestone(
+        totalRuns: runs.length,
+        runDistanceM: run.distanceMetres,
+        longestRunM: longest,
+        records: [for (final e in entries) (e.distance, e.kind)],
+        badgeEarned: badges.any((b) => b.sourceId == runId),
+      );
+      if (!mounted || run.id != runId) return;
+      setState(() => _milestone = kind);
+    } catch (e) {
+      debugPrint('run milestone read failed: $e');
     }
   }
 
@@ -1512,7 +1544,18 @@ class _RunDetailScreenState extends State<RunDetailScreen>
       ThemeData theme, AppLocalizations l10n, DistanceUnit unit) {
     final blockedReason = widget.runStore.blockedReason(run.id);
     final secondaryStats = _secondaryStatCells(l10n, unit);
+    final milestone = _milestone;
     return [
+      // Never beside a blocked sync or a DNF: Grisnir stays out of every
+      // failure state.
+      if (milestone != null &&
+          blockedReason == null &&
+          !_isDnf &&
+          mascotShown())
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: GrisnirMilestone(kind: milestone),
+        ),
       if (blockedReason != null)
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),

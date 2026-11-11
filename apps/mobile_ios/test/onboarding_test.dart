@@ -87,22 +87,19 @@ void main() {
     });
 
     test('the import step offers the device\'s own health platform only', () {
-      final ios = setupWizardImportSources(isIOS: true, parkrunAvailable: true);
-      expect(ios, ['healthkit', 'strava', 'parkrun']);
+      final ios = setupWizardImportSources(isIOS: true);
+      expect(ios, ['healthkit', 'strava']);
       expect(ios.contains('health_connect'), isFalse);
 
-      final android =
-          setupWizardImportSources(isIOS: false, parkrunAvailable: true);
-      expect(android, ['health_connect', 'strava', 'parkrun']);
+      final android = setupWizardImportSources(isIOS: false);
+      expect(android, ['health_connect', 'strava']);
       expect(android.contains('healthkit'), isFalse);
     });
 
-    test('the import step hides parkrun until its probe says yes', () {
+    test('the import step never offers parkrun, whose import was a scrape', () {
       for (final isIOS in [true, false]) {
-        final sources =
-            setupWizardImportSources(isIOS: isIOS, parkrunAvailable: false);
-        expect(sources.contains('parkrun'), isFalse);
-        expect(sources, hasLength(2));
+        expect(setupWizardImportSources(isIOS: isIOS).contains('parkrun'),
+            isFalse);
       }
     });
 
@@ -111,8 +108,7 @@ void main() {
       // through the health platform instead.
       for (final isIOS in [true, false]) {
         expect(
-          setupWizardImportSources(isIOS: isIOS, parkrunAvailable: true)
-              .contains('garmin'),
+          setupWizardImportSources(isIOS: isIOS).contains('garmin'),
           isFalse,
         );
       }

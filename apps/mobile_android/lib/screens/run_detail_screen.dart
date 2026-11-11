@@ -2166,8 +2166,9 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     return (d * 100).round();
   }
 
-  /// Age grade shown on the secondary-stat tile. Prefers the parkrun importer's
-  /// scraped metadata.age_grade string; otherwise computes it for any standard
+  /// Age grade shown on the secondary-stat tile. Prefers a metadata.age_grade
+  /// string a run from the retired parkrun import still carries; otherwise
+  /// computes it for any standard
   /// race distance from the runner's DOB + sex + distance + duration via the
   /// shared age_grade helper (twin of web). Null when neither is available.
   /// See metadata.md + docs/features/age_grade.md.

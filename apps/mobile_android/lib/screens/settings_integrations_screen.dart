@@ -11,16 +11,12 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../fitness_surface_requests.dart';
 import '../auth_error.dart';
-import '../column_limits.dart';
 import '../integration_visibility.dart';
 import '../ble_heart_rate.dart';
 import '../ble_readiness_labels.dart';
 import '../ble_treadmill.dart';
 import '../health_connect_exporter.dart';
 import '../l10n/gen/app_localizations.dart';
-import '../parkrun_barcode.dart';
-import '../parkrun_barcode_cache.dart';
-import '../parkrun_regions.dart';
 import '../preferences.dart';
 import '../race_provider_labels.dart';
 import '../race_service.dart';
@@ -30,7 +26,6 @@ import '../strava.dart';
 import '../widgets/help_button.dart';
 import '../widgets/info_tip.dart';
 import '../widgets/top_banner.dart';
-import '../widgets/ultrasignup_link.dart';
 import 'parkrun_barcode_screen.dart';
 import 'plan_calendar_feed_screen.dart';
 import 'races_screen.dart';
@@ -104,12 +99,9 @@ class _SettingsIntegrationsScreenState
   /// and a deployment that configured none of this offers none of it.
   final Map<String, bool?> _verdicts = {};
 
-  /// The account-connection tiles, in render order. parkrun is a real import on
-  /// this client (web's card only records that the runner takes part), so it is
-  /// gated on its Edge Function being reachable rather than on a credential.
+  /// The account-connection tiles, in render order.
   static const _connectSpecs = [
     IntegrationSpec(provider: 'strava', gate: IntegrationGate.env),
-    IntegrationSpec(provider: 'parkrun', gate: IntegrationGate.probe),
   ];
 
   @override
@@ -118,23 +110,9 @@ class _SettingsIntegrationsScreenState
     _refreshIntegrations();
     // Synchronous, so the Strava tile never renders and then vanishes.
     _verdicts['strava'] = isStravaConfigured();
-    _probeParkrun();
     for (final spec in raceImportProviders) {
       _probeRaceProvider(spec.provider);
     }
-  }
-
-  /// parkrun needs no credential, so this asks only whether its Edge Function
-  /// is reachable on this deployment — the question a minimal deployment
-  /// answers no to, and the one that used to be skipped entirely.
-  Future<void> _probeParkrun() async {
-    var ok = false;
-    try {
-      ok = await _raceService.isParkrunConfigured();
-    } catch (e) {
-      debugPrint('settings: parkrun probe failed: $e');
-    }
-    if (mounted) setState(() => _verdicts['parkrun'] = ok);
   }
 
   /// A probe is a network call (L4): each provider degrades to unavailable on
@@ -419,107 +397,6 @@ class _SettingsIntegrationsScreenState
     ));
   }
 
-  Future<void> _importParkrun() async {
-    final l10n = AppLocalizations.of(context);
-    final api = widget.apiClient;
-    if (api == null || api.userId == null) return;
-
-    String existing = '';
-    try {
-      final profile = await api.fetchMyProfile();
-      existing = profile?.parkrunNumber ?? '';
-    } catch (e) {
-      debugPrint('settings: parkrun profile fetch failed: $e');
-    }
-
-    final ctrl = TextEditingController(text: existing);
-    if (!mounted) return;
-    final athleteNumber = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.integrationsParkrunTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(l10n.integrationsParkrunBody),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              maxLength: columnLength('user_profiles.parkrun_number'),
-              decoration: InputDecoration(
-                labelText: l10n.integrationsParkrunFieldLabel,
-                hintText: 'A123456',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text(l10n.integrationsCancel),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, ctrl.text),
-            child: Text(l10n.integrationsImport),
-          ),
-        ],
-      ),
-    );
-    if (mounted) FocusScope.of(context).unfocus();
-    if (athleteNumber == null || athleteNumber.trim().isEmpty) return;
-    if (!mounted) return;
-    // The same rule the import enforces, applied before the round trip so
-    // the runner hears what is wrong instead of a bare 400.
-    final canonical = normalizeParkrunAthleteNumber(athleteNumber);
-    if (canonical == null) {
-      showTopBanner(context, l10n.parkrunBarcodeFieldInvalid);
-      return;
-    }
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        content: Row(
-          children: [
-            const CircularProgressIndicator(),
-            const SizedBox(width: 16),
-            Expanded(child: Text(l10n.integrationsParkrunImporting)),
-          ],
-        ),
-      ),
-    );
-
-    try {
-      await api.setParkrunAthleteNumber(canonical);
-      await const ParkrunBarcodeCache().write(api.userId!, canonical);
-      final result = await api.importParkrunResults(canonical);
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      // A capped history and a whole one both arrive as a positive count, so
-      // the shortfall has to be said outright or the runner reads "Imported 40
-      // results" as "your parkrun history is here" (decisions § 1014).
-      final total = result.total;
-      showTopBanner(
-        context,
-        !result.complete
-            ? (total != null
-                ? l10n.integrationsImportPartialOf(result.imported, total)
-                : l10n.integrationsImportPartial(result.imported))
-            : result.imported > 0
-                ? l10n.integrationsParkrunImported(result.imported)
-                : l10n.integrationsParkrunNoneNew,
-      );
-    } catch (e) {
-      debugPrint('[SettingsIntegrationsScreen] import failed: $e');
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      showTopBanner(context, l10n.integrationsImportFailed(friendlyError(l10n, e)));
-    }
-  }
-
   String _lookbackLabel(AppLocalizations l10n, int days) => switch (days) {
         180 => l10n.integrationsStravaLookback180,
         365 => l10n.integrationsStravaLookback365,
@@ -656,34 +533,7 @@ class _SettingsIntegrationsScreenState
                 _verdicts,
                 [for (final i in _integrations) i.provider],
               ))
-                if (gated.spec.provider == 'strava')
-                  _buildStravaTile()
-                else
-                  ListTile(
-                    leading: const Icon(Icons.directions_run),
-                    title: infoTipTitle(
-                      l10n.integrationsParkrunName,
-                      InfoTipButton(
-                        label: l10n
-                            .integrationsInfoAbout(l10n.integrationsParkrunName),
-                        title: l10n.integrationsParkrunName,
-                        body: l10n.integrationsParkrunInfo,
-                      ),
-                    ),
-                    // Inside parkrun's ~20-country footprint the tile says what
-                    // it does; outside it, that there may be no events nearby.
-                    // The tile stays tappable either way — an expat can still
-                    // import by athlete ID. Mirrors web's parkrun_regions.ts.
-                    subtitle: Text(parkrunLikelyUnavailable(WidgetsBinding
-                            .instance.platformDispatcher.locale
-                            .toLanguageTag())
-                        ? l10n.integrationsParkrunRegionNote
-                        : l10n.integrationsParkrunTileSubtitle),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: _importParkrun,
-                  ),
-              // Not behind parkrun's probe: showing a runner their own barcode
-              // needs only their number, not the import function.
+                if (gated.spec.provider == 'strava') _buildStravaTile(),
               ListTile(
                 key: const ValueKey('integrations-parkrun-barcode'),
                 leading: const Icon(Icons.badge_outlined),
@@ -723,7 +573,7 @@ class _SettingsIntegrationsScreenState
               // import (§ 488 amendment).
               for (final spec in raceImportProviders)
                 if (_verdicts[spec.provider] ?? false)
-                  if (raceProviderLabels(l10n)[spec.provider] case final p?) ...[
+                  if (raceProviderLabels(l10n)[spec.provider] case final p?)
                     ListTile(
                       isThreeLine: true,
                       leading: Icon(p.icon),
@@ -739,13 +589,6 @@ class _SettingsIntegrationsScreenState
                       trailing: const Icon(Icons.chevron_right),
                       onTap: _openRaces,
                     ),
-                    // A person-scoped leg imports for whoever the runner says
-                    // they are there, once, here — every race's import then
-                    // uses it (decisions § 1841). Under the provider's own
-                    // tile, so it goes dark with that tile's probe.
-                    if (spec.scope == RaceImportScope.linkedPerson)
-                      UltraSignUpLinkTile(service: _raceService),
-                  ],
             ] else
               ListTile(
                 leading: const Icon(Icons.lock_outline),

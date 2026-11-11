@@ -1,5 +1,3 @@
-import 'package:api_client/api_client.dart'
-    show UltraSignUpCandidate, UltraSignUpPersonLink;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,7 +10,6 @@ import '../lib/race_service.dart';
 import '../lib/training.dart' show toIsoDate;
 import '../lib/screens/race_detail_screen.dart';
 import '../lib/screens/races_screen.dart';
-import '../lib/widgets/ultrasignup_link.dart';
 import 'pump_until.dart';
 
 class _FakeRaceService extends RaceService {
@@ -24,12 +21,6 @@ class _FakeRaceService extends RaceService {
   bool lastNewestFirst = false;
   String? lastImportProvider;
   String? lastImportBib;
-  UltraSignUpPersonLink? lastImportPerson;
-
-  /// The stored UltraSignup person, as `fetchUltraSignUpLink` reads it.
-  UltraSignUpPersonLink? link;
-  List<UltraSignUpCandidate> candidates;
-  bool throwPersonNotFound;
 
   /// What the import leg answers. `complete: false` is the truncated-field
   /// case; `throwTruncated` is the 502 refusal.
@@ -41,41 +32,20 @@ class _FakeRaceService extends RaceService {
     this.configured = const {},
     this.complete = true,
     this.throwTruncated = false,
-    this.link,
-    this.candidates = const [],
-    this.throwPersonNotFound = false,
   });
-
-  @override
-  Future<UltraSignUpPersonLink?> fetchUltraSignUpLink() async => link;
-
-  @override
-  Future<void> linkUltraSignUpPerson(UltraSignUpPersonLink next) async =>
-      link = next;
-
-  @override
-  Future<void> unlinkUltraSignUpPerson() async => link = null;
-
-  @override
-  Future<List<UltraSignUpCandidate>> lookupUltraSignUpPeople(
-          String firstName, String lastName) async =>
-      candidates;
 
   @override
   Future<ImportRaceResultOutcome> importRaceResult({
     required String provider,
     required String listingId,
     String? bib,
-    UltraSignUpPersonLink? ultraSignUpPerson,
     String? matchRunId,
     PastedRaceResult? result,
   }) async {
     importCalled = true;
     lastImportProvider = provider;
     lastImportBib = bib;
-    lastImportPerson = ultraSignUpPerson;
     if (throwTruncated) throw const RaceResultsTruncated();
-    if (throwPersonNotFound) throw const UltraSignUpPersonNotFound();
     return ImportRaceResultOutcome(
         imported: 1, skipped: 0, enriched: 0, complete: complete);
   }
@@ -542,7 +512,7 @@ void main() {
       'an unconfigured provider shows ITS OWN explainer, never a peer\'s',
       (tester) async {
     final service = _FakeRaceService(
-      results: [_listing('us1', 'Desert 100', provider: 'ultrasignup')],
+      results: [_listing('ct1', 'Desert 100', provider: 'chronotrack')],
       configured: const {'runsignup'},
     );
     await tester.pumpWidget(_app(service));
@@ -553,10 +523,10 @@ void main() {
     await pumpUntil(
       tester,
       () => find
-          .textContaining("UltraSignup import isn't available yet")
+          .textContaining("ChronoTrack import isn't available yet")
           .evaluate()
           .isNotEmpty,
-      describe: "the UltraSignup explainer",
+      describe: "the ChronoTrack explainer",
     );
 
     expect(
@@ -574,153 +544,14 @@ void main() {
     expect(find.textContaining('Enter your finishing details'), findsOneWidget);
   });
 
-  // UltraSignup is scoped by the person the runner picked in Settings, not by
-  // anything typed per race (decisions § 1841). These pin the sheet's three
-  // states — no link, a link, a link the function no longer finds — and that
-  // the import sends exactly the stored person.
-  group('an UltraSignup listing imports for the linked person', () {
-    const ada = UltraSignUpPersonLink(
-        personId: '12345', firstName: 'Ada', lastName: 'Lovelace');
-
-    Finder inSheet(Finder f) =>
-        find.descendant(of: find.byType(AlertDialog), matching: f);
-    final importButton =
-        inSheet(find.widgetWithText(FilledButton, 'Import my result'));
-
-    Future<void> openSheet(WidgetTester tester, _FakeRaceService service) async {
-      await tester.pumpWidget(_app(service));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Import my result'));
-      await tester.pumpAndSettle();
-      await pumpUntil(tester, () => importButton.evaluate().isNotEmpty,
-          describe: 'the UltraSignup import action to appear');
-    }
-
-    testWidgets('unlinked, the pull is refused and the finder is offered',
-        (tester) async {
-      // The listing carries a `provider_race_id`, which holds a RACE id; the
-      // sheet once fell back to it as the athlete account. Nothing it holds
-      // can stand in for the person, so with no link there is no import.
-      final service = _FakeRaceService(
-        results: [
-          _listing('us2', 'Bear 100',
-              provider: 'ultrasignup', providerRaceId: '98765'),
-        ],
-        configured: const {'ultrasignup'},
-      );
-      await openSheet(tester, service);
-      await pumpUntil(tester,
-          () => find.byKey(const Key('ultrasignup-not-linked')).evaluate().isNotEmpty,
-          describe: 'the not-linked line');
-
-      expect(tester.widget<FilledButton>(importButton).onPressed, isNull,
-          reason: 'an unscoped UltraSignup pull must not be submittable');
-      expect(inSheet(find.text('Find your UltraSignup profile')), findsOneWidget);
-      expect(inSheet(find.byType(TextField)), findsNWidgets(4),
-          reason: 'the retired athlete-id field must not come back; the four '
-              'are the manual paste form');
-      expect(service.importCalled, isFalse);
-    });
-
-    testWidgets('linked, the sheet names the person and the import sends them',
-        (tester) async {
-      final service = _FakeRaceService(
-        results: [_listing('us3', 'Bear 100', provider: 'ultrasignup')],
-        configured: const {'ultrasignup'},
-        link: ada,
-      );
-      await openSheet(tester, service);
-      await pumpUntil(
-          tester,
-          () => find
-              .text('Importing as Ada Lovelace (UltraSignup #12345)')
-              .evaluate()
-              .isNotEmpty,
-          describe: 'the importing-as line');
-
-      await tester.tap(importButton);
-      await tester.pumpAndSettle();
-
-      expect(service.lastImportProvider, 'ultrasignup');
-      expect(service.lastImportPerson, ada);
-      expect(service.lastImportBib, isNull);
-      await tester.pump(const Duration(seconds: 3));
-    });
-
-    testWidgets('a person linked from the sheet is the one the import sends',
-        (tester) async {
-      final service = _FakeRaceService(
-        results: [_listing('us4', 'Bear 100', provider: 'ultrasignup')],
-        configured: const {'ultrasignup'},
-        candidates: const [
-          UltraSignUpCandidate(
-            id: '12345',
-            firstName: 'Ada',
-            lastName: 'Lovelace',
-            age: 36,
-            resultCount: 4,
-            recentEvents: [],
-          ),
-        ],
-      );
-      await openSheet(tester, service);
-      await tester.tap(inSheet(find.text('Find your UltraSignup profile')));
-      await tester.pumpAndSettle();
-
-      await tester.enterText(find.widgetWithText(TextField, 'First name'), 'Ada');
-      await tester.enterText(
-          find.widgetWithText(TextField, 'Last name'), 'Lovelace');
-      await tester.pump();
-      await tester.tap(find.widgetWithText(FilledButton, 'Find me'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(OutlinedButton, 'This is me'));
-      await tester.pumpAndSettle();
-      expect(service.link, ada);
-
-      Navigator.of(tester.element(find.byType(UltraSignUpLinkPanel))).pop();
-      await tester.pumpAndSettle();
-      expect(find.text('Importing as Ada Lovelace (UltraSignup #12345)'),
-          findsOneWidget,
-          reason: 'the sheet reads the link the finder just made, not a stale '
-              'not-linked answer');
-
-      await tester.tap(importButton);
-      await tester.pumpAndSettle();
-      expect(service.lastImportPerson, ada);
-      await tester.pump(const Duration(seconds: 3));
-    });
-
-    testWidgets('a linked person UltraSignup no longer finds is said, not a '
-        'generic failure', (tester) async {
-      final service = _FakeRaceService(
-        results: [_listing('us5', 'Bear 100', provider: 'ultrasignup')],
-        configured: const {'ultrasignup'},
-        link: ada,
-        throwPersonNotFound: true,
-      );
-      await openSheet(tester, service);
-      await pumpUntil(
-          tester, () => tester.widget<FilledButton>(importButton).onPressed != null,
-          describe: 'the import to become submittable');
-
-      await tester.tap(importButton);
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.textContaining('no longer lists your linked profile'),
-          findsOneWidget);
-      expect(find.textContaining("Couldn't import"), findsNothing);
-      await tester.pump(const Duration(seconds: 3));
-    });
-  });
-
-  testWidgets('a parkrun listing offers manual paste and no provider pull',
+  testWidgets('an UltraSignup listing offers manual paste and no provider pull',
       (tester) async {
-    // parkrun, manual and raceresult are real listing providers with no
-    // bib-import leg. Falling through to paste is the correct answer, not a
-    // gap — and no other provider's explainer belongs on that sheet.
+    // ultrasignup, manual and raceresult are real listing providers with no
+    // import leg. Falling through to paste is the correct answer, not a gap —
+    // and no other provider's explainer belongs on that sheet. A deployment
+    // still answering an UltraSignup probe must not bring its pull back.
     final service = _FakeRaceService(
-      results: [_listing('pk1', 'Saturday parkrun', provider: 'parkrun')],
+      results: [_listing('us1', 'Bear 100', provider: 'ultrasignup')],
       configured: const {'runsignup', 'ultrasignup', 'chronotrack'},
     );
     await tester.pumpWidget(_app(service));

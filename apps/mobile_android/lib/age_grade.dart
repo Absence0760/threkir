@@ -5,10 +5,10 @@ import 'age_grade_tables.dart';
 /// 24-year-old's are comparable on one 0–100 % scale. The metric the masters
 /// audience lives by.
 ///
-/// We only had it for parkrun imports (the scraped `metadata.age_grade`
-/// string). This computes it for any standard-distance race when the runner's
-/// DOB, a standard distance, and a duration are known and no scraped value
-/// exists.
+/// Runs from the retired parkrun import may still carry a scraped
+/// `metadata.age_grade` string. This computes it for any standard-distance
+/// race when the runner's DOB, a standard distance, and a duration are known
+/// and no stored value exists.
 ///
 ///   agePct = openStandardSec / (durationSec × ageFactor) × 100
 ///

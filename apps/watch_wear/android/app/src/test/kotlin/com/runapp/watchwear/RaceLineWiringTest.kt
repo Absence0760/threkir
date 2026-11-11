@@ -8,8 +8,8 @@ import org.junit.Test
 /// The parts of timing by the lines (#1307) that live in `RunViewModel` and
 /// `RunRecordingService`, which need a device to run: read as source, so a
 /// refactor that drops one fails here rather than on the start line. The
-/// rules themselves are pinned in `RaceLineTimerTest` and
-/// `RaceResultOutboxTest`.
+/// rules themselves are pinned in `RaceLineTimerTest`,
+/// `RaceResultOutboxTest` and `RaceActiveCacheTest`.
 class RaceLineWiringTest {
 
     private fun read(rel: String) = File("src/main/kotlin/com/runapp/watchwear/$rel").readText()
@@ -77,6 +77,25 @@ class RaceLineWiringTest {
         val load = body(vm, "private suspend fun loadRaceCourse(")
         assertTrue(load.contains("raceResults.cacheCourse("))
         assertTrue(load.contains("raceResults.cachedCourse("))
+    }
+
+    @Test
+    fun `the race is kept on the watch and restored after a restart with no signal`() {
+        val poll = body(vm, "private fun observeRace(")
+        assertTrue(
+            "the cached race is read before the first poll",
+            poll.indexOf("restoreCachedRace()") in 0 until poll.indexOf("refreshRace()"),
+        )
+        val refresh = body(vm, "private suspend fun refreshRace(")
+        assertTrue("every answered poll keeps or forgets it", refresh.contains("cacheActiveRace(uid, newState)"))
+        assertTrue("a failed poll falls back to it", refresh.contains("restoreCachedRace()"))
+        assertTrue(body(vm, "private suspend fun restoreCachedRace(").contains("raceResults.restoreActiveRace("))
+        assertTrue(body(vm, "private suspend fun cacheActiveRace(").contains("activeRaceCacheEntry("))
+        assertTrue("a host's End forgets it", body(vm, "private fun onRaceEndedByHost(").contains("forgetCachedRace()"))
+        assertTrue(body(vm, "private fun onRaceEndedAfterStop(").contains("forgetCachedRace()"))
+        val teardown = body(vm, "private suspend fun tearDownSession(")
+        assertTrue("sign-out drops the race in memory too", teardown.contains("activeRace = null"))
+        assertTrue(teardown.contains("raceRestoreTried = false"))
     }
 
     @Test

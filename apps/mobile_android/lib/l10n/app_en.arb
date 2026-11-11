@@ -8434,11 +8434,11 @@
   "@eventRaceArm": {
     "description": "Button to arm the race"
   },
-  "eventRaceArmedHint": "Tap Fire Go when the race begins. Participants' watches show the armed banner now.",
+  "eventRaceArmedHint": "Tap GO when the race begins. Participants' watches show the armed banner now.",
   "@eventRaceArmedHint": {
     "description": "Hint shown when the race is armed"
   },
-  "eventRaceFireGo": "Fire Go",
+  "eventRaceFireGo": "GO",
   "@eventRaceFireGo": {
     "description": "Button to start the race"
   },

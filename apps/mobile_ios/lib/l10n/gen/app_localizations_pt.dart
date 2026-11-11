@@ -1637,11 +1637,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingLocationBodyAndroid =>
-      'O Threkir recolhe a sua localização GPS para registar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da aplicação, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra aplicação. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para registar uma corrida e continua a pedi-la com o ecrã desligado — uma notificação indica que há um registo a decorrer. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. O pedido seguinte concede o acesso durante a utilização da app, que é tudo o que o primeiro pedido do Android pode dar; só com esse acesso, o Android pode deixar de enviar a sua localização com o ecrã desligado ou enquanto está noutra app. Antes da sua primeira corrida, o Threkir propõe a passagem para «Permitir sempre», que mantém então o seguimento fiável. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationBodyIos =>
-      'O Threkir recolhe a sua localização GPS para registar uma corrida, incluindo com o ecrã desligado ou enquanto está noutra aplicação. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. Pode alterar isto a qualquer momento em Definições › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
+      'O Threkir recolhe a sua localização GPS para registar uma corrida, incluindo com o ecrã desligado ou enquanto está noutra app. A sua localização fica neste dispositivo enquanto não sincronizar nem partilhar uma corrida. Pode alterar isto a qualquer momento em Definições › Privacidade e Segurança › Serviços de Localização › Threkir. Se recusar, as corridas continuam a registar tempo e passos — mas sem mapa, distância ou ritmo.';
 
   @override
   String get onboardingLocationDeniedTitle => 'Sem acesso à localização';
@@ -1669,7 +1669,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get onboardingAccountBody =>
-      'Uma conta sincroniza as suas corridas com a aplicação web e os seus outros dispositivos, e recupera-as se perder este. Pode correr sem ela: aqui tudo funciona offline, e pode criar uma mais tarde em Tu › Definições.';
+      'Uma conta sincroniza as suas corridas com a app web e os seus outros dispositivos, e recupera-as se perder este. Pode correr sem ela: aqui tudo funciona offline, e pode criar uma mais tarde em Tu › Definições.';
 
   @override
   String get onboardingAccountCreate => 'Criar uma conta gratuita';
@@ -2077,7 +2077,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — a aguardar a partida';
+    return '$label — a aguardar o GO';
   }
 
   @override
@@ -6316,10 +6316,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'Toque em Disparar o Go quando a prova começar. Os relógios dos participantes mostram agora o aviso de prova preparada.';
+      'Toque em GO quando a prova começar. Os relógios dos participantes mostram agora o aviso de prova preparada.';
 
   @override
-  String get eventRaceFireGo => 'Disparar o Go';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Cancelar';
@@ -8084,10 +8084,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get coachSeasonHint =>
-      'Outra corrida depois deste plano? Toque em “Adicionar à minha época” na corrida e “A minha época” aparece aqui.';
+      'Outra prova depois deste plano? Toque em “Adicionar à minha época” na prova e “A minha época” aparece aqui.';
 
   @override
-  String get coachSeasonHintAction => 'Encontrar uma corrida';
+  String get coachSeasonHintAction => 'Encontrar uma prova';
 
   @override
   String get coachPlanPickerTooltip => 'Contexto do plano';
@@ -12602,7 +12602,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get clubEventCalendarUnavailable =>
-      'Não foi possível abrir a sua aplicação de calendário.';
+      'Não foi possível abrir a sua app de calendário.';
 
   @override
   String clubEventCalendarCancelledNote(int count) {
@@ -15242,7 +15242,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String raceCourseSourceTraced(String club) {
-    return 'Percurso desenhado por $club a partir do mapa publicado da corrida';
+    return 'Percurso desenhado por $club a partir do mapa publicado da prova';
   }
 
   @override
@@ -15256,31 +15256,30 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get raceCourseToolsHeading => 'Percurso da corrida';
+  String get raceCourseToolsHeading => 'Percurso da prova';
 
   @override
-  String get raceCourseClaim => 'Reivindicar esta corrida';
+  String get raceCourseClaim => 'Reivindicar esta prova';
 
   @override
-  String get raceCourseClaimTitle =>
-      'Reivindicar esta corrida para o seu clube';
+  String get raceCourseClaimTitle => 'Reivindicar esta prova para o seu clube';
 
   @override
   String get raceCourseClaimBody =>
-      'Reivindicar marca a corrida como verificada e permite que o seu clube associe o percurso. Reivindique apenas uma corrida que o seu clube organiza ou cujos percursos desenha.';
+      'Reivindicar marca a prova como verificada e permite que o seu clube associe o percurso. Reivindique apenas uma prova que o seu clube organiza ou cujos percursos desenha.';
 
   @override
   String get raceCourseClaimClub => 'Clube';
 
   @override
-  String get raceCourseClaimConfirm => 'Reivindicar corrida';
+  String get raceCourseClaimConfirm => 'Reivindicar prova';
 
   @override
-  String get raceCourseClaimed => 'Corrida reivindicada.';
+  String get raceCourseClaimed => 'Prova reivindicada.';
 
   @override
   String get raceCourseClaimFailed =>
-      'Não foi possível reivindicar esta corrida.';
+      'Não foi possível reivindicar esta prova.';
 
   @override
   String get raceCourseLinkCourse => 'Associar percurso';
@@ -15307,7 +15306,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get raceCourseSourceOptionTraced =>
-      'Traçado a partir do mapa publicado da corrida';
+      'Traçado a partir do mapa publicado da prova';
 
   @override
   String get raceCourseLinkConfirm => 'Associar percurso';
@@ -15328,11 +15327,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String get raceCourseSuggest => 'Sugerir um percurso';
 
   @override
-  String get raceCourseSuggestTitle => 'Sugerir um percurso para esta corrida';
+  String get raceCourseSuggestTitle => 'Sugerir um percurso para esta prova';
 
   @override
   String get raceCourseSuggestBody =>
-      'Escolha uma das suas rotas públicas. O organizador da corrida vai analisá-la, ou um clube verificado se ninguém tiver reivindicado a corrida.';
+      'Escolha uma das suas rotas públicas. O organizador da prova vai analisá-la, ou um clube verificado se ninguém tiver reivindicado a prova.';
 
   @override
   String get raceCourseSuggestRoute => 'A sua rota';
@@ -15369,7 +15368,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get raceCourseReviewClaimFirst =>
-      'Reivindique esta corrida para aprovar ou recusar uma sugestão.';
+      'Reivindique esta prova para aprovar ou recusar uma sugestão.';
 
   @override
   String get raceCourseReviewApprove => 'Aprovar';
@@ -15587,7 +15586,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get integrationsStravaInfo =>
-      'O Strava é uma aplicação popular para registar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Inicia sessão no Strava e autoriza o acesso, e pode desligar quando quiser.';
+      'O Strava é uma app popular para registar e partilhar corridas. Ao ligá-lo, as suas atividades do Strava são copiadas: primeiro os últimos 90 dias e depois cada nova atividade à medida que aparece. Inicia sessão no Strava e autoriza o acesso, e pode desligar quando quiser.';
 
   @override
   String get integrationsParkrunInfo =>
@@ -17347,7 +17346,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get backExitRecordingBody =>
-      'Sair da aplicação pode interromper a gravação. A sua corrida fica guardada, por isso pode retomá-la quando voltar.';
+      'Sair da app pode interromper a gravação. A sua corrida fica guardada, por isso pode retomá-la quando voltar.';
 
   @override
   String get backExitRecordingLeave => 'Sair mesmo assim';
@@ -17627,7 +17626,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      'Partida tardia: começou mais de 5 minutos após a partida ou longe da linha de partida.';
+      'Partida tardia: começou mais de 5 minutos após o GO ou longe da linha de partida.';
 
   @override
   String get eventCoursesTitle => 'Percursos';
@@ -18842,7 +18841,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get seasonPlanRacesHint =>
-      'As provas A são os objetivos da época e cada uma tem o seu plano. As B são provas de preparação que corre a sério; as C são corridas como treino.';
+      'As provas A são os objetivos da época e cada uma tem o seu plano. As B são provas de preparação que corre a sério; as C são provas que corre como treino.';
 
   @override
   String get seasonPlanNoRaces =>
@@ -20483,7 +20482,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String prefsDisclosureHint(String level) {
-    return 'Quanto a aplicação abre antes de pedir mais. Automático lê o objetivo que definiu e quantas corridas já tem guardadas, e hoje escolhe $level. Nada fica escondido para sempre: uma secção recolhida abre com um toque.';
+    return 'Quanto a app abre antes de pedir mais. Automático lê o objetivo que definiu e quantas corridas já tem guardadas, e hoje escolhe $level. Nada fica escondido para sempre: uma secção recolhida abre com um toque.';
   }
 
   @override
@@ -21323,7 +21322,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get parksSafetyNotice =>
-      'Mantenha-se no trilho marcado. A cronometragem exige todos os pontos de controlo, por isso um atalho nunca conta. É um contrarrelógio, não uma corrida: o trilho continua aberto a todos e ninguém o vigia.';
+      'Mantenha-se no trilho marcado. A cronometragem exige todos os pontos de controlo, por isso um atalho nunca conta. É um contrarrelógio, não uma prova: o trilho continua aberto a todos e ninguém o vigia.';
 
   @override
   String get parksNotAffiliated =>
@@ -21445,18 +21444,19 @@ class AppLocalizationsPt extends AppLocalizations {
       'Mapa da linha de chegada do percurso';
 
   @override
-  String get eventRacePreflightTitle => 'Verifique os percursos antes de armar';
+  String get eventRacePreflightTitle =>
+      'Verifique os percursos antes de preparar a prova';
 
   @override
   String get eventRacePreflightBlockedTitle =>
-      'Esta corrida ainda não pode ser armada';
+      'Esta prova ainda não pode ser preparada';
 
   @override
   String get eventRacePreflightFixOnWeb =>
       'As linhas do percurso editam-se no editor de eventos na web.';
 
   @override
-  String get eventRaceArmAnyway => 'Armar mesmo assim';
+  String get eventRaceArmAnyway => 'Preparar na mesma';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -21468,7 +21468,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String eventRacePreflightNoStart(String course) {
-    return '$course: sem linha de partida. Uma corrida cronometrada por cada um precisa de uma.';
+    return '$course: sem linha de partida. Uma prova de tempo próprio precisa de uma.';
   }
 
   @override
@@ -21533,15 +21533,15 @@ class AppLocalizationsPt extends AppLocalizations {
   String get runRaceAttemptReady => 'Tentativa pronta: toque em Iniciar';
 
   @override
-  String get eventRaceArmEarly => 'Armar antes';
+  String get eventRaceArmEarly => 'Preparar mais cedo';
 
   @override
   String get eventRaceScheduledNotYet =>
-      'Começa sozinha à hora agendada. Arme antes para verificar as linhas agora.';
+      'Começa sozinha à hora agendada. Prepare-a mais cedo para verificar as linhas agora.';
 
   @override
   String get eventRaceSelfTimedNotYet =>
-      'Abre sozinha. Arme antes para verificar as linhas agora.';
+      'Abre sozinha. Prepare-a mais cedo para verificar as linhas agora.';
 
   @override
   String eventRaceGoAt(String time) {
@@ -21587,12 +21587,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String eventRaceSelfTimedParticipant(String time) {
-    return 'Corrida de tempo próprio aberta até às $time. Participe e cronometre a tentativa no ecrã de corrida.';
+    return 'Prova de tempo próprio aberta até às $time. Participe e cronometre a tentativa no ecrã de corrida.';
   }
 
   @override
   String get profileNotifRaceStartingSoon =>
-      'Uma corrida a que vai começa dentro de cerca de 10 minutos';
+      'Uma prova a que vai começa dentro de cerca de 10 minutos';
 
   @override
   String profileNotifRaceStartingSoonTitled(String title) {
@@ -21601,7 +21601,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get profileNotifRaceStartMoved =>
-      'A partida de uma corrida a que vai mudou';
+      'A partida de uma prova a que vai mudou';
 
   @override
   String profileNotifRaceStartMovedTitled(String title) {
@@ -21609,11 +21609,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get prefsNotifyRaceStartingSoon => 'Corrida prestes a começar';
+  String get prefsNotifyRaceStartingSoon => 'Prova prestes a começar';
 
   @override
   String get prefsNotifyRaceStartingSoonHint =>
-      'Uma notificação push cerca de 10 minutos antes da partida de uma corrida agendada a que vai, e quando a partida mudar. Nunca por e-mail.';
+      'Uma notificação push cerca de 10 minutos antes da partida de uma prova agendada a que vai, e quando a partida mudar. Nunca por e-mail.';
 
   @override
   String get clubVerificationStatusTitle => 'Verificação oficial';
@@ -24350,7 +24350,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — aguardando a largada';
+    return '$label — aguardando o GO';
   }
 
   @override
@@ -28586,10 +28586,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get eventRaceArmedHint =>
-      'Toque em Disparar o Go quando a corrida começar. Os relógios dos participantes mostram agora o aviso de prova preparada.';
+      'Toque em GO quando a corrida começar. Os relógios dos participantes mostram agora o aviso de prova preparada.';
 
   @override
-  String get eventRaceFireGo => 'Disparar o Go';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Cancelar';
@@ -39884,7 +39884,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get runRaceLateStart =>
-      'Largada tardia: você começou mais de 5 minutos após a largada ou longe da linha de largada.';
+      'Largada tardia: você começou mais de 5 minutos após o GO ou longe da linha de largada.';
 
   @override
   String get eventCoursesTitle => 'Percursos';
@@ -41098,7 +41098,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get seasonPlanRacesHint =>
-      'As provas A são os objetivos da temporada e cada uma tem seu plano. As B são provas de preparação que você corre para valer; as C são corridas como treino.';
+      'As provas A são os objetivos da temporada e cada uma tem seu plano. As B são provas de preparação que você corre para valer; as C você corre como treino.';
 
   @override
   String get seasonPlanNoRaces =>
@@ -43700,18 +43700,19 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Mapa da linha de chegada do percurso';
 
   @override
-  String get eventRacePreflightTitle => 'Confira os percursos antes de armar';
+  String get eventRacePreflightTitle =>
+      'Confira os percursos antes de preparar a corrida';
 
   @override
   String get eventRacePreflightBlockedTitle =>
-      'Esta corrida ainda não pode ser armada';
+      'Esta corrida ainda não pode ser preparada';
 
   @override
   String get eventRacePreflightFixOnWeb =>
       'As linhas do percurso são editadas no editor de eventos na web.';
 
   @override
-  String get eventRaceArmAnyway => 'Armar mesmo assim';
+  String get eventRaceArmAnyway => 'Preparar mesmo assim';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -43723,7 +43724,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String eventRacePreflightNoStart(String course) {
-    return '$course: sem linha de largada. Uma corrida cronometrada por cada um precisa de uma.';
+    return '$course: sem linha de largada. Uma corrida de tempo próprio precisa de uma.';
   }
 
   @override
@@ -43787,15 +43788,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get runRaceAttemptReady => 'Tentativa pronta: toque em Iniciar';
 
   @override
-  String get eventRaceArmEarly => 'Armar antes';
+  String get eventRaceArmEarly => 'Preparar mais cedo';
 
   @override
   String get eventRaceScheduledNotYet =>
-      'Começa sozinha no horário agendado. Arme antes para conferir as linhas agora.';
+      'Começa sozinha no horário agendado. Prepare mais cedo para conferir as linhas agora.';
 
   @override
   String get eventRaceSelfTimedNotYet =>
-      'Abre sozinha. Arme antes para conferir as linhas agora.';
+      'Abre sozinha. Prepare mais cedo para conferir as linhas agora.';
 
   @override
   String eventRaceGoAt(String time) {

@@ -6252,10 +6252,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'Tap Fire Go when the race begins. Participants\' watches show the armed banner now.';
+      'Tap GO when the race begins. Participants\' watches show the armed banner now.';
 
   @override
-  String get eventRaceFireGo => 'Fire Go';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Cancel';

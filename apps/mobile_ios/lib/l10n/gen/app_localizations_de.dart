@@ -2079,7 +2079,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — warten auf START';
+    return '$label — warten auf GO';
   }
 
   @override
@@ -6305,7 +6305,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventRsvpDeclined => 'Kann nicht';
 
   @override
-  String get eventRaceArmed => 'Scharf – wartet auf GO';
+  String get eventRaceArmed => 'Bereit – wartet auf GO';
 
   @override
   String get eventRaceRunning => 'Läuft – live';
@@ -6317,7 +6317,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventRaceCancelled => 'Abgesagt';
 
   @override
-  String get eventRaceNotArmed => 'Nicht scharf';
+  String get eventRaceNotArmed => 'Nicht scharfgestellt';
 
   @override
   String get eventRaceControlLabel => 'RENNSTEUERUNG';
@@ -6327,14 +6327,14 @@ class AppLocalizationsDe extends AppLocalizations {
       'Eingereichte Zeiten automatisch genehmigen';
 
   @override
-  String get eventRaceArm => 'Rennen scharf schalten';
+  String get eventRaceArm => 'Rennen scharfstellen';
 
   @override
   String get eventRaceArmedHint =>
-      'Tippe auf Los, wenn das Rennen beginnt. Die Uhren der Teilnehmer zeigen jetzt das Scharf-Banner.';
+      'Tippe auf GO, wenn das Rennen beginnt. Die Uhren der Teilnehmenden zeigen jetzt das Bereit-Banner.';
 
   @override
-  String get eventRaceFireGo => 'Los';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Abbrechen';
@@ -17638,7 +17638,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      'Später Start: Du bist mehr als 5 Minuten nach dem Startschuss oder abseits der Startlinie losgelaufen.';
+      'Später Start: Du bist mehr als 5 Minuten nach GO oder abseits der Startlinie losgelaufen.';
 
   @override
   String get eventCoursesTitle => 'Strecken';
@@ -21467,19 +21467,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventCourseLinesMapFinish => 'Karte mit der Ziellinie der Strecke';
 
   @override
-  String get eventRacePreflightTitle =>
-      'Strecken vor dem Scharfschalten prüfen';
+  String get eventRacePreflightTitle => 'Strecken vor dem Scharfstellen prüfen';
 
   @override
   String get eventRacePreflightBlockedTitle =>
-      'Dieses Rennen kann noch nicht scharfgeschaltet werden';
+      'Dieses Rennen kann noch nicht scharfgestellt werden';
 
   @override
   String get eventRacePreflightFixOnWeb =>
       'Streckenlinien werden im Event-Editor im Web bearbeitet.';
 
   @override
-  String get eventRaceArmAnyway => 'Trotzdem scharfschalten';
+  String get eventRaceArmAnyway => 'Trotzdem scharfstellen';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -21491,7 +21490,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String eventRacePreflightNoStart(String course) {
-    return '$course: keine Startlinie. Ein selbst gestopptes Rennen braucht eine.';
+    return '$course: keine Startlinie. Ein selbstgestopptes Rennen braucht eine.';
   }
 
   @override
@@ -21555,15 +21554,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runRaceAttemptReady => 'Versuch bereit: Tippe auf Start';
 
   @override
-  String get eventRaceArmEarly => 'Früher scharf schalten';
+  String get eventRaceArmEarly => 'Früher scharfstellen';
 
   @override
   String get eventRaceScheduledNotYet =>
-      'Startet von selbst zur geplanten Zeit. Schalte früher scharf, um die Linien jetzt zu prüfen.';
+      'Startet von selbst zur geplanten Zeit. Stell das Rennen früher scharf, um die Linien jetzt zu prüfen.';
 
   @override
   String get eventRaceSelfTimedNotYet =>
-      'Öffnet von selbst. Schalte früher scharf, um die Linien jetzt zu prüfen.';
+      'Öffnet von selbst. Stell das Rennen früher scharf, um die Linien jetzt zu prüfen.';
 
   @override
   String eventRaceGoAt(String time) {

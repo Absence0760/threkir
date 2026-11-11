@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfstellen, GO, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
+					text: 'Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfschalten, GO, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
 				},
 				{
 					type: 'p',
@@ -101,7 +101,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Kurz bevor du das Rennen scharfstellst, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst.',
+					text: 'Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst.',
 				},
 				{
 					type: 'p',

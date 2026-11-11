@@ -6317,7 +6317,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventRaceCancelled => 'Abgesagt';
 
   @override
-  String get eventRaceNotArmed => 'Nicht scharfgestellt';
+  String get eventRaceNotArmed => 'Nicht scharf geschaltet';
 
   @override
   String get eventRaceControlLabel => 'RENNSTEUERUNG';
@@ -6327,7 +6327,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Eingereichte Zeiten automatisch genehmigen';
 
   @override
-  String get eventRaceArm => 'Rennen scharfstellen';
+  String get eventRaceArm => 'Rennen scharf schalten';
 
   @override
   String get eventRaceArmedHint =>
@@ -21467,18 +21467,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventCourseLinesMapFinish => 'Karte mit der Ziellinie der Strecke';
 
   @override
-  String get eventRacePreflightTitle => 'Strecken vor dem Scharfstellen prüfen';
+  String get eventRacePreflightTitle =>
+      'Strecken vor dem Scharfschalten prüfen';
 
   @override
   String get eventRacePreflightBlockedTitle =>
-      'Dieses Rennen kann noch nicht scharfgestellt werden';
+      'Dieses Rennen kann noch nicht scharf geschaltet werden';
 
   @override
   String get eventRacePreflightFixOnWeb =>
       'Streckenlinien werden im Event-Editor im Web bearbeitet.';
 
   @override
-  String get eventRaceArmAnyway => 'Trotzdem scharfstellen';
+  String get eventRaceArmAnyway => 'Trotzdem scharf schalten';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -21554,15 +21555,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get runRaceAttemptReady => 'Versuch bereit: Tippe auf Start';
 
   @override
-  String get eventRaceArmEarly => 'Früher scharfstellen';
+  String get eventRaceArmEarly => 'Früher scharf schalten';
 
   @override
   String get eventRaceScheduledNotYet =>
-      'Startet von selbst zur geplanten Zeit. Stell das Rennen früher scharf, um die Linien jetzt zu prüfen.';
+      'Startet von selbst zur geplanten Zeit. Schalte das Rennen früher scharf, um die Linien jetzt zu prüfen.';
 
   @override
   String get eventRaceSelfTimedNotYet =>
-      'Öffnet von selbst. Stell das Rennen früher scharf, um die Linien jetzt zu prüfen.';
+      'Öffnet von selbst. Schalte das Rennen früher scharf, um die Linien jetzt zu prüfen.';
 
   @override
   String eventRaceGoAt(String time) {

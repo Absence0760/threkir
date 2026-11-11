@@ -87,7 +87,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Wenn du ein Rennen scharfstellst (bei einem selbstgestoppten Rennen, wenn sein Zeitraum öffnet), werden die Linien jeder Strecke für dieses Rennen kopiert. Alle Teilnehmenden überqueren dann dieselben Linien, egal was sich während des Rennens ändert. Eine spätere Änderung gilt ab dem nächsten Rennen. Die Event-Seite und die Live-Rennseite zeigen die Linien, mit denen das Rennen scharfgestellt wurde.',
+					text: 'Wenn du ein Rennen scharf schaltest (bei einem selbstgestoppten Rennen, wenn sein Zeitraum öffnet), werden die Linien jeder Strecke für dieses Rennen kopiert. Alle Teilnehmenden überqueren dann dieselben Linien, egal was sich während des Rennens ändert. Eine spätere Änderung gilt ab dem nächsten Rennen. Die Event-Seite und die Live-Rennseite zeigen die Linien, mit denen das Rennen scharf geschaltet wurde.',
 				},
 			],
 		},
@@ -96,7 +96,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Bevor ein Rennen scharfgestellt wird, werden die Linien jeder Strecke geprüft, im Web und in der Handy-App. Bei einer Warnung kannst du **Trotzdem scharfstellen**; ein mit **Muss behoben werden:** markiertes Problem verhindert das Scharfstellen, bis du es im Event-Editor im Web behebst.',
+					text: 'Bevor ein Rennen scharf geschaltet wird, werden die Linien jeder Strecke geprüft, im Web und in der Handy-App. Bei einer Warnung kannst du **Trotzdem scharf schalten**; ein mit **Muss behoben werden:** markiertes Problem verhindert das Scharfschalten, bis du es im Event-Editor im Web behebst.',
 				},
 				{
 					type: 'list',

@@ -695,7 +695,7 @@
             "items": [
               "**Admin**: ändert die Einstellungen des Clubs, verwaltet Mitglieder und ihre Rollen, leitet Events und Rennen und genehmigt Ergebnisse.",
               "**Eventorganisator**: erstellt, bearbeitet und löscht Events und fügt Teilnehmende hinzu, ohne Zugriff auf Club-Einstellungen oder Mitglieder.",
-              "**Renndirektor**: stellt Rennen scharf, startet und beendet sie und genehmigt oder lehnt Ergebnisse ab.",
+              "**Renndirektor**: schaltet Rennen scharf, startet und beendet sie und genehmigt oder lehnt Ergebnisse ab.",
               "**Mitglied**: schreibt Antworten, gibt bei Events Rückmeldung zur Teilnahme und reicht eigene Rennergebnisse ein."
             ]
           },
@@ -1826,14 +1826,14 @@
           {
             "type": "list",
             "items": [
-              "**GO durch Veranstalter**: Du stellst das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.",
+              "**GO durch Veranstalter**: Du schaltest das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.",
               "**Geplanter GO**: Das Rennen startet zur eingestellten Zeit von selbst. Nutze das, wenn die Startzeit feststeht, du aber vielleicht nicht an der Linie bist oder selbst mitlaufen möchtest. Bis dahin kannst du den Start verschieben oder das Rennen absagen.",
               "**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Bruttozeit."
             ]
           },
           {
             "type": "p",
-            "text": "Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Renntag leiten (früher scharfstellen, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt."
+            "text": "Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Renntag leiten (früher scharf schalten, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt."
           }
         ]
       },
@@ -1863,7 +1863,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Du stellst das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
+            "text": "Du schaltest das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
           }
         ]
       },
@@ -1874,7 +1874,7 @@
             "type": "list",
             "items": [
               "Du musst nichts tun. Das Rennen wird etwa einen Tag vor dem Start angelegt und startet zur geplanten Zeit von selbst.",
-              "Um die Linien der Strecken früher zu prüfen, wähle **Früher scharfstellen**.",
+              "Um die Linien der Strecken früher zu prüfen, wähle **Früher scharf schalten**.",
               "Vor dem Start zeigt der Rennbereich **Start um** mit der Uhrzeit und einem Countdown. Um den Start nach hinten zu verschieben, gib die Minuten ein und wähle **Start verschieben**; alle, die dabei sind, erfahren, dass der Start verschoben wurde. Wähle **Abbrechen**, um das Rennen abzusagen.",
               "Sobald die Startzeit vorbei ist, kann das Rennen nicht mehr abgesagt werden. Es endet von selbst, wenn seine Zeit abgelaufen ist, oder du wählst **Rennen beenden**, um es früher zu beenden.",
               "Die Handys der Teilnehmenden zählen nach der Serveruhr bis zum Start herunter und sagen die letzten Sekunden an, sodass alle gemeinsam starten."
@@ -2063,8 +2063,8 @@
           {
             "type": "list",
             "items": [
-              "**Vor dem Rennen**: Der Veranstalter hat die Rennuhr noch nicht scharfgestellt.",
-              "**Bereit**: Die Uhr ist scharfgestellt und wartet auf den Start.",
+              "**Vor dem Rennen**: Der Veranstalter hat die Rennuhr noch nicht scharf geschaltet.",
+              "**Bereit**: Die Uhr ist scharf geschaltet und wartet auf den Start.",
               "**Läuft**: Das Rennen ist im Gange, mit der verstrichenen Zeit.",
               "**Beendet**: Das Rennen ist vorbei.",
               "**Abgesagt**: Der Veranstalter hat das Rennen abgesagt."
@@ -2090,7 +2090,7 @@
           },
           {
             "type": "p",
-            "text": "Die Karte zeichnet außerdem die Start- und Ziellinien jeder Strecke ein, und zwar die, mit denen das Rennen scharfgestellt wurde."
+            "text": "Die Karte zeichnet außerdem die Start- und Ziellinien jeder Strecke ein, und zwar die, mit denen das Rennen scharf geschaltet wurde."
           }
         ]
       },
@@ -2154,7 +2154,7 @@
     "id": "race-day-for-hosts",
     "lang": "de",
     "title": "Renntag für Veranstalter",
-    "summary": "Stell das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.",
+    "summary": "Schalte das Rennen scharf, gib GO, verfolge es live, beende es und genehmige und korrigiere dann die Ergebnisse.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2186,7 +2186,7 @@
           {
             "type": "illustration",
             "id": "race-day-for-hosts",
-            "alt": "Der Renntag in vier Schritten von links nach rechts: das Rennen scharfstellen, GO geben, live verfolgen und es dann im Ziel beenden."
+            "alt": "Der Renntag in vier Schritten von links nach rechts: das Rennen scharf schalten, GO geben, live verfolgen und es dann im Ziel beenden."
           },
           {
             "type": "p",
@@ -2195,14 +2195,14 @@
         ]
       },
       {
-        "heading": "1. Rennen scharfstellen",
+        "heading": "1. Rennen scharf schalten",
         "blocks": [
           {
             "type": "steps",
             "items": [
               "Öffne das Event und wähle den heutigen Termin, falls es sich wiederholt.",
               "Lass **Eingereichte Ergebnisse automatisch genehmigen** angehakt, um Ergebnisse bei Eingang zu veröffentlichen, oder entferne den Haken, um jedes selbst zu genehmigen. (In der Handy-App heißt es **Eingereichte Zeiten automatisch genehmigen**.)",
-              "Wähle **Rennen scharfstellen**, wenn alle versammelt sind."
+              "Wähle **Rennen scharf schalten**, wenn alle versammelt sind."
             ]
           },
           {
@@ -2212,11 +2212,11 @@
           {
             "type": "note",
             "tone": "tip",
-            "text": "Scharfgestellt ist ein Wartezustand. Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst."
+            "text": "Ein scharf geschaltetes Rennen wartet nur: Es wird nichts gemessen, und es können keine Ergebnisse gespeichert werden, bis du GO gibst."
           },
           {
             "type": "p",
-            "text": "Bevor das Rennen scharfgestellt wird, werden die Start- und Ziellinien jeder Strecke geprüft, und alles, was einen Blick wert ist, steht unter **Bevor du das Rennen scharfstellst**. Bei einer Warnung kannst du **Trotzdem scharfstellen**; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]. Das Scharfstellen friert außerdem die Linien für dieses Rennen ein."
+            "text": "Bevor das Rennen scharf geschaltet wird, werden die Start- und Ziellinien jeder Strecke geprüft, und alles, was einen Blick wert ist, steht unter **Bevor du das Rennen scharf schaltest**. Bei einer Warnung kannst du **Trotzdem scharf schalten**; siehe [[guide:start-and-finish-lines|Start- und Ziellinien]]. Das Scharfschalten friert außerdem die Linien für dieses Rennen ein."
           }
         ]
       },
@@ -2234,7 +2234,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharfgestellt ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten."
+            "text": "GO startet bei niemandem die Aufzeichnung. Die Teilnehmenden drücken selbst auf Start auf ihrem Handy oder ihrer Uhr, entweder an der Startlinie, während das Rennen scharf geschaltet ist (die Aufzeichnung wird bei GO mit dem Rennen verknüpft), oder nachdem sie **Rennen LIVE** sehen. Erinnere sie daran, eine Aufzeichnung zu starten."
           }
         ]
       },
@@ -2273,7 +2273,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Das Beenden kann nicht rückgängig gemacht werden. Danach erwarten die Geräte der Teilnehmenden kein Ergebnis mehr. Um denselben Termin erneut zu laufen, stell eine neue Sitzung scharf."
+            "text": "Das Beenden kann nicht rückgängig gemacht werden. Danach erwarten die Geräte der Teilnehmenden kein Ergebnis mehr. Um denselben Termin erneut zu laufen, schalte eine neue Sitzung scharf."
           }
         ]
       },
@@ -2282,7 +2282,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Du kannst nur absagen, solange das Rennen scharfgestellt ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden."
+            "text": "Du kannst nur absagen, solange das Rennen scharf geschaltet ist: Wähle **Abbrechen** neben **GO** und dann **Rennen abbrechen**. Sobald du GO gegeben hast, kann das Rennen nur noch beendet werden."
           },
           {
             "type": "p",
@@ -2500,7 +2500,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Wenn der Veranstalter das Rennen scharfstellt, zeigt der Lauf-Tab der Handy-App **Rennen bereit** mit „warten auf GO“. Die Wear-OS-Uhr zeigt „RENNEN BEREIT“ über ihrer Start-Taste. Wenn der Veranstalter GO gibt, wechselt die Anzeige zu **Rennen LIVE** („RENNEN LÄUFT“ auf der Uhr) mit der verstrichenen Zeit und „auf Start tippen“."
+            "text": "Wenn der Veranstalter das Rennen scharf schaltet, zeigt der Lauf-Tab der Handy-App **Rennen bereit** mit „warten auf GO“. Die Wear-OS-Uhr zeigt „RENNEN BEREIT“ über ihrer Start-Taste. Wenn der Veranstalter GO gibt, wechselt die Anzeige zu **Rennen LIVE** („RENNEN LÄUFT“ auf der Uhr) mit der verstrichenen Zeit und „auf Start tippen“."
           },
           {
             "type": "note",
@@ -2728,7 +2728,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfstellen, GO, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
+            "text": "Ein Rennen ist ein gewöhnliches Club-Event mit angehängten Strecken. Club-Inhaber, Admins und Eventorganisatoren können Events erstellen. Für die Durchführung am Renntag (Scharfschalten, GO, Beenden) braucht es einen Inhaber, einen Admin oder einen **Renndirektor** – siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]]."
           },
           {
             "type": "p",
@@ -2819,7 +2819,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Kurz bevor du das Rennen scharfstellst, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
+            "text": "Kurz bevor du das Rennen scharf schaltest, entscheidest du, ob Ergebnisse direkt in die Rangliste kommen. **Eingereichte Ergebnisse automatisch genehmigen** ist standardmäßig angehakt. Entferne den Haken, wenn du jedes Ergebnis zuerst prüfen möchtest; jedes wird dann als **AUSSTEHEND** angezeigt, bis du es genehmigst."
           },
           {
             "type": "p",
@@ -2955,7 +2955,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Wenn du ein Rennen scharfstellst (bei einem selbstgestoppten Rennen, wenn sein Zeitraum öffnet), werden die Linien jeder Strecke für dieses Rennen kopiert. Alle Teilnehmenden überqueren dann dieselben Linien, egal was sich während des Rennens ändert. Eine spätere Änderung gilt ab dem nächsten Rennen. Die Event-Seite und die Live-Rennseite zeigen die Linien, mit denen das Rennen scharfgestellt wurde."
+            "text": "Wenn du ein Rennen scharf schaltest (bei einem selbstgestoppten Rennen, wenn sein Zeitraum öffnet), werden die Linien jeder Strecke für dieses Rennen kopiert. Alle Teilnehmenden überqueren dann dieselben Linien, egal was sich während des Rennens ändert. Eine spätere Änderung gilt ab dem nächsten Rennen. Die Event-Seite und die Live-Rennseite zeigen die Linien, mit denen das Rennen scharf geschaltet wurde."
           }
         ]
       },
@@ -2964,7 +2964,7 @@
         "blocks": [
           {
             "type": "p",
-            "text": "Bevor ein Rennen scharfgestellt wird, werden die Linien jeder Strecke geprüft, im Web und in der Handy-App. Bei einer Warnung kannst du **Trotzdem scharfstellen**; ein mit **Muss behoben werden:** markiertes Problem verhindert das Scharfstellen, bis du es im Event-Editor im Web behebst."
+            "text": "Bevor ein Rennen scharf geschaltet wird, werden die Linien jeder Strecke geprüft, im Web und in der Handy-App. Bei einer Warnung kannst du **Trotzdem scharf schalten**; ein mit **Muss behoben werden:** markiertes Problem verhindert das Scharfschalten, bis du es im Event-Editor im Web behebst."
           },
           {
             "type": "list",

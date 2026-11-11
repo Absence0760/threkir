@@ -556,6 +556,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// The line finish the runner took back on this recording, kept on the
     /// watch so a restart mid-recording keeps its start and re-arms the line.
     private var raceUndone: UndoneRaceFinish? = null
+    /// The latest finish taken back on this recording (device clock), kept
+    /// past a later finish so the saved run still names it.
+    private var raceUndoneAtMs: Long? = null
     /// Closes "Not finished? Resume" and stops the run when it runs out.
     private var raceUndoJob: Job? = null
     /// The line finish filed at the crossing, so an undo waits for it.
@@ -1166,6 +1169,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         lastRaceFixKey = Long.MIN_VALUE
         raceTimer.beginRecording()
         raceUndone = null
+        raceUndoneAtMs = null
         restoreUndoneFinish(id)
     }
 
@@ -1188,6 +1192,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             }
             if (raceTimerRunId != runId) return@launchGuarded
             raceUndone = entry
+            raceUndoneAtMs = maxOf(raceUndoneAtMs ?: entry.undoneFinishMs, entry.undoneFinishMs)
             raceTimer.restoreUndone("${entry.eventId}|${entry.instanceStart}", entry.start?.toStart(), entry.undoneFinishMs)
         }
     }
@@ -1357,6 +1362,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         raceUndoJob = null
         val race = boundRace
         val undoneAtMs = raceStopDecision?.finishEpochMs
+        if (undoneAtMs != null) raceUndoneAtMs = undoneAtMs
         raceTimer.voidAutoFinish()
         keepUndoneFinish(undoneRaceFinishEntry(race, boundRunId, undoneAtMs, raceTimer.start))
         raceStopDecision = null
@@ -2135,6 +2141,8 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         // pressed at its Stop, or now. Settled before the timer is released.
         val settled = if (race != null && decision == null) settleRaceTimer() else null
         val start = raceTimer.start
+        val undoneFinishAt = raceUndoneFinishAtIso(raceUndoneAtMs, serverClock.offsetMs)
+        raceUndoneAtMs = null
         raceUndoJob?.cancel()
         raceUndoJob = null
         boundRace = null
@@ -2239,6 +2247,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     gnssSignal = m.gnssSignal,
                     trackComplete = m.trackComplete,
                     workoutReview = m.workoutReview,
+                    raceUndoneFinishAt = undoneFinishAt,
                 )
             )
             rememberLastRun(m, runId, durationS)
@@ -2651,6 +2660,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             gnssSignal = run.gnssSignal,
             trackComplete = run.trackComplete && trackFile != null,
             workout = run.workoutReview,
+            raceUndoneFinishAt = run.raceUndoneFinishAt,
         )
         supabase.saveRun(
             runId = run.id,

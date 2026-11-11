@@ -7884,6 +7884,8 @@ export const messages = {
 	"parks.safetyNotice": "Mantente en el sendero señalizado. El cronometraje necesita cada punto de control, así que un atajo nunca cuenta. Es una contrarreloj, no una carrera: el sendero sigue abierto a todos y nadie lo controla.",
 	"parks.notAffiliated": "Threkir publica estos recorridos. No los organiza, patrocina ni respalda el parque ni el organismo que lo gestiona. Se aplican las normas, horarios, tarifas y cierres del parque.",
 	"parks.longCourseNotice": "Recorrido largo. Sal con tiempo suficiente para terminar antes de que cierre el parque. Cuenta con senderos compartidos con bicicletas y caballos, y con vadeos que pueden quedar intransitables después de la lluvia.",
+	"parks.timesNotEventResults": "Los tiempos que aparecen aquí son tiempos de Threkir en estos senderos. No son resultados de ningún evento celebrado en ellos.",
+	"parks.sharedUseSaturdayMorningGroup": "Hay grupos organizados que usan estos senderos los sábados por la mañana. Cédeles el paso y evita hacer un intento cronometrado en medio de ellos.",
 	"parks.attributionOsm": "Trazado del recorrido © colaboradores de OpenStreetMap",
 	"parks.attributionNps": "Trazado del recorrido según los datos de senderos del National Park Service",
 	"parks.attributionAgency": "Trazado del recorrido según los datos de senderos del propio parque",

@@ -7916,6 +7916,8 @@ export const en = {
 	"parks.safetyNotice": "Stay on the marked trail. The timer needs every checkpoint, so a shortcut never counts. This is a time trial, not a race: the trail stays open to everyone and nobody marshals it.",
 	"parks.notAffiliated": "Threkir publishes these courses. They are not organised, sponsored or endorsed by the park or its managing agency. Park rules, hours, fees and closures apply.",
 	"parks.longCourseNotice": "Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.",
+	"parks.timesNotEventResults": "Times here are Threkir times on these paths. They are not results of any event held on them.",
+	"parks.sharedUseSaturdayMorningGroup": "Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.",
 	"parks.attributionOsm": "Course line © OpenStreetMap contributors",
 	"parks.attributionNps": "Course line from National Park Service trail data",
 	"parks.attributionAgency": "Course line from the park's own trail data",

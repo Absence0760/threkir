@@ -786,6 +786,15 @@ export const PAIRS = [
 		],
 	},
 	{
+		tableColumn: 'park_courses.shared_use',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'SHARED_USES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kSharedUses', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'sharedUseNotice', shape: 'switch' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'SHARED_USES', shape: 'strings' },
+		],
+	},
+	{
 		tableColumn: 'park_courses.status',
 		clients: [
 			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'COURSE_STATUSES', shape: 'strings' },

@@ -21331,6 +21331,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Recorrido largo. Sal con tiempo suficiente para terminar antes de que cierre el parque. Cuenta con senderos compartidos con bicicletas y caballos, y con vadeos que pueden quedar intransitables después de la lluvia.';
 
   @override
+  String get parksTimesNotEventResults =>
+      'Los tiempos que aparecen aquí son tiempos de Threkir en estos senderos. No son resultados de ningún evento celebrado en ellos.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Hay grupos organizados que usan estos senderos los sábados por la mañana. Cédeles el paso y evita hacer un intento cronometrado en medio de ellos.';
+
+  @override
   String get parksAttributionOsm =>
       'Trazado del recorrido © colaboradores de OpenStreetMap';
 

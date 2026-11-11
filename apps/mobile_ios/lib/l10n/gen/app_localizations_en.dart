@@ -21104,6 +21104,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.';
 
   @override
+  String get parksTimesNotEventResults =>
+      'Times here are Threkir times on these paths. They are not results of any event held on them.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.';
+
+  @override
   String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';
 
   @override

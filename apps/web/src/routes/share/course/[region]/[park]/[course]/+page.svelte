@@ -191,7 +191,7 @@
 				</div>
 			{/if}
 			<div class="notices-slot">
-				<ParkCourseNotices distanceM={course.segment.distance_m} testidPrefix="share-course" />
+				<ParkCourseNotices distanceM={course.segment.distance_m} sharedUse={course.shared_use} testidPrefix="share-course" />
 			</div>
 		</section>
 	{:else}

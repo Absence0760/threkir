@@ -322,4 +322,12 @@ void main() {
   test('pickShareCourse: with no ranked course the first one is printed', () {
     expect(pickShareCourse([time('A', null), time('B', null)])?.courseName, 'A');
   });
+
+  test('parseSharedUse: reads a known key and nothing else', () {
+    expect(kSharedUses, ['saturday_morning_group']);
+    expect(parseSharedUse('saturday_morning_group'), 'saturday_morning_group');
+    for (final raw in <Object?>[null, '', 'Saturday group', 'SATURDAY_MORNING_GROUP', 1, <String, Object>{}]) {
+      expect(parseSharedUse(raw), isNull, reason: '$raw');
+    }
+  });
 }

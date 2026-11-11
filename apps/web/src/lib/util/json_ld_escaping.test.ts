@@ -148,6 +148,7 @@ const REGISTER: Record<string, Record<string, () => string>> = {
 						],
 					}),
 					route_guide_checked_at: '2026-12-01',
+					shared_use: null,
 					segment: {
 						name: INJ,
 						description: INJ,

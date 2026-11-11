@@ -20293,6 +20293,14 @@ class AppLocalizationsJa extends AppLocalizations {
       '長いコースです。閉園時間までに走り終えられるよう、早めにスタートしてください。自転車や馬と共用のトレイルや、雨の後は渡れなくなることがある渡渉箇所があります。';
 
   @override
+  String get parksTimesNotEventResults =>
+      'ここに表示されるタイムは、この道をThrekirで記録したタイムです。この道で開催されるいかなるイベントの結果でもありません。';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      '土曜日の朝は、団体がこの道を利用します。道を譲り、その中を走り抜けてタイムを計測するのは避けてください。';
+
+  @override
   String get parksAttributionOsm => 'コースライン © OpenStreetMap contributors';
 
   @override

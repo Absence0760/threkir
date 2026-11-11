@@ -156,6 +156,7 @@ const builders: Array<{ name: string; head: () => Record<string, unknown> }> = [
 					attribution: HUGE,
 					route_guide: null,
 					route_guide_checked_at: null,
+					shared_use: null,
 					segment: {
 						name: HUGE,
 						description: HUGE,

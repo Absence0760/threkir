@@ -20,6 +20,16 @@ const List<String> kGeometrySources = ['osm', 'nps', 'agency', 'traced'];
 
 const List<String> kCourseDifficulties = ['easy', 'moderate', 'hard'];
 
+/// When an organised group regularly uses a course's paths
+/// (`park_courses.shared_use`, decisions § 2455). A key, never free text, so
+/// the give-way note rendered from it names no one.
+const List<String> kSharedUses = ['saturday_morning_group'];
+
+/// Reads `park_courses.shared_use`; null for no shared use or a value this
+/// client does not know.
+String? parseSharedUse(Object? raw) =>
+    raw is String && kSharedUses.contains(raw) ? raw : null;
+
 class CourseCheckpoint {
   final double lat;
   final double lng;

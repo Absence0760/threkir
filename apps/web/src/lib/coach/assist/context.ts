@@ -16,6 +16,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { MessageKey } from '../../i18n/messages';
 import { dbError } from '../../core/supabase_error';
+import { TABLES } from '../../core/schema';
 
 export type CoachAssistEntry =
 	| { sentFrom: number; bullet: MessageKey }
@@ -118,6 +119,21 @@ export interface CoachAssistInput {
 	linkedSince: string | null;
 }
 
+/** Plan weeks the workout window can reach: week `i` runs from `start_date + 7i`
+ *  for seven days, so a 14-day window spans at most three of them. */
+export const COACH_ASSIST_WINDOW_WEEKS = Math.floor(COACH_ASSIST_WORKOUT_DAYS / 7) + 1;
+
+/** The week indexes `[today, today + COACH_ASSIST_WORKOUT_DAYS]` falls in, or
+ *  null when the window ends before the plan starts. */
+export function coachAssistWeekWindow(startDate: string, today: string): { first: number; last: number } | null {
+	const dayMs = 86_400_000;
+	const fromDay = Math.round((Date.parse(`${today}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / dayMs);
+	if (!Number.isFinite(fromDay)) return null;
+	const last = Math.floor((fromDay + COACH_ASSIST_WORKOUT_DAYS) / 7);
+	if (last < 0) return null;
+	return { first: Math.max(0, Math.floor(fromDay / 7)), last };
+}
+
 function addDays(iso: string, days: number): string {
 	const d = new Date(`${iso}T00:00:00Z`);
 	d.setUTCDate(d.getUTCDate() + days);
@@ -137,7 +153,7 @@ export async function buildCoachAssistContext(
 
 	const threadLane = (async () => {
 		let query = supabase
-			.from('direct_messages')
+			.from(TABLES.direct_messages)
 			.select('sender_id, body, created_at')
 			.in('sender_id', pair)
 			.in('recipient_id', pair)
@@ -171,12 +187,19 @@ export async function buildCoachAssistContext(
 		if (error) throw dbError(error);
 		const plan = plans?.[0];
 		if (!plan) return { plan: null, upcoming: [] as Record<string, unknown>[] };
-		const { data: weeks, error: weekErr } = await supabase
-			.from('plan_weeks')
-			.select('id')
-			.eq('plan_id', plan.id);
-		if (weekErr) throw dbError(weekErr);
-		const weekIds = (weeks ?? []).map((w) => w.id);
+		const window = coachAssistWeekWindow(plan.start_date as string, today);
+		let weekIds: string[] = [];
+		if (window) {
+			const { data: weeks, error: weekErr } = await supabase
+				.from('plan_weeks')
+				.select('id')
+				.eq('plan_id', plan.id)
+				.gte('week_index', window.first)
+				.lte('week_index', window.last)
+				.limit(COACH_ASSIST_WINDOW_WEEKS);
+			if (weekErr) throw dbError(weekErr);
+			weekIds = (weeks ?? []).map((w) => w.id);
+		}
 		let upcoming: Record<string, unknown>[] = [];
 		if (weekIds.length > 0) {
 			const { data: workouts, error: woErr } = await supabase
@@ -207,7 +230,7 @@ export async function buildCoachAssistContext(
 
 	const runsLane = (async () => {
 		const { data, error } = await supabase
-			.from('runs')
+			.from(TABLES.runs)
 			.select('started_at, distance_m, duration_s, activity_type')
 			.eq('user_id', athleteId)
 			.order('started_at', { ascending: false })

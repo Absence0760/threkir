@@ -11,8 +11,10 @@ import { en } from '../../i18n/locales/en';
 import { COACH_ASSIST_CONSENT_VERSION, coachAssistConsentCovers } from './consent';
 import {
 	COACH_ASSIST_REGISTRY,
+	COACH_ASSIST_WINDOW_WEEKS,
 	buildCoachAssistContext,
 	coachAssistAllows,
+	coachAssistWeekWindow,
 	withholdUnconsented,
 } from './context';
 import {
@@ -233,6 +235,27 @@ test('the thread leaves out shared AI answers and messages from before the link'
 	await handleCoachAssist(AUTH, VALID, config(s));
 	assert.ok(s.filters.includes('direct_messages.neq:kind,coach_share'));
 	assert.ok(s.filters.includes('direct_messages.gte:created_at,2026-10-01T00:00:00Z'));
+});
+
+test('the plan read takes only the weeks the 14-day window reaches', async () => {
+	const s = stub();
+	await handleCoachAssist(AUTH, VALID, config(s));
+	assert.ok(s.filters.includes('plan_weeks.gte:week_index,5'));
+	assert.ok(s.filters.includes('plan_weeks.lte:week_index,7'));
+	assert.ok(s.filters.includes(`plan_weeks.limit:${COACH_ASSIST_WINDOW_WEEKS}`));
+});
+
+test('coachAssistWeekWindow spans at most COACH_ASSIST_WINDOW_WEEKS weeks', () => {
+	assert.equal(COACH_ASSIST_WINDOW_WEEKS, 3);
+	assert.deepEqual(coachAssistWeekWindow('2026-10-01', '2026-11-10'), { first: 5, last: 7 });
+	assert.deepEqual(coachAssistWeekWindow('2026-11-10', '2026-11-10'), { first: 0, last: 2 });
+	assert.deepEqual(coachAssistWeekWindow('2026-11-20', '2026-11-10'), { first: 0, last: 0 });
+	assert.equal(coachAssistWeekWindow('2026-12-01', '2026-11-10'), null);
+	for (let offset = -20; offset <= 60; offset++) {
+		const today = new Date(Date.UTC(2026, 10, 10 + offset)).toISOString().slice(0, 10);
+		const w = coachAssistWeekWindow('2026-11-10', today);
+		if (w) assert.ok(w.last - w.first + 1 <= COACH_ASSIST_WINDOW_WEEKS, today);
+	}
 });
 
 test('a free coach is offered the upgrade and nothing is sent', async () => {

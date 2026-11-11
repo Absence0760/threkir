@@ -2457,6 +2457,47 @@ void main() {
       expect(await undoneOnDisk(), isNotNull);
     });
 
+    test('the undone finish instant is offered on the server clock until '
+        'the recording ends', () async {
+      final social = _FakeSocial();
+      final c = armed(social);
+      c.clockOffset.addSample(
+        sentAt: gun,
+        receivedAt: gun.add(const Duration(milliseconds: 20)),
+        serverAt: gun.add(const Duration(milliseconds: 1510)),
+      );
+      expect(c.undoneFinishAt, isNull);
+      await pumpEventQueue();
+      go(c);
+      await pumpEventQueue();
+      runTo(c, 5020);
+      await c.fileOutcomeNow(durationS: 1010, distanceM: 5050);
+      expect(c.undoneFinishAt, isNull, reason: 'nothing is undone yet');
+      await c.voidAutoFinish();
+      final undoneAt = at(1006).add(const Duration(milliseconds: 1500));
+      expect(c.undoneFinishAt, undoneAt);
+
+      final r = await restart(social);
+      expect(r.undoneFinishAt, at(1006),
+          reason: 'a restart keeps it; no offset has been sampled since');
+      var s = 1100;
+      var covered = 5130.0;
+      for (var x = 5090.0; x >= 4950; x -= 10, s += 2, covered += 10) {
+        fix(r, x, s, covered);
+      }
+      RaceFinish? again;
+      for (var x = 4960.0; x <= 5020; x += 10, s += 2, covered += 10) {
+        again ??= fix(r, x, s, covered);
+      }
+      await r.fileOutcomeNow(durationS: 1400, distanceM: covered);
+      expect(r.undoneFinishAt, at(1006),
+          reason: 'filing the later finish keeps it for the saved run');
+      await r.voidAutoFinish();
+      expect(r.undoneFinishAt, again!.at.toUtc(), reason: 'the latest one');
+      r.detachRecorder();
+      expect(r.undoneFinishAt, isNull);
+    });
+
     test('sign-out drops the undone finish', () async {
       await undone(_FakeSocial());
       await clearPendingRaceResults();

@@ -4091,6 +4091,13 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     // same way the pedometer and belt sources do.
     if (timeOnly) metadata[cm.MetadataKeys.indoor] = true;
 
+    // The line finish the runner undid, so a re-time from this track does
+    // not find it again (decisions § 2450).
+    final undoneAt = widget.raceController?.undoneFinishAt;
+    if (undoneAt != null) {
+      metadata[cm.MetadataKeys.raceUndoneFinishAt] = undoneAt.toIso8601String();
+    }
+
     // Structured-workout review trail. Three keys are registered in
     // [docs/backend/metadata.md]: plan_workout_id, workout_step_results,
     // workout_adherence. The web run-detail "Workout" section reads

@@ -719,6 +719,11 @@ class RaceController extends ChangeNotifier {
   /// a filing, or the race being forgotten clears it.
   _UndoneFinish? _undone;
 
+  /// The latest line finish this recording undid, device clock: kept past a
+  /// filing and the stored undo's clearing, until the recording ends, so the
+  /// saved run can carry it.
+  DateTime? _latestUndoneAt;
+
   /// The undo the current detector was re-armed after: it sees only fixes
   /// after the undone instant, with coverage counted from the kept start.
   _UndoneFinish? _detectorUndone;
@@ -799,6 +804,23 @@ class RaceController extends ChangeNotifier {
       gunAt: gun,
       clockOffset: clockOffset.offset,
     );
+  }
+
+  /// The latest line finish this recording undid, on the server clock under
+  /// the offset a result filed now would carry (whole milliseconds, as
+  /// `finish_at`); null when none was. The run screen writes it on the saved
+  /// run as `race_undone_finish_at`, so a re-time from the track skips it.
+  DateTime? get undoneFinishAt {
+    final at = _latestUndoneAt;
+    if (at == null) return null;
+    return at
+        .add(Duration(milliseconds: clockOffset.offset.inMilliseconds))
+        .toUtc();
+  }
+
+  void _noteUndone(DateTime at) {
+    final latest = _latestUndoneAt;
+    if (latest == null || at.isAfter(latest)) _latestUndoneAt = at;
   }
 
   /// Attach the controller to a user session. Starts polling for armed
@@ -1288,6 +1310,7 @@ class RaceController extends ChangeNotifier {
     _recording = true;
     _recordingStartedAt = startedAt;
     _undone = null;
+    _latestUndoneAt = null;
     _detectionChanged();
     unawaited(_adoptUndone(startedAt));
   }
@@ -1306,6 +1329,7 @@ class RaceController extends ChangeNotifier {
     final began = _recordingStartedAt;
     if (!_recording || began == null || !stored.sameRecording(began)) return;
     _undone = stored;
+    _noteUndone(stored.undoneAt);
     if (_outcome == null && !_autoFinishVoided) _detector = null;
     _detectionChanged();
   }
@@ -1371,6 +1395,7 @@ class RaceController extends ChangeNotifier {
     _firstFixLng = null;
     _pingTimer?.cancel();
     _pingTimer = null;
+    _latestUndoneAt = null;
     if (_undone != null) {
       _undone = null;
       unawaited(_clearUndone());
@@ -2072,6 +2097,7 @@ class RaceController extends ChangeNotifier {
     final owner = _hostingUserId ?? _signedInUserId;
     final began = _recordingStartedAt;
     final undoneAt = outcome.finishAt;
+    if (undoneAt != null) _noteUndone(undoneAt);
     if (owner != null && began != null && undoneAt != null) {
       final undone = _UndoneFinish(
         userId: owner,

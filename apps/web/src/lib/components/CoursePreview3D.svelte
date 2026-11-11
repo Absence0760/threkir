@@ -277,14 +277,17 @@
 				mascotFailed = true;
 				return;
 			}
-			canvas.addEventListener('webglcontextlost', () => {
-				mascotFailed = true;
-				useDot();
-			});
 			if (!map || !open) {
 				loaded.dispose();
 				return;
 			}
+			// dispose() loses the context on purpose, and the event lands after
+			// teardown has moved on; only a loss on the live renderer is a failure.
+			canvas.addEventListener('webglcontextlost', () => {
+				if (mascot !== loaded) return;
+				mascotFailed = true;
+				useDot();
+			});
 			mascot = loaded;
 			useMascot();
 		} catch (e) {
@@ -396,8 +399,9 @@
 		stopResizeWatch?.();
 		stopResizeWatch = null;
 		mapLoaded = false;
-		mascot?.dispose();
+		const disposing = mascot;
 		mascot = null;
+		disposing?.dispose();
 		positionKind = 'dot';
 		positionMarker?.remove();
 		positionMarker = undefined;

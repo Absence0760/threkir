@@ -3120,7 +3120,7 @@ class _RunDetailScreenState extends State<RunDetailScreen>
     };
     final icon = switch (level) {
       AudienceLevel.public => Icons.public,
-      AudienceLevel.followers => Icons.group_outlined,
+      AudienceLevel.followers => Icons.group,
       AudienceLevel.specific => Icons.person_add_alt,
       AudienceLevel.private => Icons.lock_outline,
     };

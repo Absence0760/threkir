@@ -139,4 +139,26 @@ test.describe('park course route guide (web)', () => {
 		});
 		await expect(page.getByTestId('park-course-guide-pending')).toHaveCount(0);
 	});
+
+	test('a closed course shows no guide, like its Navigate and GPX', async ({ page }) => {
+		const admin = getAdminClient();
+		const closed = await admin
+			.from('park_courses')
+			.update({ status: 'closed', status_note: 'Closed for trail work.' })
+			.eq('park_id', parkId as string);
+		if (closed.error) throw closed.error;
+		await page.goto(`/parks/us-va/${PARK_SLUG}/guide-loop`);
+		await expect(page.getByTestId('park-course-closed')).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('park-course-guide')).toHaveCount(0);
+		await expect(page.getByTestId('park-course-gpx')).toHaveCount(0);
+
+		await page.goto(`/share/course/us-va/${PARK_SLUG}/guide-loop`);
+		await expect(page.getByTestId('share-course-closed')).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('share-course-guide')).toHaveCount(0);
+		const jsonLd = await page
+			.locator('script[type="application/ld+json"]')
+			.evaluateAll((els) => els.map((e) => e.textContent ?? '').join('\n'));
+		expect(jsonLd).toContain('Currently closed.');
+		expect(jsonLd).not.toContain('Lake Trail');
+	});
 });

@@ -10,7 +10,7 @@
 	import ParkCourseNotices from '#lib/components/parks/ParkCourseNotices.svelte';
 	import ParkCourseRouteGuide from '#lib/components/parks/ParkCourseRouteGuide.svelte';
 	import ParkMapLegend, { type ParkMapLegendItem } from '#lib/components/parks/ParkMapLegend.svelte';
-	import { regionName } from '#lib/parks/park_courses.ts';
+	import { courseOffersWayfinding, regionName } from '#lib/parks/park_courses.ts';
 	import { DIFFICULTY_LABEL, SHAPE_LABEL, courseCredit, labelKey } from '#lib/parks/park_labels.ts';
 	import { courseLapsChip, courseShapeShown } from '#lib/parks/park_course_distance.ts';
 	import { fmtCourseDistance } from '#lib/parks/course_distance_format.ts';
@@ -181,7 +181,7 @@
 					/>
 				</div>
 			{/if}
-			{#if course.route_guide}
+			{#if course.route_guide && courseOffersWayfinding(course.status)}
 				<div class="guide-slot">
 					<ParkCourseRouteGuide
 						guide={course.route_guide}

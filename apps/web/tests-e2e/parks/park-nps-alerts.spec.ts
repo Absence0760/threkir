@@ -211,4 +211,37 @@ test.describe.serial('NPS park alerts review', () => {
 			await ctx.close();
 		}
 	});
+
+	test('a slow tab that answers after the admin moved on does not replace the tab on screen', async ({ browser }) => {
+		const ctx = await signedInContext(browser, users[1]);
+		try {
+			const page = await ctx.newPage();
+			let releaseReviewed: () => void = () => {};
+			const reviewedHeld = new Promise<void>((resolve) => (releaseReviewed = resolve));
+			await page.route(/\/rest\/v1\/rpc\/admin_park_nps_alerts\?.*p_status=reviewed/, async (route) => {
+				await reviewedHeld;
+				await route.continue();
+			});
+			await page.goto('/admin/park-alerts');
+			await expect(page.getByTestId('park-alerts-tab-reviewed')).toBeVisible({ timeout: 15_000 });
+			const reviewedFinished = page.waitForEvent('requestfinished', (r) =>
+				r.url().includes('admin_park_nps_alerts') && r.url().includes('p_status=reviewed'),
+			);
+			await page.getByTestId('park-alerts-tab-reviewed').click();
+			await page.getByTestId('park-alerts-tab-dismissed').click();
+			const slide = page.getByTestId('park-alert-row').filter({ hasText: `Rock slide on the ridge ${TAG}` });
+			await expect(slide).toBeVisible({ timeout: 10_000 });
+
+			releaseReviewed();
+			await reviewedFinished;
+			await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 0)));
+
+			await expect(page.getByTestId('park-alerts-tab-dismissed')).toHaveAttribute('aria-pressed', 'true');
+			await expect(slide).toBeVisible();
+			await expect(page.getByTestId('park-alert-row').filter({ hasText: `Prescribed fire at the meadow ${TAG}` })).toHaveCount(0);
+			await expect(page.getByTestId('park-alert-dismiss')).toHaveCount(0);
+		} finally {
+			await ctx.close();
+		}
+	});
 });

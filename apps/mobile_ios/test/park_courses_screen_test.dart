@@ -1038,15 +1038,28 @@ void main() {
           ParkCourseScreen(
             api: _ParksApi(),
             listing: _park(id: 'p1', name: 'Pocahontas State Park'),
-            course: _course(status: 'closed', routeId: 'route-1'),
+            course: _course(
+              status: 'closed',
+              routeId: 'route-1',
+              routeGuide: {
+                'version': 1,
+                'lang': 'en',
+                'steps': [
+                  {'kind': 'start', 'at_m': 0, 'name': 'Lake Trail'},
+                  {'kind': 'finish', 'at_m': 1990},
+                ],
+              },
+            ),
           ),
         ),
       );
       await _settle(tester);
       expect(find.byKey(const Key('park-course-closed')), findsOneWidget);
-      // A closed course offers nothing to follow, the GPX included.
+      // A closed course offers nothing to follow: the GPX and the guide
+      // included.
       expect(find.byKey(const Key('park-course-share-gpx')), findsNothing);
       expect(find.byKey(const Key('park-course-navigate')), findsNothing);
+      expect(find.byKey(const Key('park-course-guide')), findsNothing);
       expect(find.byKey(const Key('park-course-safety')), findsOneWidget);
       await _unmount(tester);
     });

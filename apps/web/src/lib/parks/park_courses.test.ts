@@ -5,6 +5,7 @@ import {
 	COURSE_SHAPES,
 	courseAttribution,
 	courseIsCountable,
+	courseOffersWayfinding,
 	groupParksByRegion,
 	isLongCourse,
 	LONG_COURSE_THRESHOLD_M,
@@ -82,6 +83,12 @@ test('courseIsCountable: a closed course drops out of counts, a seasonal one sta
 	assert.equal(courseIsCountable('open'), true);
 	assert.equal(courseIsCountable('seasonal'), true);
 	assert.equal(courseIsCountable('closed'), false);
+});
+
+test('courseOffersWayfinding: a closed course offers no Navigate, GPX or route guide', () => {
+	assert.equal(courseOffersWayfinding('open'), true);
+	assert.equal(courseOffersWayfinding('seasonal'), true);
+	assert.equal(courseOffersWayfinding('closed'), false);
 });
 
 test('isLongCourse: only a course over 15 km carries the long-course notice', () => {

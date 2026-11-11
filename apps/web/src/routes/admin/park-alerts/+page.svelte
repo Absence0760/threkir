@@ -47,13 +47,27 @@
 		return `/parks/${regionSlug(row.region_code)}/${row.park_slug}/${row.course_slug}`;
 	}
 
+	// Tabs switch faster than the queue answers, so only the newest request may
+	// land, and the actions follow the tab the rows were read for, not the one
+	// that is selected while the next tab is still loading.
+	let loadSeq = 0;
+	let rowsView = $state<ParkNpsAlertStatus>('pending');
+
 	async function load() {
-		loadError = null;
+		const seq = ++loadSeq;
+		const requested = view;
+		let nextRows: ParkNpsAlert[] = [];
+		let nextError: string | null = null;
 		try {
-			rows = await fetchParkNpsAlerts(view);
+			nextRows = await fetchParkNpsAlerts(requested);
 		} catch (e) {
-			rows = [];
-			loadError = t('admin.parkAlerts.loadFailed', { error: errorCopy(e, t, 'park alerts queue failed') });
+			nextError = t('admin.parkAlerts.loadFailed', { error: errorCopy(e, t, 'park alerts queue failed') });
+		} finally {
+			if (seq === loadSeq) {
+				rows = nextRows;
+				rowsView = requested;
+				loadError = nextError;
+			}
 		}
 	}
 
@@ -168,12 +182,12 @@
 							<p class="hint">{t('admin.parkAlerts.courseClosed')}</p>
 						{/if}
 						<div class="actions">
-							{#if view === 'pending' && row.course_status !== 'closed'}
+							{#if rowsView === 'pending' && row.course_status !== 'closed'}
 								<button class="btn-danger btn-sm" type="button" onclick={() => openClose(row)} data-testid="park-alert-close">
 									{t('admin.reports.course.close')}
 								</button>
 							{/if}
-							{#if view === 'pending'}
+							{#if rowsView === 'pending'}
 								<button
 									class="btn-secondary btn-sm"
 									type="button"

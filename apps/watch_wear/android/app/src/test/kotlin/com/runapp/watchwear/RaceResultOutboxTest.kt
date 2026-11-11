@@ -3,14 +3,21 @@ package com.runapp.watchwear
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import java.io.File
 import java.nio.file.Files
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 /// What reaches the server for a race and in which order (#1307): a line
@@ -27,6 +34,9 @@ class RaceResultOutboxTest {
         val log = mutableListOf<String>()
         var submitError: Throwable? = null
         var deleteError: Throwable? = null
+        var deleteStarted: CompletableDeferred<Unit>? = null
+        var deleteHangs = false
+        val failures = mutableListOf<String>()
 
         suspend fun submit(token: String, r: PendingRaceResult) {
             submitError?.let { throw it }
@@ -35,6 +45,8 @@ class RaceResultOutboxTest {
         }
 
         suspend fun delete(token: String, uid: String, eventId: String, instance: String) {
+            deleteStarted?.complete(Unit)
+            if (deleteHangs) awaitCancellation()
             deleteError?.let { throw it }
             deleted += Triple(uid, eventId, instance)
             log += "delete"
@@ -53,7 +65,7 @@ class RaceResultOutboxTest {
                 store = store,
                 submit = server::submit,
                 deleteAuto = server::delete,
-                onFailure = { _, _ -> },
+                onFailure = { message, _ -> server.failures += message },
             )
             block(outbox, store, server)
         } finally {
@@ -170,6 +182,42 @@ class RaceResultOutboxTest {
         assertTrue("a refusal is not worth replaying", store.voids().isEmpty())
         outbox.file("t", handFinish)
         assertEquals(listOf(handFinish), server.submitted)
+    }
+
+    @Test
+    fun `a cancelled delete is not reported as a send failure`() = withOutbox { outbox, store, server ->
+        server.deleteError = CancellationException("scope cancelled")
+        try {
+            outbox.void("t", "u1", "e1", "i1")
+            fail("the cancellation must reach the caller")
+        } catch (expected: CancellationException) {
+        }
+        assertTrue("a cancellation is not a retryable send failure", server.failures.isEmpty())
+        assertEquals(listOf(PendingRaceVoid("u1", "e1", "i1")), store.voids())
+    }
+
+    @Test
+    fun `an undo cancelled mid-delete still keeps the void`() = withOutbox { outbox, store, server ->
+        outbox.file("t", lineFinish)
+        server.deleteHangs = true
+        val started = CompletableDeferred<Unit>()
+        server.deleteStarted = started
+        coroutineScope {
+            val job = launch { outbox.void("t", "u1", "e1", "i1") }
+            started.await()
+            job.cancelAndJoin()
+        }
+        assertTrue(server.failures.isEmpty())
+        assertEquals(
+            "the withdrawn finish is deleted on the next poll rather than left on the board",
+            listOf(PendingRaceVoid("u1", "e1", "i1")),
+            store.voids(),
+        )
+        server.deleteHangs = false
+        server.deleteStarted = null
+        outbox.replay("t", "u1")
+        assertEquals(listOf(Triple("u1", "e1", "i1")), server.deleted)
+        assertTrue(store.voids().isEmpty())
     }
 
     @Test

@@ -2437,11 +2437,14 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// The sent side leaves out read_at, the recipient's own read time
 		// (20271113000001); seen_at is what the recipient chose to share.
 		// edited_at and original_body (the text before an edit,
-		// 20271114000210) are the subject's own words.
+		// 20271114000210) are the subject's own words. Group messages
+		// (20271216000003, decisions § 2458) ship on the sent side only: they
+		// have no recipient, and other members' group messages are not the
+		// subject's data (owner decision D5).
 		{
 			name: "direct_messages_sent.json", table: schema.TableDirectMessages,
 			filter: "sender_id=eq." + uid,
-			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id",
+			sel:    "id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id,is_group",
 		},
 		{
 			name: "direct_messages_received.json", table: schema.TableDirectMessages,
@@ -2465,10 +2468,12 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// conversation_participants — the subject's own view of each
 		// conversation (joined, deleted-for-me, muted, archived, marked
 		// unread, message-request state; migrations 20271105000010,
-		// 20271109000020, 20271115002384). Only their own row.
+		// 20271109000020, 20271115002384) and their group memberships (state,
+		// role, invited/removed by, invited/left at, read position;
+		// 20271216000002). Only their own row.
 		{
 			name: "conversation_settings.json", table: schema.TableConversationParticipants,
-			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at",
+			filter: "user_id=eq." + uid, sel: "conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at,membership_state,role,invited_by,invited_at,left_at,removed_by,last_read_at",
 		},
 		// coach_athletes — the subject's coaching relationships, as coach
 		// and as athlete. `invite_token` is a redeemable credential

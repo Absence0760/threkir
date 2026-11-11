@@ -24,6 +24,7 @@ GDPR Art 20 (portability) and CCPA right-to-know both require the export to be *
 7. **Authentication.** Exporter must use JWT-verified `user.id`; never trust a caller-supplied `user_id` field. Confirm the Go handler.
 8. **Rate limit + size.** At >5 years of daily runs (~1,800 runs * ~50 KB tracks = 90 MB compressed) the request needs to be async with signed-URL pickup. Confirm that's how it's structured.
 9. **Joining tables.** `run_kudos`, `run_comments`, `run_photos`, `segment_efforts`, `event_attendees`, `club_members`, `user_follows`, `run_gear`, `route_reviews` — confirm coverage. Each is small but losing it leaves the export incomplete.
+9a. **Messages and conversations.** `direct_messages_sent.json` (every message the subject sent, group ones included, with `is_group`), `direct_messages_received.json` (1:1 only: a group message has no recipient), `direct_message_reactions.json`, `direct_message_images.json`, and `conversation_settings.json` (the subject's own participant row, group membership columns included: `membership_state`, `role`, `invited_by`, `invited_at`, `left_at`, `removed_by`, `last_read_at`). Other members' group messages are deliberately not exported (owner decision D5, decisions § 2458). Both rails (`backup_spec.ts`, `supabase.go`) must agree.
 10. **Two-direction relations.** A run that the user commented on but didn't author: should it appear? Strictly the user's own data is their comment row only. Be explicit about what we ship vs not.
 
 ## Report

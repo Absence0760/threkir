@@ -379,7 +379,7 @@ Deno.test('conversation_participants exports only the subject\'s own row (GDPR A
 	if (!own) throw new Error('conversation_settings.json missing');
 	assertEquals(own.table, 'conversation_participants');
 	assertEquals(own.filter, 'user_id=eq.user-A');
-	assertEquals(own.select, 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at');
+	assertEquals(own.select, 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at,membership_state,role,invited_by,invited_at,left_at,removed_by,last_read_at');
 });
 
 Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {
@@ -397,6 +397,26 @@ Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {
 	assertEquals(received.table, 'direct_messages');
 	assertEquals(sent.filter, `sender_id=eq.${TEST_UID}`);
 	assertEquals(received.filter, `recipient_id=eq.${TEST_UID}`);
+});
+
+Deno.test('group messages export only as the subject\'s own sent messages (D5)', () => {
+	// 20271216000003 / decisions § 2458: a group message is a direct_messages
+	// row with no recipient. The sent side carries is_group so the archive says
+	// which audience a message went to; the received side filters on
+	// recipient_id, which no group message has, so other members' messages
+	// never ship. The membership columns ship on the subject's own row.
+	const specs = buildBackupSpecs(TEST_UID);
+	const sent = specs.find((s) => s.entry === 'direct_messages_sent.json');
+	const received = specs.find((s) => s.entry === 'direct_messages_received.json');
+	const own = specs.find((s) => s.entry === 'conversation_settings.json');
+	assertExists(sent);
+	assertExists(received);
+	assertExists(own);
+	assertEquals(sent.select.split(',').includes('is_group'), true);
+	assertEquals(received.filter, `recipient_id=eq.${TEST_UID}`);
+	for (const col of ['membership_state', 'role', 'invited_by', 'invited_at', 'left_at', 'removed_by', 'last_read_at']) {
+		assertEquals(own.select.split(',').includes(col), true, col);
+	}
 });
 
 Deno.test('the sent-messages export leaves out the recipient\'s read_at', () => {

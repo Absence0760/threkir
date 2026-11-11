@@ -202,7 +202,7 @@ export function retiredStage(config) {
 						rows.push(['function', fn, 'would delete']);
 						continue;
 					}
-					const del = ctx.exec('supabase', ['functions', 'delete', fn, '--project-ref', ref]);
+					const del = ctx.exec('supabase', ['functions', 'delete', fn, '--project-ref', ref, '--yes']);
 					if (!del.ok) {
 						rows.push(['function', fn, 'failed']);
 						return { table: { header, rows }, failed: `supabase functions delete ${fn} exited non-zero: ${firstLine(del.stderr)}` };
@@ -218,15 +218,18 @@ export function retiredStage(config) {
 				}
 				const present = listedNames(listed.stdout);
 				const pending = envs.filter((name) => present.has(name));
-				for (const name of envs) {
-					rows.push(['secret', name, !present.has(name) ? 'absent' : ctx.dryRun ? 'would unset' : 'unset']);
-				}
+				let outcome = ctx.dryRun ? 'would unset' : 'unset';
+				/** @type {string | undefined} */
+				let failed;
 				if (pending.length > 0 && !ctx.dryRun) {
-					const unset = ctx.exec('supabase', ['secrets', 'unset', ...pending, '--project-ref', ref]);
+					const unset = ctx.exec('supabase', ['secrets', 'unset', ...pending, '--project-ref', ref, '--yes']);
 					if (!unset.ok) {
-						return { table: { header, rows }, failed: `supabase secrets unset exited non-zero: ${firstLine(unset.stderr)}` };
+						outcome = 'failed';
+						failed = `supabase secrets unset exited non-zero: ${firstLine(unset.stderr)}`;
 					}
 				}
+				for (const name of envs) rows.push(['secret', name, present.has(name) ? outcome : 'absent']);
+				if (failed) return { table: { header, rows }, failed };
 			}
 			return { table: { header, rows } };
 		},

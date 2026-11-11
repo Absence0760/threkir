@@ -321,9 +321,9 @@ test('retired: a deployed function is deleted and a set secret unset, the rest r
 	]);
 	assert.deepEqual(commands, [
 		['supabase', 'functions', 'list', '--project-ref', REF, '-o', 'json'],
-		['supabase', 'functions', 'delete', 'old-import', '--project-ref', REF],
+		['supabase', 'functions', 'delete', 'old-import', '--project-ref', REF, '--yes'],
 		['supabase', 'secrets', 'list', '--project-ref', REF, '-o', 'json'],
-		['supabase', 'secrets', 'unset', 'OLD_IMPORT_UA', '--project-ref', REF],
+		['supabase', 'secrets', 'unset', 'OLD_IMPORT_UA', '--project-ref', REF, '--yes'],
 	]);
 });
 
@@ -356,6 +356,21 @@ test('retired: a failed list or delete fails the stage, and a missing ref or tok
 	const r = retiredStage(RETIRED).run?.(deleteFails.ctx);
 	assert.match(r?.failed ?? '', /supabase functions delete old-import exited non-zero: Error: 500/);
 	assert.deepEqual(r?.table.rows, [['function', 'old-import', 'failed']]);
+	const unsetFails = ctx({
+		exec: (_cmd, args) =>
+			args[0] === 'functions'
+				? { ok: true, stdout: '[]', stderr: '' }
+				: args[1] === 'list'
+					? { ok: true, stdout: '[{"name":"OLD_IMPORT_UA"}]', stderr: '' }
+					: { ok: false, stdout: '', stderr: 'Error: 403' },
+	});
+	const u = retiredStage(RETIRED).run?.(unsetFails.ctx);
+	assert.match(u?.failed ?? '', /supabase secrets unset exited non-zero: Error: 403/);
+	assert.deepEqual(u?.table.rows, [
+		['function', 'old-import', 'absent'],
+		['secret', 'OLD_IMPORT_ENABLED', 'absent'],
+		['secret', 'OLD_IMPORT_UA', 'failed'],
+	]);
 	assert.throws(() => retiredStage(RETIRED).run?.(ctx({ env: { SUPABASE_ACCESS_TOKEN: 'x' } }).ctx), /SUPABASE_PROJECT_REF/);
 	assert.throws(() => retiredStage(RETIRED).run?.(ctx({ env: { SUPABASE_PROJECT_REF: REF } }).ctx), /SUPABASE_ACCESS_TOKEN/);
 });

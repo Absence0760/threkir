@@ -24,8 +24,7 @@ export const SECTIONS = ['feature_flags', 'function_env', 'web_env', 'cron_urls'
 /**
  * Edge Function env toggles the backend release may set with `supabase
  * secrets set`. Only booleans an Edge Function reads, so this can never carry
- * a credential; the guard also proves each one is still read. Empty since the
- * parkrun events leg was removed (decisions § SCRAPER_ADR).
+ * a credential; the guard also proves each one is still read.
  *
  * @type {readonly string[]}
  */

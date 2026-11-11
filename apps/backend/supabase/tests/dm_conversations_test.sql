@@ -79,11 +79,14 @@ select is_empty(
   'dm_threads is empty for a user in no conversation');
 set local "request.jwt.claims" = '{"sub":"dc000000-0000-0000-0000-00000000000a","role":"authenticated"}';
 
+-- Since 20271216000003 a group send names its conversation; naming a direct
+-- one without a recipient is refused, and a 1:1 send's named conversation is
+-- overwritten from the pair (group_messages_read_matrix_test).
 select throws_ok(
-  $$insert into direct_messages (sender_id, recipient_id, body, conversation_id)
-    values ('dc000000-0000-0000-0000-00000000000a', 'dc000000-0000-0000-0000-00000000000b', 'x', (select id from conv))$$,
+  $$insert into direct_messages (sender_id, body, conversation_id)
+    values ('dc000000-0000-0000-0000-00000000000a', 'x', (select id from conv))$$,
   '42501', null,
-  'a client cannot choose a message''s conversation');
+  'a client cannot post into a direct conversation by naming it');
 select lives_ok(
   $$insert into direct_messages (id, sender_id, recipient_id, body)
     values ('dc000000-0000-0000-0000-0000000000a3', 'dc000000-0000-0000-0000-00000000000a', 'dc000000-0000-0000-0000-00000000000b', 'client send')$$,

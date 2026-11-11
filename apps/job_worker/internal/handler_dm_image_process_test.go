@@ -35,6 +35,12 @@ type fakeDmImages struct {
 	// rowGoneBeforeMark deletes the row as the worker marks it, as an
 	// unsend or a purge landing mid-job does.
 	rowGoneBeforeMark bool
+	// settledBeforeMark sets the row to this status as the worker marks it,
+	// as another attempt of the same job finishing first does.
+	settledBeforeMark string
+	// refetchErr fails every FetchDmImage after the first.
+	refetchErr error
+	fetches    int
 
 	orphans    []string
 	orphanErr  error
@@ -44,6 +50,10 @@ type fakeDmImages struct {
 func (f *fakeBackend) FetchDmImage(_ context.Context, id string) (*DmImage, error) {
 	if f.dm.fetchErr != nil {
 		return nil, f.dm.fetchErr
+	}
+	f.dm.fetches++
+	if f.dm.fetches > 1 && f.dm.refetchErr != nil {
+		return nil, f.dm.refetchErr
 	}
 	r, ok := f.dm.rows[id]
 	if !ok {
@@ -81,6 +91,10 @@ func (f *fakeBackend) markDm(id, status string, w, h int) (bool, error) {
 	}
 	if f.dm.rowGoneBeforeMark {
 		delete(f.dm.rows, id)
+		return false, nil
+	}
+	if f.dm.settledBeforeMark != "" {
+		f.dm.rows[id].Status = f.dm.settledBeforeMark
 		return false, nil
 	}
 	if r, ok := f.dm.rows[id]; ok && r.Status == "pending" {
@@ -202,7 +216,28 @@ func TestDmImageProcess_PendingBecomesReadyWithItsSize(t *testing.T) {
 	}
 }
 
-func TestDmImageProcess_RowDeletedMidJobErasesWhatItWrote(t *testing.T) {
+func TestDmImageProcess_RowSettledElsewhereKeepsItsObjects(t *testing.T) {
+	for _, status := range []string{"ready", "rejected"} {
+		be := dmBackend("pending", dmPhoto(t, 64, 48))
+		be.dm.settledBeforeMark = status
+		w := newTestWorker(be, nil)
+
+		if err := w.dispatch(context.Background(), dmJob()); err != nil {
+			t.Fatalf("%s: dispatch: %v", status, err)
+		}
+		if len(be.storageDeleted) != 0 {
+			t.Fatalf("%s: deleted objects a %s row names; DELETEs = %v", status, status, be.storageDeleted)
+		}
+		if _, ok := be.dm.objects[dmReencode]; !ok {
+			t.Fatalf("%s: the re-encode is gone", status)
+		}
+		if got := be.dm.rows[dmImageID].Status; got != status {
+			t.Fatalf("row status = %q, want %q", got, status)
+		}
+	}
+}
+
+func TestDmImageProcess_RowGoneMidJobErasesBothPaths(t *testing.T) {
 	be := dmBackend("pending", dmPhoto(t, 64, 48))
 	be.dm.rowGoneBeforeMark = true
 	w := newTestWorker(be, nil)
@@ -210,14 +245,22 @@ func TestDmImageProcess_RowDeletedMidJobErasesWhatItWrote(t *testing.T) {
 	if err := w.dispatch(context.Background(), dmJob()); err != nil {
 		t.Fatalf("dispatch: %v", err)
 	}
-	erased := false
-	for _, call := range be.storageDeleted {
-		if slicesContains(call, dmReencode) {
-			erased = true
-		}
+	if len(be.storageDeleted) != 1 || !slicesContains(be.storageDeleted[0], dmReencode) || !slicesContains(be.storageDeleted[0], dmUpload) {
+		t.Fatalf("want one DELETE of the re-encode and the upload; DELETEs = %v", be.storageDeleted)
 	}
-	if !erased {
-		t.Fatalf("the re-encode written after the row went was not erased; DELETEs = %v", be.storageDeleted)
+}
+
+func TestDmImageProcess_RereadFailureRetriesAndDeletesNothing(t *testing.T) {
+	be := dmBackend("pending", dmPhoto(t, 64, 48))
+	be.dm.settledBeforeMark = "ready"
+	be.dm.refetchErr = errors.New("connection reset")
+	w := newTestWorker(be, nil)
+
+	if err := w.dispatch(context.Background(), dmJob()); err == nil {
+		t.Fatal("dispatch succeeded on a failed re-read")
+	}
+	if len(be.storageDeleted) != 0 {
+		t.Fatalf("deleted without knowing whether the row exists; DELETEs = %v", be.storageDeleted)
 	}
 }
 

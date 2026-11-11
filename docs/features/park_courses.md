@@ -24,7 +24,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Start and end lines; loop courses | Shipped (#1308, migration `20271122002402`, decisions § 2402 / § 2403). See *Matching* |
 | Badges (`park_courses` / `park_complete` / `park_passport`), passport challenge metric, recap entries, course share sticker | Shipped (migration `20271123002404`, decisions § 2404 / § 2405); see *Collections* |
 | "Report a problem with this course" (issue #1346, migrations `20271213000001`..`005`, decisions § 2449): signed in or signed out, on web and mobile, reviewed and acted on from `/admin/reports`. See *Reports and closures* | Shipped |
-| NPS closures job (`park-closures-sweep`, migrations `20271214131302` + `20271214131303`, decisions § 2453): a daily read of NPS alerts that flags courses for operator review at `/admin/park-alerts`, never closing one itself. Inert until `NPS_API_KEY` is set and the schedule is armed. See *Reports and closures* | Shipped (code); waits on the NPS key |
+| NPS closures job (`park-closures-sweep`, migrations `20271214131302` + `20271214131303`, decisions § 2454): a daily read of NPS alerts that flags courses for operator review at `/admin/park-alerts`, never closing one itself. Inert until `NPS_API_KEY` is set and the schedule is armed. See *Reports and closures* | Shipped (code); waits on the NPS key |
 | Run detail park course chips: the owner sees each park course the run completed, its time and its place on that season's board, linking to the course (web + mobile) | Shipped |
 | Indexable course page `/share/course/<region>/<park>/<course>` + sitemap | Shipped (decisions § 2394); live with the next `terraform apply` + `web@*` deploy. See *SEO* |
 | Indexable park pages | Not built; see *SEO* |
@@ -351,7 +351,7 @@ account. The reporter picks a reason (`course_hazard`, `course_closure`,
   are in their data export (`reports.json`). Threkir sends a reporter no email:
   the acknowledgement is the operator's hand reply.
 
-**NPS alerts.** Phase 6 (decisions § 2453). `park-closures-sweep`, a daily
+**NPS alerts.** Phase 6 (decisions § 2454). `park-closures-sweep`, a daily
 pg_cron Edge Function, reads `developer.nps.gov/api/v1/alerts` for every active
 `nps` park with an `nps_park_code` and a course not closed (ten parks a request,
 the key in the `X-Api-Key` header, a second between requests) and records each

@@ -1,4 +1,4 @@
--- NPS closures, flagged for review (issue #1313 Phase 6, decisions § 2453).
+-- NPS closures, flagged for review (issue #1313 Phase 6, decisions § 2454).
 --
 -- A daily Edge Function (`park-closures-sweep`) reads the NPS Data API's
 -- alerts for every active National Park Service park that has a course
@@ -65,7 +65,7 @@ create index park_course_nps_alerts_reviewed_by_idx
 comment on table public.park_course_nps_alerts is
   'An NPS alert that may affect a park course, for operator review at /admin/park-alerts. Written by the '
   'park-closures-sweep Edge Function through record_park_nps_alerts; never changes a course by itself '
-  '(decisions § 2453).';
+  '(decisions § 2454).';
 
 alter table public.park_course_nps_alerts enable row level security;
 revoke all on public.park_course_nps_alerts from public, anon, authenticated;

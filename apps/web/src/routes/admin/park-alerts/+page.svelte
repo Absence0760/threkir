@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Site-admin review of the NPS alerts the daily closures sweep flagged
-	// against park courses (issue #1313 Phase 6, decisions § 2453). A flag never
+	// against park courses (issue #1313 Phase 6, decisions § 2454). A flag never
 	// changes a course: the admin reads the alert and closes the course here,
 	// or files the flag. Every RPC hard-denies a non-admin at the database;
 	// amIAdmin only picks the page chrome.

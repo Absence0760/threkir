@@ -1,6 +1,6 @@
 /// `park-closures-sweep`: the daily read of NPS alerts for every active
 /// National Park Service park with a course (issue #1313 Phase 6, decisions
-/// § 2453). pg_cron (`invoke_park_closures_sweep`, through pg_net) calls it
+/// § 2454). pg_cron (`invoke_park_closures_sweep`, through pg_net) calls it
 /// with the CRON_SECRET bearer.
 ///
 /// It never changes a course. Each alert that may affect a course (./lib.ts)

@@ -1,5 +1,5 @@
 -- Pins 20271214131302 + 20271214131303: NPS closures flagged for review
--- (issue #1313 Phase 6, decisions § 2453).
+-- (issue #1313 Phase 6, decisions § 2454).
 --
 -- Only an `nps` park takes an NPS park code. The sweep's two calls are the
 -- service role's alone: the targets list holds active NPS parks with a code

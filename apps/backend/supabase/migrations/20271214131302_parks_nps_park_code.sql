@@ -22,7 +22,7 @@ alter table public.parks
 
 comment on column public.parks.nps_park_code is
   'The NPS Data API parkCode of a National Park Service unit (agency nps), e.g. shen; null for every other park. '
-  'Written by load_park_catalogue from park.json; read by the park closures sweep (decisions § 2453).';
+  'Written by load_park_catalogue from park.json; read by the park closures sweep (decisions § 2454).';
 
 create or replace function private.load_park_catalogue(
   p_manifest jsonb,
@@ -408,7 +408,7 @@ comment on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) is
   'to park_courses.laps, and its route guide and ground-check date to park_courses.route_guide and '
   'route_guide_checked_at, none of which queues a backfill; the park''s NPS park code to parks.nps_park_code. '
   'Service role only; refuses an author who is not an official publisher of the club (decisions § 2425, '
-  '§ 2429, § 2438, § 2448, § 2453).';
+  '§ 2429, § 2438, § 2448, § 2454).';
 
 revoke execute on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) from public, anon, authenticated;
 grant execute on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) to service_role;

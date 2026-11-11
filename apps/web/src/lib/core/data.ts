@@ -15888,7 +15888,7 @@ export type ParkNpsAlertMatch = 'named' | 'park_wide';
 export type ParkNpsAlertStatus = 'pending' | 'reviewed' | 'dismissed';
 
 /** An NPS alert the closures sweep flagged against a park course, for review
- *  at /admin/park-alerts (decisions § 2453). */
+ *  at /admin/park-alerts (decisions § 2454). */
 export interface ParkNpsAlert {
 	id: number;
 	park_course_id: string;

@@ -31,6 +31,10 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
 | Help guide `park-courses`, Learn page `/learn/park-courses-how-timing-works` | Shipped |
 | Route guide per course (`park_courses.route_guide`, migration `20271212001344`, decisions § 2448): generated with the geometry, shown on the course page, the share page, its search text and the GPX, web + mobile | Shipped; every Pocahontas guide is still a draft awaiting the owner's ground check. See *Route guide* |
+| Staged parks: a park's `release` in `park.json` (`live`, or `staged` with a reason) decides whether the release sync loads it; a staged park is validated and reported `staged`, never loaded (decisions § 2455). See *Loading courses* | Shipped |
+| Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2455. See *Wording and safety* | Shipped |
+| "Times here are Threkir times…" notice on every course page and share page, and the `shared_use` give-way note (`park_courses.shared_use`, migration `20271215120001`), web + mobile | Shipped |
+| **Deep Run Park, 5 km** (Henrico County, VA; issue #1345): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
 
 ## Model
 
@@ -66,6 +70,10 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 - Every CHECK vocabulary is a rail in `check_constraint_unions.mjs`, held in the
   `park_courses` parity pair (`apps/web/src/lib/parks/park_courses.ts` ↔
   `apps/mobile_android/lib/park_courses.dart`) and the mobile label switches.
+- **`shared_use`** (text, nullable; migration `20271215120001`, decisions
+  § 2455): when an organised group regularly uses the course's paths, as a key
+  (`saturday_morning_group`), never free text, so the give-way note the clients
+  render from it names no one. Set per course in `park.json`.
 
 ## Checkpoints
 
@@ -294,6 +302,30 @@ These follow the owner-approved permit conditions (memo
   (`ParkCourseRouteLookup` on both platforms); an official route shows no
   badge until the lookup answers, and a failed lookup falls back to the
   ordinary badge.
+- **Times, not results.** Every course page and the `/share/course` page say,
+  in the notices callout, that its times are Threkir times on these paths and
+  not results of any event held on them (`parks.timesNotEventResults`). The
+  course boards say *time*, *fastest* and *most completions*, never *results*.
+  Open: **Run any time** on `/races` still labels a season's best "2027 record"
+  (`races.anyTimeRecord`, `racesAnyTimeRecord`), which the memo's "never
+  *course record*" rule asks to reword (e.g. "Fastest in 2027").
+- **Shared paths.** A course with `shared_use` adds a give-way note to the
+  same callout, naming no one: `saturday_morning_group` reads "Organised groups
+  use these paths on Saturday mornings. Give way, and avoid timing an effort
+  through them." (`parks.sharedUseSaturdayMorningGroup`). It is a key, not
+  text, so no organisation can be named through it.
+- **No third-party event names** (decisions § 2455, memo
+  `reviews/legal-parkrun-park-courses.md`). A course on paths a weekly
+  community event uses is named after the park and its distance ("Deep Run
+  Park, 5 km"). No surface (name, slug, description, route guide, share and SEO
+  page, GPX / KML metadata) names parkrun, "(not)parkrun", "parkwalk" or
+  "junior parkrun", links to parkrun, or uses its logo or colours; "official"
+  always comes with "Threkir". `scripts/parks/lib/third_party_marks.mjs`
+  enforces the words: the build and the payload check refuse any string in a
+  park's spec or manifest matching `park[\s_-]*(run|walk)` (case-insensitive),
+  which covers its domains too. A sentence naming the event that shares a
+  course's paths (even with a disclaimer) is held until parkrun answers the
+  outreach on #1148.
 - **Terms.** Terms § 8 Safety says courses, routes and park courses are
   planning information, not organised or supervised events; Threkir does not
   inspect, maintain or mark the trails; the runner follows the land's rules,
@@ -467,9 +499,34 @@ run with `psql` on the service-role connection. `node scripts/parks/load.mjs
 <park dir> --club-id … --author-id … [--enqueue-backfill]` still prints one
 park's single call.
 
-The pilot loads the first ten courses and keeps the rest staged (owner
-decision 4's recommended default). The fixture park in `seed.sql` is fictional
-and exists only so local and CI stacks have something to render.
+**Staged parks** (decisions § 2455). Committing a park under
+`scripts/parks/catalogue/` would otherwise load it on the next `backend@*`
+release, so every `park.json` declares whether it may:
+
+```json
+"release": { "status": "live" }
+"release": { "status": "staged", "reason": "Held until ... (#1097)" }
+```
+
+There is no default: a park with no `release`, or an unknown status or key,
+fails the build and the release sync, so a typo never publishes a park. The
+build copies the release into `manifest.json` (`--check` covers it). The sync
+validates every park, staged ones included, but calls the load only for live
+parks; each course of a staged park is a `staged` row in the step summary and
+the dry run, and the summary's note names the park and its reason. The stage
+SQL carries a staged park's slugs and nothing else. `load.mjs` refuses a staged
+park. Staging holds a park out; it does not close one that is already loaded
+(close it by dropping it from its manifest, or from `/admin/reports`).
+
+To unstage a park: once every item its reason names is done (for Deep Run
+Park, the pre-deploy checklist items below), set its `park.json` `release` to
+`{ "status": "live" }`, run `node scripts/parks/build.mjs <park dir>`, commit
+`park.json` with `manifest.json`, and publish a `backend@*` release (preview it
+first with a `dry_run` dispatch: the park's courses move from `staged` to
+`created`).
+
+The fixture park in `seed.sql` is fictional and exists only so local and CI
+stacks have something to render.
 
 ## SEO
 
@@ -600,6 +657,21 @@ These gate going live, not the code:
       `TRUSTED_CLIENT_IP_HEADER` is right for the production edge, or every
       signed-out reporter shares one bucket.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
+- [ ] **Deep Run Park (staged, decisions § 2455).** Before its `release` goes
+      `live`: (a) the owner records the parkrun brand and data outcome on
+      #1097 (memo `reviews/legal-parkrun-park-courses.md`), including the
+      Henrico county-park conditions in its § Recommendation 6; (b) the owner
+      checks the built line against his own GPS trace of the course, locally
+      (the trace is personal location data and is never committed): the start
+      line on the path south of the parking area, the pond-lap direction
+      (built anticlockwise: west along the north side of the west pond, south
+      down its west side, over the boardwalk, north up the east side), the
+      7/10-mile woods path out and back, and its turnaround at the path's
+      north-west end by the recreation-centre lot. The built course is 4,764 m
+      of course plus a 118 m lead-in each way; if the real route turns further
+      out or starts elsewhere, change the via lists, not the line. (c) Walk the
+      route guide and set `ground_checked_at`. (d) No sentence naming the
+      Saturday event until #1148 is answered.
 - [ ] NPS Data API key provisioned and set as the `NPS_API_KEY` function
       secret, and `park_closures_sweep` added to `cron_urls`, before the
       closures sweep goes live ([deployment.md § NPS park closures](../ops/deployment.md)).

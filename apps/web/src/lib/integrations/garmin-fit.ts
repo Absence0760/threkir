@@ -234,8 +234,10 @@ export function medianFixIntervalS(track: readonly TrackPoint[]): number {
 /// expected fix interval is the median positive interval, so a sparse track is
 /// not re-anchored on every fix. A point without a timestamp carries the
 /// previous cumulative. Lockstep with `estimatorCumulativeMetres` in
-/// apps/mobile_android/lib/embedded_bests.dart and
-/// apps/job_worker/internal/embedded_bests.go.
+/// apps/mobile_android/lib/embedded_bests.dart, and with `replayRecordedTrack`
+/// in apps/job_worker/internal/embedded_bests.go on a track that marks no
+/// `segmentStart`: the Go replay also splits a watch track into its marked
+/// segments (spec v1.8), and the imports this runs on carry no marks.
 export function estimatorCumulativeMetres(
 	track: readonly EstimatorTrackPoint[],
 	maxSpeedMps = 10,

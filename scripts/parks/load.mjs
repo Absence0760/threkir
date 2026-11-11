@@ -12,6 +12,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { cataloguePayload, loadSql } from './lib/catalogue_payload.mjs';
 import { parseRelease } from './lib/catalogue_release.mjs';
@@ -94,4 +95,4 @@ function main() {
 	}
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

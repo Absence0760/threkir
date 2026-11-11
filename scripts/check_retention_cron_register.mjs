@@ -41,7 +41,7 @@
 // CI:  the `workflow-lint` job in .github/workflows/ci.yml.
 // Unit tests: `node --test scripts/check_retention_cron_register.test.mjs`
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -445,7 +445,7 @@ export function check({ state, register, excluded }) {
 	return { errors, ok };
 }
 
-const invokedDirectly = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const invokedDirectly = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
 	const state = liveCronState(readCronOps(ROOT));
 	const register = parseRegister(readFileSync(join(ROOT, REGISTER), 'utf-8'));

@@ -435,8 +435,11 @@ osv-scanner as `supply-chain-scan.yml` and `--offline-vulnerabilities`.
 **What it blocks on.** On a pull request it scans the merge commit and its
 first parent (the base branch tip) against one OSV database download, and fails
 on an advisory present at the head and absent at the base, at **CVSS 7.0 or
-higher**. The match is on package, version and advisory id, so an advisory
-already on `main` never blocks an unrelated PR. The score is the highest CVSS
+higher**. The match is on ecosystem, package and advisory id, not the
+version, so an advisory already on `main` never blocks an unrelated PR, and
+bumping an advised package to a release the same advisory still covers does not
+block either. A package with no advisory at the base that carries one at the
+head is introduced, at any version. The score is the highest CVSS
 base score available: v3 vectors are scored by the script, v4 is taken from
 osv-scanner's own computed score, and a GitHub `HIGH` or `CRITICAL` label is
 the fallback. An advisory with no score at all is listed in the job summary

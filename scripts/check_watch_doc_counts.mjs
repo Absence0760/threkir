@@ -53,7 +53,7 @@
 //      the CI gate counts a skip as a pass (decisions § 869).
 // Unit tests: `node --test scripts/check_watch_doc_counts.test.mjs`
 
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -883,7 +883,7 @@ export function loadSource(path) {
 	return readFileSync(join(ROOT, path), 'utf-8');
 }
 
-const invokedDirectly = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const invokedDirectly = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
 	const { errors, ok } = check(loadDocs(), loadSource);
 	for (const line of ok) console.log(`[OK] check_watch_doc_counts: ${line}`);

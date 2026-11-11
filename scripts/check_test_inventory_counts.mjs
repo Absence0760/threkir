@@ -69,7 +69,7 @@
 // Unit tests: `node --test scripts/check_test_inventory_counts.test.mjs`
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { dirname, join, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -779,7 +779,7 @@ export function loadFile(path) {
 	return readFileSync(join(ROOT, path), 'utf-8');
 }
 
-const invokedDirectly = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const invokedDirectly = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
 	const files = tracked();
 	const md = loadFile(INVENTORY);

@@ -362,6 +362,18 @@ jobs:
             echo "Reproduce with: node --test scripts/check_cache_keys.test.mjs (stdlib only, no install needed)."
             exit 1
           fi
+      # A script that decides it is the entry point by building a file:// URL
+      # from argv[1] by hand misses on a path needing URL-encoding or reached
+      # through a symlink, and exits 0 having done nothing: a guard run that way
+      # passes vacuously.
+      - name: Script entry-point checks compare paths, not hand-built URLs
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/script_entry_points.test.mjs; then
+            echo "::error::A tracked script decides it is the entry point with import.meta.url === \`file://\${process.argv[1]}\`, or a script reached through a symlinked, URL-encoded path did nothing. Use realpathSync(process.argv[1]) === fileURLToPath(import.meta.url). Nothing here is about workflow syntax, the toolchain pins, the CI diagnoses or the cache keys."
+            echo "Reproduce with: node --test scripts/script_entry_points.test.mjs (stdlib + git ls-files)."
+            exit 1
+          fi
       # The Edge Functions are a Deno program, so no tsconfig root covers them
       # and `scripts/tsconfig_coverage.test.mjs` exempts the tree. What covers
       # it is the `deno check` step in `edge-functions`; this asserts that step
@@ -488,9 +500,9 @@ jobs:
       - name: Official content catalogue is well-formed
         if: ${{ !cancelled() && steps.node.outcome == 'success' }}
         run: |
-          if ! node --test scripts/official/lib/official_catalogue.test.mjs || ! node scripts/official/sync.mjs --dry-run > /dev/null; then
-            echo "::error::scripts/official/ regressed: a committed catalogue item under scripts/official/catalogue/ breaks a database constraint, names a file other than its slug, or carries a field the library drops; or the release stage (scripts/official/sync.mjs, scripts/official/lib/official_catalogue.mjs) or its place after the prod config in scripts/prod_sync/run.mjs changed. The plans' weeks are pinned to the generator by apps/web/src/lib/training/official_plan_catalogue.test.ts. Nothing here touches the network."
-            echo "Reproduce with: node --test scripts/official/lib/official_catalogue.test.mjs && node scripts/official/sync.mjs --dry-run > /dev/null"
+          if ! node --test scripts/official/lib/official_catalogue.test.mjs || ! dry_run=$(node scripts/official/sync.mjs --dry-run) || [ -z "$dry_run" ]; then
+            echo "::error::scripts/official/ regressed: the dry run printed no SQL (its entry-point check did not fire), or a committed catalogue item under scripts/official/catalogue/ breaks a database constraint, names a file other than its slug, or carries a field the library drops; or the release stage (scripts/official/sync.mjs, scripts/official/lib/official_catalogue.mjs) or its place after the prod config in scripts/prod_sync/run.mjs changed. The plans' weeks are pinned to the generator by apps/web/src/lib/training/official_plan_catalogue.test.ts. Nothing here touches the network."
+            echo "Reproduce with: node --test scripts/official/lib/official_catalogue.test.mjs && node scripts/official/sync.mjs --dry-run | head"
             exit 1
           fi
       # Production config as code (issue #1350): the release applies

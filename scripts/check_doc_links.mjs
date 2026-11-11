@@ -40,7 +40,7 @@
 // Unit tests: `node --test scripts/check_doc_links.test.mjs`
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, realpathSync } from 'node:fs';
 import { dirname, join, normalize, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -475,7 +475,7 @@ export function onDisk(path) {
 	return statSync(full).isFile() || statSync(full).isDirectory();
 }
 
-const invokedDirectly = process.argv[1] && import.meta.url === `file://${process.argv[1]}`;
+const invokedDirectly = process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedDirectly) {
 	const { errors, ok } = check(loadFiles(), loadFile, onDisk);
 	for (const line of ok) console.log(`[OK] check_doc_links: ${line}`);

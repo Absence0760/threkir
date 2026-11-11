@@ -96,6 +96,9 @@
  * envs — from the `env-isolation` job of ci.yml (decisions § 862).
  */
 
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import { checkoutBaseProblem } from '../src/lib/billing/revenuecat_links.ts';
 import { donateUrlProblem } from '../src/lib/billing/donate_link.ts';
 import { isTruthyFlagValue } from '../src/lib/core/env_flag.ts';
@@ -390,7 +393,7 @@ export function formatGuardError(result) {
 
 // CLI entry. Invoked as `node apps/web/scripts/check_production_env.mjs`
 // from the release-web.yml workflow before `npm run build`.
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
 	const result = checkProductionEnv(process.env);
 	if (!result.ok) {
 		process.stderr.write(formatGuardError(result));

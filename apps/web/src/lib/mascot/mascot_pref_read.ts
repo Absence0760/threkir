@@ -5,9 +5,11 @@
 /// Null means not known yet: a cold cache is an empty bag, and reading it as
 /// "on" would flash him for a runner who hid him, so callers keep him hidden
 /// until it is known. A cache that cannot be read at all (storage blocked in
-/// a private window) is not known either.
+/// a private window) is not known either, and neither is the bag
+/// `loadSettings` answers when the server read fails on a cold cache: it
+/// resolves rather than throws, with `universalUnknown` set.
 
-import type { LoadedSettings } from '#lib/settings/settings_overlay.ts';
+import { knownEffective, type LoadedSettings } from '#lib/settings/settings_overlay.ts';
 import { mascotShownIn } from './mascot.ts';
 
 export interface MascotPrefSource {
@@ -33,7 +35,9 @@ export function peekMascotShownFrom(src: MascotPrefSource): boolean | null {
 export async function loadMascotShownFrom(src: MascotPrefSource): Promise<boolean | null> {
 	if (!src.userId) return null;
 	try {
-		return mascotShownIn(await src.load(src.userId));
+		const loaded = await src.load(src.userId);
+		if (knownEffective<unknown>(loaded, 'show_mascot') === null) return null;
+		return mascotShownIn(loaded);
 	} catch (e) {
 		console.warn('show_mascot read failed', e);
 		return peekMascotShownFrom(src);

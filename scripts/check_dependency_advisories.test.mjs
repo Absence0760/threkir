@@ -136,15 +136,29 @@ test('a package with advisories but no groups gets one group per advisory', () =
 	assert.deepEqual(f.map((x) => x.ids[0]).sort(), ['RUSTSEC-1', 'RUSTSEC-2']);
 });
 
-test('introduced keeps only head groups none of whose ids is at the base for that package and version', () => {
-	/** @param {string} name @param {string} version @param {string[]} ids */
-	const F = (name, version, ids) => ({ ecosystem: 'npm', name, version, ids, aliases: ids, lockfiles: ['l'], score: 9, basis: 'x' });
+/** @param {string} name @param {string} version @param {string[]} ids @param {string} [ecosystem] */
+const F = (name, version, ids, ecosystem = 'npm') => ({ ecosystem, name, version, ids, aliases: ids, lockfiles: ['l'], score: 9, basis: 'x' });
+/** @param {readonly import('./check_dependency_advisories.mjs').Finding[]} fs */
+const named = (fs) => fs.map((f) => `${f.ecosystem}:${f.name}@${f.version}:${f.ids.join(',')}`);
+
+test('introduced keeps only head groups none of whose ids is on that package at the base', () => {
 	const base = [F('a', '1.0.0', ['GHSA-1']), F('b', '2.0.0', ['GHSA-2'])];
-	const head = [F('a', '1.0.0', ['CVE-1', 'GHSA-1']), F('b', '2.0.1', ['GHSA-2']), F('c', '1.0.0', ['GHSA-3']), F('a', '1.0.0', ['GHSA-9'])];
-	assert.deepEqual(
-		introduced(head, base).map((f) => `${f.name}@${f.version}:${f.ids.join(',')}`),
-		['b@2.0.1:GHSA-2', 'c@1.0.0:GHSA-3', 'a@1.0.0:GHSA-9'],
-	);
+	const head = [F('a', '1.0.0', ['CVE-1', 'GHSA-1']), F('c', '1.0.0', ['GHSA-3']), F('a', '1.0.0', ['GHSA-9'])];
+	assert.deepEqual(named(introduced(head, base)), ['npm:c@1.0.0:GHSA-3', 'npm:a@1.0.0:GHSA-9']);
+});
+
+test('bumping an advised package to a release the same advisory still covers introduces nothing', () => {
+	const base = [F('b', '2.0.0', ['GHSA-2'])];
+	assert.deepEqual(named(introduced([F('b', '2.0.1', ['GHSA-2'])], base)), []);
+	assert.deepEqual(named(introduced([F('b', '2.0.1', ['CVE-2', 'GHSA-2'])], base)), []);
+});
+
+test('a package clean at the base and advised at the head is introduced, whatever the version', () => {
+	const base = [F('a', '1.0.0', ['GHSA-1'])];
+	assert.deepEqual(named(introduced([F('b', '2.0.1', ['GHSA-2'])], base)), ['npm:b@2.0.1:GHSA-2']);
+	// Same advisory id on another package, or the same name in another ecosystem, is not "known".
+	assert.deepEqual(named(introduced([F('z', '1.0.0', ['GHSA-1'])], base)), ['npm:z@1.0.0:GHSA-1']);
+	assert.deepEqual(named(introduced([F('a', '1.0.0', ['GHSA-1'], 'PyPI')], base)), ['PyPI:a@1.0.0:GHSA-1']);
 });
 
 // ------------------------------------------------------------ dependency inputs

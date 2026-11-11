@@ -43,7 +43,7 @@
 // There is deliberately no "re-render and compare" guard for that reason;
 // `scripts/check_shared_constants.mjs` compares the three RAILS instead.
 
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -304,4 +304,4 @@ function main() {
 	);
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

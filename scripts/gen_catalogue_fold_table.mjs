@@ -42,7 +42,7 @@
 // Node's ICU does. `scripts/check_catalogue_fold_table.mjs` compares the
 // committed file with a fresh render and names that as one of the two causes.
 
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -262,4 +262,4 @@ function main() {
 	);
 }
 
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) main();
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) main();

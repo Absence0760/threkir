@@ -141,11 +141,15 @@
 	let ready = $state(false);
 
 	// Grisnir waits by the trail sign in the side panel, hidden until the
-	// runner's show_mascot is known (a new account has none, so on).
+	// runner's show_mascot is known. A settings read that succeeds with no
+	// value is known and on (a new account); one that fails with nothing
+	// cached is unknown and keeps him hidden, as EmptyState and the flyover do.
+	// The read waits for auth, since a hard reload mounts with no user yet.
 	let mascotShown = $state<boolean | null>(null);
-	onMount(() => {
+	onMount(async () => {
+		await auth.ready();
 		mascotShown = peekMascotShown();
-		void loadMascotShown().then((v) => (mascotShown = v ?? true));
+		mascotShown = await loadMascotShown();
 	});
 
 	onMount(async () => {

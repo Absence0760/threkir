@@ -121,6 +121,40 @@ test('with the setting on he replaces the dot, and his GLB loads only when the d
 	}
 });
 
+test('closing the dialog and opening it again brings him back, not the dot', async ({ browser, mockRoute }) => {
+	const page = await openRoutePage(browser);
+	try {
+		await mockRoute(
+			page,
+			(url) => FALLBACK_TILE_ORIGINS.has(url.origin),
+			(route) => route.fulfill({ status: 200, contentType: 'image/png', body: BLANK_TILE }),
+		);
+		await page.goto(`/routes/${routeId}`);
+		test.skip(!(await browserHasWebgl2(page)), 'he needs WebGL2, as the 3D dialog does');
+		await mockRoute(
+			page,
+			(url) => url.hostname === AWS_TERRAIN_HOST,
+			(route) => route.fulfill({ status: 404 }),
+		);
+		const open = page.getByTestId('course-preview-open');
+		const dialog = page.getByTestId('course-preview-3d');
+		const preview = dialog.locator('[data-flyover-mode]');
+
+		await open.click();
+		await expect(preview).toHaveAttribute('data-position-marker', 'mascot', { timeout: 15_000 });
+		// Closing disposes his renderer, whose context-lost event lands after
+		// the dialog has gone; it must not read as his WebGL failing.
+		await page.keyboard.press('Escape');
+		await expect(dialog).toBeHidden();
+
+		await open.click();
+		await expect(preview).toHaveAttribute('data-position-marker', 'mascot', { timeout: 15_000 });
+		await expect(dialog.getByTestId('course-preview-position').locator('canvas')).toHaveCount(1);
+	} finally {
+		await page.context().close();
+	}
+});
+
 test('with show_mascot off the dialog keeps the dot and never fetches him', async ({ browser, mockRoute }) => {
 	await setUserSetting(runner.id, 'show_mascot', false);
 	const page = await openRoutePage(browser);

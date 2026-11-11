@@ -218,7 +218,7 @@ test('the one-park fallback refuses a staged park', () => {
 	try {
 		const opts = { clubId: CLUB, authorId: AUTHOR, enqueueBackfill: false };
 		const held = copyPark(tmp, 'held-park', { status: 'staged', reason: 'owner check pending' });
-		assert.throws(() => parkLoadSql(held, opts), /held-park is staged \(owner check pending\)/);
+		assert.throws(() => parkLoadSql(held, opts), /held-park is staged and does not load .* Reason: owner check pending$/);
 		const live = copyPark(tmp, 'pocahontas', { status: 'live' });
 		assert.match(parkLoadSql(live, opts).sql, /^select \* from private\.load_park_catalogue\(/);
 	} finally {

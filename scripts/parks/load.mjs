@@ -75,7 +75,7 @@ export function parkLoadSql(dir, opts) {
 	const release = readRelease(dir);
 	const payload = readPayload(dir);
 	if (release.status === 'staged') {
-		throw new Error(`${payload.park.slug} is staged (${release.reason}); it loads once its park.json release is { "status": "live" }`);
+		throw new Error(`${payload.park.slug} is staged and does not load until its park.json release is { "status": "live" }. Reason: ${release.reason}`);
 	}
 	return { payload, sql: loadSql(payload, opts) };
 }

@@ -278,7 +278,7 @@ select throws_ok(
       where event_id = 'e7270000-0000-0000-0000-0000000000e1'
         and user_id = 'e7270000-0000-0000-0000-000000000002' $$,
   '23514',
-  null,
+  'event_course_mismatch: course e7270000-0000-0000-0000-0000000000a4 does not belong to event e7270000-0000-0000-0000-0000000000e1',
   'a result cannot move to another event''s course'
 );
 

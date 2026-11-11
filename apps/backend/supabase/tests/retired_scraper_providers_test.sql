@@ -1,5 +1,5 @@
 -- The scraped integrations are retired (migrations 20271216170001 + …02,
--- decisions § 2465):
+-- decisions § 2467):
 --   * integrations refuses provider `parkrun` and `ultrasignup`, and still
 --     takes the providers that remain;
 --   * race_listings refuses provider `parkrun`, and still takes `ultrasignup`

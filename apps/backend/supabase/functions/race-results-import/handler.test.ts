@@ -185,7 +185,7 @@ Deno.test('a limiter outage fails the import closed', async () => {
   assertEquals(h.fetched, []);
 });
 
-// ── the retired UltraSignup leg (decisions § 2465) ──
+// ── the retired UltraSignup leg (decisions § 2467) ──
 
 Deno.test('ultrasignup: a probe, a lookup and an import are all refused, nothing fetched', async () => {
   const probe = harness();

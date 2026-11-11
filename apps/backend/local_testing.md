@@ -52,7 +52,7 @@ This drops and recreates the local database using the migration files in `supaba
 - Email: `runner@test.com`
 - Password: `testtest`
 
-The seed includes 12 runs (across app, Strava, parkrun, HealthKit sources), 5 routes, a user profile, and a connected Strava integration. The parkrun runs stand for history imported before the parkrun import was removed (decisions § 2465). This is enough to test the dashboard, run history, route library, and all other pages with real data.
+The seed includes 12 runs (across app, Strava, parkrun, HealthKit sources), 5 routes, a user profile, and a connected Strava integration. The parkrun runs stand for history imported before the parkrun import was removed (decisions § 2467). This is enough to test the dashboard, run history, route library, and all other pages with real data.
 
 ### Regenerate client row types
 

@@ -1,5 +1,5 @@
 -- Retire the integrations that scraped a third party's website (decisions
--- § 2465): the parkrun results import, the parkrun upcoming-events feed
+-- § 2467): the parkrun results import, the parkrun upcoming-events feed
 -- and the UltraSignup results import. Their code is gone; this removes what
 -- they stored and narrows the two provider vocabularies so nothing can write
 -- those values again.

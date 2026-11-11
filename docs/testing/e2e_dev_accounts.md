@@ -328,7 +328,7 @@ Nothing here is Supabase Auth configuration — push is a consumer of the `notif
 
 ### 11. parkrun — nothing to provision
 
-**Status today:** the parkrun results import was removed on 2026-11-10 ([decisions § 2465](../architecture/decisions.md)), so there is no parkrun account or sandbox to set up. The parkrun barcode needs only a typed athlete number and is covered by the barcode unit tests and its web e2e spec.
+**Status today:** the parkrun results import was removed on 2026-11-10 ([decisions § 2467](../architecture/decisions.md)), so there is no parkrun account or sandbox to set up. The parkrun barcode needs only a typed athlete number and is covered by the barcode unit tests and its web e2e spec.
 
 ### 12. RunSignUp — no account needed (public feeds)
 

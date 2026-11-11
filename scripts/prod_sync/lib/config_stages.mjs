@@ -165,7 +165,7 @@ export function listedNames(json) {
  * Removes what a release no longer ships. `supabase functions deploy` adds and
  * updates a function but never deletes one, and nothing unsets a secret, so a
  * function whose directory was deleted keeps serving from production until it
- * is named here (decisions § 2465). Idempotent: a name already gone
+ * is named here (decisions § 2467). Idempotent: a name already gone
  * reads `absent`.
  *
  * @param {ProdConfig} config

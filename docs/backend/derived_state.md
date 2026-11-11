@@ -29,7 +29,7 @@ retention cron referenced in a comment that was never created.
   `healthconnect`, `parkrun`, `race` — every valid `runs.source` value. `parkrun`
   (weekly certified 5K) and `race` (chip-timed official results) were added by
   `20270424_001` (#378); before that both were silently excluded, so a fastest 5K
-  run at parkrun never earned a PR. Nothing writes `parkrun` since the parkrun import was removed (decisions § 2465); the runs already imported still count. `achievement_tiers_met` (read by
+  run at parkrun never earned a PR. Nothing writes `parkrun` since the parkrun import was removed (decisions § 2467); the runs already imported still count. `achievement_tiers_met` (read by
   `award_achievements_for_user`) uses the identical source list so distance badges and PRs agree on what counts.
 - **Eligible activity types:** the **run family** — every `runs.activity_type`
   except `cycle` (`20270514_001`). A bicycle covers a PR bracket at speeds no

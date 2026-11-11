@@ -38,13 +38,13 @@ select throws_ok(
   '23514', null, 'a parkrun race listing is refused');
 
 select lives_ok(
-  $$ insert into race_listings (provider, provider_race_id, name, race_date, distance_m, is_verified)
-     values ('ultrasignup', '500101', 'Example Peaks 100', current_date + 30, 160934, true) $$,
+  $$ insert into race_listings (provider, provider_race_id, name, race_date, distance_m)
+     values ('ultrasignup', '500101', 'Example Peaks 100', current_date + 30, 160934) $$,
   'an UltraSignup race listing is still accepted');
 
 select lives_ok(
-  $$ insert into race_listings (provider, provider_race_id, name, race_date, distance_m, is_verified)
-     values ('runsignup', 'rs-1', 'Example 5K', current_date + 10, 5000, true) $$,
+  $$ insert into race_listings (provider, provider_race_id, name, race_date, distance_m)
+     values ('runsignup', 'rs-1', 'Example 5K', current_date + 10, 5000) $$,
   'a RunSignUp race listing is still accepted');
 
 reset role;

@@ -146,6 +146,27 @@ internal fun raceLateStart(
     return RaceFinish.startFlagged(gun, began + (serverOffsetMs ?: 0L), fromStart)
 }
 
+/// A race session's status at [nowMs]: a scheduled or self-timed race is
+/// live once its instant passes and finished once its window closes, without
+/// waiting for the server to write either. Host GO is what the row says.
+/// Mirrors `effectiveRaceStatus` in `race_start_modes.dart`.
+internal fun raceEffectiveStatus(
+    status: String,
+    startMode: String,
+    startInstantMs: Long?,
+    windowClosesAtMs: Long?,
+    nowMs: Long,
+): String {
+    if (status == "finished" || status == "cancelled") return status
+    if (startMode == "host_go") return status
+    val startPassed = startInstantMs != null && startInstantMs <= nowMs
+    if (windowClosesAtMs != null && windowClosesAtMs <= nowMs && (status == "running" || startPassed)) {
+        return "finished"
+    }
+    if (status == "armed" && startPassed) return "running"
+    return status
+}
+
 data class ActiveRaceState(
     val eventId: String,
     val instanceStart: String,
@@ -163,16 +184,19 @@ data class ActiveRaceState(
     /// A self-timed race binds a recording only after the runner taps
     /// "This run is my attempt" on the watch (owner decision 4a).
     val attemptArmed: Boolean = false,
+    /// When a scheduled or self-timed race's window closes, server epoch ms.
+    /// Null for Host GO.
+    val windowClosesAtMs: Long? = null,
 ) {
     val isSelfTimed: Boolean get() = startMode == "self_timed"
-    val isArmed: Boolean get() = status == "armed" && !startPassed()
-    val isRunning: Boolean get() = status == "running" || (status == "armed" && startPassed())
+    val isArmed: Boolean get() = effectiveStatusAt(System.currentTimeMillis()) == "armed"
+    val isRunning: Boolean get() = effectiveStatusAt(System.currentTimeMillis()) == "running"
 
-    /// A scheduled or self-timed race whose instant has passed is live before
-    /// the next poll says so; the server judges it the same way.
-    private fun startPassed(): Boolean =
-        startMode != "host_go" && startInstantMs != null &&
-            startInstantMs <= System.currentTimeMillis()
+    /// A scheduled or self-timed race whose instant has passed is live, and
+    /// one whose window has closed is over, before the next poll says so; the
+    /// server judges it the same way.
+    fun effectiveStatusAt(nowMs: Long): String =
+        raceEffectiveStatus(status, startMode, startInstantMs, windowClosesAtMs, nowMs)
 
     /// GO on the server clock: the stamped start, or the instant itself.
     val goAtMs: Long? get() = startedAtMs ?: startInstantMs.takeIf { startMode != "host_go" }

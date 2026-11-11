@@ -16,7 +16,7 @@ import {
 	parseProdConfig,
 	webFlagsFrom,
 } from './lib/prod_config.mjs';
-import { cronUrlsStage, featureFlagsStage, functionEnvStage, opsTasksStage, webEnvStage } from './lib/config_stages.mjs';
+import { cronUrlsStage, featureFlagsStage, functionEnvStage, opsTasksStage, retiredStage, webEnvStage } from './lib/config_stages.mjs';
 
 export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -99,6 +99,12 @@ export function checkProdConfig(root = REPO) {
 			functionEnvRead: functionEnvReads(fnSources),
 			webFlags: webFlagsFrom(flagModules, read(p.releaseWeb)),
 			cronFunctions: cronFunctionsFromMigrations(migrations),
+			functionDirs: new Set(
+				fs
+					.readdirSync(p.functions, { withFileTypes: true })
+					.filter((e) => e.isDirectory() && e.name !== '_shared')
+					.map((e) => e.name),
+			),
 			docExists: (rel) => fs.existsSync(path.join(root, rel)),
 		});
 		problems.push(...repo.problems);
@@ -117,5 +123,12 @@ export function prodConfigStages(root = REPO) {
 	const checked = checkProdConfig(root);
 	if (!checked.config) throw new Error(`apps/backend/ops/prod_config.json fails its guard:\n- ${checked.problems.join('\n- ')}`);
 	const { config, tasks } = checked;
-	return [featureFlagsStage(config), functionEnvStage(config), webEnvStage(config), cronUrlsStage(config), opsTasksStage(tasks)];
+	return [
+		featureFlagsStage(config),
+		functionEnvStage(config),
+		retiredStage(config),
+		webEnvStage(config),
+		cronUrlsStage(config),
+		opsTasksStage(tasks),
+	];
 }

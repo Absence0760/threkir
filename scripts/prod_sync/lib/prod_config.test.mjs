@@ -22,7 +22,7 @@ import {
 	webFlagsFrom,
 } from './prod_config.mjs';
 
-const EMPTY = { feature_flags: {}, function_env: {}, web_env: {}, cron_urls: [] };
+const EMPTY = { feature_flags: {}, function_env: {}, web_env: {}, cron_urls: [], retired_functions: [], retired_function_env: [] };
 const ISSUE = 'https://github.com/Absence0760/threkir/issues/1097#issuecomment-1234567';
 
 /** @param {Record<string, unknown>} over */
@@ -33,6 +33,7 @@ const REPO = {
 	functionEnvRead: new Set(['EXAMPLE_TOGGLE_ENABLED', 'CRON_SECRET']),
 	webFlags: new Set(['PUBLIC_COACH_ENABLED', 'PUBLIC_AI_PLAN_ENABLED', 'PUBLIC_COURSE_DRIVE_ENABLED']),
 	cronFunctions: new Set(['race_listings_sweep', 'event_refund_sweep']),
+	functionDirs: new Set(['race-results-import', 'export-data']),
 	docExists: (/** @type {string} */ p) => p === 'docs/ops/deployment.md',
 };
 
@@ -221,4 +222,22 @@ test('the committed config and tasks pass the guard', () => {
 	assert.deepEqual(problems, []);
 	assert.notEqual(config, null);
 	assert.ok(tasks.some((t) => t.file === 'README.md'), 'apps/backend/ops/tasks/README.md says how a task is written');
+});
+
+test('retired names are lists of function directories and env names, each once', () => {
+	assert.deepEqual(parse({ retired_functions: ['old-import'], retired_function_env: ['OLD_UA'] }).config?.retired_functions, ['old-import']);
+	assert.match(parse({ retired_functions: 'old-import' }).problems[0], /must be a list/);
+	assert.match(parse({ retired_functions: ['Old_Import'] }).problems[0], /not a name like parkrun-import/);
+	assert.match(parse({ retired_functions: ['old-import', 'old-import'] }).problems[0], /twice/);
+	assert.match(parse({ retired_function_env: ['old-ua'] }).problems[0], /not a name like PARKRUN_USER_AGENT/);
+});
+
+test('a retirement the repo still ships is refused', () => {
+	assert.deepEqual(repoCheck({ retired_functions: ['old-import'], retired_function_env: ['OLD_UA'] }).problems, []);
+	assert.match(repoCheck({ retired_functions: ['export-data'] }).problems[0], /still has a directory under supabase\/functions/);
+	assert.match(repoCheck({ retired_function_env: ['CRON_SECRET'] }).problems[0], /still reads with Deno\.env\.get/);
+	assert.match(
+		repoCheck({ function_env: { EXAMPLE_TOGGLE_ENABLED: { enabled: false } }, retired_function_env: ['EXAMPLE_TOGGLE_ENABLED'] }, { ...REPO, functionEnvRead: new Set(['EXAMPLE_TOGGLE_ENABLED']) }).problems.join('\n'),
+		/function_env also sets/,
+	);
 });

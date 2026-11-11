@@ -16,13 +16,15 @@ import {
 	cronUrlsStage,
 	featureFlagsStage,
 	functionEnvStage,
+	listedNames,
 	opsTasksStage,
+	retiredStage,
 	sha256,
 	taskSql,
 	webEnvStage,
 } from './config_stages.mjs';
 
-const EMPTY = { feature_flags: {}, function_env: {}, web_env: {}, cron_urls: [] };
+const EMPTY = { feature_flags: {}, function_env: {}, web_env: {}, cron_urls: [], retired_functions: [], retired_function_env: [] };
 const REF = 'abcdefghijklmnopqrst';
 const ISSUE = 'https://github.com/Absence0760/threkir/issues/1097#issuecomment-1';
 
@@ -281,4 +283,79 @@ test('ops tasks: none committed reads no ledger', () => {
 	const { ctx: c, scripts } = ctx();
 	assert.deepEqual(opsTasksStage([{ file: 'README.md', body: '' }]).run?.(c).table.rows, []);
 	assert.deepEqual(scripts, []);
+});
+
+const RETIRED = {
+	...EMPTY,
+	retired_functions: ['old-import'],
+	retired_function_env: ['OLD_IMPORT_ENABLED', 'OLD_IMPORT_UA'],
+};
+
+test('retired: the listings are read by slug or name, and anything else is dropped', () => {
+	assert.deepEqual([...listedNames('[{"slug":"old-import","name":"Old"},{"name":"OLD_IMPORT_UA"},{"id":1}]')], ['old-import', 'OLD_IMPORT_UA']);
+	assert.deepEqual([...listedNames('not json')], []);
+	assert.deepEqual([...listedNames('{"slug":"x"}')], []);
+});
+
+test('retired: nothing declared touches no CLI', () => {
+	const { ctx: c, commands } = ctx();
+	assert.deepEqual(retiredStage(EMPTY).run?.(c), { table: { header: ['kind', 'name', 'action'], rows: [] } });
+	assert.deepEqual(commands, []);
+});
+
+test('retired: a deployed function is deleted and a set secret unset, the rest reported absent', () => {
+	const { ctx: c, commands } = ctx({
+		exec: (_cmd, args) =>
+			args[0] === 'functions' && args[1] === 'list'
+				? { ok: true, stdout: JSON.stringify([{ slug: 'old-import' }, { slug: 'kept' }]), stderr: '' }
+				: args[0] === 'secrets' && args[1] === 'list'
+					? { ok: true, stdout: JSON.stringify([{ name: 'OLD_IMPORT_UA', value: 'f'.repeat(64) }]), stderr: '' }
+					: { ok: true, stdout: '', stderr: '' },
+	});
+	const r = retiredStage(RETIRED).run?.(c);
+	assert.equal(r?.failed, undefined);
+	assert.deepEqual(r?.table.rows, [
+		['function', 'old-import', 'deleted'],
+		['secret', 'OLD_IMPORT_ENABLED', 'absent'],
+		['secret', 'OLD_IMPORT_UA', 'unset'],
+	]);
+	assert.deepEqual(commands, [
+		['supabase', 'functions', 'list', '--project-ref', REF, '-o', 'json'],
+		['supabase', 'functions', 'delete', 'old-import', '--project-ref', REF],
+		['supabase', 'secrets', 'list', '--project-ref', REF, '-o', 'json'],
+		['supabase', 'secrets', 'unset', 'OLD_IMPORT_UA', '--project-ref', REF],
+	]);
+});
+
+test('retired: already gone is absent, and a dry run deletes and unsets nothing', () => {
+	const gone = ctx();
+	assert.deepEqual(retiredStage(RETIRED).run?.(gone.ctx)?.table.rows, [
+		['function', 'old-import', 'absent'],
+		['secret', 'OLD_IMPORT_ENABLED', 'absent'],
+		['secret', 'OLD_IMPORT_UA', 'absent'],
+	]);
+	const dry = ctx({
+		dryRun: true,
+		exec: (_cmd, args) => ({ ok: true, stdout: JSON.stringify(args[0] === 'functions' ? [{ slug: 'old-import' }] : [{ name: 'OLD_IMPORT_UA' }]), stderr: '' }),
+	});
+	assert.deepEqual(retiredStage(RETIRED).run?.(dry.ctx)?.table.rows, [
+		['function', 'old-import', 'would delete'],
+		['secret', 'OLD_IMPORT_ENABLED', 'absent'],
+		['secret', 'OLD_IMPORT_UA', 'would unset'],
+	]);
+	assert.ok(dry.commands.every((cmd) => cmd[2] === 'list'), 'a dry run only lists');
+});
+
+test('retired: a failed list or delete fails the stage, and a missing ref or token stops it first', () => {
+	const listFails = ctx({ exec: () => ({ ok: false, stdout: '', stderr: 'Error: 401\nmore' }) });
+	assert.match(retiredStage(RETIRED).run?.(listFails.ctx).failed ?? '', /supabase functions list exited non-zero: Error: 401$/);
+	const deleteFails = ctx({
+		exec: (_cmd, args) =>
+			args[1] === 'list' ? { ok: true, stdout: '[{"slug":"old-import"}]', stderr: '' } : { ok: false, stdout: '', stderr: 'Error: 500' },
+	});
+	const r = retiredStage(RETIRED).run?.(deleteFails.ctx);
+	assert.match(r?.failed ?? '', /supabase functions delete old-import exited non-zero: Error: 500/);
+	assert.deepEqual(r?.table.rows, [['function', 'old-import', 'failed']]);
+	assert.throws(() => retiredStage(RETIRED).run?.(ctx({ env: { SUPABASE_ACCESS_TOKEN: 'x' } }).ctx), /SUPABASE_PROJECT_REF/);
+	assert.throws(() => retiredStage(RETIRED).run?.(ctx({ env: { SUPABASE_PROJECT_REF: REF } }).ctx), /SUPABASE_ACCESS_TOKEN/);
 });

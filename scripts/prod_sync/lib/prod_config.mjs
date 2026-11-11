@@ -14,10 +14,12 @@
  *   function_env: Record<string, Toggle>,
  *   web_env: Record<string, Toggle>,
  *   cron_urls: string[],
+ *   retired_functions: string[],
+ *   retired_function_env: string[],
  * }} ProdConfig
  */
 
-export const SECTIONS = ['feature_flags', 'function_env', 'web_env', 'cron_urls'];
+export const SECTIONS = ['feature_flags', 'function_env', 'web_env', 'cron_urls', 'retired_functions', 'retired_function_env'];
 
 /**
  * Edge Function env toggles the backend release may set with `supabase
@@ -71,6 +73,7 @@ export const NEEDS_COACH = ['PUBLIC_AI_PLAN_ENABLED', 'PUBLIC_AI_PLAN_EDIT_ENABL
 const FLAG_NAME = /^[a-z][a-z0-9_]*$/;
 const ENV_NAME = /^[A-Z][A-Z0-9_]*$/;
 const FUNCTION_NAME = /^[a-z][a-z0-9_]*$/;
+const FUNCTION_DIR = /^[a-z][a-z0-9-]*$/;
 const SIGNOFF_URL = /^https:\/\/github\.com\/Absence0760\/[A-Za-z0-9_.-]+\/(issues|pull)\/[0-9]+(#(issuecomment|discussion_r|pullrequestreview)-?[0-9]+)?$/;
 const SIGNOFF_PATH = /^(reviews|docs)\/[A-Za-z0-9_./-]+\.md(#[a-z0-9-]+)?$/;
 
@@ -135,7 +138,7 @@ export function parseProdConfig(json) {
 	if (missing.length > 0) problems.push(`missing section(s) ${missing.join(', ')}; an empty one is {} or []`);
 
 	/** @type {ProdConfig} */
-	const config = { feature_flags: {}, function_env: {}, web_env: {}, cron_urls: [] };
+	const config = { feature_flags: {}, function_env: {}, web_env: {}, cron_urls: [], retired_functions: [], retired_function_env: [] };
 	for (const [section, nameRe] of /** @type {const} */ ([
 		['feature_flags', FLAG_NAME],
 		['function_env', ENV_NAME],
@@ -172,6 +175,26 @@ export function parseProdConfig(json) {
 			}
 		}
 	}
+	for (const [section, nameRe, example] of /** @type {const} */ ([
+		['retired_functions', FUNCTION_DIR, 'parkrun-import'],
+		['retired_function_env', ENV_NAME, 'PARKRUN_USER_AGENT'],
+	])) {
+		const raw = obj[section];
+		if (raw === undefined) continue;
+		if (!Array.isArray(raw)) {
+			problems.push(`${section} must be a list of names`);
+			continue;
+		}
+		for (const name of raw) {
+			if (typeof name !== 'string' || !nameRe.test(name)) {
+				problems.push(`${section} entry ${JSON.stringify(name)} is not a name like ${example}`);
+			} else if (config[section].includes(name)) {
+				problems.push(`${section} names ${name} twice`);
+			} else {
+				config[section].push(name);
+			}
+		}
+	}
 	return { config: problems.length === 0 ? config : null, problems };
 }
 
@@ -184,6 +207,7 @@ export function parseProdConfig(json) {
  *   functionEnvRead: Set<string>,
  *   webFlags: Set<string>,
  *   cronFunctions: Set<string>,
+ *   functionDirs: Set<string>,
  *   docExists: (path: string) => boolean,
  * }} repo
  * @param {readonly string[]} [allow] the function env allow-list; a parameter so the rules can be exercised while the shipped list is empty
@@ -214,6 +238,20 @@ export function checkAgainstRepo(config, repo, allow = FUNCTION_ENV_ALLOW) {
 			problems.push(`function_env.${name} is not on the allow-list of boolean Edge Function toggles (${allow.join(', ') || 'none'}); a function secret that is not a reviewed boolean toggle never goes in this file`);
 		}
 		checkSignoffPath(`function_env.${name}`, toggle, repo, problems);
+	}
+
+	for (const fn of config.retired_functions) {
+		if (repo.functionDirs.has(fn)) {
+			problems.push(`retired_functions names ${fn}, which still has a directory under supabase/functions; the release would deploy it and then delete it`);
+		}
+	}
+	for (const name of config.retired_function_env) {
+		if (repo.functionEnvRead.has(name)) {
+			problems.push(`retired_function_env names ${name}, which an Edge Function still reads with Deno.env.get`);
+		}
+		if (name in config.function_env) {
+			problems.push(`retired_function_env names ${name}, which function_env also sets`);
+		}
 	}
 
 	for (const [name, toggle] of Object.entries(config.web_env)) {

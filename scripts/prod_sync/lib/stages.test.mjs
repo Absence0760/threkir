@@ -151,6 +151,9 @@ fi
 printf '%b' "$STUB_CSV"
 `;
 
+/** Lists nothing deployed and no secret set, so a retirement reads `absent`. */
+const SUPABASE_STUB = '#!/usr/bin/env bash\necho "$*" >> "$STUB_STATE/supabase"\necho "[]"\n';
+
 /** @param {string[]} args @param {Record<string, string>} env */
 function runEntry(args, env) {
 	const root = fs.mkdtempSync(path.join(tmpdir(), 'prod-sync-'));
@@ -160,6 +163,8 @@ function runEntry(args, env) {
 	fs.mkdirSync(state);
 	fs.writeFileSync(path.join(bin, 'psql'), STUB);
 	fs.chmodSync(path.join(bin, 'psql'), 0o755);
+	fs.writeFileSync(path.join(bin, 'supabase'), SUPABASE_STUB);
+	fs.chmodSync(path.join(bin, 'supabase'), 0o755);
 	const summary = path.join(root, 'summary.md');
 	const r = spawnSync('bash', [ENTRY, ...args], {
 		encoding: 'utf8',
@@ -168,6 +173,8 @@ function runEntry(args, env) {
 			HOME: process.env.HOME ?? root,
 			STUB_STATE: state,
 			GITHUB_STEP_SUMMARY: summary,
+			SUPABASE_PROJECT_REF: 'abcdefghijklmnopqrst',
+			SUPABASE_ACCESS_TOKEN: 'token',
 			...env,
 		},
 	});
@@ -179,6 +186,7 @@ function runEntry(args, env) {
 		args: read(path.join(state, 'args')),
 		pgpassword: read(path.join(state, 'pgpassword')),
 		stdin: read(path.join(state, 'stdin')),
+		supabase: read(path.join(state, 'supabase')),
 		summary: read(summary),
 	};
 	fs.rmSync(root, { recursive: true, force: true });
@@ -204,11 +212,15 @@ test('the entry point connects without the password on the command line and summ
 	assert.ok(r.summary.includes('1 unchanged.'));
 	assert.ok(r.summary.includes('| pocahontas | swift-creek-5k | unchanged |   | u1 |'));
 	assert.equal(r.stdout, r.summary);
-	// The committed prod_config.json is empty (issue #1350), so its stages
-	// report and write nothing.
-	for (const title of ['Feature flags', 'Edge Function env toggles', 'Web build flags', 'Cron URL entries', 'One-off ops tasks']) {
+	// The committed prod_config.json declares no toggle (issue #1350), so those
+	// stages report and write nothing.
+	for (const title of ['Feature flags', 'Edge Function env toggles', 'Retired Edge Functions and secrets', 'Web build flags', 'Cron URL entries', 'One-off ops tasks']) {
 		assert.ok(r.summary.includes(`### ${title}\n`), title);
 	}
+	// The committed retirements only list: nothing is deployed in the stub, so
+	// each reads absent and no delete or unset is sent.
+	assert.ok(r.summary.includes('| function | parkrun-import | absent |'));
+	assert.ok(!/functions delete|secrets unset/.test(r.supabase), r.supabase);
 	for (const call of ['private.apply_feature_flag(', 'private.arm_cron_url(', 'private.begin_ops_task(', 'private.ops_task_runs']) {
 		assert.ok(!r.stdin.includes(call), `the committed config sends no ${call}`);
 	}

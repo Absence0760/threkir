@@ -200,6 +200,11 @@ const (
 	// measured on. Written with it; the runs_road_distance_matches_track
 	// trigger drops the pair when it no longer names the stored object.
 	MetaDistanceMapMatchedTrackVersion = "distance_map_matched_track_version"
+	// Set true by migration 20271218000002 on a run it capped at the
+	// ten-day bound, while duration_s is that placeholder. Read by the
+	// duration repair (kind='duration_repair'); the runs_keep_duration_repair
+	// trigger drops it on the write that changes duration_s.
+	MetaDurationRepaired = "duration_repaired"
 )
 
 // PrefsKey is a key inside the `user_settings.prefs` jsonb bag — the

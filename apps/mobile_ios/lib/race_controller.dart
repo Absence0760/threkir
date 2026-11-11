@@ -1035,7 +1035,6 @@ class RaceController extends ChangeNotifier {
   /// sample it was, so a live sample replaces it by the usual shortest round
   /// trip rule. One older than [kServerClockOffsetMaxAge], or taken after
   /// the device clock's now, is dropped. Never throws.
-  @visibleForTesting
   Future<void> restoreClockOffset() async {
     try {
       final prefs = await SharedPreferences.getInstance();

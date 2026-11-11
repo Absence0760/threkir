@@ -345,7 +345,7 @@ void main() {
     }
   });
 
-  group('RaceFinishDetector with lines (race_finish v2)', () {
+  group('RaceFinishDetector with lines (race_finish v3)', () {
     for (final c in _section('lines')) {
       test(c['name'], () {
         final expected = c['expect'] as Map<String, dynamic>;
@@ -361,6 +361,7 @@ void main() {
               ? RaceStartMode.selfTimed
               : RaceStartMode.gun,
           goAt: goS != null && goAfter == null ? _s(goS) : null,
+          minCoverageM: _numOrNull(_req(c, 'minCoverageM')),
         );
         int? finalisedAt;
         RaceFinish? finish;

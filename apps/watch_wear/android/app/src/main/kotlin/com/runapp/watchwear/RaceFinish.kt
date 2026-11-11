@@ -5,8 +5,8 @@ import kotlin.math.abs
 
 /// Race-mode finish detection, a pure port of the `race_finish` parity pair
 /// (Dart side `apps/mobile_android/lib/race_finish.dart`, web side
-/// `apps/web/src/lib/races/race_finish.ts`), spec `race_finish v2` (decisions
-/// § 2378). No Android, no I/O, no clock: every timestamp it handles arrives
+/// `apps/web/src/lib/races/race_finish.ts`), spec `race_finish v3` (decisions
+/// § 2378, § 2472). No Android, no I/O, no clock: every timestamp it handles arrives
 /// on a [Fix]. All three read their cases from `fixtures/race_finish_cases.json`
 /// at the repo root, so a rule changes there or nowhere.
 ///
@@ -209,7 +209,7 @@ class ServerClockOffset {
     }
 }
 
-/// Finish detection for one runner on one course, spec `race_finish v2`.
+/// Finish detection for one runner on one course, spec `race_finish v3`.
 /// Feed it every fix while recording; it answers the [RaceFinish.Finish]
 /// once, and [finish] holds it afterwards.
 ///
@@ -222,8 +222,12 @@ class ServerClockOffset {
 ///   distance with no backward crossing. Until GO is known every fix is held
 ///   and [setGo] replays them; a race whose GO never comes finishes nothing
 ///   automatically.
-/// - Start, self-timed: the last forward crossing with no backward crossing
-///   after it; none, no finish. No start line in a gun mode: the Start press.
+/// - Start, self-timed: a forward crossing commits as in a gun race, with no
+///   GO. Once committed a later forward crossing (the next lap) changes
+///   nothing and a backward one (an out-and-back coming home) re-arms it
+///   without clearing it, until a new forward crossing commits and replaces
+///   it. No committed start, no finish. No start line in a gun mode: the
+///   Start press.
 /// - Coverage runs from the start; a gun runner with no committed start is
 ///   measured from GO, and one whose crossing is still committing cannot
 ///   finish.
@@ -235,6 +239,11 @@ class ServerClockOffset {
 ///   crossing a gun race takes the start first, a self-timed one the
 ///   finish. With a finish line the zone decides only on [finaliseNow], for
 ///   a runner inside it then.
+/// - No finish, line or zone, counts before [minCoverageM] is covered from
+///   the base: the lap minimum the race froze. With none, and the two lines
+///   coinciding, the first forward finish crossing that does not count, from a committed start and at
+///   least [RaceFinish.START_COMMIT_M] past it, is a lap, and the minimum
+///   becomes the course distance less half that lap (decisions § 2472).
 class RaceFinishDetector(
     private val finishLat: Double,
     private val finishLng: Double,
@@ -243,6 +252,7 @@ class RaceFinishDetector(
     finishGate: Gate? = null,
     val mode: RaceFinish.StartMode = RaceFinish.StartMode.GUN,
     goAtMs: Long? = null,
+    minCoverageM: Double? = null,
 ) {
     private enum class StartState { PRE_GO, SEEKING, PENDING, COMMITTED }
 
@@ -256,8 +266,16 @@ class RaceFinishDetector(
     /// The finish line, or null when none was given or it is unusable.
     val finishGate: Gate? = finishGate?.takeIf { RaceFinish.lineUsable(it) }
 
+    private val linesCoincide: Boolean = this.startGate.let { s ->
+        val f = this.finishGate
+        s != null && f != null && RaceFinish.distanceM(s.lat, s.lng, f.lat, f.lng) <= f.halfWidthM
+    }
+
     private val startLine = this.startGate?.let { GateCrossingDetector(it) }
     private val finishLine = this.finishGate?.let { GateCrossingDetector(it) }
+
+    /// The course's lap minimum, or null when the race froze none.
+    val minCoverageM: Double? = minCoverageM?.takeIf { it.isFinite() && it > 0.0 }
 
     private var best: RaceFinish.Fix? = null
     private var bestDistanceM = Double.MAX_VALUE
@@ -267,11 +285,12 @@ class RaceFinishDetector(
     private val held = mutableListOf<RaceFinish.Fix>()
     private var closed = false
     private var prev: Sampled? = null
-    private var state = StartState.PRE_GO
+    private var state =
+        if (mode == RaceFinish.StartMode.SELF_TIMED) StartState.SEEKING else StartState.PRE_GO
     private var pending: GateCrossing? = null
     private var committed: RaceFinish.Start? = null
     private var goCoveredM = 0.0
-    private var lastForward: GateCrossing? = null
+    private var lapM: Double? = null
 
     var finish: RaceFinish.Finish? = null
         private set
@@ -299,14 +318,11 @@ class RaceFinishDetector(
         }
 
     /// The start a finish would be measured from right now: the committed
-    /// start in a gun mode, the last unreversed start crossing in a
-    /// self-timed one. Null for the Start press, and while a crossing is
-    /// still committing.
+    /// start. A self-timed start a backward crossing has re-armed stays it
+    /// until a new forward crossing commits. Null for the Start press, and
+    /// while the first crossing is still committing.
     val start: RaceFinish.Start?
-        get() {
-            if (mode == RaceFinish.StartMode.SELF_TIMED) return lastForward?.let { lineStart(it) }
-            return if (state == StartState.COMMITTED) committed else null
-        }
+        get() = committed
 
     /// Feed one fix. Returns the finish on the call that finalises it and
     /// null on every other call, including every call after it. A fix with
@@ -356,7 +372,7 @@ class RaceFinishDetector(
         if (!fix.lat.isFinite() || !fix.lng.isFinite() || !fix.coveredM.isFinite()) return null
         val d = RaceFinish.distanceM(fix.lat, fix.lng, finishLat, finishLng)
         val eligible = RaceFinish.inFinishZone(d) &&
-            RaceFinish.meetsDistanceGate(fix.coveredM, courseDistanceM)
+            covers(0.0, fix.coveredM, RaceFinish.MIN_DISTANCE_FRACTION)
         val current = best
         if (current == null) {
             if (eligible) {
@@ -428,6 +444,7 @@ class RaceFinishDetector(
         val p = pending ?: return
         if (state != StartState.PENDING) return
         if (coveredM >= p.coveredM + RaceFinish.START_COMMIT_M) {
+            if (committed != null) lapM = null
             committed = lineStart(p)
             pending = null
             state = StartState.COMMITTED
@@ -435,11 +452,18 @@ class RaceFinishDetector(
     }
 
     private fun onStartCrossing(x: GateCrossing) {
+        advanceCommit(x.coveredM)
         if (mode == RaceFinish.StartMode.SELF_TIMED) {
-            lastForward = if (x.direction == GateDirection.FORWARD) x else null
+            if (x.direction == GateDirection.FORWARD) {
+                if (state == StartState.COMMITTED) return
+                pending = x
+                state = StartState.PENDING
+            } else {
+                pending = null
+                state = StartState.SEEKING
+            }
             return
         }
-        advanceCommit(x.coveredM)
         if (state != StartState.SEEKING && state != StartState.PENDING) return
         if (x.direction == GateDirection.FORWARD) {
             pending = x
@@ -452,10 +476,13 @@ class RaceFinishDetector(
 
     private fun onFinishCrossing(x: GateCrossing) {
         if (x.direction != GateDirection.FORWARD) return
-        if (mode == RaceFinish.StartMode.GUN) advanceCommit(x.coveredM)
+        advanceCommit(x.coveredM)
         val base = base(x.tMs) ?: return
         val share = if (base.start != null) RaceFinish.MIN_COVERAGE_WITH_START else RaceFinish.MIN_DISTANCE_FRACTION
-        if (!covers(base.fromM, x.coveredM, share)) return
+        if (!covers(base.fromM, x.coveredM, share)) {
+            measureLap(base, x.coveredM)
+            return
+        }
         finish = RaceFinish.Finish(
             epochMs = Math.round(x.tMs),
             distanceToFinishM = abs(x.offsetM),
@@ -499,8 +526,8 @@ class RaceFinishDetector(
     /// finish can count then.
     private fun base(tMs: Double): Base? {
         if (mode == RaceFinish.StartMode.SELF_TIMED) {
-            val lf = lastForward ?: return null
-            return Base(lf.coveredM, lineStart(lf))
+            val c = committed ?: return null
+            return Base(c.coveredM, c)
         }
         val go = goMs
         if (go != null && tMs < go.toDouble()) return null
@@ -513,10 +540,32 @@ class RaceFinishDetector(
         }
     }
 
-    private fun covers(fromM: Double, coveredM: Double, share: Double): Boolean {
+    /// On a course whose start and finish lines coincide, a forward finish
+    /// crossing that did not count, from a committed start, is the course
+    /// passing its finish a lap in. With no lap minimum frozen, the first
+    /// such pass sets one, half a lap short of the course. Lines apart
+    /// measure nothing: a finish line just past the start is not a lap.
+    private fun measureLap(base: Base, coveredM: Double) {
+        if (!linesCoincide || minCoverageM != null || lapM != null || base.start == null) return
+        val lap = coveredM - base.fromM
+        if (lap >= RaceFinish.START_COMMIT_M) lapM = lap
+    }
+
+    /// Covered distance from the base a finish needs at [share]; null when
+    /// nothing can gate.
+    private fun required(share: Double): Double? {
         val d = courseDistanceM
-        if (!d.isFinite() || d <= 0.0) return true
-        return coveredM - fromM >= d * share
+        val known = d.isFinite() && d > 0.0
+        var floor = minCoverageM
+        val lap = lapM
+        if (floor == null && known && lap != null) floor = d - lap / 2
+        if (!known) return floor
+        return if (floor == null) d * share else maxOf(d * share, floor)
+    }
+
+    private fun covers(fromM: Double, coveredM: Double, share: Double): Boolean {
+        val need = required(share) ?: return true
+        return coveredM - fromM >= need
     }
 
     private fun lineStart(x: GateCrossing) =

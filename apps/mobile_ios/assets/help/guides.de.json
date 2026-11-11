@@ -3210,7 +3210,7 @@
             "items": [
               "Führt dein Lauf mehr als einmal über das Segment, zählt dein schnellster Durchgang.",
               "Ein Aufwärmen, das zurück über die Startlinie führt, verlängert deine Zeit nicht: Die Zeit beginnt mit deiner letzten Überquerung der Startlinie vor dem Ende.",
-              "Bei einem Rundkurs, dessen Start und Ende dieselbe Linie sind, kann die Überquerung, die eine Runde beendet, nicht zugleich die nächste starten. Deshalb wird nur jede zweite Runde gemessen (die erste, die dritte und so weiter), und die schnellste davon zählt. Ein Rundkurs mit getrennter Start- und Endlinie misst jede Runde."
+              "Bei einem Rundkurs wird jede vollständige Runde gemessen, und deine schnellste Runde zählt. Sind Start und Ende dieselbe Linie, startet die Überquerung, die eine Runde beendet, zugleich die nächste."
             ]
           }
         ]
@@ -3790,7 +3790,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Eine gesperrte Strecke behält ihre Zeiten und Listen, aber lauf sie bitte nicht, bis sie wieder geöffnet ist. Die Seite zeigt, wann ihr Status zuletzt geprüft wurde."
+            "text": "Eine gesperrte Strecke nimmt keine neuen Zeiten an: Ein Lauf darüber, solange sie gesperrt ist, wird nicht gemessen, und die Zeiten, die sie schon hat, bleiben auf ihren Listen. Lauf sie bitte nicht, bis sie wieder geöffnet ist. Die Seite zeigt, wann ihr Status zuletzt geprüft wurde."
           }
         ]
       },

@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 						"Die **Streckenbeschreibung** auf der Streckenseite nennt, wo du parkst, und jede Abzweigung der Reihe nach mit Wegnamen, dazu Brücken, Furten, Wechsel des Untergrunds und Anstiege. Sie ist aus Kartendaten erstellt; solange niemand sie im Park abgelaufen ist, steht das über der Liste. Dieselbe Beschreibung steht in der GPX-Datei der Strecke.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Eine gesperrte Strecke behält ihre Zeiten und Listen, aber lauf sie bitte nicht, bis sie wieder geöffnet ist. Die Seite zeigt, wann ihr Status zuletzt geprüft wurde." },
+				{ type: 'note', tone: 'caution', text: "Eine gesperrte Strecke nimmt keine neuen Zeiten an: Ein Lauf darüber, solange sie gesperrt ist, wird nicht gemessen, und die Zeiten, die sie schon hat, bleiben auf ihren Listen. Lauf sie bitte nicht, bis sie wieder geöffnet ist. Die Seite zeigt, wann ihr Status zuletzt geprüft wurde." },
 			],
 		},
 		{
@@ -78,7 +78,7 @@ export const translation: GuideTranslation = {
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",
 		"s0.b1.i3": "a75477f7d5a5a5bc",
-		"s0.b2": "6a9e63c1eec9c80f",
+		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",
 		"s1.b0": "f00cd3cca5bfc92f",
 		"s1.b1": "36e6dc7fd586b7d7",

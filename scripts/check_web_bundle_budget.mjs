@@ -291,7 +291,23 @@
 // chunk is 289 KB as on main, and the shell's static graph is held by
 // shell_import_graph_guard.test.ts, which passes. Same 6 KB of cover
 // (decisions § 2410).
-// MAX_CORE_CATALOGUE_KB is 15 since the same round: de, fr and ja cores read
+// Raised to 2684 for the ad hoc rounds in PR #1359, measured locally at
+// 2582 -> 2678 KB (578 -> 607 files) against origin/main 45756afe5 with the
+// CI build's placeholder env. By the client manifest, ~77 KB exact and the
+// rest the per-file round-up on 29 more files: group conversations ~19
+// (/messages/group/[id] 7.9, the messages layout and inbox 6.2, message edit
+// 2.9, the people picker 1.6), park courses ~14 (course and park pages 5.4,
+// /admin/park-alerts 2.8, the route guide 2.1, the course-report data 1.9,
+// the map legend 1.3), the 3D course-preview mascot ~7, the help centre's
+// localized guides 5.9, /admin/reports 3.7 and /admin/home-metrics 2.2, race
+// re-time on /runs/[id] 3.7, the organiser dispute flow 3.4. No web
+// dependency changed and the largest code chunk is 289 KB on both sides. The
+// shell (entry + root layout static closure) grew 294.5 -> 306.6 KB, of which
+// core/data.ts is 8.5 (1,400 lines of the rounds' own reads and writes) and
+// the park_courses parser it imports 1.9, now its own chunk; no new module
+// joined the shell's import graph, which shell_import_graph_guard.test.ts
+// holds. Same 6 KB of cover (decisions § 2470).
+// MAX_CORE_CATALOGUE_KB is 15 since the 2026-11-08 round: de, fr and ja cores read
 // 14 KB (de 13,593 bytes gzipped) from 48 new core keys, after the areas were
 // re-cut so that nothing a single area renders stays in core (`clubs` split
 // into clubDetail and clubEvents and given /club-verification, `races` given
@@ -335,7 +351,7 @@ export const CLIENT_MANIFEST = join(
 );
 export const LOCALES_DIR = join(WEB_DIR, 'src', 'lib', 'i18n', 'locales');
 
-export const MAX_CODE_KB = 2585;
+export const MAX_CODE_KB = 2684;
 export const MAX_CORE_CATALOGUE_KB = 15;
 export const MAX_AREA_CATALOGUE_KB = 14;
 export const MAX_LARGEST_CHUNK_KB = 350;

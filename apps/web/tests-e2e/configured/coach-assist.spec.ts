@@ -27,9 +27,10 @@ test.describe('the coach assistant', () => {
 	let linkId: string;
 	const stamp = Date.now();
 
-	test.beforeAll(async () => {
+	test.beforeAll(async ({}, testInfo) => {
 		[athlete, coach] = await createSagaUsers(2, {
 			displayNames: ['Assist Athlete Saga', 'Assist Coach Saga'],
+			baseURL: testInfo.project.use.baseURL,
 		});
 		linkId = crypto.randomUUID();
 		const { error } = await admin.from('coach_athletes').insert({

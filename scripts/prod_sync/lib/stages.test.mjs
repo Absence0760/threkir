@@ -232,7 +232,11 @@ test('the entry point connects without the password on the command line and summ
 		.filter((f) => f.endsWith('.sql'))
 		.map((f) => f.replace(/\.sql$/, ''));
 	assert.equal(r.stdin.split('private.begin_ops_task(').length - 1, tasks.length, r.stdin);
-	for (const name of tasks) assert.ok(r.stdin.includes(`private.begin_ops_task('${name}'`), name);
+	assert.equal(tasks.length > 0, r.stdin.includes('private.ops_task_runs'), 'the ledger is read only when a task is committed');
+	for (const name of tasks) {
+		assert.equal(r.stdin.split(`private.begin_ops_task('${name}'`).length - 1, 1, name);
+		assert.match(r.summary, new RegExp(`\\| ${name} \\| [0-9a-f]{12} \\| ran \\|`), name);
+	}
 });
 
 test('a dry run rolls the stage back', () => {

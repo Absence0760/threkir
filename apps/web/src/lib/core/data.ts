@@ -12372,6 +12372,9 @@ export interface DirectMessage {
 	/// [fetchDmImage]; null on a text message and once unsent. A photo with no
 	/// caption has a null `body` on a live message.
 	image_id: string | null;
+	/// A group conversation's message (migration 20271216000003), set by the
+	/// server from the conversation's kind; false on every 1:1 message.
+	is_group: boolean;
 }
 
 /// A direct_messages row with its `kind` narrowed at the read boundary.
@@ -12382,7 +12385,7 @@ function asDirectMessage(row: Omit<DirectMessage, 'kind'> & { kind: string }): D
 /// Every column a client may select on direct_messages: `read_at` is withheld
 /// by a column grant (migration 20271113000001), so `*` is refused.
 const DM_COLUMNS =
-	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id, image_id';
+	'id, sender_id, recipient_id, body, created_at, seen_at, route_id, unsent_at, deleted_partner_key, conversation_id, edited_at, kind, coach_message_id, image_id, is_group';
 
 export interface DmThread {
 	/// The conversation the mute, archive and delete-for-me actions act on.
@@ -13287,7 +13290,7 @@ export async function fetchGroupThread(
 		query = query.order(k.column, { ascending: k.ascending, nullsFirst: k.nullsFirst });
 	}
 	const { data, error } = await query.limit(limit + 1);
-	if (error) throw new Error(`fetchGroupThread failed: ${error.message}`);
+	if (error) throw dbError(error);
 	return dmPageFromRows((data ?? []).map(asDirectMessage), limit);
 }
 
@@ -13300,7 +13303,9 @@ export async function fetchGroupBlockedPlaceholders(
 ): Promise<DmOrderKey[]> {
 	const { data, error } = await supabase.rpc(
 		'group_blocked_placeholders',
-		{ p_conversation_id: conversationId, p_since: since },
+		// A GET sends null as the string "null"; omit it instead (p_since
+		// defaults to null, migration 20271221000100).
+		{ p_conversation_id: conversationId, p_since: since ?? undefined },
 		{ get: true },
 	);
 	if (error) throw dbError(error);

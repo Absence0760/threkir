@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 						"La **Guía del recorrido** de la página del recorrido indica dónde aparcar y cada giro en orden, con el nombre del sendero, además de los puentes, vados, cambios de superficie y subidas. Está redactada con datos del mapa; hasta que alguien la recorra en el parque, lo indica encima de la lista. La misma guía va en el archivo GPX del recorrido.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Un recorrido cerrado conserva sus tiempos y clasificaciones, pero no lo corras hasta que vuelva a abrir. La página muestra cuándo se comprobó su estado por última vez." },
+				{ type: 'note', tone: 'caution', text: "Un recorrido cerrado no admite tiempos nuevos: una carrera por él mientras está cerrado no se cronometra, y los tiempos que ya tiene siguen en sus clasificaciones. No lo corras hasta que vuelva a abrir. La página muestra cuándo se comprobó su estado por última vez." },
 			],
 		},
 		{
@@ -78,7 +78,7 @@ export const translation: GuideTranslation = {
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",
 		"s0.b1.i3": "a75477f7d5a5a5bc",
-		"s0.b2": "6a9e63c1eec9c80f",
+		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",
 		"s1.b0": "f00cd3cca5bfc92f",
 		"s1.b1": "36e6dc7fd586b7d7",

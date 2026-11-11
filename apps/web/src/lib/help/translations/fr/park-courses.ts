@@ -18,7 +18,7 @@ export const translation: GuideTranslation = {
 						"La rubrique **Description du parcours** de la page du parcours indique où se garer et chaque changement de direction dans l'ordre, par nom de sentier, avec les ponts, les gués, les changements de revêtement et les montées. Elle est rédigée à partir des données cartographiques ; tant que personne ne l'a vérifiée sur place, c'est indiqué au-dessus de la liste. La même description figure dans le fichier GPX du parcours.",
 					],
 				},
-				{ type: 'note', tone: 'caution', text: "Un parcours fermé garde ses temps et ses classements, mais merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois." },
+				{ type: 'note', tone: 'caution', text: "Un parcours fermé ne prend aucun nouveau temps : une sortie dessus pendant sa fermeture n'est pas chronométrée, et les temps qu'il a déjà restent dans ses classements. Merci de ne pas le courir avant sa réouverture. La page indique quand son statut a été vérifié pour la dernière fois." },
 			],
 		},
 		{
@@ -78,7 +78,7 @@ export const translation: GuideTranslation = {
 		"s0.b1.i1": "420575263613791d",
 		"s0.b1.i2": "d69fbf280d3b46a0",
 		"s0.b1.i3": "a75477f7d5a5a5bc",
-		"s0.b2": "6a9e63c1eec9c80f",
+		"s0.b2": "a9aa6fec9968fc90",
 		"s1.heading": "0026d1ddae689c8a",
 		"s1.b0": "f00cd3cca5bfc92f",
 		"s1.b1": "36e6dc7fd586b7d7",

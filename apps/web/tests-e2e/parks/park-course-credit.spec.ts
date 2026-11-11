@@ -134,7 +134,9 @@ test.describe('park course credit (web)', () => {
 		await expect(page.getByRole('heading', { level: 1, name: PLAIN_ROUTE_NAME })).toBeVisible({
 			timeout: 15_000,
 		});
-		await expect(page.getByText('Run it clockwise.')).toBeVisible();
+		// Only an official route reads a credit, so once the heading is up the
+		// absence is settled. No description is asserted: a non-owner reads a
+		// route through public_routes, which does not carry it.
 		await expect(page.getByTestId('route-course-credit')).toHaveCount(0);
 	});
 });

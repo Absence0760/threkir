@@ -45,7 +45,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'Se a sua corrida passar pelo segmento mais de uma vez, vale a sua passagem mais rápida.',
 						'Um aquecimento que volta e cruza de novo a linha de largada não aumenta o seu tempo: o tempo começa no seu último cruzamento da linha de largada antes do fim.',
-						'Em um circuito cujo início e fim são a mesma linha, o cruzamento que encerra uma volta não pode também iniciar a seguinte. Por isso, só voltas alternadas são cronometradas (a primeira, a terceira e assim por diante), e vale a mais rápida delas. Um circuito que começa e termina em linhas diferentes cronometra todas as voltas.',
+						'Em um circuito, cada volta completa é cronometrada e vale a sua volta mais rápida. Quando o início e o fim são a mesma linha, o cruzamento que encerra uma volta também inicia a seguinte.',
 					],
 				},
 			],
@@ -88,7 +88,7 @@ export const translation: GuideTranslation = {
 		's2.heading': '07aa1107fe80687c',
 		's2.b0.i0': 'd1cc20d8bffef410',
 		's2.b0.i1': '49b20e543d91d563',
-		's2.b0.i2': 'd8dc1f1202af2dc9',
+		's2.b0.i2': '768a4bc2c007e9bb',
 		's3.heading': '6ce1d76024b4fe1f',
 		's3.b0': '2f8dce267fbf234c',
 		's4.heading': 'f2e748afe43f1604',

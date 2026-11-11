@@ -2,6 +2,7 @@ import type { Browser, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/test';
 
+import { acceptCookieConsent } from '../fixtures/helpers';
 import { getAdminClient } from '../fixtures/local-supabase';
 import { BLANK_TILE, FALLBACK_TILE_ORIGINS } from '../fixtures/map-tiles';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
@@ -61,6 +62,9 @@ test.afterEach(async () => {
 
 async function openRoutePage(browser: Browser): Promise<Page> {
 	const context = await browser.newContext({ storageState: runner.storageStatePath });
+	// The map waits on the banner's answer, and a fresh context has none: the
+	// dialog would ask first and stay flat.
+	await acceptCookieConsent(context);
 	const page = await context.newPage();
 	await page.addInitScript(() => {
 		Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', { get: () => 8 });
@@ -134,7 +138,11 @@ test('with show_mascot off the dialog keeps the dot and never fetches him', asyn
 			(url) => url.hostname === AWS_TERRAIN_HOST,
 			(route) => route.fulfill({ status: 404 }),
 		);
+		// The map's first terrain request says it came up, so the dot below
+		// is the setting's doing and not a map that never loaded.
+		const terrain = page.waitForRequest((r) => new URL(r.url()).hostname === AWS_TERRAIN_HOST);
 		await page.getByTestId('course-preview-open').click();
+		await terrain;
 		const dialog = page.getByTestId('course-preview-3d');
 		const marker = dialog.getByTestId('course-preview-position');
 		await expect(marker).toBeVisible();

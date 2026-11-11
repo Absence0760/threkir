@@ -10773,7 +10773,9 @@ class ApiClient {
       'group_blocked_placeholders',
       params: {
         'p_conversation_id': conversationId,
-        'p_since': since?.toUtc().toIso8601String(),
+        // A GET would send null as the string "null"; omit it instead
+        // (p_since defaults to null, migration 20271221000100).
+        if (since != null) 'p_since': since.toUtc().toIso8601String(),
       },
       get: true,
     );

@@ -11,7 +11,9 @@ import kotlinx.coroutines.sync.withLock
 ///
 /// One lock covers all of it, so an undo waits for a filing in flight and no
 /// replay can send the withdrawn finish again behind the delete (the phone
-/// gets the same order from `_filing`, `_drainFuture` and `_voiding`).
+/// gets the same order from `_filing`, `_drainFuture` and `_voiding`, sends
+/// one race's results in order through `_inRaceOrder`, and changes its
+/// queues only under `_underQueueLock`).
 internal class RaceResultOutbox(
     private val store: RaceResultStore,
     private val submit: suspend (token: String, result: PendingRaceResult) -> Unit,

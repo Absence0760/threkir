@@ -15060,17 +15060,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesSectionAnyTime => 'Corra quando quiser';
 
   @override
-  String racesAnyTimeRecord(String year, String time) {
-    return 'Recorde de $year: $time';
+  String racesAnyTimeFastest(String year, String time) {
+    return 'Tempo mais rápido em $year: $time';
   }
 
   @override
-  String racesAnyTimeRecordBy(String year, String time, String name) {
-    return 'Recorde de $year: $time, de $name';
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return 'Tempo mais rápido em $year: $time, de $name';
   }
 
   @override
-  String get racesAnyTimeNoRecord =>
+  String get racesAnyTimeNoTimeYet =>
       'Ainda não há tempos nesta época. O seu pode ser o primeiro.';
 
   @override
@@ -15079,8 +15079,8 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get racesAnyTimeRecordsFailed =>
-      'Não foi possível carregar os recordes desta época.';
+  String get racesAnyTimeFastestFailed =>
+      'Não foi possível carregar os tempos mais rápidos desta época.';
 
   @override
   String get racesSearchPlaceholder => 'Procurar provas por nome…';
@@ -21966,6 +21966,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Para a equipa do parque ou da entidade gestora. Peça-nos para retirar o percurso e fechamo-lo no prazo de dois dias úteis.';
 
   @override
+  String get parkCourseReportReasonRightsHolder =>
+      'Um pedido de um titular de direitos';
+
+  @override
+  String get parkCourseReportReasonRightsHolderHint =>
+      'Para quem detém um nome, uma marca ou dados de percurso usados aqui, ou quem age em seu nome. Diga-nos o que é seu e o que quer que alteremos. Respondemos no prazo de dois dias úteis.';
+
+  @override
   String get parkCourseReportReasonOther => 'Outra coisa';
 
   @override
@@ -21979,8 +21987,15 @@ class AppLocalizationsPt extends AppLocalizations {
   String get parkCourseReportEmailLabel => 'O seu e-mail (opcional)';
 
   @override
+  String get parkCourseReportEmailLabelRequired => 'O seu e-mail';
+
+  @override
   String get parkCourseReportEmailHint =>
       'Só se quiser uma resposta. Usamo-lo para responder a esta comunicação e apagamo-lo 30 dias depois de a resolvermos.';
+
+  @override
+  String get parkCourseReportEmailHintRequired =>
+      'Necessário para um pedido de um titular de direitos, para lhe podermos responder. Apagamo-lo 30 dias depois de resolvermos o pedido.';
 
   @override
   String get parkCourseReportCancel => 'Cancelar';
@@ -22015,6 +22030,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get parkCourseReportErrorEmail =>
       'Esse endereço de e-mail não parece correto.';
+
+  @override
+  String get parkCourseReportErrorEmailRequired =>
+      'Um pedido de um titular de direitos precisa de um endereço de e-mail para lhe podermos responder.';
 
   @override
   String get profileNotifParkCourseReport =>
@@ -37519,17 +37538,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesSectionAnyTime => 'Corra quando quiser';
 
   @override
-  String racesAnyTimeRecord(String year, String time) {
-    return 'Recorde de $year: $time';
+  String racesAnyTimeFastest(String year, String time) {
+    return 'Tempo mais rápido em $year: $time';
   }
 
   @override
-  String racesAnyTimeRecordBy(String year, String time, String name) {
-    return 'Recorde de $year: $time, de $name';
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return 'Tempo mais rápido em $year: $time, de $name';
   }
 
   @override
-  String get racesAnyTimeNoRecord =>
+  String get racesAnyTimeNoTimeYet =>
       'Ainda não há tempos nesta temporada. O seu pode ser o primeiro.';
 
   @override
@@ -37538,8 +37557,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get racesAnyTimeRecordsFailed =>
-      'Não foi possível carregar os recordes desta temporada.';
+  String get racesAnyTimeFastestFailed =>
+      'Não foi possível carregar os tempos mais rápidos desta temporada.';
 
   @override
   String get racesSearchPlaceholder => 'Pesquisar corridas por nome…';
@@ -44419,6 +44438,14 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
       'Para a equipe do parque ou do órgão gestor. Peça para retirarmos o percurso e nós o fechamos em até dois dias úteis.';
 
   @override
+  String get parkCourseReportReasonRightsHolder =>
+      'Um pedido de um titular de direitos';
+
+  @override
+  String get parkCourseReportReasonRightsHolderHint =>
+      'Para quem detém um nome, uma marca ou dados de percurso usados aqui, ou quem age em seu nome. Conte o que é seu e o que você quer que a gente mude. Respondemos em até dois dias úteis.';
+
+  @override
   String get parkCourseReportReasonOther => 'Outra coisa';
 
   @override
@@ -44432,8 +44459,15 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get parkCourseReportEmailLabel => 'Seu e-mail (opcional)';
 
   @override
+  String get parkCourseReportEmailLabelRequired => 'Seu e-mail';
+
+  @override
   String get parkCourseReportEmailHint =>
       'Só se quiser uma resposta. Usamos para responder a este relato e o apagamos 30 dias depois de resolvido.';
+
+  @override
+  String get parkCourseReportEmailHintRequired =>
+      'Necessário para um pedido de titular de direitos, para podermos responder. Apagamos 30 dias depois de resolver o pedido.';
 
   @override
   String get parkCourseReportCancel => 'Cancelar';
@@ -44468,6 +44502,10 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get parkCourseReportErrorEmail =>
       'Esse endereço de e-mail não parece correto.';
+
+  @override
+  String get parkCourseReportErrorEmailRequired =>
+      'Um pedido de titular de direitos precisa de um endereço de e-mail para podermos responder.';
 
   @override
   String get profileNotifParkCourseReport =>

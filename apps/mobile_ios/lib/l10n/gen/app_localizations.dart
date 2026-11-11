@@ -24398,23 +24398,23 @@ abstract class AppLocalizations {
   /// **'Run any time'**
   String get racesSectionAnyTime;
 
-  /// A park course's fastest time this season, when the record holder's name is hidden. Mirrors web races.anyTimeRecord
+  /// A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest
   ///
   /// In en, this message translates to:
-  /// **'{year} record: {time}'**
-  String racesAnyTimeRecord(String year, String time);
+  /// **'Fastest in {year}: {time}'**
+  String racesAnyTimeFastest(String year, String time);
 
-  /// A park course's fastest time this season and who ran it. Mirrors web races.anyTimeRecordBy
+  /// A park course's fastest time this season and who ran it. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastestBy
   ///
   /// In en, this message translates to:
-  /// **'{year} record: {time} by {name}'**
-  String racesAnyTimeRecordBy(String year, String time, String name);
+  /// **'Fastest in {year}: {time} by {name}'**
+  String racesAnyTimeFastestBy(String year, String time, String name);
 
-  /// A park course with no recorded time this season. Mirrors web races.anyTimeNoRecord
+  /// A park course with no recorded time this season. Mirrors web races.anyTimeNoTimeYet
   ///
   /// In en, this message translates to:
   /// **'No time yet this season. Yours could be the first.'**
-  String get racesAnyTimeNoRecord;
+  String get racesAnyTimeNoTimeYet;
 
   /// How far a park course's start is from the runner. Mirrors web races.anyTimeAway
   ///
@@ -24422,11 +24422,11 @@ abstract class AppLocalizations {
   /// **'{distance} away'**
   String racesAnyTimeAway(String distance);
 
-  /// Shown above the park courses when this season's records failed to load; the courses still list. Mirrors web races.anyTimeRecordsFailed
+  /// Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t load this season\'s records.'**
-  String get racesAnyTimeRecordsFailed;
+  /// **'Couldn\'t load this season\'s fastest times.'**
+  String get racesAnyTimeFastestFailed;
 
   /// Placeholder for the race name search field
   ///
@@ -35321,6 +35321,18 @@ abstract class AppLocalizations {
   /// **'For park or agency staff. Ask us to take the course down and we close it within two business days.'**
   String get parkCourseReportReasonLandManagerHint;
 
+  /// Report sheet: the rights-holder reason, for the owner of a name, trade mark or course data a park course may use (decisions § 2469). Mirrors web parks.report.reasonRightsHolder
+  ///
+  /// In en, this message translates to:
+  /// **'A request from a rights holder'**
+  String get parkCourseReportReasonRightsHolder;
+
+  /// Hint under the rights-holder reason: who it is for and the two-business-day answer. Mirrors web parks.report.reasonRightsHolderHint
+  ///
+  /// In en, this message translates to:
+  /// **'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We answer within two business days.'**
+  String get parkCourseReportReasonRightsHolderHint;
+
   /// Report reason: anything else
   ///
   /// In en, this message translates to:
@@ -35345,11 +35357,23 @@ abstract class AppLocalizations {
   /// **'Your email (optional)'**
   String get parkCourseReportEmailLabel;
 
+  /// Report sheet: the contact email label when the reason needs an address (a rights-holder request). Mirrors web parks.report.emailLabelRequired
+  ///
+  /// In en, this message translates to:
+  /// **'Your email'**
+  String get parkCourseReportEmailLabelRequired;
+
   /// Report sheet: what the contact email is used for and when it is deleted
   ///
   /// In en, this message translates to:
   /// **'Only if you\'d like a reply. We use it to answer this report and delete it 30 days after we resolve it.'**
   String get parkCourseReportEmailHint;
+
+  /// Report sheet: why a rights-holder request needs the email and when it is deleted. Mirrors web parks.report.emailHintRequired
+  ///
+  /// In en, this message translates to:
+  /// **'Needed for a rights-holder request so we can answer it. We delete it 30 days after we resolve the request.'**
+  String get parkCourseReportEmailHintRequired;
 
   /// Report sheet: cancel button
   ///
@@ -35404,6 +35428,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'That email address doesn\'t look right.'**
   String get parkCourseReportErrorEmail;
+
+  /// Report sheet: a rights-holder request was sent with no email. Mirrors web parks.report.errorEmailRequired
+  ///
+  /// In en, this message translates to:
+  /// **'A rights-holder request needs an email address so we can answer it.'**
+  String get parkCourseReportErrorEmailRequired;
 
   /// Notification text, app admins only: someone reported a problem with a park course
   ///

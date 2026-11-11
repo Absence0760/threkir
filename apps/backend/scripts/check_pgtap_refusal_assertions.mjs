@@ -1808,6 +1808,33 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'park_course_rights_holder_test.sql',
+    description: "an ordinary report opens the course's queue",
+    columns: ['reports.signed_out'],
+    readBack: 'both filings on the course are stored signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_rights_holder_test.sql',
+    description: 'a signed-out rights-holder request with an address is filed',
+    columns: ['reports.signed_out'],
+    readBack: 'the request is stored pending, signed out, with its trimmed address',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_rights_holder_test.sql',
+    description: "a rights-holder request still gets into a full course's queue",
+    columns: ['reports.signed_out'],
+    readBack: 'the rights-holder request on the full course is stored',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
     file: 'park_course_reports_test.sql',
     description: "a land-manager request still gets into a full course's queue",
     columns: ['reports.signed_out'],

@@ -12176,14 +12176,20 @@ export type ReportReason =
 	| 'course_hazard'
 	| 'course_closure'
 	| 'course_off_trail'
-	| 'land_manager_request';
+	| 'land_manager_request'
+	| 'rights_holder_request';
 
 // The reasons the general report dialogs offer: the organiser dispute has its
-// own dialog (decisions § 2441), and the four course reasons are a park
-// course's only, filed through submitParkCourseReport (decisions § 2449).
+// own dialog (decisions § 2441), and the five course reasons are a park
+// course's only, filed through submitParkCourseReport (decisions § 2449, § 2469).
 export type GeneralReportReason = Exclude<
 	ReportReason,
-	'organiser_dispute' | 'course_hazard' | 'course_closure' | 'course_off_trail' | 'land_manager_request'
+	| 'organiser_dispute'
+	| 'course_hazard'
+	| 'course_closure'
+	| 'course_off_trail'
+	| 'land_manager_request'
+	| 'rights_holder_request'
 >;
 
 // The two RESOLVED statuses of `reports.status`. `pending` is the column's
@@ -16000,6 +16006,9 @@ export interface PendingReportTarget {
 	/** When the oldest pending land-manager request on a park course arrived;
 	 *  null on every other target. These sort after disputes, oldest first. */
 	land_manager_since: string | null;
+	/** When the oldest pending rights-holder request on a park course arrived;
+	 *  null on every other target. Sorted with the land-manager requests. */
+	rights_holder_since: string | null;
 }
 
 export interface OrganiserDisputeClub {
@@ -16089,6 +16098,7 @@ export async function fetchPendingReports(): Promise<PendingReportTarget[]> {
 			: [],
 		rename_deadline_at: (r.rename_deadline_at ?? null) as string | null,
 		land_manager_since: (r.land_manager_since ?? null) as string | null,
+		rights_holder_since: (r.rights_holder_since ?? null) as string | null,
 	}));
 }
 

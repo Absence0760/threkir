@@ -220,8 +220,8 @@ void main() {
     expect(find.text('Richmond 10K'), findsOneWidget);
     expect(anyTime(find.text('Near Loop')), findsOneWidget);
     expect(anyTime(find.text('Hidden Loop')), findsNothing);
-    expect(anyTime(find.text('2026 record: 25:00 by Bea')), findsOneWidget);
-    expect(anyTime(find.text('2026 record: 45:00')), findsOneWidget);
+    expect(anyTime(find.text('Fastest in 2026: 25:00 by Bea')), findsOneWidget);
+    expect(anyTime(find.text('Fastest in 2026: 45:00')), findsOneWidget);
     // A course distance reads as its name (#1352): no "10.00 km", and no
     // "Loop" on a loop.
     expect(anyTime(find.textContaining('10 km')), findsOneWidget);

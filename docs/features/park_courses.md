@@ -324,10 +324,13 @@ These follow the owner-approved permit conditions (memo
 - **Times, not results.** Every course page and the `/share/course` page say,
   in the notices callout, that its times are Threkir times on these paths and
   not results of any event held on them (`parks.timesNotEventResults`). The
-  course boards say *time*, *fastest* and *most completions*, never *results*.
-  Open: **Run any time** on `/races` still labels a season's best "2027 record"
-  (`races.anyTimeRecord`, `racesAnyTimeRecord`), which the memo's "never
-  *course record*" rule asks to reword (e.g. "Fastest in 2027").
+  course boards say *time*, *fastest* and *most completions*, never *results*,
+  and a season's best reads "Fastest in 2027", never a *record*
+  (`races.anyTimeFastest` / `racesAnyTimeFastest` on **Run any time** and the
+  park page). `apps/web/src/lib/i18n/no_course_record_copy.test.ts` fails on
+  any park, segment, share-course or Run-any-time string, web or ARB, in any
+  locale, that calls a time a record (a runner's own *personal record* is
+  stripped first, being a different claim).
 - **Shared paths.** A course with `shared_use` adds a give-way note to the
   same callout, naming no one: `saturday_morning_group` reads "Organised groups
   use these paths on Saturday mornings. Give way, and avoid timing an effort
@@ -366,8 +369,9 @@ again on the next release; put the course back in the manifest instead).
 its notices, away from Navigate (web: under `ParkCourseNotices`; mobile: at the
 foot of `ParkCourseScreen`). It works signed out, so park staff need no
 account. The reporter picks a reason (`course_hazard`, `course_closure`,
-`course_off_trail`, `land_manager_request` or `other`), writes a note of up to
-1000 characters and may leave an email for a reply.
+`course_off_trail`, `land_manager_request`, `rights_holder_request` or
+`other`), writes a note of up to 1000 characters and may leave an email for a
+reply; a rights-holder request must leave one.
 
 - **One door.** The `park-course-report` Edge Function (`verify_jwt = false`)
   verifies a JWT when one is sent and files as that user, or signed out. It
@@ -376,8 +380,8 @@ account. The reporter picks a reason (`course_hazard`, `course_closure`,
   address (`check_rate_limit`, fail closed), and calls
   `submit_park_course_report`, which only the service role may execute.
 - **The database's own caps,** which rotating addresses does not get round:
-  25 pending reports per course (a land-manager request is never refused by,
-  nor counted toward, this one) and 60 signed-out reports an hour across all
+  25 pending reports per course (a land-manager or rights-holder request is
+  never refused by, nor counted toward, this one) and 60 signed-out reports an hour across all
   courses (SQLSTATE `PT429`); one pending report per course per signed-in
   reporter, or per contact email when signed out; at most two links in a note.
 - **The row** is a `reports` row (`target_kind = 'park_course'`) carrying
@@ -386,26 +390,32 @@ account. The reporter picks a reason (`course_hazard`, `course_closure`,
   nor read anyone's report.
 - **Notices.** Every app admin gets a `park_course_report` notice (in-app,
   email, push; it links to `/admin/reports`) on the first pending report on a
-  course and on every land-manager request.
-- **Review.** `/admin/reports` sorts land-manager targets after disputes,
-  oldest first, with the request's age and its deadline (`landManagerDueAt`:
-  two business days, Monday to Friday in UTC, holidays not counted out). The
+  course and on every land-manager or rights-holder request.
+- **Review.** `/admin/reports` sorts land-manager and rights-holder targets
+  after disputes, by their oldest request, with the request's age and its
+  deadline (`landManagerDueAt`, "Close by"; `rightsHolderDueAt`, "Answer by":
+  both two business days, Monday to Friday in UTC, holidays not counted out). The
   detail says "Not signed in" for a signed-out reporter, links the contact
   email for a reply by hand, and opens a course panel that closes the course
   with its note (`admin_set_park_course_status`, which also marks the course's
   pending reports reviewed) or reopens it, logged in
   `park_course_status_actions` and read through `park_course_status_history`.
   Mark reviewed and Dismiss work on course reports as on any other.
-- **Rights holders (gap, not built).** A trade-mark or data rights holder
-  that is not a verified club (parkrun has no club here) can file today only
-  as a signed-out reporter under `other`: it reaches the queue and, as the
-  first pending report on a course, the admin notice, but has no
-  rights-holder reason, no priority, no deadline and no exemption from the
-  caps. `organiser_dispute` (#1363) needs a verified club and does not target
-  park courses, and Terms § 4 names only a copyright channel. The memo's
-  recommendation 5 (a `rights_holder_request` reason routed like
-  `land_manager_request`, and "Copyright and trade mark complaints" in the
-  Terms) is the fix; decisions § 2460 records the gap.
+- **Rights holders** (decisions § 2469, closing the gap § 2460 recorded). A
+  trade-mark, event-name or course-data rights holder that is not a verified
+  club picks "A request from a rights holder" (`rights_holder_request`). It is
+  routed like a land-manager request: never refused by or counted toward the
+  per-course cap, a notice to every admin on each one, and its own
+  `rights_holder_since` on the queue, with an "Answer by" date two business
+  days on and a panel hint to reply by hand and close the course if the
+  request needs it. Unlike every other reason it requires a contact email, in
+  the form (Send stays disabled), the Edge Function (`email_required`) and
+  `submit_park_course_report` (`22023`), because the answer is a hand reply.
+  Terms § 4 ("Copyright and trade mark complaints") names this form and
+  `dmca@threkir.com` as the channel and promises the two-business-day answer;
+  counsel reviews that text before the web release that carries it
+  ([deployment.md](../ops/deployment.md)). `organiser_dispute` (#1363) stays
+  the verified-club path and still does not target park courses.
 - **Personal data.** The contact email goes with a signed-in reporter's
   account (a trigger clears it when `reporter_id` is set null) and 30 days
   after the report is resolved (`private.purge_stale_reports`), unless the
@@ -722,18 +732,24 @@ These gate going live, not the code:
   authenticated refused the filing RPC and the table, the insert path signed
   out and in, validation, the per-course and signed-out caps, the admin notices,
   a report never closing a course, the admin close and reopen and their log,
-  the contact email cleared on account deletion and 30 days after resolution);
+  the contact email cleared on account deletion and 30 days after resolution)
+  and `park_course_rights_holder_test.sql` (the reason a park course's only,
+  its required email, its notice, its exemption from the per-course cap, its
+  age and order on the queue);
   Deno `apps/backend/supabase/functions/park-course-report/handler.test.ts`
-  (validation before any rate-limit spend, the honeypot, the two buckets, the
-  reporter passed through, each refusal mapped); web unit
-  `apps/web/src/lib/parks/course_report.test.ts` (the deadline, the email
-  check, the refusal copy); Playwright
+  (validation before any rate-limit spend, a rights-holder request with no
+  email, the honeypot, the two buckets, the reporter passed through, each
+  refusal mapped); web unit `apps/web/src/lib/parks/course_report.test.ts`
+  (the two deadlines, the email check and when it is required, the refusal
+  copy); Playwright
   `apps/web/tests-e2e/parks/park-course-report.spec.ts` (a signed-out
   land-manager request, a signed-in hazard report and its duplicate refusal,
+  a signed-out rights-holder request held until it has an address and its
+  "Answer by" row on the queue,
   the admin closing the course from the queue); Flutter
   `apps/mobile_android/test/park_courses_screen_test.dart` group *report a
-  problem with this course* (placement, a filed land-manager request, a worded
-  refusal).
+  problem with this course* (placement, a filed land-manager request, a
+  rights-holder request held until it has an address, worded refusals).
 
 - Run any time: `apps/web/src/lib/parks/any_time_courses.test.ts` (stable
   order, nearest first with the distance away, unmeasured courses after

@@ -974,6 +974,13 @@ Migration `20271214131303` schedules `park-closures-sweep` daily at 11:41 UTC ([
 2. Add `"park_closures_sweep"` to `cron_urls` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. The next release creates `park_closures_sweep_url`, invokes the sweep once and fails the step unless it answers 2xx (it does without the key too: `{ "configured": false }`). Its `parks` / `requests` / `alerts` / `flagged` / `failed_parks` counts are in the function's logs; a 502 means NPS failed for some parks and nothing was recorded for them.
 3. Nothing reaches the sweep until a park with `agency: "nps"` and its `nps_park_code` is loaded (none is yet; Pocahontas is a state park).
 
+### Rights-holder requests and Terms § 4 — counsel reviews the Terms change before deploy
+
+A rights holder's request on a park course (`rights_holder_request`, [park_courses.md § Reports and closures](../features/park_courses.md#reports-and-closures), decisions § 2469, migrations `20271220002469` + `20271220012469`) has no flag: the reason, its required email, its exemption from the per-course cap and its two-business-day deadline on `/admin/reports` ship with the next `backend@*` and `web@*` releases and the next store build. The same web release carries the Terms change that names the channel: § 4 becomes "Copyright and trade mark complaints", takes trade mark, event-name and course-data complaints at `dmca@threkir.com` or through the course page's report form, promises an answer within two business days, and says park course and segment times are not any event's results.
+
+1. **Pre-deploy (counsel):** counsel reviews the Terms § 4 change on `/terms` (`apps/web/src/routes/terms/+page.svelte`, English only: the page has no catalogue) and the form copy in every locale (`parks.report.reasonRightsHolder*`, `parks.report.emailHintRequired`, the mobile `parkCourseReport*RightsHolder*` ARB keys) before the `web@*` release that carries them. Hold that release, or revert the Terms paragraph, until the sign-off is linked on #1097.
+2. **Owner:** confirm `dmca@threkir.com` is monitored for trade mark complaints as well as copyright notices, and that someone answers a rights-holder request within two business days (the queue counts Monday to Friday in UTC, holidays not counted out).
+
 ### Lambda secrets — one apply, before the next web deploy
 
 [decisions § 1671](../architecture/decisions.md) moved the coach and

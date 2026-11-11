@@ -457,7 +457,7 @@ void main() {
       );
       await _settle(tester);
       expect(
-        _inCard('a', find.text('2026 record: 25:00 by Bea')),
+        _inCard('a', find.text('Fastest in 2026: 25:00 by Bea')),
         findsOneWidget,
       );
       expect(
@@ -1185,6 +1185,80 @@ void main() {
         },
       ]);
       expect(find.byKey(const Key('park-course-report-sheet')), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets('a rights-holder request is not sent without an address', (
+      tester,
+    ) async {
+      final api = _ParksApi();
+      await openSheet(tester, api);
+      final submit = find.byKey(const Key('park-course-report-submit'));
+      final reason =
+          find.byKey(const Key('park-course-report-reason-rights_holder_request'));
+      await tester.ensureVisible(reason);
+      await tester.tap(reason);
+      await tester.enterText(
+        find.byKey(const Key('park-course-report-notes')),
+        'This course description uses our event name.',
+      );
+      await tester.pump();
+      expect(
+        find.textContaining('We answer within two business days.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Needed for a rights-holder request so we can answer it. '
+          'We delete it 30 days after we resolve the request.',
+        ),
+        findsOneWidget,
+      );
+      expect(tester.widget<FilledButton>(submit).onPressed, isNull);
+
+      await tester.enterText(
+        find.byKey(const Key('park-course-report-email')),
+        'legal@brand.example',
+      );
+      await tester.pump();
+      await tester.ensureVisible(submit);
+      await tester.tap(submit);
+      await _settle(tester);
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(api.reports, [
+        {
+          'courseId': 'c1',
+          'reason': 'rights_holder_request',
+          'notes': 'This course description uses our event name.',
+          'contactEmail': 'legal@brand.example',
+        },
+      ]);
+      await _unmount(tester);
+    });
+
+    testWidgets('the function refusing a request with no address is worded', (
+      tester,
+    ) async {
+      final api = _ParksApi()
+        ..reportRefusal = const FunctionException(
+          status: 400,
+          details: {'error': 'email_required'},
+        );
+      await openSheet(tester, api);
+      await tester.enterText(
+        find.byKey(const Key('park-course-report-notes')),
+        'A tree is down.',
+      );
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('park-course-report-submit')));
+      await _settle(tester);
+      expect(
+        find.text(
+          'A rights-holder request needs an email address so we can answer it.',
+        ),
+        findsOneWidget,
+      );
       await _unmount(tester);
     });
 

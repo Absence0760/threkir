@@ -437,12 +437,12 @@ List<Widget> courseFactPills(
 }
 
 String _recordLine(AppLocalizations l10n, ParkCourseRecord? r) {
-  if (r == null) return l10n.racesAnyTimeNoRecord;
+  if (r == null) return l10n.racesAnyTimeNoTimeYet;
   final name = r.displayName?.trim();
   return name != null && name.isNotEmpty
-      ? l10n.racesAnyTimeRecordBy(
+      ? l10n.racesAnyTimeFastestBy(
           '${r.season}', formatEffortTime(r.timeSeconds), name)
-      : l10n.racesAnyTimeRecord('${r.season}', formatEffortTime(r.timeSeconds));
+      : l10n.racesAnyTimeFastest('${r.season}', formatEffortTime(r.timeSeconds));
 }
 
 Future<void> _openParkWebsite(BuildContext context, String url) async {
@@ -629,7 +629,7 @@ class _ParkScreenState extends State<ParkScreen> {
                               crossAxisAlignment: WrapCrossAlignment.center,
                               spacing: 8,
                               children: [
-                                Text(l10n.racesAnyTimeRecordsFailed),
+                                Text(l10n.racesAnyTimeFastestFailed),
                                 OutlinedButton.icon(
                                   onPressed: _loadRecords,
                                   icon: const Icon(Icons.refresh),

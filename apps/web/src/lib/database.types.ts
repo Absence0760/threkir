@@ -8334,6 +8334,7 @@ export type Database = {
           rename_deadline_at: string
           report_count: number
           reporter_count: number
+          rights_holder_since: string
           shadow_hidden: boolean
           target_id: string
           target_kind: string

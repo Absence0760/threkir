@@ -2,7 +2,7 @@
  * "Report a problem with this course" (issue #1346, decisions § 2449): the
  * reasons a park course report takes, the limits the form shows, the copy for
  * each refusal of the `park-course-report` Edge Function, and the
- * land-manager deadline the admin queue shows.
+ * land-manager and rights-holder deadlines the admin queue shows.
  *
  * The reasons are a rail of `reports.reason` in
  * `apps/web/scripts/check_constraint_unions.mjs`; the mobile list is
@@ -17,6 +17,7 @@ export const COURSE_REPORT_REASONS = [
 	'course_closure',
 	'course_off_trail',
 	'land_manager_request',
+	'rights_holder_request',
 	'other',
 ] as const;
 export type CourseReportReason = (typeof COURSE_REPORT_REASONS)[number];
@@ -26,6 +27,7 @@ export const COURSE_REPORT_REASON_LABELS: Record<CourseReportReason, MessageKey>
 	course_closure: 'parks.report.reasonClosure',
 	course_off_trail: 'parks.report.reasonOffTrail',
 	land_manager_request: 'parks.report.reasonLandManager',
+	rights_holder_request: 'parks.report.reasonRightsHolder',
 	other: 'parks.report.reasonOther',
 };
 
@@ -34,10 +36,18 @@ export const COURSE_REPORT_EMAIL_MAX = 254;
 
 const EMAIL_SHAPE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-/** True for an empty field (the email is optional) or a plausible address. */
-export function courseReportEmailOk(raw: string): boolean {
+/** A rights holder's request is answered by hand, so it needs an address
+ *  (decisions § 2469); every other reason leaves the email optional. */
+export function courseReportEmailRequired(reason: CourseReportReason): boolean {
+	return reason === 'rights_holder_request';
+}
+
+/** True for a plausible address, or for an empty field when the reason leaves
+ *  the email optional. */
+export function courseReportEmailOk(raw: string, reason?: CourseReportReason): boolean {
 	const e = raw.trim();
-	return e.length === 0 || (e.length <= COURSE_REPORT_EMAIL_MAX && EMAIL_SHAPE.test(e));
+	if (e.length === 0) return !(reason && courseReportEmailRequired(reason));
+	return e.length <= COURSE_REPORT_EMAIL_MAX && EMAIL_SHAPE.test(e);
 }
 
 /**
@@ -63,6 +73,8 @@ export function courseReportErrorKey(code: string | null): MessageKey | null {
 			return 'parks.report.errorNotFound';
 		case 'invalid_email':
 			return 'parks.report.errorEmail';
+		case 'email_required':
+			return 'parks.report.errorEmailRequired';
 		case 'notes_required':
 		case 'notes_too_long':
 		case 'invalid_report':
@@ -76,8 +88,9 @@ export function courseReportErrorKey(code: string | null): MessageKey | null {
 }
 
 /** The two business days the permit decision on #1097 gives a land manager's
- *  request. */
+ *  request, and the Terms give a rights holder's answer (decisions § 2469). */
 export const LAND_MANAGER_BUSINESS_DAYS = 2;
+export const RIGHTS_HOLDER_BUSINESS_DAYS = 2;
 
 /**
  * When a land manager's request received at `receivedIso` must be honoured:
@@ -88,9 +101,19 @@ export const LAND_MANAGER_BUSINESS_DAYS = 2;
  * side for a promise.
  */
 export function landManagerDueAt(receivedIso: string): Date {
+	return businessDaysAfter(receivedIso, LAND_MANAGER_BUSINESS_DAYS);
+}
+
+/** When a rights holder's request received at `receivedIso` must be answered,
+ *  counted as `landManagerDueAt` counts. */
+export function rightsHolderDueAt(receivedIso: string): Date {
+	return businessDaysAfter(receivedIso, RIGHTS_HOLDER_BUSINESS_DAYS);
+}
+
+function businessDaysAfter(receivedIso: string, days: number): Date {
 	const due = new Date(receivedIso);
 	const receivedDay = due.getUTCDay();
-	let left = LAND_MANAGER_BUSINESS_DAYS;
+	let left = days;
 	while (left > 0) {
 		due.setUTCDate(due.getUTCDate() + 1);
 		const day = due.getUTCDay();

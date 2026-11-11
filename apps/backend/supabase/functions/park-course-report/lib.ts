@@ -6,13 +6,14 @@
 
 import { isValidUuid } from '../_shared/input_validation.ts';
 
-/// The reasons a park course takes. The four course reasons belong to a park
+/// The reasons a park course takes. The five course reasons belong to a park
 /// course only; 'other' is shared with the general reports.
 export const COURSE_REPORT_REASONS = [
   'course_hazard',
   'course_closure',
   'course_off_trail',
   'land_manager_request',
+  'rights_holder_request',
   'other',
 ] as const;
 
@@ -69,6 +70,10 @@ export function parseReportBody(body: unknown): ParsedReport {
       if (e.length > MAX_EMAIL_LEN || !EMAIL_SHAPE.test(e)) return { ok: false, error: 'invalid_email' };
       contactEmail = e;
     }
+  }
+  // A rights holder's request is answered by hand (decisions § 2469).
+  if (b.reason === 'rights_holder_request' && contactEmail === null) {
+    return { ok: false, error: 'email_required' };
   }
 
   return {

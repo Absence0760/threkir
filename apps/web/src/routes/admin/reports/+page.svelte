@@ -42,7 +42,7 @@
 		deadlinePassed,
 	} from '#lib/social/organiser_dispute.ts';
 	import type { OrganiserDisputeTargetKind } from '#lib/types.ts';
-	import { courseReportMailto, landManagerDueAt } from '#lib/parks/course_report.ts';
+	import { courseReportMailto, landManagerDueAt, rightsHolderDueAt } from '#lib/parks/course_report.ts';
 	import { regionSlug } from '#lib/parks/park_courses.ts';
 	import type { MessageKey } from '#lib/i18n/messages.ts';
 
@@ -51,7 +51,14 @@
 		'target_kind' | 'target_id' | 'page_id' | 'shadow_hidden' | 'report_count'
 	> &
 		Partial<
-			Pick<PendingReportTarget, 'organiser_dispute' | 'organiser_clubs' | 'rename_deadline_at' | 'land_manager_since'>
+			Pick<
+				PendingReportTarget,
+				| 'organiser_dispute'
+				| 'organiser_clubs'
+				| 'rename_deadline_at'
+				| 'land_manager_since'
+				| 'rights_holder_since'
+			>
 		>;
 
 	type DisputeAction = 'takedown' | 'rename_notice' | 'dismiss';
@@ -110,12 +117,19 @@
 			.map((r) => r.created_at)
 			.sort()[0] ?? null,
 	);
+	const pendingRightsHolder = $derived(
+		detail
+			.filter((r) => r.status === 'pending' && r.reason === 'rights_holder_request')
+			.map((r) => r.created_at)
+			.sort()[0] ?? null,
+	);
 
 	const COURSE_REASON_LABELS: Record<string, MessageKey> = {
 		course_hazard: 'admin.reports.reason.courseHazard',
 		course_closure: 'admin.reports.reason.courseClosure',
 		course_off_trail: 'admin.reports.reason.courseOffTrail',
 		land_manager_request: 'admin.reports.reason.landManagerRequest',
+		rights_holder_request: 'admin.reports.reason.rightsHolderRequest',
 	};
 
 	function reasonLabel(reason: string): string {
@@ -129,6 +143,16 @@
 		const date = formatDate(due.toISOString());
 		return {
 			text: overdue ? t('admin.reports.course.overdue', { date }) : t('admin.reports.course.dueOn', { date }),
+			overdue,
+		};
+	}
+
+	function rightsHolderDue(receivedIso: string): { text: string; overdue: boolean } {
+		const due = rightsHolderDueAt(receivedIso);
+		const overdue = due.getTime() < Date.now();
+		const date = formatDate(due.toISOString());
+		return {
+			text: overdue ? t('admin.reports.course.overdue', { date }) : t('admin.reports.course.respondBy', { date }),
 			overdue,
 		};
 	}
@@ -531,6 +555,14 @@
 											<span class="muted deadline" class:overdue={due.overdue} data-testid="admin-land-manager-due">{due.text}</span>
 										</div>
 									{/if}
+									{#if target.rights_holder_since}
+										{@const due = rightsHolderDue(target.rights_holder_since)}
+										<div class="dispute-line" data-testid="admin-rights-holder-row">
+											<span class="dispute-badge">{t('admin.reports.course.rightsHolderBadge')}</span>
+											<span class="muted">{t('admin.reports.course.receivedAgo', { when: formatRelativeTime(target.rights_holder_since) })}</span>
+											<span class="muted deadline" class:overdue={due.overdue} data-testid="admin-rights-holder-due">{due.text}</span>
+										</div>
+									{/if}
 									{#if target.organiser_dispute}
 										<div class="dispute-line" data-testid="admin-dispute-row">
 											<span class="dispute-badge">{t('admin.reports.dispute.badge')}</span>
@@ -722,6 +754,11 @@
 							{#if pendingLandManager}
 								{@const due = landManagerDue(pendingLandManager)}
 								<p class="deadline" class:overdue={due.overdue}>{due.text}</p>
+							{/if}
+							{#if pendingRightsHolder}
+								{@const due = rightsHolderDue(pendingRightsHolder)}
+								<p class="muted" data-testid="admin-rights-holder-hint">{t('admin.reports.course.rightsHolderHint')}</p>
+								<p class="deadline" class:overdue={due.overdue} data-testid="admin-rights-holder-panel-due">{due.text}</p>
 							{/if}
 							{#if detail.some((r) => r.contact_email)}
 								<p class="muted">{t('admin.reports.course.replyHint')}</p>

@@ -1007,10 +1007,10 @@ export const PAIRS = [
 				shape: 'records',
 				field: 'value',
 				// Filed through OrganiserDisputeAction by a verified club's owner or
-				// admin only; submit_report refuses it (decisions § 2441). The four
+				// admin only; submit_report refuses it (decisions § 2441). The five
 				// course reasons are a park course's only, filed through
-				// ParkCourseReportDialog (decisions § 2449).
-				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
+				// ParkCourseReportDialog (decisions § 2449, § 2469).
+				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request', 'rights_holder_request'],
 			},
 			{
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
@@ -1019,7 +1019,7 @@ export const PAIRS = [
 				// kOrganiserDisputeReason, offered below the general reasons to a
 				// verified club's owner or admin only (decisions § 2441). The course
 				// reasons are offered by the park course report sheet only (§ 2449).
-				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
+				allowMissing: ['organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request', 'rights_holder_request'],
 			},
 			{
 				file: 'apps/mobile_android/lib/widgets/report_sheet.dart',
@@ -1027,10 +1027,10 @@ export const PAIRS = [
 				shape: 'switch',
 				// The dispute reason has its own label next to its own radio; the
 				// course reasons are labelled by courseReportReasonLabel.
-				allowMissing: ['other', 'organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request'],
+				allowMissing: ['other', 'organiser_dispute', 'course_hazard', 'course_closure', 'course_off_trail', 'land_manager_request', 'rights_holder_request'],
 			},
-			// A park course takes the four course reasons or 'other' only
-			// (reports_park_course_check, decisions § 2449).
+			// A park course takes the five course reasons or 'other' only
+			// (reports_park_course_check, decisions § 2449, § 2469).
 			{
 				file: 'apps/web/src/lib/parks/course_report.ts',
 				decl: 'COURSE_REPORT_REASONS',

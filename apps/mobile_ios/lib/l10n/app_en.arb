@@ -19887,9 +19887,9 @@
   "@racesSectionAnyTime": {
     "description": "Heading of the park-courses section on Races & courses: standing courses that can be run on any day, unlike a race. Mirrors web races.sectionAnyTime"
   },
-  "racesAnyTimeRecord": "{year} record: {time}",
-  "@racesAnyTimeRecord": {
-    "description": "A park course's fastest time this season, when the record holder's name is hidden. Mirrors web races.anyTimeRecord",
+  "racesAnyTimeFastest": "Fastest in {year}: {time}",
+  "@racesAnyTimeFastest": {
+    "description": "A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest",
     "placeholders": {
       "year": {
         "type": "String",
@@ -19901,9 +19901,9 @@
       }
     }
   },
-  "racesAnyTimeRecordBy": "{year} record: {time} by {name}",
-  "@racesAnyTimeRecordBy": {
-    "description": "A park course's fastest time this season and who ran it. Mirrors web races.anyTimeRecordBy",
+  "racesAnyTimeFastestBy": "Fastest in {year}: {time} by {name}",
+  "@racesAnyTimeFastestBy": {
+    "description": "A park course's fastest time this season and who ran it. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastestBy",
     "placeholders": {
       "year": {
         "type": "String",
@@ -19919,9 +19919,9 @@
       }
     }
   },
-  "racesAnyTimeNoRecord": "No time yet this season. Yours could be the first.",
-  "@racesAnyTimeNoRecord": {
-    "description": "A park course with no recorded time this season. Mirrors web races.anyTimeNoRecord"
+  "racesAnyTimeNoTimeYet": "No time yet this season. Yours could be the first.",
+  "@racesAnyTimeNoTimeYet": {
+    "description": "A park course with no recorded time this season. Mirrors web races.anyTimeNoTimeYet"
   },
   "racesAnyTimeAway": "{distance} away",
   "@racesAnyTimeAway": {
@@ -19933,9 +19933,9 @@
       }
     }
   },
-  "racesAnyTimeRecordsFailed": "Couldn't load this season's records.",
-  "@racesAnyTimeRecordsFailed": {
-    "description": "Shown above the park courses when this season's records failed to load; the courses still list. Mirrors web races.anyTimeRecordsFailed"
+  "racesAnyTimeFastestFailed": "Couldn't load this season's fastest times.",
+  "@racesAnyTimeFastestFailed": {
+    "description": "Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed"
   },
   "racesSearchPlaceholder": "Search races by name…",
   "@racesSearchPlaceholder": {
@@ -28970,6 +28970,14 @@
   "@parkCourseReportReasonLandManagerHint": {
     "description": "Hint under the land-manager reason: the two-business-day promise"
   },
+  "parkCourseReportReasonRightsHolder": "A request from a rights holder",
+  "@parkCourseReportReasonRightsHolder": {
+    "description": "Report sheet: the rights-holder reason, for the owner of a name, trade mark or course data a park course may use (decisions § 2469). Mirrors web parks.report.reasonRightsHolder"
+  },
+  "parkCourseReportReasonRightsHolderHint": "For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you'd like changed. We answer within two business days.",
+  "@parkCourseReportReasonRightsHolderHint": {
+    "description": "Hint under the rights-holder reason: who it is for and the two-business-day answer. Mirrors web parks.report.reasonRightsHolderHint"
+  },
   "parkCourseReportReasonOther": "Something else",
   "@parkCourseReportReasonOther": {
     "description": "Report reason: anything else"
@@ -28986,9 +28994,17 @@
   "@parkCourseReportEmailLabel": {
     "description": "Report sheet: label of the optional contact email field"
   },
+  "parkCourseReportEmailLabelRequired": "Your email",
+  "@parkCourseReportEmailLabelRequired": {
+    "description": "Report sheet: the contact email label when the reason needs an address (a rights-holder request). Mirrors web parks.report.emailLabelRequired"
+  },
   "parkCourseReportEmailHint": "Only if you'd like a reply. We use it to answer this report and delete it 30 days after we resolve it.",
   "@parkCourseReportEmailHint": {
     "description": "Report sheet: what the contact email is used for and when it is deleted"
+  },
+  "parkCourseReportEmailHintRequired": "Needed for a rights-holder request so we can answer it. We delete it 30 days after we resolve the request.",
+  "@parkCourseReportEmailHintRequired": {
+    "description": "Report sheet: why a rights-holder request needs the email and when it is deleted. Mirrors web parks.report.emailHintRequired"
   },
   "parkCourseReportCancel": "Cancel",
   "@parkCourseReportCancel": {
@@ -29025,6 +29041,10 @@
   "parkCourseReportErrorEmail": "That email address doesn't look right.",
   "@parkCourseReportErrorEmail": {
     "description": "Report sheet: the contact email is not shaped like an address"
+  },
+  "parkCourseReportErrorEmailRequired": "A rights-holder request needs an email address so we can answer it.",
+  "@parkCourseReportErrorEmailRequired": {
+    "description": "Report sheet: a rights-holder request was sent with no email. Mirrors web parks.report.errorEmailRequired"
   },
   "profileNotifParkCourseReport": "A park course was reported",
   "@profileNotifParkCourseReport": {

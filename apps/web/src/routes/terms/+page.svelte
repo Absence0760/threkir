@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { NOT_PROVIDED, OPERATOR, OPERATOR_FACTS_COMPLETE } from '#lib/legal/operator.ts';
 
-	const lastUpdated = '2026-11-09';
+	const lastUpdated = '2026-11-11';
 </script>
 
 <svelte:head>
@@ -59,7 +59,7 @@
 		<a href="mailto:hello@threkir.com">hello@threkir.com</a> and we will take a second look.
 	</p>
 
-	<h2>4. Copyright complaints</h2>
+	<h2>4. Copyright and trade mark complaints</h2>
 	<p>
 		If you believe content on Threkir infringes your copyright, send a notice to
 		<a href="mailto:dmca@threkir.com">dmca@threkir.com</a> including: identification of the
@@ -69,6 +69,20 @@
 		your physical or electronic signature. We will remove or disable access to material we
 		determine to be infringing, and terminate repeat infringers. The user who posted the material
 		may send a counter-notice with the corresponding statutory elements to the same address.
+	</p>
+	<p>
+		If you believe Threkir uses your trade mark, event name, or course data without permission,
+		email <a href="mailto:dmca@threkir.com">dmca@threkir.com</a> with the mark, name or data, where
+		it appears, how to reach you, and what you would like us to do. For a park course, you can
+		also use <strong>Report a problem with this course</strong> on the course page and choose
+		<strong>A request from a rights holder</strong>. We answer a rights holder's request within
+		two business days, and may close or change a course while we look into it.
+	</p>
+	<p>
+		Times on park courses and segments are recorded by people using Threkir on public paths.
+		They are not the results of any event held on those paths, and no event organiser has
+		reviewed or endorsed them. Names of third-party events belong to their owners, and Threkir is
+		not affiliated with them.
 	</p>
 
 	<h2>5. Pro subscription</h2>

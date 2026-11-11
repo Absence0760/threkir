@@ -145,7 +145,7 @@
 					</h2>
 					{#if recordsFailed}
 						<p class="records-failed" role="status" data-testid="park-records-failed">
-							{m('races.anyTimeRecordsFailed')}
+							{m('races.anyTimeFastestFailed')}
 						</p>
 					{/if}
 					<ul class="course-list" data-testid="park-courses">
@@ -192,10 +192,10 @@
 												<span class="material-symbols" aria-hidden="true">emoji_events</span>
 												{#if record}
 													{record.displayName
-														? m('races.anyTimeRecordBy', { year: record.season, time: formatDuration(record.timeSeconds), name: record.displayName })
-														: m('races.anyTimeRecord', { year: record.season, time: formatDuration(record.timeSeconds) })}
+														? m('races.anyTimeFastestBy', { year: record.season, time: formatDuration(record.timeSeconds), name: record.displayName })
+														: m('races.anyTimeFastest', { year: record.season, time: formatDuration(record.timeSeconds) })}
 												{:else}
-													{m('races.anyTimeNoRecord')}
+													{m('races.anyTimeNoTimeYet')}
 												{/if}
 											</span>
 										{/if}

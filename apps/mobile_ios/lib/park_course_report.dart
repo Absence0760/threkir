@@ -13,6 +13,7 @@ const kCourseReportReasons = <String>[
   'course_closure',
   'course_off_trail',
   'land_manager_request',
+  'rights_holder_request',
   'other',
 ];
 
@@ -21,11 +22,17 @@ const kCourseReportEmailMax = 254;
 
 final _emailShape = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
-/// True for an empty field (the email is optional) or a plausible address.
-bool courseReportEmailOk(String raw) {
+/// A rights holder's request is answered by hand, so it needs an address
+/// (decisions § 2469); every other reason leaves the email optional.
+bool courseReportEmailRequired(String reason) =>
+    reason == 'rights_holder_request';
+
+/// True for a plausible address, or for an empty field when [reason] leaves
+/// the email optional.
+bool courseReportEmailOk(String raw, {String? reason}) {
   final e = raw.trim();
-  return e.isEmpty ||
-      (e.length <= kCourseReportEmailMax && _emailShape.hasMatch(e));
+  if (e.isEmpty) return reason == null || !courseReportEmailRequired(reason);
+  return e.length <= kCourseReportEmailMax && _emailShape.hasMatch(e);
 }
 
 /// The refusals the sheet words, by the code the function answered with.
@@ -34,6 +41,7 @@ enum CourseReportRefusal {
   alreadyReported,
   notFound,
   invalidEmail,
+  emailRequired,
   invalid,
   failed,
 }
@@ -53,6 +61,8 @@ CourseReportRefusal courseReportRefusal(Object? details) {
       return CourseReportRefusal.notFound;
     case 'invalid_email':
       return CourseReportRefusal.invalidEmail;
+    case 'email_required':
+      return CourseReportRefusal.emailRequired;
     case 'notes_required':
     case 'notes_too_long':
     case 'invalid_report':

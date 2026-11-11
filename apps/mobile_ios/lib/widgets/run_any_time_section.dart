@@ -224,7 +224,7 @@ class _RunAnyTimeSectionState extends State<RunAnyTimeSection> {
       if (_recordsFailed)
         _InlineFailure(
           key: const Key('races-any-time-records-failed'),
-          message: l10n.racesAnyTimeRecordsFailed,
+          message: l10n.racesAnyTimeFastestFailed,
           retry: l10n.parksRetry,
           onRetry: _loadRecords,
         ),
@@ -282,11 +282,11 @@ class _CourseCard extends StatelessWidget {
     final recordLine = !showRecord
         ? null
         : r == null
-            ? l10n.racesAnyTimeNoRecord
+            ? l10n.racesAnyTimeNoTimeYet
             : r.displayName != null && r.displayName!.trim().isNotEmpty
-                ? l10n.racesAnyTimeRecordBy('${r.season}',
+                ? l10n.racesAnyTimeFastestBy('${r.season}',
                     formatEffortTime(r.timeSeconds), r.displayName!)
-                : l10n.racesAnyTimeRecord(
+                : l10n.racesAnyTimeFastest(
                     '${r.season}', formatEffortTime(r.timeSeconds));
     final muted = theme.textTheme.bodySmall
         ?.copyWith(color: theme.colorScheme.onSurfaceVariant);

@@ -1,11 +1,11 @@
 {
 	"generator": "scripts/gen_web_icon_font.mjs",
 	"upstream": {
-		"package": "material-symbols@0.47.0",
+		"package": "material-symbols@0.48.3",
 		"file": "material-symbols-outlined.woff2",
-		"bytes": 3963852,
-		"sha256": "329f6eb34ac05b0c0b1bb172e36d004bbc57cb5112abeeccc70755afdc4f2d8d",
-		"ligatures": 4275
+		"bytes": 4011996,
+		"sha256": "c126361daaf865d1359bd639657e3456f1dbf51d9e2242724924c529fa5e22f4",
+		"ligatures": 4312
 	},
 	"pinnedAxes": {
 		"GRAD": 0,
@@ -20,10 +20,10 @@
 		"rclt"
 	],
 	"subset": {
-		"bytes": 74920,
-		"sha256": "5f08fcd74b130031ef3fb707129784b820105c52a021839b20b561db808684cf",
-		"glyphs": 335,
-		"ligatures": 452
+		"bytes": 74088,
+		"sha256": "d79abc20c447c9168a16ce2fb3d8a727355a8bdbb0fa54a6553ec1feb8e82390",
+		"glyphs": 333,
+		"ligatures": 450
 	},
 	"icons": [
 		"10k",
@@ -43,7 +43,6 @@
 		"altitude",
 		"anchor",
 		"android",
-		"animation",
 		"apps",
 		"archive",
 		"arrow_back",
@@ -328,7 +327,6 @@
 		"table",
 		"table_chart",
 		"tabs",
-		"tag",
 		"target",
 		"terrain",
 		"thermometer",

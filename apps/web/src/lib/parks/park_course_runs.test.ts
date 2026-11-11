@@ -22,9 +22,12 @@ import {
 } from '../segments/segments';
 import {
 	caseDefs,
+	courseEndBearing,
 	decodeTrack,
 	loadCourses,
+	paceMps,
 	simulate,
+	slice,
 	toTrack,
 	type CourseRunFixture,
 } from './course_run_fixture';
@@ -138,43 +141,80 @@ test('a run that completes a shorter course is timed on it: one lap of the 10K i
 	assert.deepEqual(Object.keys(caseBy('50k_one_lap').matched), [], 'the 50K lap is no other course');
 });
 
-test('the three-lap run is timed on its third lap, not its fastest (the second), by the same-line loop rule', () => {
+test('the three-lap run is timed on its fastest lap, the second', () => {
 	const c = caseBy('beaver_three_laps');
-	const defs = caseDefs(loadCourses(read));
-	const def = defs.find((d) => d.key === c.key);
+	const def = caseDefs(loadCourses(read)).find((d) => d.key === c.key);
 	assert.ok(def);
 	const marks = simulate(def.plan).marks;
 	const lap2 = marks.lap2_end - marks.lap1_end;
 	const own = c.matched['beaver-lake-trail'];
 	assert.ok(own);
-	assert.ok(lap2 < own.time_seconds - 100, `lap 2 (${lap2.toFixed(0)} s) is the fastest and is not the time`);
+	assert.ok(Math.abs(own.time_seconds - lap2) <= 5, `timed ${own.time_seconds.toFixed(1)} s, lap 2 took ${lap2.toFixed(1)} s`);
 });
 
-// decisions § 2402 (m6): on a loop whose start and end lines sit on one
-// point, the crossing that closes a lap never opens the next, so lap 2 of
-// three is never a pass. With GPS error the two lines' crossings can fall on
-// different fixes, and then the lap that closed a pass also opens one: over
-// 60 seeds of the run above, lap 2 is the time in 2. Whether every lap of a
-// same-line loop should be a candidate is the owner's call (§ 2402 names it);
-// until it is made, this records that the rule as written is not what GPS
-// noise lets the matcher do every time.
-test(
-	'on a same-line loop, the middle of three laps is never the time, whatever the GPS error',
-	{ todo: 'decisions § 2402 m6 is noise-dependent: lap 2 is the time in 2 of 60 seeds; owner call on issue #1342' },
-	() => {
-		const courses = loadCourses(read);
-		const def = caseDefs(courses).find((d) => d.key === 'beaver_three_laps');
-		assert.ok(def);
-		const beaver = courses.find((c) => c.slug === 'beaver-lake-trail');
-		assert.ok(beaver);
-		for (let seed = 1; seed <= 60; seed++) {
-			const run = simulate({ ...def.plan, seed });
-			const lap2 = run.marks.lap2_end - run.marks.lap1_end;
-			const eff: GlobalSegmentEffortResult | null = computeGlobalSegmentEfforts(toTrack(run.fixes, baseMs), [
-				beaver.geometry,
-			])[0];
-			assert.ok(eff, `seed ${seed}: no effort`);
-			assert.ok(Math.abs(eff.time_seconds - lap2) > 60, `seed ${seed}: lap 2 (${lap2.toFixed(0)} s) was timed`);
+// decisions § 2463: every complete lap is timed and the fastest counts, on a
+// loop whose start and end lines are one point and on one whose lines are
+// apart, whatever the GPS error. The fastest lap is put first, second and
+// third in turn, over 60 seeds each. Before § 2463 the finish of a lap never
+// opened the next on a one-point loop, and lap 2 was the time in 2 of 60
+// seeds of the middle-fastest run.
+{
+	const courses = loadCourses(read);
+	const def = caseDefs(courses).find((d) => d.key === 'beaver_three_laps');
+	assert.ok(def);
+	const beaver = courses.find((c) => c.slug === 'beaver-lake-trail');
+	assert.ok(beaver);
+	const lapEnds = ['lap1_end', 'lap2_end', 'lap3_end'];
+	const withPaces = (paces: readonly number[]) => ({
+		...def.plan,
+		steps: def.plan.steps.map((s) => {
+			const lap = s.kind === 'move' && s.endMark ? lapEnds.indexOf(s.endMark) : -1;
+			return lap < 0 || s.kind !== 'move' ? s : { ...s, speedMps: paceMps(paces[lap]) };
+		}),
+	});
+	// The start line moved 100 m along the loop: the finish is then 100 m
+	// before the start, and each lap is timed from 100 m to the finish.
+	const apartM = 100;
+	const startAt = slice(beaver.line, apartM, apartM + 1)[0];
+	const startBearing = courseEndBearing(slice(beaver.line, apartM, beaver.lineM), false);
+	assert.ok(startBearing !== null);
+	const apart: GlobalSegmentGeometry = {
+		...beaver.geometry,
+		distance_m: beaver.geometry.distance_m - apartM,
+		startGate: { lat: startAt.lat, lng: startAt.lng, bearingDeg: startBearing, halfWidthM: 15 },
+	};
+	for (const [label, geometry, lapShare] of [
+		['start and finish on one point', beaver.geometry, 1],
+		['start 100 m past the finish', apart, (beaver.lineM - apartM) / beaver.lineM],
+	] as const) {
+		for (const paces of [
+			[270, 360, 330],
+			[360, 270, 330],
+			[360, 330, 270],
+		]) {
+			test(`every lap is timed (${label}): laps at ${paces.join(', ')} s/km, the fastest is the effort over 60 seeds`, () => {
+				const fastest = paces.indexOf(Math.min(...paces));
+				for (let seed = 1; seed <= 60; seed++) {
+					const run = simulate({ ...withPaces(paces), seed });
+					const ends = lapEnds.map((m) => run.marks[m]);
+					const starts = [run.marks.lap1_start, ends[0], ends[1]];
+					const laps = ends.map((end, k) => (end - starts[k]) * lapShare);
+					const eff: GlobalSegmentEffortResult | null = computeGlobalSegmentEfforts(toTrack(run.fixes, baseMs), [
+						geometry,
+					])[0];
+					assert.ok(eff, `seed ${seed}: no effort`);
+					// Which lap it is, not how close: two line crossings' GPS error
+					// over 60 seeds reaches past one case's tolerance (6.1 s at
+					// worst here), but never near a quarter of the gap to the
+					// next-fastest lap (27 s or more).
+					const errs = laps.map((l) => Math.abs(eff.time_seconds - l));
+					const next = Math.min(...laps.filter((_, k) => k !== fastest));
+					assert.ok(
+						errs[fastest] < (next - laps[fastest]) / 4,
+						`seed ${seed}: timed ${eff.time_seconds.toFixed(1)} s, laps ${laps.map((l) => l.toFixed(1)).join(', ')} s`,
+					);
+				}
+			});
 		}
-	},
-);
+	}
+}

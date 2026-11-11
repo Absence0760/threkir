@@ -192,6 +192,11 @@ function segmentGates(segment) {
   if (!start || !end || !gateUsable(start) || !gateUsable(end)) return null;
   return { start, end };
 }
+function linesChain(start, end) {
+  if (haversineMetres(start.lat, start.lng, end.lat, end.lng) > start.halfWidthM) return false;
+  const turn = ((end.bearingDeg - start.bearingDeg) % 360 + 540) % 360 - 180;
+  return Math.abs(turn) < 90;
+}
 function computeGlobalSegmentEfforts(track, segments, toleranceM = 35) {
   const out = new Array(segments.length).fill(null);
   const line = trackLine(track);
@@ -226,6 +231,7 @@ function scoreByGates(line, index, segment, startGate, endGate, toleranceM) {
   const maxCovered = len * (1 + GLOBAL_SEGMENT_LENGTH_TOLERANCE);
   const startDetector = new GateCrossingDetector(startGate);
   const endDetector = new GateCrossingDetector(endGate);
+  const chained = linesChain(startGate, endGate);
   let pending = [];
   let best = null;
   let prevIdx = -1;
@@ -241,26 +247,28 @@ function scoreByGates(line, index, segment, startGate, endGate, toleranceM) {
     const fix = { lat, lng, tMs, coveredM: index.cum[i] };
     const endCrossing = endDetector.offer(fix);
     const startCrossing = startDetector.offer(fix);
-    let closed = false;
-    if (endCrossing !== null && endCrossing.direction === "forward") {
-      pending = pending.filter((s) => endCrossing.coveredM - s.crossing.coveredM <= maxCovered);
+    const endForward = endCrossing !== null && endCrossing.direction === "forward" ? endCrossing : null;
+    let closedBy = null;
+    if (endForward !== null) {
+      pending = pending.filter((s) => endForward.coveredM - s.crossing.coveredM <= maxCovered);
       let pick = null;
       for (const s of pending) {
-        if (endCrossing.coveredM - s.crossing.coveredM < minCovered) continue;
+        if (endForward.coveredM - s.crossing.coveredM < minCovered) continue;
         if (!passesCheckpoints(line, segment.checkpoints, s.fromIdx, i, toleranceM)) continue;
         pick = s;
       }
       if (pick !== null) {
         const startMs = pick.crossing.tMs;
-        const endMs = endCrossing.tMs;
+        const endMs = endForward.tMs;
         if (endMs > startMs && (best === null || endMs - startMs < best.endMs - best.startMs)) {
           best = { startMs, endMs };
         }
         pending = [];
-        closed = true;
+        closedBy = endForward;
       }
     }
-    if (startCrossing !== null && startCrossing.direction === "forward" && !closed) {
+    if (closedBy !== null && chained) pending.push({ crossing: closedBy, fromIdx: prevIdx });
+    if (startCrossing !== null && startCrossing.direction === "forward" && (closedBy === null || startCrossing.tMs >= closedBy.tMs)) {
       pending.push({ crossing: startCrossing, fromIdx: prevIdx });
     }
     prevIdx = i;

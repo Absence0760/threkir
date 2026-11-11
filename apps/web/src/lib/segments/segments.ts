@@ -131,9 +131,10 @@ function effortFromIndex(
  * differently, so the owner-on-view fallback re-matches efforts an older
  * matcher wrote (`runs.metadata.global_segments_matcher_version`, issue
  * #1308). 1 was the circles-only matcher; 2 times a segment with a usable pair
- * of lines by its line crossings and reads only on-track fixes.
+ * of lines by its line crossings and reads only on-track fixes; 3 times every
+ * complete lap of a loop, so a run's fastest lap is its effort (§ 2463).
  */
-export const GLOBAL_SEGMENT_MATCHER_VERSION = 2;
+export const GLOBAL_SEGMENT_MATCHER_VERSION = 3;
 
 /** Covered distance between the start and end must be within this fraction
  *  of the segment's stored length, whichever way the segment is matched. */
@@ -232,6 +233,21 @@ function segmentGates(segment: GlobalSegmentGeometry): { start: Gate; end: Gate 
 }
 
 /**
+ * Whether a segment's end line is also its start line: the end line's centre
+ * within the start line's reach, facing within 90° of it. A loop whose two
+ * lines are derived from one closed polyline is the usual case (Beaver Lake);
+ * a lollipop or out-and-back finishes facing the other way and is not, since
+ * the runner turns before starting again. On such a loop the crossing that
+ * finishes a lap also starts the next, whichever fix the start line's own
+ * crossing falls on.
+ */
+export function linesChain(start: Gate, end: Gate): boolean {
+	if (haversineMetres(start.lat, start.lng, end.lat, end.lng) > start.halfWidthM) return false;
+	const turn = ((((end.bearingDeg - start.bearingDeg) % 360) + 540) % 360) - 180;
+	return Math.abs(turn) < 90;
+}
+
+/**
  * Scores a run track against a free-standing catalogue-segment geometry
  * and returns the effort time, or null if the run didn't run it.
  *
@@ -242,11 +258,12 @@ function segmentGates(segment: GlobalSegmentGeometry): { start: Gate; end: Gate 
  *   line later in the run, with the covered distance between them within 25%
  *   of the segment's length and every checkpoint passed in order between
  *   them. The time is the interpolated end crossing minus the interpolated
- *   start crossing. Where the run makes more than one such pass the fastest
- *   counts, and the crossing that ends one pass never also starts the next,
- *   which on a loop whose start and end lines coincide means consecutive laps
- *   are not both passes. A run that never crosses the lines is not matched by
- *   the circles instead: no circle fallback.
+ *   start crossing. Every complete lap is a candidate and the fastest
+ *   counts. Laps never overlap: once a lap closes, only a start crossing at
+ *   or after its finish can open the next, and on a loop whose end line is
+ *   its start line (`linesChain`) the finish itself opens it (decisions
+ *   § 2463). A run that never crosses the lines is not matched by the
+ *   circles instead: no circle fallback.
  * - **Circles** (no usable pair of lines): the v1 CURATED end-to-end match,
  *   NOT arbitrary-geometry HMM matching (deferred — see
  *   docs/features/segments.md): the run must approach the segment's START
@@ -344,6 +361,7 @@ function scoreByGates(
 	const startDetector = new GateCrossingDetector(startGate);
 	const endDetector = new GateCrossingDetector(endGate);
 
+	const chained = linesChain(startGate, endGate);
 	let pending: PendingStart[] = [];
 	let best: { startMs: number; endMs: number } | null = null;
 	let prevIdx = -1;
@@ -362,29 +380,39 @@ function scoreByGates(
 		const fix = { lat, lng, tMs, coveredM: index.cum[i] };
 		const endCrossing = endDetector.offer(fix);
 		const startCrossing = startDetector.offer(fix);
+		const endForward = endCrossing !== null && endCrossing.direction === 'forward' ? endCrossing : null;
 
-		let closed = false;
-		if (endCrossing !== null && endCrossing.direction === 'forward') {
-			pending = pending.filter((s) => endCrossing.coveredM - s.crossing.coveredM <= maxCovered);
+		let closedBy: GateCrossing | null = null;
+		if (endForward !== null) {
+			pending = pending.filter((s) => endForward.coveredM - s.crossing.coveredM <= maxCovered);
 			// Pending starts are in time order, so the last valid one is the
-			// latest start and so the fastest pass ending here.
+			// latest start and so the fastest lap ending here.
 			let pick: PendingStart | null = null;
 			for (const s of pending) {
-				if (endCrossing.coveredM - s.crossing.coveredM < minCovered) continue;
+				if (endForward.coveredM - s.crossing.coveredM < minCovered) continue;
 				if (!passesCheckpoints(line, segment.checkpoints, s.fromIdx, i, toleranceM)) continue;
 				pick = s;
 			}
 			if (pick !== null) {
 				const startMs = pick.crossing.tMs;
-				const endMs = endCrossing.tMs;
+				const endMs = endForward.tMs;
 				if (endMs > startMs && (best === null || endMs - startMs < best.endMs - best.startMs)) {
 					best = { startMs, endMs };
 				}
+				// Laps never overlap: nothing that started before this finish
+				// can start the next lap.
 				pending = [];
-				closed = true;
+				closedBy = endForward;
 			}
 		}
-		if (startCrossing !== null && startCrossing.direction === 'forward' && !closed) {
+		// On a loop whose end line is its start line, the finish opens the next
+		// lap; any start crossing at or after it is a later candidate start.
+		if (closedBy !== null && chained) pending.push({ crossing: closedBy, fromIdx: prevIdx });
+		if (
+			startCrossing !== null &&
+			startCrossing.direction === 'forward' &&
+			(closedBy === null || startCrossing.tMs >= closedBy.tMs)
+		) {
 			pending.push({ crossing: startCrossing, fromIdx: prevIdx });
 		}
 		prevIdx = i;

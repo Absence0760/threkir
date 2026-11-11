@@ -562,26 +562,25 @@ export function caseDefs(courses: readonly ParkCourse[]): CaseDef[] {
 			},
 			want: { effort: false },
 		});
-		// Three laps back to back, the second fastest. On a loop whose start and
-		// end lines sit on one point, the crossing that closes a lap never opens
-		// the next, so laps 1 and 3 are passes and lap 2 is not (decisions
-		// § 2402, m6). The fastest of 1 and 3 is the time.
+		// Three laps back to back, the second fastest. Every complete lap is
+		// timed and the finish of one is the start of the next, so the fastest
+		// lap is the time wherever it falls (decisions § 2463).
 		defs.push({
 			key: 'beaver_three_laps',
 			name: 'beaver-lake-trail: three laps back to back, the middle one fastest',
 			course: beaver.slug,
-			why: 'laps at 6:00, 4:30 and 5:30/km with no stop between: the lap that closes a pass never opens the next',
+			why: 'laps at 6:00, 4:30 and 5:30/km with no stop between: every lap is timed, so the second, the fastest, is the time',
 			plan: {
 				seed: 116,
 				steps: [
 					...arrive(beaver, paceMps(360), 'lap1_start'),
 					{ kind: 'move', path: beaver.line, speedMps: paceMps(360), endMark: 'lap1_end' },
-					{ kind: 'move', path: beaver.line.slice(1), speedMps: paceMps(270), endMark: 'lap2_end' },
-					{ kind: 'move', path: beaver.line.slice(1), speedMps: paceMps(330), endMark: 'lap3_end' },
+					{ kind: 'move', path: beaver.line, speedMps: paceMps(270), endMark: 'lap2_end' },
+					{ kind: 'move', path: beaver.line, speedMps: paceMps(330), endMark: 'lap3_end' },
 					...leave(beaver.line[beaver.line.length - 1], beaver.gates.end.bearingDeg, paceMps(330)),
 				],
 			},
-			want: { effort: true, from: 'lap2_end', to: 'lap3_end' },
+			want: { effort: true, from: 'lap1_end', to: 'lap2_end' },
 		});
 	}
 

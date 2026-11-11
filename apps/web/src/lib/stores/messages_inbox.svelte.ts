@@ -386,8 +386,9 @@ class MessagesInboxStore {
 		this.invites = this.invites.filter((i) => i.conversationId !== conversationId);
 	}
 
-	/// After leaving a group: the row stays as "You left" while it holds a
-	/// message of the runner's own, else it goes.
+	/// After leaving a group, or the open thread finding the runner removed:
+	/// the row stays as "You left" while it holds a message of the runner's
+	/// own, else it goes.
 	async afterLeave() {
 		await this.refreshThreads();
 		void dmUnreadStore.refresh();

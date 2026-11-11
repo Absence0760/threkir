@@ -153,6 +153,7 @@
 		} catch (e) {
 			if (id !== groupId) return;
 			if (e instanceof AppError && e.key === 'groups.notFound') {
+				const wasMember = membership === 'active';
 				members = [];
 				membership = 'outside';
 				// D12: someone who left or was removed reads only their own
@@ -161,6 +162,10 @@
 				messages = messages.filter((x) => x.sender_id === me);
 				placeholders = [];
 				reactions = [];
+				// The inbox beside the thread still holds the group's row and
+				// its last message until its own poll; a removal read here is
+				// the earlier signal, so the list is re-read now.
+				if (wasMember) void messagesInbox.afterLeave();
 			} else {
 				console.warn('group members read failed', e);
 			}

@@ -55,7 +55,7 @@
 	}
 	code {
 		font-family: var(--font-mono, monospace);
-		font-size: 0.9em;
+		font-size: 0.875rem;
 		background: var(--color-bg-tertiary);
 		border-radius: var(--radius-sm, 4px);
 		padding: 0 0.2rem;

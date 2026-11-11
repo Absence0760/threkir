@@ -29,10 +29,10 @@
 	.notices {
 		padding: var(--space-md);
 		border: 1px solid var(--color-border);
-		border-left: 4px solid var(--color-warning);
+		border-inline-start: 4px solid var(--color-warning);
 		border-radius: var(--radius-md);
 		background: var(--color-surface);
-		text-align: left;
+		text-align: start;
 	}
 	.notices-title {
 		display: flex;
@@ -48,7 +48,7 @@
 	}
 	ul {
 		margin: 0;
-		padding-left: 1.1rem;
+		padding-inline-start: 1.1rem;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xs);

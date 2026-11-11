@@ -1078,9 +1078,11 @@ The notification → deep-link routing (was 13). Two cases from [decisions § 23
 
 The chunked following-feed reads (was 12). Three added cases: `FEED_FOLLOWEE_CHUNK` and `packages/api_client/lib/src/chunk.dart`'s `kInFilterChunk` each name the other as a mirror in their own docs and nothing compared them — the pair is in neither the parity-pair registry nor `check_shared_constants.mjs`, so bumping one alone is a silent split and the platform that went too high loses whole reads on a gateway that answers 200 with an empty match ([decisions § 653](../architecture/decisions.md)). Plus the negative-limit clamp (`slice(0, -1)` drops the last row and returns the rest) and the documented later-chunk-wins fold, which every other case cannot see because it merges disjoint ids.
 
-### `apps/web/src/lib/track_preview_mount_guard.test.ts` — 8 tests · `live_region_mount_guard.test.ts` — 3 tests
+### `apps/web/src/lib/track_preview_mount_guard.test.ts` — 9 tests · `live_region_mount_guard.test.ts` — 3 tests
 
 Both gained a non-vacuity control (was 5 and 2). Each guard reports an empty offender list when it works AND when it sees nothing at all, and only the matcher half had fixtures: a walk that reaches no file, an `aria-live` filter that stops matching the app's own markup, or a `<TrackPreview` matcher that stops seeing a mount each turns the guard into a green check over an unscanned tree ([§ 762](../architecture/decisions.md)'s rule, applied to two guards that predate it). The `TrackPreview` control is a POSITIVE one taken off the real permitted wrappers rather than a fixture, so it cannot drift away from what it checks.
+
+The ninth holds the official park-course catalogue mount (`routes/parks/[region]/[park]/+page.svelte`, the `CATALOGUE_MOUNTS` register): it must import its courses through `fetchParkCourses` by name and must not reach a runner's run or route read, since its geometry is published catalogue lines with no owner to clip for.
 
 ### `apps/web/src/lib/static_map_image_guard.test.ts` — 5 tests
 

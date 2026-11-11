@@ -60,6 +60,7 @@ const MAP_SURFACES: Record<string, ['shared' | 'unkeyed', string]> = {
 	'lib/components/CoursePreview3D.svelte': ['shared', 'the 3D course preview'],
 	'lib/components/course_preview/flyover_video_export.ts': ['shared', 'the offscreen map the flyover video records'],
 	'lib/components/CourseLinesMap.svelte': ['shared', 'a course\'s start and finish lines, and the editor that moves them'],
+	'lib/components/parks/ParkCoursesMap.svelte': ['shared', 'a park\'s official courses and their start pins'],
 };
 
 /// Infrastructure, not a surface: the MapLibre re-export and the resize
@@ -264,7 +265,7 @@ test('a map surface resolves its style URL through the shared precedence', () =>
 	}
 	assert.equal(
 		Object.keys(MAP_SURFACES).length,
-		10,
+		11,
 		'the population this scan ran over — a shrinking register would let it pass over nothing',
 	);
 	assert.deepEqual(

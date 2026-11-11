@@ -216,7 +216,7 @@
 	}
 	.trap {
 		position: absolute;
-		left: -10000px;
+		left: -9999px;
 		width: 1px;
 		height: 1px;
 		overflow: hidden;

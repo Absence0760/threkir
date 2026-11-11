@@ -340,7 +340,7 @@ Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_course
 - [ ] Run-detail chip with the season rank ("3rd this year on …"); `run_park_course_times` already returns it.
 - [ ] Create the official yearly passport challenge (official club, `park_region_code = 'US-VA'`) once the first courses are loaded (operator step).
 - [ ] NPS closures job and status tooling (Phase 6).
-- [x] A rights holder can report a course with its own `rights_holder_request` reason (email required, uncapped, answered within two business days in `/admin/reports`), and a course's season best reads "Fastest in {year}", never "record" (2026-11-11, decisions § 2460 / § 2469). Counsel reviews the Terms § 4 change before the release that carries it.
+- [x] A rights holder can report a course with its own `rights_holder_request` reason (email required, uncapped, acknowledged within two business days in `/admin/reports`), and a course's season best reads "Fastest in {year}", never "record" (2026-11-11, decisions § 2460 / § 2469). Counsel reviews the Terms § 4 change before the release that carries it.
 
 ### Elevation and pace analysis (post-run)
 

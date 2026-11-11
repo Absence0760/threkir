@@ -20,8 +20,8 @@
 //      same database, and nothing is scanned: no scan means no exposure to an
 //      OSV database outage on a PR that could not fail anyway.
 //   3. Otherwise HEAD is scanned, then <base> in a detached worktree, both with
-//      the same pinned binary, `--offline-vulnerabilities` and the same
-//      database cache. Head goes first: the second download can only be newer,
+//      the same pinned binary, `--offline-vulnerabilities`, no call analysis
+//      and the same database cache. Head goes first: the second download can only be newer,
 //      so an advisory published between the two scans can appear at the base
 //      only, never at the head only, and cannot read as introduced.
 //   4. Findings are keyed by (ecosystem, package, version, advisory id). A
@@ -413,6 +413,10 @@ export function scan(scanner, root, outFile, log, delayMs = RETRY_DELAY_MS) {
 		'--recursive',
 		'--offline-vulnerabilities',
 		'--download-offline-databases',
+		// Call analysis runs govulncheck, which needs a Go toolchain and the
+		// module proxy: a second network dependency, and a local `go` older
+		// than a go.mod's `go` line exits 127. The gate reads lockfiles only.
+		'--no-call-analysis=all',
 		'--all-packages',
 		'--format',
 		'json',
@@ -427,7 +431,9 @@ export function scan(scanner, root, outFile, log, delayMs = RETRY_DELAY_MS) {
 		rmSync(outFile, { force: true });
 		const r = spawnSync(scanner, args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 		status = r.status;
-		detail = (r.error?.message ?? '') + (r.stderr ?? '').split('\n').filter(Boolean).slice(-3).join(' | ');
+		const lines = (r.stderr ?? '').split('\n').filter(Boolean);
+		const errs = lines.filter((l) => /error|unable|could not|failed/i.test(l));
+		detail = [r.error?.message, ...(errs.length ? errs : lines).slice(-3)].filter(Boolean).join(' | ').slice(0, 600);
 		if (status !== null && SCANNER_OK.has(status)) {
 			if (status === 128 && !existsSync(outFile)) return { ok: true, report: { results: [] } };
 			try {

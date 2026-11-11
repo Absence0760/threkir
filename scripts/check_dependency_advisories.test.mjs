@@ -273,6 +273,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2);
 const out = args[args.indexOf('--output-file') + 1];
+if (process.env.FAKE_ARGS) fs.writeFileSync(process.env.FAKE_ARGS, JSON.stringify(args));
 const counter = process.env.FAKE_COUNTER;
 let n = 0;
 if (counter) { n = fs.existsSync(counter) ? Number(fs.readFileSync(counter, 'utf8')) : 0; fs.writeFileSync(counter, String(n + 1)); }
@@ -318,11 +319,15 @@ test('an outage exit is retried once and then succeeds', () => {
 		writeFileSync(join(dir, 'fake-report.json'), '{"results": []}');
 		/** @type {string[]} */
 		const log = [];
-		withEnv({ FAKE_COUNTER: join(dir, 'n'), FAKE_FAIL_TIMES: '1' }, () => {
+		withEnv({ FAKE_COUNTER: join(dir, 'n'), FAKE_FAIL_TIMES: '1', FAKE_ARGS: join(dir, 'args.json') }, () => {
 			const r = scan(scanner, dir, join(dir, 'out.json'), (l) => log.push(l), 0);
 			assert.equal(r.ok, true);
 		});
-		assert.match(log[0], /^::warning::osv-scanner exited 127 .*retrying once/);
+		assert.match(log[0], /^::warning::osv-scanner exited 127 .*unable to fetch OSV database.*retrying once/);
+		const args = JSON.parse(readFileSync(join(dir, 'args.json'), 'utf8'));
+		for (const flag of ['--offline-vulnerabilities', '--download-offline-databases', '--no-call-analysis=all', '--all-packages']) {
+			assert.ok(args.includes(flag), flag);
+		}
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}

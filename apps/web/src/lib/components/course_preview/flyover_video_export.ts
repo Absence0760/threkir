@@ -38,6 +38,8 @@ import {
 	type VideoOverlayLayout,
 } from './video_overlay.ts';
 import { videoMapViewport, videoOverviewPadding, type VideoMapViewport } from './video_viewport.ts';
+import { headingWindowM, mascotHeadingDeg, screenYawDeg, videoTrotPhase } from './mascot/mascot_motion.ts';
+import { loadMascot, MASCOT_BOX_CSS_PX, type MascotRenderer } from './mascot/mascot_renderer.ts';
 
 const FLIGHT_ZOOM = 14;
 const SETTLE_TIMEOUT_MS = 4000;
@@ -76,6 +78,9 @@ export interface FlyoverVideoInput {
 	/// `terrainExaggeration` of the recorded line's relief, as the dialog uses.
 	exaggeration: number;
 	text: FlyoverVideoText;
+	/// The exporting viewer's `show_mascot`: on, Grisnir trots the line in
+	/// place of the dot, as he does in the dialog (decisions § 2455).
+	showMascot: boolean;
 	plan: VideoEncoderPlan;
 	signal: AbortSignal;
 	onprogress: (fraction: number) => void;
@@ -187,6 +192,10 @@ interface Scene {
 	viewport: VideoMapViewport;
 	attribution: string;
 	mark: HTMLImageElement | null;
+	/// Null draws the dot: him hidden, or his renderer unavailable.
+	mascot: MascotRenderer | null;
+	speedMps: number;
+	fps: number;
 	strip: { line: Path2D | null; area: Path2D | null; climbs: { x0: number; x1: number }[] };
 }
 
@@ -196,6 +205,7 @@ function composeFrame(
 	mapCanvas: HTMLCanvasElement,
 	map: maplibregl.Map,
 	frame: VideoFrame,
+	index: number,
 ) {
 	const { input, layout: L } = scene;
 	const W = L.width;
@@ -218,13 +228,15 @@ function composeFrame(
 	// `project` answers in the map's CSS pixels; the frame is video pixels.
 	const at = map.project([here.lng, here.lat]);
 	const k = scene.viewport.pixelRatio;
-	ctx.beginPath();
-	ctx.arc(at.x * k, at.y * k, 14, 0, Math.PI * 2);
-	ctx.fillStyle = mapAccentColour(scene.darkBasemap);
-	ctx.fill();
-	ctx.lineWidth = 5;
-	ctx.strokeStyle = mapOverlayOutline(scene.darkBasemap);
-	ctx.stroke();
+	if (!drawMascot(ctx, scene, map, frame, index, at.x * k, at.y * k)) {
+		ctx.beginPath();
+		ctx.arc(at.x * k, at.y * k, 14, 0, Math.PI * 2);
+		ctx.fillStyle = mapAccentColour(scene.darkBasemap);
+		ctx.fill();
+		ctx.lineWidth = 5;
+		ctx.strokeStyle = mapOverlayOutline(scene.darkBasemap);
+		ctx.stroke();
+	}
 
 	drawText(ctx, input.text.title, L.title, { weight: 800 });
 	if (scene.mark) ctx.drawImage(scene.mark, L.mark.x, L.mark.y, L.mark.size, L.mark.size);
@@ -289,6 +301,42 @@ function composeFrame(
 	}
 }
 
+/// Grisnir on the frame, the box centred on the course point like the
+/// dialog's marker; false when the dot should be drawn instead. He trots
+/// through the flight on the frame clock and stands once it reaches the
+/// finish. A failed frame drops him for the rest of the file rather than
+/// failing the export.
+function drawMascot(
+	ctx: CanvasRenderingContext2D,
+	scene: Scene,
+	map: maplibregl.Map,
+	frame: VideoFrame,
+	index: number,
+	x: number,
+	y: number,
+): boolean {
+	const mascot = scene.mascot;
+	if (!mascot) return false;
+	try {
+		if (!mascot.usable) throw new Error('WebGL context lost');
+		const { path } = scene.input;
+		const heading = mascotHeadingDeg(path, frame.dM, headingWindowM(scene.speedMps));
+		mascot.draw({
+			yawDeg: screenYawDeg(heading, map.getBearing()),
+			pitchDeg: map.getPitch(),
+			phase: frame.phase === 'flight' ? videoTrotPhase(index, scene.fps, scene.speedMps) : null,
+		});
+		const size = mascot.canvas.width;
+		ctx.drawImage(mascot.canvas, x - size / 2, y - size / 2, size, size);
+		return true;
+	} catch (e) {
+		console.warn('flyover video: Grisnir frame failed, drawing the dot', e);
+		scene.mascot = null;
+		mascot.dispose();
+		return false;
+	}
+}
+
 /// The whole-course overview in the video's map, or null when the map cannot
 /// fit the bounds (the video then holds the finish, as it used to).
 function overviewTarget(
@@ -333,6 +381,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 	const ctx = out.getContext('2d');
 	let map: maplibregl.Map | null = null;
 	let sink: FrameSink | null = null;
+	let mascot: MascotRenderer | null = null;
 	try {
 		if (!ctx) throw new Error('no 2D canvas');
 		const speedMps = videoFlightSpeedMps(t, path.totalM);
@@ -353,7 +402,14 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true },
 		});
 		const m = map;
-		const [mark] = await Promise.all([loadImage('/logo-mark.svg'), waitForLoad(m, signal)]);
+		const mascotCanvas = document.createElement('canvas');
+		const [mark, loadedMascot] = await Promise.all([
+			loadImage('/logo-mark.svg'),
+			input.showMascot ? loadMascot(mascotCanvas, { preserveDrawingBuffer: true }) : Promise.resolve(null),
+			waitForLoad(m, signal),
+		]);
+		mascot = loadedMascot;
+		mascot?.setSize(MASCOT_BOX_CSS_PX * viewport.pixelRatio);
 		if (input.terrain) {
 			try {
 				addCourseTerrain(m, input.terrain, { exaggeration: input.exaggeration, darkBasemap });
@@ -374,6 +430,9 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 			viewport,
 			attribution: videoAttribution([...styleCredits, input.terrain?.attribution]),
 			mark,
+			mascot,
+			speedMps,
+			fps: t.fps,
 			strip: {
 				line: geom.line ? new Path2D(geom.line) : null,
 				area: geom.area ? new Path2D(geom.area) : null,
@@ -397,7 +456,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 				const cam = finaleCamera(from, overview, frame.tMs, VIDEO_FINALE);
 				await settle(m, () => m.jumpTo(cam));
 			}
-			composeFrame(ctx, scene, mapCanvas, m, frame);
+			composeFrame(ctx, scene, mapCanvas, m, frame, i);
 			await sink.push(out, i);
 			input.onprogress((i + 1) / t.totalFrames);
 		}
@@ -406,6 +465,7 @@ export async function renderFlyoverVideo(input: FlyoverVideoInput): Promise<Blob
 		return blob;
 	} finally {
 		sink?.abort();
+		mascot?.dispose();
 		map?.remove();
 		host.remove();
 	}

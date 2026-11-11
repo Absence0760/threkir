@@ -675,6 +675,7 @@
 					endLines: [videoSummary ?? formatDistance(vPath.totalM * vScale), title],
 					url: new URL(DEFAULT_SITE_URL).host,
 				},
+				showMascot: showMascot === true,
 				plan,
 				signal: abort.signal,
 				onprogress: (f) => {

@@ -14960,17 +14960,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get racesSectionAnyTime => 'Run any time';
 
   @override
-  String racesAnyTimeRecord(String year, String time) {
-    return '$year record: $time';
+  String racesAnyTimeFastest(String year, String time) {
+    return 'Fastest in $year: $time';
   }
 
   @override
-  String racesAnyTimeRecordBy(String year, String time, String name) {
-    return '$year record: $time by $name';
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return 'Fastest in $year: $time by $name';
   }
 
   @override
-  String get racesAnyTimeNoRecord =>
+  String get racesAnyTimeNoTimeYet =>
       'No time yet this season. Yours could be the first.';
 
   @override
@@ -14979,8 +14979,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get racesAnyTimeRecordsFailed =>
-      'Couldn\'t load this season\'s records.';
+  String get racesAnyTimeFastestFailed =>
+      'Couldn\'t load this season\'s fastest times.';
 
   @override
   String get racesSearchPlaceholder => 'Search races by name…';

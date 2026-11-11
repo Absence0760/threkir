@@ -19953,9 +19953,9 @@
   "@racesSectionAnyTime": {
     "description": "Heading of the park-courses section on Races & courses: standing courses that can be run on any day, unlike a race. Mirrors web races.sectionAnyTime"
   },
-  "racesAnyTimeRecord": "{year} record: {time}",
-  "@racesAnyTimeRecord": {
-    "description": "A park course's fastest time this season, when the record holder's name is hidden. Mirrors web races.anyTimeRecord",
+  "racesAnyTimeFastest": "Fastest in {year}: {time}",
+  "@racesAnyTimeFastest": {
+    "description": "A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest",
     "placeholders": {
       "year": {
         "type": "String",
@@ -19967,9 +19967,9 @@
       }
     }
   },
-  "racesAnyTimeRecordBy": "{year} record: {time} by {name}",
-  "@racesAnyTimeRecordBy": {
-    "description": "A park course's fastest time this season and who ran it. Mirrors web races.anyTimeRecordBy",
+  "racesAnyTimeFastestBy": "Fastest in {year}: {time} by {name}",
+  "@racesAnyTimeFastestBy": {
+    "description": "A park course's fastest time this season and who ran it. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastestBy",
     "placeholders": {
       "year": {
         "type": "String",
@@ -19985,9 +19985,9 @@
       }
     }
   },
-  "racesAnyTimeNoRecord": "No time yet this season. Yours could be the first.",
-  "@racesAnyTimeNoRecord": {
-    "description": "A park course with no recorded time this season. Mirrors web races.anyTimeNoRecord"
+  "racesAnyTimeNoTimeYet": "No time yet this season. Yours could be the first.",
+  "@racesAnyTimeNoTimeYet": {
+    "description": "A park course with no recorded time this season. Mirrors web races.anyTimeNoTimeYet"
   },
   "racesAnyTimeAway": "{distance} away",
   "@racesAnyTimeAway": {
@@ -19999,9 +19999,9 @@
       }
     }
   },
-  "racesAnyTimeRecordsFailed": "Couldn't load this season's records.",
-  "@racesAnyTimeRecordsFailed": {
-    "description": "Shown above the park courses when this season's records failed to load; the courses still list. Mirrors web races.anyTimeRecordsFailed"
+  "racesAnyTimeFastestFailed": "Couldn't load this season's fastest times.",
+  "@racesAnyTimeFastestFailed": {
+    "description": "Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed"
   },
   "racesSearchPlaceholder": "Search races by name…",
   "@racesSearchPlaceholder": {

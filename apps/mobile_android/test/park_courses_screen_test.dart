@@ -456,7 +456,7 @@ void main() {
       );
       await _settle(tester);
       expect(
-        _inCard('a', find.text('2026 record: 25:00 by Bea')),
+        _inCard('a', find.text('Fastest in 2026: 25:00 by Bea')),
         findsOneWidget,
       );
       expect(

@@ -14388,17 +14388,17 @@ class AppLocalizationsJa extends AppLocalizations {
   String get racesSectionAnyTime => 'いつでも走れる';
 
   @override
-  String racesAnyTimeRecord(String year, String time) {
-    return '$year年の記録：$time';
+  String racesAnyTimeFastest(String year, String time) {
+    return '$year年の最速タイム：$time';
   }
 
   @override
-  String racesAnyTimeRecordBy(String year, String time, String name) {
-    return '$year年の記録：$time（$name）';
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return '$year年の最速タイム：$time（$name）';
   }
 
   @override
-  String get racesAnyTimeNoRecord => '今シーズンはまだタイムがありません。最初の記録になるかもしれません。';
+  String get racesAnyTimeNoTimeYet => '今シーズンはまだタイムがありません。最初のタイムを残せるかもしれません。';
 
   @override
   String racesAnyTimeAway(String distance) {
@@ -14406,7 +14406,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get racesAnyTimeRecordsFailed => '今シーズンの記録を読み込めませんでした。';
+  String get racesAnyTimeFastestFailed => '今シーズンの最速タイムを読み込めませんでした。';
 
   @override
   String get racesSearchPlaceholder => 'レースを名前で検索…';
@@ -20287,7 +20287,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get parksNoEfforts => 'このランキングにはまだタイムがありません。コースを走れば最初の記録になります。';
+  String get parksNoEfforts => 'このランキングにはまだタイムがありません。コースを走れば最初のタイムを残せます。';
 
   @override
   String get parksSignInForBoards => 'このコースのランキングを見るにはサインインしてください。';

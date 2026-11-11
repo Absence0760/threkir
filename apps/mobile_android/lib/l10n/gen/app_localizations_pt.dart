@@ -15114,17 +15114,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get racesSectionAnyTime => 'Corra quando quiser';
 
   @override
-  String racesAnyTimeRecord(String year, String time) {
-    return 'Recorde de $year: $time';
+  String racesAnyTimeFastest(String year, String time) {
+    return 'Tempo mais rápido em $year: $time';
   }
 
   @override
-  String racesAnyTimeRecordBy(String year, String time, String name) {
-    return 'Recorde de $year: $time, de $name';
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return 'Tempo mais rápido em $year: $time, de $name';
   }
 
   @override
-  String get racesAnyTimeNoRecord =>
+  String get racesAnyTimeNoTimeYet =>
       'Ainda não há tempos nesta época. O seu pode ser o primeiro.';
 
   @override
@@ -15133,8 +15133,8 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get racesAnyTimeRecordsFailed =>
-      'Não foi possível carregar os recordes desta época.';
+  String get racesAnyTimeFastestFailed =>
+      'Não foi possível carregar os tempos mais rápidos desta época.';
 
   @override
   String get racesSearchPlaceholder => 'Procurar provas por nome…';
@@ -37401,17 +37401,17 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   String get racesSectionAnyTime => 'Corra quando quiser';
 
   @override
-  String racesAnyTimeRecord(String year, String time) {
-    return 'Recorde de $year: $time';
+  String racesAnyTimeFastest(String year, String time) {
+    return 'Tempo mais rápido em $year: $time';
   }
 
   @override
-  String racesAnyTimeRecordBy(String year, String time, String name) {
-    return 'Recorde de $year: $time, de $name';
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return 'Tempo mais rápido em $year: $time, de $name';
   }
 
   @override
-  String get racesAnyTimeNoRecord =>
+  String get racesAnyTimeNoTimeYet =>
       'Ainda não há tempos nesta temporada. O seu pode ser o primeiro.';
 
   @override
@@ -37420,8 +37420,8 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get racesAnyTimeRecordsFailed =>
-      'Não foi possível carregar os recordes desta temporada.';
+  String get racesAnyTimeFastestFailed =>
+      'Não foi possível carregar os tempos mais rápidos desta temporada.';
 
   @override
   String get racesSearchPlaceholder => 'Pesquisar corridas por nome…';

@@ -15129,17 +15129,17 @@ class AppLocalizationsDe extends AppLocalizations {
   String get racesSectionAnyTime => 'Jederzeit laufen';
 
   @override
-  String racesAnyTimeRecord(String year, String time) {
-    return 'Rekord $year: $time';
+  String racesAnyTimeFastest(String year, String time) {
+    return 'Schnellste Zeit $year: $time';
   }
 
   @override
-  String racesAnyTimeRecordBy(String year, String time, String name) {
-    return 'Rekord $year: $time von $name';
+  String racesAnyTimeFastestBy(String year, String time, String name) {
+    return 'Schnellste Zeit $year: $time von $name';
   }
 
   @override
-  String get racesAnyTimeNoRecord =>
+  String get racesAnyTimeNoTimeYet =>
       'In dieser Saison noch keine Zeit. Deine könnte die erste sein.';
 
   @override
@@ -15148,8 +15148,8 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get racesAnyTimeRecordsFailed =>
-      'Die Rekorde dieser Saison konnten nicht geladen werden.';
+  String get racesAnyTimeFastestFailed =>
+      'Die schnellsten Zeiten dieser Saison konnten nicht geladen werden.';
 
   @override
   String get racesSearchPlaceholder => 'Rennen nach Name suchen…';

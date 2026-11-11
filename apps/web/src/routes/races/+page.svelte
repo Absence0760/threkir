@@ -494,7 +494,7 @@
 		{:else}
 			{#if recordsFailed}
 				<p class="records-failed" role="status" data-testid="races-any-time-records-failed">
-					{m('races.anyTimeRecordsFailed')}
+					{m('races.anyTimeFastestFailed')}
 					<button type="button" class="btn btn-outline btn-sm" onclick={loadRecords}>{m('parks.retry')}</button>
 				</p>
 			{/if}
@@ -519,10 +519,10 @@
 								<span class="course-record" data-testid="races-any-time-record">
 									{#if record}
 										{record.displayName
-											? m('races.anyTimeRecordBy', { year: record.season, time: formatDuration(record.timeSeconds), name: record.displayName })
-											: m('races.anyTimeRecord', { year: record.season, time: formatDuration(record.timeSeconds) })}
+											? m('races.anyTimeFastestBy', { year: record.season, time: formatDuration(record.timeSeconds), name: record.displayName })
+											: m('races.anyTimeFastest', { year: record.season, time: formatDuration(record.timeSeconds) })}
 									{:else}
-										{m('races.anyTimeNoRecord')}
+										{m('races.anyTimeNoTimeYet')}
 									{/if}
 								</span>
 							{/if}

@@ -24470,23 +24470,23 @@ abstract class AppLocalizations {
   /// **'Run any time'**
   String get racesSectionAnyTime;
 
-  /// A park course's fastest time this season, when the record holder's name is hidden. Mirrors web races.anyTimeRecord
+  /// A park course's fastest time this season, when the runner's name is hidden. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastest
   ///
   /// In en, this message translates to:
-  /// **'{year} record: {time}'**
-  String racesAnyTimeRecord(String year, String time);
+  /// **'Fastest in {year}: {time}'**
+  String racesAnyTimeFastest(String year, String time);
 
-  /// A park course's fastest time this season and who ran it. Mirrors web races.anyTimeRecordBy
+  /// A park course's fastest time this season and who ran it. Never call it a record: these are Threkir times, not an event's results (decisions § 2460). Mirrors web races.anyTimeFastestBy
   ///
   /// In en, this message translates to:
-  /// **'{year} record: {time} by {name}'**
-  String racesAnyTimeRecordBy(String year, String time, String name);
+  /// **'Fastest in {year}: {time} by {name}'**
+  String racesAnyTimeFastestBy(String year, String time, String name);
 
-  /// A park course with no recorded time this season. Mirrors web races.anyTimeNoRecord
+  /// A park course with no recorded time this season. Mirrors web races.anyTimeNoTimeYet
   ///
   /// In en, this message translates to:
   /// **'No time yet this season. Yours could be the first.'**
-  String get racesAnyTimeNoRecord;
+  String get racesAnyTimeNoTimeYet;
 
   /// How far a park course's start is from the runner. Mirrors web races.anyTimeAway
   ///
@@ -24494,11 +24494,11 @@ abstract class AppLocalizations {
   /// **'{distance} away'**
   String racesAnyTimeAway(String distance);
 
-  /// Shown above the park courses when this season's records failed to load; the courses still list. Mirrors web races.anyTimeRecordsFailed
+  /// Shown above the park courses when this season's fastest times failed to load; the courses still list. Mirrors web races.anyTimeFastestFailed
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t load this season\'s records.'**
-  String get racesAnyTimeRecordsFailed;
+  /// **'Couldn\'t load this season\'s fastest times.'**
+  String get racesAnyTimeFastestFailed;
 
   /// Placeholder for the race name search field
   ///

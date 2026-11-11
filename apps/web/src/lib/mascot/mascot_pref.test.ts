@@ -121,6 +121,16 @@ test('load: a failed read falls back to the cached answer', async () => {
 	assert.equal(await quietlyAsync(() => loadMascotShownFrom(source({ load: failing }))), null);
 });
 
+test('load: a server read that failed on a cold cache is unknown, not on', async () => {
+	// loadSettings resolves here instead of throwing, with empty bags and
+	// universalUnknown set; reading those as "nobody hid him" showed him.
+	const coldOffline = async (): Promise<LoadedSettings> => ({ universal: {}, device: {}, universalUnknown: true });
+	assert.equal(await loadMascotShownFrom(source({ load: coldOffline })), null);
+	// A device-bag value is still the runner's own answer.
+	const deviceOff = async (): Promise<LoadedSettings> => ({ universal: {}, device: { show_mascot: false }, universalUnknown: true });
+	assert.equal(await loadMascotShownFrom(source({ load: deviceOff })), false);
+});
+
 test('load: a failed read with blocked storage resolves unknown, never rejects', async () => {
 	assert.equal(await quietlyAsync(() => loadMascotShownFrom(source({ load: async () => blocked(), peek: blocked }))), null);
 });

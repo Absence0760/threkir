@@ -24,9 +24,12 @@
 //      and the same database cache. Head goes first: the second download can only be newer,
 //      so an advisory published between the two scans can appear at the base
 //      only, never at the head only, and cannot read as introduced.
-//   4. Findings are keyed by (ecosystem, package, version, advisory id). A
-//      group of aliased advisories is new when none of its ids is at the base.
-//      A new group at `THRESHOLD` or above fails the job.
+//   4. Findings are compared on (ecosystem, package, advisory id), not the
+//      version: bumping an already-advised package to a release the same
+//      advisory still covers adds nothing the base did not have. A group of
+//      aliased advisories is new when none of its ids is on that package at
+//      the base, so a package clean at the base and advised at the head reads
+//      as introduced. A new group at `THRESHOLD` or above fails the job.
 //   5. Each tree's own `osv-scanner.toml` files apply to its own scan, so an
 //      ignore the PR adds is visible in the diff and listed in the summary,
 //      and an ignore the PR removes surfaces its advisory as new.
@@ -244,11 +247,11 @@ export function findingsOf(report, root) {
 }
 
 /** @param {Finding} f */
-const advisoryKeys = (f) => f.ids.map((id) => [f.ecosystem, f.name, f.version, id].join('\u0000'));
+const advisoryKeys = (f) => f.ids.map((id) => [f.ecosystem, f.name, id].join('\u0000'));
 
 /**
  * Head findings none of whose advisory ids is at the base for the same
- * package and version.
+ * package, at any version.
  * @param {readonly Finding[]} head
  * @param {readonly Finding[]} base
  */

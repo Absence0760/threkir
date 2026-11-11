@@ -31,20 +31,27 @@ export_png() {
     -define png:exclude-chunks=date,time -define png:compression-level=9 \
     "PNG32:$WEB/grisnir-$1.png"
 }
-# The badge is only ever drawn as a PNG (an <img> captured by html-to-image,
-# a data URI inside an SVG, a Flutter asset); the rest-day art is a <picture>.
-export_png badge-256
-for name in rest-192 rest-384; do
+# The badge and the head crop are only ever drawn as a PNG (an <img> captured
+# by html-to-image, a data URI inside an SVG, a Flutter asset); the rest,
+# milestone and waiting art is a <picture> on the web.
+for name in badge-256 head-128 head-256; do
   export_png "$name"
-  magick "$WEB/grisnir-$name.png" -define webp:lossless=true -define webp:method=6 \
-    "$WEB/grisnir-$name.webp"
+done
+for pose in rest proud wait; do
+  for px in 192 384; do
+    export_png "$pose-$px"
+    magick "$WEB/grisnir-$pose-$px.png" -define webp:lossless=true -define webp:method=6 \
+      "$WEB/grisnir-$pose-$px.webp"
+  done
 done
 
-# The phones bundle the two they draw; the twin carries identical bytes.
+# The phones bundle the ones they draw; the twin carries identical bytes.
 for app in mobile_android mobile_ios; do
   dir=$ROOT/apps/$app/assets/brand/grisnir
   mkdir -p "$dir"
-  command cp -f "$WEB/grisnir-badge-256.png" "$WEB/grisnir-rest-384.png" "$dir/"
+  for f in badge-256 rest-384 proud-384 wait-384; do
+    command cp -f "$WEB/grisnir-$f.png" "$dir/"
+  done
 done
 
 # Share cards rasterised from an SVG string (the /og/* unfurls, in a Lambda)

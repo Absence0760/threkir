@@ -14,7 +14,9 @@ import kotlinx.coroutines.withContext
 ///
 /// One lock covers all of it, so an undo waits for a filing in flight and no
 /// replay can send the withdrawn finish again behind the delete (the phone
-/// gets the same order from `_filing`, `_drainFuture` and `_voiding`).
+/// gets the same order from `_filing`, `_drainFuture` and `_voiding`, sends
+/// one race's results in order through `_inRaceOrder`, and changes its
+/// queues only under `_underQueueLock`).
 ///
 /// A [CancellationException] is never a send failure: it carries no HTTP
 /// status, so [isRetryableRaceResultFailure] would call it retryable, and the

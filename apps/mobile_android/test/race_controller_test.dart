@@ -68,6 +68,13 @@ class _FakeSocial extends SocialService {
   final List<Object?> submitScript = [];
   int submitCalls = 0;
 
+  /// Awaited before a submit answers, keyed by nothing but the run id, so a
+  /// test can hold one request on the wire while another is filed.
+  Future<void> Function(String? runId)? submitGate;
+
+  /// Per-run outcome, ahead of [submitScript]: an error to throw, or null.
+  Object? Function(String? runId)? submitOutcome;
+
   /// What the default course loader reads. It reaches nothing else: no
   /// route read, and no ApiClient is initialised in a host test.
   final List<EventCourseView> courses;
@@ -141,6 +148,10 @@ class _FakeSocial extends SocialService {
   }) async {
     submitCalls++;
     lastCrossings = crossings;
+    final gate = submitGate;
+    if (gate != null) await gate(runId);
+    final outcome = submitOutcome?.call(runId);
+    if (outcome != null) throw outcome;
     if (submitScript.isNotEmpty) {
       final scripted = submitScript.removeAt(0);
       if (scripted != null) throw scripted;
@@ -522,6 +533,145 @@ void main() {
 
       expect(social.submitted, hasLength(1));
       expect(social.submitted.single.runId, 'run-2');
+    });
+  });
+
+  group('a time queued while a replay is on the wire survives it', () {
+    // The drain used to read the whole queue, await one request per entry,
+    // then write what was left over the key: a finish queued in that window
+    // was wiped if the replayed entry landed, and overwritten by the stale
+    // entry if it failed. Wear's RaceResultOutbox holds one lock for this.
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+    final instance = DateTime.utc(2026, 5, 22, 18);
+
+    PendingRaceResult stale({String eventId = 'event-1'}) => PendingRaceResult(
+          userId: _me,
+          eventId: eventId,
+          instanceStart: instance,
+          runId: 'run-stale',
+          durationS: 1500,
+          distanceM: 5000,
+        );
+
+    Future<void> seed(List<PendingRaceResult> rs) async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          kPendingRaceResultsKey, jsonEncode([for (final r in rs) r.toJson()]));
+    }
+
+    Future<List<String?>> queuedRunIds() async {
+      final raw = (await SharedPreferences.getInstance())
+          .getString(kPendingRaceResultsKey);
+      if (raw == null) return [];
+      return [
+        for (final e in jsonDecode(raw) as List)
+          (e as Map)['run_id'] as String?,
+      ];
+    }
+
+    /// Pump the event queue until [cond] holds, failing loudly rather than
+    /// sleeping when it never does.
+    Future<void> until(bool Function() cond, String what) async {
+      for (var i = 0; i < 50 && !cond(); i++) {
+        await pumpEventQueue();
+      }
+      if (!cond()) fail('never happened: $what');
+    }
+
+    /// Hold the replay of the stale entry on the wire, then file a fresh
+    /// finish for [eventId] by Stop while it is held.
+    Future<void> fileDuringReplay(
+      RaceController c,
+      _FakeSocial social, {
+      String eventId = 'event-1',
+    }) async {
+      final hold = Completer<void>();
+      social.submitGate =
+          (runId) => runId == 'run-stale' ? hold.future : Future<void>.value();
+      final drain = c.drainPendingResults();
+      await until(() => social.submitCalls == 1, 'the replay to go out');
+      c.attachRecorder(eventId: eventId, instance: instance);
+      final filing =
+          c.submitResult(runId: 'run-fresh', durationS: 1400, distanceM: 5000);
+      await pumpEventQueue();
+      hold.complete();
+      await drain;
+      await filing;
+      social.submitGate = null;
+    }
+
+    test('the replayed entry lands: the fresh one queued meanwhile is kept',
+        () async {
+      await seed([stale()]);
+      final social = _FakeSocial()
+        ..submitOutcome = (runId) =>
+            runId == 'run-fresh' ? Exception('no signal') : null;
+      final c = _rc(social);
+
+      await fileDuringReplay(c, social);
+
+      expect(await queuedRunIds(), ['run-fresh']);
+      social.submitOutcome = null;
+      await c.drainPendingResults();
+      expect(social.submitted.last.runId, 'run-fresh');
+      expect(await queuedRunIds(), isEmpty);
+    });
+
+    test('the replayed entry fails: it is not written back over the fresher '
+        'one for the same race', () async {
+      await seed([stale()]);
+      final social = _FakeSocial(failing: true);
+      final c = _rc(social);
+
+      await fileDuringReplay(c, social);
+
+      expect(await queuedRunIds(), ['run-fresh']);
+      social.failing = false;
+      await c.drainPendingResults();
+      expect(social.submitted.map((r) => r.runId), ['run-fresh']);
+    });
+
+    test('a fresh finish that lands is not overtaken by the stale replay',
+        () async {
+      await seed([stale()]);
+      final social = _FakeSocial();
+      final c = _rc(social);
+
+      await fileDuringReplay(c, social);
+
+      expect(social.submitted.last.runId, 'run-fresh',
+          reason: 'the newer time is the last one written for the race');
+      expect(await queuedRunIds(), isEmpty);
+      await c.drainPendingResults();
+      expect(social.submitted.last.runId, 'run-fresh');
+    });
+
+    test("another race's time queued meanwhile survives a replay that lands",
+        () async {
+      await seed([stale()]);
+      final social = _FakeSocial()
+        ..submitOutcome =
+            (runId) => runId == 'run-watch' ? Exception('no signal') : null;
+      final c = _rc(social);
+      final hold = Completer<void>();
+      social.submitGate =
+          (runId) => runId == 'run-stale' ? hold.future : Future<void>.value();
+
+      final drain = c.drainPendingResults();
+      await until(() => social.submitCalls == 1, 'the replay to go out');
+      final accounted = await c.ingestWatchResult(WatchRaceResult(
+        eventId: 'event-2',
+        instanceStart: instance,
+        runId: 'run-watch',
+        durationS: 1300,
+        distanceM: 5000,
+      ));
+      expect(accounted, isTrue,
+          reason: 'the watch is told the time is safe on the phone');
+      hold.complete();
+      await drain;
+
+      expect(await queuedRunIds(), ['run-watch']);
     });
   });
 
@@ -2258,6 +2408,50 @@ void main() {
       expect(fin, isNotNull);
       expect(fin!.detection, RaceFinishDetection.gate);
       expect(c.course?.courseId, 'course-5k');
+    });
+
+    test('a course read while the race was armed is read again at GO, so a '
+        'lap count backfilled into the frozen copy reaches the detector '
+        '(decisions § 2472)', () async {
+      int? frozenLaps;
+      var reads = 0;
+      final c = _rc(_FakeSocial())
+        ..courseLoader = (_, _) async {
+          reads++;
+          return RaceCourse(
+            courseId: 'course-5k',
+            distanceM: 5000,
+            finishLat: lat0,
+            finishLng: lngAt(5000),
+            startGate: startLine,
+            finishGate: finishLine,
+            lapCount: frozenLaps,
+          );
+        };
+      c.activeRaceLoader =
+          () async => [race(status: 'armed', instanceStart: instance)];
+      await c.refreshForTest();
+      await pumpEventQueue();
+      c.beginRecording(startedAt: began);
+      await pumpEventQueue();
+      expect(c.course?.lapCount, isNull);
+
+      // The backfill fills the armed race's frozen copy.
+      frozenLaps = 3;
+      await c.refreshForTest();
+      await pumpEventQueue();
+      expect(reads, 1, reason: 'the same status is read once a session');
+
+      c.activeRaceLoader = () async =>
+          [race(status: 'running', instanceStart: instance, startedAt: gun)];
+      await c.refreshForTest();
+      await pumpEventQueue();
+      expect(reads, 2);
+      expect(c.course?.lapCount, 3);
+      final cached = jsonDecode((await SharedPreferences.getInstance())
+          .getString(kRaceCourseCacheKey)!) as Map;
+      expect((cached['course'] as Map)['lap_count'], 3,
+          reason: 'the copy kept for no signal is the refreshed one');
     });
 
     test('a self-timed attempt times from the start-line crossing', () async {

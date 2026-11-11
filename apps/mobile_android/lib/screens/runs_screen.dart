@@ -791,9 +791,8 @@ class _RunsScreenState extends State<RunsScreen> {
       lastError = friendlyError(l10n, e);
     }
 
-    setState(() => _syncing = false);
-
     if (!mounted) return;
+    setState(() => _syncing = false);
     if (lastError != null) {
       showTopBanner(
         context,

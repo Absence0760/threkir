@@ -5645,4 +5645,85 @@ void main() {
     expect(body.contains(r'$'), isTrue,
         reason: 'the body interpolates nothing — the match is probably wrong');
   });
+
+  // ── setState after dispose ────────────────────────────────────────────
+  //
+  // `setState` on a disposed State throws. Every occurrence below was a real
+  // crash a user could reach by leaving the screen while an async call was
+  // still in flight — the Fitness tab mid-sync, the OS file picker or photo
+  // picker open over an import/photo surface, a tag save on route detail.
+  //
+  // Two mechanical shapes are pinned. Both are cheap source rules because the
+  // paths need a live picker / network leg to reach in a widget test.
+  group('setState is mount-guarded after an await', () {
+    Iterable<File> libDartFiles() sync* {
+      for (final e in Directory('lib').listSync(recursive: true)) {
+        if (e is File && e.path.endsWith('.dart')) yield e;
+      }
+    }
+
+    test('no mounted check sits BELOW the setState it was meant to guard', () {
+      // The exact shape of the runs_screen sync bug: `setState(...)` followed
+      // a line or two later by `if (!mounted) return;`. The author knew a
+      // guard was needed and put it one statement too late, so the crash
+      // happens before the check runs.
+      final offenders = <String>[];
+      for (final f in libDartFiles()) {
+        final lines = f.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          if (!lines[i].contains('setState(')) continue;
+          for (var j = i + 1; j < lines.length && j <= i + 3; j++) {
+            final ahead = lines[j].trim();
+            // An intervening `await` (or a new block / a second setState)
+            // makes a later mounted check the RIGHT guard for whatever
+            // follows it, not a late guard for the setState above.
+            if (ahead.startsWith('}') ||
+                ahead.contains('await ') ||
+                ahead.contains('setState(')) break;
+            if (RegExp(r'if \(!mounted\)\s*return').hasMatch(ahead)) {
+              offenders.add('${f.path}:${i + 1}');
+              break;
+            }
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'a `if (!mounted) return;` appears just AFTER a setState — '
+              'the guard has to come first or it protects nothing:\n'
+              '${offenders.join('\n')}');
+    });
+
+    test('every picker await is mount-checked before the next setState', () {
+      // An OS picker hands control to another app; the user can dismiss the
+      // whole screen from there and come back to a dead State. These are the
+      // awaits in lib/ that leave the app entirely.
+      const triggers = [
+        'pickImage(',
+        'FilePicker.pickFiles(',
+        'await _pick()',
+      ];
+      final offenders = <String>[];
+      for (final f in libDartFiles()) {
+        final src = f.readAsStringSync();
+        for (final trigger in triggers) {
+          var from = 0;
+          while (true) {
+            final at = src.indexOf(trigger, from);
+            if (at < 0) break;
+            from = at + trigger.length;
+            final nextSetState = src.indexOf('setState(', from);
+            final nextMounted = src.indexOf('mounted', from);
+            if (nextSetState < 0) continue;
+            if (nextMounted < 0 || nextMounted > nextSetState) {
+              offenders.add(
+                  '${f.path} (${trigger.trim()} at offset $at)');
+            }
+          }
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'a setState follows a picker await with no mounted check '
+              'in between:\n${offenders.join('\n')}');
+    });
+  });
 }

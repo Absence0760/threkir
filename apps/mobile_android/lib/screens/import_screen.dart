@@ -93,6 +93,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
     try {
       final granted = await HealthConnectImporter.requestPermission();
+      if (!mounted) return;
       if (!granted) {
         setState(() {
           _busy = false;
@@ -239,10 +240,12 @@ class _ImportScreenState extends State<ImportScreen> {
   Future<void> _saveImportedRuns(List<Run> runs,
       {required String label, bool noGpsNote = false}) async {
     final l10n = AppLocalizations.of(context);
-    setState(() {
-      _total = runs.length;
-      _status = l10n.importStatusSavingLocally;
-    });
+    if (mounted) {
+      setState(() {
+        _total = runs.length;
+        _status = l10n.importStatusSavingLocally;
+      });
+    }
 
     final localErrors = <StravaImportError>[];
     final savedRuns = <Run>[];
@@ -331,7 +334,7 @@ class _ImportScreenState extends State<ImportScreen> {
     );
     if (result == null || result.files.isEmpty) return;
     final path = result.files.first.path;
-    if (path == null) return;
+    if (path == null || !mounted) return;
 
     setState(() {
       _busy = true;
@@ -367,7 +370,7 @@ class _ImportScreenState extends State<ImportScreen> {
     );
     if (picked == null || picked.files.isEmpty) return;
     final path = picked.files.first.path;
-    if (path == null) return;
+    if (path == null || !mounted) return;
 
     setState(() {
       _busy = true;
@@ -405,7 +408,7 @@ class _ImportScreenState extends State<ImportScreen> {
       type: FileType.custom,
       allowedExtensions: ['zip'],
     );
-    if (result == null || result.files.isEmpty) return;
+    if (result == null || result.files.isEmpty || !mounted) return;
 
     setState(() {
       _busy = true;

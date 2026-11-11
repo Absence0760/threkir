@@ -162,7 +162,7 @@ class _RoutePhotosState extends State<RoutePhotos> with WidgetsBindingObserver {
         imageQuality: 85,
         maxWidth: 2048,
       );
-      if (f == null) return;
+      if (f == null || !mounted) return;
       setState(() {
         _pending = f;
         _pendingCaptionCtrl.text = '';

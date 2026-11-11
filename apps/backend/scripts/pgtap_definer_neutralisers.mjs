@@ -1948,7 +1948,7 @@ $neutralised$;`,
     'group_blocked_placeholders',
     {
       why: "drops the membership gate (`private.group_my_role`), the caller's own window (`sender_id <> auth.uid()`, `joined_at`, `hidden_before`) and the blocker rule (`b.blocker_id = auth.uid()`, 20271217000006), which together decide whose placeholders these are and that the blocked sender is never told; keeps the conversation, `is_group`, `unsent_at is null`, `p_since` and that the sender is blocked by someone, which say which messages are placeholders at all",
-      sql: `create or replace function public.group_blocked_placeholders(p_conversation_id uuid, p_since timestamptz)
+      sql: `create or replace function public.group_blocked_placeholders(p_conversation_id uuid, p_since timestamptz default null)
  returns table(id uuid, created_at timestamptz)
  language sql stable security definer set search_path to 'public', 'pg_temp'
 as $neutralised$

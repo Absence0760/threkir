@@ -288,7 +288,7 @@
 	// while that club still vouches for it (decisions § 2406).
 	let courseSource = $derived(
 		race?.course && race.organiserIsOfficial
-			? raceCourseSourceLabel(race.course.source, race.organiser?.name ?? null)
+			? raceCourseSourceLabel(m, race.course.source, race.organiser?.name ?? null)
 			: null,
 	);
 
@@ -349,7 +349,7 @@
 				</p>
 			{/if}
 			<p class="source" data-testid="race-detail-source">
-				{raceSourceLabel(race.provider, race.organiser?.name ?? null)}
+				{raceSourceLabel(m, race.provider, race.organiser?.name ?? null)}
 			</p>
 			{#if !race.is_verified}
 				<span class="unverified">{m('races.unverified')}</span>

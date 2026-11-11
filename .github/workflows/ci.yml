@@ -2360,6 +2360,90 @@ jobs:
           node scripts/check_lambda_alias_sync.mjs
           node --test scripts/check_lambda_alias_sync.test.mjs
 
+  dependency-advisories:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    name: Dependency advisories (PR-introduced)
+    # Issue #1366, decisions.md § 2457. osv-scanner in supply-chain-scan.yml
+    # cannot gate through the code-scanning ruleset: its alerts carry no line,
+    # so merge protection never attributes them to a PR (§ 2452). This job
+    # asks what merging the PR adds instead. On a pull_request the checkout is
+    # the merge commit and HEAD^1 is the base tip; the script scans both with
+    # the same pinned binary and database, and fails only on an advisory
+    # present at HEAD and absent at HEAD^1 at CVSS 7.0 or higher. A PR that
+    # changes no dependency input is not scanned at all, so an OSV outage
+    # cannot redden it. On push to main it is report-only (there is no base to
+    # diff against); a scanner failure is red either way, with a re-run note.
+    # The scanner pin must equal supply-chain-scan.yml's; the unit suite
+    # fails when they differ.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read # check out the tree and its first parent
+    env:
+      OSV_SCANNER_VERSION: 2.7.0
+      OSV_SCANNER_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        id: node
+        with:
+          node-version: 24.20.0
+      - name: Install osv-scanner (pinned release binary, sha256-verified)
+        id: install
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/osv-scanner"
+          bin="$RUNNER_TEMP/osv-scanner/osv-scanner"
+          url="https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64"
+          if ! curl -fsSL --retry 3 --retry-all-errors -o "$bin" "$url"; then
+            echo "::error::Could not download osv-scanner ${OSV_SCANNER_VERSION} from GitHub releases. This is an outage, not a finding: re-run the job."
+            exit 1
+          fi
+          if ! echo "${OSV_SCANNER_SHA256}  $bin" | sha256sum -c -; then
+            echo "::error::The osv-scanner ${OSV_SCANNER_VERSION} binary does not match its pinned sha256. Do not re-run past this; find out why the release changed."
+            exit 1
+          fi
+          chmod +x "$bin"
+          "$bin" --version
+      - name: Unit tests for the advisory diff and severity rule
+        id: unit
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/check_dependency_advisories.test.mjs; then
+            echo "::error::check_dependency_advisories.test.mjs failed: the diff, severity or waiver rule changed. Fix the script or the test."
+            exit 1
+          fi
+      - name: Fail on advisories this PR introduces (report only on main)
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          EVENT: ${{ github.event_name }}
+          OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY: ${{ runner.temp }}/osv-db
+        run: |
+          set -uo pipefail
+          bin="$RUNNER_TEMP/osv-scanner/osv-scanner"
+          if [ "$EVENT" = pull_request ]; then
+            mode=(--mode pr --base-ref HEAD^1)
+          else
+            mode=(--mode report)
+          fi
+          rc=0
+          node scripts/check_dependency_advisories.mjs --scanner "$bin" "${mode[@]}" || rc=$?
+          case "$rc" in
+            0) ;;
+            2)
+              echo "::error::The dependency scan did not complete (scanner or OSV database outage, see above). Not a finding: re-run the job."
+              exit 1
+              ;;
+            *)
+              echo "::error::Dependency advisories failed: see the errors above and the job summary for the advisory, its score and the lockfile."
+              exit 1
+              ;;
+          esac
+
   infra-guards:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -5127,6 +5211,7 @@ jobs:
       - watch-ios-locale-parity
       - watch-garmin-source
       - lambda-alias-coverage
+      - dependency-advisories
       - infra-guards
       - terraform
       - gitleaks

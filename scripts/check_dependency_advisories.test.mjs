@@ -494,3 +494,16 @@ test('an expired ignore beside a lockfile the PR changes fails it', () => {
 		rmSync(r.dir, { recursive: true, force: true });
 	}
 });
+
+test('the gate and the advisory scan pin the same osv-scanner release and sha256', () => {
+	/** @param {string} file */
+	const pins = (file) => {
+		const text = readFileSync(join(REPO_ROOT, '.github/workflows', file), 'utf8');
+		const version = [...text.matchAll(/^\s*OSV_SCANNER_VERSION:\s*(\S+)\s*$/gm)].map((m) => m[1]);
+		const sha = [...text.matchAll(/^\s*OSV_SCANNER_SHA256:\s*([0-9a-f]{64})\s*$/gm)].map((m) => m[1]);
+		assert.equal(version.length, 1, `${file} declares OSV_SCANNER_VERSION once`);
+		assert.equal(sha.length, 1, `${file} declares OSV_SCANNER_SHA256 once`);
+		return { version: version[0], sha: sha[0] };
+	};
+	assert.deepEqual(pins('ci.yml'), pins('supply-chain-scan.yml'));
+});

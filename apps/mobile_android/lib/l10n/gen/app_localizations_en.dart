@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -21730,7 +21731,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get parkCourseReportReasonRightsHolderHint =>
-      'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We answer within two business days.';
+      'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We acknowledge your request within two business days.';
 
   @override
   String get parkCourseReportReasonOther => 'Something else';

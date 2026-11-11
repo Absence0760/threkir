@@ -1,5 +1,6 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
+
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -21974,7 +21975,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get parkCourseReportReasonRightsHolderHint =>
-      'Para quien tenga los derechos sobre un nombre, una marca o datos de recorrido que se usan aquí, o quien actúe en su nombre. Cuéntanos qué es tuyo y qué quieres que cambiemos. Respondemos en un plazo de dos días hábiles.';
+      'Para quien tenga los derechos sobre un nombre, una marca o datos de recorrido que se usan aquí, o quien actúe en su nombre. Cuéntanos qué es tuyo y qué quieres que cambiemos. Confirmamos que hemos recibido tu solicitud en un plazo de dos días hábiles.';
 
   @override
   String get parkCourseReportReasonOther => 'Otra cosa';

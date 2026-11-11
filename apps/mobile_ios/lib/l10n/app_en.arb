@@ -28978,9 +28978,9 @@
   "@parkCourseReportReasonRightsHolder": {
     "description": "Report sheet: the rights-holder reason, for the owner of a name, trade mark or course data a park course may use (decisions § 2469). Mirrors web parks.report.reasonRightsHolder"
   },
-  "parkCourseReportReasonRightsHolderHint": "For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you'd like changed. We answer within two business days.",
+  "parkCourseReportReasonRightsHolderHint": "For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you'd like changed. We acknowledge your request within two business days.",
   "@parkCourseReportReasonRightsHolderHint": {
-    "description": "Hint under the rights-holder reason: who it is for and the two-business-day answer. Mirrors web parks.report.reasonRightsHolderHint"
+    "description": "Hint under the rights-holder reason: who it is for and the two-business-day acknowledgement. Mirrors web parks.report.reasonRightsHolderHint"
   },
   "parkCourseReportReasonOther": "Something else",
   "@parkCourseReportReasonOther": {

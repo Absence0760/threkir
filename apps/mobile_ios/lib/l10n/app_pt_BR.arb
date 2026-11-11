@@ -6061,7 +6061,7 @@
   "parkCourseReportReasonLandManager": "Um pedido da administração do parque",
   "parkCourseReportReasonLandManagerHint": "Para a equipe do parque ou do órgão gestor. Peça para retirarmos o percurso e nós o fechamos em até dois dias úteis.",
   "parkCourseReportReasonRightsHolder": "Um pedido de um titular de direitos",
-  "parkCourseReportReasonRightsHolderHint": "Para quem detém um nome, uma marca ou dados de percurso usados aqui, ou quem age em seu nome. Conte o que é seu e o que você quer que a gente mude. Respondemos em até dois dias úteis.",
+  "parkCourseReportReasonRightsHolderHint": "Para quem detém um nome, uma marca ou dados de percurso usados aqui, ou quem age em seu nome. Conte o que é seu e o que você quer que a gente mude. Confirmamos o recebimento do seu pedido em até dois dias úteis.",
   "parkCourseReportReasonOther": "Outra coisa",
   "parkCourseReportNotesLabel": "O que devemos saber?",
   "parkCourseReportNotesHint": "Onde no percurso, o que você viu e quando.",

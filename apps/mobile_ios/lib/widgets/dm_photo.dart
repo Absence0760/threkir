@@ -4,13 +4,9 @@ import 'package:api_client/api_client.dart';
 import 'package:flutter/material.dart';
 import 'package:ui_kit/ui_kit.dart';
 
+import '../dm_image.dart';
 import '../l10n/gen/app_localizations.dart';
 import 'photo_lightbox.dart';
-
-/// How often a photo the server is still preparing is checked again, and
-/// for how many tries (about three minutes) before the note stays put.
-const Duration kDmPhotoPendingRecheck = Duration(seconds: 4);
-const int kDmPhotoPendingMaxChecks = 45;
 
 /// A message's photo (migration 20271213121604): "Preparing photo…" while
 /// the server re-encodes it, the image from a short-lived signed URL once it
@@ -70,6 +66,9 @@ class _DmPhotoState extends State<DmPhoto> {
     _timer = Timer(after, _load);
   }
 
+  /// Counts this check and says when the next one is due.
+  Duration _nextCheck() => dmImageRecheckDelay(++_checks);
+
   Future<void> _load() async {
     final gen = _gen;
     try {
@@ -79,8 +78,8 @@ class _DmPhotoState extends State<DmPhoto> {
         _failed = view == null;
         _view = view;
       });
-      if (view?.status == 'pending' && ++_checks < kDmPhotoPendingMaxChecks) {
-        _schedule(kDmPhotoPendingRecheck);
+      if (view?.status == 'pending') {
+        _schedule(_nextCheck());
       } else if (view?.status == 'ready') {
         _schedule(
           const Duration(seconds: ApiClient.dmImageSignedUrlSeconds - 60),
@@ -89,11 +88,13 @@ class _DmPhotoState extends State<DmPhoto> {
     } catch (e) {
       debugPrint('message photo read failed: ${safeErrorLabel(e)}');
       if (!mounted || gen != _gen) return;
-      if (++_checks < kDmPhotoPendingMaxChecks) {
-        _schedule(kDmPhotoPendingRecheck);
-      } else if (_view?.status != 'ready') {
+      final next = _nextCheck();
+      // After the fast phase a photo that never loaded says so, and the slow
+      // checks carry on in case the read comes back.
+      if (_checks >= kDmImageFastChecks && _view?.status != 'ready') {
         setState(() => _failed = true);
       }
+      _schedule(next);
     }
   }
 

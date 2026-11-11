@@ -9,6 +9,7 @@ import {
 	DM_IMAGE_MAX_EDGE,
 	DM_IMAGE_STATUSES,
 	dmImageFit,
+	dmImageRecheckMs,
 	parseDmImageStatus,
 } from './dm_image.ts';
 
@@ -33,6 +34,14 @@ test('the statuses are the ones the CHECK admits', () => {
 	assert.equal(parseDmImageStatus('ready'), 'ready');
 	assert.equal(parseDmImageStatus('rejected'), 'rejected');
 	assert.equal(parseDmImageStatus('weird'), 'pending');
+});
+
+test('a pending photo is checked fast for about three minutes, then slowly for good', () => {
+	assert.equal(dmImageRecheckMs(1), 4000);
+	assert.equal(dmImageRecheckMs(44), 4000);
+	assert.equal(dmImageRecheckMs(45), 30_000);
+	assert.equal(dmImageRecheckMs(1000), 30_000);
+	assert.equal(44 * dmImageRecheckMs(1), 176_000);
 });
 
 test('a photo is scaled down to the long edge and never up', () => {

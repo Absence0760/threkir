@@ -26,6 +26,21 @@ const int kDmImageQuality = 85;
 /// How long a signed URL for a photo lives.
 const int kDmImageSignedUrlSeconds = 600;
 
+/// A photo the server is still preparing is checked this often at first...
+const Duration kDmImageFastRecheck = Duration(seconds: 4);
+
+/// ...for this many checks (about three minutes)...
+const int kDmImageFastChecks = 45;
+
+/// ...and then this often for as long as it is on screen.
+const Duration kDmImageSlowRecheck = Duration(seconds: 30);
+
+/// When to check a pending (or unreadable) photo again, [checks] reads in. A
+/// slow re-encode still turns into the photo instead of leaving "Preparing
+/// photo" up until the conversation is reopened.
+Duration dmImageRecheckDelay(int checks) =>
+    checks < kDmImageFastChecks ? kDmImageFastRecheck : kDmImageSlowRecheck;
+
 String parseDmImageStatus(Object? raw) =>
     raw == 'ready' || raw == 'rejected' ? raw as String : 'pending';
 

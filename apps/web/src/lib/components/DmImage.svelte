@@ -2,13 +2,10 @@
 	import { onDestroy } from 'svelte';
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { fetchDmImage, type DmImageView } from '#lib/core/data.ts';
-	import { DM_IMAGE_SIGNED_URL_SECONDS } from '#lib/social/dm_image.ts';
+	import { DM_IMAGE_FAST_CHECKS, DM_IMAGE_SIGNED_URL_SECONDS, dmImageRecheckMs } from '#lib/social/dm_image.ts';
 	import { thrownMessage } from '#lib/core/supabase_error.ts';
 
 	let { imageId }: { imageId: string } = $props();
-
-	const PENDING_RECHECK_MS = 4000;
-	const PENDING_MAX_CHECKS = 45;
 
 	let view = $state<DmImageView | null>(null);
 	let failed = $state(false);
@@ -21,19 +18,27 @@
 		timer = setTimeout(() => void load(id), ms);
 	}
 
+	/// Counts this check and says when the next one is due.
+	function nextCheck(): number {
+		return dmImageRecheckMs(++checks);
+	}
+
 	async function load(id: string) {
 		try {
 			const v = await fetchDmImage(id);
 			if (id !== current) return;
 			failed = v === null;
 			view = v;
-			if (v?.status === 'pending' && ++checks < PENDING_MAX_CHECKS) schedule(PENDING_RECHECK_MS, id);
+			if (v?.status === 'pending') schedule(nextCheck(), id);
 			if (v?.status === 'ready') schedule((DM_IMAGE_SIGNED_URL_SECONDS - 60) * 1000, id);
 		} catch (e) {
 			if (id !== current) return;
 			console.error('dm image read failed', thrownMessage(e));
-			if (++checks < PENDING_MAX_CHECKS) schedule(PENDING_RECHECK_MS, id);
-			else if (view?.status !== 'ready') failed = true;
+			const next = nextCheck();
+			// After the fast phase a photo that never loaded says so, and the
+			// slow checks carry on in case the read comes back.
+			if (checks >= DM_IMAGE_FAST_CHECKS && view?.status !== 'ready') failed = true;
+			schedule(next, id);
 		}
 	}
 

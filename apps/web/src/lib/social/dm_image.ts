@@ -28,6 +28,22 @@ export const DM_IMAGE_QUALITY = 0.85;
 /** How long a signed URL for a photo lives. */
 export const DM_IMAGE_SIGNED_URL_SECONDS = 600;
 
+/** A photo the server is still preparing is checked this often at first… */
+export const DM_IMAGE_FAST_RECHECK_MS = 4000;
+/** …for this many checks (about three minutes)… */
+export const DM_IMAGE_FAST_CHECKS = 45;
+/** …and then this often for as long as it is on screen. */
+export const DM_IMAGE_SLOW_RECHECK_MS = 30_000;
+
+/**
+ * When to check a pending (or unreadable) photo again, `checks` reads in. A
+ * slow re-encode still turns into the photo instead of leaving "Preparing
+ * photo" up until the conversation is reopened.
+ */
+export function dmImageRecheckMs(checks: number): number {
+	return checks < DM_IMAGE_FAST_CHECKS ? DM_IMAGE_FAST_RECHECK_MS : DM_IMAGE_SLOW_RECHECK_MS;
+}
+
 export function parseDmImageStatus(raw: unknown): DmImageStatus {
 	return raw === 'ready' || raw === 'rejected' ? raw : 'pending';
 }

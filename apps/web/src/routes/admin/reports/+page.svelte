@@ -152,7 +152,7 @@
 		const overdue = due.getTime() < Date.now();
 		const date = formatDate(due.toISOString());
 		return {
-			text: overdue ? t('admin.reports.course.overdue', { date }) : t('admin.reports.course.respondBy', { date }),
+			text: overdue ? t('admin.reports.course.overdue', { date }) : t('admin.reports.course.acknowledgeBy', { date }),
 			overdue,
 		};
 	}

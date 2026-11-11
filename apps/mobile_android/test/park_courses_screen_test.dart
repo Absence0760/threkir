@@ -1204,7 +1204,9 @@ void main() {
       );
       await tester.pump();
       expect(
-        find.textContaining('We answer within two business days.'),
+        find.textContaining(
+          'We acknowledge your request within two business days.',
+        ),
         findsOneWidget,
       );
       expect(

@@ -6061,7 +6061,7 @@
   "parkCourseReportReasonLandManager": "管理者からの依頼",
   "parkCourseReportReasonLandManagerHint": "公園または管理機関の職員の方へ。コースの掲載停止をご依頼いただければ、2営業日以内に閉鎖します。",
   "parkCourseReportReasonRightsHolder": "権利者からの依頼",
-  "parkCourseReportReasonRightsHolderHint": "ここで使われている名称、商標、コースデータの権利者またはその代理人の方へ。対象となる権利と変更してほしい点をお知らせください。2営業日以内に回答します。",
+  "parkCourseReportReasonRightsHolderHint": "ここで使われている名称、商標、コースデータの権利者またはその代理人の方へ。対象となる権利と変更してほしい点をお知らせください。2営業日以内に受領をお知らせします。",
   "parkCourseReportReasonOther": "その他",
   "parkCourseReportNotesLabel": "どのような状況ですか？",
   "parkCourseReportNotesHint": "コースのどこで、何を、いつ見たか。",

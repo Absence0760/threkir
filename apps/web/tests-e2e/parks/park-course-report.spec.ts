@@ -21,7 +21,7 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
  *   course with a note, and the course page then shows it closed with that
  *   note. A signed-out rights holder files a request on a third course, which
  *   the form will not send without an address, and the admin queue shows it
- *   with its answer-by date (decisions § 2469).
+ *   with its acknowledge-by date (decisions § 2469).
  *
  * Three courses are planted (service role) in one park under a unique slug, at
  * (37.6, -78.6), which no seed row or other spec uses, and removed afterwards
@@ -214,7 +214,7 @@ test.describe.serial('report a problem with a park course', () => {
 			await page.getByTestId('park-course-report').click();
 			const dialog = page.getByTestId('park-course-report-dialog');
 			await dialog.getByTestId('park-course-report-reason-rights_holder_request').check();
-			await expect(dialog).toContainText('We answer within two business days.');
+			await expect(dialog).toContainText('We acknowledge your request within two business days.');
 			await expect(dialog.getByTestId('park-course-report-email-hint')).toContainText(
 				'Needed for a rights-holder request so we can answer it.',
 			);
@@ -246,7 +246,7 @@ test.describe.serial('report a problem with a park course', () => {
 		]);
 	});
 
-	test('the admin queue shows a rights-holder request with its answer-by date', async ({ browser }) => {
+	test('the admin queue shows a rights-holder request with its acknowledge-by date', async ({ browser }) => {
 		const ctx = await signedInContext(browser, users[1]);
 		try {
 			const page = await ctx.newPage();
@@ -254,11 +254,11 @@ test.describe.serial('report a problem with a park course', () => {
 			const row = page.getByTestId('admin-queue-row').filter({ hasText: courseIds[2].slice(0, 8) });
 			await expect(row).toBeVisible({ timeout: 15_000 });
 			await expect(row.getByTestId('admin-rights-holder-row')).toContainText('Rights-holder request');
-			await expect(row.getByTestId('admin-rights-holder-due')).toContainText('Answer by');
+			await expect(row.getByTestId('admin-rights-holder-due')).toContainText('Acknowledge by');
 			await expect(row.getByTestId('admin-land-manager-row')).toHaveCount(0);
 			await row.getByTestId('admin-queue-review').click();
 			await expect(page.getByTestId('admin-rights-holder-hint')).toBeVisible();
-			await expect(page.getByTestId('admin-rights-holder-panel-due')).toContainText('Answer by');
+			await expect(page.getByTestId('admin-rights-holder-panel-due')).toContainText('Acknowledge by');
 			await expect(page.getByTestId('admin-report-contact')).toContainText('legal@brand-e2e.example');
 		} finally {
 			await ctx.close();

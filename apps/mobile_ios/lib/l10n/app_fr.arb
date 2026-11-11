@@ -6061,7 +6061,7 @@
   "parkCourseReportReasonLandManager": "Une demande du gestionnaire du site",
   "parkCourseReportReasonLandManagerHint": "Pour le personnel du parc ou de l'organisme gestionnaire. Demandez-nous de retirer le parcours et nous le fermons sous deux jours ouvrés.",
   "parkCourseReportReasonRightsHolder": "Une demande d'un titulaire de droits",
-  "parkCourseReportReasonRightsHolderHint": "Pour le titulaire d'un nom, d'une marque ou de données de parcours utilisés ici, ou la personne qui agit en son nom. Dites-nous ce qui vous appartient et ce que vous souhaitez modifier. Nous répondons sous deux jours ouvrés.",
+  "parkCourseReportReasonRightsHolderHint": "Pour le titulaire d'un nom, d'une marque ou de données de parcours utilisés ici, ou la personne qui agit en son nom. Dites-nous ce qui vous appartient et ce que vous souhaitez modifier. Nous accusons réception de votre demande sous deux jours ouvrés.",
   "parkCourseReportReasonOther": "Autre chose",
   "parkCourseReportNotesLabel": "Que devons-nous savoir ?",
   "parkCourseReportNotesHint": "Où sur le parcours, ce que vous avez vu et quand.",

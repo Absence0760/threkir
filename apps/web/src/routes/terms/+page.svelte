@@ -75,8 +75,9 @@
 		email <a href="mailto:dmca@threkir.com">dmca@threkir.com</a> with the mark, name or data, where
 		it appears, how to reach you, and what you would like us to do. For a park course, you can
 		also use <strong>Report a problem with this course</strong> on the course page and choose
-		<strong>A request from a rights holder</strong>. We answer a rights holder's request within
-		two business days, and may close or change a course while we look into it.
+		<strong>A request from a rights holder</strong>. We acknowledge a rights holder's request
+		within two business days, reply once we have looked into it, and may close or change a
+		course while we do.
 	</p>
 	<p>
 		Times on park courses and segments are recorded by people using Threkir on public paths.

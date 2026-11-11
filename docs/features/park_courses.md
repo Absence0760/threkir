@@ -393,8 +393,8 @@ reply; a rights-holder request must leave one.
   course and on every land-manager or rights-holder request.
 - **Review.** `/admin/reports` sorts land-manager and rights-holder targets
   after disputes, by their oldest request, with the request's age and its
-  deadline (`landManagerDueAt`, "Close by"; `rightsHolderDueAt`, "Answer by":
-  both two business days, Monday to Friday in UTC, holidays not counted out). The
+  deadline (`landManagerDueAt`, "Close by"; `rightsHolderDueAt`, "Acknowledge
+  by": both two business days, Monday to Friday in UTC, holidays not counted out). The
   detail says "Not signed in" for a signed-out reporter, links the contact
   email for a reply by hand, and opens a course panel that closes the course
   with its note (`admin_set_park_course_status`, which also marks the course's
@@ -406,13 +406,15 @@ reply; a rights-holder request must leave one.
   club picks "A request from a rights holder" (`rights_holder_request`). It is
   routed like a land-manager request: never refused by or counted toward the
   per-course cap, a notice to every admin on each one, and its own
-  `rights_holder_since` on the queue, with an "Answer by" date two business
-  days on and a panel hint to reply by hand and close the course if the
-  request needs it. Unlike every other reason it requires a contact email, in
+  `rights_holder_since` on the queue, with an "Acknowledge by" date two
+  business days on and a panel hint to acknowledge it by hand by that date
+  (the full answer can follow) and close the course if the request needs it.
+  The promise is an acknowledgement, not an answer or a resolution (owner,
+  2026-11-11). Unlike every other reason it requires a contact email, in
   the form (Send stays disabled), the Edge Function (`email_required`) and
-  `submit_park_course_report` (`22023`), because the answer is a hand reply.
+  `submit_park_course_report` (`22023`), because the acknowledgement and the answer are hand replies.
   Terms § 4 ("Copyright and trade mark complaints") names this form and
-  `dmca@threkir.com` as the channel and promises the two-business-day answer;
+  `dmca@threkir.com` as the channel and promises to acknowledge a request within two business days;
   counsel reviews that text before the web release that carries it
   ([deployment.md](../ops/deployment.md)). `organiser_dispute` (#1363) stays
   the verified-club path and still does not target park courses.
@@ -745,7 +747,7 @@ These gate going live, not the code:
   `apps/web/tests-e2e/parks/park-course-report.spec.ts` (a signed-out
   land-manager request, a signed-in hazard report and its duplicate refusal,
   a signed-out rights-holder request held until it has an address and its
-  "Answer by" row on the queue,
+  "Acknowledge by" row on the queue,
   the admin closing the course from the queue); Flutter
   `apps/mobile_android/test/park_courses_screen_test.dart` group *report a
   problem with this course* (placement, a filed land-manager request, a

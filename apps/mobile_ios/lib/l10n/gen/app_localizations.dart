@@ -35333,10 +35333,10 @@ abstract class AppLocalizations {
   /// **'A request from a rights holder'**
   String get parkCourseReportReasonRightsHolder;
 
-  /// Hint under the rights-holder reason: who it is for and the two-business-day answer. Mirrors web parks.report.reasonRightsHolderHint
+  /// Hint under the rights-holder reason: who it is for and the two-business-day acknowledgement. Mirrors web parks.report.reasonRightsHolderHint
   ///
   /// In en, this message translates to:
-  /// **'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We answer within two business days.'**
+  /// **'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We acknowledge your request within two business days.'**
   String get parkCourseReportReasonRightsHolderHint;
 
   /// Report reason: anything else

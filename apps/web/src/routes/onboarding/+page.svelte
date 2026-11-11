@@ -4,6 +4,8 @@
 	import { onMount, tick } from 'svelte';
 	import AuthShell from '#lib/components/auth/AuthShell.svelte';
 	import DateOfBirthInput from '#lib/components/DateOfBirthInput.svelte';
+	import GrisnirArt from '#lib/components/GrisnirArt.svelte';
+	import { loadMascotShown, peekMascotShown } from '#lib/mascot/mascot_pref.ts';
 	import { browser } from '$app/env';
 	import { m } from '#lib/i18n/store.svelte.ts';
 	import { errorCopy } from '#lib/i18n/error_copy.ts';
@@ -141,6 +143,14 @@
 	// a value typed into the gap. Rendering the wizard only once `ready` is
 	// true means it exists only client-side, post-hydration, fully wired.
 	let ready = $state(false);
+
+	// Grisnir waits by the trail sign in the side panel, hidden until the
+	// runner's show_mascot is known (a new account has none, so on).
+	let mascotShown = $state<boolean | null>(null);
+	onMount(() => {
+		mascotShown = peekMascotShown();
+		void loadMascotShown().then((v) => (mascotShown = v ?? true));
+	});
 
 	onMount(async () => {
 		// `auth.svelte.ts` flips loading=false before the async
@@ -471,6 +481,12 @@
 				</li>
 			{/each}
 		</ol>
+		{#if mascotShown}
+			<div class="panel-grisnir">
+				<GrisnirArt pose="wait" width="10rem" testid="onboarding-grisnir" />
+				<p>{m('mascot.onboardingLine')}</p>
+			</div>
+		{/if}
 	{/snippet}
 
 	<main class="auth-card onboarding-card" id="main-content" bind:this={card}>
@@ -872,6 +888,19 @@
 		color: rgba(255, 255, 255, 0.85);
 	}
 
+	.panel-grisnir {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--space-xs);
+		margin-top: var(--space-lg);
+	}
+	.panel-grisnir p {
+		margin: 0;
+		font-size: 0.9rem;
+		font-style: italic;
+		color: var(--color-on-primary);
+	}
 	.rail {
 		list-style: none;
 		margin: 0;

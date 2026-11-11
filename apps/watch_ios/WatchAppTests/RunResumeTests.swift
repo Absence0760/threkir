@@ -439,6 +439,8 @@ final class RunResumeTests: XCTestCase {
         store.forEachTrackPoint { marks.append($0.segmentStart == true) }
         XCTAssertEqual(marks, [false, false, false, true, false, true, false],
                        "the continue's first fix and the resume's, an off-track one included")
+        XCTAssertEqual(wm.finishedRun?.distanceSegments, 3,
+                       "the seeded segment, the continue's and the resume's: what the server's replay counts")
     }
 
     func testAResumedTrailSkipsAStoredOffTrackFix() {

@@ -169,6 +169,11 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     /// watch credited it (spec v1.8, docs/features/gps_distance.md § Stored
     /// track).
     private var markSegmentStart = false
+    /// The estimator segments the track file holds
+    /// (`TrackPointRecord.opensSegment`), counted as each fix is stored and
+    /// recounted from the file when a run is continued. Becomes
+    /// `FinishedRun.distanceSegments`.
+    private var storedSegmentCount = 0
     /// Whether the track file holds every fix the estimator took this run:
     /// true from `start()`, and on a continued run only when its checkpoint
     /// said so. Becomes `FinishedRun.trackComplete`.
@@ -255,6 +260,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         /// stepless replay needs. Sent with `distanceStepFilledMetres`; nil
         /// when unknown, which leaves the server its run-total rule.
         var distanceStepOverChordMetres: Double? = nil
+        /// `metadata.distance_segments`: the estimator segments the stored
+        /// track holds, which the server matches against its replay before it
+        /// reads `distanceStepOverChordMetres`. Nil for a run with no track.
+        var distanceSegments: Int? = nil
         /// `metadata.track_complete`: the track file holds every fix the
         /// estimator took, off-track ones flagged, and is not empty.
         var trackComplete: Bool = false
@@ -657,8 +666,10 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         checkpointStore = store
         var trail = MiniMapTrail()
         var count = 0
+        var segments = 0
         var last: TrackPointRecord?
         store.forEachTrackPoint { record in
+            if record.opensSegment(pointsBefore: count) { segments += 1 }
             count += 1
             // The map is the line; a fix stored only for the server's
             // distance replay is not on it.
@@ -667,6 +678,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             last = record
         }
         trackPointCount = count
+        storedSegmentCount = segments
         // The fresh estimator above is a new segment of the same track.
         markSegmentStart = count > 0
         mapTrail = trail
@@ -799,6 +811,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             distanceEstimator: Self.distanceEstimatorTag,
             distanceStepFilledMetres: distanceStepFilledMetres,
             distanceStepOverChordMetres: distanceStepOverChordMetres,
+            distanceSegments: storedSegmentCount > 0 ? storedSegmentCount : nil,
             trackComplete: storedTrackComplete && trackPointCount > 0,
             workoutReview: workoutRunner?.review() ?? carriedWorkoutReview
         )
@@ -1028,6 +1041,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         bankedStepFilledMetres = 0
         bankedStepOverChordMetres = 0
         markSegmentStart = false
+        storedSegmentCount = 0
         lastEstimatorFixT = nil
         paceWindow.seal()
     }
@@ -1134,7 +1148,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             let onLine = location.horizontalAccuracy < Self.trackAccuracyGateM
             if onLine { lastAcceptedFix = location }
 
-            newPoints.append(TrackPointRecord(
+            let point = TrackPointRecord(
                 lat: location.coordinate.latitude,
                 lng: location.coordinate.longitude,
                 ele: location.altitude > -999 ? location.altitude : nil,
@@ -1146,7 +1160,9 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
                 distM: Self.storedDistance(distanceMetres),
                 offTrack: onLine ? nil : true,
                 segmentStart: markSegmentStart ? true : nil
-            ))
+            )
+            if point.opensSegment(pointsBefore: trackPointCount + newPoints.count) { storedSegmentCount += 1 }
+            newPoints.append(point)
             markSegmentStart = false
         }
 
@@ -1258,7 +1274,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         // Counted off the file rather than taken from `cp.trackPointCount`:
         // fixes appended since the last 15 s checkpoint are on disk but not
         // in the checkpoint's own figure.
-        let count = store.countTrackPoints()
+        let (count, segments) = store.countTrackPointsAndSegments()
         trackPointCount = count
         let marks = cp.laps ?? []
         lapMarks = marks
@@ -1296,6 +1312,7 @@ class WorkoutManager: NSObject, ObservableObject, CLLocationManagerDelegate {
             distanceEstimator: cp.distanceEstimator,
             distanceStepFilledMetres: cp.distanceStepFilledMetres ?? 0,
             distanceStepOverChordMetres: cp.distanceStepOverChordMetres,
+            distanceSegments: segments > 0 ? segments : nil,
             trackComplete: (cp.trackComplete ?? false) && count > 0,
             workoutReview: cp.workoutReview
         )

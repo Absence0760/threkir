@@ -1945,6 +1945,58 @@ $neutralised$;`,
     },
   ],
   [
+    'group_blocked_placeholders',
+    {
+      why: "drops the membership gate (`private.group_my_role`), the caller's own window (`sender_id <> auth.uid()`, `joined_at`, `hidden_before`) and the blocker rule (`b.blocker_id = auth.uid()`, 20271217000006), which together decide whose placeholders these are and that the blocked sender is never told; keeps the conversation, `is_group`, `unsent_at is null`, `p_since` and that the sender is blocked by someone, which say which messages are placeholders at all",
+      sql: `create or replace function public.group_blocked_placeholders(p_conversation_id uuid, p_since timestamptz)
+ returns table(id uuid, created_at timestamptz)
+ language sql stable security definer set search_path to 'public', 'pg_temp'
+as $neutralised$
+  select m.id, m.created_at
+    from direct_messages m
+   where ${mine('m')}
+     and m.conversation_id = p_conversation_id
+     and m.is_group
+     and m.unsent_at is null
+     and (p_since is null or m.created_at >= p_since)
+     and exists (select 1 from user_blocks b where b.blocked_id = m.sender_id)
+   order by m.created_at desc, m.id desc
+   limit 200;
+$neutralised$;`,
+      subject: 'direct_messages m — the group messages whose blocker rule was dropped',
+      witness: {
+        // A member who blocked nobody: the real function gives them no
+        // placeholder for a message another member blocked, the replacement
+        // does. Its own three users and group, so no seed row can answer.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0e1', 'authenticated', 'authenticated',
+                   'pgtap-guard-gbp-a@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0e2', 'authenticated', 'authenticated',
+                   'pgtap-guard-gbp-b@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0e3', 'authenticated', 'authenticated',
+                   'pgtap-guard-gbp-c@local', '', now(), now());
+                insert into conversations (id, kind, title, created_by)
+                  values ('00000000-0000-0000-0000-00000000c0e4', 'group', 'guard witness',
+                          '00000000-0000-0000-0000-00000000c0e1');
+                insert into conversation_participants (conversation_id, user_id, membership_state, role, joined_at)
+                  values ('00000000-0000-0000-0000-00000000c0e4', '00000000-0000-0000-0000-00000000c0e1',
+                          'active', 'owner', now() - interval '1 hour'),
+                         ('00000000-0000-0000-0000-00000000c0e4', '00000000-0000-0000-0000-00000000c0e2',
+                          'active', 'member', now() - interval '1 hour'),
+                         ('00000000-0000-0000-0000-00000000c0e4', '00000000-0000-0000-0000-00000000c0e3',
+                          'active', 'member', now() - interval '1 hour');
+                insert into direct_messages (sender_id, conversation_id, body)
+                  values ('00000000-0000-0000-0000-00000000c0e2', '00000000-0000-0000-0000-00000000c0e4',
+                          'guard witness');
+                insert into user_blocks (blocker_id, blocked_id)
+                  values ('00000000-0000-0000-0000-00000000c0e1', '00000000-0000-0000-0000-00000000c0e2');
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c0e3","role":"authenticated"}', true);`,
+        probe: `select count(*) from group_blocked_placeholders('00000000-0000-0000-0000-00000000c0e4', null);`,
+      },
+    },
+  ],
+  [
     'race_course_suggestions_for_review',
     {
       why: "drops the reviewer gate (signed in; an owner/admin of the listing's verified organiser club, or of any verified club while the race is unclaimed); keeps `listing_id = p_listing_id`, the pending status and the public-route join, which say which suggestions the queue is about",

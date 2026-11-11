@@ -89,17 +89,33 @@ func (w *Worker) handleDmImageProcess(ctx context.Context, job *Job) error {
 		return fmt.Errorf("dm_image_process: mark ready: %w", err)
 	}
 	if !matched {
-		// The row went (an unsend, a purge) or settled while this ran, and
-		// its erase sweep may already have passed: take back the object just
-		// written rather than leave it to the 24-hour backstop.
-		if err := w.Backend.DeleteStorageObjects(ctx, schema.BucketDmImages, []string{img.StoragePath, img.UploadPath}); err != nil {
-			return fmt.Errorf("dm_image_process: erase after the row went: %w", err)
-		}
-		w.Log.Info("dm image process", "job_id", job.ID, "outcome", "row_gone")
-		return nil
+		return w.settleUnmatchedDmImage(ctx, job, img)
 	}
 	w.deleteDmImageUpload(ctx, job, img)
 	w.Log.Info("dm image process", "job_id", job.ID, "outcome", "ready")
+	return nil
+}
+
+// settleUnmatchedDmImage handles a MarkDmImageReady that matched no pending
+// row, which means either the row went (an unsend, a purge) or another
+// attempt of this job settled it first (a lease that expired mid re-encode).
+// Only the first may erase: its delete sweep may already have passed, so the
+// object just written would otherwise wait for the 24-hour backstop. A row
+// that still exists names storage_path, and a ready one serves it.
+func (w *Worker) settleUnmatchedDmImage(ctx context.Context, job *Job, img *DmImage) error {
+	current, err := w.Backend.FetchDmImage(ctx, img.ID)
+	if err != nil {
+		return fmt.Errorf("dm_image_process: re-read row: %w", err)
+	}
+	if current != nil {
+		// Settled by another attempt: its paths are that row's to keep.
+		w.Log.Info("dm image process", "job_id", job.ID, "outcome", "settled_elsewhere")
+		return nil
+	}
+	if err := w.Backend.DeleteStorageObjects(ctx, schema.BucketDmImages, []string{img.StoragePath, img.UploadPath}); err != nil {
+		return fmt.Errorf("dm_image_process: erase after the row went: %w", err)
+	}
+	w.Log.Info("dm image process", "job_id", job.ID, "outcome", "row_gone")
 	return nil
 }
 

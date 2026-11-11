@@ -5714,7 +5714,7 @@ void main() {
       // Edits a direct message's text. Cancel keeps the message as it was,
       // Save replaces only the visible text, and the server keeps the text as
       // first sent for reports (migration 20271114000210).
-      'screens/message_thread_screen.dart::l10n.messagesEditTitle': 1,
+      'widgets/dm_bubble.dart::l10n.messagesEditTitle': 1,
       // The race-course tools (decisions § 2381). Claiming takes an
       // unclaimed race and destroys nothing; linking replaces the course with
       // another public club route, undone by linking the old one again;

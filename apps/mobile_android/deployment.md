@@ -13,12 +13,12 @@ Operational counterpart of [`apps/mobile_android/CLAUDE.md`](CLAUDE.md) (stack, 
 **Track strategy:**
 
 ```
-Internal track  → Closed alpha (10–100 testers)  → Closed beta (1k+ testers)  → Production
-   ↑ workflow                                                                       ↑ manual
-   tag-driven                                                                  Play Console
+Internal track  ──────────────────────────────────────────────→  Production (staged rollout)
+   ↑ workflow                                                       ↑ same workflow, after the
+   tag-driven                                                         `production` approval
 ```
 
-The release workflow always lands at the **Internal track**. Manual promotion to Beta / Production happens in the Play Console after a smoke test. This is intentional: tagging `mobile_android@1.2.3` should never reach unsuspecting users without a human checking the build first.
+Since 2026-11-11 the release workflow uploads to the **Internal track** and then sends the same bundle to **Production** for review as a staged rollout at 1%, the way an iOS release goes straight to App Store review ([decisions § 2432](../../docs/architecture/decisions.md), modelled on [§ 2040](../../docs/architecture/decisions.md)). The human gate is the `production` environment approval, which every release job already waits on before reading a secret; nothing reaches users without it. Once Play approves, `play-rollout.yml` moves the rollout up 1% → 2% → 5% → 10% → 20% → 50% → 100% once a day. **Halt rollout** in Play Console is the brake, and no workflow ever resumes a halted release. The app's first production release (`mobile_android@1.24.0`) cannot be staged: Play offers staged rollouts for updates only, so it goes out to every user in the chosen countries on approval. Closed / open testing tracks are no longer part of the flow; add a tester build to one by hand in Play Console when you want one.
 
 **Application ID:** `com.threkir.app` (or whatever the brand picks). Don't change this after the first published release — every existing install becomes orphaned.
 
@@ -122,11 +122,13 @@ Lets the workflow upload an `.aab` without a human in the loop:
 1. Play Console → Setup → API access → "Choose a project to link" → create a Google Cloud project.
 2. Create a service account in the Cloud Console (IAM & Admin → Service Accounts → Create).
 3. Skip granting Cloud roles; we only need Play permissions.
-4. Back in the Play Console → grant the service account "Release manager" role on **this app**.
+4. Back in the Play Console → Users and permissions → invite the service account's email → App permissions → `com.threkir.app` → grant **"Release to production, exclude devices, and use Play App Signing"** (the production promotion and the daily rollout step) and **"Release apps to testing tracks"** (the Internal upload).
 5. Generate a JSON key for the service account (Service Accounts → … → Manage keys → Add key → JSON).
 6. Paste the entire JSON into the GitHub Secret `PLAY_SERVICE_ACCOUNT_JSON`.
 
-The same service account JSON is reusable for the Wear OS release ([`apps/watch_wear/deployment.md`](../watch_wear/deployment.md)) — just grant it Release manager on that app too.
+The same service account JSON is reusable for the Wear OS release ([`apps/watch_wear/deployment.md`](../watch_wear/deployment.md)) — grant it "Release apps to testing tracks" on that app too. The Wear release still stops at Internal: `com.threkir.watchwear` is its own Play listing and has no production access yet.
+
+The daily rollout job reads its own copy of this secret from the reviewer-less `play-rollout` environment (restricted to `main`), because a cron job on `production` would wait every day for an approval nobody is watching for.
 
 ---
 
@@ -292,19 +294,22 @@ A mismatch between these declarations and the binary is grounds for a rating rec
 
 ## Release workflow — `mobile_android@*`
 
-Triggered by tagging `mobile_android@1.2.3`. The workflow at `.github/workflows/release-android.yml`:
+Triggered by publishing a GitHub Release for `mobile_android@1.2.3`. Its body must carry an owner-written `## What's New` section of at most 500 characters: it becomes the en-US Play release notes, and the job fails in its first minute without one (never truncated, never the generated notes). The workflow at `.github/workflows/release-android.yml`:
 
-1. Checks out the tag.
+1. Checks out the tag, and reads `## What's New` out of the Release body (`scripts/play_release.mjs notes`).
 2. Sets up Flutter SDK + JDK 17.
 3. `melos bootstrap`.
 4. Decodes `ANDROID_KEYSTORE_BASE64` to a temp file.
 5. Reads version from the tag (`1.2.3`); derives `versionCode` from `git rev-list --count HEAD`, and pins both into `pubspec.yaml`.
 6. Decodes the keystore + writes `key.properties` (so the gradle release `signingConfig` engages), and stubs an empty `.env.development`.
 7. `flutter build appbundle --release` with the production `--dart-define`s (§ Production config above) — the build is signed by gradle via `key.properties`, no separate sign step.
-8. Uploads to Play Internal track via `PLAY_SERVICE_ACCOUNT_JSON`.
-9. Attaches the AAB to the GitHub Release that triggered the run.
+8. Attaches the AAB to the GitHub Release that triggered the run.
+9. Uploads to Play Internal track via `PLAY_SERVICE_ACCOUNT_JSON`, unless Play already holds that version code (a re-run).
+10. Puts the version code on the production track as a staged rollout at 1% with the What's New as its notes and commits the edit, which sends it for review (`scripts/play_release.mjs promote`). Production already carrying it is a no-op; a different build still rolling out, or other changes already in review, fail the job rather than being cancelled.
 
-Promotion from Internal to Beta to Production is **manual** through the Play Console after smoke-testing the Internal build.
+**Promoting an existing build without rebuilding.** Actions → Release Android → Run workflow, `tag` = `mobile_android@1.2.3`. The `promote` job waits for the `production` approval, derives the version code from the tag exactly as the build did, reads the Release's `## What's New`, and runs step 10. This is how a build already on Internal (`mobile_android@1.24.0`, version code 5158) reaches production.
+
+**The daily rollout step.** `.github/workflows/play-rollout.yml` runs `scripts/play_release.mjs advance` at 15:00 UTC: an in-progress production rollout that Play has published moves to the next step, and past 50% it completes. It does nothing while the release is in review or approved but unpublished (managed publishing), while other changes are in review, and when the rollout is halted. A red run opens a `play-rollout` issue.
 
 ---
 

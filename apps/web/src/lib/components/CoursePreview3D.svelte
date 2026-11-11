@@ -70,6 +70,17 @@
 		type FinalePlan,
 	} from './course_preview/overview.ts';
 	import { motion } from '#lib/motion/motion.svelte.ts';
+	import { auth } from '#lib/stores/auth.svelte.ts';
+	import { loadMascotShown, peekMascotShown } from '#lib/mascot/mascot_pref.ts';
+	import {
+		advanceTrot,
+		headingWindowM,
+		mascotHeadingDeg,
+		mascotPhase,
+		mascotWanted,
+		screenYawDeg,
+	} from './course_preview/mascot/mascot_motion.ts';
+	import type { MascotRenderer } from './course_preview/mascot/mascot_renderer.ts';
 	import type { VideoEncoderPlan } from '#lib/video/video_encoder.ts';
 	import { showToast } from '#lib/stores/toast.svelte.ts';
 	import { DEFAULT_SITE_URL } from '#lib/core/site_url.ts';
@@ -172,6 +183,19 @@
 	let finaleRaf = 0;
 	let finale: { from: CameraPose; to: CameraPose; plan: FinalePlan; startTs: number | null } | null = null;
 	let atOverview = $state(false);
+
+	// Grisnir in place of the dot (decisions § 2455): the viewer's universal
+	// `show_mascot`, read when the dialog opens (null until it lands, so a
+	// viewer who hid him never sees him flash in), and his own WebGL canvas,
+	// loaded only once the map is up. Auxiliary: any failure keeps the dot.
+	let showMascot = $state<boolean | null>(null);
+	let mascot: MascotRenderer | null = null;
+	let mascotLoading = false;
+	let mascotFailed = false;
+	let mascotBoxPx = 0;
+	let positionKind = $state<'dot' | 'mascot'>('dot');
+	let trotPhase = 0;
+	let mapLoaded = $state(false);
 	// Set by the viewer's own Play, Pause or seek. The style's `load` can land
 	// after any of those on a slow device, and must not restart a flight the
 	// viewer already moved, or cancel the ending of one that already finished.
@@ -211,6 +235,103 @@
 		return () => document.removeEventListener('visibilitychange', onVisibility);
 	});
 
+	$effect(() => {
+		if (!open) return;
+		const signedIn = auth.user != null;
+		untrack(() => void readShowMascot(signedIn));
+	});
+
+	// A logged-out viewer has no setting, and his default is on. A signed-in
+	// one whose settings cannot be read at all keeps the dot.
+	async function readShowMascot(signedIn: boolean) {
+		if (!signedIn) {
+			showMascot = true;
+			return;
+		}
+		showMascot = peekMascotShown();
+		showMascot = (await loadMascotShown()) ?? false;
+	}
+
+	$effect(() => {
+		if (!open || !mapLoaded || showMascot === null) return;
+		const want = mascotWanted(showMascot, mode);
+		untrack(() => {
+			if (want) void startMascot();
+			else useDot();
+		});
+	});
+
+	async function startMascot() {
+		if (mascot || mascotLoading || mascotFailed) {
+			if (mascot) useMascot();
+			return;
+		}
+		mascotLoading = true;
+		try {
+			const { loadMascot, MASCOT_BOX_CSS_PX } = await import('./course_preview/mascot/mascot_renderer.ts');
+			const canvas = document.createElement('canvas');
+			mascotBoxPx = MASCOT_BOX_CSS_PX;
+			canvas.style.width = canvas.style.height = `${MASCOT_BOX_CSS_PX}px`;
+			const loaded = await loadMascot(canvas);
+			if (!loaded) {
+				mascotFailed = true;
+				return;
+			}
+			canvas.addEventListener('webglcontextlost', () => {
+				mascotFailed = true;
+				useDot();
+			});
+			if (!map || !open) {
+				loaded.dispose();
+				return;
+			}
+			mascot = loaded;
+			useMascot();
+		} catch (e) {
+			console.warn('course preview: Grisnir unavailable, keeping the dot', e);
+			mascotFailed = true;
+		} finally {
+			mascotLoading = false;
+		}
+	}
+
+	function useMascot() {
+		const el = positionMarker?.getElement();
+		if (!mascot || !el || !showMascot) return;
+		if (!el.contains(mascot.canvas)) el.appendChild(mascot.canvas);
+		// classList, not className: MapLibre's own marker classes position it.
+		el.classList.replace('course-preview-position', 'course-preview-mascot');
+		positionKind = 'mascot';
+		drawMascot();
+	}
+
+	function useDot() {
+		const el = positionMarker?.getElement();
+		mascot?.canvas.remove();
+		el?.classList.replace('course-preview-mascot', 'course-preview-position');
+		positionKind = 'dot';
+	}
+
+	// Drawn on every map render, so his heading follows the camera's bearing
+	// in the flight, the ending's orbit and a viewer's own drag alike.
+	function drawMascot() {
+		if (positionKind !== 'mascot' || !mascot || !map || !hasPath) return;
+		try {
+			if (!mascot.usable) throw new Error('WebGL context lost');
+			const heading = mascotHeadingDeg(path, playback.dM, headingWindowM(speed));
+			mascot.setSize(mascotBoxPx * (window.devicePixelRatio || 1));
+			mascot.draw({
+				yawDeg: screenYawDeg(heading, map.getBearing()),
+				pitchDeg: map.getPitch(),
+				phase: mascotPhase(mode, playback.playing, trotPhase),
+			});
+		} catch (e) {
+			console.warn('course preview: Grisnir frame failed, keeping the dot', e);
+			mascotFailed = true;
+			useDot();
+		}
+	}
+
 	function initMap(container: HTMLDivElement) {
 		if (map || !hasPath) return;
 		mode = flyoverMode(detectFlyoverCapability(window));
@@ -219,6 +340,8 @@
 		mapFailed = false;
 		playback = { dM: 0, playing: false };
 		viewerDrove = false;
+		mapLoaded = false;
+		trotPhase = 0;
 		try {
 			map = new maplibregl.Map({
 				container,
@@ -246,6 +369,7 @@
 			const sourceId = (e as { sourceId?: string }).sourceId;
 			if (sourceId === TERRAIN_SOURCE_ID || sourceId === HILLSHADE_SOURCE_ID) dropTerrain();
 		});
+		created.on('render', drawMascot);
 		created.on('load', () => {
 			addTerrain(created);
 			addCourseLayers(created, {
@@ -257,6 +381,7 @@
 			});
 			frameCourse(created);
 			renderPosition();
+			mapLoaded = true;
 			if (mode === 'flight' && !viewerDrove) {
 				playback = play(playback, path.totalM);
 				startLoop();
@@ -270,6 +395,10 @@
 		stopFinale();
 		stopResizeWatch?.();
 		stopResizeWatch = null;
+		mapLoaded = false;
+		mascot?.dispose();
+		mascot = null;
+		positionKind = 'dot';
 		positionMarker?.remove();
 		positionMarker = undefined;
 		map?.remove();
@@ -324,6 +453,7 @@
 		if (!positionMarker) {
 			const el = document.createElement('div');
 			el.className = 'course-preview-position';
+			el.dataset.testid = 'course-preview-position';
 			// Without it MapLibre rounds the dot to whole pixels, flipping it on half-pixel centres.
 			positionMarker = new maplibregl.Marker({ element: el, subpixelPositioning: true })
 				.setLngLat(at)
@@ -342,6 +472,7 @@
 		const elapsed = lastTs == null ? 0 : Math.min(ts - lastTs, MAX_FRAME_MS);
 		lastTs = ts;
 		playback = tick(playback, elapsed, speed, path.totalM);
+		trotPhase = advanceTrot(trotPhase, elapsed, speed);
 		renderPosition(true);
 		if (playback.playing) raf = requestAnimationFrame(frame);
 		else if (playback.dM >= path.totalM) startFinale();
@@ -431,6 +562,7 @@
 		stopLoop();
 		settleFinale();
 		playback = { ...playback, playing: false };
+		drawMascot();
 	}
 
 	function togglePlay() {
@@ -449,6 +581,7 @@
 		stopFinale();
 		playback = seek(dM, path.totalM);
 		renderPosition();
+		drawMascot();
 	}
 
 	let stripEl = $state<SVGSVGElement>();
@@ -595,7 +728,12 @@
 	fullscreen
 	data-testid="course-preview-3d"
 >
-	<div class="preview" data-flyover-mode={mode} data-flyover-overview={atOverview ? '' : undefined}>
+	<div
+		class="preview"
+		data-flyover-mode={mode}
+		data-flyover-overview={atOverview ? '' : undefined}
+		data-position-marker={positionKind}
+	>
 		{#if !hasPath}
 			<p class="preview-empty">{m('coursePreview.noTrack')}</p>
 		{:else if !mapConsented}
@@ -942,6 +1080,10 @@
 	}
 	.preview-climb:hover {
 		background: var(--color-bg-tertiary);
+	}
+	:global(.course-preview-mascot) {
+		pointer-events: none;
+		line-height: 0;
 	}
 	:global(.course-preview-position) {
 		width: 14px;

@@ -1,4 +1,4 @@
--- Group conversations, slice 1 (issue #1365, decisions § 2458): a group
+-- Group conversations, slice 1 (issue #1365, decisions § 2461): a group
 -- message is a direct_messages row with no recipient.
 --
 -- One message rail (group_messages.md § 1): a group message inherits unsend,

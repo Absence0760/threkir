@@ -1,4 +1,4 @@
--- Pins migrations 20271216000006 / 07 (issue #1365, decisions § 2458, security
+-- Pins migrations 20271216000006 / 07 (issue #1365, decisions § 2461, security
 -- memo C1/C2): every way to read or touch a group message, for every kind of
 -- person — an active member, an invitee, a removed member, a leaver, a member
 -- who joined after the message, a blocked and a blocking member, a

@@ -1,4 +1,4 @@
--- Group conversations, slice 1 (issue #1365, decisions § 2458): the
+-- Group conversations, slice 1 (issue #1365, decisions § 2461): the
 -- participant row gains a lifecycle and the group state.
 --
 --   membership_state  'invited' (an invite the person has not answered),

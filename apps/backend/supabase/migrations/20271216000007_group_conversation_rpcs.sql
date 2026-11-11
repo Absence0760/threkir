@@ -1,5 +1,5 @@
 -- Group conversations, slice 1 (issue #1365, docs/features/group_messages.md
--- §§ 2-3, decisions § 2458): the group RPCs and the inbox.
+-- §§ 2-3, decisions § 2461): the group RPCs and the inbox.
 --
 -- All SECURITY DEFINER with a pinned search_path. A conversation the caller
 -- is not an active member of, one that does not exist and one they left all

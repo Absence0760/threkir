@@ -250,7 +250,7 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		// seen_at is what the recipient chose to share. edited_at and
 		// original_body (the text before an edit, 20271114000210) are the
 		// subject's own words, so they ship on both sides.
-		// Group messages (20271216000003, decisions § 2458) ship on the sent
+		// Group messages (20271216000003, decisions § 2461) ship on the sent
 		// side only: a group message has no recipient, so the received filter
 		// never matches one, and other members' group messages are their data,
 		// not the subject's (Art 20(1)/(4), owner decision D5).

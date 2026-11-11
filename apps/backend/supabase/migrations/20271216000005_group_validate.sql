@@ -1,5 +1,5 @@
 -- Validates the CHECKs and FKs 20271216000001 to 20271216000003 added NOT
--- VALID (issue #1365, decisions § 2458). Its own file, so each scan holds only
+-- VALID (issue #1365, decisions § 2461). Its own file, so each scan holds only
 -- SHARE UPDATE EXCLUSIVE and reads and writes carry on
 -- (docs/backend/migration_locks.md).
 

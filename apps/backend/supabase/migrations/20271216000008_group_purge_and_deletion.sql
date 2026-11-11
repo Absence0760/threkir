@@ -1,5 +1,5 @@
 -- Group conversations, slice 1 (issue #1365, group_messages.md § 4,
--- decisions § 2458): account deletion and both purges know about groups.
+-- decisions § 2461): account deletion and both purges know about groups.
 --
 -- ── Account deletion ────────────────────────────────────────────────────
 --

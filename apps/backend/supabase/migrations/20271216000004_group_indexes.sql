@@ -1,4 +1,4 @@
--- Group conversations, slice 1 (issue #1365, decisions § 2458): the indexes,
+-- Group conversations, slice 1 (issue #1365, decisions § 2461): the indexes,
 -- alone in their file so each build runs under SHARE with no ACCESS
 -- EXCLUSIVE held on its table (docs/backend/migration_locks.md § Index builds).
 --

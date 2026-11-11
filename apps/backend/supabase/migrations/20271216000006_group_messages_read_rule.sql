@@ -1,5 +1,5 @@
 -- Group conversations, slice 1 (issue #1365, docs/features/group_messages.md,
--- decisions § 2458): one read rule, the send gate, and every message RPC
+-- decisions § 2461): one read rule, the send gate, and every message RPC
 -- routed through them.
 --
 -- ── The read rule: private.can_read_message ─────────────────────────────
@@ -698,7 +698,7 @@ begin
         using errcode = '22023';
     end if;
   elsif p_target_kind = 'direct_message' then
-    -- The read rule is the gate (private.can_read_message, decisions § 2458):
+    -- The read rule is the gate (private.can_read_message, decisions § 2461):
     -- the reporter reads their own report back, snapshot included, so a
     -- message the caller cannot read (not theirs, before they joined a group,
     -- after they left it) answers "not found", like one that does not exist.

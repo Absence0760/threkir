@@ -1,4 +1,4 @@
--- Pins migration 20271216000007 (issue #1365, decisions § 2458, owner
+-- Pins migration 20271216000007 (issue #1365, decisions § 2461, owner
 -- decisions D1, D2, D3, D12; security memo C3, C5): creating a group, inviting
 -- (always an invite the invitee accepts, only people the inviter could
 -- message 1:1, never across a block, 32 seats including live invites, 14-day

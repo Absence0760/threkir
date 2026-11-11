@@ -1,5 +1,5 @@
 -- Group conversations, slice 1 (issue #1365, docs/features/group_messages.md,
--- decisions § 2458): conversations gains its second kind.
+-- decisions § 2461): conversations gains its second kind.
 --
 -- A group is a conversation of 3 to 32 people its members created. It has a
 -- title (1 to 60 characters after trim, required for a group and absent for a

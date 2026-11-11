@@ -101,12 +101,12 @@ class RunRecordingService : Service() {
     private var bankedGpsDistanceM = 0.0
     private var bankedStepDistanceM = 0.0
     private var bankedStepOverChordM = 0.0
-    /// Step metres a pause or source switch committed across a gap still open
-    /// at the close, held out of [bankedStepOverChordM]: the stored track has
-    /// no segment marks, so the server's replay reads that gap as running on to
-    /// the next segment's first fix and credits its chord. Dropped once a later
-    /// segment takes a fix; added back if the run ends with none after them.
-    private var heldBoundaryStepM = 0.0
+    /// Set when a segment closes mid-run, cleared by the next stored fix,
+    /// which is written `"segmentStart":true` so the server replays each
+    /// segment apart, as the watch credited it (spec v1.8,
+    /// `docs/features/gps_distance.md` § Stored track). Guarded by
+    /// [distanceLock].
+    private var markSegmentStart = false
     /// Live pace over the current segment's estimator distance. Sealed with
     /// every new segment, so it never spans a pause. Guarded by [distanceLock].
     private val livePace = LivePaceWindow()
@@ -308,7 +308,7 @@ class RunRecordingService : Service() {
             bankedGpsDistanceM = 0.0
             bankedStepDistanceM = 0.0
             bankedStepOverChordM = 0.0
-            heldBoundaryStepM = 0.0
+            markSegmentStart = false
             livePace.seal()
         }
         synchronized(fixLock) { sourceArbiter.reset() }
@@ -617,7 +617,7 @@ class RunRecordingService : Service() {
         gnssStatusJob?.cancel(); gnssStatusJob = null
 
         val (finishDistanceM, stepFilledM, stepOverChordM) = synchronized(distanceLock) {
-            closeDistanceSegment(endOfRun = true)
+            closeDistanceSegment()
             Triple(bankedDistanceM(), bankedStepDistanceM, bankedStepOverChordM)
         }
         val durationAtFinish = (activeElapsedMs() / 1000).toInt()
@@ -816,7 +816,7 @@ class RunRecordingService : Service() {
     /// match.
     private fun onGps(p: GpsPoint, track: Boolean) {
         lastPointAtMs = System.currentTimeMillis()
-        val (newDistance, pace) = synchronized(distanceLock) {
+        val (newDistance, pace, segmentStart) = synchronized(distanceLock) {
             val t = (p.elapsedRealtimeMs ?: SystemClock.elapsedRealtime()) / 1000.0
             distanceEstimator.addFix(
                 t = t,
@@ -828,9 +828,11 @@ class RunRecordingService : Service() {
                 bearingDeg = p.bearingDeg,
             )
             livePace.add(t, distanceEstimator.distanceM)
-            (bankedDistanceM() + distanceEstimator.distanceM) to livePace.secondsPerKm
+            val opensSegment = markSegmentStart
+            markSegmentStart = false
+            Triple(bankedDistanceM() + distanceEstimator.distanceM, livePace.secondsPerKm, opensSegment)
         }
-        trackWriter?.append(p, distM = newDistance, offTrack = !track)
+        trackWriter?.append(p, distM = newDistance, offTrack = !track, segmentStart = segmentStart)
         if (!track) {
             RecordingRepository.update { it.copy(distanceM = newDistance, paceSecPerKm = pace) }
             announceProgress(newDistance, pace)
@@ -1022,26 +1024,18 @@ class RunRecordingService : Service() {
     /// across a trailing GPS gap, bank the segment's totals, and start a
     /// fresh estimator that keeps the learned stride, so a GPS gap right
     /// after a resume is still step-filled. [learnStride] is the next
-    /// segment's source's. [endOfRun] is the stop, after which the replay
-    /// sees no gap past the last fix. Caller holds [distanceLock].
-    private fun closeDistanceSegment(
-        learnStride: Boolean = distanceEstimator.learnStride,
-        endOfRun: Boolean = false,
-    ) {
+    /// segment's source's. The next stored fix is marked `segmentStart`, so
+    /// the server's replay ends this segment at its last fix as the watch did
+    /// and the steps [GpsDistanceEstimator.finish] committed past it are all
+    /// over-chord. Caller holds [distanceLock].
+    private fun closeDistanceSegment(learnStride: Boolean = distanceEstimator.learnStride) {
         val segment = distanceEstimator
-        if (segment.lastFixT != null) heldBoundaryStepM = 0.0
-        val overBeforeFinish = segment.stepOverChordM
         segment.finish(realtimeS())
         bankedGpsDistanceM += segment.gpsDistanceM
         bankedStepDistanceM += segment.stepDistanceM
-        if (endOfRun) {
-            bankedStepOverChordM += segment.stepOverChordM + heldBoundaryStepM
-            heldBoundaryStepM = 0.0
-        } else {
-            bankedStepOverChordM += overBeforeFinish
-            heldBoundaryStepM += segment.stepOverChordM - overBeforeFinish
-        }
+        bankedStepOverChordM += segment.stepOverChordM
         distanceEstimator = segment.nextSegment(learnStride)
+        markSegmentStart = true
         livePace.seal()
     }
 

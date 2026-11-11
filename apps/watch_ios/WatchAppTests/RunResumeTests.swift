@@ -411,6 +411,36 @@ final class RunResumeTests: XCTestCase {
         XCTAssertEqual(wm.finishedRun?.trackComplete, true)
     }
 
+    /// The first fix stored after a continue, and after each pause, starts a
+    /// segment of the track (spec v1.8): the estimator restarted there, so the
+    /// server's replay restarts there too. Only that one fix carries the mark.
+    func testTheFirstFixOfEachSegmentIsStoredMarked() {
+        let (store, cp) = seededRun(points: 3, trackComplete: true)
+        defer { store.clear() }
+        let wm = WorkoutManager()
+        wm.announcer = silentAnnouncer()
+        wm.restoreRun(from: cp, plan: RunResumePlan.make(
+            checkpoint: cp, now: checkpointedAt(cp), workoutSessionSurvived: true
+        ))
+        let now = Date()
+        let step = 2.8 / 111_195
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [
+            fix(lat: 46.01, accuracy: 5, at: now),
+            fix(lat: 46.01 + step, accuracy: 5, at: now.addingTimeInterval(1)),
+        ])
+        wm.pause()
+        wm.resume()
+        wm.locationManager(CLLocationManager(), didUpdateLocations: [
+            fix(lat: 46.02, accuracy: 40, at: now.addingTimeInterval(60)),
+            fix(lat: 46.02 + step, accuracy: 5, at: now.addingTimeInterval(61)),
+        ])
+        wm.stop()
+        var marks: [Bool] = []
+        store.forEachTrackPoint { marks.append($0.segmentStart == true) }
+        XCTAssertEqual(marks, [false, false, false, true, false, true, false],
+                       "the continue's first fix and the resume's, an off-track one included")
+    }
+
     func testAResumedTrailSkipsAStoredOffTrackFix() {
         let (store, cp) = seededRun(points: 5, offTrackLast: true, trackComplete: true)
         defer { store.clear() }

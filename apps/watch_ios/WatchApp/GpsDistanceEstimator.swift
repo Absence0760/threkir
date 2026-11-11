@@ -174,8 +174,6 @@ final class GpsDistanceEstimator {
     private var x: Axis?
     private var y: Axis?
     private var t: Double?
-    /// The clock of the last fix taken, nil before the first.
-    var lastFixT: Double? { t }
     private var winSteps = 0
     private var winM: Double = 0
     /// v1.6: the fix that last emptied the stride window.

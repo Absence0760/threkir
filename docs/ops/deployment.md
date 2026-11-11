@@ -859,14 +859,20 @@ The "Fluid from body weight" toggle on the roadbook and `/nutrition/fuel` (decis
 
 ### Retired scraper functions and secrets
 
-[decisions § SCRAPER_ADR](../architecture/decisions.md) removed every integration that scraped a third party's website: the `parkrun-import` Edge Function, the parkrun events leg of `race-listings-sync` / `race-listings-sweep`, and the UltraSignup results leg of `race-results-import`. Removing the code does not remove what is deployed: the release workflow (`release-backend.yml`) deploys every directory under `supabase/functions/` and never deletes one, so `parkrun-import` keeps answering in prod until an operator deletes it. Once, per project, after the backend release that carries migration `20271216170001`:
+[decisions § SCRAPER_ADR](../architecture/decisions.md) removed every integration that scraped a third party's website: the `parkrun-import` Edge Function, the parkrun events leg of `race-listings-sync` / `race-listings-sweep`, and the UltraSignup results leg of `race-results-import`. Removing the code does not remove what is deployed: `supabase functions deploy` adds and updates a function but never deletes one, and nothing unsets a secret. So [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) declares them retired — `retired_functions: ["parkrun-import"]` and `retired_function_env: ["PARKRUN_EVENTS_ENABLED", "PARKRUN_USER_AGENT", "ULTRASIGNUP_RESULTS_ENABLED"]` — and the backend release that carries this change retires them automatically: the production sync's **Retired Edge Functions and secrets** stage runs after Deploy Edge Functions in `release-backend.yml`, lists what is deployed or set, and deletes or unsets each name still present.
+
+**Operator check, once, after that release:** read the stage's table in the run's step summary. Each row should read `deleted` / `unset`, or `absent` if it was already gone (a secret that was never set reads `absent`). A dry-run dispatch reads `would delete` / `would unset` and changes nothing.
+
+**Fallback, only if the stage fails** (a `failed` row, or a non-zero `supabase … list`), run by hand against the project, then re-check:
 
 ```bash
 supabase functions delete parkrun-import --project-ref <ref>
 supabase secrets unset PARKRUN_USER_AGENT PARKRUN_EVENTS_ENABLED ULTRASIGNUP_RESULTS_ENABLED --project-ref <ref>
+supabase functions list --project-ref <ref>   # no parkrun-import
+supabase secrets list --project-ref <ref>     # none of the three
 ```
 
-Unsetting a secret that was never set is harmless. Verify with `supabase functions list --project-ref <ref>` (no `parkrun-import`) and `supabase secrets list --project-ref <ref>` (none of the three). `function_env` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) no longer admits any of them, so prod-sync will not set them again. Tracked in [followups.md](../product/followups.md) until done.
+Retiring an Edge Function in general: delete its directory and add its name to `retired_functions` in the same PR ([apps/backend/ops/README.md](../../apps/backend/ops/README.md)).
 
 ### Security emails — two auth settings, no new secret
 

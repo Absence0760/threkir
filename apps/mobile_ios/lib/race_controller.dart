@@ -1243,30 +1243,36 @@ class RaceController extends ChangeNotifier {
   /// server refuses outright is accounted for by being dropped: redelivering
   /// it would be refused the same way.
   Future<bool> ingestWatchResult(WatchRaceResult result) async {
-    try {
-      await _social.submitEventResult(
+    final uid = _signedInUserId;
+    Future<void> send() => _social.submitEventResult(
+          eventId: result.eventId,
+          instance: result.instanceStart,
+          durationS: result.durationS,
+          distanceM: result.distanceM,
+          runId: result.runId,
+          finisherStatus: 'finished',
+        );
+    if (uid == null) {
+      try {
+        await send();
+        return true;
+      } catch (e) {
+        debugPrint('[RaceController.ingestWatchResult] ${safeErrorLabel(e)}');
+        return !isRetryableRaceResultFailure(e);
+      }
+    }
+    return _deliver(
+      PendingRaceResult(
+        userId: uid,
         eventId: result.eventId,
-        instance: result.instanceStart,
+        instanceStart: result.instanceStart,
+        runId: result.runId,
         durationS: result.durationS,
         distanceM: result.distanceM,
-        runId: result.runId,
-        finisherStatus: 'finished',
-      );
-      return true;
-    } catch (e) {
-      debugPrint('[RaceController.ingestWatchResult] ${safeErrorLabel(e)}');
-      if (!isRetryableRaceResultFailure(e)) return true;
-    }
-    final uid = _signedInUserId;
-    if (uid == null) return false;
-    return _queuePendingResult(PendingRaceResult(
-      userId: uid,
-      eventId: result.eventId,
-      instanceStart: result.instanceStart,
-      runId: result.runId,
-      durationS: result.durationS,
-      distanceM: result.distanceM,
-    ));
+      ),
+      send: send,
+      label: 'ingestWatchResult',
+    );
   }
 
   /// Join a recording in progress to the user's race if that race is
@@ -1722,19 +1728,29 @@ class RaceController extends ChangeNotifier {
   }
 
   /// The race this runner is going to was found: keep its frozen course on
-  /// the device, once per race per session, so a recording times by it with
-  /// no signal later. L4.
+  /// the device, once per race and status per session, so a recording times
+  /// by it with no signal later. Read again when the status moves (armed to
+  /// running): a frozen copy can still be filled in while the race is armed
+  /// — the lap-count backfill (decisions § 2472) — and a copy read before
+  /// that would otherwise time the race. A course that changed replaces the
+  /// one timing this race while it has no outcome yet. L4.
   Future<void> _prefetchCourse(ActiveRace race) async {
     final key = _raceKey(race.eventId, race.instanceStart);
-    if (!_coursePrefetched.add(key)) return;
+    final read = '$key|${race.status}';
+    if (!_coursePrefetched.add(read)) return;
     try {
       final loader = courseLoader ?? _loadCourse;
       final course = await loader(race.eventId, race.instanceStart);
       if (course == null) return;
       await _cacheCourse(key, course);
-      if (_detKey == key && _course == null) setCourse(course);
+      if (_detKey != key || _outcome != null) return;
+      final current = _course;
+      if (current == null ||
+          jsonEncode(current.toJson()) != jsonEncode(course.toJson())) {
+        setCourse(course);
+      }
     } catch (e) {
-      _coursePrefetched.remove(key);
+      _coursePrefetched.remove(read);
       debugPrint('[RaceController._prefetchCourse] ${safeErrorLabel(e)}');
     }
   }
@@ -2230,28 +2246,91 @@ class RaceController extends ChangeNotifier {
     );
   }
 
-  Future<void> _file(PendingRaceResult result) async {
-    try {
-      await _submitPending(result);
-    } catch (e) {
-      debugPrint('[RaceController.submitResult] ${safeErrorLabel(e)}');
-      if (isRetryableRaceResultFailure(e)) await _queuePendingResult(result);
-    }
+  Future<void> _file(PendingRaceResult result) =>
+      _deliver(result, label: 'submitResult');
+
+  /// Send [result], then settle the queue for its race in the same turn of
+  /// that race's send chain: queued on a failure worth retrying, and on a
+  /// success any older queued time for the race is dropped, so a replay can
+  /// never put it back over this one. Returns whether the time is accounted
+  /// for, as [ingestWatchResult] reports it.
+  Future<bool> _deliver(PendingRaceResult result,
+      {Future<void> Function()? send, required String label}) {
+    return _inRaceOrder(result, () async {
+      try {
+        await (send ?? () => _submitPending(result))();
+      } catch (e) {
+        debugPrint('[RaceController.$label] ${safeErrorLabel(e)}');
+        if (!isRetryableRaceResultFailure(e)) return true;
+        return _queuePendingResult(result);
+      }
+      await _dequeuePendingResult(
+          result.userId, result.eventId, result.instanceStart);
+      return true;
+    });
   }
 
+  /// One send at a time per account and race, in the order they were asked
+  /// for: a replay of an older time and a newer filing for the same race
+  /// cannot cross on the wire, so the newer one is always the one that lands
+  /// last. Other races are not held up.
+  Future<T> _inRaceOrder<T>(PendingRaceResult r, Future<T> Function() body) {
+    final key = '${r.userId}|${_raceKey(r.eventId, r.instanceStart)}';
+    final run = (_raceSends[key] ?? Future<void>.value()).then((_) => body());
+    final tail = run.then<void>((_) {}, onError: (Object _) {});
+    _raceSends[key] = tail;
+    tail.whenComplete(() {
+      if (identical(_raceSends[key], tail)) _raceSends.remove(key);
+    });
+    return run;
+  }
+
+  final Map<String, Future<void>> _raceSends = {};
+
+  /// Every read-modify-write of the pending-result and pending-void queues
+  /// runs here, one after another, so no writer puts back a list another
+  /// changed under it. Network calls stay outside: a slow request never
+  /// holds up queuing a time.
+  Future<T> _underQueueLock<T>(Future<T> Function() body) {
+    final run = (_queueLock ?? Future<void>.value()).then((_) => body());
+    _queueLock = run.then<void>((_) {}, onError: (Object _) {});
+    return run;
+  }
+
+  Future<void>? _queueLock;
+
   Future<void> _dequeuePendingResult(
-      String owner, String eventId, DateTime instance) async {
-    try {
-      final queued = await _readPendingResults();
-      final before = queued.length;
-      queued.removeWhere((r) =>
-          r.userId == owner &&
-          r.eventId == eventId &&
-          r.instanceStart.isAtSameMomentAs(instance));
-      if (queued.length != before) await _writePendingResults(queued);
-    } catch (e) {
-      debugPrint('[RaceController._dequeuePendingResult] $e');
-    }
+      String owner, String eventId, DateTime instance) {
+    return _underQueueLock(() async {
+      try {
+        final queued = await _readPendingResults();
+        final before = queued.length;
+        queued.removeWhere((r) =>
+            r.userId == owner &&
+            r.eventId == eventId &&
+            r.instanceStart.isAtSameMomentAs(instance));
+        if (queued.length != before) await _writePendingResults(queued);
+      } catch (e) {
+        debugPrint('[RaceController._dequeuePendingResult] $e');
+      }
+    });
+  }
+
+  /// Drop the queued entry [sent] was read as, and nothing else: a fresher
+  /// time queued for the same race while it was on the wire differs from it
+  /// and stays.
+  Future<void> _dequeueExact(PendingRaceResult sent) {
+    final wire = jsonEncode(sent.toJson());
+    return _underQueueLock(() async {
+      try {
+        final queued = await _readPendingResults();
+        final before = queued.length;
+        queued.removeWhere((r) => jsonEncode(r.toJson()) == wire);
+        if (queued.length != before) await _writePendingResults(queued);
+      } catch (e) {
+        debugPrint('[RaceController._dequeueExact] $e');
+      }
+    });
   }
 
   /// The upsert writes whoever is signed in, so a result is only ever sent
@@ -2291,6 +2370,11 @@ class RaceController extends ChangeNotifier {
     return _drainFuture ??= _drain().whenComplete(() => _drainFuture = null);
   }
 
+  /// The queue is never written back whole: each entry is sent in its
+  /// race's order ([_inRaceOrder]) only while it is still the one queued,
+  /// and only that exact entry is removed once it lands or is refused. A
+  /// time queued while a replay is on the wire therefore survives it,
+  /// whether the replay lands or fails.
   Future<void> _drain() async {
     final uid = _signedInUserId;
     if (uid == null) return;
@@ -2302,24 +2386,23 @@ class RaceController extends ChangeNotifier {
         debugPrint('[RaceController.drainPendingResults void] ${safeErrorLabel(e)}');
       }
     }
-    final queued = await _readPendingResults();
-    if (queued.isEmpty) return;
-    final remaining = <PendingRaceResult>[];
-    for (final r in queued) {
-      if (r.userId != uid) {
-        remaining.add(r);
-        continue;
-      }
-      try {
-        await _submitPending(r);
-      } catch (e) {
-        final keep = isRetryableRaceResultFailure(e);
-        debugPrint('[RaceController.drainPendingResults] '
-            '${keep ? 'kept' : 'dropped'}: ${safeErrorLabel(e)}');
-        if (keep) remaining.add(r);
-      }
+    for (final r in await _readPendingResults()) {
+      if (r.userId != uid) continue;
+      await _inRaceOrder(r, () async {
+        final wire = jsonEncode(r.toJson());
+        final still = await _readPendingResults();
+        if (!still.any((q) => jsonEncode(q.toJson()) == wire)) return;
+        try {
+          await _submitPending(r);
+        } catch (e) {
+          final keep = isRetryableRaceResultFailure(e);
+          debugPrint('[RaceController.drainPendingResults] '
+              '${keep ? 'kept' : 'dropped'}: ${safeErrorLabel(e)}');
+          if (keep) return;
+        }
+        await _dequeueExact(r);
+      });
     }
-    await _writePendingResults(remaining);
   }
 
   Future<List<({String userId, String eventId, DateTime instance})>>
@@ -2366,18 +2449,20 @@ class RaceController extends ChangeNotifier {
   }
 
   Future<void> _addPendingVoid(
-      String userId, String eventId, DateTime instance) async {
-    try {
-      final voids = await _readPendingVoids();
-      voids.removeWhere((v) =>
-          v.userId == userId &&
-          v.eventId == eventId &&
-          v.instance.isAtSameMomentAs(instance));
-      voids.add((userId: userId, eventId: eventId, instance: instance));
-      await _writePendingVoids(voids);
-    } catch (e) {
-      debugPrint('[RaceController._addPendingVoid] $e');
-    }
+      String userId, String eventId, DateTime instance) {
+    return _underQueueLock(() async {
+      try {
+        final voids = await _readPendingVoids();
+        voids.removeWhere((v) =>
+            v.userId == userId &&
+            v.eventId == eventId &&
+            v.instance.isAtSameMomentAs(instance));
+        voids.add((userId: userId, eventId: eventId, instance: instance));
+        await _writePendingVoids(voids);
+      } catch (e) {
+        debugPrint('[RaceController._addPendingVoid] $e');
+      }
+    });
   }
 
   /// Delete the withdrawn finish for this race, if one is waiting. Throws
@@ -2397,29 +2482,35 @@ class RaceController extends ChangeNotifier {
     } catch (e) {
       if (isRetryableRaceResultFailure(e)) rethrow;
     }
-    voids.removeWhere(same);
-    await _writePendingVoids(voids);
+    await _underQueueLock(() async {
+      final now = await _readPendingVoids();
+      final before = now.length;
+      now.removeWhere(same);
+      if (now.length != before) await _writePendingVoids(now);
+    });
   }
 
   /// Returns whether the result is now on disk. A `false` means the finisher
   /// time is lost unless its sender still holds it, which is why the watch
   /// relay reports it back rather than swallowing it.
-  Future<bool> _queuePendingResult(PendingRaceResult result) async {
-    try {
-      final queued = await _readPendingResults();
-      queued.removeWhere((r) =>
-          r.userId == result.userId &&
-          r.eventId == result.eventId &&
-          r.instanceStart.isAtSameMomentAs(result.instanceStart));
-      queued.add(result);
-      await _writePendingResults(queued.length > kPendingRaceResultsMax
-          ? queued.sublist(queued.length - kPendingRaceResultsMax)
-          : queued);
-      return true;
-    } catch (e) {
-      debugPrint('[RaceController._queuePendingResult] $e');
-      return false;
-    }
+  Future<bool> _queuePendingResult(PendingRaceResult result) {
+    return _underQueueLock(() async {
+      try {
+        final queued = await _readPendingResults();
+        queued.removeWhere((r) =>
+            r.userId == result.userId &&
+            r.eventId == result.eventId &&
+            r.instanceStart.isAtSameMomentAs(result.instanceStart));
+        queued.add(result);
+        await _writePendingResults(queued.length > kPendingRaceResultsMax
+            ? queued.sublist(queued.length - kPendingRaceResultsMax)
+            : queued);
+        return true;
+      } catch (e) {
+        debugPrint('[RaceController._queuePendingResult] $e');
+        return false;
+      }
+    });
   }
 
   Future<List<PendingRaceResult>> _readPendingResults() async {

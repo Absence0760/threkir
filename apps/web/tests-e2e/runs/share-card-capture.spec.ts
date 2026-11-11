@@ -98,7 +98,7 @@ test.describe('run share map card capture', () => {
 		await expect(dialog.getByTestId('share-image-preview')).toHaveCount(0);
 		await expect(dialog.getByTestId('share-image-download')).toBeDisabled();
 
-		await offset.evaluate((el) => el.remove());
+		await offset.evaluate((el) => el.parentNode?.removeChild(el));
 		await dialog.getByTestId('share-image-retry').click();
 		await expect(dialog.getByTestId('share-image-preview')).toBeVisible({ timeout: 15_000 });
 		await expect(error).toHaveCount(0);

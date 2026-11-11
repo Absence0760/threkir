@@ -393,9 +393,18 @@ test('a third-party event mark is found in any spelling, and plain park words ar
 	]) {
 		assert.ok(THIRD_PARTY_MARK.test(text), text);
 	}
-	for (const text of ['Deep Run Park, 5 km', 'deep-run-park-5k', 'Run around the park', 'Park at the lot and run to the pond', 'Swift Creek Loop, 5 km']) {
+	for (const text of [
+		'Deep Run Park, 5 km',
+		'deep-run-park-5k',
+		'Run around the park',
+		'Park at the lot and run to the pond',
+		'Swift Creek Loop, 5 km',
+		'The park runs along the creek',
+		'Cross the park walkway',
+	]) {
 		assert.ok(!THIRD_PARTY_MARK.test(text), text);
 	}
+	assert.equal(thirdPartyMarks({ a: 'ｐａｒｋｒｕｎ', b: 'park\u200brun', c: 'parkrunner' }).length, 3, 'full-width, zero-width and longer forms');
 });
 
 test('every string in a spec or manifest is checked, keys and nested lists included, with its path', () => {

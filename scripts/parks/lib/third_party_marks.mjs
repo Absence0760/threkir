@@ -6,8 +6,15 @@
 // and its built manifest, so a name, a note, a route guide or a source URL
 // cannot slip one in.
 
-/** "parkrun" in any case or spacing (park run, park-run, (not)parkrun, junior parkrun), its domains, and "parkwalk". */
-export const THIRD_PARTY_MARK = /park[\s_-]*(run|walk)/i;
+/**
+ * "parkrun" / "parkwalk" anywhere (so parkrunner, (not)parkrun, its domains),
+ * and the spaced or hyphenated forms as whole words, so "the park runs along
+ * the creek" and "park walkway" stay sayable.
+ */
+export const THIRD_PARTY_MARK = /park(run|walk)|\bpark[\s_-]+(run|walk)\b/i;
+
+/** @param {string} text */
+const folded = (text) => text.normalize('NFKC').replace(/[\u00ad\u200b-\u200f\u2060\ufeff]/g, '');
 
 /**
  * Every string under `value` that carries a refused mark, with its JSON path.
@@ -17,11 +24,11 @@ export const THIRD_PARTY_MARK = /park[\s_-]*(run|walk)/i;
  * @returns {{ path: string, text: string }[]}
  */
 export function thirdPartyMarks(value, at = '') {
-	if (typeof value === 'string') return THIRD_PARTY_MARK.test(value) ? [{ path: at || '(value)', text: value }] : [];
+	if (typeof value === 'string') return THIRD_PARTY_MARK.test(folded(value)) ? [{ path: at || '(value)', text: value }] : [];
 	if (Array.isArray(value)) return value.flatMap((v, i) => thirdPartyMarks(v, `${at}[${i}]`));
 	if (value && typeof value === 'object') {
 		return Object.entries(value).flatMap(([k, v]) => [
-			...(THIRD_PARTY_MARK.test(k) ? [{ path: `${at}.${k}`, text: k }] : []),
+			...(THIRD_PARTY_MARK.test(folded(k)) ? [{ path: `${at}.${k}`, text: k }] : []),
 			...thirdPartyMarks(v, at ? `${at}.${k}` : k),
 		]);
 	}

@@ -52,18 +52,12 @@ class ImportCompleteness {
   final int imported;
   final int skipped;
 
-  /// How many rows the page actually carried, when the function said. Null
-  /// when it did not, so a caller can tell "12 of 60" from "12, and there may
-  /// be more" rather than printing a fabricated denominator.
-  final int? total;
-
   /// Only an explicit `true` earns it.
   final bool complete;
 
   const ImportCompleteness({
     required this.imported,
     required this.skipped,
-    required this.total,
     required this.complete,
   });
 }
@@ -71,8 +65,7 @@ class ImportCompleteness {
 /// Grade an importer's response. Never throws.
 ImportCompleteness parseImportCompleteness(Object? data) {
   if (data is! Map) {
-    return const ImportCompleteness(
-        imported: 0, skipped: 0, total: null, complete: false);
+    return const ImportCompleteness(imported: 0, skipped: 0, complete: false);
   }
   final imported = importResponseCount(data['imported']);
   final skipped = importResponseCount(data['skipped']);
@@ -81,19 +74,6 @@ ImportCompleteness parseImportCompleteness(Object? data) {
   // not finish.
   final complete =
       importResponseText(data['error']) == null && data['complete'] == true;
-  final rawTotal = data['total'];
-  final total = rawTotal is num &&
-          rawTotal.isFinite &&
-          rawTotal >= 0 &&
-          rawTotal == rawTotal.roundToDouble()
-      ? rawTotal.toInt()
-      : null;
   return ImportCompleteness(
-    imported: imported,
-    skipped: skipped,
-    // A total below what was already processed is not a total — reporting
-    // "12 of 5" is worse than reporting no denominator at all.
-    total: total != null && total >= imported + skipped ? total : null,
-    complete: complete,
-  );
+      imported: imported, skipped: skipped, complete: complete);
 }

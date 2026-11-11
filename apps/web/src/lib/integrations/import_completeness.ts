@@ -39,10 +39,6 @@ export function importResponseText(value: unknown): string | null {
 export interface ImportCompleteness {
 	imported: number;
 	skipped: number;
-	/// How many rows the page actually carried, when the function said. Null
-	/// when it did not, so a caller can tell "12 of 60" from "12, and there
-	/// may be more" rather than printing a fabricated denominator.
-	total: number | null;
 	/// Only an explicit `true` earns it.
 	complete: boolean;
 }
@@ -50,7 +46,7 @@ export interface ImportCompleteness {
 /// Grade an importer's response. Never throws.
 export function parseImportCompleteness(data: unknown): ImportCompleteness {
 	if (data === null || typeof data !== 'object' || Array.isArray(data)) {
-		return { imported: 0, skipped: 0, total: null, complete: false };
+		return { imported: 0, skipped: 0, complete: false };
 	}
 	const raw = data as Record<string, unknown>;
 	const imported = importResponseCount(raw.imported);
@@ -59,16 +55,5 @@ export function parseImportCompleteness(data: unknown): ImportCompleteness {
 	// `parseStravaSyncResult`: the function answered about a walk it did not
 	// finish.
 	const complete = importResponseText(raw.error) === null && raw.complete === true;
-	const total =
-		typeof raw.total === 'number' && Number.isInteger(raw.total) && raw.total >= 0
-			? raw.total
-			: null;
-	return {
-		imported,
-		skipped,
-		// A total below what was already processed is not a total — reporting
-		// "12 of 5" is worse than reporting no denominator at all.
-		total: total !== null && total >= imported + skipped ? total : null,
-		complete,
-	};
+	return { imported, skipped, complete };
 }

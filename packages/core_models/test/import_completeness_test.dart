@@ -45,34 +45,6 @@ void main() {
     }
   });
 
-  test('total is carried when the function sent one', () {
-    expect(
-      parseImportCompleteness({'imported': 12, 'skipped': 8, 'total': 60}).total,
-      60,
-    );
-    // Absent means unknown, not zero.
-    expect(parseImportCompleteness({'imported': 12}).total, isNull);
-    for (final bad in <Object?>[-1, 2.5, '60', double.nan, double.infinity]) {
-      expect(parseImportCompleteness({'total': bad}).total, isNull,
-          reason: '$bad');
-    }
-  });
-
-  test('a total below what was already processed is no total at all', () {
-    expect(
-      parseImportCompleteness({'imported': 12, 'skipped': 0, 'total': 5}).total,
-      isNull,
-    );
-    expect(
-      parseImportCompleteness({'imported': 12, 'skipped': 3, 'total': 15}).total,
-      15,
-    );
-    expect(
-      parseImportCompleteness({'imported': 12, 'skipped': 3, 'total': 14}).total,
-      isNull,
-    );
-  });
-
   // The primitives this library exports are the ones `strava_sync_result.dart`
   // grades its own counts with. A copy there would drift silently — nothing
   // compares two libraries on the same platform — so this pins that the sync

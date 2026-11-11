@@ -2267,6 +2267,201 @@ void main() {
       expect(social.submitted.single.gunTimeS, isNotNull,
           reason: 'the server drops it on a self-timed race');
     });
+
+    /// The app process dies and comes back: a new controller over the same
+    /// device storage, and the run screen resuming the same recording.
+    Future<RaceController> restart(_FakeSocial social) async {
+      final c = _rc(social)..courseLoader = (_, _) async => lined();
+      c.setActiveForTest(
+          race(status: 'running', instanceStart: instance, startedAt: gun));
+      c.beginRecording(startedAt: began);
+      expect(c.attachIfRaceRunning(recordingStartedAt: began), isTrue);
+      await pumpEventQueue();
+      return c;
+    }
+
+    /// Finish at the line (x = 5000 at GO + 1006 s), file it, undo it.
+    Future<RaceController> undone(_FakeSocial social) async {
+      final c = armed(social);
+      await pumpEventQueue();
+      go(c);
+      await pumpEventQueue();
+      expect(runTo(c, 5020)?.detection, RaceFinishDetection.gate);
+      await c.fileOutcomeNow(durationS: 1010, distanceM: 5050);
+      expect(await c.voidAutoFinish(), isTrue);
+      return c;
+    }
+
+    Future<String?> undoneOnDisk() async =>
+        (await SharedPreferences.getInstance()).getString(kRaceUndoneFinishKey);
+
+    test('after an undo, a restart keeps the start and re-arms the line for '
+        'a later crossing only', () async {
+      final social = _FakeSocial();
+      await undone(social);
+      expect(social.deleted, hasLength(1));
+      expect(await undoneOnDisk(), isNotNull);
+
+      final r = await restart(social);
+      expect(r.detecting, isTrue, reason: 'a restart re-arms the line');
+      expect(r.distanceToStartM.value, isNull,
+          reason: 'the start is already committed');
+      var s = 1100;
+      var covered = 5130.0;
+      for (var x = 5030.0; x <= 5100; x += 10, s += 2, covered += 10) {
+        expect(fix(r, x, s, covered), isNull);
+      }
+      expect(social.submitted, hasLength(1),
+          reason: 'the undone finish is not found or filed again');
+
+      // Back behind the line and over it again.
+      RaceFinish? again;
+      for (var x = 5090.0; x >= 4950; x -= 10, s += 2, covered += 10) {
+        again ??= fix(r, x, s, covered);
+      }
+      expect(again, isNull, reason: 'a backward crossing finishes nobody');
+      for (var x = 4960.0; x <= 5020; x += 10, s += 2, covered += 10) {
+        again ??= fix(r, x, s, covered);
+      }
+      expect(again?.detection, RaceFinishDetection.gate);
+      expect(again!.at.isAfter(at(1006)), isTrue);
+
+      await r.fileOutcomeNow(durationS: 1400, distanceM: covered);
+      expect(await undoneOnDisk(), isNull, reason: 'the finish is filed');
+      await r.submitResult(runId: 'run-1', durationS: 1400, distanceM: covered);
+      final crossings = social.lastCrossings!;
+      expect(crossings.startDetection, 'gate');
+      expect(crossings.startAt, at(6),
+          reason: 'the start the undone finish was measured from is kept');
+      expect(crossings.finishDetection, 'gate');
+      expect(crossings.finishAt, again.at.toUtc());
+      expect(social.submitted.last.chipTimeS,
+          again.at.difference(at(6)).inMilliseconds ~/ 1000);
+      expect(r.isHosting, isFalse);
+    });
+
+    test('after a restart, a fix timed before the undone finish is not '
+        'offered', () async {
+      final social = _FakeSocial();
+      await undone(social);
+      final r = await restart(social);
+      expect(fix(r, 4990, 1000, 5020), isNull);
+      expect(fix(r, 5010, 1004, 5040), isNull,
+          reason: 'the undone crossing itself, offered again');
+      expect(fix(r, 5020, 1100, 5150), isNull);
+      expect(social.submitted, hasLength(1));
+    });
+
+    test('a self-timed attempt restarted after an undo keeps its line start',
+        () async {
+      final now = DateTime.now().toUtc();
+      final trial = ActiveRace(
+        eventId: 'tt-1',
+        instanceStart: now.subtract(const Duration(hours: 1)),
+        status: 'running',
+        startedAt: now.subtract(const Duration(hours: 1)),
+        eventTitle: 'Park time trial',
+        startMode: SessionStartMode.selfTimed,
+        windowOpensAt: now.subtract(const Duration(hours: 1)),
+        windowClosesAt: now.add(const Duration(days: 1)),
+      );
+      RaceController attempt(_FakeSocial social) {
+        final c = _rc(social)..courseLoader = (_, _) async => lined();
+        c.setActiveForTest(trial);
+        c.armAttempt();
+        c.beginRecording(startedAt: now);
+        expect(c.attachIfRaceRunning(recordingStartedAt: now), isTrue);
+        return c;
+      }
+
+      RaceFinish? offer(RaceController c, double x, int s, double covered) =>
+          c.offerFix(
+              lat: lat0,
+              lng: lngAt(x),
+              coveredM: covered,
+              at: now.add(Duration(seconds: s)));
+
+      final social = _FakeSocial();
+      final c = attempt(social);
+      await pumpEventQueue();
+      RaceFinish? fin;
+      var s = 0;
+      for (var x = -30.0; x <= 5020; x += 10, s += 2) {
+        fin ??= offer(c, x, s, x + 30);
+      }
+      expect(fin?.detection, RaceFinishDetection.gate);
+      await c.fileOutcomeNow(durationS: 1010, distanceM: 5050);
+      await c.voidAutoFinish();
+
+      final r = attempt(social);
+      await pumpEventQueue();
+      RaceFinish? again;
+      var covered = 5100.0;
+      for (var x = 5040.0; x >= 4950; x -= 10, s += 2, covered += 10) {
+        again ??= offer(r, x, s, covered);
+      }
+      for (var x = 4960.0; x <= 5020; x += 10, s += 2, covered += 10) {
+        again ??= offer(r, x, s, covered);
+      }
+      expect(again?.detection, RaceFinishDetection.gate,
+          reason: 'with no start-line crossing after the restart');
+      await r.submitResult(runId: 'run-1', durationS: 1300, distanceM: covered);
+      expect(social.lastCrossings!.startDetection, 'gate');
+      expect(social.lastCrossings!.startAt, fin!.start!.at.toUtc());
+    });
+
+    test('the undone finish is dropped when the recording ends', () async {
+      final c = await undone(_FakeSocial());
+      expect(await undoneOnDisk(), isNotNull);
+      c.detachRecorder();
+      await pumpEventQueue();
+      expect(await undoneOnDisk(), isNull);
+    });
+
+    test('the undone finish is dropped when Stop files the hand finish',
+        () async {
+      final social = _FakeSocial();
+      final c = await undone(social);
+      c.decideStop(coveredM: 5330, now: at(1300));
+      await c.submitResult(runId: 'run-1', durationS: 1300, distanceM: 5330);
+      await pumpEventQueue();
+      expect(await undoneOnDisk(), isNull);
+    });
+
+    test('another recording does not adopt the undone finish', () async {
+      final social = _FakeSocial();
+      await undone(social);
+      final r = _rc(social)..courseLoader = (_, _) async => lined();
+      r.setActiveForTest(
+          race(status: 'running', instanceStart: instance, startedAt: gun));
+      r.beginRecording(startedAt: began.add(const Duration(minutes: 30)));
+      await pumpEventQueue();
+      expect(await undoneOnDisk(), isNull);
+    });
+
+    test('a poll without the race forgets the undone finish', () async {
+      final social = _FakeSocial();
+      await undone(social);
+      final r = _rc(social)..activeRaceLoader = () async => [];
+      await r.refreshForTest();
+      expect(await undoneOnDisk(), isNull);
+    });
+
+    test('a poll still listing the race keeps the undone finish', () async {
+      final social = _FakeSocial();
+      await undone(social);
+      final r = _rc(social)..courseLoader = (_, _) async => lined();
+      r.activeRaceLoader = () async =>
+          [race(status: 'running', instanceStart: instance, startedAt: gun)];
+      await r.refreshForTest();
+      expect(await undoneOnDisk(), isNotNull);
+    });
+
+    test('sign-out drops the undone finish', () async {
+      await undone(_FakeSocial());
+      await clearPendingRaceResults();
+      expect(await undoneOnDisk(), isNull);
+    });
   });
 
   group('the crossings ride the pending queue', () {
@@ -2308,6 +2503,132 @@ void main() {
       expect(RaceStartDetection.values.map((v) => v.wire),
           ['gate', 'device']);
       expect(RaceFinishDetection.values.map((v) => v.wire), ['zone', 'gate']);
+    });
+  });
+  group('the clock offset survives a restart', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    final t = DateTime.utc(2026, 5, 22, 17);
+
+    /// One round trip of [rttMs] whose server stamp puts the server [aheadMs]
+    /// ahead of the device.
+    void sample(RaceController c, {required int rttMs, required int aheadMs}) =>
+        c.addClockSample(
+          sentAt: t,
+          receivedAt: t.add(Duration(milliseconds: rttMs)),
+          serverAt: t.add(Duration(milliseconds: rttMs ~/ 2 + aheadMs)),
+        );
+
+    RaceController restarted({DateTime? now}) =>
+        _rc(_FakeSocial())..nowReader = () => now ?? t.add(const Duration(hours: 1));
+
+    test('the best offset is remembered and restored', () async {
+      final c = _rc(_FakeSocial());
+      sample(c, rttMs: 300, aheadMs: 1500);
+      sample(c, rttMs: 80, aheadMs: 1240);
+      sample(c, rttMs: 400, aheadMs: 9000);
+      await pumpEventQueue();
+      expect(c.clockOffset.offset, const Duration(milliseconds: 1240));
+
+      final r = restarted();
+      expect(r.clockOffset.known, isFalse);
+      await r.restoreClockOffset();
+      expect(r.clockOffset.known, isTrue);
+      expect(r.clockOffset.offset, const Duration(milliseconds: 1240));
+    });
+
+    test('a live sample replaces the restored one by the shortest round trip',
+        () async {
+      sample(_rc(_FakeSocial()), rttMs: 80, aheadMs: 1240);
+      await pumpEventQueue();
+      final r = restarted();
+      await r.restoreClockOffset();
+      sample(r, rttMs: 200, aheadMs: 3000);
+      expect(r.clockOffset.offset, const Duration(milliseconds: 1240),
+          reason: 'a slower round trip is the worse sample');
+      sample(r, rttMs: 40, aheadMs: 1300);
+      expect(r.clockOffset.offset, const Duration(milliseconds: 1300));
+      await pumpEventQueue();
+
+      final again = restarted();
+      await again.restoreClockOffset();
+      expect(again.clockOffset.offset, const Duration(milliseconds: 1300));
+    });
+
+    test('an offset older than a day is not trusted', () async {
+      sample(_rc(_FakeSocial()), rttMs: 80, aheadMs: 1240);
+      await pumpEventQueue();
+      final r = restarted(
+          now: t.add(kServerClockOffsetMaxAge + const Duration(minutes: 1)));
+      await r.restoreClockOffset();
+      expect(r.clockOffset.known, isFalse);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString(kServerClockOffsetKey), isNull);
+    });
+
+    test('an offset sampled after the device clock\'s now is not trusted',
+        () async {
+      sample(_rc(_FakeSocial()), rttMs: 80, aheadMs: 1240);
+      await pumpEventQueue();
+      final r = restarted(now: t.subtract(const Duration(hours: 1)));
+      await r.restoreClockOffset();
+      expect(r.clockOffset.known, isFalse);
+    });
+
+    test('the restored offset judges the cached race before any poll answers',
+        () async {
+      final now = DateTime.now().toUtc();
+      final window = ActiveRace(
+        eventId: 'sched-1',
+        instanceStart: now.subtract(const Duration(hours: 1)),
+        status: 'running',
+        startedAt: now.subtract(const Duration(hours: 1)),
+        eventTitle: 'Scheduled 10K',
+        startMode: SessionStartMode.scheduled,
+        scheduledStartAt: now.subtract(const Duration(hours: 1)),
+        windowOpensAt: now.subtract(const Duration(hours: 1)),
+        windowClosesAt: now.add(const Duration(hours: 1)),
+      );
+      // The server is two hours ahead of this device: on its clock the
+      // window has closed.
+      final sampledAt = now.subtract(const Duration(minutes: 5));
+      SharedPreferences.setMockInitialValues({
+        kActiveRaceCacheKey: jsonEncode({'user_id': _me, ...window.toJson()}),
+        kServerClockOffsetKey: jsonEncode({
+          'offset_us': const Duration(hours: 2).inMicroseconds,
+          'rtt_us': 50000,
+          'sampled_at': sampledAt.toIso8601String(),
+        }),
+      });
+      final c = _rc(_FakeSocial())
+        ..activeRaceLoader = () async => throw Exception('offline');
+      await c.restoreClockOffset();
+      await c.refreshForTest();
+      expect(c.active, isNull);
+
+      final unrestored = _rc(_FakeSocial())
+        ..activeRaceLoader = () async => throw Exception('offline');
+      await unrestored.refreshForTest();
+      expect(unrestored.active?.eventId, 'sched-1',
+          reason: 'on the device clock alone the window is still open');
+    });
+
+    test('start() restores the offset before its first poll', () {
+      final code =
+          blankNonCode(File('lib/race_controller.dart').readAsStringSync());
+      final body = code.substring(code.indexOf('Future<void> start() async'));
+      final restore = body.indexOf('restoreClockOffset()');
+      expect(restore, greaterThan(0));
+      expect(restore, lessThan(body.indexOf('_refresh()')));
+    });
+
+    test('sign-out forgets the offset', () async {
+      sample(_rc(_FakeSocial()), rttMs: 80, aheadMs: 1240);
+      await pumpEventQueue();
+      await clearPendingRaceResults();
+      final r = restarted();
+      await r.restoreClockOffset();
+      expect(r.clockOffset.known, isFalse);
     });
   });
 }

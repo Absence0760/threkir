@@ -33099,3 +33099,11 @@ Owner decisions on issue #1352. The course page showed "Run it clockwise. © Ope
 **Defaults chosen without a product call, each reversible:** no admin notice is sent for a new flag (the pending count on `/admin/reports` links to the page; a notice kind would add a CHECK widening and a client rail on every platform); gone and reviewed flags are kept, not purged (no personal data beyond the reviewing admin's id, cleared on account deletion); the schedule is 11:41 UTC.
 
 **Rejected:** letting the sweep close a course on a `Park Closure` alert (the recorded data shows partial closures under that category); flagging every course for any `Park Closure` alert (noise that teaches the operator to dismiss without reading); a per-park request (ten times the key budget for nothing).
+
+## 2455. `event_results.clock_offset_ms` is bounded at 400 days either way, derived from TLS rather than from a guess about phone clocks
+
+**Context:** the catalogue guards (`numeric_bounds_reject_nan_test.sql`, `free_text_caps_test.sql`) caught three columns with no CHECK: `event_results.clock_offset_ms` (#1307) and `park_course_status_actions.status_before` / `reports_resolved` (#1313). The two park columns have an obvious bound: `status_before` is copied from `park_courses.status`, so it takes that vocabulary, and `reports_resolved` is a row count. The offset does not, and a bound that refuses a real device would lose a race result to a `23514`, since no client clamps the offset it measures.
+
+**Decision:** `clock_offset_ms between -34560000000 and 34560000000` (migrations `20271215000001` + `…002`, NOT VALID then VALIDATE). A device can only file a result over TLS, which refuses a clock outside the server certificate's validity window, and a publicly trusted certificate lives at most 398 days. So no device that could have sent a result is refused, and an overflowed or garbage value still is.
+
+**Rejected:** ±1 day, which reads as plausible and would silently drop the result of a phone whose clock is a few days wrong; exempting the column in the guard, whose exemption list is for identity and generated columns only.

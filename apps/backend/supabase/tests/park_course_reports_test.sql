@@ -11,7 +11,7 @@
 -- reporter's account and 30 days after resolution.
 
 begin;
-select plan(56);
+select plan(58);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -356,6 +356,15 @@ select is(
     where notes in ('old', 'recent', 'held')),
   array['held:held@pcr.example', 'old:-', 'recent:recent@pcr.example'],
   'the purge clears an address 30 days after resolution, keeps the report, and spares a held one');
+
+select throws_ok(
+  $$insert into park_course_status_actions (course_slug, action, status_before)
+    values ('probe', 'close', 'shut')$$,
+  '23514', null, 'the status log takes only a park course status as status_before');
+select throws_ok(
+  $$insert into park_course_status_actions (course_slug, action, status_before, reports_resolved)
+    values ('probe', 'close', 'open', -1)$$,
+  '23514', null, 'the status log refuses a negative resolved count');
 
 select * from finish();
 rollback;

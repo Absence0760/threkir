@@ -8,8 +8,10 @@ misleads the exact people who care most.
 
 ## What ships
 
-- **parkrun imports** carry a scraped `metadata.age_grade` string (e.g.
-  `"54.23%"`). That value is authoritative and always wins when present.
+- **parkrun imports** (runs imported before that import was removed,
+  [decisions § SCRAPER_ADR](../architecture/decisions.md)) carry a scraped `metadata.age_grade` string (e.g.
+  `"54.23%"`). That value is authoritative and always wins when present; nothing
+  writes it any more.
 - **Every other standard-distance race** — a manual entry, a Strava/Garmin/FIT
   import — now gets a **computed** age grade on run-detail when the runner's date
   of birth and sex are known and the run's distance matches a standard distance.

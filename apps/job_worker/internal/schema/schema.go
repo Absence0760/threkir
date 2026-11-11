@@ -178,6 +178,11 @@ const (
 	// A watch recorder writes it beside distance_step_filled_m, and it is
 	// exactly what a stepless replay of the track lacks.
 	MetaDistanceStepOverChordM = "distance_step_over_chord_m"
+	// How many estimator segments a watch stored, each later one's first fix
+	// marked segmentStart (spec v1.8). distance_step_over_chord_m is read only
+	// when the replay finds as many, so a track that lost its marks on the way
+	// to storage keeps the run-total rule.
+	MetaDistanceSegments = "distance_segments"
 	// Stamped true by a recorder whose stored track holds every fix its
 	// distance estimator took, the off-track ones flagged `offTrack`. A
 	// live watch stamp from spec v1.4 on without it names a track that

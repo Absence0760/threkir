@@ -14,12 +14,16 @@
 --   17-19. End files a DNF only for the pinged, non-declined attendee with no
 --          result, moves no finisher's rank, and a later update of the
 --          finished session files nothing more.
---   20.    A gun-time change more than 24 h after the finish is refused.
---   21.    event_results_redacted carries the four race columns.
---   22.    The NOT VALID constraints were validated by 20270727000002.
+--   20.    A gun-time change more than 24 h after the finish is refused with
+--          event_results_race_guard's race_result_window_closed message.
+--   21-23. Past the window a racer's non-timing edit lands, the race director
+--          corrects a racer's time, and an event organiser who is not a
+--          director edits a bib-only time.
+--   24.    event_results_redacted carries the four race columns.
+--   25.    The NOT VALID constraints were validated by 20270727000002.
 
 begin;
-select plan(24);
+select plan(27);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -381,6 +385,11 @@ set local "request.jwt.claims" = '{"role":"service_role"}';
 update race_sessions set finished_at = now() - interval '25 hours'
  where event_id = 'e7281000-0000-0000-0000-0000000000e3';
 
+select set_config('rg.window_closed',
+  (select 'race_result_window_closed: race finished at ' || finished_at::text
+     from race_sessions where event_id = 'e7281000-0000-0000-0000-0000000000e3'),
+  true);
+
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000002","role":"authenticated"}';
 
@@ -389,11 +398,44 @@ select throws_ok(
       where event_id = 'e7281000-0000-0000-0000-0000000000e3'
         and user_id = 'e7281000-0000-0000-0000-000000000002' $$,
   '23514',
-  null,
+  current_setting('rg.window_closed'),
   'a racer cannot change their gun time more than 24 h after the finish'
 );
 
--- ── 21: the redacted read surface ───────────────────────────────────────────
+select lives_ok(
+  $$ update event_results set note = 'sore calves'
+      where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+        and user_id = 'e7281000-0000-0000-0000-000000000002' $$,
+  'a racer''s edit that changes no timing column still lands after the window'
+);
+
+set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000001","role":"authenticated"}';
+
+update event_results set duration_s = 1470, gun_time_s = 1470
+ where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+   and user_id = 'e7281000-0000-0000-0000-000000000003';
+
+select is(
+  (select duration_s || '/' || gun_time_s || '/' || finish_method from event_results
+    where event_id = 'e7281000-0000-0000-0000-0000000000e3'
+      and user_id = 'e7281000-0000-0000-0000-000000000003'),
+  '1470/1470/host',
+  'the race director corrects a racer''s time after the window, stamped host'
+);
+
+set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000006","role":"authenticated"}';
+
+update event_results set duration_s = 2980
+ where event_id = 'e7281000-0000-0000-0000-0000000000e3' and bib = '77';
+
+select is(
+  (select duration_s from event_results
+    where event_id = 'e7281000-0000-0000-0000-0000000000e3' and bib = '77'),
+  2980,
+  'an event organiser who is not a director still edits a bib-only time after the window'
+);
+
+-- ── 24: the redacted read surface ───────────────────────────────────────────
 set local "request.jwt.claims" = '{"sub":"e7281000-0000-0000-0000-000000000007","role":"authenticated"}';
 
 select is(
@@ -406,7 +448,7 @@ select is(
   'another viewer reads a result''s course, gun time, chip time and method'
 );
 
--- ── 22: validated constraints ───────────────────────────────────────────────
+-- ── 25: validated constraints ───────────────────────────────────────────────
 set local role service_role;
 
 select is(

@@ -10,9 +10,11 @@
 -- for a template, a released claim for a race listing), a rename notice with
 -- a deadline, or dismiss. Every action is logged with the reviewer, and both
 -- sides are notified with no actor and read their side without the reviewer.
+-- Each template's publish guard (training_plans, gym_routines, challenges)
+-- refuses a republish while a takedown stands and lets a dismissed one through.
 
 begin;
-select plan(67);
+select plan(70);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -438,6 +440,28 @@ select is(
   (select library_copy_id from training_plans where id = 'd15e3333-0000-0000-0000-000000000002'),
   'd15e3333-0000-0000-0000-000000000001'::uuid,
   'the source points at its library copy again');
+
+-- ── the routine guard: a dismissal locks nothing, a takedown does ───────────
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"d15e0000-0000-0000-0000-000000000005","role":"authenticated"}';
+update gym_routines set is_public_template = false where id = 'd15e4444-0000-0000-0000-000000000001';
+select lives_ok(
+  $$ update gym_routines set is_public_template = true where id = 'd15e4444-0000-0000-0000-000000000001' $$,
+  'the author republishes a routine whose dispute was dismissed');
+
+set local "request.jwt.claims" = '{"sub":"d15e0000-0000-0000-0000-000000000001","role":"authenticated"}';
+select submit_organiser_dispute('gym_routine', 'd15e4444-0000-0000-0000-000000000001', 'd15e1111-0000-0000-0000-000000000001');
+set local "request.jwt.claims" = '{"sub":"d15e0000-0000-0000-0000-000000000006","role":"authenticated"}';
+select is(
+  resolve_organiser_dispute('gym_routine', 'd15e4444-0000-0000-0000-000000000001', 'takedown'),
+  1, 'hiding the routine resolves the dispute filed again after the dismissal');
+
+set local "request.jwt.claims" = '{"sub":"d15e0000-0000-0000-0000-000000000005","role":"authenticated"}';
+select throws_ok(
+  $$ update gym_routines set is_public_template = true where id = 'd15e4444-0000-0000-0000-000000000001' $$,
+  '42501', 'organiser_dispute_takedown', 'the author cannot republish a routine taken down');
+reset role;
 
 select * from finish();
 rollback;

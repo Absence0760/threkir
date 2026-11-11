@@ -66,6 +66,14 @@ enum PushTargetKind {
   /// URL names the partner (`/messages/<user id>`, web's own thread path).
   messages,
 
+  /// One group conversation (`/messages/group/<conversation id>`), the
+  /// target of a group message notice (decisions § 2463).
+  groupThread,
+
+  /// The inbox's Requests list (`/messages?view=requests`), where a group
+  /// invitation is answered.
+  messageRequests,
+
   /// An organiser's course alert (`/course-alerts/<id>`, decisions § 2407).
   /// Carries the alert UUID; the host resolves it to the race or the route
   /// the alert is on, as web's resolver page does.
@@ -199,8 +207,18 @@ PushTarget pushTargetFromUrl(String? url) {
     case 'challenges':
       return const PushTarget(PushTargetKind.challenges);
     // The worker stamps a bare `/messages` for a message push, so it opens
-    // the conversation list; a URL naming the partner opens that thread.
+    // the conversation list; a URL naming the partner opens that thread, and
+    // a group's own path opens the group.
     case 'messages':
+      if (id == 'group') {
+        final group = segments.length > 2 ? segments[2] : null;
+        return group == null
+            ? const PushTarget(PushTargetKind.messages)
+            : PushTarget(PushTargetKind.groupThread, group);
+      }
+      if (id == null && query['view'] == 'requests') {
+        return const PushTarget(PushTargetKind.messageRequests);
+      }
       return PushTarget(PushTargetKind.messages, id);
     // The worker stamps the public share URL for the kinds an email may be
     // opened logged out from. A signed-in app opens the in-app view instead,

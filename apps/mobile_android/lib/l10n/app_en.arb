@@ -29197,5 +29197,458 @@
   "messagesLinkOpenFailed": "Couldn't open that link.",
   "@messagesLinkOpenFailed": {
     "description": "Banner when a link in a message could not be opened in the browser"
+  },
+  "groupsNewGroup": "New group",
+  "@groupsNewGroup": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.newGroup"
+  },
+  "groupsGroupFallback": "Group",
+  "@groupsGroupFallback": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.groupFallback"
+  },
+  "groupsMemberCount": "{count, plural, one {{count} member} other {{count} members}}",
+  "@groupsMemberCount": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.memberCount",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsMembersTitle": "{count, plural, one {{count} member} other {{count} members}}",
+  "@groupsMembersTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.membersTitle",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsMembersButton": "Members",
+  "@groupsMembersButton": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.membersButton"
+  },
+  "groupsYouLeftPreview": "You left this group",
+  "@groupsYouLeftPreview": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.youLeftPreview"
+  },
+  "groupsRenamedPreview": "Group renamed to {title}",
+  "@groupsRenamedPreview": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renamedPreview",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsNoMessagesYet": "No messages yet",
+  "@groupsNoMessagesYet": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.noMessagesYet"
+  },
+  "groupsInvitesHeading": "Group invitations",
+  "@groupsInvitesHeading": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.invitesHeading"
+  },
+  "groupsInviteLine": "{name} invited you · {count, plural, one {{count} member} other {{count} members}}",
+  "@groupsInviteLine": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteLine",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsInviteAccept": "Join",
+  "@groupsInviteAccept": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteAccept"
+  },
+  "groupsInviteDecline": "Decline",
+  "@groupsInviteDecline": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDecline"
+  },
+  "groupsInviteAcceptedToast": "You joined {title}",
+  "@groupsInviteAcceptedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteAcceptedToast",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInviteDeclinedToast": "Invitation declined",
+  "@groupsInviteDeclinedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDeclinedToast"
+  },
+  "groupsInviteActionFailed": "Couldn't answer the invitation: {error}",
+  "@groupsInviteActionFailed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteActionFailed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInviteDeclineConfirmTitle": "Decline the invitation to {title}?",
+  "@groupsInviteDeclineConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDeclineConfirmTitle",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsInviteDeclineConfirmMessage": "You won't join the group, and it can't invite you again for 14 days. Nobody is told why.",
+  "@groupsInviteDeclineConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteDeclineConfirmMessage"
+  },
+  "groupsCreateTitle": "New group",
+  "@groupsCreateTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createTitle"
+  },
+  "groupsTitleLabel": "Group name",
+  "@groupsTitleLabel": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.titleLabel"
+  },
+  "groupsCreateHint": "Pick at least two people. Each gets an invitation and joins only if they accept. People see messages from the moment they join.",
+  "@groupsCreateHint": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createHint"
+  },
+  "groupsCreateSubmit": "Create group",
+  "@groupsCreateSubmit": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createSubmit"
+  },
+  "groupsCreating": "Creating…",
+  "@groupsCreating": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.creating"
+  },
+  "groupsCreatedToast": "{title} created. Invitations sent.",
+  "@groupsCreatedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createdToast",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsCreateFailed": "Couldn't create the group.",
+  "@groupsCreateFailed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.createFailed"
+  },
+  "groupsPeopleLoadFailed": "Couldn't load the people you can invite.",
+  "@groupsPeopleLoadFailed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleLoadFailed"
+  },
+  "groupsPeopleEmpty": "Nobody to invite yet. You can invite people you follow or who follow you.",
+  "@groupsPeopleEmpty": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleEmpty"
+  },
+  "groupsPeopleSearch": "Search people",
+  "@groupsPeopleSearch": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleSearch"
+  },
+  "groupsPeopleSelected": "{count} of {max} selected",
+  "@groupsPeopleSelected": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleSelected",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsPeopleNoMatches": "No one matches that name.",
+  "@groupsPeopleNoMatches": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleNoMatches"
+  },
+  "groupsPeopleFull": "A group holds at most 32 people, invitations included. {max} more can be invited.",
+  "@groupsPeopleFull": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.peopleFull",
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsUnavailable": "Group conversations aren't available right now.",
+  "@groupsUnavailable": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.unavailable"
+  },
+  "groupsNotFound": "This group isn't available.",
+  "@groupsNotFound": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.notFound"
+  },
+  "groupsNotAvailable": "This group isn't available.",
+  "@groupsNotAvailable": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.notAvailable"
+  },
+  "groupsActionRefused": "You can't do that in this group.",
+  "@groupsActionRefused": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.actionRefused"
+  },
+  "groupsInviteRefused": "One of these people can't be invited.",
+  "@groupsInviteRefused": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteRefused"
+  },
+  "groupsCapReached": "A group holds at most 32 people, invitations included.",
+  "@groupsCapReached": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.capReached"
+  },
+  "groupsTitleInvalid": "A group name is 1 to 60 characters.",
+  "@groupsTitleInvalid": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.titleInvalid"
+  },
+  "groupsSendNotAllowed": "You can't send to this group.",
+  "@groupsSendNotAllowed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.sendNotAllowed"
+  },
+  "groupsActionFailed": "That didn't work: {error}",
+  "@groupsActionFailed": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.actionFailed",
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsHistoryNote": "Messages from before you joined aren't shown.",
+  "@groupsHistoryNote": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.historyNote"
+  },
+  "groupsEmptyThread": "No messages yet. Say hello.",
+  "@groupsEmptyThread": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.emptyThread"
+  },
+  "groupsBlockedPlaceholder": "Message from someone you blocked",
+  "@groupsBlockedPlaceholder": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.blockedPlaceholder"
+  },
+  "groupsRenamedLine": "{name} renamed the group to {title}",
+  "@groupsRenamedLine": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renamedLine",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRenamedLineYou": "You renamed the group to {title}",
+  "@groupsRenamedLineYou": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renamedLineYou",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsLeftNotice": "You left this group. You can still unsend your own messages.",
+  "@groupsLeftNotice": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leftNotice"
+  },
+  "groupsComposerLabel": "Message {title}",
+  "@groupsComposerLabel": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.composerLabel",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsLeave": "Leave",
+  "@groupsLeave": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leave"
+  },
+  "groupsLeaveConfirmTitle": "Leave {title}?",
+  "@groupsLeaveConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leaveConfirmTitle",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsLeaveConfirmMessage": "You'll stop seeing the group's messages at once, and you need a new invitation to come back. Your own messages stay in the group until you unsend them. Anything already on other members' devices stays there.",
+  "@groupsLeaveConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leaveConfirmMessage"
+  },
+  "groupsLeftToast": "You left {title}",
+  "@groupsLeftToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.leftToast",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRename": "Rename",
+  "@groupsRename": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.rename"
+  },
+  "groupsRenameSave": "Save",
+  "@groupsRenameSave": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renameSave"
+  },
+  "groupsRenamedToast": "Group renamed",
+  "@groupsRenamedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.renamedToast"
+  },
+  "groupsInviteMore": "Invite",
+  "@groupsInviteMore": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteMore"
+  },
+  "groupsInviteSend": "{count, plural, one {Invite {count} person} other {Invite {count} people}}",
+  "@groupsInviteSend": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteSend",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsInvitedToast": "{count, plural, one {Invitation sent} other {{count} invitations sent}}",
+  "@groupsInvitedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.invitedToast",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupsRoleInvited": "Invited",
+  "@groupsRoleInvited": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.roleInvited"
+  },
+  "groupsYouSuffix": "(you)",
+  "@groupsYouSuffix": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.youSuffix"
+  },
+  "groupsMakeAdmin": "Make admin",
+  "@groupsMakeAdmin": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.makeAdmin"
+  },
+  "groupsRemoveAdmin": "Remove as admin",
+  "@groupsRemoveAdmin": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removeAdmin"
+  },
+  "groupsMadeAdminToast": "{name} is now an admin",
+  "@groupsMadeAdminToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.madeAdminToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRemovedAdminToast": "{name} is no longer an admin",
+  "@groupsRemovedAdminToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removedAdminToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsMakeOwner": "Make owner",
+  "@groupsMakeOwner": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.makeOwner"
+  },
+  "groupsTransferConfirmTitle": "Make {name} the owner?",
+  "@groupsTransferConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.transferConfirmTitle",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsTransferConfirmMessage": "You become an admin. Only the new owner can give ownership back.",
+  "@groupsTransferConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.transferConfirmMessage"
+  },
+  "groupsTransferredToast": "{name} is now the owner",
+  "@groupsTransferredToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.transferredToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRemove": "Remove",
+  "@groupsRemove": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.remove"
+  },
+  "groupsRemoveConfirmTitle": "Remove {name} from the group?",
+  "@groupsRemoveConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removeConfirmTitle",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsRemoveConfirmMessage": "They stop seeing the group's messages at once and need a new invitation to come back. Their own messages stay. They aren't told who removed them.",
+  "@groupsRemoveConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removeConfirmMessage"
+  },
+  "groupsRemovedToast": "{name} was removed",
+  "@groupsRemovedToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.removedToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsCancelInvite": "Cancel invitation",
+  "@groupsCancelInvite": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.cancelInvite"
+  },
+  "groupsCancelInviteConfirmTitle": "Cancel the invitation to {name}?",
+  "@groupsCancelInviteConfirmTitle": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.cancelInviteConfirmTitle",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsCancelInviteConfirmMessage": "They won't be able to join with it. You can invite them again later.",
+  "@groupsCancelInviteConfirmMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.cancelInviteConfirmMessage"
+  },
+  "groupsInviteCancelledToast": "Invitation to {name} cancelled",
+  "@groupsInviteCancelledToast": {
+    "description": "Group conversations (issue #1365): the web catalogue's groups.inviteCancelledToast",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifGroupMessage": "{name} wrote in a group",
+  "@profileNotifGroupMessage": {
+    "description": "Group conversations (issue #1365): the web catalogue's notificationsList.verbGroupMessage",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "profileNotifGroupInvite": "{name} invited you to a group",
+  "@profileNotifGroupInvite": {
+    "description": "Group conversations (issue #1365): the web catalogue's notificationsList.verbGroupInvite",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

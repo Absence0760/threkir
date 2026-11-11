@@ -9910,6 +9910,7 @@ class ApiClient {
           lastKind: switch (r['last_kind']) {
             'coach_share' => 'coach_share',
             'ai_assisted' => 'ai_assisted',
+            'group_renamed' => 'group_renamed',
             _ => 'text',
           },
           lastAt: parseIsoStrictRequired(r['last_at'], 'last_at'),
@@ -9920,6 +9921,14 @@ class ApiClient {
           markedUnread: r['marked_unread'] == true,
           request: r['request'] == true,
           lastImage: r['last_image'] == true,
+          kind: r['kind'] == 'group' ? 'group' : 'direct',
+          title: r['title'] as String?,
+          memberCount: (r['member_count'] as num?)?.toInt(),
+          membershipState: switch (r['membership_state']) {
+            'active' => 'active',
+            'left' => 'left',
+            _ => null,
+          },
         ),
     ];
   }
@@ -10426,38 +10435,53 @@ class ApiClient {
     );
     final hits = <DmSearchHit>[
       for (final r in (res as List).cast<Map<String, dynamic>>())
-        if (r['body'] is String)
-          DmSearchHit(
-            id: r['id'] as String,
-            conversationId: r['conversation_id'] as String,
-            partnerId: (r['sender_id'] == me
-                ? r['recipient_id']
-                : r['sender_id']) as String?,
-            deletedPartnerKey: r['deleted_partner_key'] as String?,
-            body: r['body'] as String,
-            createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
-            fromMe: r['sender_id'] == me,
-          ),
+        if (r['body'] is String) _searchHit(r, me),
     ];
     final partnerIds = <String>{
       for (final h in hits)
         if (h.partnerId != null) h.partnerId!,
     }.toList();
-    if (partnerIds.isEmpty) return hits;
+    final groupIds = <String>{
+      for (final h in hits)
+        if (h.isGroup) h.conversationId,
+    }.toList();
+    if (partnerIds.isEmpty && groupIds.isEmpty) return hits;
     final names = <String, String?>{};
-    try {
-      final profiles = await readChunked(
-        partnerIds,
-        (chunk) => _client
-            .from(UserProfileRow.table)
-            .select('id, display_name')
-            .inFilter(UserProfileRow.colId, chunk),
-      );
-      for (final p in profiles) {
-        names[p['id'] as String] = p['display_name'] as String?;
+    if (partnerIds.isNotEmpty) {
+      try {
+        final profiles = await readChunked(
+          partnerIds,
+          (chunk) => _client
+              .from(UserProfileRow.table)
+              .select('id, display_name')
+              .inFilter(UserProfileRow.colId, chunk),
+        );
+        for (final p in profiles) {
+          names[p['id'] as String] = p['display_name'] as String?;
+        }
+      } catch (e) {
+        debugPrint('searchDms profile read failed: ${safeErrorLabel(e)}');
       }
-    } catch (e) {
-      debugPrint('searchDms profile read failed: ${safeErrorLabel(e)}');
+    }
+    // A group's title is readable to its active members only (migration
+    // 20271216000009), exactly who search can return another member's
+    // message to; a leaver's own hit keeps a null title.
+    final titles = <String, String?>{};
+    if (groupIds.isNotEmpty) {
+      try {
+        final groups = await readChunked(
+          groupIds,
+          (chunk) => _client
+              .from('conversations')
+              .select('id, title')
+              .inFilter('id', chunk),
+        );
+        for (final g in groups) {
+          titles[g['id'] as String] = g['title'] as String?;
+        }
+      } catch (e) {
+        debugPrint('searchDms group title read failed: ${safeErrorLabel(e)}');
+      }
     }
     return [
       for (final h in hits)
@@ -10470,9 +10494,338 @@ class ApiClient {
           body: h.body,
           createdAt: h.createdAt,
           fromMe: h.fromMe,
+          isGroup: h.isGroup,
+          groupTitle: h.isGroup ? titles[h.conversationId] : null,
         ),
     ];
   }
+
+  /// One `search_direct_messages` row as a hit. A group message has neither
+  /// a recipient nor a deleted-partner key, so it names no partner.
+  static DmSearchHit _searchHit(Map<String, dynamic> r, String me) {
+    final recipient = r['recipient_id'] as String?;
+    final deletedKey = r['deleted_partner_key'] as String?;
+    final isGroup = recipient == null && deletedKey == null;
+    return DmSearchHit(
+      id: r['id'] as String,
+      conversationId: r['conversation_id'] as String,
+      partnerId: isGroup
+          ? null
+          : (r['sender_id'] == me ? recipient : r['sender_id'] as String?),
+      deletedPartnerKey: deletedKey,
+      body: r['body'] as String,
+      createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+      fromMe: r['sender_id'] == me,
+      isGroup: isGroup,
+    );
+  }
+
+  // --- Group conversations (issue #1365 slice 3, decisions § 2468) ---------
+  //
+  // A group's messages are direct_messages rows with no recipient, read
+  // through the same SELECT policy as a 1:1 thread (private.can_read_message,
+  // migration 20271216000006): the window, the leave and the block filter
+  // are the server's, so a read here only ever returns what the viewer may
+  // read. Every group RPC answers a group the viewer is not in, one that does
+  // not exist and one they left with the same P0002. Mirrors the group half
+  // of web `core/data.ts`.
+
+  /// Whether group conversations are on for this deploy (the server's
+  /// `group_messages` flag). Fail-closed: a failed read hides every group
+  /// surface. Mirrors web `fetchGroupMessagesEnabled`.
+  Future<bool> fetchGroupMessagesEnabled() async {
+    try {
+      final result = await _client
+          .rpc('group_messages_enabled', params: const {}, get: true);
+      return result == true;
+    } catch (e) {
+      debugPrint('group_messages_enabled failed: ${safeErrorLabel(e)}');
+      return false;
+    }
+  }
+
+  /// Runs a group RPC, turning its refusals into [GroupActionRefused]. The
+  /// rate-limit P0001 is rethrown as the `PostgrestException` it is, for the
+  /// shared `rateLimitErrorMessage` parser.
+  Future<T> _groupRpc<T>(Future<T> Function() call) async {
+    try {
+      return await call();
+    } on PostgrestException catch (e) {
+      final reason = switch (e.code) {
+        '0A000' => GroupRefusal.unavailable,
+        'P0002' => GroupRefusal.notFound,
+        '42501' => GroupRefusal.refused,
+        '54000' => GroupRefusal.capReached,
+        '22023' => GroupRefusal.titleInvalid,
+        _ => null,
+      };
+      if (reason != null) throw GroupActionRefused(reason);
+      rethrow;
+    }
+  }
+
+  /// Creates a group with the viewer as its owner and invites [invitees],
+  /// who join only by accepting (D1). Returns the new conversation's id.
+  Future<String> createGroupConversation(
+    String title,
+    List<String> invitees,
+  ) =>
+      _groupRpc(() async {
+        final id = await _client.rpc('create_group_conversation', params: {
+          'p_title': title,
+          'p_invitees': invitees,
+        });
+        return id as String;
+      });
+
+  /// Invites more people (owner and admins). Returns how many new invites
+  /// were written; someone already a member or holding a live invite is
+  /// skipped.
+  Future<int> inviteToGroup(String conversationId, List<String> invitees) =>
+      _groupRpc(() async {
+        final n = await _client.rpc('invite_to_group', params: {
+          'p_conversation_id': conversationId,
+          'p_invitees': invitees,
+        });
+        return (n as num?)?.toInt() ?? 0;
+      });
+
+  /// The viewer's own live invitations, newest first. Inviter names are a
+  /// second read; a failure there leaves them null. Throws on a failed list.
+  Future<List<GroupInvite>> fetchGroupInvites() async {
+    if (_client.auth.currentUser == null) return const [];
+    final res =
+        await _client.rpc('group_invites', params: const {}, get: true);
+    final rows = (res as List).cast<Map<String, dynamic>>();
+    final inviters = <String>{
+      for (final r in rows)
+        if (r['invited_by'] is String) r['invited_by'] as String,
+    }.toList();
+    final names = await _profileNames(inviters, 'fetchGroupInvites');
+    return [
+      for (final r in rows)
+        GroupInvite(
+          conversationId: r['conversation_id'] as String,
+          title: r['title'] as String? ?? '',
+          invitedBy: r['invited_by'] as String?,
+          inviterName: names[r['invited_by']]?.name,
+          invitedAt: parseIsoStrictRequired(r['invited_at'], 'invited_at'),
+          memberCount: (r['member_count'] as num?)?.toInt() ?? 0,
+        ),
+    ];
+  }
+
+  Future<void> acceptGroupInvite(String conversationId) => _groupRpc(() =>
+      _client.rpc('accept_group_invite',
+          params: {'p_conversation_id': conversationId}));
+
+  /// Not undoable from the app: the group cannot invite the viewer back for
+  /// 14 days.
+  Future<void> declineGroupInvite(String conversationId) => _groupRpc(() =>
+      _client.rpc('decline_group_invite',
+          params: {'p_conversation_id': conversationId}));
+
+  /// Leaves a group at once: from now on the viewer reads only their own
+  /// messages in it (D12), and rejoining needs a new invitation.
+  Future<void> leaveGroup(String conversationId) => _groupRpc(() => _client
+      .rpc('leave_conversation', params: {'p_conversation_id': conversationId}));
+
+  /// Removes a member, or cancels an invitation (owner and admins, below
+  /// their own rank).
+  Future<void> removeGroupMember(String conversationId, String userId) =>
+      _groupRpc(() => _client.rpc('remove_group_member', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+          }));
+
+  /// [role] is `admin` or `member`; only the owner changes roles.
+  Future<void> setGroupMemberRole(
+    String conversationId,
+    String userId,
+    String role,
+  ) =>
+      _groupRpc(() => _client.rpc('set_group_member_role', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+            'p_role': role,
+          }));
+
+  /// Hands ownership to an active member; the viewer becomes an admin.
+  Future<void> transferGroupOwnership(String conversationId, String userId) =>
+      _groupRpc(() => _client.rpc('transfer_group_ownership', params: {
+            'p_conversation_id': conversationId,
+            'p_user_id': userId,
+          }));
+
+  /// Renames a group (owner and admins); the server writes the rename line.
+  Future<void> renameGroup(String conversationId, String title) =>
+      _groupRpc(() => _client.rpc('rename_group', params: {
+            'p_conversation_id': conversationId,
+            'p_title': title,
+          }));
+
+  /// The group's active members, and its live invitations for the owner and
+  /// admins, with names and avatars. Throws [GroupActionRefused] with
+  /// [GroupRefusal.notFound] for a group the viewer is not active in.
+  Future<List<GroupMember>> fetchGroupMembers(String conversationId) async {
+    final rows = await _groupRpc(() async {
+      final res = await _client.rpc('group_members',
+          params: {'p_conversation_id': conversationId}, get: true);
+      return (res as List).cast<Map<String, dynamic>>();
+    });
+    final profiles = await fetchGroupProfiles(
+        [for (final r in rows) r['user_id'] as String]);
+    return [
+      for (final r in rows)
+        GroupMember(
+          userId: r['user_id'] as String,
+          role: switch (r['role']) {
+            'owner' => 'owner',
+            'admin' => 'admin',
+            'member' => 'member',
+            _ => null,
+          },
+          state: r['membership_state'] == 'invited' ? 'invited' : 'active',
+          name: profiles[r['user_id']]?.name,
+          avatarUrl: profiles[r['user_id']]?.avatarUrl,
+        ),
+    ];
+  }
+
+  /// Names and avatars for the people in a group thread: members, and the
+  /// senders of messages the viewer can read who have since left. A failed
+  /// read answers empty, and the thread shows the fallback name.
+  Future<Map<String, ({String? name, String? avatarUrl})>> fetchGroupProfiles(
+    List<String> userIds,
+  ) =>
+      _profileNames(userIds.toSet().toList(), 'fetchGroupProfiles');
+
+  Future<Map<String, ({String? name, String? avatarUrl})>> _profileNames(
+    List<String> ids,
+    String caller,
+  ) async {
+    final out = <String, ({String? name, String? avatarUrl})>{};
+    if (ids.isEmpty) return out;
+    try {
+      final profiles = await readChunked(
+        ids,
+        (chunk) => _client
+            .from(UserProfileRow.table)
+            .select('id, display_name, avatar_url')
+            .inFilter(UserProfileRow.colId, chunk),
+      );
+      for (final p in profiles) {
+        out[p['id'] as String] = (
+          name: p['display_name'] as String?,
+          avatarUrl: p['avatar_url'] as String?,
+        );
+      }
+    } catch (e) {
+      debugPrint('$caller profile read failed: ${safeErrorLabel(e)}');
+    }
+    return out;
+  }
+
+  /// One page of a group's messages the viewer may read, oldest first,
+  /// keyset-paged from the newest end exactly as [fetchDmThread] pages a 1:1
+  /// thread. The policy decides what is readable: an active member's window,
+  /// a leaver's own messages, minus what the viewer's own block filters out.
+  Future<DmThreadPage> fetchGroupThread(
+    String conversationId, {
+    DirectMessageRow? before,
+    int limit = 50,
+  }) async {
+    if (_client.auth.currentUser == null) {
+      return const DmThreadPage(messages: [], hasMore: false);
+    }
+    var query = _client
+        .from(DirectMessageRow.table)
+        .select(dmColumns)
+        .eq(DirectMessageRow.colConversationId, conversationId)
+        .eq(DirectMessageRow.colIsGroup, true);
+    if (before != null) {
+      final at = before.createdAt.toUtc().toIso8601String();
+      query = query.or(
+        '${DirectMessageRow.colCreatedAt}.lt."$at",'
+        'and(${DirectMessageRow.colCreatedAt}.eq."$at",'
+        '${DirectMessageRow.colId}.lt.${before.id})',
+      );
+    }
+    final rows = await query
+        .order(DirectMessageRow.colCreatedAt, ascending: false)
+        .order(DirectMessageRow.colId, ascending: false)
+        .limit(limit + 1);
+    final page = [for (final r in rows) DirectMessageRow.fromJson(r)];
+    final hasMore = page.length > limit;
+    final kept = hasMore ? page.sublist(0, limit) : page;
+    return DmThreadPage(messages: kept.reversed.toList(), hasMore: hasMore);
+  }
+
+  /// The places of messages in the group the viewer would read but for
+  /// their own block of the sender: an id and a time, never a body or a
+  /// sender (migration 20271217000006). [since] bounds them to the loaded
+  /// window. Throws on a failed read.
+  Future<List<GroupPlaceholder>> fetchGroupBlockedPlaceholders(
+    String conversationId,
+    DateTime? since,
+  ) async {
+    final res = await _client.rpc(
+      'group_blocked_placeholders',
+      params: {
+        'p_conversation_id': conversationId,
+        'p_since': since?.toUtc().toIso8601String(),
+      },
+      get: true,
+    );
+    return [
+      for (final r in (res as List).cast<Map<String, dynamic>>())
+        (
+          id: r['id'] as String,
+          createdAt: parseIsoStrictRequired(r['created_at'], 'created_at'),
+        ),
+    ];
+  }
+
+  /// Sends into a group. The INSERT policy admits it only from an active
+  /// member while the flag is on, and the send trigger re-checks membership
+  /// under the lock a removal takes, so a send racing a removal is refused
+  /// (C3). That 42501 is [GroupActionRefused] with [GroupRefusal.refused];
+  /// the send throttle's P0001 is rethrown for the rate-limit parser.
+  Future<DirectMessageRow> sendGroupMessage(
+    String conversationId,
+    String body, {
+    String? imageId,
+  }) async {
+    final me = _client.auth.currentUser?.id;
+    if (me == null) throw StateError('not signed in');
+    final trimmed = body.trim();
+    final image = imageId?.trim();
+    final hasImage = image != null && image.isNotEmpty;
+    if (trimmed.isEmpty && !hasImage) {
+      throw ArgumentError.value(body, 'body', 'is empty');
+    }
+    return _groupRpc(() async {
+      final row = await _client
+          .from(DirectMessageRow.table)
+          .insert({
+            DirectMessageRow.colSenderId: me,
+            DirectMessageRow.colConversationId: conversationId,
+            DirectMessageRow.colBody: trimmed.isEmpty ? null : trimmed,
+            if (hasImage) DirectMessageRow.colImageId: image,
+          })
+          .select(dmColumns)
+          .single();
+      return DirectMessageRow.fromJson(row);
+    });
+  }
+
+  /// The viewer's read position in a group, through the newest message on
+  /// screen. No read receipts in groups (D6): nobody else learns of it.
+  Future<void> markGroupRead(String conversationId, String throughMessageId) =>
+      _client.rpc('mark_conversation_read', params: {
+        'p_conversation_id': conversationId,
+        'p_through_message_id': throughMessageId,
+      });
 
   /// Whether photos can be sent in messages (the server's `dm_images` gate).
   /// Mirrors web `fetchDmImagesEnabled`. Fail closed: any read failure is

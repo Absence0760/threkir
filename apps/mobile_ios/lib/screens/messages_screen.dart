@@ -11,6 +11,7 @@ import '../ai_disclosure_memo.dart';
 import '../auth_change_aware.dart';
 import '../dm_pending_hides.dart';
 import '../dm_search.dart';
+import '../group_errors.dart';
 import '../l10n/date_format.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../l10n/locale_support.dart';
@@ -20,10 +21,13 @@ import '../pro_sellable.dart';
 import '../settings_sync.dart';
 import '../training_service.dart';
 import '../widgets/ai_tag.dart';
+import '../widgets/confirm_destructive.dart';
 import '../widgets/error_state.dart';
 import '../widgets/sign_in_required_state.dart';
 import '../widgets/top_banner.dart';
 import 'coach_screen.dart';
+import 'group_create_screen.dart';
+import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
 
 /// How often the inbox re-reads its conversation list while on screen. No
@@ -76,9 +80,14 @@ class MessagesScreen extends StatefulWidget {
     this.loadPerks,
     this.readCoachPlacement,
     this.writeUniversal,
+    this.initialShowRequests = false,
   });
 
   final ApiClient api;
+
+  /// Opens on the Requests list, where a group invitation is answered (the
+  /// `group_invite` notification's target, as web's `?view=requests`).
+  final bool initialShowRequests;
 
   /// What the Coach row opens [CoachScreen] with. Without it there is no
   /// Coach row, as Home shows no Coach card without one.
@@ -136,8 +145,20 @@ class _MessagesScreenState extends State<MessagesScreen>
   bool _showingArchived = false;
 
   /// The inbox is showing its Requests list (message requests the runner has
-  /// not answered, migration 20271115002384).
+  /// not answered, migration 20271115002384, and group invitations).
   bool _showingRequests = false;
+
+  /// Group conversations are on for this deploy (decisions § 2463). False
+  /// until the server says otherwise, and on a failed read: every group
+  /// surface stays hidden rather than offering what the server refuses.
+  bool _groupsEnabled = false;
+
+  /// The runner's live group invitations, listed under Requests.
+  List<GroupInvite> _invites = const [];
+  int _groupsGeneration = 0;
+
+  /// The invitation being answered; every Join and Decline waits on it.
+  String? _inviteBusy;
 
   /// Search over the viewer's own conversations (migration 20271213121603).
   /// Only the newest query's answer is shown: [_searchSeq] drops the rest.
@@ -154,9 +175,11 @@ class _MessagesScreenState extends State<MessagesScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     DmPendingHides.instance.addListener(_onPendingHidesChanged);
+    _showingRequests = widget.initialShowRequests;
     if (widget.api.userId == null) return;
     _load();
     _loadCoach();
+    _loadGroups();
     _poll = Timer.periodic(widget.pollInterval, (_) => _refresh());
   }
 
@@ -170,6 +193,7 @@ class _MessagesScreenState extends State<MessagesScreen>
   void onAuthUserChanged(String? userId) {
     _readGen++;
     _coachGeneration++;
+    _groupsGeneration++;
     setState(() {
       _threads = const [];
       _threadsReadAt = null;
@@ -178,13 +202,142 @@ class _MessagesScreenState extends State<MessagesScreen>
       _loadError = null;
       _showingArchived = false;
       _showingRequests = false;
+      _groupsEnabled = false;
+      _invites = const [];
     });
     _clearSearch();
     _hideReader.reset();
     if (userId == null) return;
     _load();
     _loadCoach();
+    _loadGroups();
     _poll ??= Timer.periodic(widget.pollInterval, (_) => _refresh());
+  }
+
+  /// Reads the flag and, when it is on, the runner's invitations. The list
+  /// already holds whatever groups `dm_threads()` returned; with the flag off
+  /// the server lists none, and this client hides them too.
+  Future<void> _loadGroups() async {
+    final generation = ++_groupsGeneration;
+    final enabled = await widget.api.fetchGroupMessagesEnabled();
+    if (!mounted || generation != _groupsGeneration) return;
+    setState(() {
+      _groupsEnabled = enabled;
+      if (!enabled) _invites = const [];
+    });
+    if (enabled) await _refreshInvites();
+  }
+
+  /// A failed read keeps the list it had: the next poll retries.
+  Future<void> _refreshInvites() async {
+    if (!_groupsEnabled) return;
+    final generation = _groupsGeneration;
+    try {
+      final invites = await widget.api.fetchGroupInvites();
+      if (mounted && generation == _groupsGeneration) {
+        setState(() => _invites = invites);
+      }
+    } catch (e) {
+      debugPrint('messages inbox: group invites read failed: '
+          '${safeErrorLabel(e)}');
+    }
+  }
+
+  /// Joins the group: it enters the inbox and its thread opens from the
+  /// moment of acceptance (D3).
+  Future<void> _acceptInvite(GroupInvite invite) async {
+    if (_inviteBusy != null) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _inviteBusy = invite.conversationId);
+    try {
+      await widget.api.acceptGroupInvite(invite.conversationId);
+      if (!mounted) return;
+      setState(() {
+        _invites = [
+          for (final i in _invites)
+            if (i.conversationId != invite.conversationId) i,
+        ];
+        _showingRequests = false;
+      });
+      showTopBanner(context, l10n.groupsInviteAcceptedToast(invite.title));
+      unawaited(_load());
+      await _openGroup(invite.conversationId, title: invite.title);
+    } catch (e) {
+      debugPrint('group invite accept failed: ${safeErrorLabel(e)}');
+      if (!mounted) return;
+      showTopBanner(
+        context,
+        l10n.groupsInviteActionFailed(
+            groupErrorMessage(l10n, e, fallback: l10n.authErrorGeneric)),
+      );
+      unawaited(_refreshInvites());
+    } finally {
+      if (mounted) setState(() => _inviteBusy = null);
+    }
+  }
+
+  /// Not undoable from the app (the group cannot invite the runner back for
+  /// 14 days), so it is confirmed first.
+  Future<void> _declineInvite(GroupInvite invite) async {
+    if (_inviteBusy != null) return;
+    final l10n = AppLocalizations.of(context);
+    final ok = await confirmDestructive(
+      context,
+      title: l10n.groupsInviteDeclineConfirmTitle(invite.title),
+      body: l10n.groupsInviteDeclineConfirmMessage,
+      confirmLabel: l10n.groupsInviteDecline,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _inviteBusy = invite.conversationId);
+    try {
+      await widget.api.declineGroupInvite(invite.conversationId);
+      if (!mounted) return;
+      setState(() => _invites = [
+            for (final i in _invites)
+              if (i.conversationId != invite.conversationId) i,
+          ]);
+      showTopBanner(context, l10n.groupsInviteDeclinedToast);
+    } catch (e) {
+      debugPrint('group invite decline failed: ${safeErrorLabel(e)}');
+      if (!mounted) return;
+      showTopBanner(
+        context,
+        l10n.groupsInviteActionFailed(
+            groupErrorMessage(l10n, e, fallback: l10n.authErrorGeneric)),
+      );
+      unawaited(_refreshInvites());
+    } finally {
+      if (mounted) setState(() => _inviteBusy = null);
+    }
+  }
+
+  Future<void> _createGroup() async {
+    final id = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => GroupCreateScreen(api: widget.api)),
+    );
+    if (id == null || !mounted) return;
+    unawaited(_load());
+    await _openGroup(id);
+  }
+
+  Future<void> _openGroup(
+    String conversationId, {
+    String? title,
+    DmThread? row,
+  }) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => GroupThreadScreen(
+          api: widget.api,
+          conversationId: conversationId,
+          title: row?.title ?? title,
+          initialMuted: row?.muted,
+          initialLeft: row?.membershipState == 'left',
+          pollInterval: widget.threadPollInterval,
+        ),
+      ),
+    );
+    if (mounted) _refresh();
   }
 
   /// Decides the Coach row. Each step fails toward showing less: an
@@ -361,6 +514,9 @@ class _MessagesScreenState extends State<MessagesScreen>
     for (final t in _threads) {
       if (t.conversationId == hit.conversationId) return _open(t);
     }
+    if (hit.isGroup) {
+      return _openGroup(hit.conversationId, title: hit.groupTitle);
+    }
     final partnerId = hit.partnerId;
     await Navigator.of(context).push(
       MaterialPageRoute<bool>(
@@ -480,10 +636,21 @@ class _MessagesScreenState extends State<MessagesScreen>
     } finally {
       if (_pollGen == gen) _pollGen = null;
     }
+    await _refreshInvites();
     await _refreshCoachPreview();
   }
 
   Future<void> _open(DmThread t) async {
+    if (t.isGroup) {
+      _openedAt[t.threadKey] = monotonicNow();
+      setState(() {
+        _threads = [
+          for (final x in _threads)
+            x.threadKey == t.threadKey ? x.copyWith(unread: 0) : x,
+        ];
+      });
+      return _openGroup(t.conversationId, row: t);
+    }
     final partnerId = t.partnerId;
     final markedUnread = await Navigator.of(context).push(
       MaterialPageRoute<bool>(
@@ -545,14 +712,26 @@ class _MessagesScreenState extends State<MessagesScreen>
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.messagesTitle)),
+      appBar: AppBar(
+        title: Text(l10n.messagesTitle),
+        actions: [
+          if (_groupsEnabled && widget.api.userId != null)
+            IconButton(
+              key: const ValueKey('inbox-new-group'),
+              tooltip: l10n.groupsNewGroup,
+              icon: const Icon(Icons.group_add_outlined),
+              onPressed: _createGroup,
+            ),
+        ],
+      ),
       body: _body(l10n),
     );
   }
 
   Widget _body(AppLocalizations l10n) {
     if (widget.api.userId == null) return SignInRequiredState(api: widget.api);
-    final subList = (_showingRequests && _threads.any((t) => t.request)) ||
+    final subList = (_showingRequests &&
+            (_threads.any((t) => t.request) || _invites.isNotEmpty)) ||
         (_showingArchived && _threads.any((t) => t.archived && !t.request));
     if (subList) return _listBody(l10n);
     return Column(
@@ -625,9 +804,11 @@ class _MessagesScreenState extends State<MessagesScreen>
       itemBuilder: (context, i) {
         final hit = _searchHits[i];
         final snip = dmSearchSnippet(hit.body, query);
-        final name = hit.partnerId == null
-            ? l10n.messagesDeletedAccount
-            : hit.partnerName ?? l10n.profileRunnerFallback;
+        final name = hit.isGroup
+            ? hit.groupTitle ?? l10n.groupsGroupFallback
+            : hit.partnerId == null
+                ? l10n.messagesDeletedAccount
+                : hit.partnerName ?? l10n.profileRunnerFallback;
         return ListTile(
           key: ValueKey('inbox-search-hit-${hit.id}'),
           title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -664,15 +845,22 @@ class _MessagesScreenState extends State<MessagesScreen>
     // Archived conversations sit in their own list until a newer message
     // arrives (dm_threads() decides that), and message requests the runner
     // has not answered sit in Requests. The Coach row belongs to the inbox.
+    // The server lists no group while the flag is off (20271217000006); a
+    // client that has not yet read the flag hides them too.
     final split = partitionArchived<DmThread>(
       [
         for (final t in _threads)
-          if (readAt == null || !hides.hides(t.conversationId, readAt)) t,
+          if ((readAt == null || !hides.hides(t.conversationId, readAt)) &&
+              (_groupsEnabled || !t.isGroup))
+            t,
       ],
       archived: (t) => t.archived,
       request: (t) => t.request,
     );
-    final showingRequests = _showingRequests && split.requests.isNotEmpty;
+    // Group invitations sit in Requests beside message requests.
+    final invites = _groupsEnabled ? _invites : const <GroupInvite>[];
+    final requestCount = split.requests.length + invites.length;
+    final showingRequests = _showingRequests && requestCount > 0;
     final showingArchived =
         !showingRequests && _showingArchived && split.archived.isNotEmpty;
     final entries = showingRequests
@@ -693,7 +881,7 @@ class _MessagesScreenState extends State<MessagesScreen>
     if (_loadError != null && _threads.isEmpty && !hasCoachRow) {
       return ErrorState(message: l10n.messagesLoadError, onRetry: _load);
     }
-    if (entries.isEmpty && split.archived.isEmpty && split.requests.isEmpty) {
+    if (entries.isEmpty && split.archived.isEmpty && requestCount == 0) {
       return EmptyState(
         icon: Icons.chat_bubble_outline,
         title: l10n.messagesEmptyTitle,
@@ -701,6 +889,9 @@ class _MessagesScreenState extends State<MessagesScreen>
       );
     }
     final tag = localeToTag(Localizations.localeOf(context));
+    final inviteRows = showingRequests
+        ? [for (final i in invites) _inviteRow(l10n, i, tag)]
+        : const <Widget>[];
     // With the Coach as the only row, the empty-inbox guidance still says how
     // a conversation with a person starts.
     final Widget? header = showingArchived || showingRequests
@@ -716,11 +907,11 @@ class _MessagesScreenState extends State<MessagesScreen>
         : null;
     final Widget? requestsLink = !showingArchived &&
             !showingRequests &&
-            split.requests.isNotEmpty
+            requestCount > 0
         ? ListTile(
             key: const ValueKey('inbox-show-requests'),
             leading: const Icon(Icons.person_add_alt),
-            title: Text(l10n.messagesRequestsCount(split.requests.length)),
+            title: Text(l10n.messagesRequestsCount(requestCount)),
             onTap: () => setState(() => _showingRequests = true),
           )
         : null;
@@ -754,6 +945,7 @@ class _MessagesScreenState extends State<MessagesScreen>
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         itemCount: (header == null ? 0 : 1) +
+            inviteRows.length +
             entries.length +
             (footer == null ? 0 : 1) +
             (requestsLink == null ? 0 : 1) +
@@ -764,6 +956,8 @@ class _MessagesScreenState extends State<MessagesScreen>
             if (i == 0) return header;
             i -= 1;
           }
+          if (i < inviteRows.length) return inviteRows[i];
+          i -= inviteRows.length;
           if (i < entries.length) {
             return switch (entries[i]) {
               CoachInboxEntry() => _coachRow(l10n, coach!),
@@ -830,12 +1024,79 @@ class _MessagesScreenState extends State<MessagesScreen>
     );
   }
 
+  /// One group invitation under Requests: the title, who invited and the
+  /// size, never the roster (memo C5). Join runs at once; Decline confirms.
+  Widget _inviteRow(AppLocalizations l10n, GroupInvite invite, String tag) {
+    final theme = Theme.of(context);
+    final busy = _inviteBusy != null;
+    return ListTile(
+      key: ValueKey('inbox-group-invite-${invite.conversationId}'),
+      leading: const _GroupAvatar(),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(invite.title,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          Text(
+            _stamp(invite.invitedAt, tag),
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.groupsInviteLine(
+              invite.inviterName ?? l10n.profileRunnerFallback,
+              invite.memberCount)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              FilledButton(
+                key: ValueKey('group-invite-accept-${invite.conversationId}'),
+                onPressed: busy ? null : () => _acceptInvite(invite),
+                child: Text(l10n.groupsInviteAccept),
+              ),
+              OutlinedButton(
+                key: ValueKey('group-invite-decline-${invite.conversationId}'),
+                onPressed: busy ? null : () => _declineInvite(invite),
+                child: Text(l10n.groupsInviteDecline),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A group row's preview: "You left", the rename line, "No messages yet",
+  /// or the latest message as a 1:1 row reads it.
+  String _groupPreview(AppLocalizations l10n, DmThread t) {
+    if (t.membershipState == 'left') return l10n.groupsYouLeftPreview;
+    if (t.lastKind == 'group_renamed' && !t.lastUnsent) {
+      return l10n.groupsRenamedPreview(t.lastBody ?? '');
+    }
+    if (t.lastBody == null && !t.lastImage && !t.lastUnsent) {
+      return l10n.groupsNoMessagesYet;
+    }
+    final preview = t.lastUnsent
+        ? l10n.messagesUnsentPlaceholder
+        : t.lastBody ?? l10n.messagesPhotoPreview;
+    return t.lastFromMe ? l10n.messagesYouPrefixed(preview) : preview;
+  }
+
   Widget _row(AppLocalizations l10n, DmThread t, String tag) {
     final theme = Theme.of(context);
     final unread = t.unread > 0;
-    final name = t.partnerId == null
-        ? l10n.messagesDeletedAccount
-        : t.partnerName ?? l10n.profileRunnerFallback;
+    final name = t.isGroup
+        ? t.title ?? l10n.groupsGroupFallback
+        : t.partnerId == null
+            ? l10n.messagesDeletedAccount
+            : t.partnerName ?? l10n.profileRunnerFallback;
     final preview = t.lastUnsent
         ? l10n.messagesUnsentPlaceholder
         : t.lastBody ??
@@ -844,12 +1105,14 @@ class _MessagesScreenState extends State<MessagesScreen>
                 : l10n.messagesUnsentPlaceholder);
     return ListTile(
       key: ValueKey('dm-thread-${t.threadKey}'),
-      leading: IdentityAvatar(
-        seed: t.threadKey,
-        name: t.partnerName,
-        imageUrl: t.partnerAvatarUrl,
-        size: 40,
-      ),
+      leading: t.isGroup
+          ? const _GroupAvatar()
+          : IdentityAvatar(
+              seed: t.threadKey,
+              name: t.partnerName,
+              imageUrl: t.partnerAvatarUrl,
+              size: 40,
+            ),
       title: Row(
         children: [
           Flexible(
@@ -861,6 +1124,15 @@ class _MessagesScreenState extends State<MessagesScreen>
                   unread ? const TextStyle(fontWeight: FontWeight.w700) : null,
             ),
           ),
+          if (t.isGroup && t.memberCount != null) ...[
+            const SizedBox(width: 6),
+            Text(
+              l10n.groupsMemberCount(t.memberCount!),
+              key: ValueKey('inbox-group-members-${t.conversationId}'),
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ],
           if (t.muted) ...[
             const SizedBox(width: 6),
             Semantics(
@@ -876,10 +1148,17 @@ class _MessagesScreenState extends State<MessagesScreen>
           ],
         ],
       ),
-      subtitle: _previewLine(
-        t,
-        t.lastFromMe ? l10n.messagesYouPrefixed(preview) : preview,
-      ),
+      subtitle: t.isGroup
+          ? Text(
+              _groupPreview(l10n, t),
+              key: ValueKey('inbox-group-preview-${t.conversationId}'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            )
+          : _previewLine(
+              t,
+              t.lastFromMe ? l10n.messagesYouPrefixed(preview) : preview,
+            ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -936,5 +1215,20 @@ class _MessagesScreenState extends State<MessagesScreen>
         local.month == now.month &&
         local.day == now.day;
     return today ? formatTime(at, tag) : formatDateShort(at, tag);
+  }
+}
+
+/// The stand-in avatar for a group, which has no picture in v1.
+class _GroupAvatar extends StatelessWidget {
+  const _GroupAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return CircleAvatar(
+      radius: 20,
+      backgroundColor: scheme.surfaceContainerHighest,
+      child: Icon(Icons.group, color: scheme.onSurfaceVariant),
+    );
   }
 }

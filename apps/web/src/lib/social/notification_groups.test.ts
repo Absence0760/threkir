@@ -25,6 +25,7 @@ function n(overrides: Partial<GroupableNotification>): GroupableNotification {
 		plan_id: overrides.plan_id ?? null,
 		achievement_id: overrides.achievement_id ?? null,
 		challenge_id: overrides.challenge_id ?? null,
+		conversation_id: overrides.conversation_id ?? null,
 		read_at: overrides.read_at ?? null,
 		created_at: overrides.created_at ?? ago(0),
 	};
@@ -243,6 +244,34 @@ test('groupNotifications: messages collapse per actor, distinct actors split', (
 	const u1 = groups.find((g) => g.lead.actor_id === 'u1');
 	assert.ok(u1);
 	assert.equal(u1.otherCount, 1);
+});
+
+test('groupNotifications: group messages collapse per group, never per sender', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'g1', kind: 'message', actor_id: 'u1', conversation_id: 'c1', created_at: ago(1000) }),
+			n({ id: 'g2', kind: 'message', actor_id: 'u2', conversation_id: 'c1', created_at: ago(2000) }),
+			n({ id: 'g3', kind: 'message', actor_id: 'u1', conversation_id: 'c2', created_at: ago(1500) }),
+			n({ id: 'd1', kind: 'message', actor_id: 'u1', created_at: ago(1200) }),
+		],
+		NOW,
+	);
+	assert.equal(groups.length, 3);
+	const c1 = groups.find((g) => g.lead.id === 'g1');
+	assert.ok(c1);
+	assert.deepEqual(c1.others.map((o) => o.id), ['g2']);
+	assert.equal(groups.find((g) => g.lead.id === 'd1')?.otherCount, 0, 'a 1:1 message stays apart from a group');
+});
+
+test('groupNotifications: group invitations never collapse, even into one group', () => {
+	const groups = groupNotifications(
+		[
+			n({ id: 'i1', kind: 'group_invite', actor_id: 'u1', conversation_id: 'c1', created_at: ago(1000) }),
+			n({ id: 'i2', kind: 'group_invite', actor_id: 'u1', conversation_id: 'c2', created_at: ago(2000) }),
+		],
+		NOW,
+	);
+	assert.deepEqual(groups.map((g) => g.otherCount), [0, 0]);
 });
 
 test('groupNotifications: a null target never merges two rows', () => {

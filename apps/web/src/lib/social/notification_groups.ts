@@ -20,6 +20,8 @@ export interface GroupableNotification {
 	achievement_id: string | null;
 	challenge_id: string | null;
 	course_alert_id?: string | null;
+	/** The group a message or group_invite is about (20271217000001). */
+	conversation_id?: string | null;
 	read_at: string | null;
 	created_at: string;
 }
@@ -89,7 +91,15 @@ function targetKeyFor(n: GroupableNotification): string {
 		case 'challenge_complete':
 			return n.challenge_id ? `challenge:${n.challenge_id}` : solo;
 		case 'message':
+			// A group message is about its group, not its sender: two members
+			// writing in one group is one burst, and one person writing in two
+			// groups and to the viewer 1:1 is three (decisions § 2468).
+			if (n.conversation_id) return `group:${n.conversation_id}`;
 			return n.actor_id ? `message:${n.actor_id}` : solo;
+		case 'group_invite':
+			// Each is a decision to join or decline one group: "and 1 other"
+			// would hide an invitation.
+			return solo;
 		case 'personal_record':
 			// One per run (the trigger collapses the brackets a run improved),
 			// and two runs are two records: "and 1 other" would hide one.

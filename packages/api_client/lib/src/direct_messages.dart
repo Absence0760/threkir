@@ -43,7 +43,13 @@ class DmThread {
     this.markedUnread = false,
     this.request = false,
     this.lastImage = false,
-  }) : assert(partnerId != null || deletedPartnerKey != null);
+    this.kind = 'direct',
+    this.title,
+    this.memberCount,
+    this.membershipState,
+  }) : assert(partnerId != null ||
+            deletedPartnerKey != null ||
+            kind == 'group');
 
   /// The conversation the mute, archive and delete-for-me actions act on.
   final String conversationId;
@@ -85,9 +91,29 @@ class DmThread {
   /// preview with no caption can say so.
   final bool lastImage;
 
-  /// Unique per conversation, for keys and the opened-at map.
-  String get threadKey => partnerId ?? deletedPartnerKey!;
+  /// `group` for a group conversation (migration 20271216000007): no partner,
+  /// a [title], and the viewer's own [membershipState]. Else `direct`.
+  final String kind;
 
+  /// A group's name; null for a direct conversation.
+  final String? title;
+
+  /// A group's active members, given only while the viewer is one of them.
+  final int? memberCount;
+
+  /// The viewer's membership of a group: `left` rows hold only their own
+  /// messages ("You left"). Null for a direct conversation.
+  final String? membershipState;
+
+  bool get isGroup => kind == 'group';
+
+  /// Unique per conversation, for keys and the opened-at map.
+  String get threadKey => isGroup
+      ? 'group/$conversationId'
+      : partnerId ?? deletedPartnerKey!;
+
+  /// The 1:1 thread to read. A group is read by its conversation id
+  /// (`ApiClient.fetchGroupThread`), so it has none.
   DmThreadTarget get target => partnerId != null
       ? DmPartnerThread(partnerId!)
       : DmDeletedPartnerThread(deletedPartnerKey!);
@@ -116,6 +142,10 @@ class DmThread {
     markedUnread: markedUnread ?? this.markedUnread,
     request: request ?? this.request,
     lastImage: lastImage,
+    kind: kind,
+    title: title,
+    memberCount: memberCount,
+    membershipState: membershipState,
   );
 }
 
@@ -208,10 +238,20 @@ class DmSearchHit {
     required this.createdAt,
     required this.fromMe,
     this.partnerName,
+    this.isGroup = false,
+    this.groupTitle,
   });
 
   final String id;
   final String conversationId;
+
+  /// A hit in a group conversation (no recipient and no deleted-partner key):
+  /// it opens the group, named by [groupTitle].
+  final bool isGroup;
+
+  /// Null for a direct conversation, and for a group the viewer has left
+  /// (its title is readable to active members only).
+  final String? groupTitle;
 
   /// Null when the partner deleted their account; [deletedPartnerKey] names
   /// the conversation then.
@@ -243,3 +283,83 @@ class DmImageView {
   final int? height;
   final String? url;
 }
+
+/// Why a group RPC refused (issue #1365, migrations 20271216000007 and
+/// 20271217000006). A refused invitee, one that does not exist and a block
+/// either way are one 42501 on the server, so they are one [refused] here:
+/// the picker cannot be used to learn which it was. A group the viewer is not
+/// in, one that does not exist and one they left are one [notFound].
+enum GroupRefusal {
+  /// 0A000: the `group_messages` flag is off.
+  unavailable,
+
+  /// P0002.
+  notFound,
+
+  /// 42501.
+  refused,
+
+  /// 54000: the 32-seat cap, invitations included.
+  capReached,
+
+  /// 22023: a title outside 1 to 60 characters.
+  titleInvalid,
+}
+
+class GroupActionRefused implements Exception {
+  const GroupActionRefused(this.reason);
+  final GroupRefusal reason;
+
+  @override
+  String toString() => 'GroupActionRefused(${reason.name})';
+}
+
+/// One of the viewer's live group invitations: the title, who invited them
+/// and the size only. An invitee never sees who the members are (memo C5).
+/// Mirrors web `GroupInvite`.
+class GroupInvite {
+  const GroupInvite({
+    required this.conversationId,
+    required this.title,
+    required this.invitedAt,
+    required this.memberCount,
+    this.invitedBy,
+    this.inviterName,
+  });
+
+  final String conversationId;
+  final String title;
+  final String? invitedBy;
+  final String? inviterName;
+  final DateTime invitedAt;
+  final int memberCount;
+}
+
+/// One row of `group_members()`: an active member, or a live invitation (seen
+/// by the owner and admins only), with `role` null for an invitation.
+/// Mirrors web `GroupMember`.
+class GroupMember {
+  const GroupMember({
+    required this.userId,
+    required this.role,
+    required this.state,
+    this.name,
+    this.avatarUrl,
+  });
+
+  final String userId;
+
+  /// `owner`, `admin` or `member`; null for an invitation.
+  final String? role;
+
+  /// `active` or `invited`.
+  final String state;
+  final String? name;
+  final String? avatarUrl;
+
+  bool get invited => state == 'invited';
+}
+
+/// A blocked sender's message's place in a group thread: its id and time
+/// only, never a body or a sender (migration 20271217000006).
+typedef GroupPlaceholder = ({String id, DateTime createdAt});

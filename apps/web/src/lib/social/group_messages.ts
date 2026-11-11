@@ -4,8 +4,8 @@
  *
  * The server is authoritative on every one of them (migrations
  * 20271216000007 and 20271217000006); these decide only what to offer, so a
- * control the server would refuse is not drawn. The mobile twin arrives with
- * slice 3, which registers the pair in docs/architecture/parity_pairs.md.
+ * control the server would refuse is not drawn. TS↔Dart parity pair with
+ * apps/mobile_android/lib/group_messages.dart (docs/architecture/parity_pairs.md).
  */
 
 import { compareFoldedNames } from '../segments/catalogue_browse';

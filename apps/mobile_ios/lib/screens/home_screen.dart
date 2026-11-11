@@ -68,6 +68,7 @@ import 'dashboard_screen.dart';
 import 'event_detail_screen.dart';
 import 'fitness_hub_screen.dart';
 import 'import_screen.dart';
+import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
 import 'messages_screen.dart';
 import '../onboarding.dart';
@@ -568,6 +569,15 @@ class _HomeScreenState extends State<HomeScreen>
         await _pushScreen(partnerId == null
             ? MessagesScreen(api: api, training: widget.training)
             : MessageThreadScreen(api: api, partnerId: partnerId));
+      case PushTargetKind.groupThread:
+        await _pushScreen(
+            GroupThreadScreen(api: api, conversationId: target.id!));
+      case PushTargetKind.messageRequests:
+        await _pushScreen(MessagesScreen(
+          api: api,
+          training: widget.training,
+          initialShowRequests: true,
+        ));
       case PushTargetKind.settingsAccount:
         await _pushScreen(
           _settingsDestinationScreen(SettingsDestination.account),

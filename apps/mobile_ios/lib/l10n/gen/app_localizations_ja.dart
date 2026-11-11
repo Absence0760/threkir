@@ -21045,4 +21045,319 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get messagesLinkOpenFailed => 'リンクを開けませんでした。';
+
+  @override
+  String get groupsNewGroup => '新しいグループ';
+
+  @override
+  String get groupsGroupFallback => 'グループ';
+
+  @override
+  String groupsMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'メンバー$count人',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsMembersTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'メンバー$count人',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsMembersButton => 'メンバー';
+
+  @override
+  String get groupsYouLeftPreview => 'このグループを退出しました';
+
+  @override
+  String groupsRenamedPreview(String title) {
+    return 'グループ名が$titleに変更されました';
+  }
+
+  @override
+  String get groupsNoMessagesYet => 'まだメッセージはありません';
+
+  @override
+  String get groupsInvitesHeading => 'グループへの招待';
+
+  @override
+  String groupsInviteLine(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'メンバー$count人',
+    );
+    return '$nameさんからの招待 · $_temp0';
+  }
+
+  @override
+  String get groupsInviteAccept => '参加する';
+
+  @override
+  String get groupsInviteDecline => '辞退する';
+
+  @override
+  String groupsInviteAcceptedToast(String title) {
+    return '$titleに参加しました';
+  }
+
+  @override
+  String get groupsInviteDeclinedToast => '招待を辞退しました';
+
+  @override
+  String groupsInviteActionFailed(String error) {
+    return '招待に応答できませんでした: $error';
+  }
+
+  @override
+  String groupsInviteDeclineConfirmTitle(String title) {
+    return '$titleへの招待を辞退しますか?';
+  }
+
+  @override
+  String get groupsInviteDeclineConfirmMessage =>
+      'グループには参加せず、14日間はこのグループから再度招待されません。理由は誰にも伝わりません。';
+
+  @override
+  String get groupsCreateTitle => '新しいグループ';
+
+  @override
+  String get groupsTitleLabel => 'グループ名';
+
+  @override
+  String get groupsCreateHint =>
+      '2人以上を選んでください。それぞれに招待が届き、承諾した場合のみ参加します。メッセージは参加した時点から表示されます。';
+
+  @override
+  String get groupsCreateSubmit => 'グループを作成';
+
+  @override
+  String get groupsCreating => '作成中…';
+
+  @override
+  String groupsCreatedToast(String title) {
+    return '$titleを作成し、招待を送りました。';
+  }
+
+  @override
+  String get groupsCreateFailed => 'グループを作成できませんでした。';
+
+  @override
+  String get groupsPeopleLoadFailed => '招待できる人を読み込めませんでした。';
+
+  @override
+  String get groupsPeopleEmpty => 'まだ招待できる人がいません。フォローしている人やフォロワーを招待できます。';
+
+  @override
+  String get groupsPeopleSearch => '人を検索';
+
+  @override
+  String groupsPeopleSelected(int count, int max) {
+    return '$max人中$count人を選択';
+  }
+
+  @override
+  String get groupsPeopleNoMatches => 'その名前に一致する人はいません。';
+
+  @override
+  String groupsPeopleFull(int max) {
+    return 'グループの上限は招待中を含めて32人です。あと$max人招待できます。';
+  }
+
+  @override
+  String get groupsUnavailable => 'グループの会話は現在ご利用いただけません。';
+
+  @override
+  String get groupsNotFound => 'このグループは利用できません。';
+
+  @override
+  String get groupsNotAvailable => 'このグループは利用できません。';
+
+  @override
+  String get groupsActionRefused => 'このグループではその操作はできません。';
+
+  @override
+  String get groupsInviteRefused => '招待できない人が含まれています。';
+
+  @override
+  String get groupsCapReached => 'グループの上限は招待中を含めて32人です。';
+
+  @override
+  String get groupsTitleInvalid => 'グループ名は1〜60文字です。';
+
+  @override
+  String get groupsSendNotAllowed => 'このグループには送信できません。';
+
+  @override
+  String groupsActionFailed(String error) {
+    return 'うまくいきませんでした: $error';
+  }
+
+  @override
+  String get groupsHistoryNote => '参加する前のメッセージは表示されません。';
+
+  @override
+  String get groupsEmptyThread => 'まだメッセージはありません。あいさつしてみましょう。';
+
+  @override
+  String get groupsBlockedPlaceholder => 'ブロックした人からのメッセージ';
+
+  @override
+  String groupsRenamedLine(String name, String title) {
+    return '$nameさんがグループ名を$titleに変更しました';
+  }
+
+  @override
+  String groupsRenamedLineYou(String title) {
+    return 'グループ名を$titleに変更しました';
+  }
+
+  @override
+  String get groupsLeftNotice => 'このグループを退出しました。自分のメッセージは引き続き送信取り消しできます。';
+
+  @override
+  String groupsComposerLabel(String title) {
+    return '$titleへのメッセージ';
+  }
+
+  @override
+  String get groupsLeave => '退出';
+
+  @override
+  String groupsLeaveConfirmTitle(String title) {
+    return '$titleから退出しますか?';
+  }
+
+  @override
+  String get groupsLeaveConfirmMessage =>
+      'すぐにグループのメッセージが見えなくなり、戻るには新しい招待が必要です。自分のメッセージは送信取り消しするまでグループに残ります。他のメンバーの端末にすでにあるものはそのまま残ります。';
+
+  @override
+  String groupsLeftToast(String title) {
+    return '$titleから退出しました';
+  }
+
+  @override
+  String get groupsRename => '名前を変更';
+
+  @override
+  String get groupsRenameSave => '保存';
+
+  @override
+  String get groupsRenamedToast => 'グループ名を変更しました';
+
+  @override
+  String get groupsInviteMore => '招待';
+
+  @override
+  String groupsInviteSend(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count人を招待',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsInvitedToast(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count件の招待を送りました',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsRoleInvited => '招待中';
+
+  @override
+  String get groupsYouSuffix => '(あなた)';
+
+  @override
+  String get groupsMakeAdmin => '管理者にする';
+
+  @override
+  String get groupsRemoveAdmin => '管理者から外す';
+
+  @override
+  String groupsMadeAdminToast(String name) {
+    return '$nameさんが管理者になりました';
+  }
+
+  @override
+  String groupsRemovedAdminToast(String name) {
+    return '$nameさんは管理者ではなくなりました';
+  }
+
+  @override
+  String get groupsMakeOwner => 'オーナーにする';
+
+  @override
+  String groupsTransferConfirmTitle(String name) {
+    return '$nameさんをオーナーにしますか?';
+  }
+
+  @override
+  String get groupsTransferConfirmMessage =>
+      'あなたは管理者になります。オーナーの権限を戻せるのは新しいオーナーだけです。';
+
+  @override
+  String groupsTransferredToast(String name) {
+    return '$nameさんがオーナーになりました';
+  }
+
+  @override
+  String get groupsRemove => '削除';
+
+  @override
+  String groupsRemoveConfirmTitle(String name) {
+    return '$nameさんをグループから削除しますか?';
+  }
+
+  @override
+  String get groupsRemoveConfirmMessage =>
+      'すぐにグループのメッセージが見えなくなり、戻るには新しい招待が必要です。本人のメッセージは残ります。誰が削除したかは伝わりません。';
+
+  @override
+  String groupsRemovedToast(String name) {
+    return '$nameさんを削除しました';
+  }
+
+  @override
+  String get groupsCancelInvite => '招待を取り消す';
+
+  @override
+  String groupsCancelInviteConfirmTitle(String name) {
+    return '$nameさんへの招待を取り消しますか?';
+  }
+
+  @override
+  String get groupsCancelInviteConfirmMessage =>
+      'この招待では参加できなくなります。後でもう一度招待できます。';
+
+  @override
+  String groupsInviteCancelledToast(String name) {
+    return '$nameさんへの招待を取り消しました';
+  }
+
+  @override
+  String profileNotifGroupMessage(String name) {
+    return '$nameさんがグループに投稿しました';
+  }
+
+  @override
+  String profileNotifGroupInvite(String name) {
+    return '$nameさんからグループに招待されました';
+  }
 }

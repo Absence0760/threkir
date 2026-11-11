@@ -15,6 +15,9 @@ import '../lib/entity_link.dart';
 import '../lib/l10n/gen/app_localizations.dart';
 import '../lib/screens/challenge_detail_screen.dart';
 import '../lib/screens/event_detail_screen.dart';
+import '../lib/screens/group_thread_screen.dart';
+import '../lib/screens/message_thread_screen.dart';
+import '../lib/screens/messages_screen.dart';
 import '../lib/screens/plan_detail_screen.dart';
 import '../lib/screens/profile_screen.dart';
 import '../lib/screens/public_run_screen.dart';
@@ -22,9 +25,12 @@ import '../lib/widgets/badge_grid.dart';
 import '../lib/widgets/run_list_tile.dart';
 import 'supabase_test_init.dart';
 
-NotificationView _view(String kind, {String? eventClubSlug}) => NotificationView(
+NotificationView _view(String kind,
+        {String? eventClubSlug, String? conversationId}) =>
+    NotificationView(
       row: NotificationRow(
         id: 'n-$kind',
+        conversationId: conversationId,
         userId: 'me',
         actorId: 'u-ana',
         kind: kind,
@@ -89,6 +95,12 @@ class _NotifApi extends ApiClient {
 
   @override
   Future<void> markAllNotificationsRead() async {}
+
+  @override
+  Future<bool> fetchGroupMessagesEnabled() async => false;
+
+  @override
+  Future<List<DmThread>> fetchDmThreads() async => const [];
 
   final List<String> read = [];
   final List<String> opened = [];
@@ -195,6 +207,40 @@ void main() {
       findsOneWidget,
     );
      await teardown(tester);
+  });
+
+  testWidgets('a group message reads as one and opens the group, not a 1:1',
+      (tester) async {
+    final api = _NotifApi([_view('message', conversationId: 'g-1')]);
+    await _pump(tester, api);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tapAndSettle(tester, l10n.profileNotifGroupMessage('Ana'));
+
+    expect(api.read, ['n-message']);
+    expect(
+      find.byWidgetPredicate(
+          (w) => w is GroupThreadScreen && w.conversationId == 'g-1'),
+      findsOneWidget,
+    );
+    expect(find.byType(MessageThreadScreen), findsNothing);
+    await teardown(tester);
+  });
+
+  testWidgets('a group invitation opens the inbox on Requests', (tester) async {
+    final api = _NotifApi([_view('group_invite', conversationId: 'g-1')]);
+    await _pump(tester, api);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
+    await tapAndSettle(tester, l10n.profileNotifGroupInvite('Ana'));
+
+    expect(api.read, ['n-group_invite']);
+    expect(
+      find.byWidgetPredicate(
+          (w) => w is MessagesScreen && w.initialShowRequests),
+      findsOneWidget,
+    );
+    await teardown(tester);
   });
 
   final eventCases = <String, String Function(AppLocalizations)>{

@@ -11,9 +11,7 @@
 		importRaceResult,
 		type RaceResultForRun,
 		type RaceListingResult,
-		RACE_IMPORT_UNAVAILABLE,
-		ULTRASIGNUP_NOT_LINKED,
-		ULTRASIGNUP_PERSON_NOT_FOUND
+		RACE_IMPORT_UNAVAILABLE
 	} from '#lib/core/data.ts';
 	import { raceMatchScore, isRaceMatchCandidate } from '#lib/integrations/race_match.ts';
 	import {
@@ -118,10 +116,7 @@
 				provider,
 				listingId: candidate.id,
 				matchRunId: runId,
-				bib:
-					provider !== 'paste' && RACE_IMPORT_LEGS[provider].scopeField === 'bib'
-						? matchBib.trim() || undefined
-						: undefined,
+				bib: provider !== 'paste' ? matchBib.trim() || undefined : undefined,
 				result:
 					provider === 'paste'
 						? {
@@ -144,12 +139,6 @@
 			const message = thrownMessage(e);
 			if (Object.values(RACE_IMPORT_UNAVAILABLE).includes(message)) {
 				pasting = true;
-			} else if (message === ULTRASIGNUP_NOT_LINKED) {
-				// UltraSignup is scoped by the person linked in Settings; without
-				// one the pull has nobody to look for.
-				showToast(m('races.ultraSignUpNotLinked'), 'error');
-			} else if (message === ULTRASIGNUP_PERSON_NOT_FOUND) {
-				showToast(m('races.ultraSignUpPersonNotFound'), 'error');
 			} else {
 				showToast(m('races.importFailed'), 'error');
 			}
@@ -165,7 +154,7 @@
 	}
 
 	// The candidate's own leg, or null when its listing has no import leg
-	// (parkrun / manual / raceresult) — those are paste-only by construction.
+	// (ultrasignup / manual / raceresult) — those are paste-only by construction.
 	const matchLeg = $derived<RaceImportLeg | null>(
 		candidate && candidate.provider in RACE_IMPORT_LEGS
 			? (candidate.provider as RaceImportLeg)
@@ -261,9 +250,7 @@
 					</div>
 				</form>
 			{:else}
-				{#if matchSpec?.scopeField === 'linkedPerson'}
-					<p class="match-hint">{m(matchSpec.hintKey)}</p>
-				{:else if matchSpec}
+				{#if matchSpec}
 					<label class="match-bib">
 						<span>{m(matchSpec.labelKey)}</span>
 						<input
@@ -283,7 +270,7 @@
 						type="button"
 						class="btn btn-primary btn-sm"
 						disabled={busy ||
-							(matchSpec?.scopeField === 'bib' && matchSpec.scopeRequired && !matchBib.trim())}
+							(matchSpec?.scopeRequired && !matchBib.trim())}
 						onclick={() => confirmMatch(matchLeg ?? 'paste')}
 						data-testid="match-confirm"
 					>

@@ -43,7 +43,7 @@
 	// Every step here is a surface that ships on the web today. Which phone
 	// and watch clients are released is the platforms strip's job, read from
 	// the registry in #lib/marketing/platforms.ts.
-	const integrations = ['Strava', 'Garmin', 'HealthKit', 'parkrun'];
+	const integrations = ['Strava', 'Garmin', 'HealthKit'];
 
 	// Two weeks of a generated plan: the shape of the week grid on /plans,
 	// not real prescribed sessions. Height is the session, not decoration.

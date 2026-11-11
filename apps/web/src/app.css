@@ -220,16 +220,11 @@
 	   was failing on the card it actually lands on — Strava 2.921:1 in light,
 	   ultrasignup 2.690 and chronotrack 2.886 in dark. The disc keeps the
 	   brand hue (it is the larger recognition cue, and the provider's NAME is
-	   set beside it); the ink is theme-keyed off the same hue, lightness only.
-	   parkrun's brand coral used to be the history accent and shared its
-	   ink; history moved to the secondary family (§ 1772), so parkrun keeps
-	   the coral rungs history had. Worst measured: 5.138:1 light, 5.135 dark. */
+	   set beside it); the ink is theme-keyed off the same hue, lightness only. */
 	--provider-strava-ink: #9C2F01;
-	--provider-parkrun-ink: #A8401B;
 	--provider-garmin-ink: #005691;
 	--provider-healthkit-ink: #AD031C;
 	--provider-runsignup-ink: #98338B;
-	--provider-ultrasignup-ink: #33613E;
 	--provider-chronotrack-ink: #265F5F;
 
 	/* The verified-club ribbon. Two-tone, so it is clamped from BOTH ends: the
@@ -493,11 +488,9 @@
 		--section-messages-ink: #E694B6;
 
 		--provider-strava-ink: #FD763E;
-		--provider-parkrun-ink: #DF9171;
 		--provider-garmin-ink: #139FFF;
 		--provider-healthkit-ink: #FD7086;
 		--provider-runsignup-ink: #DB95D2;
-		--provider-ultrasignup-ink: #66AF77;
 		--provider-chronotrack-ink: #45AEAE;
 
 		--color-verified: #4479EE;
@@ -605,11 +598,9 @@
 	--section-messages-ink: #E694B6;
 
 	--provider-strava-ink: #FD763E;
-	--provider-parkrun-ink: #DF9171;
 	--provider-garmin-ink: #139FFF;
 	--provider-healthkit-ink: #FD7086;
 	--provider-runsignup-ink: #DB95D2;
-	--provider-ultrasignup-ink: #66AF77;
 	--provider-chronotrack-ink: #45AEAE;
 
 	--color-verified: #4479EE;

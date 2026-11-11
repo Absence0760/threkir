@@ -1391,8 +1391,8 @@ test('every race-import availability probe asks the results leg, not the listing
 	// sync advertised an import whose very next call could 503 (decisions
 	// § 1041 moved every mobile probe; this closes the web half).
 	//
-	// Derived from RACE_IMPORT_PROBES rather than naming the three functions,
-	// so a fourth leg added to the map is read here the moment it exists.
+	// Derived from RACE_IMPORT_PROBES rather than naming the functions,
+	// so a leg added to the map is read here the moment it exists.
 	// Blanked, or the next function's doc comment naming the sync it does NOT
 	// use is read as a use of it.
 	const source = stripComments(read('src/lib/core/data.ts'));
@@ -1407,7 +1407,7 @@ test('every race-import availability probe asks the results leg, not the listing
 	}));
 
 	// Population: an empty parse would satisfy every assertion below.
-	assert.ok(entries.length >= 3, `parsed only ${entries.length} probes — map reshaped?`);
+	assert.ok(entries.length >= 2, `parsed only ${entries.length} probes — map reshaped?`);
 
 	for (const { leg, fn } of entries) {
 		const start = source.indexOf(`export async function ${fn}(`);

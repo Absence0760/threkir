@@ -3209,12 +3209,6 @@ abstract class AppLocalizations {
   /// **'Upload the archive Strava emails you, with every activity you\'ve logged'**
   String get setupImportStravaDesc;
 
-  /// Setup wizard import step: subtitle under the parkrun row. parkrun is a brand name, always lowercase; athlete number is the parkrun ID such as A123456
-  ///
-  /// In en, this message translates to:
-  /// **'Pull in every parkrun result with your athlete number'**
-  String get setupImportParkrunDesc;
-
   /// Setup wizard final step title
   ///
   /// In en, this message translates to:
@@ -14086,18 +14080,6 @@ abstract class AppLocalizations {
   /// **'Disconnect failed: {error}'**
   String integrationsDisconnectFailed(Object error);
 
-  /// Title of the parkrun import dialog
-  ///
-  /// In en, this message translates to:
-  /// **'Import parkrun results'**
-  String get integrationsParkrunTitle;
-
-  /// Body of the parkrun import dialog
-  ///
-  /// In en, this message translates to:
-  /// **'Enter your parkrun athlete number (e.g. A123456). We\'ll fetch your finish history and add any new results to your runs list.'**
-  String get integrationsParkrunBody;
-
   /// Label for the parkrun athlete-number field
   ///
   /// In en, this message translates to:
@@ -14194,30 +14176,6 @@ abstract class AppLocalizations {
   /// **'Showing the copy saved on this phone.'**
   String get parkrunBarcodeOfflineCopy;
 
-  /// Import button on the parkrun dialog
-  ///
-  /// In en, this message translates to:
-  /// **'Import'**
-  String get integrationsImport;
-
-  /// Progress text while parkrun results are imported
-  ///
-  /// In en, this message translates to:
-  /// **'Importing parkrun results…'**
-  String get integrationsParkrunImporting;
-
-  /// Banner summarising imported parkrun results
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, one{Imported {count} parkrun result.} other{Imported {count} parkrun results.}}'**
-  String integrationsParkrunImported(int count);
-
-  /// Banner when an importer read only part of a history and knows the total
-  ///
-  /// In en, this message translates to:
-  /// **'Only part of your history could be imported: {n} of {total}.'**
-  String integrationsImportPartialOf(int n, int total);
-
   /// Banner when an importer read only part of a history and does not know the total
   ///
   /// In en, this message translates to:
@@ -14229,18 +14187,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The results list was too long to read to the end, so your result could not be confirmed. Enter it manually instead.'**
   String get integrationsImportTruncated;
-
-  /// Banner shown when no new parkrun results were found
-  ///
-  /// In en, this message translates to:
-  /// **'No new parkrun results since last import.'**
-  String get integrationsParkrunNoneNew;
-
-  /// Banner shown when the parkrun import fails
-  ///
-  /// In en, this message translates to:
-  /// **'Import failed: {error}'**
-  String integrationsImportFailed(Object error);
 
   /// Strava integration tile title (brand name)
   ///
@@ -14314,24 +14260,6 @@ abstract class AppLocalizations {
   /// **'Sync now'**
   String get integrationsSyncNow;
 
-  /// parkrun integration tile title (brand name)
-  ///
-  /// In en, this message translates to:
-  /// **'parkrun'**
-  String get integrationsParkrunName;
-
-  /// parkrun tile subtitle
-  ///
-  /// In en, this message translates to:
-  /// **'Import results by athlete number'**
-  String get integrationsParkrunTileSubtitle;
-
-  /// parkrun tile subtitle shown when the device region is outside the parkrun footprint
-  ///
-  /// In en, this message translates to:
-  /// **'parkrun runs in a limited set of countries and may not have events near you — you can still import results with a parkrun athlete ID.'**
-  String get integrationsParkrunRegionNote;
-
   /// Tile title shown when signed out
   ///
   /// In en, this message translates to:
@@ -14341,7 +14269,7 @@ abstract class AppLocalizations {
   /// Tile subtitle shown when signed out
   ///
   /// In en, this message translates to:
-  /// **'Strava + parkrun require an account so synced activities land in your history.'**
+  /// **'Strava requires an account so synced activities land in your history.'**
   String get integrationsSignInSubtitle;
 
   /// Toggle title for writing runs to Health Connect (Android)
@@ -19914,7 +19842,7 @@ abstract class AppLocalizations {
   /// Settings landing: Integrations tile subtitle
   ///
   /// In en, this message translates to:
-  /// **'Strava, parkrun, race calendar, heart-rate strap, treadmill, watch'**
+  /// **'Strava, race calendar, heart-rate strap, treadmill, watch'**
   String get settingsTabIntegrationsSubtitle;
 
   /// Settings landing: Devices tile subtitle when signed in
@@ -25160,30 +25088,6 @@ abstract class AppLocalizations {
   /// **'Enter your bib number so we import only your result, not the whole field.'**
   String get racesRunSignUpBibHint;
 
-  /// Line in the race import sheet naming the UltraSignup person the import will use
-  ///
-  /// In en, this message translates to:
-  /// **'Importing as {name} (UltraSignup #{id})'**
-  String racesUltraSignUpImportingAs(String name, String id);
-
-  /// Hint under the UltraSignup importing-as line: only this race's result is imported
-  ///
-  /// In en, this message translates to:
-  /// **'Only your result for this race comes across, matched on UltraSignup\'s own race id and date.'**
-  String get racesUltraSignUpLinkedHint;
-
-  /// Race import sheet, UltraSignup listing, when the runner has not linked an UltraSignup person; the find action sits beside it
-  ///
-  /// In en, this message translates to:
-  /// **'Link your UltraSignup profile first, then import from here.'**
-  String get racesUltraSignUpNotLinked;
-
-  /// Banner when the import could not find the linked UltraSignup person under their name any more
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup no longer lists your linked profile under that name. Link it again in Settings.'**
-  String get racesUltraSignUpPersonNotFound;
-
   /// Hint above the manual result paste form
   ///
   /// In en, this message translates to:
@@ -25292,23 +25196,11 @@ abstract class AppLocalizations {
   /// **'Strava is a popular app for recording and sharing runs. Connecting it copies your Strava activities across — the last 90 days first, then each new one as it appears. You\'ll sign in to Strava and approve access, and you can disconnect at any time.'**
   String get integrationsStravaInfo;
 
-  /// Info-tip body for the parkrun tile: what parkrun is and where the athlete number comes from
-  ///
-  /// In en, this message translates to:
-  /// **'parkrun is a free, weekly, timed 5k held in parks around the world. Tap this tile and enter the athlete number from your parkrun barcode (the one starting with A) to pull in every parkrun you\'ve finished, with your time and age grade.'**
-  String get integrationsParkrunInfo;
-
   /// Info-tip body for the RunSignUp tile: what RunSignUp is and how to import a result
   ///
   /// In en, this message translates to:
   /// **'RunSignUp handles entries and results for thousands of road races. If you ran one, find the race in the race calendar and enter the bib number you wore — your official time and splits are attached to that run.'**
   String get integrationsRunsignupInfo;
-
-  /// Info-tip body for the UltraSignup tile: what UltraSignup is and how to import a result
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup handles entries and results for trail and ultra races. Link your UltraSignup profile here once, then import a race\'s result from the race calendar.'**
-  String get integrationsUltrasignupInfo;
 
   /// Info-tip body for the ChronoTrack tile: what ChronoTrack is and how to import a result
   ///
@@ -25319,140 +25211,8 @@ abstract class AppLocalizations {
   /// Explainer when the RunSignUp key is unconfigured
   ///
   /// In en, this message translates to:
-  /// **'RunSignUp import isn\'t available yet. parkrun and manual paste still work.'**
+  /// **'RunSignUp import isn\'t available yet. Manual paste still works.'**
   String get integrationsRunsignupUnavailable;
-
-  /// UltraSignup integration name
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup'**
-  String get integrationsUltrasignup;
-
-  /// UltraSignup integration description
-  ///
-  /// In en, this message translates to:
-  /// **'Import trail and ultra results from UltraSignup.'**
-  String get integrationsUltrasignupConnect;
-
-  /// Action linking to the race calendar from the UltraSignup tile
-  ///
-  /// In en, this message translates to:
-  /// **'Open the race calendar'**
-  String get integrationsUltrasignupOpen;
-
-  /// Explainer when the UltraSignup key is unconfigured
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup import isn\'t available yet. parkrun and manual paste still work.'**
-  String get integrationsUltrasignupUnavailable;
-
-  /// Heading of the UltraSignup person finder, and the action that opens it
-  ///
-  /// In en, this message translates to:
-  /// **'Find your UltraSignup profile'**
-  String get integrationsUltrasignupFindLabel;
-
-  /// First-name field in the UltraSignup person finder
-  ///
-  /// In en, this message translates to:
-  /// **'First name'**
-  String get integrationsUltrasignupFirstName;
-
-  /// Last-name field in the UltraSignup person finder
-  ///
-  /// In en, this message translates to:
-  /// **'Last name'**
-  String get integrationsUltrasignupLastName;
-
-  /// Hint under the UltraSignup person finder heading
-  ///
-  /// In en, this message translates to:
-  /// **'Use the name you enter races under. UltraSignup lists everyone with that name, and you pick which one is you.'**
-  String get integrationsUltrasignupNameHint;
-
-  /// Button that looks the typed name up on UltraSignup
-  ///
-  /// In en, this message translates to:
-  /// **'Find me'**
-  String get integrationsUltrasignupFind;
-
-  /// Find button label while the UltraSignup lookup runs
-  ///
-  /// In en, this message translates to:
-  /// **'Searching UltraSignup…'**
-  String get integrationsUltrasignupSearching;
-
-  /// Shown when UltraSignup knows nobody by the typed name
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup has nobody by that name. Check the spelling you race under.'**
-  String get integrationsUltrasignupNoMatches;
-
-  /// Prompt above the list of UltraSignup people matching the name
-  ///
-  /// In en, this message translates to:
-  /// **'Which of these is you?'**
-  String get integrationsUltrasignupPickPrompt;
-
-  /// An UltraSignup candidate's age
-  ///
-  /// In en, this message translates to:
-  /// **'Age {age}'**
-  String integrationsUltrasignupCandidateAge(int age);
-
-  /// How many results UltraSignup holds for a candidate
-  ///
-  /// In en, this message translates to:
-  /// **'{n, plural, one{{n} result} other{{n} results}}'**
-  String integrationsUltrasignupCandidateResults(int n);
-
-  /// Button that links the runner to one UltraSignup candidate
-  ///
-  /// In en, this message translates to:
-  /// **'This is me'**
-  String get integrationsUltrasignupThisIsMe;
-
-  /// The UltraSignup person the runner has linked
-  ///
-  /// In en, this message translates to:
-  /// **'Linked as {name} (UltraSignup #{id})'**
-  String integrationsUltrasignupLinkedAs(String name, String id);
-
-  /// Button that forgets the linked UltraSignup person
-  ///
-  /// In en, this message translates to:
-  /// **'Unlink'**
-  String get integrationsUltrasignupUnlink;
-
-  /// Banner after an UltraSignup person was linked
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup profile linked.'**
-  String get integrationsUltrasignupLinked;
-
-  /// Banner when storing the UltraSignup person failed
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t link your UltraSignup profile. Try again.'**
-  String get integrationsUltrasignupLinkFailed;
-
-  /// Banner when the UltraSignup name lookup failed
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t search UltraSignup. Try again in a moment.'**
-  String get integrationsUltrasignupLookupFailed;
-
-  /// Undo-bar message after the UltraSignup person was unlinked
-  ///
-  /// In en, this message translates to:
-  /// **'UltraSignup profile unlinked. Runs you already imported stay.'**
-  String get integrationsUltrasignupUnlinked;
-
-  /// Banner when unlinking the UltraSignup person failed
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t unlink your UltraSignup profile. Try again.'**
-  String get integrationsUltrasignupUnlinkFailed;
 
   /// ChronoTrack integration name
   ///
@@ -25475,7 +25235,7 @@ abstract class AppLocalizations {
   /// Explainer when the ChronoTrack credentials are unconfigured
   ///
   /// In en, this message translates to:
-  /// **'ChronoTrack import isn\'t available yet. parkrun and manual paste still work.'**
+  /// **'ChronoTrack import isn\'t available yet. Manual paste still works.'**
   String get integrationsChronotrackUnavailable;
 
   /// Header for the route condition-reports panel

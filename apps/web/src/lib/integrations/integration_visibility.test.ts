@@ -16,7 +16,7 @@ import {
 
 const SPECS = [
 	{ provider: 'strava', gate: 'env' as IntegrationGate },
-	{ provider: 'parkrun', gate: 'probe' as IntegrationGate },
+	{ provider: 'runsignup', gate: 'probe' as IntegrationGate },
 	{ provider: 'garmin', gate: 'unbuilt' as IntegrationGate },
 	{ provider: 'healthkit', gate: 'unsupported' as IntegrationGate },
 	{ provider: 'stravazip', gate: 'always' as IntegrationGate }
@@ -81,13 +81,13 @@ test('a missing verdict key reads as pending, not as a crash or a false', () => 
 	// seeded entry per provider would make an added provider default to
 	// "unconfigured" in the window before anyone wrote its probe.
 	const graded = gateIntegrations(SPECS, {}, []);
-	assert.equal(graded.find((g) => g.spec.provider === 'parkrun')?.status, 'pending');
+	assert.equal(graded.find((g) => g.spec.provider === 'runsignup')?.status, 'pending');
 });
 
 test('visibleIntegrations filters and preserves catalogue order', () => {
 	const visible = visibleIntegrations(
 		SPECS,
-		{ strava: true, parkrun: false },
+		{ strava: true, runsignup: false },
 		['healthkit']
 	);
 	assert.deepEqual(
@@ -99,7 +99,7 @@ test('visibleIntegrations filters and preserves catalogue order', () => {
 test('an unconfigured deployment offers nothing it cannot honour', () => {
 	// The shape this whole module exists for: no env var, no reachable Edge
 	// Functions, no connected rows.
-	const visible = visibleIntegrations(SPECS, { strava: false, parkrun: false }, []);
+	const visible = visibleIntegrations(SPECS, { strava: false, runsignup: false }, []);
 	assert.deepEqual(
 		visible.map((v) => v.spec.provider),
 		['stravazip']

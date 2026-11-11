@@ -11,9 +11,8 @@ import { USER_A } from '../fixtures/users';
  * (race_calendar.md). The two bib-scoped legs the `race-results-import` Edge
  * Function ships — RunSignUp and ChronoTrack — are reachable from a listing of
  * that provider once their credentials are configured, and each asks for the
- * bib its own scope gate demands. UltraSignup asks for nothing here: it is
- * scoped by the person linked in Settings, and `ultrasignup-person-import.spec.ts`
- * covers it end to end (decisions § 1841).
+ * bib its own scope gate demands. An UltraSignup listing has no leg and offers
+ * manual paste alone (`ultrasignup-gate.spec.ts`).
  *
  * Dev and CI ship no provider credentials, so the configured branch is reached
  * by stubbing the two availability probes. Only the probes are stubbed —

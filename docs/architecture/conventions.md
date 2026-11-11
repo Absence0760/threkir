@@ -102,7 +102,7 @@ Every imported activity row carries `external_id text` namespaced as
 `<provider>:<native_id>` so two providers can't collide on the same numeric id.
 The format is already universal across all importers and must stay so:
 
-- `strava:{activity_id}` · `garmin:{file_id}` · `parkrun:{event}:{date}` ·
+- `strava:{activity_id}` · `garmin:{file_id}` · `parkrun:{event}:{date}` (legacy, no writer) ·
   `csv:{iso}-{distance}-{duration}`. New importers follow the same shape; put
   the prefix-building in one helper (e.g. `garminExternalId`) rather than
   inlining the literal.

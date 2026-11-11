@@ -332,12 +332,6 @@ class RunSignUpUnavailable implements Exception {
   const RunSignUpUnavailable();
 }
 
-/// Thrown when the UltraSignup leg is unconfigured server-side (503), so the UI
-/// can show the unavailable explainer rather than a generic failure.
-class UltraSignUpUnavailable implements Exception {
-  const UltraSignUpUnavailable();
-}
-
 /// Thrown when the ChronoTrack leg is unconfigured server-side (503), so the UI
 /// can show the unavailable explainer rather than a generic failure.
 /// The upstream finisher list was truncated before the runner was found, so
@@ -355,47 +349,24 @@ class ChronoTrackUnavailable implements Exception {
   const ChronoTrackUnavailable();
 }
 
-/// An UltraSignup import was asked for before the runner picked themselves in
-/// Settings, so there is nobody to import for. Refused before the call, as on
-/// web (`ULTRASIGNUP_NOT_LINKED`).
-class UltraSignUpNotLinked implements Exception {
-  const UltraSignUpNotLinked();
-}
-
-/// The function no longer finds the linked person under their name (404
-/// `ultrasignup_person_not_found`). That is a link to redo, not a race with no
-/// result in it.
-class UltraSignUpPersonNotFound implements Exception {
-  const UltraSignUpPersonNotFound();
-}
-
-/// The one scoping value a provider's leg needs before it may be called.
-enum RaceImportScope {
-  /// The runner's bib narrows the finisher field to their own row. An unscoped
-  /// pull returns the whole field and every row of it is inserted as the
-  /// caller's own run (issue #360), so the client refuses one too.
-  bib,
-
-  /// WHO the runner is on the provider scopes the pull: the person they picked
-  /// once in Settings (decisions § 1841), so the import asks for nothing and
-  /// sends the stored link.
-  linkedPerson,
-}
-
 /// One race-results provider with a built leg in `race-results-import`, keyed
 /// by the token that function takes.
 ///
-/// This list is the only provider vocabulary the app holds: the probe, the
-/// fail-closed exception and what a caller must supply all hang off it, so a
-/// leg added server-side reaches every mobile surface by being named here once.
+/// This list is the only provider vocabulary the app holds: the probe and the
+/// fail-closed exception both hang off it, so a leg added server-side reaches
+/// every mobile surface by being named here once.
 ///
 /// `paste` is deliberately absent — it is the universal manual fallback rather
 /// than a listing provider, needs no credential and no probe, and stays offered
-/// beside every entry here. So are `parkrun`, `manual` and `raceresult`, which
-/// are listing providers with no bib-import leg at all.
+/// beside every entry here. So are `ultrasignup`, `manual` and `raceresult`,
+/// which are listing providers with no import leg at all.
+///
+/// Every leg here is scoped by the runner's bib, which narrows the finisher
+/// field to their own row. An unscoped pull returns the whole field and every
+/// row of it is inserted as the caller's own run (issue #360), so the client
+/// refuses one too.
 class RaceImportProvider {
   final String provider;
-  final RaceImportScope scope;
 
   /// Thrown on the 503 `provider_not_configured` so a surface shows THIS
   /// provider's explainer and never a peer's.
@@ -406,7 +377,6 @@ class RaceImportProvider {
 
   const RaceImportProvider({
     required this.provider,
-    required this.scope,
     required this.unavailable,
     required this.probeFunction,
     required this.probeBody,
@@ -416,9 +386,8 @@ class RaceImportProvider {
 const List<RaceImportProvider> raceImportProviders = [
   RaceImportProvider(
     provider: 'runsignup',
-    scope: RaceImportScope.bib,
     unavailable: RunSignUpUnavailable(),
-    // The RESULTS leg, as for the other two. It probed `race-listings-sync`
+    // The RESULTS leg, as for chronotrack. It probed `race-listings-sync`
     // until § 1041, on the reasoning that both legs read the same two env vars
     // so either would answer — but the tile is a claim about whether an IMPORT
     // will work, and the sync owns a different leg. The move waited on
@@ -429,28 +398,7 @@ const List<RaceImportProvider> raceImportProviders = [
     probeBody: <String, dynamic>{'provider': 'runsignup', 'probe': true},
   ),
   RaceImportProvider(
-    provider: 'ultrasignup',
-    scope: RaceImportScope.linkedPerson,
-    unavailable: UltraSignUpUnavailable(),
-    // The RESULTS leg, not the listings sync. The two are separately gated:
-    // `race-listings-sync` answers on ULTRASIGNUP_API_KEY alone, while the
-    // results leg reads a keyless feed and answers on the deployment's
-    // ULTRASIGNUP_RESULTS_ENABLED opt-in (decisions § 1841). Probing the sync
-    // would advertise an import the results leg then refuses.
-    //
-    // `ultraSignUpFlow: 'person'` says this client speaks the person flow. A
-    // client that does not is told the leg is unavailable, which is what kept
-    // the builds still sending the retired athlete id dark.
-    probeFunction: 'race-results-import',
-    probeBody: <String, dynamic>{
-      'provider': 'ultrasignup',
-      'probe': true,
-      'ultraSignUpFlow': 'person',
-    },
-  ),
-  RaceImportProvider(
     provider: 'chronotrack',
-    scope: RaceImportScope.bib,
     unavailable: ChronoTrackUnavailable(),
     probeFunction: 'race-results-import',
     probeBody: <String, dynamic>{'provider': 'chronotrack', 'probe': true},
@@ -503,9 +451,7 @@ class RaceListingRun {
 /// Each method mirrors the like-named export in `apps/web/src/lib/core/data.ts`
 /// — `searchRaceListings`, `fetchRaceListing`, `fetchMyRunsAtRace`,
 /// `submitRaceListing`, `fetchRaceResultForRun`,
-/// `findRaceMatchCandidates`, `importRaceResult`, and the UltraSignup person
-/// calls `fetchUltraSignUpLink` / `linkUltraSignUpPerson` /
-/// `unlinkUltraSignUpPerson` / `lookupUltraSignUpPeople` — with
+/// `findRaceMatchCandidates` and `importRaceResult` — with
 /// `isProviderConfigured` standing in for its `isRaceImportProviderConfigured`.
 /// Wire-level methods are exercisable against a real local Supabase via the
 /// `withClient` seam.
@@ -513,9 +459,9 @@ class RaceService extends ChangeNotifier {
   final SupabaseClient? _override;
   final ApiClient? _apiOverride;
 
-  /// [api] is where the UltraSignup person link is read and written; every
-  /// race surface already holds this service, so the link rides on it rather
-  /// than on a second dependency each sheet would have to be handed.
+  /// [api] serves the course reads behind Drive this course; every race
+  /// surface already holds this service, so they ride on it rather than on a
+  /// second dependency each sheet would have to be handed.
   RaceService({ApiClient? api})
       : _override = null,
         _apiOverride = api;
@@ -904,36 +850,20 @@ class RaceService extends ChangeNotifier {
 
   /// Invoke `race-results-import`. Throws the provider's own
   /// [RaceImportProvider.unavailable] on the 503 `provider_not_configured` so
-  /// the UI can show that provider's explainer.
-  ///
-  /// An UltraSignup import is scoped by the person the runner picked in
-  /// Settings (decisions § 1841): [ultraSignUpPerson] when the caller holds
-  /// it, otherwise the stored link is read, and with neither this throws
-  /// [UltraSignUpNotLinked] before reaching the function. Mirrors web's
+  /// the UI can show that provider's explainer. Mirrors web's
   /// `importRaceResult`.
   Future<ImportRaceResultOutcome> importRaceResult({
     required String provider, // a [raceImportProviders] token, or 'paste'
     required String listingId,
     String? bib,
-    UltraSignUpPersonLink? ultraSignUpPerson,
     String? matchRunId,
     PastedRaceResult? result,
   }) async {
-    UltraSignUpPersonLink? person;
-    if (provider == ultraSignUpProvider) {
-      person = ultraSignUpPerson ?? await fetchUltraSignUpLink();
-      if (person == null) throw const UltraSignUpNotLinked();
-    }
     try {
       final res = await _c.functions.invoke('race-results-import', body: {
         'provider': provider,
         'listingId': listingId,
         if (bib != null) 'bib': bib,
-        if (person != null) ...{
-          'ultraSignUpPersonId': person.personId,
-          'ultraSignUpFirstName': person.firstName,
-          'ultraSignUpLastName': person.lastName,
-        },
         if (matchRunId != null) 'matchRunId': matchRunId,
         if (result != null) 'result': result.toJson(),
       });
@@ -954,39 +884,6 @@ class RaceService extends ChangeNotifier {
       }
       if (e.status == 502 && _detailsSay(e.details, 'upstream_results_truncated')) {
         throw const RaceResultsTruncated();
-      }
-      if (e.status == 404 && _detailsSay(e.details, 'ultrasignup_person_not_found')) {
-        throw const UltraSignUpPersonNotFound();
-      }
-      rethrow;
-    }
-  }
-
-  /// The runner's stored UltraSignup person, or null when they have not linked
-  /// one. See [ApiClient.fetchUltraSignUpLink].
-  Future<UltraSignUpPersonLink?> fetchUltraSignUpLink() =>
-      _api.fetchUltraSignUpLink();
-
-  /// Store the person the runner picked. See [ApiClient.linkUltraSignUpPerson].
-  Future<void> linkUltraSignUpPerson(UltraSignUpPersonLink link) =>
-      _api.linkUltraSignUpPerson(link);
-
-  /// Forget the stored person. See [ApiClient.unlinkUltraSignUpPerson].
-  Future<void> unlinkUltraSignUpPerson() => _api.unlinkUltraSignUpPerson();
-
-  /// The people UltraSignup knows by this name, for the runner to pick
-  /// themselves from. Throws [UltraSignUpUnavailable] on the 503
-  /// `provider_not_configured` (the leg is off on this deployment), and the
-  /// function's own refusal otherwise.
-  Future<List<UltraSignUpCandidate>> lookupUltraSignUpPeople(
-    String firstName,
-    String lastName,
-  ) async {
-    try {
-      return await _api.lookupUltraSignUpPeople(firstName, lastName);
-    } on FunctionException catch (e) {
-      if (e.status == 503 && _isProviderNotConfigured(e.details)) {
-        throw const UltraSignUpUnavailable();
       }
       rethrow;
     }
@@ -1036,27 +933,6 @@ class RaceService extends ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('RaceService: $provider probe reports unavailable: $e');
-      return false;
-    }
-  }
-
-  /// Whether the parkrun import leg is reachable on this deployment.
-  ///
-  /// parkrun needs no credential, so unlike the three race-results legs above
-  /// this asks only whether the Edge Function is deployed — the question a
-  /// minimal deployment answers no to and every client used to skip, offering
-  /// an import tile for a function that is not there. Same fail-closed shape:
-  /// only a call that does not throw counts.
-  ///
-  /// Lives here rather than on `ApiClient` so the settings screen reaches every
-  /// probe it draws through one seam, which is what lets its widget test inject
-  /// a stub for all of them at once.
-  Future<bool> isParkrunConfigured() async {
-    try {
-      await _c.functions.invoke('parkrun-import', body: {'probe': true});
-      return true;
-    } catch (e) {
-      debugPrint('RaceService: parkrun probe reports unavailable: $e');
       return false;
     }
   }

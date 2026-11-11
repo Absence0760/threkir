@@ -67,7 +67,7 @@ const browser = [...called].filter((f) => !(f in EXEMPT)).sort();
 
 Deno.test('the call-site scan still finds the browser callers it was written against', () => {
   // Reason: a scan that silently matches nothing would pass every case below.
-  for (const fn of ['delete-account', 'parkrun-import', 'export-data', 'clip-public-track']) {
+  for (const fn of ['delete-account', 'export-data', 'clip-public-track']) {
     assert(browser.includes(fn), `call-site scan no longer finds ${fn}; fix the scan, not the list`);
   }
 });

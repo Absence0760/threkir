@@ -7,16 +7,17 @@ import { readCount, readRows } from '../fixtures/db-read';
 
 /**
  * Third-party-import journey — the full life of a single imported
- * activity, walked from "connect a provider" through every run surface
- * the import threads into, the de-dupe backstop on a second import, and
- * the disconnect that closes the loop. Heavier than the per-surface
+ * activity, walked through every run surface the import threads into and
+ * the de-dupe backstop on a second import. Heavier than the per-surface
  * specs it complements (settings/integrations-connected.spec.ts's
  * planted-row connected-state UI, cross-cutting/strava-import-guards's
  * EF gates, cross-cutting/runs-external-id-dedupe's raw-INSERT 23505
  * backstop) because it threads ONE import — driven through the real
- * in-app Strava bulk-zip uploader — across the connect → import →
- * /runs list → /runs/[id] detail → re-import-dedupe → disconnect seams
- * rather than asserting any single screen or guard.
+ * in-app Strava bulk-zip uploader — across the import → /runs list →
+ * /runs/[id] detail → re-import-dedupe seams rather than asserting any
+ * single screen or guard. Connect / disconnect live in
+ * integrations-connected.spec.ts: no provider is left on a non-OAuth
+ * connect path a journey could walk.
  *
  * Why the STRAVA ZIP path (not live OAuth / a sync): Strava + Garmin
  * live OAuth can't run locally (no sandbox; integrations.md — Garmin
@@ -29,36 +30,25 @@ import { readCount, readRows } from '../fixtures/db-read';
  * no Storage object is involved — the journey is about the scalar row +
  * its dedupe key, not the GPS trace.
  *
- *   1. CONNECT a provider. USER_A has strava + parkrun pre-seeded but
- *      a parkrun row (seed.sql) which this test deletes first, so parkrun
- *      is the clean connect/disconnect subject — `connectIntegration('parkrun')`
- *      is the only non-OAuth
- *      placeholder upsert (data.ts), and the card flips to `.connected`.
- *      (Strava itself stays seed-connected throughout; we never touch
- *      its row, so no cross-spec clash.)
- *   2. IMPORT an activity via the Strava bulk-zip uploader. The ZIP has
+ *   1. IMPORT an activity via the Strava bulk-zip uploader. The ZIP has
  *      one run-type row with a unique `Activity ID`. importStravaZip
  *      writes it through saveRun with `external_id = strava:<id>` AND
  *      `metadata.strava_id = <id>` (strava-zip.ts:importOne). The in-page
  *      progress reads "1 / 1 · 1 imported · 0 skipped" and a success toast.
- *   3. THREADS the run surfaces: it appears on /runs (All-time) and its
+ *   2. THREADS the run surfaces: it appears on /runs (All-time) and its
  *      /runs/[id] detail page renders (title from the CSV Activity Name).
  *      Backend cross-check: exactly one source='strava' row carries this
  *      external_id, with the matching metadata.strava_id.
- *   4. RE-IMPORT the SAME ZIP → DE-DUPED. importStravaZip pre-fetches the
+ *   3. RE-IMPORT the SAME ZIP → DE-DUPED. importStravaZip pre-fetches the
  *      user's existing strava ids (buildStravaDedupeSet pulls from BOTH
  *      metadata.strava_id and the external_id `strava:` prefix), so the
  *      row is SKIPPED, not re-inserted. The progress reads "1 / 1 ·
  *      0 imported · 1 skipped"; the backend row count for this
  *      external_id stays exactly 1 (the dedupe contract threaded, not
  *      asserted as a raw 23505 like runs-external-id-dedupe does).
- *   5. DISCONNECT parkrun (ConfirmDialog → DELETE for the non-strava
- *      path) — card flips back to disconnected, the integrations row is
- *      gone.
  *
- * No rate-limit reset needed: neither the zip importer nor
- * connect/disconnect has a per-user bucket (only create_club /
- * create_route are throttled, migration 20260907_001).
+ * No rate-limit reset needed: the zip importer has no per-user bucket
+ * (only create_club / create_route are throttled, migration 20260907_001).
  */
 
 const uniqueText = (prefix: string) =>
@@ -125,7 +115,7 @@ async function buildStravaZip(opts: {
 test.describe('third-party import journey', () => {
 	test.use({ storageState: USER_A.storageStatePath });
 
-	test('connect parkrun → import a Strava activity → threads /runs + detail → re-import de-duped → disconnect', async ({
+	test('import a Strava activity → threads /runs + detail → re-import de-duped', async ({
 		page
 	}) => {
 		const admin = getAdminClient();
@@ -146,54 +136,10 @@ test.describe('third-party import journey', () => {
 		// sweeps exactly what this test planted.
 		let runId = '';
 
-		// USER_A must NOT already have a parkrun integration row (the seed
-		// gives strava + parkrun) — clear defensively so step 1's connect
-		// is a true 0→1, and so a prior interrupted run can't leave a
-		// stale row that makes the card render connected before we click.
-		await admin
-			.from('integrations')
-			.delete()
-			.eq('user_id', USER_A.id)
-			.eq('provider', 'parkrun');
-
 		try {
-			// ── 1. Connect a provider (parkrun, the non-OAuth path) ─────
-			// Garmin used to be this subject. It no longer renders a Connect
-			// button at all: its OAuth leg is blocked on Garmin's developer
-			// programme, so the catalogue gates it `unbuilt` and the card is
-			// offered only to a runner who already has a (placeholder) row.
-			await test.step('USER_A connects parkrun from the integrations page', async () => {
-				await page.goto('/settings/integrations');
-				const parkrunCard = page.locator('.integration-card', {
-					hasText: 'parkrun'
-				});
-				await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
-				await expect(parkrunCard).not.toHaveClass(/connected/);
-
-				await parkrunCard.getByRole('button', { name: 'Connect' }).click();
-
-				// connectIntegration upserts the row; the card flips to the
-				// connected style (border-inline-start accent in the SFC).
-				await expect(parkrunCard).toHaveClass(/connected/, { timeout: 10_000 });
-				await expect(
-					parkrunCard.getByRole('button', { name: 'Disconnect' })
-				).toBeVisible();
-
-				// Backend: exactly one (live) parkrun row for USER_A.
-				const rows = await readRows(
-					'integrations by user_id+provider',
-					admin
-						.from('integrations')
-						.select('id, disconnected_at')
-						.eq('user_id', USER_A.id)
-						.eq('provider', 'parkrun')
-				);
-				expect(rows).toHaveLength(1);
-				expect(rows![0].disconnected_at).toBeNull();
-			});
-
-			// ── 2. Import an activity via the Strava bulk-zip uploader ───
+			// ── 1. Import an activity via the Strava bulk-zip uploader ───
 			await test.step('USER_A imports a one-activity Strava export ZIP', async () => {
+				await page.goto('/settings/integrations');
 				const zip = await buildStravaZip({ stravaId, name: activityName, startedAt });
 
 				// The bulk-import section's hidden <input type="file"> is the
@@ -243,7 +189,7 @@ test.describe('third-party import journey', () => {
 				runId = rows![0].id as string;
 			});
 
-			// ── 3. The imported run threads the run surfaces ────────────
+			// ── 2. The imported run threads the run surfaces ────────────
 			await test.step('the imported run appears on /runs (All-time) and its detail page', async () => {
 				await page.goto('/runs');
 				await switchRunsToAllTime(page);
@@ -264,7 +210,7 @@ test.describe('third-party import journey', () => {
 				).toBeVisible({ timeout: 10_000 });
 			});
 
-			// ── 4. Re-import the SAME ZIP → de-duped (no second row) ────
+			// ── 3. Re-import the SAME ZIP → de-duped (no second row) ────
 			await test.step('re-importing the identical ZIP is de-duped — skipped, not re-inserted', async () => {
 				await page.goto('/settings/integrations');
 				const stravaBulkCard = page
@@ -312,55 +258,8 @@ test.describe('third-party import journey', () => {
 				);
 				expect(count).toBe(1);
 			});
-
-			// ── 5. Disconnect the provider ──────────────────────────────
-			await test.step('USER_A disconnects parkrun; the card flips back and the row is gone', async () => {
-				await page.goto('/settings/integrations');
-				const parkrunCard = page.locator('.integration-card', {
-					hasText: 'parkrun'
-				});
-				await expect(parkrunCard).toHaveClass(/connected/, { timeout: 10_000 });
-
-				await parkrunCard.getByRole('button', { name: 'Disconnect' }).click();
-				const confirm = page.locator('.modal', {
-					hasText: 'Disconnect integration?'
-				});
-				await expect(confirm).toBeVisible({ timeout: 5_000 });
-				await confirm.getByRole('button', { name: 'Disconnect' }).click();
-
-				await expect(parkrunCard).not.toHaveClass(/connected/, {
-					timeout: 5_000
-				});
-				await expect(
-					parkrunCard.getByRole('button', { name: 'Connect' })
-				).toBeVisible();
-
-				// Backend: the non-strava disconnect path is a hard DELETE
-				// (data.ts:disconnectIntegration), so no row remains.
-				const rows = await readRows(
-					'integrations by user_id+provider',
-					admin
-						.from('integrations')
-						.select('id')
-						.eq('user_id', USER_A.id)
-						.eq('provider', 'parkrun')
-				);
-				expect(rows).toHaveLength(0);
-			});
 		} finally {
-			// Sweep the imported run, then put parkrun back the way seed.sql
-			// left it — this journey deletes that row to get a clean 0→1, and
-			// the other integrations specs read it as connected. Strava's seed
-			// row is untouched throughout.
 			if (runId) await admin.from('runs').delete().eq('id', runId);
-			await admin.from('integrations').upsert(
-				{
-					user_id: USER_A.id,
-					provider: 'parkrun',
-					last_sync_at: '2026-04-01T10:00:00Z'
-				},
-				{ onConflict: 'user_id,provider' }
-			);
 		}
 	});
 });

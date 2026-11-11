@@ -52,7 +52,6 @@ export const KNOWN_DOMAIN_SUBSTRINGS = [
 	'revenuecat',
 	'stripe',
 	'strava',
-	'parkrun',
 	'garmin',
 	'open-meteo',
 	'apple.com',

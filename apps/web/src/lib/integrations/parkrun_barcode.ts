@@ -6,7 +6,7 @@
 // fixed by the length and no set-switching logic can mis-pick a symbol.
 // Dart twin: apps/mobile_android/lib/parkrun_barcode.dart (keep in lockstep).
 
-/** Same bound `parkrun-import` enforces (`/^A\d{1,12}$/`). */
+/** Same bound the `user_profiles.parkrun_number` CHECK enforces (`/^A\d{1,12}$/`). */
 export const PARKRUN_ATHLETE_NUMBER_MAX_DIGITS = 12;
 
 const ATHLETE_NUMBER = new RegExp(`^A\\d{1,${PARKRUN_ATHLETE_NUMBER_MAX_DIGITS}}$`);

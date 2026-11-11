@@ -541,7 +541,6 @@ UPDATE runs SET activity_type = metadata->>'activity_type'
 
 -- 5. Integrations
 INSERT INTO integrations (user_id, provider, last_sync_at) VALUES
-('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'parkrun', '2026-04-01T10:00:00Z'),
 ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'strava', '2026-03-30T08:00:00Z');
 
 -- ─────────────────────── 6. Clubs + events ───────────────────────

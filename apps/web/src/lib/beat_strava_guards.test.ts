@@ -229,8 +229,8 @@ test('audio_cues.dart exposes speakGuidedCue for the recorder integration', () =
 test('the run-detail auto-match prompt resolves its leg from RACE_IMPORT_LEGS', () => {
 	// Reason: this prompt is the SECOND surface that reaches the
 	// race-results-import legs, and it hardcoded `runsignup` long after the
-	// Edge Function grew ultrasignup and chronotrack legs — so a candidate on
-	// either silently degraded to manual paste even with the credentials set,
+	// Edge Function grew a chronotrack leg — so a candidate on it silently
+	// degraded to manual paste even with the credentials set,
 	// which reads to the runner as the provider not being supported. Driving it
 	// off the shared record is what keeps the two surfaces from disagreeing
 	// about which providers exist.

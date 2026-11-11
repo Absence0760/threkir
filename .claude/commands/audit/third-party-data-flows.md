@@ -11,7 +11,7 @@ A regulator's first ask in any incident is "show me your sub-processor list". A 
 ## What to check
 
 1. **Provider inventory.** Grep for every outbound endpoint by base URL:
-   - `strava.com`, `connect.garmin.com`, `parkrun.com`
+   - `strava.com`, `connect.garmin.com`, `runsignup.com`, `api.chronotrack.com`, `ultrasignup.com` (listings leg only)
    - `api.anthropic.com`, `api.openai.com` (or `OPENAI_BASE_URL` for local Ollama)
    - `api.revenuecat.com`, `api.stripe.com`
    - `api.maptiler.com`, `*.tiles.mapbox.com` if any

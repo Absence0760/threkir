@@ -9,9 +9,8 @@
 // auth-rejection behaviour of the handlers that compose those helpers
 // with `serve()` + `createClient()`.
 //
-// Why only these webhook functions: the five JWT-gated functions
-// (clip-public-track, delete-account, export-data, parkrun-import,
-// strava-import) are 401'd at the platform gateway before the
+// Why only these webhook functions: the JWT-gated functions
+// (clip-public-track, delete-account, export-data, strava-import) are 401'd at the platform gateway before the
 // handler runs, so the handler-body auth surface there is degenerate
 // — the platform's `verify_jwt = true` config IS the test. The five
 // here are the ones where the handler does its own auth, which is

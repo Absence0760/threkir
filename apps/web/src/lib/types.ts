@@ -186,7 +186,6 @@ export type RouteMarker = Omit<RouteMarkerRow, 'kind' | 'meta'> & {
 // the narrow union enforced by the CHECK constraint + check_constraint_unions.mjs.
 export type RaceProvider =
 	| 'runsignup'
-	| 'parkrun'
 	| 'manual'
 	| 'chronotrack'
 	| 'raceresult'
@@ -330,7 +329,7 @@ export function parseRouteSurface(raw: string | null | undefined): RouteSurface 
 	}
 }
 
-export type IntegrationProvider = 'strava' | 'garmin' | 'parkrun' | 'runsignup' | 'ultrasignup';
+export type IntegrationProvider = 'strava' | 'garmin' | 'runsignup';
 export type PreferredUnit = 'km' | 'mi';
 export type Gender = 'male' | 'female' | 'prefer_not_to_say';
 export type SubscriptionTier = 'free' | 'pro' | 'lifetime';
@@ -365,9 +364,7 @@ export function parseIntegrationProvider(
 	switch (raw) {
 		case 'strava':
 		case 'garmin':
-		case 'parkrun':
 		case 'runsignup':
-		case 'ultrasignup':
 			return raw;
 		default:
 			return null;

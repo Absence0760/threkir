@@ -10,7 +10,7 @@ import { USER_A } from '../fixtures/users';
  * race-results-import probe returns 503 provider_not_configured, so the
  * Settings → Integrations ChronoTrack card shows the unavailable explainer
  * instead of an open-the-calendar action — and the page does not crash.
- * parkrun + manual paste stay available.
+ * Manual paste stays available.
  */
 
 test.describe('ChronoTrack gate (unconfigured credentials)', () => {
@@ -39,7 +39,7 @@ test.describe('ChronoTrack gate (unconfigured credentials)', () => {
 		// deployment can honour, and the explainer a runner actually needs lives
 		// on the race whose result they are trying to import (asserted below).
 		await page.goto('/settings/integrations');
-		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
+		await expect(page.getByTestId('integration-strava')).toBeVisible({ timeout: 10_000 });
 
 		await expect(page.getByTestId('chronotrack-card')).toHaveCount(0);
 		await expect(page.getByTestId('chronotrack-open')).toHaveCount(0);

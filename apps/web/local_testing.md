@@ -227,14 +227,13 @@ Garmin Connect's live OAuth API is gated on Garmin's developer-program approval,
 
 The FIT decoder (`fit-file-parser`) is dynamic-imported so the integrations page is only ~260 KB heavier when a Garmin file is actually picked.
 
-### parkrun import
+### parkrun barcode
 
-No OAuth — the user types their parkrun athlete number into `/settings/account`.
+The parkrun import is gone (it scraped parkrun's site). The athlete number stays, for the barcode only.
 
 **Test path**
-1. Set `parkrun_number` on the profile form (any 6-digit number works for testing the wire-up; real numbers are needed for actual results).
-2. `/settings/integrations` → **Sync parkrun** → results pull in tagged with `metadata.event = 'parkrun'` and `metadata.position = N`.
-3. Verify a row on `/runs` with the **parkrun** source pill.
+1. Set an athlete number (`A` followed by digits) on `/settings/account`; anything else is refused before save.
+2. `/settings/integrations` → the **Your parkrun barcode** card renders it, with a full-screen view.
 
 ### RevenueCat (Pro tier checkout)
 

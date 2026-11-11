@@ -28,7 +28,7 @@ What follows the entity automatically, because each already asks `private.is_run
 
 ## Privacy default
 
-The `privacy_default` value `followers` used to mean private, because a run had only `is_public`. It now writes `followers_only` on every creation path (web save + importers, the phone's run save, the `parkrun-import` / `strava-import` Edge Functions, the Go worker's Strava ingest) — see [settings.md § privacy_default detail](../backend/settings.md#privacy_default-detail). An account that never chose a default falls back to `private`, not `followers` (decisions § 1881), so opening the gate widens nothing nobody chose. While the gate is closed the server stores it private, so a run saved before sign-off does not widen on the day the gate opens.
+The `privacy_default` value `followers` used to mean private, because a run had only `is_public`. It now writes `followers_only` on every creation path (web save + importers, the phone's run save, the `strava-import` / `race-results-import` Edge Functions, the Go worker's Strava ingest) — see [settings.md § privacy_default detail](../backend/settings.md#privacy_default-detail). An account that never chose a default falls back to `private`, not `followers` (decisions § 1881), so opening the gate widens nothing nobody chose. While the gate is closed the server stores it private, so a run saved before sign-off does not widen on the day the gate opens.
 
 ## The gate (decisions § 150)
 

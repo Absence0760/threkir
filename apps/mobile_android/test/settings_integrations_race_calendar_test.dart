@@ -29,9 +29,6 @@ class _FakeRaceService extends RaceService {
   @override
   Future<bool> isProviderConfigured(String provider) async =>
       configured.contains(provider);
-
-  @override
-  Future<bool> isParkrunConfigured() async => configured.contains('parkrun');
 }
 
 Future<void> _pump(WidgetTester tester, {Set<String> configured = const {}}) async {
@@ -55,7 +52,7 @@ Future<void> _pump(WidgetTester tester, {Set<String> configured = const {}}) asy
   await tester.pumpAndSettle();
 }
 
-const _allProviders = {'runsignup', 'ultrasignup', 'chronotrack'};
+const _allProviders = {'runsignup', 'chronotrack'};
 
 void main() {
   testWidgets('every configured import provider gets a tile that links to the race calendar',
@@ -119,33 +116,14 @@ void main() {
     expect(find.byType(RacesScreen), findsOneWidget);
   });
 
-  testWidgets('tapping the UltraSignup tile opens the race calendar',
-      (tester) async {
-    await _pump(tester, configured: _allProviders);
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    await tester.tap(find.text(l10n.integrationsUltrasignup));
-    await tester.pumpAndSettle();
-    expect(find.byType(RacesScreen), findsOneWidget);
-  });
-
   testWidgets('each tile answers its own probe, never a peer provider\'s',
       (tester) async {
-    // UltraSignup has its own credential pair, so a provisioned RunSignUp key
-    // must not put an UltraSignup tile on the screen.
+    // ChronoTrack has its own credential, so a provisioned RunSignUp key must
+    // not put a ChronoTrack tile on the screen.
     await _pump(tester, configured: const {'runsignup'});
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
     expect(find.text(l10n.integrationsRunsignupConnect), findsOneWidget);
-    expect(find.text(l10n.integrationsUltrasignup), findsNothing);
     expect(find.text(l10n.integrationsChronotrack), findsNothing);
-  });
-
-  testWidgets('a configured UltraSignup tile says the import leg is live',
-      (tester) async {
-    await _pump(tester, configured: const {'ultrasignup'});
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-
-    expect(find.text(l10n.integrationsUltrasignupConnect), findsOneWidget);
-    expect(find.text(l10n.integrationsUltrasignupUnavailable), findsNothing);
   });
 }

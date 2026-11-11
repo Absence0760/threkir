@@ -6,7 +6,7 @@ import '../lib/integration_visibility.dart';
 void main() {
   const specs = [
     IntegrationSpec(provider: 'strava', gate: IntegrationGate.env),
-    IntegrationSpec(provider: 'parkrun', gate: IntegrationGate.probe),
+    IntegrationSpec(provider: 'runsignup', gate: IntegrationGate.probe),
     IntegrationSpec(provider: 'garmin', gate: IntegrationGate.unbuilt),
     IntegrationSpec(provider: 'healthkit', gate: IntegrationGate.unsupported),
     IntegrationSpec(provider: 'stravazip', gate: IntegrationGate.always),
@@ -91,14 +91,14 @@ void main() {
     // seeded entry per provider would make an added provider default to
     // "unconfigured" in the window before anyone wrote its probe.
     final graded = gateIntegrations(specs, {}, []);
-    expect(graded.firstWhere((g) => g.spec.provider == 'parkrun').status,
+    expect(graded.firstWhere((g) => g.spec.provider == 'runsignup').status,
         IntegrationStatus.pending);
   });
 
   test('visibleIntegrations filters and preserves catalogue order', () {
     final visible = visibleIntegrations(
       specs,
-      {'strava': true, 'parkrun': false},
+      {'strava': true, 'runsignup': false},
       ['healthkit'],
     );
     expect(visible.map((v) => v.spec.provider).toList(),
@@ -109,7 +109,7 @@ void main() {
     // The shape this whole module exists for: no env var, no reachable Edge
     // Functions, no connected rows.
     final visible =
-        visibleIntegrations(specs, {'strava': false, 'parkrun': false}, []);
+        visibleIntegrations(specs, {'strava': false, 'runsignup': false}, []);
     expect(visible.map((v) => v.spec.provider).toList(), ['stravazip']);
   });
 

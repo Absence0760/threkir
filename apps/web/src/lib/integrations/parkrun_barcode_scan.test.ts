@@ -181,7 +181,7 @@ const REAL_SHAPED = [
 	'A100000',
 	'A0', // the regex admits a lone zero and leading zeros, so they must scan too
 	'A0001',
-	'A123456789012', // the 12-digit maximum parkrun-import accepts
+	'A123456789012', // the 12-digit maximum the column CHECK accepts
 	'A999999999999',
 ];
 

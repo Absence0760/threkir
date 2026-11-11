@@ -39,14 +39,6 @@ class SetupWizardScreen extends StatelessWidget {
   /// with every answer still held — the caller owns the stores it needs.
   final WidgetBuilder importScreenBuilder;
 
-  /// Builds the existing Integrations screen, where the parkrun import lives.
-  /// The parkrun row shows only when this and [probeParkrun] are both given
-  /// and the probe answers yes.
-  final WidgetBuilder? integrationsScreenBuilder;
-
-  /// Whether this deployment can run the parkrun import. Null hides the row.
-  final Future<bool> Function()? probeParkrun;
-
   /// Test seam for the platform the source list is chosen for. Production
   /// leaves it null and the wizard reads `Platform.isIOS`.
   @visibleForTesting
@@ -69,8 +61,6 @@ class SetupWizardScreen extends StatelessWidget {
     this.initialDisplayName,
     this.initialPreferredUnit,
     required this.importScreenBuilder,
-    this.integrationsScreenBuilder,
-    this.probeParkrun,
     this.isIOS,
   });
 
@@ -91,8 +81,6 @@ class SetupWizardScreen extends StatelessWidget {
         initialDisplayName: initialDisplayName,
         initialPreferredUnit: initialPreferredUnit,
         importScreenBuilder: importScreenBuilder,
-        integrationsScreenBuilder: integrationsScreenBuilder,
-        probeParkrun: probeParkrun,
         isIOS: isIOS,
       ),
     );
@@ -106,8 +94,6 @@ class _SetupWizardBody extends StatefulWidget {
   final String? initialDisplayName;
   final String? initialPreferredUnit;
   final WidgetBuilder importScreenBuilder;
-  final WidgetBuilder? integrationsScreenBuilder;
-  final Future<bool> Function()? probeParkrun;
   final bool? isIOS;
 
   const _SetupWizardBody({
@@ -117,8 +103,6 @@ class _SetupWizardBody extends StatefulWidget {
     this.initialDisplayName,
     this.initialPreferredUnit,
     required this.importScreenBuilder,
-    this.integrationsScreenBuilder,
-    this.probeParkrun,
     this.isIOS,
   });
 
@@ -166,10 +150,6 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
   // back, so the step's forward button stops reading Skip.
   final RestorableBool _importOpened = RestorableBool(false);
 
-  // The parkrun probe's answer; false until it lands, so the row never shows
-  // and then vanishes.
-  bool _parkrunAvailable = false;
-
   bool _saving = false;
 
   // Flipped on the first failed Skip/Finish write. Reveals the offline
@@ -208,21 +188,6 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
               WidgetsBinding.instance.platformDispatcher.locale.toLanguageTag(),
             ),
     );
-    _probeParkrun();
-  }
-
-  /// A network call (L4): any failure leaves the row hidden and the rest of
-  /// the step untouched.
-  Future<void> _probeParkrun() async {
-    final probe = widget.probeParkrun;
-    if (probe == null || widget.integrationsScreenBuilder == null) return;
-    var ok = false;
-    try {
-      ok = await probe();
-    } catch (e) {
-      debugPrint('setup wizard: parkrun probe failed: $e');
-    }
-    if (mounted && ok) setState(() => _parkrunAvailable = true);
   }
 
   bool get _isIOS => widget.isIOS ?? Platform.isIOS;
@@ -663,10 +628,7 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
   }
 
   Widget _buildImport(ThemeData theme, AppLocalizations l10n) {
-    final sources = setupWizardImportSources(
-      isIOS: _isIOS,
-      parkrunAvailable: _parkrunAvailable,
-    );
+    final sources = setupWizardImportSources(isIOS: _isIOS);
     return _stepShell(
       theme,
       title: l10n.setupImportTitle,
@@ -694,33 +656,27 @@ class _SetupWizardBodyState extends State<_SetupWizardBody>
   /// health platform's own permission sheet, and every consent the import
   /// screen asks for, run there exactly as they do from Settings.
   Future<void> _openImport(String source) async {
-    final builder = source == 'parkrun'
-        ? widget.integrationsScreenBuilder
-        : widget.importScreenBuilder;
-    if (builder == null) return;
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
+    await Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: widget.importScreenBuilder));
     if (!mounted) return;
     setState(() => _importOpened.value = true);
   }
 
   IconData _importIcon(String source) => switch (source) {
     'strava' => Icons.directions_run,
-    'parkrun' => Icons.emoji_events_outlined,
     _ => Icons.favorite_outline,
   };
 
-  // The health platform's name is the Import screen's own label, parkrun's the
-  // catalogue entry Settings uses, so each reads the same on every surface.
+  // The health platform's name is the Import screen's own label, so it reads
+  // the same on every surface.
   String _importName(AppLocalizations l10n, String source) => switch (source) {
     'strava' => 'Strava',
-    'parkrun' => l10n.integrationsParkrunName,
     _ => healthLabelFor(l10n, isIOS: source == 'healthkit'),
   };
 
   String _importDescription(AppLocalizations l10n, String source) =>
       switch (source) {
         'strava' => l10n.setupImportStravaDesc,
-        'parkrun' => l10n.setupImportParkrunDesc,
         'healthkit' => l10n.setupImportHealthIos,
         _ => l10n.setupImportHealthAndroid,
       };

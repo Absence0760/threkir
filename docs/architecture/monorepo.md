@@ -335,7 +335,7 @@ STRAVA_CLIENT_SECRET=abc...   # server-side only — no PUBLIC_ prefix
 # apps/backend/.env.local (used by supabase functions serve)
 STRAVA_CLIENT_ID=12345
 STRAVA_CLIENT_SECRET=abc...
-PARKRUN_USER_AGENT=RunApp/1.0 (contact@threkir.com)
+RACE_IMPORT_USER_AGENT=RunApp/1.0 (contact@threkir.com)
 ```
 
 ### GitHub Actions secrets
@@ -555,7 +555,7 @@ colour again.
 ```bash
 # One per directory under apps/backend/supabase/functions/
 # (clip-public-track, delete-account, events-checkout, events-connect-onboard,
-#  export-data, parkrun-import, refresh-tokens, revenuecat-webhook,
+#  export-data, race-results-import, refresh-tokens, revenuecat-webhook,
 #  strava-import, strava-webhook, stripe-events-webhook)
 for fn in apps/backend/supabase/functions/*/; do
   name=$(basename "$fn")

@@ -2469,10 +2469,6 @@
   "@setupImportStravaDesc": {
     "description": "Setup wizard import step: subtitle under the Strava row. The archive is the ZIP export Strava emails on request. Strava is a product name"
   },
-  "setupImportParkrunDesc": "Pull in every parkrun result with your athlete number",
-  "@setupImportParkrunDesc": {
-    "description": "Setup wizard import step: subtitle under the parkrun row. parkrun is a brand name, always lowercase; athlete number is the parkrun ID such as A123456"
-  },
   "setupDoneTitle": "You're all set",
   "@setupDoneTitle": {
     "description": "Setup wizard final step title"
@@ -11948,14 +11944,6 @@
       }
     }
   },
-  "integrationsParkrunTitle": "Import parkrun results",
-  "@integrationsParkrunTitle": {
-    "description": "Title of the parkrun import dialog"
-  },
-  "integrationsParkrunBody": "Enter your parkrun athlete number (e.g. A123456). We'll fetch your finish history and add any new results to your runs list.",
-  "@integrationsParkrunBody": {
-    "description": "Body of the parkrun import dialog"
-  },
   "integrationsParkrunFieldLabel": "Athlete number",
   "@integrationsParkrunFieldLabel": {
     "description": "Label for the parkrun athlete-number field"
@@ -12030,35 +12018,6 @@
   "@parkrunBarcodeOfflineCopy": {
     "description": "Note under the barcode when it is the device's copy because the server could not be reached"
   },
-  "integrationsImport": "Import",
-  "@integrationsImport": {
-    "description": "Import button on the parkrun dialog"
-  },
-  "integrationsParkrunImporting": "Importing parkrun results…",
-  "@integrationsParkrunImporting": {
-    "description": "Progress text while parkrun results are imported"
-  },
-  "integrationsParkrunImported": "{count, plural, one{Imported {count} parkrun result.} other{Imported {count} parkrun results.}}",
-  "@integrationsParkrunImported": {
-    "description": "Banner summarising imported parkrun results",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "integrationsImportPartialOf": "Only part of your history could be imported: {n} of {total}.",
-  "@integrationsImportPartialOf": {
-    "description": "Banner when an importer read only part of a history and knows the total",
-    "placeholders": {
-      "n": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
   "integrationsImportPartial": "Not all results could be read. Imported: {n}.",
   "@integrationsImportPartial": {
     "description": "Banner when an importer read only part of a history and does not know the total",
@@ -12071,19 +12030,6 @@
   "integrationsImportTruncated": "The results list was too long to read to the end, so your result could not be confirmed. Enter it manually instead.",
   "@integrationsImportTruncated": {
     "description": "Banner when the upstream results list was truncated before the runner was found"
-  },
-  "integrationsParkrunNoneNew": "No new parkrun results since last import.",
-  "@integrationsParkrunNoneNew": {
-    "description": "Banner shown when no new parkrun results were found"
-  },
-  "integrationsImportFailed": "Import failed: {error}",
-  "@integrationsImportFailed": {
-    "description": "Banner shown when the parkrun import fails",
-    "placeholders": {
-      "error": {
-        "type": "Object"
-      }
-    }
   },
   "integrationsStravaName": "Strava",
   "@integrationsStravaName": {
@@ -12138,23 +12084,11 @@
   "@integrationsSyncNow": {
     "description": "Popup-menu item to trigger a Strava sync"
   },
-  "integrationsParkrunName": "parkrun",
-  "@integrationsParkrunName": {
-    "description": "parkrun integration tile title (brand name)"
-  },
-  "integrationsParkrunTileSubtitle": "Import results by athlete number",
-  "@integrationsParkrunTileSubtitle": {
-    "description": "parkrun tile subtitle"
-  },
-  "integrationsParkrunRegionNote": "parkrun runs in a limited set of countries and may not have events near you — you can still import results with a parkrun athlete ID.",
-  "@integrationsParkrunRegionNote": {
-    "description": "parkrun tile subtitle shown when the device region is outside the parkrun footprint"
-  },
   "integrationsSignInTitle": "Sign in to connect services",
   "@integrationsSignInTitle": {
     "description": "Tile title shown when signed out"
   },
-  "integrationsSignInSubtitle": "Strava + parkrun require an account so synced activities land in your history.",
+  "integrationsSignInSubtitle": "Strava requires an account so synced activities land in your history.",
   "@integrationsSignInSubtitle": {
     "description": "Tile subtitle shown when signed out"
   },
@@ -16706,7 +16640,7 @@
   "@settingsTabPreferencesSubtitle": {
     "description": "Settings landing: Preferences tile subtitle"
   },
-  "settingsTabIntegrationsSubtitle": "Strava, parkrun, race calendar, heart-rate strap, treadmill, watch",
+  "settingsTabIntegrationsSubtitle": "Strava, race calendar, heart-rate strap, treadmill, watch",
   "@settingsTabIntegrationsSubtitle": {
     "description": "Settings landing: Integrations tile subtitle"
   },
@@ -20544,30 +20478,6 @@
   "@racesRunSignUpBibHint": {
     "description": "Hint above the RunSignUp import action requiring a bib to scope the import"
   },
-  "racesUltraSignUpImportingAs": "Importing as {name} (UltraSignup #{id})",
-  "@racesUltraSignUpImportingAs": {
-    "description": "Line in the race import sheet naming the UltraSignup person the import will use",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "id": {
-        "type": "String"
-      }
-    }
-  },
-  "racesUltraSignUpLinkedHint": "Only your result for this race comes across, matched on UltraSignup's own race id and date.",
-  "@racesUltraSignUpLinkedHint": {
-    "description": "Hint under the UltraSignup importing-as line: only this race's result is imported"
-  },
-  "racesUltraSignUpNotLinked": "Link your UltraSignup profile first, then import from here.",
-  "@racesUltraSignUpNotLinked": {
-    "description": "Race import sheet, UltraSignup listing, when the runner has not linked an UltraSignup person; the find action sits beside it"
-  },
-  "racesUltraSignUpPersonNotFound": "UltraSignup no longer lists your linked profile under that name. Link it again in Settings.",
-  "@racesUltraSignUpPersonNotFound": {
-    "description": "Banner when the import could not find the linked UltraSignup person under their name any more"
-  },
   "racesPasteResultHint": "Enter your finishing details from the race's results page.",
   "@racesPasteResultHint": {
     "description": "Hint above the manual result paste form"
@@ -20645,131 +20555,17 @@
   "@integrationsStravaInfo": {
     "description": "Info-tip body for the Strava tile: what Strava is and what connecting it does"
   },
-  "integrationsParkrunInfo": "parkrun is a free, weekly, timed 5k held in parks around the world. Tap this tile and enter the athlete number from your parkrun barcode (the one starting with A) to pull in every parkrun you've finished, with your time and age grade.",
-  "@integrationsParkrunInfo": {
-    "description": "Info-tip body for the parkrun tile: what parkrun is and where the athlete number comes from"
-  },
   "integrationsRunsignupInfo": "RunSignUp handles entries and results for thousands of road races. If you ran one, find the race in the race calendar and enter the bib number you wore — your official time and splits are attached to that run.",
   "@integrationsRunsignupInfo": {
     "description": "Info-tip body for the RunSignUp tile: what RunSignUp is and how to import a result"
-  },
-  "integrationsUltrasignupInfo": "UltraSignup handles entries and results for trail and ultra races. Link your UltraSignup profile here once, then import a race's result from the race calendar.",
-  "@integrationsUltrasignupInfo": {
-    "description": "Info-tip body for the UltraSignup tile: what UltraSignup is and how to import a result"
   },
   "integrationsChronotrackInfo": "ChronoTrack times a lot of road races with chips and mats. If your race was ChronoTrack-timed, find it in the race calendar and enter your bib number to pull in your official result.",
   "@integrationsChronotrackInfo": {
     "description": "Info-tip body for the ChronoTrack tile: what ChronoTrack is and how to import a result"
   },
-  "integrationsRunsignupUnavailable": "RunSignUp import isn't available yet. parkrun and manual paste still work.",
+  "integrationsRunsignupUnavailable": "RunSignUp import isn't available yet. Manual paste still works.",
   "@integrationsRunsignupUnavailable": {
     "description": "Explainer when the RunSignUp key is unconfigured"
-  },
-  "integrationsUltrasignup": "UltraSignup",
-  "@integrationsUltrasignup": {
-    "description": "UltraSignup integration name"
-  },
-  "integrationsUltrasignupConnect": "Import trail and ultra results from UltraSignup.",
-  "@integrationsUltrasignupConnect": {
-    "description": "UltraSignup integration description"
-  },
-  "integrationsUltrasignupOpen": "Open the race calendar",
-  "@integrationsUltrasignupOpen": {
-    "description": "Action linking to the race calendar from the UltraSignup tile"
-  },
-  "integrationsUltrasignupUnavailable": "UltraSignup import isn't available yet. parkrun and manual paste still work.",
-  "@integrationsUltrasignupUnavailable": {
-    "description": "Explainer when the UltraSignup key is unconfigured"
-  },
-  "integrationsUltrasignupFindLabel": "Find your UltraSignup profile",
-  "@integrationsUltrasignupFindLabel": {
-    "description": "Heading of the UltraSignup person finder, and the action that opens it"
-  },
-  "integrationsUltrasignupFirstName": "First name",
-  "@integrationsUltrasignupFirstName": {
-    "description": "First-name field in the UltraSignup person finder"
-  },
-  "integrationsUltrasignupLastName": "Last name",
-  "@integrationsUltrasignupLastName": {
-    "description": "Last-name field in the UltraSignup person finder"
-  },
-  "integrationsUltrasignupNameHint": "Use the name you enter races under. UltraSignup lists everyone with that name, and you pick which one is you.",
-  "@integrationsUltrasignupNameHint": {
-    "description": "Hint under the UltraSignup person finder heading"
-  },
-  "integrationsUltrasignupFind": "Find me",
-  "@integrationsUltrasignupFind": {
-    "description": "Button that looks the typed name up on UltraSignup"
-  },
-  "integrationsUltrasignupSearching": "Searching UltraSignup…",
-  "@integrationsUltrasignupSearching": {
-    "description": "Find button label while the UltraSignup lookup runs"
-  },
-  "integrationsUltrasignupNoMatches": "UltraSignup has nobody by that name. Check the spelling you race under.",
-  "@integrationsUltrasignupNoMatches": {
-    "description": "Shown when UltraSignup knows nobody by the typed name"
-  },
-  "integrationsUltrasignupPickPrompt": "Which of these is you?",
-  "@integrationsUltrasignupPickPrompt": {
-    "description": "Prompt above the list of UltraSignup people matching the name"
-  },
-  "integrationsUltrasignupCandidateAge": "Age {age}",
-  "@integrationsUltrasignupCandidateAge": {
-    "description": "An UltraSignup candidate's age",
-    "placeholders": {
-      "age": {
-        "type": "int"
-      }
-    }
-  },
-  "integrationsUltrasignupCandidateResults": "{n, plural, one{{n} result} other{{n} results}}",
-  "@integrationsUltrasignupCandidateResults": {
-    "description": "How many results UltraSignup holds for a candidate",
-    "placeholders": {
-      "n": {
-        "type": "int"
-      }
-    }
-  },
-  "integrationsUltrasignupThisIsMe": "This is me",
-  "@integrationsUltrasignupThisIsMe": {
-    "description": "Button that links the runner to one UltraSignup candidate"
-  },
-  "integrationsUltrasignupLinkedAs": "Linked as {name} (UltraSignup #{id})",
-  "@integrationsUltrasignupLinkedAs": {
-    "description": "The UltraSignup person the runner has linked",
-    "placeholders": {
-      "name": {
-        "type": "String"
-      },
-      "id": {
-        "type": "String"
-      }
-    }
-  },
-  "integrationsUltrasignupUnlink": "Unlink",
-  "@integrationsUltrasignupUnlink": {
-    "description": "Button that forgets the linked UltraSignup person"
-  },
-  "integrationsUltrasignupLinked": "UltraSignup profile linked.",
-  "@integrationsUltrasignupLinked": {
-    "description": "Banner after an UltraSignup person was linked"
-  },
-  "integrationsUltrasignupLinkFailed": "Couldn't link your UltraSignup profile. Try again.",
-  "@integrationsUltrasignupLinkFailed": {
-    "description": "Banner when storing the UltraSignup person failed"
-  },
-  "integrationsUltrasignupLookupFailed": "Couldn't search UltraSignup. Try again in a moment.",
-  "@integrationsUltrasignupLookupFailed": {
-    "description": "Banner when the UltraSignup name lookup failed"
-  },
-  "integrationsUltrasignupUnlinked": "UltraSignup profile unlinked. Runs you already imported stay.",
-  "@integrationsUltrasignupUnlinked": {
-    "description": "Undo-bar message after the UltraSignup person was unlinked"
-  },
-  "integrationsUltrasignupUnlinkFailed": "Couldn't unlink your UltraSignup profile. Try again.",
-  "@integrationsUltrasignupUnlinkFailed": {
-    "description": "Banner when unlinking the UltraSignup person failed"
   },
   "integrationsChronotrack": "ChronoTrack",
   "@integrationsChronotrack": {
@@ -20783,7 +20579,7 @@
   "@integrationsChronotrackOpen": {
     "description": "Action linking to the race calendar from the ChronoTrack tile"
   },
-  "integrationsChronotrackUnavailable": "ChronoTrack import isn't available yet. parkrun and manual paste still work.",
+  "integrationsChronotrackUnavailable": "ChronoTrack import isn't available yet. Manual paste still works.",
   "@integrationsChronotrackUnavailable": {
     "description": "Explainer when the ChronoTrack credentials are unconfigured"
   },

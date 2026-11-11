@@ -5691,9 +5691,7 @@ void main() {
       // the backup, and the copy says so.
       'screens/settings_account_screen.dart::l10n.settingsAccountRestoreTitle': 1,
       // Every integration here reconnects in one tap.
-      'screens/settings_integrations_screen.dart::(no title)': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsHrTitle': 1,
-      'screens/settings_integrations_screen.dart::l10n.integrationsParkrunTitle': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsStravaDisconnectTitle': 1,
       'screens/settings_integrations_screen.dart::l10n.integrationsTreadmillTitle': 1,
       // The athlete-number form on the barcode screen: it opens prefilled with
@@ -6916,6 +6914,38 @@ void main() {
           reason: 'user-facing copy names a tab the app no longer has — name a '
               'surface that exists, and give the string a CTA if it is the '
               'only instruction someone gets');
+    });
+  });
+
+  group('no integration scrapes a third party\'s website', () {
+    // parkrun-import read parkrun's results pages against its terms, and the
+    // UltraSignup results leg read UltraSignup's internal name-keyed feed.
+    // Both were removed on mobile and web; nothing here may call either again.
+    // The parkrun barcode and an UltraSignup race LISTING stay — neither
+    // fetches anything from those sites.
+    final roots = [Directory('lib'), Directory('../../packages/api_client/lib')];
+    final banned = <Pattern>[
+      RegExp(r'parkrun-import(?![a-z])'),
+      'importParkrunResults',
+      RegExp(r'UltraSignUp|ultraSignUp'),
+      'historybyname',
+    ];
+
+    test('no client source names a removed scraper leg', () {
+      final hits = <String>[];
+      for (final root in roots) {
+        expect(root.existsSync(), isTrue, reason: '${root.path} moved');
+        for (final f in root.listSync(recursive: true).whereType<File>()) {
+          if (!f.path.endsWith('.dart')) continue;
+          final src = f.readAsStringSync();
+          for (final p in banned) {
+            if (p.allMatches(src).isNotEmpty) hits.add('${f.path}: $p');
+          }
+        }
+      }
+      expect(hits, isEmpty,
+          reason: 'a removed scraper integration is back. parkrun results and '
+              'UltraSignup results are entered by manual paste, not fetched');
     });
   });
 }

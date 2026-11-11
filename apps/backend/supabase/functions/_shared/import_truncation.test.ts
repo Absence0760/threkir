@@ -1,16 +1,13 @@
 /// A truncation a caller cannot detect is a lie about their history.
 ///
-/// Both scrapers in this tier bound their result set and neither could say so.
-/// `parkrun-import` stopped at `MAX_PARKRUN_ROWS` and answered
-/// `{ imported, skipped }`, where `skipped` means "already had it".
-/// `race-results-import`'s three extractors stop at `MAX_RESULTS_ROWS` and
-/// answered `{ imported, skipped, enriched }`. The Strava side already litigates
+/// `race-results-import`'s extractors stop at `MAX_RESULTS_ROWS`, and it used to
+/// answer `{ imported, skipped, enriched }` with no way to say so. The Strava side already litigates
 /// this shape — `parseStravaSyncResult` treats an absent `complete` as PARTIAL
 /// on purpose, because a false "complete" is what stops a runner syncing again
 /// — and the same rule applies here: one transport, shipped alongside its
 /// callers, and the same asymmetry of costs (decisions § 976).
 ///
-/// The race-results half is the one a feed change reaches. RunSignUp narrows
+/// A feed change is what reaches it. RunSignUp narrows
 /// upstream by `bib_num` today, but a feed that stopped honouring the filter
 /// would answer the whole finisher field, and `filterResultsByBib` narrows only
 /// afterwards — a major with 30,000 finishers truncates at 2,000 BEFORE the bib
@@ -28,11 +25,7 @@ import {
   resultsPossiblyTruncated,
   type MappedRaceRun,
 } from '../race-results-import/lib.ts';
-import { MAX_PARKRUN_ROWS } from '../parkrun-import/lib.ts';
 
-const PARKRUN_SRC = Deno.readTextFileSync(
-  new URL('../parkrun-import/index.ts', import.meta.url),
-);
 const RACE_SRC = Deno.readTextFileSync(
   new URL('../race-results-import/handler.ts', import.meta.url),
 );
@@ -89,24 +82,4 @@ Deno.test('race-results refuses instead of reporting a successful import of noth
   for (const shape of [/enriched: 1, complete \}/, /enriched: filed\.merges\.length, complete \}/]) {
     assert(shape.test(RACE_SRC), `a success response omits complete: ${shape}`);
   }
-});
-
-Deno.test('parkrun counts past its cap instead of stopping at it', () => {
-  // The early `return false` bounded the result set AND destroyed the evidence
-  // that it had been bounded. The bound now lives on the push alone.
-  assert(
-    !/if \(runs\.length >= MAX_PARKRUN_ROWS\) return false;/.test(PARKRUN_SRC),
-    'the walk still stops dead at the cap, so nothing can count what it left',
-  );
-  const usable = PARKRUN_SRC.indexOf('usable++;');
-  const cap = PARKRUN_SRC.indexOf('if (runs.length >= MAX_PARKRUN_ROWS) return;');
-  assert(usable !== -1, 'nothing counts the usable results');
-  assert(cap !== -1, 'the result set is no longer bounded at all');
-  assert(usable < cap, 'the count must happen before the cap returns, or it counts nothing past it');
-  assert(
-    /return Response\.json\(\{ imported, skipped, total: usable, complete: usable <= MAX_PARKRUN_ROWS \}\);/
-      .test(PARKRUN_SRC),
-    'the parkrun response must state completeness and the total the page carried',
-  );
-  assert(MAX_PARKRUN_ROWS > 0, 'the cap is the subject; a zero cap makes every claim vacuous');
 });

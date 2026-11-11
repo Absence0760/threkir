@@ -9,8 +9,8 @@ import { browserDate, browserYear } from '../fixtures/dates';
 /**
  * /settings/account — profile + email / password / parkrun number /
  * DOB / HR fields. Covers the display-name round-trip + the
- * change-password validation branches; future depth: parkrun number
- * import button, profile avatar upload. The delete-account confirm
+ * change-password validation branches; future depth: profile avatar
+ * upload. The delete-account confirm
  * challenge is pinned here without deleting anything; the destructive
  * round-trip lives in cross-user/sagas/account-deletion.spec.ts.
  */
@@ -77,8 +77,7 @@ test.describe('/settings/account', () => {
 		page
 	}) => {
 		// parkrun_number is a text column on user_profiles that the
-		// parkrun importer uses to find the user's results page. A
-		// regression that dropped the field from the save payload
+		// barcode card renders. A regression that dropped the field from the save payload
 		// would surface here. Use a placeholder-style value (no real
 		// athletes hit by leaking it) and restore.
 		await page.goto('/settings/account');
@@ -109,8 +108,9 @@ test.describe('/settings/account', () => {
 	});
 
 	test('a parkrun athlete number outside A-plus-digits blocks the save', async ({ page }) => {
-		// The import and the barcode both need `A` + digits, so the field
-		// refuses anything else rather than storing a number neither can use.
+		// The barcode and the column's CHECK both need `A` + digits, so the
+		// field refuses anything else rather than storing a number neither
+		// accepts.
 		// Nothing is saved, so the seed user's number is left alone.
 		await page.goto('/settings/account');
 		await page.waitForLoadState('networkidle');
@@ -126,15 +126,11 @@ test.describe('/settings/account', () => {
 		await expect(page.getByRole('button', { name: /Save Profile/ })).toBeEnabled();
 	});
 
-	test('a saved athlete number is the one the parkrun import sends and the barcode shows', async ({
-		page,
-		mockRoute
+	test('a saved athlete number is stored canonical and is the one the barcode shows', async ({
+		page
 	}) => {
-		// Web has no separate import field: the import button beside the saved
-		// number IS the parkrun import, so "prefilled" means it sends the stored
-		// number in canonical form, and the Integrations barcode card reads the
-		// same stored value. The function is stubbed so the test never reaches
-		// parkrun.org.uk.
+		// The Integrations barcode card reads the stored value, so a number
+		// typed loosely here must come back canonical on both surfaces.
 		await page.goto('/settings/account');
 		await page.waitForLoadState('networkidle');
 		const input = page.getByTestId('parkrun-number');
@@ -149,19 +145,7 @@ test.describe('/settings/account', () => {
 
 			await page.reload();
 			await expect(page.getByTestId('parkrun-number')).toHaveValue(canonical);
-
-			const sent: unknown[] = [];
-			await mockRoute(page, '**/functions/v1/parkrun-import', async (route) => {
-				sent.push(route.request().postDataJSON());
-				await route.fulfill({
-					status: 200,
-					contentType: 'application/json',
-					body: JSON.stringify({ imported: 0, skipped: 0, total: 0, complete: true })
-				});
-			});
-			await page.getByRole('button', { name: 'Pull latest parkrun results' }).click();
-			await expect(page.getByText('No new parkrun results since last import.')).toBeVisible();
-			expect(sent).toEqual([{ athleteNumber: canonical }]);
+			await expect(page.getByRole('button', { name: /parkrun results/i })).toHaveCount(0);
 
 			await page.goto('/settings/integrations');
 			const card = page.getByTestId('parkrun-barcode-card');

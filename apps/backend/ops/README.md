@@ -32,12 +32,14 @@ exist; `reviews/` is gitignored, so prefer a link.
     "live_overlay": { "enabled": true, "signoff": "https://github.com/Absence0760/threkir/issues/1097#issuecomment-…" }
   },
   "function_env": {
-    "PARKRUN_EVENTS_ENABLED": { "enabled": true, "signoff": "https://github.com/Absence0760/threkir/issues/1148#issuecomment-…" }
+    "EXAMPLE_TOGGLE_ENABLED": { "enabled": true, "signoff": "https://github.com/Absence0760/threkir/issues/<n>#issuecomment-…" }
   },
   "web_env": {
     "PUBLIC_COURSE_DRIVE_ENABLED": { "enabled": false }
   },
-  "cron_urls": ["race_listings_sweep", "club_verification_recheck"]
+  "cron_urls": ["race_listings_sweep", "club_verification_recheck"],
+  "retired_functions": ["parkrun-import"],
+  "retired_function_env": ["PARKRUN_EVENTS_ENABLED", "PARKRUN_USER_AGENT", "ULTRASIGNUP_RESULTS_ENABLED"]
 }
 ```
 
@@ -46,9 +48,15 @@ exist; `reviews/` is gitignored, so prefer a link.
 | Section | What it sets | Applied by |
 |---|---|---|
 | `feature_flags` | A `private.feature_flags` row. The name must be one a migration reads or seeds. | The backend release, through `private.apply_feature_flag`. |
-| `function_env` | An Edge Function secret, only from the allow-list of boolean toggles in `scripts/prod_sync/lib/prod_config.mjs` (`PARKRUN_EVENTS_ENABLED` today), written as `true` / `false`. | The backend release, with `supabase secrets set`. It reads the current value only as the CLI's digest and never prints one. |
+| `function_env` | An Edge Function secret, only from the allow-list of boolean toggles in `scripts/prod_sync/lib/prod_config.mjs` (empty today: its only entry, `PARKRUN_EVENTS_ENABLED`, went with the parkrun events leg, decisions § SCRAPER_ADR; `EXAMPLE_TOGGLE_ENABLED` above is a placeholder), written as `true` / `false`. | The backend release, with `supabase secrets set`. It reads the current value only as the CLI's digest and never prints one. |
 | `web_env` | A `PUBLIC_*` gate a `*_flag.ts` module reads. It replaces that flag's repo secret in the web build. | The next **web** release (`release-web.yml` runs `scripts/prod_sync/web_env.mjs`). The backend release only validates it. |
 | `cron_urls` | The `<fn>_url` Vault entry `public.invoke_<fn>()` reads, built from the project ref as `https://<ref>.supabase.co/functions/v1/<fn-with-dashes>`. | The backend release, through `private.arm_cron_url`. It requires the `cron_secret` entry (checked by name, never read). For an entry it created or changed it invokes the function once and fails the step unless the response is 2xx. |
+| `retired_functions` | Edge Functions that must no longer be deployed (`parkrun-import` today). `supabase functions deploy` never deletes one, so a function whose directory was removed keeps serving until it is named here. | The backend release's *Retired Edge Functions and secrets* stage, after Deploy Edge Functions: `supabase functions delete` for each one still deployed. The guard refuses a name that still has a directory under `supabase/functions/`. |
+| `retired_function_env` | Edge Function secrets to unset (`PARKRUN_EVENTS_ENABLED`, `PARKRUN_USER_AGENT`, `ULTRASIGNUP_RESULTS_ENABLED` today). | The same stage: `supabase secrets unset` for each one still set. The guard refuses a name an Edge Function still reads with `Deno.env.get`, or one `function_env` also sets. |
+
+The retired stage reports one row per name: `deleted` / `unset`, `absent` when it is already gone (idempotent, so the names can stay listed), or `would delete` / `would unset` on a dry run. A `failed` row fails the step; the manual fallback is in [deployment.md § Retired scraper functions and secrets](../../../docs/ops/deployment.md#retired-scraper-functions-and-secrets).
+
+**Removing an Edge Function = delete its directory and add its name to `retired_functions` in the same PR**, plus any secret only it read to `retired_function_env`. Without the entry, production keeps serving the deleted code.
 
 Not here, because a backend release cannot reach them:
 

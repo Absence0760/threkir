@@ -1,12 +1,12 @@
 -- Class guard for the column-level SELECT lockdowns: which public tables
 -- withhold which columns from anon + authenticated, and why.
 --
--- Seven tables revoke table-level SELECT from anon/authenticated and re-grant
+-- These tables revoke table-level SELECT from anon/authenticated and re-grant
 -- column by column (user_profiles 20260707_001 + 20260810_001, clubs + events
 -- 20260818_001 redoing 20260801_001 / 20260723_001 / 20260806_001,
 -- checkpoint_crossings 20270201_001, donations + instructor_payout_accounts
 -- 20270621_001, matrix re-asserted by 20270408_001, direct_messages
--- 20271113000001). Every withholding below
+-- 20271113000001, direct_message_images 20271213121604). Every withholding below
 -- is a security decision with a named replacement read path, not an accident
 -- of reaching for `grant select (a, b, c)`.
 --
@@ -65,7 +65,22 @@ begin;
 
 select plan(4);
 
-create temporary table lockdown_registry (tbl name, col name, reason text);
+-- `roles` narrows an entry to the role it is withheld from. Both roles is the
+-- default and the norm; assertion (4) holds every column without a narrowed
+-- entry identical across the two.
+create temporary table lockdown_registry (
+  tbl name, col name, reason text, roles name[] not null default '{anon,authenticated}'
+);
+
+-- A role that holds no SELECT on any column of a registered table: every
+-- column counts as withheld from it, so the table's column list need not be
+-- copied out here, and a column granted back to it fails (1).
+create temporary table role_unreadable (tbl name, role name, reason text);
+
+insert into role_unreadable (tbl, role, reason) values
+  -- 20271224000100 (audit of PR #1359). Every policy on the table is
+  -- `to authenticated`; no signed-out surface reads a message image.
+  ('direct_message_images', 'anon', 'no signed-out surface reads a message image, and every policy is to authenticated');
 
 insert into lockdown_registry (tbl, col, reason) values
   -- checkpoint_crossings — 20270201_001. Organiser reads go through
@@ -156,7 +171,15 @@ select is(
              and not has_column_privilege(r.role, cl.oid, a.attnum, 'SELECT')
         ),
         registered as (
-          select r.role, g.tbl, g.col from lockdown_registry g cross join roles r
+          select r.role, g.tbl, g.col
+            from lockdown_registry g
+            join roles r on r.role = any (g.roles)
+          union
+          select u.role, cl.relname, a.attname
+            from role_unreadable u
+            join pg_class cl on cl.relname = u.tbl and cl.relkind in ('r', 'p')
+            join pg_namespace n on n.oid = cl.relnamespace and n.nspname = 'public'
+            join pg_attribute a on a.attrelid = cl.oid and a.attnum > 0 and not a.attisdropped
         )
    select coalesce(string_agg(offence, ', ' order by offence), '')
      from (
@@ -216,7 +239,9 @@ select is(
 -- (4) The two roles are held identical on these tables. They have diverged
 -- before (20260723_001 revoked the meet point from anon; 20260806_001 caught
 -- authenticated up eleven weeks later), and a divergence is a leak on the
--- wider side rather than a variant worth carrying silently.
+-- wider side rather than a variant worth carrying silently. A divergence the
+-- registry declares (an entry narrowed to one role, or a role_unreadable
+-- table) is carried with its reason, so it is not silent.
 select is(
   (select coalesce(string_agg(cl.relname || '.' || a.attname, ', '
                               order by cl.relname, a.attname), '')
@@ -224,6 +249,10 @@ select is(
      join pg_namespace n on n.oid = cl.relnamespace and n.nspname = 'public'
      join pg_attribute a on a.attrelid = cl.oid and a.attnum > 0 and not a.attisdropped
     where cl.relname in (select distinct tbl from lockdown_registry)
+      and cl.relname not in (select tbl from role_unreadable)
+      and not exists (select 1 from lockdown_registry g
+                       where g.tbl = cl.relname and g.col = a.attname
+                         and cardinality(g.roles) < 2)
       and has_column_privilege('anon', cl.oid, a.attnum, 'SELECT')
        <> has_column_privilege('authenticated', cl.oid, a.attnum, 'SELECT')),
   '',

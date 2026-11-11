@@ -43,6 +43,8 @@ String courseReportReasonLabel(AppLocalizations l10n, String reason) {
       return l10n.parkCourseReportReasonOffTrail;
     case 'land_manager_request':
       return l10n.parkCourseReportReasonLandManager;
+    case 'rights_holder_request':
+      return l10n.parkCourseReportReasonRightsHolder;
     case 'other':
       return l10n.parkCourseReportReasonOther;
     default:
@@ -60,6 +62,8 @@ String _refusalCopy(AppLocalizations l10n, CourseReportRefusal refusal) {
       return l10n.parkCourseReportErrorNotFound;
     case CourseReportRefusal.invalidEmail:
       return l10n.parkCourseReportErrorEmail;
+    case CourseReportRefusal.emailRequired:
+      return l10n.parkCourseReportErrorEmailRequired;
     case CourseReportRefusal.invalid:
       return l10n.parkCourseReportErrorInvalid;
     case CourseReportRefusal.failed:
@@ -92,7 +96,11 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
   bool _busy = false;
   String? _error;
 
-  bool get _emailOk => courseReportEmailOk(_emailCtl.text);
+  bool get _emailRequired => courseReportEmailRequired(_reason);
+  bool get _emailOk => courseReportEmailOk(_emailCtl.text, reason: _reason);
+  // An empty required field is not yet a mistake: the helper says what it is
+  // for until something is typed, and Send stays disabled meanwhile.
+  bool get _emailShapeOk => courseReportEmailOk(_emailCtl.text);
   bool get _canSubmit =>
       !_busy && _notesCtl.text.trim().isNotEmpty && _emailOk;
 
@@ -170,9 +178,13 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
                   ? null
                   : (v) => setState(() => _reason = v ?? _reason),
               title: Text(courseReportReasonLabel(l10n, reason)),
-              subtitle: reason == 'land_manager_request'
-                  ? Text(l10n.parkCourseReportReasonLandManagerHint)
-                  : null,
+              subtitle: switch (reason) {
+                'land_manager_request' =>
+                  Text(l10n.parkCourseReportReasonLandManagerHint),
+                'rights_holder_request' =>
+                  Text(l10n.parkCourseReportReasonRightsHolderHint),
+                _ => null,
+              },
               dense: true,
               contentPadding: EdgeInsets.zero,
             ),
@@ -199,10 +211,17 @@ class _ParkCourseReportSheetState extends State<ParkCourseReportSheet> {
             enabled: !_busy,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              labelText: l10n.parkCourseReportEmailLabel,
-              helperText: _emailOk ? l10n.parkCourseReportEmailHint : null,
+              labelText: _emailRequired
+                  ? l10n.parkCourseReportEmailLabelRequired
+                  : l10n.parkCourseReportEmailLabel,
+              helperText: !_emailShapeOk
+                  ? null
+                  : _emailRequired
+                      ? l10n.parkCourseReportEmailHintRequired
+                      : l10n.parkCourseReportEmailHint,
               helperMaxLines: 3,
-              errorText: _emailOk ? null : l10n.parkCourseReportErrorEmail,
+              errorText:
+                  _emailShapeOk ? null : l10n.parkCourseReportErrorEmail,
             ),
           ),
           if (_error != null) ...[

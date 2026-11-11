@@ -35321,6 +35321,18 @@ abstract class AppLocalizations {
   /// **'For park or agency staff. Ask us to take the course down and we close it within two business days.'**
   String get parkCourseReportReasonLandManagerHint;
 
+  /// Report sheet: the rights-holder reason, for the owner of a name, trade mark or course data a park course may use (decisions § 2469). Mirrors web parks.report.reasonRightsHolder
+  ///
+  /// In en, this message translates to:
+  /// **'A request from a rights holder'**
+  String get parkCourseReportReasonRightsHolder;
+
+  /// Hint under the rights-holder reason: who it is for and the two-business-day answer. Mirrors web parks.report.reasonRightsHolderHint
+  ///
+  /// In en, this message translates to:
+  /// **'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We answer within two business days.'**
+  String get parkCourseReportReasonRightsHolderHint;
+
   /// Report reason: anything else
   ///
   /// In en, this message translates to:
@@ -35345,11 +35357,23 @@ abstract class AppLocalizations {
   /// **'Your email (optional)'**
   String get parkCourseReportEmailLabel;
 
+  /// Report sheet: the contact email label when the reason needs an address (a rights-holder request). Mirrors web parks.report.emailLabelRequired
+  ///
+  /// In en, this message translates to:
+  /// **'Your email'**
+  String get parkCourseReportEmailLabelRequired;
+
   /// Report sheet: what the contact email is used for and when it is deleted
   ///
   /// In en, this message translates to:
   /// **'Only if you\'d like a reply. We use it to answer this report and delete it 30 days after we resolve it.'**
   String get parkCourseReportEmailHint;
+
+  /// Report sheet: why a rights-holder request needs the email and when it is deleted. Mirrors web parks.report.emailHintRequired
+  ///
+  /// In en, this message translates to:
+  /// **'Needed for a rights-holder request so we can answer it. We delete it 30 days after we resolve the request.'**
+  String get parkCourseReportEmailHintRequired;
 
   /// Report sheet: cancel button
   ///
@@ -35404,6 +35428,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'That email address doesn\'t look right.'**
   String get parkCourseReportErrorEmail;
+
+  /// Report sheet: a rights-holder request was sent with no email. Mirrors web parks.report.errorEmailRequired
+  ///
+  /// In en, this message translates to:
+  /// **'A rights-holder request needs an email address so we can answer it.'**
+  String get parkCourseReportErrorEmailRequired;
 
   /// Notification text, app admins only: someone reported a problem with a park course
   ///

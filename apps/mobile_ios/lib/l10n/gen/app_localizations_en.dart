@@ -21721,6 +21721,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'For park or agency staff. Ask us to take the course down and we close it within two business days.';
 
   @override
+  String get parkCourseReportReasonRightsHolder =>
+      'A request from a rights holder';
+
+  @override
+  String get parkCourseReportReasonRightsHolderHint =>
+      'For the owner of a name, trade mark or course data used here, or someone acting for them. Tell us what is yours and what you\'d like changed. We answer within two business days.';
+
+  @override
   String get parkCourseReportReasonOther => 'Something else';
 
   @override
@@ -21734,8 +21742,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get parkCourseReportEmailLabel => 'Your email (optional)';
 
   @override
+  String get parkCourseReportEmailLabelRequired => 'Your email';
+
+  @override
   String get parkCourseReportEmailHint =>
       'Only if you\'d like a reply. We use it to answer this report and delete it 30 days after we resolve it.';
+
+  @override
+  String get parkCourseReportEmailHintRequired =>
+      'Needed for a rights-holder request so we can answer it. We delete it 30 days after we resolve the request.';
 
   @override
   String get parkCourseReportCancel => 'Cancel';
@@ -21769,6 +21784,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get parkCourseReportErrorEmail =>
       'That email address doesn\'t look right.';
+
+  @override
+  String get parkCourseReportErrorEmailRequired =>
+      'A rights-holder request needs an email address so we can answer it.';
 
   @override
   String get profileNotifParkCourseReport => 'A park course was reported';

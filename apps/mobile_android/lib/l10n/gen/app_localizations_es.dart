@@ -21965,6 +21965,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Para el personal del parque o del organismo gestor. Pídenos que retiremos el recorrido y lo cerramos en un plazo de dos días hábiles.';
 
   @override
+  String get parkCourseReportReasonRightsHolder =>
+      'Una solicitud de titulares de derechos';
+
+  @override
+  String get parkCourseReportReasonRightsHolderHint =>
+      'Para quien tenga los derechos sobre un nombre, una marca o datos de recorrido que se usan aquí, o quien actúe en su nombre. Cuéntanos qué es tuyo y qué quieres que cambiemos. Respondemos en un plazo de dos días hábiles.';
+
+  @override
   String get parkCourseReportReasonOther => 'Otra cosa';
 
   @override
@@ -21978,8 +21986,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get parkCourseReportEmailLabel => 'Tu correo (opcional)';
 
   @override
+  String get parkCourseReportEmailLabelRequired => 'Tu correo';
+
+  @override
   String get parkCourseReportEmailHint =>
       'Solo si quieres una respuesta. Lo usamos para responder a este aviso y lo borramos 30 días después de resolverlo.';
+
+  @override
+  String get parkCourseReportEmailHintRequired =>
+      'Es necesario para una solicitud de titulares de derechos, para poder responderte. Lo borramos 30 días después de resolverla.';
 
   @override
   String get parkCourseReportCancel => 'Cancelar';
@@ -22014,6 +22029,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get parkCourseReportErrorEmail =>
       'Esa dirección de correo no parece correcta.';
+
+  @override
+  String get parkCourseReportErrorEmailRequired =>
+      'Una solicitud de titulares de derechos necesita una dirección de correo para poder responderla.';
 
   @override
   String get profileNotifParkCourseReport =>

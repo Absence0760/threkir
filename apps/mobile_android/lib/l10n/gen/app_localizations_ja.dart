@@ -20883,6 +20883,13 @@ class AppLocalizationsJa extends AppLocalizations {
       '公園または管理機関の職員の方へ。コースの掲載停止をご依頼いただければ、2営業日以内に閉鎖します。';
 
   @override
+  String get parkCourseReportReasonRightsHolder => '権利者からの依頼';
+
+  @override
+  String get parkCourseReportReasonRightsHolderHint =>
+      'ここで使われている名称、商標、コースデータの権利者またはその代理人の方へ。対象となる権利と変更してほしい点をお知らせください。2営業日以内に回答します。';
+
+  @override
   String get parkCourseReportReasonOther => 'その他';
 
   @override
@@ -20895,8 +20902,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get parkCourseReportEmailLabel => 'メールアドレス（任意）';
 
   @override
+  String get parkCourseReportEmailLabelRequired => 'メールアドレス';
+
+  @override
   String get parkCourseReportEmailHint =>
       '返信をご希望の場合のみ。この報告への返信に使い、対応完了から30日後に削除します。';
+
+  @override
+  String get parkCourseReportEmailHintRequired =>
+      '権利者からの依頼に返信するため必須です。対応完了から30日後に削除します。';
 
   @override
   String get parkCourseReportCancel => 'キャンセル';
@@ -20925,6 +20939,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get parkCourseReportErrorEmail => 'メールアドレスが正しくないようです。';
+
+  @override
+  String get parkCourseReportErrorEmailRequired =>
+      '権利者からの依頼には、返信先のメールアドレスが必要です。';
 
   @override
   String get profileNotifParkCourseReport => '公園コースについて報告がありました';

@@ -476,6 +476,10 @@ file. Once `ignoreUntil` passes, osv-scanner reports the advisory again. A PR
 that changes a lockfile the expired entry covers then fails until someone
 re-reads the advisory and either fixes the dependency or renews the date with a
 reason. Every other PR gets a warning. Entries within 30 days of expiry warn.
+A PR that adds an entry, or changes an entry's `ignoreUntil`, fails if that
+date is more than 180 days after the run date: renew the waiver closer to its
+expiry, with a reason, rather than dating it far out. Entries the PR leaves
+unchanged or removes are not held to the cap.
 
 **Pre-merge checklist (#1359).** Making this job required changes the merge
 gate (SOC 2 CC8.1). **#1359 does not merge until the owner's sign-off on this

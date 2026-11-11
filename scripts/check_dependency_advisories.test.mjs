@@ -512,3 +512,32 @@ test('the gate and the advisory scan pin the same osv-scanner release and sha256
 	};
 	assert.deepEqual(pins('ci.yml'), pins('supply-chain-scan.yml'));
 });
+
+test('a waiver a PR adds or changes may run at most 180 days past the run date', () => {
+	const today = '2026-11-10';
+	const lock = new Set(['osv-scanner.toml']);
+	const at = judgeIgnores([entry({ ignoreUntil: '2027-05-09' })], [], [], lock, today);
+	assert.deepEqual(at.errors, []);
+	const over = judgeIgnores([entry({ ignoreUntil: '2027-05-10' })], [], [], lock, today);
+	assert.equal(over.errors.length, 1);
+	assert.match(over.errors[0], /181 days out.*at most 180 days.*on or before 2027-05-09.*renew it closer to expiry, with a reason/);
+	const changedDate = judgeIgnores([entry({ ignoreUntil: '2099-01-01' })], [entry({})], [], lock, today);
+	assert.equal(changedDate.errors.length, 1);
+});
+
+test('an unchanged far-out waiver and a removed one do not fail the cap', () => {
+	const today = '2026-11-10';
+	const lock = new Set(['osv-scanner.toml']);
+	const far = entry({ ignoreUntil: '2099-01-01' });
+	assert.deepEqual(judgeIgnores([far], [far], [], lock, today).errors, []);
+	assert.deepEqual(judgeIgnores([], [far], [], lock, today).errors, []);
+	assert.deepEqual(judgeIgnores([far], [], [], null, today).errors, []);
+});
+
+test('both committed waivers sit inside the 180-day cap as of 2026-11-10', () => {
+	const entries = ['osv-scanner.toml', 'apps/custom_watch/osv-scanner.toml'].flatMap((f) =>
+		parseIgnores(readFileSync(new URL(`../${f}`, import.meta.url), 'utf8'), f),
+	);
+	assert.equal(entries.length, 2);
+	assert.deepEqual(judgeIgnores(entries, [], [], new Set(entries.map((e) => e.file)), '2026-11-10').errors, []);
+});

@@ -337,6 +337,9 @@ export const isExpired = (e, today) => e.ignoreUntil !== null && e.ignoreUntil <
 /** @param {string} a @param {string} b YYYY-MM-DD */
 const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
 
+/** The furthest `ignoreUntil` a PR may add or change, in days after the run date. */
+export const MAX_IGNORE_DAYS = 180;
+
 /**
  * @param {readonly IgnoreEntry[]} entries head's entries
  * @param {readonly IgnoreEntry[]} baseEntries base's entries ([] in report mode)
@@ -352,6 +355,7 @@ export function judgeIgnores(entries, baseEntries, headFindings, changed, today)
 	/** @type {string[]} */
 	const notes = [];
 	const baseIds = new Set(baseEntries.map((e) => `${e.file}\u0000${e.id}`));
+	const baseUntil = new Set(baseEntries.map((e) => `${e.file}\u0000${e.id}\u0000${e.ignoreUntil}`));
 	for (const e of entries) {
 		const where = `${e.file}:${e.line}`;
 		const touchedFile = changed?.has(e.file) ?? false;
@@ -363,6 +367,15 @@ export function judgeIgnores(entries, baseEntries, headFindings, changed, today)
 		}
 		if (changed && !baseIds.has(`${e.file}\u0000${e.id}`)) {
 			notes.push(`${where}: this PR adds an ignore for ${e.id} until ${e.ignoreUntil}.`);
+		}
+		if (changed && !baseUntil.has(`${e.file}\u0000${e.id}\u0000${e.ignoreUntil}`)) {
+			const out = daysBetween(today, e.ignoreUntil);
+			if (out > MAX_IGNORE_DAYS) {
+				errors.push(
+					`${where}: the ignore for ${e.id} runs until ${e.ignoreUntil}, ${out} days out; a waiver this PR adds or changes may run at most ${MAX_IGNORE_DAYS} days (decisions § 2457). ` +
+						`Set ignoreUntil on or before ${new Date(Date.parse(today) + MAX_IGNORE_DAYS * 86400000).toISOString().slice(0, 10)}, and renew it closer to expiry, with a reason, if the advisory still has no fix.`,
+				);
+			}
 		}
 		if (isExpired(e, today)) {
 			const lockfiles = [

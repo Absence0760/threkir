@@ -166,22 +166,24 @@ function stripHtmlComments(text) {
  * mid-sentence would go to every user. With `required: false` (the app has no
  * released version, so no note will be submitted) a body with no section
  * returns '' instead; one that has a section is checked exactly as always.
+ * `max`, `audience` and `limitOwner` let the Play release (scripts/play_release.mjs)
+ * read the same section under Google Play's limit and wording.
  *
  * @param {string | null | undefined} body
- * @param {{ required?: boolean }} [options]
+ * @param {{ required?: boolean, max?: number, audience?: string, limitOwner?: string }} [options]
  * @returns {string}
  */
-export function extractWhatsNew(body, { required = true } = {}) {
+export function extractWhatsNew(body, { required = true, max = WHATS_NEW_MAX, audience = 'App Store users', limitOwner = "App Store Connect's" } = {}) {
 	const lines = (body ?? '').replace(/\r\n?/g, '\n').split('\n');
 	const starts = lines.flatMap((line, i) => (WHATS_NEW_LINE.test(line) ? [i] : []));
 	if (starts.length === 0 && !required) return '';
 	if (starts.length === 0) {
 		throw new Error(
-			`The GitHub Release body has no "## ${WHATS_NEW_HEADING}" section. Edit the Release, add that heading with the note App Store users should read under it, and re-run the job. Generated notes are never used in its place.`,
+			`The GitHub Release body has no "## ${WHATS_NEW_HEADING}" section. Edit the Release, add that heading with the note ${audience} should read under it, and re-run the job. Generated notes are never used in its place.`,
 		);
 	}
 	if (starts.length > 1) {
-		throw new Error(`The GitHub Release body has ${starts.length} "## ${WHATS_NEW_HEADING}" sections. Keep one, so there is no question which note goes to the App Store.`);
+		throw new Error(`The GitHub Release body has ${starts.length} "## ${WHATS_NEW_HEADING}" sections. Keep one, so there is no question which note ${audience} read.`);
 	}
 	const rest = lines.slice(starts[0] + 1);
 	const end = rest.findIndex((line) => SECTION_END.test(line));
@@ -191,13 +193,13 @@ export function extractWhatsNew(body, { required = true } = {}) {
 		.trim();
 	if (text === '') {
 		throw new Error(
-			`The "## ${WHATS_NEW_HEADING}" section of the GitHub Release body is empty. Write the note App Store users should read under it, and re-run the job.`,
+			`The "## ${WHATS_NEW_HEADING}" section of the GitHub Release body is empty. Write the note ${audience} should read under it, and re-run the job.`,
 		);
 	}
 	const length = [...text].length;
-	if (length > WHATS_NEW_MAX) {
+	if (length > max) {
 		throw new Error(
-			`The "## ${WHATS_NEW_HEADING}" section is ${length} characters, over App Store Connect's ${WHATS_NEW_MAX}. Shorten it in the GitHub Release and re-run the job; it is never cut short.`,
+			`The "## ${WHATS_NEW_HEADING}" section is ${length} characters, over ${limitOwner} ${max}. Shorten it in the GitHub Release and re-run the job; it is never cut short.`,
 		);
 	}
 	return text;

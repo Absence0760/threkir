@@ -453,6 +453,19 @@ jobs:
             echo "Reproduce with: node --test scripts/asc_submit.test.mjs (stdlib only, no credentials or network needed)."
             exit 1
           fi
+      # The Play production promotion and the daily rollout step run only in a
+      # mobile_android release and on play-rollout.yml's cron, against Google
+      # Play. This drives both against an in-memory Edits API and pins the
+      # wiring in both workflows, so a regression fails a PR instead of a
+      # release (decisions.md § 2432).
+      - name: The Android release still goes to Play production as a staged rollout
+        if: ${{ !cancelled() && steps.node.outcome == 'success' }}
+        run: |
+          if ! node --test scripts/play_release.test.mjs; then
+            echo "::error::scripts/play_release.mjs or its wiring regressed: the release notes it reads from the Release body (the owner-written What's New, at most 500 characters), the staged rollout it starts on production (or the full first release), the ramp it advances, its refusal to resume a halt or cancel a review, or the step order in release-android.yml / play-rollout.yml. Nothing here is about signing or the build."
+            echo "Reproduce with: node --test scripts/play_release.test.mjs (stdlib only, no credentials or network needed)."
+            exit 1
+          fi
       # The Apple client-secret rotation runs only on its monthly cron, against
       # prod. This signs with a key generated in the test and drives the
       # Management API calls against a stub, so a broken JWT or a PATCH that

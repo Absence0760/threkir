@@ -23,6 +23,8 @@ import 'package:ui_kit/ui_kit.dart'
 import 'package:uuid/uuid.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../mascot.dart';
+import '../widgets/grisnir_moments.dart';
 import '../fitness_surface_requests.dart';
 import '../auth_error.dart';
 import '../audio_cues.dart';
@@ -5948,6 +5950,14 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
     final track = cm.trackLine(_finishedRun?.track ?? <cm.Waypoint>[]);
     // Over every stored fix, as the live tile, run detail and web fold it.
     final movingTime = movingTimeOf(_finishedRun?.track ?? <cm.Waypoint>[]);
+    final finished = _finishedRun;
+    // Grisnir only on a clean finish: never beside a failed sync or a DNF.
+    final milestone = finished != null &&
+            _syncError == null &&
+            finished.metadata?[cm.MetadataKeys.isDnf] != true &&
+            mascotShown()
+        ? localMilestone(finished, widget.runStore.runs)
+        : null;
 
     return Column(
       children: [
@@ -5974,6 +5984,7 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
             synced: _synced,
             syncError: _syncError,
             onDone: _discard,
+            milestone: milestone,
           ),
         ),
       ],
@@ -5999,7 +6010,12 @@ class FinishedSummary extends StatelessWidget {
     required this.synced,
     required this.syncError,
     required this.onDone,
+    this.milestone,
   });
+
+  /// Grisnir's milestone for this run, or null; the caller passes null on a
+  /// failed sync, a DNF and when the runner hides him.
+  final MilestoneKind? milestone;
 
   final String distanceValue;
   final String distanceUnit;
@@ -6034,6 +6050,11 @@ class FinishedSummary extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(l10n.runComplete, style: theme.textTheme.headlineSmall),
+                // A sync that fails after the summary opened takes him away.
+                if (milestone != null && syncError == null) ...[
+                  const SizedBox(height: 12),
+                  GrisnirMilestone(kind: milestone!),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [

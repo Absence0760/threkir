@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart' show AppSemanticColors, SelectionHint;
 
+import '../widgets/grisnir_moments.dart';
 import '../auth_error.dart';
 import '../catalogue_browse.dart' show compareFoldedNames, fold;
 import '../l10n/gen/app_localizations.dart';
@@ -770,11 +771,12 @@ class RoutesScreenState extends State<RoutesScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.route,
-                            size: 64,
-                            color: theme.colorScheme.outline,
-                          ),
+                          grisnirWaitingOrNull() ??
+                              Icon(
+                                Icons.route,
+                                size: 64,
+                                color: theme.colorScheme.outline,
+                              ),
                           const SizedBox(height: 16),
                           Text(
                             l10n.routesEmptyTitle,

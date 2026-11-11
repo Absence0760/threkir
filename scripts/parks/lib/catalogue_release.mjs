@@ -1,4 +1,4 @@
-// Whether a park may load into production (decisions § 2459). Every park's
+// Whether a park may load into production (decisions § 2460). Every park's
 // `park.json` declares a `release`, which the build copies into its
 // `manifest.json`:
 //

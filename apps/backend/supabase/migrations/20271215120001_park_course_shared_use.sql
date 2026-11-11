@@ -1,5 +1,5 @@
 -- When an organised group regularly uses a park course's paths (issue #1345,
--- decisions § 2459; reviews/legal-parkrun-park-courses.md § Recommendation 3).
+-- decisions § 2460; reviews/legal-parkrun-park-courses.md § Recommendation 3).
 --
 -- `park_courses.shared_use` is a vocabulary key, never free text, so the
 -- give-way note each client renders from it names no one. A course's park.json
@@ -27,7 +27,7 @@ alter table public.park_courses
 comment on column public.park_courses.shared_use is
   'When an organised group regularly uses the course''s paths, as a vocabulary key (saturday_morning_group); '
   'each client renders a give-way note that names no one. Null for most courses. Written by '
-  'load_park_catalogue from park.json (decisions § 2459).';
+  'load_park_catalogue from park.json (decisions § 2460).';
 
 create or replace function private.load_park_catalogue(
   p_manifest jsonb,
@@ -418,7 +418,7 @@ comment on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) is
   'route_guide_checked_at, and its shared_use to park_courses.shared_use, none of which queues a backfill; the '
   'park''s NPS park code to parks.nps_park_code. '
   'Service role only; refuses an author who is not an official publisher of the club (decisions § 2425, '
-  '§ 2429, § 2438, § 2448, § 2454, § 2459).';
+  '§ 2429, § 2438, § 2448, § 2454, § 2460).';
 
 revoke execute on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) from public, anon, authenticated;
 grant execute on function private.load_park_catalogue(jsonb, uuid, uuid, boolean) to service_role;

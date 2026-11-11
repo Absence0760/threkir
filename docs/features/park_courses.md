@@ -31,8 +31,8 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
 | Help guide `park-courses`, Learn page `/learn/park-courses-how-timing-works` | Shipped |
 | Route guide per course (`park_courses.route_guide`, migration `20271212001344`, decisions § 2448): generated with the geometry, shown on the course page, the share page, its search text and the GPX, web + mobile | Shipped; every Pocahontas guide is still a draft awaiting the owner's ground check. See *Route guide* |
-| Staged parks: a park's `release` in `park.json` (`live`, or `staged` with a reason) decides whether the release sync loads it; a staged park is validated and reported `staged`, never loaded (decisions § 2459). See *Loading courses* | Shipped |
-| Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2459. See *Wording and safety* | Shipped |
+| Staged parks: a park's `release` in `park.json` (`live`, or `staged` with a reason) decides whether the release sync loads it; a staged park is validated and reported `staged`, never loaded (decisions § 2460). See *Loading courses* | Shipped |
+| Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2460. See *Wording and safety* | Shipped |
 | "Times here are Threkir times…" notice on every course page and share page, and the `shared_use` give-way note (`park_courses.shared_use`, migration `20271215120001`), web + mobile | Shipped |
 | **Deep Run Park, 5 km** (Henrico County, VA; issue #1345): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
 
@@ -71,7 +71,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
   `park_courses` parity pair (`apps/web/src/lib/parks/park_courses.ts` ↔
   `apps/mobile_android/lib/park_courses.dart`) and the mobile label switches.
 - **`shared_use`** (text, nullable; migration `20271215120001`, decisions
-  § 2459): when an organised group regularly uses the course's paths, as a key
+  § 2460): when an organised group regularly uses the course's paths, as a key
   (`saturday_morning_group`), never free text, so the give-way note the clients
   render from it names no one. Set per course in `park.json`.
 
@@ -314,7 +314,7 @@ These follow the owner-approved permit conditions (memo
   use these paths on Saturday mornings. Give way, and avoid timing an effort
   through them." (`parks.sharedUseSaturdayMorningGroup`). It is a key, not
   text, so no organisation can be named through it.
-- **No third-party event names** (decisions § 2459, memo
+- **No third-party event names** (decisions § 2460, memo
   `reviews/legal-parkrun-park-courses.md`). A course on paths a weekly
   community event uses is named after the park and its distance ("Deep Run
   Park, 5 km"). No surface (name, slug, description, route guide, share and SEO
@@ -386,7 +386,7 @@ account. The reporter picks a reason (`course_hazard`, `course_closure`,
   park courses, and Terms § 4 names only a copyright channel. The memo's
   recommendation 5 (a `rights_holder_request` reason routed like
   `land_manager_request`, and "Copyright and trade mark complaints" in the
-  Terms) is the fix; decisions § 2459 records the gap.
+  Terms) is the fix; decisions § 2460 records the gap.
 - **Personal data.** The contact email goes with a signed-in reporter's
   account (a trigger clears it when `reporter_id` is set null) and 30 days
   after the report is resolved (`private.purge_stale_reports`), unless the
@@ -510,7 +510,7 @@ run with `psql` on the service-role connection. `node scripts/parks/load.mjs
 <park dir> --club-id … --author-id … [--enqueue-backfill]` still prints one
 park's single call.
 
-**Staged parks** (decisions § 2459). Committing a park under
+**Staged parks** (decisions § 2460). Committing a park under
 `scripts/parks/catalogue/` would otherwise load it on the next `backend@*`
 release, so every `park.json` declares whether it may:
 
@@ -668,7 +668,7 @@ These gate going live, not the code:
       `TRUSTED_CLIENT_IP_HEADER` is right for the production edge, or every
       signed-out reporter shares one bucket.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
-- [ ] **Deep Run Park (staged, decisions § 2459).** Before its `release` goes
+- [ ] **Deep Run Park (staged, decisions § 2460).** Before its `release` goes
       `live`: (a) the owner records the parkrun brand and data outcome on
       #1097 (memo `reviews/legal-parkrun-park-courses.md`), including the
       Henrico county-park conditions in its § Recommendation 6; (b) the owner

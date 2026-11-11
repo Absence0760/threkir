@@ -10,7 +10,7 @@ import { USER_A } from '../fixtures/users';
  * its one credit line, its one primary action, an empty board that invites a
  * first run with its filters hidden, and the notices callout: the times
  * notice on every course and the give-way note on a course an organised group
- * shares (decisions § 2459).
+ * shares (decisions § 2460).
  *
  * Every row is planted (service role) in one park under a unique slug, at
  * (37.4, -78.4), which no seed row or other spec uses, and removed afterwards.

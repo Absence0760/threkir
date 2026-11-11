@@ -21,7 +21,7 @@ const List<String> kGeometrySources = ['osm', 'nps', 'agency', 'traced'];
 const List<String> kCourseDifficulties = ['easy', 'moderate', 'hard'];
 
 /// When an organised group regularly uses a course's paths
-/// (`park_courses.shared_use`, decisions § 2459). A key, never free text, so
+/// (`park_courses.shared_use`, decisions § 2460). A key, never free text, so
 /// the give-way note rendered from it names no one.
 const List<String> kSharedUses = ['saturday_morning_group'];
 

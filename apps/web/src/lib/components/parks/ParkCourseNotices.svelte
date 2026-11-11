@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Everything a runner should know before setting off on a park course, in
 	// one callout (issue #1352): the safety notice first, then the give-way
-	// note when an organised group shares the paths (decisions § 2459), the
+	// note when an organised group shares the paths (decisions § 2460), the
 	// long-course notice when it applies, then the times and not-affiliated
 	// notes. Each line keeps the test id it had when they were separate pieces
 	// of fine print.

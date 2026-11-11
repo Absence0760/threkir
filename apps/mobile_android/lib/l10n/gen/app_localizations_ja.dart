@@ -794,6 +794,24 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardHeroRestDayGrisnir => 'トールのヤギのように、朝には元どおり。';
 
   @override
+  String get mascotMilestoneFirstRun => '初めてのランを記録。いちばん大変な一歩です。';
+
+  @override
+  String get mascotMilestoneFirst5k => '初めての5K。ちゃんと数に入ります。';
+
+  @override
+  String get mascotMilestoneBadge => 'バッジ獲得。跳ねたくなりますね。';
+
+  @override
+  String get mascotMilestoneBest => '自己ベスト更新。跳ねたくなりますね。';
+
+  @override
+  String get mascotMilestoneLongest => 'これまでで最長のラン。';
+
+  @override
+  String get mascotOnboardingLine => 'グリスニルは登山口で待っています。';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return '準備度 $score';
   }

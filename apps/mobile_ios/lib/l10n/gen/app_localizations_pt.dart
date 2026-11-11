@@ -832,6 +832,25 @@ class AppLocalizationsPt extends AppLocalizations {
       'De volta de manhã, como os bodes de Thor.';
 
   @override
+  String get mascotMilestoneFirstRun =>
+      'Primeira corrida feita. Era a mais difícil.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Os seus primeiros 5 km. Contam.';
+
+  @override
+  String get mascotMilestoneBadge => 'Medalha conquistada. Merece um salto.';
+
+  @override
+  String get mascotMilestoneBest => 'Novo recorde pessoal. Merece um salto.';
+
+  @override
+  String get mascotMilestoneLongest => 'A sua corrida mais longa até agora.';
+
+  @override
+  String get mascotOnboardingLine => 'O Grisnir espera no início do trilho.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Prontidão $score';
   }
@@ -23110,6 +23129,25 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   @override
   String get dashboardHeroRestDayGrisnir =>
       'De volta pela manhã, como os bodes de Thor.';
+
+  @override
+  String get mascotMilestoneFirstRun =>
+      'Primeira corrida feita. Era a mais difícil.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Seus primeiros 5 km. Isso conta.';
+
+  @override
+  String get mascotMilestoneBadge => 'Medalha conquistada. Vale um pulo.';
+
+  @override
+  String get mascotMilestoneBest => 'Novo recorde pessoal. Vale um pulo.';
+
+  @override
+  String get mascotMilestoneLongest => 'Sua corrida mais longa até agora.';
+
+  @override
+  String get mascotOnboardingLine => 'O Grisnir espera no começo da trilha.';
 
   @override
   String dashboardHeroReadiness(int score) {

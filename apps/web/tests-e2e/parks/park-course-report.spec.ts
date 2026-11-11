@@ -21,7 +21,7 @@ import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/sag
  *   course with a note, and the course page then shows it closed with that
  *   note. A signed-out rights holder files a request on a third course, which
  *   the form will not send without an address, and the admin queue shows it
- *   with its answer-by date (decisions § 2469).
+ *   with its acknowledge-by date (decisions § 2469).
  *
  * Three courses are planted (service role) in one park under a unique slug, at
  * (37.6, -78.6), which no seed row or other spec uses, and removed afterwards

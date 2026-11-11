@@ -308,6 +308,7 @@ void main() {
           coveredM: _num(c['coveredM']),
           courseDistanceM: _numOrNull(c['courseDistanceM']),
           now: _ms(c['nowMs']),
+          lapsMet: _req(c, 'lapsMet') as bool?,
         );
         expect(o.finisherStatus, expected['finisherStatus']);
         expect(o.method?.wire, expected['method']);
@@ -361,7 +362,7 @@ void main() {
               ? RaceStartMode.selfTimed
               : RaceStartMode.gun,
           goAt: goS != null && goAfter == null ? _s(goS) : null,
-          minCoverageM: _numOrNull(_req(c, 'minCoverageM')),
+          lapCount: _req(c, 'lapCount') as int?,
         );
         int? finalisedAt;
         RaceFinish? finish;
@@ -376,6 +377,9 @@ void main() {
         expect(finalisedAt, expected['finalisesAtFix']);
         _expectFinish(finish, _req(expected, 'finish'), 'finish');
         _expectStart(d.start, _req(expected, 'start'), 'start');
+        expect(d.lapsMet(_num(fixes.last['coveredM'])),
+            _req(expected, 'lapsMet'),
+            reason: 'lapsMet');
         final candidateAtS = _req(expected, 'candidateAtS');
         expect(d.candidate?.at, candidateAtS == null ? null : _s(candidateAtS));
 

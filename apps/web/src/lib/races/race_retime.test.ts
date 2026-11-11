@@ -84,7 +84,7 @@ for (const c of fixture.lines as Obj[]) {
 			finish_lat: finishLat,
 			finish_lng: finishLng,
 			finish_line_self_cross: false,
-			finish_min_coverage_m: c.minCoverageM === null ? null : num(c.minCoverageM),
+			finish_lap_count: c.lapCount as number | null,
 			...gateCols('start', startGate),
 			...gateCols('finish', finishGate),
 		} as RetimeCourse;
@@ -152,7 +152,7 @@ const course: RetimeCourse = {
 	finish_lat: plane(FINISH_N).lat,
 	finish_lng: plane(FINISH_N).lng,
 	finish_line_self_cross: false,
-	finish_min_coverage_m: null,
+	finish_lap_count: null,
 	start_gate_lat: plane(START_N).lat,
 	start_gate_lng: plane(START_N).lng,
 	start_gate_bearing_deg: 0,

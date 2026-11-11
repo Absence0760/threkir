@@ -26,18 +26,20 @@ internal fun raceStopAction(paused: Boolean, raceBound: Boolean, decided: Boolea
 /// [RaceFinishDetector.finaliseNow]) is an automatic finish at that fix;
 /// otherwise the 90 % gate makes it a manual finish at [stoppedAtMs] — the
 /// instant the runner stopped, not the later press that confirmed it — or a
-/// DNF with no finish instant. Mirrors `raceStopOutcome` in
-/// `race_finish.dart`.
+/// DNF with no finish instant. [lapsMet] is the detector's lap rule at the
+/// stop ([RaceLineTimer.lapsMet]): false is a DNF whatever the distance.
+/// Mirrors `raceStopOutcome` in `race_finish.dart`.
 internal fun raceFinishDecision(
     settled: RaceFinish.Finish?,
     coveredM: Double,
     courseDistanceM: Double?,
     stoppedAtMs: Long,
+    lapsMet: Boolean? = null,
 ): RaceStopDecision {
     if (settled != null) {
         return RaceStopDecision(RaceFinish.Outcome.AUTO_FINISH, settled.epochMs, settled.coveredM, settled)
     }
-    val outcome = RaceFinish.manualOutcome(coveredM, courseDistanceM)
+    val outcome = RaceFinish.manualOutcome(coveredM, courseDistanceM, lapsMet)
     val at = if (outcome == RaceFinish.Outcome.DNF) null else stoppedAtMs
     return RaceStopDecision(outcome, at, coveredM)
 }

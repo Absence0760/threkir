@@ -127,12 +127,12 @@ export interface RaceFinishDetectorOptions {
 	/** GO on the device clock the fixes are timed on. */
 	goAtMs?: number | null;
 	/**
-	 * The course's lap minimum (`race_session_courses.finish_min_coverage_m`):
-	 * no finish counts before this much is covered from the base, whatever the
-	 * share. Null when the race froze none, and the detector then measures the
-	 * lap itself (decisions § 2472).
+	 * The course's lap count (`race_session_courses.finish_lap_count`): the
+	 * line finish is this many forward finish passes from the committed start.
+	 * Null when the race froze none, and the detector then scales by the
+	 * runner's own measured lap (decisions § 2472).
 	 */
-	minCoverageM?: number | null;
+	lapCount?: number | null;
 }
 
 type StartState = 'preGo' | 'seeking' | 'pending' | 'committed';
@@ -167,9 +167,10 @@ export class RaceFinishDetector {
 	readonly startGate: Gate | null;
 	readonly finishGate: Gate | null;
 	readonly mode: RaceStartMode;
-	readonly minCoverageM: number | null;
+	readonly lapCount: number | null;
 
-	private readonly linesCoincide: boolean;
+	/** Metres between the two lines' centres; 0 without both. */
+	private readonly sepM: number;
 	private readonly startLine: GateCrossingDetector | null;
 	private readonly finishLine: GateCrossingDetector | null;
 
@@ -186,7 +187,10 @@ export class RaceFinishDetector {
 	private pending: GateCrossing | null = null;
 	private committed: RaceStart | null = null;
 	private goCoveredM = 0;
+	private passes = 0;
+	private lastPassM: number | null = null;
 	private lapM: number | null = null;
+	private finishSeen = false;
 
 	constructor(o: RaceFinishDetectorOptions) {
 		this.finishLat = o.finishLat;
@@ -195,13 +199,13 @@ export class RaceFinishDetector {
 		this.startGate = raceLineUsable(o.startGate) ? o.startGate : null;
 		this.finishGate = raceLineUsable(o.finishGate) ? o.finishGate : null;
 		this.mode = o.mode ?? 'gun';
-		const min = o.minCoverageM;
-		this.minCoverageM = min != null && Number.isFinite(min) && min > 0 ? min : null;
+		const k = o.lapCount;
+		this.lapCount =
+			this.finishGate !== null && k != null && Number.isInteger(k) && k >= 2 ? k : null;
 		if (this.mode === 'selfTimed') this.state = 'seeking';
 		const sg = this.startGate;
 		const fg = this.finishGate;
-		this.linesCoincide =
-			sg !== null && fg !== null && raceDistanceM(sg.lat, sg.lng, fg.lat, fg.lng) <= fg.halfWidthM;
+		this.sepM = sg !== null && fg !== null ? raceDistanceM(sg.lat, sg.lng, fg.lat, fg.lng) : 0;
 		this.startLine = this.startGate ? new GateCrossingDetector(this.startGate) : null;
 		this.finishLine = this.finishGate ? new GateCrossingDetector(this.finishGate) : null;
 		if (o.goAtMs != null) this.setGo(o.goAtMs);
@@ -358,7 +362,7 @@ export class RaceFinishDetector {
 		const p = this.pending;
 		if (this.state !== 'pending' || p === null) return;
 		if (coveredM >= p.coveredM + RACE_START_COMMIT_M) {
-			if (this.committed !== null) this.lapM = null;
+			if (this.committed !== null) this.forgetLaps();
 			this.committed = lineStart(p);
 			this.pending = null;
 			this.state = 'committed';
@@ -373,6 +377,7 @@ export class RaceFinishDetector {
 				this.pending = x;
 				this.state = 'pending';
 			} else {
+				if (this.startHeld(x.coveredM)) return;
 				this.pending = null;
 				this.state = 'seeking';
 			}
@@ -393,11 +398,11 @@ export class RaceFinishDetector {
 		this.advanceCommit(x.coveredM);
 		const base = this.base(x.tMs);
 		if (base === null) return;
+		if (base.start !== null) this.finishSeen = true;
+		const pass = this.countPass(base, x.coveredM);
+		if (this.lapCount !== null && base.start !== null && (!pass || this.passes < this.lapCount)) return;
 		const share = base.start !== null ? RACE_FINISH_MIN_COVERAGE_WITH_START : RACE_FINISH_MIN_COVERAGE;
-		if (!this.covers(base.fromM, x.coveredM, share)) {
-			this.measureLap(base, x.coveredM);
-			return;
-		}
+		if (!this.covers(base.fromM, x.coveredM, share)) return;
 		this.finish = {
 			atMs: Math.round(x.tMs),
 			distanceToFinishM: Math.abs(x.offsetM),
@@ -412,7 +417,10 @@ export class RaceFinishDetector {
 		const d = raceDistanceM(fix.lat, fix.lng, this.finishLat, this.finishLng);
 		const base = this.base(fix.atMs);
 		const qualifies =
-			raceInFinishZone(d) && base !== null && this.covers(base.fromM, fix.coveredM, RACE_FINISH_MIN_COVERAGE);
+			raceInFinishZone(d) &&
+			base !== null &&
+			this.covers(base.fromM, fix.coveredM, RACE_FINISH_MIN_COVERAGE) &&
+			this.lapsMet(fix.coveredM) !== false;
 		const best = this.best;
 		if (this.finishGate !== null) {
 			if (!qualifies) {
@@ -455,27 +463,82 @@ export class RaceFinishDetector {
 	}
 
 	/**
-	 * On a course whose start and finish lines coincide, a forward finish
-	 * crossing that did not count, from a committed start, is the course
-	 * passing its finish a lap in. With no lap minimum frozen, the first such
-	 * pass sets one, half a lap short of the course. Lines apart measure
-	 * nothing: a finish line just past the start is not a lap.
+	 * A self-timed start a backward crossing may no longer re-arm: the runner
+	 * has passed the finish line forward since it, or covered the no-start
+	 * share of the course, so they are on a later lap or coming home.
 	 */
-	private measureLap(base: CoverageBase, coveredM: number): void {
-		if (!this.linesCoincide || this.minCoverageM !== null || this.lapM !== null || base.start === null) {
-			return;
-		}
-		const lap = coveredM - base.fromM;
-		if (lap >= RACE_START_COMMIT_M) this.lapM = lap;
+	private startHeld(coveredM: number): boolean {
+		const c = this.committed;
+		if (c === null) return false;
+		if (this.finishSeen) return true;
+		const d = this.courseDistanceM;
+		return Number.isFinite(d) && d > 0 && coveredM - c.coveredM >= d * RACE_FINISH_MIN_COVERAGE;
 	}
 
-	/** Covered distance from the base a finish needs at share; null when nothing can gate. */
+	/**
+	 * Whether a forward finish crossing at coveredM is a lap pass: from a
+	 * committed start, at least the lines' separation plus RACE_START_COMMIT_M
+	 * past it (so the start's own pass is not one), and RACE_START_COMMIT_M
+	 * past the last pass (so a wobble across the line is one pass). Records it.
+	 */
+	private countPass(base: CoverageBase, coveredM: number): boolean {
+		if (base.start === null) return false;
+		if (coveredM - base.fromM < this.sepM + RACE_START_COMMIT_M) return false;
+		const last = this.lastPassM;
+		if (last !== null && coveredM - last < RACE_START_COMMIT_M) return false;
+		this.lapM = last === null ? coveredM - base.fromM - this.sepM : coveredM - last;
+		this.lastPassM = coveredM;
+		this.passes += 1;
+		return true;
+	}
+
+	private forgetLaps(): void {
+		this.passes = 0;
+		this.lastPassM = null;
+		this.lapM = null;
+		this.finishSeen = false;
+	}
+
+	/**
+	 * Whether coveredM completes the laps, for a stop or a zone finish: with a
+	 * lap count, every pass but the last made and half a lap since it (the lap
+	 * measured as the runner's own mean), or every pass made; with none, from
+	 * the second pass on, the coverage rule scaled by the lap just run. Null
+	 * when no lap rule applies (no lap known, or no committed start to count
+	 * from).
+	 */
+	lapsMet(coveredM: number): boolean | null {
+		const b = this.base(Infinity);
+		if (b === null) return null;
+		const k = this.lapCount;
+		if (k !== null) {
+			if (b.start === null) return null;
+			if (this.passes >= k) return true;
+			const last = this.lastPassM;
+			if (this.passes === k - 1 && last !== null) {
+				const mean = (last - b.fromM - this.sepM) / this.passes;
+				return coveredM - last >= mean / 2;
+			}
+			return false;
+		}
+		if (this.passes >= 2) return this.covers(b.fromM, coveredM, RACE_FINISH_MIN_COVERAGE);
+		return null;
+	}
+
+	/**
+	 * Covered distance from the base a finish needs at share; null when nothing
+	 * can gate. With no lap count frozen, from the second pass on, the lap
+	 * just run raises it to the course less half that lap (the runner's own
+	 * lap, so a course whose laps differ is judged by the latest one). A first
+	 * pass needs no floor: on a course of two or more laps it is at most half
+	 * the course, under the share, and a single loop keeps the share's margin.
+	 */
 	private required(share: number): number | null {
 		const d = this.courseDistanceM;
 		const known = Number.isFinite(d) && d > 0;
-		let floor = this.minCoverageM;
-		if (floor === null && known && this.lapM !== null) floor = d - this.lapM / 2;
-		if (!known) return floor;
+		const lap = this.lapCount === null && this.passes >= 2 ? this.lapM : null;
+		const floor = known && lap !== null ? d - lap / 2 : null;
+		if (!known) return null;
 		return floor === null ? d * share : Math.max(d * share, floor);
 	}
 
@@ -573,16 +636,19 @@ export interface RaceOutcome {
 /**
  * An open in-zone approach is an automatic finish at its closest fix;
  * otherwise a runner who covered enough finishes manually at nowMs (the
- * instant they stopped), and one who did not is a DNF.
+ * instant they stopped), and one who did not is a DNF. lapsMet is the
+ * detector's `lapsMet` at the stop: false (a lap course not run to its last
+ * lap) is a DNF whatever the distance; null leaves the distance to decide.
  */
 export function raceStopOutcome(
 	candidate: RaceFinish | null,
 	coveredM: number,
 	courseDistanceM: number | null,
 	nowMs: number,
+	lapsMet: boolean | null = null,
 ): RaceOutcome {
 	if (candidate !== null) return { finisherStatus: 'finished', method: 'auto', finishAtMs: candidate.atMs };
-	if (raceCoverageMet(coveredM, courseDistanceM)) {
+	if (raceCoverageMet(coveredM, courseDistanceM) && lapsMet !== false) {
 		return { finisherStatus: 'finished', method: 'manual', finishAtMs: nowMs };
 	}
 	return { finisherStatus: 'dnf', method: null, finishAtMs: null };

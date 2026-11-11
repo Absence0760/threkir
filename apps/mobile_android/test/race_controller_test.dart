@@ -1939,7 +1939,7 @@ void main() {
       expect(x.clockOffsetMs, isNull, reason: 'no offset sample was taken');
     });
 
-    test('the frozen lap minimum reaches the detector (decisions § 2472)',
+    test('the frozen lap count reaches the detector and the stop (decisions § 2472)',
         () async {
       final social = _FakeSocial();
       final lap = RaceCourse(
@@ -1949,17 +1949,20 @@ void main() {
         finishLng: lngAt(5000),
         startGate: startLine,
         finishGate: finishLine,
-        minCoverageM: 5200,
+        lapCount: 2,
       );
-      expect(RaceCourse.fromJson(lap.toJson())!.minCoverageM, 5200,
+      expect(RaceCourse.fromJson(lap.toJson())!.lapCount, 2,
           reason: 'the cached course keeps it');
       final c = armed(social, course: lap);
       await pumpEventQueue();
       go(c);
       await pumpEventQueue();
       expect(runTo(c, 5020), isNull,
-          reason: '5000 m from the start is short of the 5200 m minimum');
-      expect(social.submitted, isEmpty);
+          reason: 'one pass of the finish line is not the two laps counted');
+      expect(c.coverageMet(5050), isFalse,
+          reason: 'the laps are not run, though the distance is');
+      final o = c.decideStop(coveredM: 5050, now: at(1100));
+      expect(o.finisherStatus, 'dnf');
     });
 
     test('the crossings are filed on the server clock with the offset used',

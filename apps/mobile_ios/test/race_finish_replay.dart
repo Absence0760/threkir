@@ -57,7 +57,7 @@ class ReplayCourse {
     this.startGate,
     this.finishGate,
     this.finishLineSelfCross = false,
-    this.minCoverageM,
+    this.lapCount,
   });
 
   final double distanceM;
@@ -66,7 +66,7 @@ class ReplayCourse {
   final Gate? startGate;
   final Gate? finishGate;
   final bool finishLineSelfCross;
-  final double? minCoverageM;
+  final int? lapCount;
 }
 
 /// A course laid over the track itself, for a run that raced no course: a
@@ -200,7 +200,7 @@ ReplayVerdict replayRace(
           finishGate: course.finishGate,
           mode: selfTimed ? RaceStartMode.selfTimed : RaceStartMode.gun,
           goAt: selfTimed ? null : go,
-          minCoverageM: course.minCoverageM,
+          lapCount: course.lapCount,
         ));
   return ReplayVerdict(v1: v1, v2: v2);
 }
@@ -249,7 +249,7 @@ class ReplayCase {
         startGate: gate('start'),
         finishGate: gate('finish'),
         finishLineSelfCross: j['finish_line_self_cross'] == true,
-        minCoverageM: _num(j['finish_min_coverage_m']),
+        lapCount: j['finish_lap_count'] is int ? j['finish_lap_count'] as int : null,
       ),
       goAt: go is String ? DateTime.tryParse(go) : null,
       selfTimed: j['start_mode'] == 'self_timed',

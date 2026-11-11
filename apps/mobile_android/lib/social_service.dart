@@ -345,10 +345,10 @@ class FrozenRaceCourse {
   final double? distanceM;
   final bool finishLineSelfCross;
 
-  /// The lap minimum the race froze (`finish_min_coverage_m`, decisions
-  /// § 2472): no finish counts before this much is covered. Null when the
-  /// course is not a lap course, or has no route.
-  final double? finishMinCoverageM;
+  /// The lap count the race froze (`finish_lap_count`, decisions § 2472):
+  /// the line finish is this many finish passes from the start. Null when
+  /// the course is not a lap course, or has no route.
+  final int? finishLapCount;
   const FrozenRaceCourse({
     required this.courseId,
     this.startGate,
@@ -357,7 +357,7 @@ class FrozenRaceCourse {
     this.finishLng,
     this.distanceM,
     this.finishLineSelfCross = false,
-    this.finishMinCoverageM,
+    this.finishLapCount,
   });
 
   static FrozenRaceCourse? fromJson(Map<String, dynamic> m) {
@@ -367,7 +367,7 @@ class FrozenRaceCourse {
     final lng = m['finish_lng'];
     final hasFinish = lat is num && lng is num;
     final distance = m['distance_m'];
-    final minCoverage = m['finish_min_coverage_m'];
+    final laps = m['finish_lap_count'];
     return FrozenRaceCourse(
       courseId: id,
       startGate: courseGate(m, GateWhich.start),
@@ -376,10 +376,7 @@ class FrozenRaceCourse {
       finishLng: hasFinish ? lng.toDouble() : null,
       distanceM: distance is num ? distance.toDouble() : null,
       finishLineSelfCross: m['finish_line_self_cross'] == true,
-      finishMinCoverageM:
-          minCoverage is num && minCoverage.toDouble().isFinite && minCoverage > 0
-              ? minCoverage.toDouble()
-              : null,
+      finishLapCount: laps is int && laps >= 2 ? laps : null,
     );
   }
 }
@@ -2275,7 +2272,7 @@ class SocialService extends ChangeNotifier {
     final rows = await _c
         .from('race_session_courses')
         .select(
-            'course_id, finish_lat, finish_lng, distance_m, finish_min_coverage_m, '
+            'course_id, finish_lat, finish_lng, distance_m, finish_lap_count, '
             '$kCourseGateColumns')
         .eq('event_id', eventId)
         .eq('instance_start', instanceStartKey(instance));

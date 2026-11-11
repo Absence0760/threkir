@@ -406,9 +406,12 @@ Not yet run. Needs a real park, a course whose start and finish lines are placed
 | 30° crossing | Same, crossing both lines at about 30° | Same as above. |
 | Parallel path | Run past the finish line on a path about 20 m beside it, then on | No finish; a Stop afterwards opens Resume race / Finish race. |
 | Loop with warm-up | A course whose start and finish lines coincide; jog a warm-up lap through both before GO, then race | No early finish: the warm-up crossings are before GO, and the race finishes only after the course's distance. |
+| Lap course | A route drawn as one lap whose start and finish lines coincide, the course distance set to 3 laps; Arm (Host GO), GO, run 3 laps | `race_session_courses.finish_min_coverage_m` is the distance less half a lap; no finish on laps 1 and 2; the finish line at the end of lap 3 cues and files (decisions § 2472). Repeat with a routeless course whose two organiser lines coincide: the same, measured from lap 1. |
+| Self-timed laps | A Self-timed window on the same 3-lap course; turn on This run is my attempt and run 3 laps | The start cues once, about 50 m past the line on lap 1; the later laps' start-line crossings change nothing; the finish files at the end of lap 3 with the chip time from lap 1's crossing. |
+| Self-timed out-and-back | A Self-timed window on an out-and-back whose finish line sits 5 to 20 m beyond the start line on the way home | Coming home across the start line does not cancel the start; the finish line files the finish, timed from the outward start crossing. |
 | On the start line at GO | Stand on or just past the start line when GO fires | No start cue (nobody crossed); the result's `start_at` is GO and `start_detection = gate`. |
 | Phone in a pocket | Run the whole race with the screen off and the phone in a pocket | Cues heard and felt; the finish files; the run saves after 60 s. |
-| Undo after a false finish | Trigger a finish (for example cross the finish line early on a lap course flagged differently), tap Not finished? Resume | The result disappears from the event's results; recording continues; Stop then Finish race files a manual finish. |
+| Undo after a false finish | Trigger a finish (for example cross the finish line before the end on a course whose distance is set well short of the route), tap Not finished? Resume | The result disappears from the event's results; recording continues; Stop then Finish race files a manual finish. |
 | Offline | Open the race once with signal, then turn on airplane mode before the start | Distance to the start line shows, the start and finish are detected and cued, and the result is queued and lands when signal returns. |
 | Undo, then restart | After Not finished? Resume, kill the app (phone) or let the activity be recreated while the service records (Wear), reopen, run on and cross the finish line again after 90% of the course from the start | The undone crossing is not filed again; the later crossing finishes, timed from the original start-line crossing; the saved run carries `metadata.race_undone_finish_at`. |
 | Clock offset across a restart | Start a race recording with signal, kill the app, turn on airplane mode, reopen and finish | The gun time still matches the stopwatch within a second or two (the offset is remembered for 24 h). |
@@ -461,6 +464,7 @@ Checks that the lines do not miss finishes the old 30 m circle caught, on the ow
      'finish_lat', coalesce(f.finish_lat, c.finish_lat),
      'finish_lng', coalesce(f.finish_lng, c.finish_lng),
      'finish_line_self_cross', coalesce(f.finish_line_self_cross, c.finish_line_self_cross),
+     'finish_min_coverage_m', f.finish_min_coverage_m,
      'start_gate_lat', coalesce(f.start_gate_lat, c.start_gate_lat),
      'start_gate_lng', coalesce(f.start_gate_lng, c.start_gate_lng),
      'start_gate_bearing_deg', coalesce(f.start_gate_bearing_deg, c.start_gate_bearing_deg),

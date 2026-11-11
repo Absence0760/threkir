@@ -1939,6 +1939,29 @@ void main() {
       expect(x.clockOffsetMs, isNull, reason: 'no offset sample was taken');
     });
 
+    test('the frozen lap minimum reaches the detector (decisions § 2472)',
+        () async {
+      final social = _FakeSocial();
+      final lap = RaceCourse(
+        courseId: 'course-5k',
+        distanceM: 5000,
+        finishLat: lat0,
+        finishLng: lngAt(5000),
+        startGate: startLine,
+        finishGate: finishLine,
+        minCoverageM: 5200,
+      );
+      expect(RaceCourse.fromJson(lap.toJson())!.minCoverageM, 5200,
+          reason: 'the cached course keeps it');
+      final c = armed(social, course: lap);
+      await pumpEventQueue();
+      go(c);
+      await pumpEventQueue();
+      expect(runTo(c, 5020), isNull,
+          reason: '5000 m from the start is short of the 5200 m minimum');
+      expect(social.submitted, isEmpty);
+    });
+
     test('the crossings are filed on the server clock with the offset used',
         () async {
       final social = _FakeSocial();

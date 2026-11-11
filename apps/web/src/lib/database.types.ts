@@ -4707,6 +4707,7 @@ export type Database = {
           finish_lat: number | null
           finish_line_self_cross: boolean
           finish_lng: number | null
+          finish_min_coverage_m: number | null
           frozen_at: string
           instance_start: string
           start_gate_bearing_deg: number | null
@@ -4725,6 +4726,7 @@ export type Database = {
           finish_lat?: number | null
           finish_line_self_cross?: boolean
           finish_lng?: number | null
+          finish_min_coverage_m?: number | null
           frozen_at?: string
           instance_start: string
           start_gate_bearing_deg?: number | null
@@ -4743,6 +4745,7 @@ export type Database = {
           finish_lat?: number | null
           finish_line_self_cross?: boolean
           finish_lng?: number | null
+          finish_min_coverage_m?: number | null
           frozen_at?: string
           instance_start?: string
           start_gate_bearing_deg?: number | null

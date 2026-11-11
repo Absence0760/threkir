@@ -285,6 +285,7 @@ class RaceCourse {
     this.startGate,
     this.finishGate,
     this.finishLineSelfCross = false,
+    this.minCoverageM,
   });
 
   /// Null for an event with no `event_courses` rows, raced on the event's
@@ -306,6 +307,10 @@ class RaceCourse {
   /// hand only.
   final bool finishLineSelfCross;
 
+  /// The lap minimum the race froze (decisions § 2472), handed to the
+  /// detector; null when there is none and the detector measures the lap.
+  final double? minCoverageM;
+
   bool get hasFinish => finishLat != null && finishLng != null;
   bool get hasStart => startLat != null && startLng != null;
 
@@ -319,6 +324,7 @@ class RaceCourse {
         'start_gate': _gateJson(startGate),
         'finish_gate': _gateJson(finishGate),
         'finish_line_self_cross': finishLineSelfCross,
+        'min_coverage_m': minCoverageM,
       };
 
   /// A cached [toJson]; null when it is not one.
@@ -336,6 +342,7 @@ class RaceCourse {
       startGate: _gateFromJson(j['start_gate']),
       finishGate: _gateFromJson(j['finish_gate']),
       finishLineSelfCross: j['finish_line_self_cross'] == true,
+      minCoverageM: n(j['min_coverage_m']),
     );
   }
 
@@ -1500,7 +1507,7 @@ class RaceController extends ChangeNotifier {
     }
   }
 
-  /// `race_finish v2` over this course, or null when it cannot finish
+  /// `race_finish v3` over this course, or null when it cannot finish
   /// itself: no distance, no finish, or a finish line the route crosses
   /// before its end, which finishes by hand only.
   RaceFinishDetector? _buildDetector(
@@ -1519,6 +1526,7 @@ class RaceController extends ChangeNotifier {
       finishGate: course.finishGate,
       mode: selfTimed ? RaceStartMode.selfTimed : RaceStartMode.gun,
       goAt: selfTimed ? null : goDevice,
+      minCoverageM: course.minCoverageM,
     );
   }
 
@@ -1540,6 +1548,7 @@ class RaceController extends ChangeNotifier {
       courseDistanceM: distance,
       finishGate: line,
       goAt: undone.keptStart?.at ?? goDevice,
+      minCoverageM: course.minCoverageM,
     );
   }
 
@@ -1780,6 +1789,7 @@ class RaceController extends ChangeNotifier {
           startGate: frozen.startGate,
           finishGate: frozen.finishGate,
           finishLineSelfCross: frozen.finishLineSelfCross,
+          minCoverageM: frozen.finishMinCoverageM,
         );
       }
       return RaceCourse(

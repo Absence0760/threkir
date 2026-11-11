@@ -411,6 +411,7 @@ class RaceFinishTest {
                 finishGate = gateOf(c.req("finishGate")),
                 mode = if (c["mode"]!!.jsonPrimitive.content == "selfTimed") RaceFinish.StartMode.SELF_TIMED else RaceFinish.StartMode.GUN,
                 goAtMs = if (goS != null && goAfter == null) t0 + goS * 1000L else null,
+                minCoverageM = c.numOrNull("minCoverageM"),
             )
             var finalisedAt: Int? = null
             var finish: RaceFinish.Finish? = null

@@ -345,6 +345,7 @@ for (const c of section('lines')) {
 			finishGate: gateOf(req(c, 'finishGate')),
 			mode: c.mode === 'selfTimed' ? 'selfTimed' : 'gun',
 			goAtMs: goS !== null && goAfter === null ? t0 + goS * 1000 : null,
+			minCoverageM: numOrNull(c, 'minCoverageM'),
 		});
 		let finalisedAt: number | null = null;
 		let finish: RaceFinish | null = null;

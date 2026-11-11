@@ -1,5 +1,5 @@
-// Finish-line detection and race timing, spec `race_finish v2` (issue #1304,
-// decisions § 2378). Pure: no clock, no I/O. Every instant is epoch
+// Finish-line detection and race timing, spec `race_finish v3` (issue #1304,
+// decisions § 2378, § 2472). Pure: no clock, no I/O. Every instant is epoch
 // milliseconds handed in, so the same fixes always produce the same finish,
 // which is what re-timing a race from a saved track (#1307) relies on.
 //
@@ -126,6 +126,13 @@ export interface RaceFinishDetectorOptions {
 	mode?: RaceStartMode;
 	/** GO on the device clock the fixes are timed on. */
 	goAtMs?: number | null;
+	/**
+	 * The course's lap minimum (`race_session_courses.finish_min_coverage_m`):
+	 * no finish counts before this much is covered from the base, whatever the
+	 * share. Null when the race froze none, and the detector then measures the
+	 * lap itself (decisions § 2472).
+	 */
+	minCoverageM?: number | null;
 }
 
 type StartState = 'preGo' | 'seeking' | 'pending' | 'committed';
@@ -160,7 +167,9 @@ export class RaceFinishDetector {
 	readonly startGate: Gate | null;
 	readonly finishGate: Gate | null;
 	readonly mode: RaceStartMode;
+	readonly minCoverageM: number | null;
 
+	private readonly linesCoincide: boolean;
 	private readonly startLine: GateCrossingDetector | null;
 	private readonly finishLine: GateCrossingDetector | null;
 
@@ -177,7 +186,7 @@ export class RaceFinishDetector {
 	private pending: GateCrossing | null = null;
 	private committed: RaceStart | null = null;
 	private goCoveredM = 0;
-	private lastForward: GateCrossing | null = null;
+	private lapM: number | null = null;
 
 	constructor(o: RaceFinishDetectorOptions) {
 		this.finishLat = o.finishLat;
@@ -186,6 +195,13 @@ export class RaceFinishDetector {
 		this.startGate = raceLineUsable(o.startGate) ? o.startGate : null;
 		this.finishGate = raceLineUsable(o.finishGate) ? o.finishGate : null;
 		this.mode = o.mode ?? 'gun';
+		const min = o.minCoverageM;
+		this.minCoverageM = min != null && Number.isFinite(min) && min > 0 ? min : null;
+		if (this.mode === 'selfTimed') this.state = 'seeking';
+		const sg = this.startGate;
+		const fg = this.finishGate;
+		this.linesCoincide =
+			sg !== null && fg !== null && raceDistanceM(sg.lat, sg.lng, fg.lat, fg.lng) <= fg.halfWidthM;
 		this.startLine = this.startGate ? new GateCrossingDetector(this.startGate) : null;
 		this.finishLine = this.finishGate ? new GateCrossingDetector(this.finishGate) : null;
 		if (o.goAtMs != null) this.setGo(o.goAtMs);
@@ -212,15 +228,13 @@ export class RaceFinishDetector {
 	}
 
 	/**
-	 * The start a finish would be measured from right now: the committed start
-	 * in a gun mode, the last unreversed start crossing in a self-timed one.
-	 * Null for the Start press, and while a crossing is still committing.
+	 * The start a finish would be measured from right now: the committed start.
+	 * A self-timed start a backward crossing has re-armed stays it until a new
+	 * forward crossing commits. Null for the Start press, and while the first
+	 * crossing is still committing.
 	 */
 	get start(): RaceStart | null {
-		if (this.mode === 'selfTimed') {
-			return this.lastForward === null ? null : lineStart(this.lastForward);
-		}
-		return this.state === 'committed' ? this.committed : null;
+		return this.committed;
 	}
 
 	/** Returns the finish on the call that finalises it, and null on every other call. */
@@ -279,7 +293,7 @@ export class RaceFinishDetector {
 			return null;
 		}
 		const d = raceDistanceM(fix.lat, fix.lng, this.finishLat, this.finishLng);
-		const qualifies = raceInFinishZone(d) && raceCoverageMet(fix.coveredM, this.courseDistanceM);
+		const qualifies = raceInFinishZone(d) && this.covers(0, fix.coveredM, RACE_FINISH_MIN_COVERAGE);
 		const best = this.best;
 		if (best !== null && (!qualifies || d > this.bestD)) return (this.finish = this.zoneFinish(best));
 		if (qualifies && (best === null || d < this.bestD)) {
@@ -344,6 +358,7 @@ export class RaceFinishDetector {
 		const p = this.pending;
 		if (this.state !== 'pending' || p === null) return;
 		if (coveredM >= p.coveredM + RACE_START_COMMIT_M) {
+			if (this.committed !== null) this.lapM = null;
 			this.committed = lineStart(p);
 			this.pending = null;
 			this.state = 'committed';
@@ -351,11 +366,18 @@ export class RaceFinishDetector {
 	}
 
 	private onStartCrossing(x: GateCrossing): void {
+		this.advanceCommit(x.coveredM);
 		if (this.mode === 'selfTimed') {
-			this.lastForward = x.direction === 'forward' ? x : null;
+			if (x.direction === 'forward') {
+				if (this.state === 'committed') return;
+				this.pending = x;
+				this.state = 'pending';
+			} else {
+				this.pending = null;
+				this.state = 'seeking';
+			}
 			return;
 		}
-		this.advanceCommit(x.coveredM);
 		if (this.state !== 'seeking' && this.state !== 'pending') return;
 		if (x.direction === 'forward') {
 			this.pending = x;
@@ -368,11 +390,14 @@ export class RaceFinishDetector {
 
 	private onFinishCrossing(x: GateCrossing): void {
 		if (x.direction !== 'forward') return;
-		if (this.mode === 'gun') this.advanceCommit(x.coveredM);
+		this.advanceCommit(x.coveredM);
 		const base = this.base(x.tMs);
 		if (base === null) return;
 		const share = base.start !== null ? RACE_FINISH_MIN_COVERAGE_WITH_START : RACE_FINISH_MIN_COVERAGE;
-		if (!this.covers(base.fromM, x.coveredM, share)) return;
+		if (!this.covers(base.fromM, x.coveredM, share)) {
+			this.measureLap(base, x.coveredM);
+			return;
+		}
 		this.finish = {
 			atMs: Math.round(x.tMs),
 			distanceToFinishM: Math.abs(x.offsetM),
@@ -415,8 +440,8 @@ export class RaceFinishDetector {
 	/** Where coverage counts from at tMs, and its start; null when no finish can count then. */
 	private base(tMs: number): CoverageBase | null {
 		if (this.mode === 'selfTimed') {
-			const lf = this.lastForward;
-			return lf === null ? null : { fromM: lf.coveredM, start: lineStart(lf) };
+			const c = this.committed;
+			return c === null ? null : { fromM: c.coveredM, start: c };
 		}
 		const go = this.goMs;
 		if (go !== null && tMs < go) return null;
@@ -429,10 +454,34 @@ export class RaceFinishDetector {
 		return null;
 	}
 
-	private covers(fromM: number, coveredM: number, share: number): boolean {
+	/**
+	 * On a course whose start and finish lines coincide, a forward finish
+	 * crossing that did not count, from a committed start, is the course
+	 * passing its finish a lap in. With no lap minimum frozen, the first such
+	 * pass sets one, half a lap short of the course. Lines apart measure
+	 * nothing: a finish line just past the start is not a lap.
+	 */
+	private measureLap(base: CoverageBase, coveredM: number): void {
+		if (!this.linesCoincide || this.minCoverageM !== null || this.lapM !== null || base.start === null) {
+			return;
+		}
+		const lap = coveredM - base.fromM;
+		if (lap >= RACE_START_COMMIT_M) this.lapM = lap;
+	}
+
+	/** Covered distance from the base a finish needs at share; null when nothing can gate. */
+	private required(share: number): number | null {
 		const d = this.courseDistanceM;
-		if (!Number.isFinite(d) || d <= 0) return true;
-		return coveredM - fromM >= d * share;
+		const known = Number.isFinite(d) && d > 0;
+		let floor = this.minCoverageM;
+		if (floor === null && known && this.lapM !== null) floor = d - this.lapM / 2;
+		if (!known) return floor;
+		return floor === null ? d * share : Math.max(d * share, floor);
+	}
+
+	private covers(fromM: number, coveredM: number, share: number): boolean {
+		const need = this.required(share);
+		return need === null || coveredM - fromM >= need;
 	}
 
 	private zoneFinish(best: RaceFix): RaceFinish {

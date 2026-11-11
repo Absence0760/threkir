@@ -9,14 +9,12 @@ import {
   chronoTrackResultsUrl,
   extractChronoTrackResults,
   extractRunSignUpResults,
-  extractUltraSignUpPeople,
   filterResultsByBib,
   finishFacts,
   isSameFinish,
   mapChronoTrackResult,
   mapRaceResult,
   mapRunSignUpResult,
-  mapUltraSignUpResult,
   type MappedRaceRun,
   matchResultGate,
   MAX_FIELD_LEN,
@@ -32,17 +30,6 @@ import {
   runSignUpResultsUrl,
   chronoTrackScopeGate,
   runSignUpScopeGate,
-  MAX_ULTRASIGNUP_CANDIDATES,
-  parseUltraSignUpDate,
-  ULTRASIGNUP_NAME_MAX_LEN,
-  ultraSignUpCandidates,
-  ultraSignUpEnabled,
-  ultraSignUpHistoryUrl,
-  ultraSignUpNamePart,
-  ultraSignUpNumericId,
-  ultraSignUpScopeGate,
-  ultraSignUpProbe,
-  ultraSignUpResultIsForListing,
 } from './lib.ts';
 import { isIsoCalendarDate } from '../_shared/calendar_date.ts';
 import { SYNTHETIC_START_TIME_UTC } from '../_shared/synthetic_start_time.ts';
@@ -178,10 +165,6 @@ Deno.test('mapRaceResult returns null when the listing has no distance', () => {
   assertEquals(mapRaceResult({ chip_time: '20:00' }, { ...OPTS, distanceM: 0 }), null);
   // Other providers + the paste path delegate here, so they inherit the guard.
   assertEquals(parseRaceResultRow({ chip_time: '20:00' }, { ...OPTS, distanceM: null }), null);
-  assertEquals(
-    mapUltraSignUpResult({ status: 1, formattime: '20:00' }, { ...OPTS, distanceM: null }),
-    null,
-  );
 });
 
 Deno.test('parseRaceResultRow maps a pasted result with the same shape/id', () => {
@@ -318,189 +301,6 @@ Deno.test('runSignUpAgeGroup takes the one placed division with an age in its na
   assertEquals(runSignUpAgeGroup(row({ 'division-2-placement': null })), null);
 });
 
-// ── UltraSignup ──────────────────────────────────────────────────────────────
-//
-// Attribution against a whole historybyname payload lives in
-// `ultrasignup_attribution.test.ts`; these pin the pieces.
-
-const ULTRA_OPTS = {
-  userId: 'u-1',
-  listingId: 'L-9',
-  raceName: 'Example Peaks 100 Mile',
-  raceDate: '2025-06-20',
-  distanceM: 160934,
-  isPublic: false,
-};
-
-Deno.test('mapUltraSignUpResult maps a finished result onto a race run', () => {
-  const run = mapUltraSignUpResult(
-    { status: 1, formattime: '28:40:15', time: '28:40:15', place: 87 },
-    ULTRA_OPTS,
-  );
-  assert(run !== null);
-  assertEquals(run!.source, 'race');
-  assertEquals(run!.distance_m, 160934);
-  assertEquals(run!.duration_s, 28 * 3600 + 40 * 60 + 15);
-  assertEquals(run!.started_at, '2025-06-20T10:00:00Z');
-  assertEquals(run!.metadata.chip_time, '28:40:15');
-  assertEquals(run!.metadata.overall_place, 87);
-  // UltraSignup publishes no bib, and the mapper does not invent one.
-  assertEquals(run!.metadata.bib, undefined);
-  assertEquals(run!.external_id, 'race:Example Peaks 100 Mile:2025-06-20::c103215p87');
-});
-
-Deno.test('mapUltraSignUpResult falls back to the unformatted time', () => {
-  const run = mapUltraSignUpResult({ status: 1, time: '5:01:44' }, ULTRA_OPTS);
-  assertEquals(run?.duration_s, 5 * 3600 + 1 * 60 + 44);
-});
-
-Deno.test('mapUltraSignUpResult drops every non-finish status', () => {
-  // 2 DNF, 3 DNS, 5 DQ, and the rest — a time is no proof of a finish.
-  for (const status of [-1, 0, 2, 3, 4, 5, 6, undefined, 'x']) {
-    assertEquals(mapUltraSignUpResult({ status, formattime: '4:00:00' }, ULTRA_OPTS), null);
-  }
-  assertEquals(mapUltraSignUpResult({ status: 2, formattime: '0', time: '0' }, ULTRA_OPTS), null);
-  // The feed's number may arrive as a string; it is the same finish.
-  assert(mapUltraSignUpResult({ status: '1', formattime: '4:00:00' }, ULTRA_OPTS) !== null);
-});
-
-Deno.test('mapUltraSignUpResult dedups with a bib-less paste of the same race', () => {
-  const ultra = mapUltraSignUpResult({ status: 1, formattime: '4:32:10' }, ULTRA_OPTS);
-  const paste = parseRaceResultRow({ chip_time: '4:32:10' }, ULTRA_OPTS);
-  assertEquals(ultra!.external_id, paste!.external_id);
-});
-
-Deno.test('parseUltraSignUpDate reads the feed\'s US date with its midnight clock', () => {
-  assertEquals(parseUltraSignUpDate('9/25/2025 12:00:00 AM'), '2025-09-25');
-  assertEquals(parseUltraSignUpDate('12/1/2024'), '2024-12-01');
-  assertEquals(parseUltraSignUpDate('2/30/2025 12:00:00 AM'), null);
-  assertEquals(parseUltraSignUpDate('2025-09-25'), null);
-  assertEquals(parseUltraSignUpDate(null), null);
-});
-
-Deno.test('ultraSignUpNumericId canonicalises an id and refuses anything else', () => {
-  assertEquals(ultraSignUpNumericId(138805), '138805');
-  assertEquals(ultraSignUpNumericId(' 0138805 '), '138805');
-  assertEquals(ultraSignUpNumericId(0), null);
-  assertEquals(ultraSignUpNumericId('0'), null);
-  assertEquals(ultraSignUpNumericId(-4), null);
-  assertEquals(ultraSignUpNumericId(1.5), null);
-  assertEquals(ultraSignUpNumericId('12a'), null);
-  assertEquals(ultraSignUpNumericId('1234567890123'), null);
-  assertEquals(ultraSignUpNumericId(null), null);
-});
-
-Deno.test('ultraSignUpNamePart takes real names and nothing a URL could misread', () => {
-  assertEquals(ultraSignUpNamePart('  Mary   Ann '), 'Mary Ann');
-  assertEquals(ultraSignUpNamePart("O'Brien"), "O'Brien");
-  assertEquals(ultraSignUpNamePart('Jean-Luc'), 'Jean-Luc');
-  assertEquals(ultraSignUpNamePart('Zoë'), 'Zoë');
-  assertEquals(ultraSignUpNamePart('St. John'), 'St. John');
-  assertEquals(ultraSignUpNamePart('山田'), '山田');
-  for (const bad of ['', '   ', '..', '.', 'a/b', 'a?b', 'a#b', 'a%2F', '-x', 'x1', 7, null]) {
-    assertEquals(ultraSignUpNamePart(bad), null, `accepted ${String(bad)}`);
-  }
-  assertEquals(ultraSignUpNamePart('a'.repeat(ULTRASIGNUP_NAME_MAX_LEN))?.length, ULTRASIGNUP_NAME_MAX_LEN);
-  assertEquals(ultraSignUpNamePart('a'.repeat(ULTRASIGNUP_NAME_MAX_LEN + 1)), null);
-});
-
-Deno.test('ultraSignUpHistoryUrl puts each name in one encoded path segment', () => {
-  assertEquals(
-    ultraSignUpHistoryUrl('Mary Ann', 'Zoë'),
-    'https://ultrasignup.com/service/events.svc/historybyname/Mary%20Ann/Zo%C3%AB/',
-  );
-});
-
-Deno.test('ultraSignUpResultIsForListing needs the race id AND the date', () => {
-  const r = { event_distance_id: 500101, eventdate: '6/20/2025 12:00:00 AM' };
-  const listing = { providerRaceId: '500101', raceDate: '2025-06-20' };
-  assertEquals(ultraSignUpResultIsForListing(r, listing), true);
-  assertEquals(ultraSignUpResultIsForListing(r, { ...listing, providerRaceId: '500102' }), false);
-  assertEquals(ultraSignUpResultIsForListing(r, { ...listing, raceDate: '2025-06-21' }), false);
-  assertEquals(ultraSignUpResultIsForListing(r, { ...listing, providerRaceId: '' }), false);
-  assertEquals(ultraSignUpResultIsForListing({ ...r, event_distance_id: null }, listing), false);
-  assertEquals(ultraSignUpResultIsForListing({ ...r, eventdate: 'soon' }, listing), false);
-});
-
-Deno.test('extractUltraSignUpPeople reads a bare array of people and nothing else', () => {
-  assertEquals(extractUltraSignUpPeople([{ Id: 1 }, null, 'x', [], { Id: 2 }]).length, 2);
-  assertEquals(extractUltraSignUpPeople({ results: [{ Id: 1 }] }).length, 0);
-  assertEquals(extractUltraSignUpPeople(null).length, 0);
-  const big = Array.from({ length: MAX_RESULTS_ROWS + 5 }, (_, i) => ({ Id: i + 1 }));
-  assertEquals(extractUltraSignUpPeople(big).length, MAX_RESULTS_ROWS);
-});
-
-Deno.test('ultraSignUpCandidates gives the picker enough to tell namesakes apart', () => {
-  const out = ultraSignUpCandidates([
-    {
-      Id: 900001,
-      FirstName: 'Alex',
-      LastName: 'Sample',
-      Age: 41,
-      Results: [
-        { eventname: 'Old Race', eventdate: '3/2/2024 12:00:00 AM' },
-        { eventname: 'Newest Race', eventdate: '6/20/2025 12:00:00 AM' },
-        { eventname: 'Middle Race', eventdate: '4/12/2025 12:00:00 AM' },
-      ],
-    },
-    { Id: 0, FirstName: 'Alex', LastName: 'Sample', Results: [] }, // no usable id
-    { Id: 900002, FirstName: 'Alex', LastName: 'Sample', Age: 0, Results: 'nope' },
-  ]);
-  assertEquals(out.length, 2);
-  assertEquals(out[0], {
-    id: '900001',
-    firstName: 'Alex',
-    lastName: 'Sample',
-    age: 41,
-    resultCount: 3,
-    recentEvents: [
-      { name: 'Newest Race', date: '2025-06-20' },
-      { name: 'Middle Race', date: '2025-04-12' },
-    ],
-  });
-  // Age 0 is the feed's "unknown", not a newborn.
-  assertEquals(out[1].age, null);
-  assertEquals(out[1].resultCount, 0);
-  const many = Array.from({ length: MAX_ULTRASIGNUP_CANDIDATES + 3 }, (_, i) => ({ Id: i + 1 }));
-  assertEquals(ultraSignUpCandidates(many).length, MAX_ULTRASIGNUP_CANDIDATES);
-});
-
-Deno.test('ultraSignUpScopeGate needs the id and both halves of the name', () => {
-  const refused = { ok: false, status: 400, error: 'ultrasignup_person_required' } as const;
-  assertEquals(ultraSignUpScopeGate({}), refused);
-  assertEquals(ultraSignUpScopeGate({ personId: '900001', firstName: 'Alex' }), refused);
-  assertEquals(ultraSignUpScopeGate({ firstName: 'Alex', lastName: 'Sample' }), refused);
-  // The old athlete-id shape is not a person.
-  assertEquals(ultraSignUpScopeGate({ personId: 'uid-42', firstName: 'A', lastName: 'B' }), refused);
-  assertEquals(
-    ultraSignUpScopeGate({ personId: 900001, firstName: ' Alex ', lastName: 'Sample' }),
-    { ok: true, personId: '900001', firstName: 'Alex', lastName: 'Sample' },
-  );
-});
-
-Deno.test('ultraSignUpEnabled is off unless the deployment says exactly true', () => {
-  assertEquals(ultraSignUpEnabled(() => undefined), false);
-  assertEquals(ultraSignUpEnabled(() => '1'), false);
-  assertEquals(ultraSignUpEnabled(() => 'TRUE'), false);
-  assertEquals(ultraSignUpEnabled((n) => (n === 'ULTRASIGNUP_RESULTS_ENABLED' ? 'true' : undefined)), true);
-});
-
-Deno.test('ultraSignUpProbe keeps a client without the person flow dark', () => {
-  const on = (n: string) => (n === 'ULTRASIGNUP_RESULTS_ENABLED' ? 'true' : undefined);
-  assertEquals(ultraSignUpProbe(on, undefined), {
-    ok: false,
-    status: 503,
-    error: 'provider_not_configured',
-    reason: 'client_unsupported',
-  });
-  assertEquals(ultraSignUpProbe(() => undefined, 'person'), {
-    ok: false,
-    status: 503,
-    error: 'provider_not_configured',
-  });
-  assertEquals(ultraSignUpProbe(on, 'person').ok, true);
-});
-
 Deno.test('chronoTrackConfigured fails closed unless all three creds are set', () => {
   const full: Record<string, string> = {
     CHRONOTRACK_CLIENT_ID: 'cid',
@@ -587,10 +387,8 @@ Deno.test('extractChronoTrackResults reads event_results + tolerates results + c
 
 // ──────────────────────────────────────────────────────────────────
 // Synthetic started_at — a race feed carries a date with no start
-// clock, so the mapper appends the shared 10:00 UTC time-of-day. Same
-// choice + rationale as parkrun-import's parseParkrunDate (persona-hunt
-// finding Pro #5), extracted into `SYNTHETIC_START_TIME_UTC` so the two
-// importers can't silently diverge. Mirrors parkrun-import/lib.test.ts.
+// clock, so the mapper appends the shared 10:00 UTC time-of-day
+// (`SYNTHETIC_START_TIME_UTC`, persona-hunt finding Pro #5).
 
 function localDateAt(stampIso: string, offsetHours: number): string {
   const stampMs = Date.parse(stampIso);
@@ -623,7 +421,7 @@ Deno.test('started_at local calendar date is preserved at UTC+13 (NZ NZDT)', () 
 Deno.test('started_at known limit at UTC+14 (Samoa DST)', () => {
   // No single UTC hour can satisfy every offset in the 26-hour
   // worldwide range. Samoa during DST (UTC+14) is the documented known
-  // exception — same acceptable trade as parkrun-import. Pinning the
+  // exception. Pinning the
   // actual behaviour so a future "improve this" attempt has a baseline.
   const run = mapRaceResult({ bib: '1', chip_time: '1:00:00' }, OPTS);
   assertEquals(localDateAt(run!.started_at, 14), '2025-09-22');

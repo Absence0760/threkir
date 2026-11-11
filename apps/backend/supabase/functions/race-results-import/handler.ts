@@ -15,7 +15,6 @@ import {
   chronoTrackScopeGate,
   extractChronoTrackResults,
   extractRunSignUpResults,
-  extractUltraSignUpPeople,
   filterResultsByBib,
   mapChronoTrackResult,
   mapRunSignUpResult,
@@ -28,26 +27,14 @@ import {
   runSignUpRaceUrl,
   runSignUpResultsUrl,
   runSignUpScopeGate,
-  ultraSignUpCandidates,
-  ultraSignUpEnabled,
-  ultraSignUpHistoryUrl,
-  ultraSignUpImportRows,
-  ultraSignUpNamePart,
-  ultraSignUpProbe,
-  ultraSignUpScopeGate,
   type MappedRaceRun,
 } from './lib.ts';
 import { reconcileImportBatch } from '../_shared/external_id_batch.ts';
 import { isUpstreamTimeout, UPSTREAM_TIMEOUT_MS } from '../_shared/upstream_deadline.ts';
 
 interface RequestBody {
-  provider?: unknown; // 'runsignup' | 'ultrasignup' | 'chronotrack' | 'paste'
+  provider?: unknown; // 'runsignup' | 'chronotrack' | 'paste'
   listingId?: unknown; // race_listings.id to import onto / link
-  ultraSignUpPersonId?: unknown; // UltraSignup: the picked person's `Id`
-  ultraSignUpFirstName?: unknown; // UltraSignup: the name that person was found under
-  ultraSignUpLastName?: unknown;
-  ultraSignUpFlow?: unknown; // UltraSignup probe: 'person' from a client that speaks it
-  lookup?: unknown; // UltraSignup: list the people a name answers with, import nothing
   bib?: unknown; // RunSignUp / ChronoTrack: the runner's bib, the only scope either honours
   result?: unknown; // paste-mode single result row
   matchRunId?: unknown; // when set, enrich THIS existing run instead of inserting
@@ -72,7 +59,7 @@ export function makeRaceResultsImportHandler(
     const guarded = await readJsonWithLimit<RequestBody>(req, 8192);
     if ('tooLarge' in guarded) return guarded.tooLarge;
 
-    // Authenticate before parsing the body (parity with parkrun-import).
+    // Authenticate before parsing the body.
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
@@ -125,14 +112,13 @@ export function makeRaceResultsImportHandler(
     };
     const provider = typeof body.provider === 'string' ? body.provider : '';
     const isProbe = body.probe === true;
-    const isLookup = !isProbe && provider === 'ultrasignup' && body.lookup === true;
 
     // Separate buckets, because these are different costs wearing one name — the
     // split `race-listings-sync` already carries (decisions § 977).
     //
     // An IMPORT makes an outbound call carrying OUR RunSignUp / ChronoTrack
-    // credential (or, for UltraSignup, from OUR egress IP), whose budget is
-    // per-application and shared by the whole deployment, and then writes the caller's `runs`. 8/hour free is right
+    // credential, from OUR egress IP, whose budget is per-application and
+    // shared by the whole deployment, and then writes the caller's `runs`. 8/hour free is right
     // for that, and falling open on an RPC error would spend the credential on a
     // request whose insert is headed for the same database that just failed
     // (decisions § 974).
@@ -144,11 +130,6 @@ export function makeRaceResultsImportHandler(
     // exhausted bucket answers 429, which every client grades as "provider
     // unavailable", so the failure is silent and total rather than a limit the
     // runner can see. Its own generous bucket costs nothing.
-    //
-    // An UltraSignup LOOKUP is a third cost: one outbound call to a keyless feed
-    // on our egress IP, and no write. It gets a bucket of its own so finding
-    // yourself in Settings cannot spend the imports, while still bounding how
-    // hard one account can drive our IP at UltraSignup (decisions § 1841).
     const denied = isProbe
       ? await checkRateLimitTiered(
         supabase,
@@ -156,16 +137,6 @@ export function makeRaceResultsImportHandler(
         'race-results-import:probe',
         60,
         240,
-        3600,
-        { failClosed: true },
-      )
-      : isLookup
-      ? await checkRateLimitTiered(
-        supabase,
-        user.id,
-        'race-results-import:lookup',
-        20,
-        60,
         3600,
         { failClosed: true },
       )
@@ -185,43 +156,12 @@ export function makeRaceResultsImportHandler(
       if (provider === 'chronotrack' && !chronoTrackConfigured(deps.getEnv)) {
         return Response.json({ error: 'provider_not_configured' }, { status: 503 });
       }
-      // UltraSignup needs no key — its feed is keyless — so it answers on the
-      // deployment's opt-in, and on whether the CALLER speaks the person flow: a
-      // client that would send the old athlete id is told the leg is unavailable
-      // rather than shown a tile whose every import 400s (decisions § 1841).
-      if (provider === 'ultrasignup') {
-        const gate = ultraSignUpProbe(deps.getEnv, body.ultraSignUpFlow);
-        if (!gate.ok) {
-          return Response.json(
-            gate.reason ? { error: gate.error, reason: gate.reason } : { error: gate.error },
-            { status: gate.status },
-          );
-        }
-      }
-      if (!['runsignup', 'ultrasignup', 'chronotrack', 'paste'].includes(provider)) {
+      if (!['runsignup', 'chronotrack', 'paste'].includes(provider)) {
         // An unrecognised provider is not "configured" — answering true for it is
-        // the same class of bug as the two credential-gated legs above.
+        // the same class of bug as the credential-gated leg above.
         return Response.json({ error: 'unknown_provider' }, { status: 400 });
       }
       return Response.json({ configured: true });
-    }
-
-    // UltraSignup lookup: the people a name answers with, so the runner can pick
-    // themselves in Settings. Reads nothing of ours and writes nothing.
-    if (isLookup) {
-      if (!ultraSignUpEnabled(deps.getEnv)) {
-        return Response.json({ error: 'provider_not_configured' }, { status: 503 });
-      }
-      const firstName = ultraSignUpNamePart(body.ultraSignUpFirstName);
-      const lastName = ultraSignUpNamePart(body.ultraSignUpLastName);
-      if (!firstName || !lastName) {
-        return Response.json({ error: 'ultrasignup_name_required' }, { status: 400 });
-      }
-      const people = await readUpstream('ultrasignup', ultraSignUpHistoryUrl(firstName, lastName));
-      if ('failed' in people) return people.failed;
-      return Response.json({
-        candidates: ultraSignUpCandidates(extractUltraSignUpPeople(people.payload)),
-      });
     }
 
     const listingId = typeof body.listingId === 'string' ? body.listingId : '';
@@ -245,7 +185,7 @@ export function makeRaceResultsImportHandler(
       return Response.json({ error: 'race listing not found' }, { status: 404 });
     }
 
-    // Honour privacy_default (parity with parkrun / Strava / manual saves); any
+    // Honour privacy_default (parity with Strava / manual saves); any
     // read error falls closed to owner-only.
     const audience = await resolveImportAudience(supabase, user.id);
 
@@ -320,49 +260,6 @@ export function makeRaceResultsImportHandler(
         );
         if (mapped.length > 0) break;
       }
-    } else if (provider === 'ultrasignup') {
-      // Opt-in per deployment; the feed is keyless, so the switch is the gate.
-      if (!ultraSignUpEnabled(deps.getEnv)) {
-        return Response.json({ error: 'provider_not_configured' }, { status: 503 });
-      }
-      const providerRaceId = (listing.provider_race_id as string | null) ?? '';
-      if (!providerRaceId) {
-        return Response.json({ error: 'listing has no UltraSignup race id' }, { status: 400 });
-      }
-      // Scope BEFORE the fetch: the feed is keyed by name and answers with every
-      // same-named person, so without the picked `Id` there is no telling which
-      // of them is the caller (issue #360's failure mode, by name instead of by
-      // race).
-      const person = ultraSignUpScopeGate({
-        personId: body.ultraSignUpPersonId,
-        firstName: body.ultraSignUpFirstName,
-        lastName: body.ultraSignUpLastName,
-      });
-      if (!person.ok) {
-        return Response.json({ error: person.error }, { status: person.status });
-      }
-      const history = await readUpstream(
-        'ultrasignup',
-        ultraSignUpHistoryUrl(person.firstName, person.lastName),
-      );
-      if ('failed' in history) return history.failed;
-      const payload = history.payload;
-      // Attribution happens here and nowhere else: the runner's own results,
-      // and of those only the one whose `event_distance_id` and date are this
-      // listing's (decisions § 975, § 1841).
-      const rows = ultraSignUpImportRows(payload, {
-        ...mapOpts,
-        personId: person.personId,
-        providerRaceId,
-      });
-      if (!rows.personFound) {
-        // The stored person is not among the people that name answers with any
-        // more. Saying "no result for this race" would be false; the link needs
-        // redoing.
-        return Response.json({ error: 'ultrasignup_person_not_found' }, { status: 404 });
-      }
-      complete = !resultsPossiblyTruncated(rows.considered);
-      mapped = rows.mapped;
     } else if (provider === 'chronotrack') {
       // Fail closed when the ChronoTrack Live credentials are unconfigured. The
       // whole ChronoTrack leg is gated on its own CHRONOTRACK_* creds; until they
@@ -481,7 +378,7 @@ export function makeRaceResultsImportHandler(
 
     // Plain-insert path (no recorded counterpart). Dedupe per-user against
     // existing external_ids first — the runs.external_id index is a PER-USER
-    // PARTIAL unique, which PostgREST onConflict can't target (see parkrun).
+    // PARTIAL unique, which PostgREST onConflict can't target.
     const externalIds = mapped.map((r) => r.external_id);
     const { data: seenRows, error: seenErr } = await supabase
       .from('runs')

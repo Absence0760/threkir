@@ -1480,7 +1480,7 @@ class _CourseNotices extends StatelessWidget {
           children: [
             row(
               const Key('park-course-safety'),
-              Icons.health_and_safety_outlined,
+              Icons.health_and_safety,
               l10n.parksSafetyNotice,
               theme.textTheme.bodyMedium,
             ),

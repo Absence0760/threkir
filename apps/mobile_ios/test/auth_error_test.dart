@@ -283,7 +283,7 @@ void main() {
         const codes = [
           '23505', '42501', '42P01', '22P02', '57014', 'P0001', 'P0002', //
           'XX000', 'HV000', 'F0000', 'TR001', 'RR001', 'RR002', 'RW001', //
-          'PGRST116', 'PGRST301', 'PGRST303',
+          'PGRST116', 'PGRST301', 'PGRST303', 'PT429',
         ];
         for (final c in codes) {
           expect(isDatabaseCode(c), isTrue, reason: c);

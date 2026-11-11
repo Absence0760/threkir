@@ -11,13 +11,13 @@
 
 <div class="rest-grisnir" data-testid="rest-day-grisnir">
 	<picture>
-		<source type="image/webp" srcset="{ART}-192.webp 188w, {ART}-384.webp 368w" sizes="7.5rem" />
+		<source type="image/webp" srcset="{ART}-192.webp 184w, {ART}-384.webp 362w" sizes="7.5rem" />
 		<img
 			src="{ART}-192.png"
-			srcset="{ART}-192.png 188w, {ART}-384.png 368w"
+			srcset="{ART}-192.png 184w, {ART}-384.png 362w"
 			sizes="7.5rem"
-			width="188"
-			height="156"
+			width="184"
+			height="162"
 			alt=""
 			aria-hidden="true"
 			loading="lazy"

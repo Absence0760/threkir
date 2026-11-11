@@ -197,10 +197,15 @@
 							maxlength="100"
 							data-testid="inbox-search"
 						/>
+						<span class="visually-hidden" aria-live="polite" data-testid="inbox-search-status"
+							>{searchActive && !searching && !searchError && searchHits.length === 0
+								? m('messages.searchEmpty')
+								: ''}</span
+						>
 					</div>
 				{/if}
 				{#if searchActive && !showingArchived && !showingRequests}
-					<div class="search-results" aria-live="polite" data-testid="inbox-search-results">
+					<div class="search-results" data-testid="inbox-search-results">
 						{#if searchError}
 							<p class="muted empty" role="alert">{m('messages.searchFailed')}</p>
 						{:else if searching && searchHits.length === 0}
@@ -379,7 +384,7 @@
 		font: inherit;
 		padding: 0.45rem 0;
 	}
-	.search input:focus {
+	.search input:focus-visible {
 		outline: none;
 	}
 	.search:focus-within {

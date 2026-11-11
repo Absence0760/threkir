@@ -1062,6 +1062,11 @@ export const PAIRS = [
 		clients: [{ file: DATA_TS, decl: 'ParkCourseStatusAction', shape: 'union' }],
 	},
 	{
+		tableColumn: 'park_course_status_actions.status_before',
+		clients: [],
+		note: 'admin_set_park_course_status copies park_courses.status into it (migration 20271215000001); the web history reads it as a string and no client names a value.',
+	},
+	{
 		// `pending` is the insert default every report starts at, and the
 		// moderation queue only ever writes a RESOLUTION — so the vocabulary is
 		// named for the half it can write rather than widened to a value the

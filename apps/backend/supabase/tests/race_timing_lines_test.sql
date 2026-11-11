@@ -19,7 +19,7 @@
 --   16-18. The detection CHECKs, and finish_detection only beside 'auto'.
 
 begin;
-select plan(18);
+select plan(20);
 
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
 values
@@ -269,6 +269,20 @@ select throws_ok(
       where user_id = 'e7307000-0000-0000-0000-000000000004' $$,
   '23514', null,
   'finish_detection is set only beside an automatic finish'
+);
+
+-- ── 19-20: the clock offset is bounded at 400 days either way ───────────────
+select throws_ok(
+  $$ update event_results set clock_offset_ms = -34560000001
+      where user_id = 'e7307000-0000-0000-0000-000000000002' $$,
+  '23514', null,
+  'a clock offset past 400 days is refused'
+);
+
+select lives_ok(
+  $$ update event_results set clock_offset_ms = -34560000000
+      where user_id = 'e7307000-0000-0000-0000-000000000002' $$,
+  'a clock offset of exactly 400 days is kept'
 );
 
 select * from finish();

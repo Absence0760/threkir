@@ -275,7 +275,7 @@
 	}
 	.meta li + li::before {
 		content: '·';
-		margin-right: var(--space-sm);
+		margin-inline-end: var(--space-sm);
 		color: var(--color-text-tertiary);
 	}
 	.meta .material-symbols {

@@ -601,7 +601,7 @@ The centre button's long-press start-options sheet (decisions § 1892, § 1897):
 
 The minimum-data account on every mobile surface that derives a number from a run (issue #1161 round 3): run detail, a history row, the history list sorted fastest-first, and Home's card stack, each fed a 10 s / 3 m run over a two-point, one-point or empty track, a 0 m run with a one-point or empty track, and a 0 s / 0 m run, in km and in mi, as a run and as a ride, and on Home under a weekly goal on every target, once for every fixture and once for a week of only 0 m runs. Each case asserts no exception, the honest missing-value spelling (`--:--` for a pace, `--` for a speed), and a clean text sweep. The sweep is `test/rendered_text_sweep.dart`: it collects every `RichText`, `EditableText`, `Semantics` label and `Tooltip` message, offstage included, and fails on `NaN`, `Infinity`, `∞` or a negative zero (`-0`, `-0.00`, `-0:00`, U+2212 too) while letting a date, `UTC-0`, `-0.05` and a `-0:30` delta through; the suite's first two tests pin that pattern so a sweep that matches nothing cannot pass silently. The surfaces are pumped on a 400 × 9000 surface so every lazily-built list child is laid out and swept. Nine declarations, 41 cases once the fixture loops expand.
 
-### `apps/mobile_ios/test/` — 876 files, byte-for-byte
+### `apps/mobile_ios/test/` — 877 files, byte-for-byte
 
 After the April 2026 mobile-codebase unification, `apps/mobile_ios/test/` is kept identical to `apps/mobile_android/test/` via `diff -rq`. Every test file documented above runs on the iOS target too **locally** — `melos run test` has no scope filter — but **not in CI**: the `test-packages` job scopes `melos exec` to `run_recorder`, `mobile_android`, `api_client`, `gpx_parser`, `ui_kit` and `core_models`, and `mobile_ios` is not among them. That is not a gap for byte-identical Dart, but it is why a test gated on an `ios/` file being present asserts nothing on any CI run — two such groups existed and were removed in favour of `scripts/check_ios_native_declarations.mjs` (decisions.md § 742). Per-target counts: `flutter test` compiles separately, so each test file is executed twice when you run both apps locally. Don't add iOS-specific test files — every test belongs in both apps. The architecture-guard tests under `apps/mobile_android/test/architecture_guards_test.dart` read `lib/screens/run_screen.dart` from the working directory, so they pin the same invariants on both targets.
 
@@ -1078,9 +1078,11 @@ The notification → deep-link routing (was 13). Two cases from [decisions § 23
 
 The chunked following-feed reads (was 12). Three added cases: `FEED_FOLLOWEE_CHUNK` and `packages/api_client/lib/src/chunk.dart`'s `kInFilterChunk` each name the other as a mirror in their own docs and nothing compared them — the pair is in neither the parity-pair registry nor `check_shared_constants.mjs`, so bumping one alone is a silent split and the platform that went too high loses whole reads on a gateway that answers 200 with an empty match ([decisions § 653](../architecture/decisions.md)). Plus the negative-limit clamp (`slice(0, -1)` drops the last row and returns the rest) and the documented later-chunk-wins fold, which every other case cannot see because it merges disjoint ids.
 
-### `apps/web/src/lib/track_preview_mount_guard.test.ts` — 8 tests · `live_region_mount_guard.test.ts` — 3 tests
+### `apps/web/src/lib/track_preview_mount_guard.test.ts` — 9 tests · `live_region_mount_guard.test.ts` — 3 tests
 
 Both gained a non-vacuity control (was 5 and 2). Each guard reports an empty offender list when it works AND when it sees nothing at all, and only the matcher half had fixtures: a walk that reaches no file, an `aria-live` filter that stops matching the app's own markup, or a `<TrackPreview` matcher that stops seeing a mount each turns the guard into a green check over an unscanned tree ([§ 762](../architecture/decisions.md)'s rule, applied to two guards that predate it). The `TrackPreview` control is a POSITIVE one taken off the real permitted wrappers rather than a fixture, so it cannot drift away from what it checks.
+
+The ninth holds the official park-course catalogue mount (`routes/parks/[region]/[park]/+page.svelte`, the `CATALOGUE_MOUNTS` register): it must import its courses through `fetchParkCourses` by name and must not reach a runner's run or route read, since its geometry is published catalogue lines with no owner to clip for.
 
 ### `apps/web/src/lib/static_map_image_guard.test.ts` — 5 tests
 
@@ -1223,6 +1225,10 @@ The guard reads 24 firmware symbols out of the Rust that declares them and holds
 ### `scripts/check_conflict_markers.test.mjs` — 8 tests
 
 Three diff3 `|||||||` base markers sat in `docs/architecture/decisions.md` on `main`, left by squash merges that deleted the other three markers of a conflict and kept both sides; in rendered markdown each is a paragraph of pipes, so nothing read them as leftovers. `scripts/check_conflict_markers.mjs` fails on any tracked text file carrying a line git writes as a conflict marker, and the suite pins what that means: all four markers with and without a label, the lone base marker that actually reached `main`, CRLF endings, the look-alikes that are not markers (indented, eight characters, mid-line, a GFM table row, a blockquote), git's NUL-in-8-KiB binary heuristic, and — in a throwaway `git init` under `os.tmpdir()` — a planted marker named by file and line, with untracked, binary and symlinked files not read. The last case runs the real tree, and failed on it before the three lines were deleted. Run as its own step of the ungated `parity-matrix` job with its own `::error::`, per [decisions § 764](../architecture/decisions.md).
+
+### `scripts/check_dependency_advisories.test.mjs` — 30 tests (new)
+
+The PR dependency gate ([decisions § 2457](../architecture/decisions.md), issue #1366) fails a merge on its own arithmetic, so the arithmetic is pinned: CVSS v3.1 base scores against ten published vectors, the spec's `Roundup`, and every non-v3 string (v4, v2, a missing scope, an unknown value, a duplicate metric) scoring null rather than a guess. The severity rule is pinned branch by branch: v3 scored here, v4 taken from osv-scanner's `max_severity` with the higher of the two winning, the GHSA label as the fallback, an unscored advisory never blocking, and 7.0 inclusive. The diff is pinned on aliased groups, a version bump, and the same advisory in two lockfiles. Both committed `osv-scanner.toml` files are parsed for real. An expired ignore fails only a PR that changes a lockfile in its own directory, a waiver missing its date or reason fails only the PR that edits it, and expiry starts on the `ignoreUntil` day itself. The outage path runs against a fake scanner that exits 127 while still writing a clean report, which is what a missing osv-scanner 2.7.0 database does: one retry, then failure, while unreadable JSON fails and exit 128 with no report is an empty tree. `run()` goes end to end in a throwaway two-commit repository, covering a 9.8 introduced, an advisory already at the base, a docs-only PR that never invokes the scanner during an outage, a base-tree outage with its re-run error, report mode, an unmatched scanned file, and an expired ignore beside a changed lockfile. The last case fails when `ci.yml` and `supply-chain-scan.yml` pin different osv-scanner releases. Run as the unit-test step of the `dependency-advisories` job with its own `::error::`.
 
 ### `scripts/check_terraform_lock_platforms.test.mjs` — 7 tests (new)
 
@@ -1374,7 +1380,7 @@ Pins migration `20271111000001` (decisions § 2353, issue #1300 BUG-015). An org
 
 Pins migration `20271112000001` (decisions § 2356, issue #1300 BUG-005). `private.is_event_visible_to` agrees with the events SELECT policy, evaluated as each of five viewers (owner, active member, pending, stranger, private-club member) over public / private / shadow-hidden clubs and public / members-only events, the matrix holds both outcomes, and a shadow-hidden club's public event is seen by its owner and members only. Rejecting a pending request leaves its RSVPs. The owner removing an active member from their own session drops the member's upcoming members-only RSVP and waitlist entry and promotes the next waitlister into the capped seat, while a past occurrence's RSVP and a public event in a public club stay. A member holding a paid seat keeps it and the order is untouched, and a member with a checkout still in flight keeps their waitlist row. A member leaving a private club on their own loses the RSVP to its public event; a status change out of `active` is an exit too, and a role change is not. Neither function is executable by clients, and a club delete cascading through its members still succeeds. Removing the two triggers fails five of the assertions.
 
-### `apps/backend/supabase/functions/**/*.test.ts` — 1585 deno tests across 120 files
+### `apps/backend/supabase/functions/**/*.test.ts` — 1587 deno tests across 121 files
 
 Run the pure-helper slices with `cd apps/backend && deno test --no-check supabase/functions/_shared/*.test.ts` plus the per-function `lib.test.ts` / `wiring.test.ts` / `handler.test.ts` files (`auth-email`, `delete-account`, `donations-checkout`, `events-cancel`, `events-checkout`, `events-connect-onboard`, `events-refund-sweep`, `export-data`, `parkrun-import`, `race-results-import`, `refresh-tokens`, `revenuecat-webhook`, `strava-clubs`, `strava-import`, `strava-webhook`, `stripe-events-webhook`); the network-touching ones (e.g. `_shared/handler_envelope.test.ts`) need `SUPABASE_TEST_URL=http://127.0.0.1:24321 supabase functions serve --env-file .env.local` and the `--allow-net --allow-env` flags. The `edge-functions` CI job runs all of them on every PR.
 
@@ -1426,7 +1432,7 @@ The happy-path 200s with valid HMAC / freshness / dedupe still need real secrets
 
 The runtime half of the guard `build-web` runs over the build output (`scripts/check_web_removed_kit_apis.mjs`). web@1.12.0 resolved @sentry/sveltekit's Svelte 4 tracing variant, which subscribes to `$app/stores` — a stub that throws on Kit 3 — and `hooks.client.ts` runs `Sentry.init` only when `!dev && PUBLIC_SENTRY_DSN && hasAcceptedConsent()`, so every reader who accepted error reporting got a blank page while every `vite dev` lane stayed green ([decisions § 1896](../architecture/decisions.md)). Runs under `playwright.built.config.ts`: a production build with a dummy DSN, served as CloudFront serves it by `tests-e2e/scripts/serve-build.mjs`. One case seeds consent the way `consent.set('accepted')` stores it and loads `/` (prerendered — the uncaught-error check is what fails there), `/help` and `/login` (the SPA shell — a throw leaves them blank); the other accepts through the banner itself, which reloads the page, and asserts it still renders. Both require a `*.sentry.io` request to have been answered, so neither can pass without `Sentry.init` having run. Against the pre-fix `vite.config.ts` (no `sentrySvelteKit()` plugin) both fail on the `app_stores_removed` page error.
 
-### `apps/web/tests-e2e/**/*.spec.ts` — 2,592 declared tests across 683 spec files (Playwright suite)
+### `apps/web/tests-e2e/**/*.spec.ts` — 2,593 declared tests across 684 spec files (Playwright suite)
 
 End-to-end browser tests that drive the real SvelteKit app against a real local Supabase. Unit tests pin pure helpers and SQL pins RLS at the database; this suite catches the next failure mode — **a UI fetch path that bypasses or misuses an otherwise-correct policy** (a wrong join, a dropped filter, a client-side lookup that trusts the URL, an optimistic update that never round-trips). Browser-only on purpose — mobile / watch don't have an equivalent harness (Flutter `integration_test` is too slow + flaky on CI to be worth the cycles right now).
 
@@ -3005,3 +3011,31 @@ The phone's course map draws the start and the finish line with its arrow, and t
 ### `apps/web/tests-e2e/clubs/event-course-lines.spec.ts` — 3 tests
 
 Through the numeric inputs: place, turn and remove a line on a routeless course (Place opens empty inputs rather than writing a line at the unframed map's 0,0, and a width box cleared before the turn keeps its width, #1358); a line turned against the route warned about and Reset to route restoring it; and Arm opening the preflight dialog for a course with no finish, Arm anyway arming the race and freezing its course.
+
+## A run over a real park course reaches its board (#1342 step 5c, 2026-11-10)
+
+The automated net that replaces the hand test "record a run over one course and check it reaches the board". One shared case table, `fixtures/park_course_runs.json`, generated by `apps/web/src/lib/parks/course_run_fixture.ts` through `pnpm gen:park-course-runs`: seeded 1 Hz runs with about 5 m RMS of correlated GPS error over the six committed Pocahontas course lines, each starting with a minute in the lot and ending with a walk off. See [park_courses.md § Tests](../features/park_courses.md#tests).
+
+### `apps/web/src/lib/parks/course_run_fixture.test.ts` — 7 tests
+
+The committed fixture and the generated block of `park_course_boards_test.sql` are current; a seed makes the same run every time; clean runs are 1 Hz with 3 to 8 m RMS error; the canopy stretch thins fixes to one every 8 s over checkpoint 2 with more error; every run starts in the lot and ends past the finish; the three-lap and two-pass runs are what they say; each refusal case misses exactly what its name says (the shortcut 60 m or more from checkpoint 2 and inside the length guard, the wrong way through every checkpoint in reverse, stopping 150 m short, the nearby run never within reach of a line).
+
+### `apps/web/src/lib/parks/park_course_runs.test.ts` — 7 tests
+
+The TS reader of the fixture: one test per case (a clean run of each course within tolerance of its true elapsed time, the stop and sparse fixes, the shortcut, the wrong way, stopping short, passing nearby, three laps, two 5K passes either way round, one lap of each two-lap course), each scored against all six courses and checked against what the case is for and against the recorded result on every course. Plus: the shortcut is refused by checkpoint 2 alone, the wrong way by the lines alone, one lap of the 10K is a 5K and of the marathon a half, and the three-lap run is timed on lap 3. One `todo`: decisions § 2402's same-line loop rule is GPS-noise dependent (lap 2 is the time in 2 of 60 seeds), pending the owner's call.
+
+### `apps/mobile_android/test/park_course_runs_test.dart` — 3 tests
+
+The Dart half of the table above (`segments` pair): every case to the millisecond of the web result, every course timed by some run, and the shortcut timed once its checkpoints are dropped.
+
+### `apps/backend/supabase/functions/segment-match/park_course_runs.test.ts` — 2 tests
+
+`scoreRun` over every fixture run with a fake client: the gzipped track, the six courses as `global_segments_in_bbox` rows with their lines, their checkpoints; the candidates, the extent and the efforts it sends `record_segment_match` are exactly the web matcher's.
+
+### `apps/backend/supabase/tests/park_course_boards_test.sql` — 33 tests
+
+The real catalogue loaded through `private.load_park_catalogue`, the database's lines checked against the fixture's, then runs landed as a phone sync lands them (a `segment_match` job queued) and recorded with the matcher's efforts. Reads back the season board, most completions, `park_course_records()` and `run_park_course_times`; a refused shortcut and wrong way earn nothing; one lap of the 10K is a 5K; a private run stays off another reader's board; 23:30 on 31 December in New York is that year's; a closed course still times and ranks a run (pinned as it is, an owner question).
+
+### `apps/web/tests-e2e/parks/park-course-real-run.spec.ts` — 1 test
+
+The real Beaver Lake line planted, the fixture's clean run uploaded, the `segment-match` Edge Function called as the job worker calls it; the effort it writes is the board row on the course page, and the share page names no runner.

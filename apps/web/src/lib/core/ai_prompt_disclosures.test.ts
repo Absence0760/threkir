@@ -278,6 +278,8 @@ test('every registered handler sends the user turn its builder makes, in its one
 /// with what covers them instead.
 const COVERED_ELSEWHERE: Readonly<Record<string, string>> = {
 	'src/lib/coach/providers.ts': 'the AI Coach: COACH_CONTEXT_REGISTRY in coach/context.ts, per field',
+	'src/lib/coach/assist/handler.ts':
+		"the coach assistant: COACH_ASSIST_REGISTRY in coach/assist/context.ts, per field, gated on the athlete's per-link consent",
 };
 
 function sourceFiles(dir: string): string[] {

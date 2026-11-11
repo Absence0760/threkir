@@ -5,7 +5,7 @@
 -- setting.
 
 begin;
-select plan(12);
+select plan(13);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -92,6 +92,14 @@ select lives_ok(
   $$select accept_message_request(
       (select conversation_id from direct_messages where id = '1111a216-5e70-0000-0000-000000000001'))$$,
   'the recipient can still accept it');
+reset role;
+select is(
+  (select request_state from conversation_participants
+    where user_id = 'aaaa1216-5e70-0000-0000-0000000000c3'
+      and conversation_id = (select conversation_id from direct_messages where id = '1111a216-5e70-0000-0000-000000000001')),
+  'accepted',
+  'the acceptance is recorded on the recipient''s side');
+set local role authenticated;
 
 set local "request.jwt.claims" = '{"sub":"aaaa1216-5e70-0000-0000-0000000000a1","role":"authenticated"}';
 select lives_ok(

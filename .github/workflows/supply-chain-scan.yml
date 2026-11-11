@@ -14,8 +14,13 @@ name: supply-chain-scan
 # (errors / high_or_higher), so a zizmor High finding on a changed line
 # blocks the merge through the ruleset, not through this job. osv-scanner
 # is not: its results carry no line region, so merge protection cannot
-# attribute them to a PR (decisions.md § 2452). zizmor reads its waivers from
-# .github/zizmor.yml, each with its reason (decisions.md § 2421).
+# attribute them to a PR (decisions.md § 2452). The dependency merge gate is
+# ci.yml's `dependency-advisories` job instead: the same pinned osv-scanner,
+# run on the PR's merge commit and its base, failing only on advisories the
+# merge introduces at CVSS >= 7.0 (decisions.md § 2457). Bump OSV_SCANNER_*
+# in both files together; its unit suite fails when they differ. zizmor reads
+# its waivers from .github/zizmor.yml, each with its reason (decisions.md
+# § 2421).
 #
 # Data flow: osv-scanner runs with --offline-vulnerabilities, so it downloads
 # the public OSV database and sends no package list anywhere. zizmor's online

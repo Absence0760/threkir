@@ -3,6 +3,7 @@ import { AI_DISCLOSURE_CURRENT_VERSION } from '../../src/lib/core/ai_disclosure'
 import { expect, test } from '../fixtures/test';
 
 import { acceptCookieConsent } from '../fixtures/helpers';
+import { readRow } from '../fixtures/db-read';
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 
@@ -80,7 +81,7 @@ test.describe('the coach assistant', () => {
 		await ctx.close();
 	});
 
-	test('the coach drafts, edits and sends; the message is marked AI-assisted', async ({ browser }) => {
+	test('the coach drafts, edits and sends; the message is marked AI-assisted', async ({ browser, mockRoute }) => {
 		const ctx = await browser.newContext({ storageState: coach.storageStatePath });
 		await acceptCookieConsent(ctx);
 		const page = await ctx.newPage();
@@ -89,7 +90,7 @@ test.describe('the coach assistant', () => {
 			body: { error: 'athlete has not allowed the assistant', code: 'athlete_consent_required' },
 		};
 		const posted: unknown[] = [];
-		await page.route('**/api/coach/assist', async (route) => {
+		await mockRoute(page, '**/api/coach/assist', async (route) => {
 			posted.push(route.request().postDataJSON());
 			await route.fulfill({ status: answer.status, contentType: 'application/json', body: JSON.stringify(answer.body) });
 		});
@@ -122,12 +123,15 @@ test.describe('the coach assistant', () => {
 		await page.locator('.composer button.btn-primary').click();
 
 		await expect(page.getByTestId('dm-ai-assisted')).toHaveCount(1, { timeout: 15_000 });
-		const { data } = await admin
-			.from('direct_messages')
-			.select('kind, body')
-			.eq('sender_id', coach.id)
-			.eq('recipient_id', athlete.id)
-			.single();
+		const data = await readRow(
+			"the coach's sent message",
+			admin
+				.from('direct_messages')
+				.select('kind, body')
+				.eq('sender_id', coach.id)
+				.eq('recipient_id', athlete.id)
+				.single(),
+		);
 		expect(data).toEqual({ kind: 'ai_assisted', body: `Easy week ahead ${stamp}. Rest Sunday.` });
 		await expect(page.getByTestId('dm-assisted-note')).toHaveCount(0);
 		await ctx.close();

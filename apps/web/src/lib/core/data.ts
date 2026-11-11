@@ -12969,7 +12969,7 @@ export async function fetchDmImage(imageId: string): Promise<DmImageView | null>
 	const { data: signed, error: signError } = await supabase.storage
 		.from('dm-images')
 		.createSignedUrl(data.storage_path, DM_IMAGE_SIGNED_URL_SECONDS);
-	if (signError || !signed) throw signError ?? new Error('createSignedUrl failed');
+	if (signError || !signed) throw signError ? dbError(signError) : new Error('createSignedUrl failed');
 	return { status, width: data.width, height: data.height, url: signed.signedUrl };
 }
 

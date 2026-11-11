@@ -5,7 +5,7 @@
 -- unsend and account deletion take the reactions.
 
 begin;
-select plan(23);
+select plan(24);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -127,6 +127,9 @@ select lives_ok(
   $$select unsend_direct_message('2222a216-4ea0-0000-0000-000000000005')$$,
   'the sender unsends it');
 reset role;
+select ok(
+  (select unsent_at is not null from direct_messages where id = '2222a216-4ea0-0000-0000-000000000005'),
+  'the message is stamped unsent');
 select is(
   (select count(*)::int from direct_message_reactions
     where message_id = '2222a216-4ea0-0000-0000-000000000005'),

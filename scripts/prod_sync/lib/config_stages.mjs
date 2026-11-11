@@ -58,9 +58,10 @@ export function featureFlagsStage(config) {
  * allow-listed names only. Anything else in the listing is dropped unread.
  *
  * @param {string} json
+ * @param {readonly string[]} [allow]
  * @returns {Map<string, string>}
  */
-export function allowListedDigests(json) {
+export function allowListedDigests(json, allow = FUNCTION_ENV_ALLOW) {
 	/** @type {Map<string, string>} */
 	const digests = new Map();
 	let parsed;
@@ -74,7 +75,7 @@ export function allowListedDigests(json) {
 		if (!item || typeof item !== 'object') continue;
 		const name = item.name;
 		const value = item.value;
-		if (typeof name !== 'string' || !FUNCTION_ENV_ALLOW.includes(name)) continue;
+		if (typeof name !== 'string' || !allow.includes(name)) continue;
 		if (typeof value === 'string' && /^[0-9a-f]{64}$/.test(value)) digests.set(name, value);
 	}
 	return digests;
@@ -87,9 +88,10 @@ export function allowListedDigests(json) {
  * only value it ever prints is the boolean it writes.
  *
  * @param {ProdConfig} config
+ * @param {readonly string[]} [allow]
  * @returns {Stage}
  */
-export function functionEnvStage(config) {
+export function functionEnvStage(config, allow = FUNCTION_ENV_ALLOW) {
 	const entries = Object.entries(config.function_env).sort(([a], [b]) => a.localeCompare(b));
 	const header = ['name', 'enabled', 'action', 'signoff'];
 	return {
@@ -99,14 +101,14 @@ export function functionEnvStage(config) {
 		run(ctx) {
 			if (entries.length === 0) return { table: { header, rows: [] } };
 			for (const [name] of entries) {
-				if (!FUNCTION_ENV_ALLOW.includes(name)) throw new Error(`function_env.${name} is not on the allow-list`);
+				if (!allow.includes(name)) throw new Error(`function_env.${name} is not on the allow-list`);
 			}
 			const ref = ctx.env.SUPABASE_PROJECT_REF ?? '';
 			if (!PROJECT_REF.test(ref)) throw new Error('SUPABASE_PROJECT_REF is unset or not a project ref');
 			if (!ctx.env.SUPABASE_ACCESS_TOKEN) throw new Error('SUPABASE_ACCESS_TOKEN is unset');
 
 			const listed = ctx.exec('supabase', ['secrets', 'list', '--project-ref', ref, '-o', 'json']);
-			const current = listed.ok ? allowListedDigests(listed.stdout) : new Map();
+			const current = listed.ok ? allowListedDigests(listed.stdout, allow) : new Map();
 			/** @type {string[][]} */
 			const rows = [];
 			/** @type {string[]} */

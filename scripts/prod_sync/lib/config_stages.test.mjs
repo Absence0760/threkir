@@ -54,6 +54,8 @@ function ctx(o = {}) {
 	};
 }
 
+const ALLOW = ['EXAMPLE_TOGGLE_ENABLED'];
+
 test('feature flags: an empty file selects nothing and calls nothing', () => {
 	const stage = featureFlagsStage(EMPTY);
 	assert.ok(stage.sql?.includes('where false'));
@@ -79,12 +81,12 @@ test('feature flags: each declared flag goes through the definer function as ser
 test('function env: only allow-listed digests are kept from the listing', () => {
 	const digest = sha256('true');
 	const listing = JSON.stringify([
-		{ name: 'PARKRUN_EVENTS_ENABLED', value: digest },
+		{ name: 'EXAMPLE_TOGGLE_ENABLED', value: digest },
 		{ name: 'STRIPE_SECRET_KEY', value: 'f'.repeat(64) },
 	]);
-	assert.deepEqual([...allowListedDigests(listing)], [['PARKRUN_EVENTS_ENABLED', digest]]);
-	assert.deepEqual([...allowListedDigests('[{"name":"PARKRUN_EVENTS_ENABLED","value":"true"}]')], [], 'a non-digest is never compared');
-	assert.deepEqual([...allowListedDigests('not json')], []);
+	assert.deepEqual([...allowListedDigests(listing, ALLOW)], [['EXAMPLE_TOGGLE_ENABLED', digest]]);
+	assert.deepEqual([...allowListedDigests('[{"name":"EXAMPLE_TOGGLE_ENABLED","value":"true"}]', ALLOW)], [], 'a non-digest is never compared');
+	assert.deepEqual([...allowListedDigests('not json', ALLOW)], []);
 });
 
 test('function env: nothing declared touches no CLI', () => {
@@ -94,14 +96,14 @@ test('function env: nothing declared touches no CLI', () => {
 	assert.deepEqual(commands, []);
 });
 
-const PARKRUN_ON = { ...EMPTY, function_env: { PARKRUN_EVENTS_ENABLED: { enabled: true, signoff: ISSUE } } };
+const TOGGLE_ON = { ...EMPTY, function_env: { EXAMPLE_TOGGLE_ENABLED: { enabled: true, signoff: ISSUE } } };
 
 test('function env: an unchanged digest sets nothing', () => {
 	const { ctx: c, commands } = ctx({
-		exec: () => ({ ok: true, stdout: JSON.stringify([{ name: 'PARKRUN_EVENTS_ENABLED', value: sha256('true') }]), stderr: '' }),
+		exec: () => ({ ok: true, stdout: JSON.stringify([{ name: 'EXAMPLE_TOGGLE_ENABLED', value: sha256('true') }]), stderr: '' }),
 	});
-	const r = functionEnvStage(PARKRUN_ON).run?.(c);
-	assert.deepEqual(r?.table.rows, [['PARKRUN_EVENTS_ENABLED', 'true', 'unchanged', ISSUE]]);
+	const r = functionEnvStage(TOGGLE_ON, ALLOW).run?.(c);
+	assert.deepEqual(r?.table.rows, [['EXAMPLE_TOGGLE_ENABLED', 'true', 'unchanged', ISSUE]]);
 	assert.deepEqual(commands, [['supabase', 'secrets', 'list', '--project-ref', REF, '-o', 'json']]);
 });
 
@@ -109,16 +111,16 @@ test('function env: a different or missing digest sets the boolean, or only says
 	const { ctx: c, commands } = ctx({
 		exec: (_cmd, args) =>
 			args[1] === 'list'
-				? { ok: true, stdout: JSON.stringify([{ name: 'PARKRUN_EVENTS_ENABLED', value: sha256('false') }]), stderr: '' }
+				? { ok: true, stdout: JSON.stringify([{ name: 'EXAMPLE_TOGGLE_ENABLED', value: sha256('false') }]), stderr: '' }
 				: { ok: true, stdout: 'Finished supabase secrets set.', stderr: '' },
 	});
-	const r = functionEnvStage(PARKRUN_ON).run?.(c);
-	assert.deepEqual(r?.table.rows, [['PARKRUN_EVENTS_ENABLED', 'true', 'set', ISSUE]]);
-	assert.deepEqual(commands[1], ['supabase', 'secrets', 'set', 'PARKRUN_EVENTS_ENABLED=true', '--project-ref', REF]);
+	const r = functionEnvStage(TOGGLE_ON, ALLOW).run?.(c);
+	assert.deepEqual(r?.table.rows, [['EXAMPLE_TOGGLE_ENABLED', 'true', 'set', ISSUE]]);
+	assert.deepEqual(commands[1], ['supabase', 'secrets', 'set', 'EXAMPLE_TOGGLE_ENABLED=true', '--project-ref', REF]);
 
 	const dry = ctx({ dryRun: true, exec: () => ({ ok: false, stdout: '', stderr: 'unauthorized' }) });
-	const d = functionEnvStage(PARKRUN_ON).run?.(dry.ctx);
-	assert.deepEqual(d?.table.rows, [['PARKRUN_EVENTS_ENABLED', 'true', 'would set', ISSUE]]);
+	const d = functionEnvStage(TOGGLE_ON, ALLOW).run?.(dry.ctx);
+	assert.deepEqual(d?.table.rows, [['EXAMPLE_TOGGLE_ENABLED', 'true', 'would set', ISSUE]]);
 	assert.equal(dry.commands.length, 1, 'a dry run never sets');
 });
 
@@ -126,9 +128,9 @@ test('function env: a failed set fails the stage, and a missing ref or token sto
 	const { ctx: c } = ctx({
 		exec: (_cmd, args) => (args[1] === 'list' ? { ok: true, stdout: '[]', stderr: '' } : { ok: false, stdout: '', stderr: 'Error: 403\nmore' }),
 	});
-	assert.match(functionEnvStage(PARKRUN_ON).run?.(c).failed ?? '', /supabase secrets set exited non-zero: Error: 403$/);
-	assert.throws(() => functionEnvStage(PARKRUN_ON).run?.(ctx({ env: { SUPABASE_ACCESS_TOKEN: 'x' } }).ctx), /SUPABASE_PROJECT_REF/);
-	assert.throws(() => functionEnvStage(PARKRUN_ON).run?.(ctx({ env: { SUPABASE_PROJECT_REF: REF } }).ctx), /SUPABASE_ACCESS_TOKEN/);
+	assert.match(functionEnvStage(TOGGLE_ON, ALLOW).run?.(c).failed ?? '', /supabase secrets set exited non-zero: Error: 403$/);
+	assert.throws(() => functionEnvStage(TOGGLE_ON, ALLOW).run?.(ctx({ env: { SUPABASE_ACCESS_TOKEN: 'x' } }).ctx), /SUPABASE_PROJECT_REF/);
+	assert.throws(() => functionEnvStage(TOGGLE_ON, ALLOW).run?.(ctx({ env: { SUPABASE_PROJECT_REF: REF } }).ctx), /SUPABASE_ACCESS_TOKEN/);
 	assert.throws(
 		() => functionEnvStage({ ...EMPTY, function_env: { STRIPE_SECRET_KEY: { enabled: false, signoff: null } } }).run?.(ctx().ctx),
 		/not on the allow-list/,

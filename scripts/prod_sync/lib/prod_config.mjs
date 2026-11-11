@@ -22,9 +22,12 @@ export const SECTIONS = ['feature_flags', 'function_env', 'web_env', 'cron_urls'
 /**
  * Edge Function env toggles the backend release may set with `supabase
  * secrets set`. Only booleans an Edge Function reads, so this can never carry
- * a credential; the guard also proves each one is still read.
+ * a credential; the guard also proves each one is still read. Empty since the
+ * parkrun events leg was removed (decisions § SCRAPER_ADR).
+ *
+ * @type {readonly string[]}
  */
-export const FUNCTION_ENV_ALLOW = ['PARKRUN_EVENTS_ENABLED'];
+export const FUNCTION_ENV_ALLOW = [];
 
 /**
  * Toggles that look like function env but are read somewhere a backend
@@ -183,9 +186,10 @@ export function parseProdConfig(json) {
  *   cronFunctions: Set<string>,
  *   docExists: (path: string) => boolean,
  * }} repo
+ * @param {readonly string[]} [allow] the function env allow-list; a parameter so the rules can be exercised while the shipped list is empty
  * @returns {{ problems: string[], notices: string[] }}
  */
-export function checkAgainstRepo(config, repo) {
+export function checkAgainstRepo(config, repo, allow = FUNCTION_ENV_ALLOW) {
 	/** @type {string[]} */
 	const problems = [];
 	/** @type {string[]} */
@@ -198,7 +202,7 @@ export function checkAgainstRepo(config, repo) {
 		checkSignoffPath(`feature_flags.${name}`, toggle, repo, problems);
 	}
 
-	for (const name of FUNCTION_ENV_ALLOW) {
+	for (const name of allow) {
 		if (!repo.functionEnvRead.has(name)) {
 			problems.push(`FUNCTION_ENV_ALLOW names ${name}, which no Edge Function reads with Deno.env.get any more; drop it from the allow-list`);
 		}
@@ -206,8 +210,8 @@ export function checkAgainstRepo(config, repo) {
 	for (const [name, toggle] of Object.entries(config.function_env)) {
 		if (ELSEWHERE[name]) {
 			problems.push(`function_env.${name}: no Edge Function reads it; it is set in ${ELSEWHERE[name]}`);
-		} else if (!FUNCTION_ENV_ALLOW.includes(name)) {
-			problems.push(`function_env.${name} is not on the allow-list of boolean Edge Function toggles (${FUNCTION_ENV_ALLOW.join(', ')}); a function secret that is not a reviewed boolean toggle never goes in this file`);
+		} else if (!allow.includes(name)) {
+			problems.push(`function_env.${name} is not on the allow-list of boolean Edge Function toggles (${allow.join(', ') || 'none'}); a function secret that is not a reviewed boolean toggle never goes in this file`);
 		}
 		checkSignoffPath(`function_env.${name}`, toggle, repo, problems);
 	}

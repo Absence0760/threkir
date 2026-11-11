@@ -30,17 +30,23 @@ const parse = (over) => parseProdConfig({ ...EMPTY, ...over });
 
 const REPO = {
 	flagNames: new Set(['live_overlay', 'signup_source']),
-	functionEnvRead: new Set(['PARKRUN_EVENTS_ENABLED', 'CRON_SECRET']),
+	functionEnvRead: new Set(['EXAMPLE_TOGGLE_ENABLED', 'CRON_SECRET']),
 	webFlags: new Set(['PUBLIC_COACH_ENABLED', 'PUBLIC_AI_PLAN_ENABLED', 'PUBLIC_COURSE_DRIVE_ENABLED']),
 	cronFunctions: new Set(['race_listings_sweep', 'event_refund_sweep']),
 	docExists: (/** @type {string} */ p) => p === 'docs/ops/deployment.md',
 };
 
-/** @param {Record<string, unknown>} over */
-const repoCheck = (over, repo = REPO) => {
+const ALLOW = ['EXAMPLE_TOGGLE_ENABLED'];
+
+/**
+ * @param {Record<string, unknown>} over
+ * @param {typeof REPO} [repo]
+ * @param {readonly string[]} [allow]
+ */
+const repoCheck = (over, repo = REPO, allow = ALLOW) => {
 	const { config, problems } = parse(over);
 	assert.deepEqual(problems, []);
-	return checkAgainstRepo(/** @type {any} */ (config), repo);
+	return checkAgainstRepo(/** @type {any} */ (config), repo, allow);
 };
 
 test('the committed shape: four sections, all required, nothing else', () => {
@@ -67,7 +73,7 @@ test('enabling needs a sign-off that links the approval', () => {
 	assert.match(parse({ feature_flags: { live_overlay: { enabled: true } } }).problems[0], /enabled with no signoff/);
 	assert.match(parse({ web_env: { PUBLIC_COACH_ENABLED: { enabled: true, signoff: '' } } }).problems[0], /non-empty string/);
 	assert.match(
-		parse({ function_env: { PARKRUN_EVENTS_ENABLED: { enabled: true, signoff: 'parkrun said yes' } } }).problems[0],
+		parse({ function_env: { EXAMPLE_TOGGLE_ENABLED: { enabled: true, signoff: 'they said yes' } } }).problems[0],
 		/neither a GitHub issue/,
 	);
 	assert.deepEqual(parse({ feature_flags: { live_overlay: { enabled: true, signoff: ISSUE } } }).problems, []);
@@ -104,7 +110,7 @@ test('every declared flag is one a migration defines', () => {
 });
 
 test('function env takes only allow-listed booleans an Edge Function reads', () => {
-	assert.deepEqual(repoCheck({ function_env: { PARKRUN_EVENTS_ENABLED: { enabled: false } } }).problems, []);
+	assert.deepEqual(repoCheck({ function_env: { EXAMPLE_TOGGLE_ENABLED: { enabled: false } } }).problems, []);
 	assert.match(repoCheck({ function_env: { CRON_SECRET: { enabled: false } } }).problems[0], /not on the allow-list/);
 	assert.match(
 		repoCheck({ function_env: { AI_PLAN_ENABLED: { enabled: false } } }).problems[0],
@@ -112,7 +118,7 @@ test('function env takes only allow-listed booleans an Edge Function reads', () 
 	);
 	assert.match(repoCheck({ function_env: { WEIGHT_FLUID_ENABLED: { enabled: false } } }).problems[0], /mobile dotenv/);
 	const stale = repoCheck({}, { ...REPO, functionEnvRead: new Set() });
-	assert.match(stale.problems[0], /FUNCTION_ENV_ALLOW names PARKRUN_EVENTS_ENABLED, which no Edge Function reads/);
+	assert.match(stale.problems[0], /FUNCTION_ENV_ALLOW names EXAMPLE_TOGGLE_ENABLED, which no Edge Function reads/);
 });
 
 test('web env takes only PUBLIC_* gates the build reads', () => {
@@ -157,8 +163,8 @@ test('the derivations read reads, seeds, invokers and env gets, not comments', (
 	];
 	assert.deepEqual([...flagNamesFromMigrations(migrations)].sort(), ['live_overlay', 'recurrence_utc_clock_legacy', 'route_photo_orphan_sweep']);
 	assert.deepEqual([...cronFunctionsFromMigrations(migrations)], ['race_listings_sweep']);
-	assert.deepEqual([...functionEnvReads(["if (Deno.env.get('PARKRUN_EVENTS_ENABLED') === 'true')", 'Deno.env.get("X_Y")'])], [
-		'PARKRUN_EVENTS_ENABLED',
+	assert.deepEqual([...functionEnvReads(["if (Deno.env.get('EXAMPLE_TOGGLE_ENABLED') === 'true')", 'Deno.env.get("X_Y")'])], [
+		'EXAMPLE_TOGGLE_ENABLED',
 		'X_Y',
 	]);
 	const yml = '  cat <<EOF\n  PUBLIC_A_ENABLED=${PUBLIC_A_ENABLED}\n  EOF\n  PUBLIC_B_ENABLED: x';

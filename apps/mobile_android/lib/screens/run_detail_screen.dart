@@ -2298,16 +2298,17 @@ class _RunDetailScreenState extends State<RunDetailScreen>
         .where((r) =>
             r.routeId == run.routeId &&
             r.distanceMetres > 100 &&
+            isPlausibleRunDuration(r.duration.inSeconds) &&
             (r.metadata?[MetadataKeys.activityType] as String? ?? 'run') == thisActivity)
         .toList()
       ..sort((a, b) => a.duration.compareTo(b.duration));
 
-    if (attempts.length < 2) return const [];
+    final rank = attempts.indexWhere((r) => r.id == run.id) + 1;
+    if (attempts.length < 2 || rank == 0) return const [];
 
     final best = attempts.first;
     final isBest = best.id == run.id;
     final delta = run.duration - best.duration;
-    final rank = attempts.indexWhere((r) => r.id == run.id) + 1;
 
     final routeName = _linkedRoute?.name ?? l10n.runDetailThisRoute;
 

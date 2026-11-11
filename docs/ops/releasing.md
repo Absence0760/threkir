@@ -454,9 +454,9 @@ and install from there.
   [decisions § 2464](../architecture/decisions.md)). `…02` caps every run
   stored above ten days and enqueues one `duration_repair` job per capped run
   that has a track; a worker without the handler fails each one as an unknown
-  kind, and nothing enqueues them again. Order: tag `job_worker@*`, confirm
-  the deployed worker's dispatch has `case "duration_repair"`, then tag
-  `backend@*`. `…03` validates `runs_duration_s_max_check` in the same
+  kind, and nothing enqueues them again. Order: tag `worker@*` (the
+  job_worker's release tag, `release-worker.yml`), confirm the deployed
+  worker's dispatch has `case "duration_repair"`, then tag `backend@*`. `…03` validates `runs_duration_s_max_check` in the same
   release; it does not wait for the jobs, because the cap alone satisfies
   it. After the release, a capped run with no usable track keeps the cap and
   `metadata.duration_repaired` until its owner edits the duration; to see

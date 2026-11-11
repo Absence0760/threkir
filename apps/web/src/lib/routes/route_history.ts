@@ -7,6 +7,8 @@
 /// run's standing (PB / behind PB / rank). Kept pure so the component
 /// stays a thin presenter and the logic is unit-testable without DOM.
 
+import { isPlausibleRunDuration } from '../runs/run_duration';
+
 export interface RouteHistoryRun {
 	id: string;
 	route_id: string | null;
@@ -34,6 +36,8 @@ export interface RouteHistorySummary {
 ///    incredible PBs.
 ///  - Same `activity_type` column (default `'run'`). A walk on
 ///    the same route shouldn't compete with a run.
+///  - A plausible duration (`isPlausibleRunDuration`): a run still
+///    holding the ten-day repair placeholder has no time to rank.
 export function qualifyingAttempts(
 	currentRun: RouteHistoryRun,
 	allRuns: readonly RouteHistoryRun[],
@@ -45,6 +49,7 @@ export function qualifyingAttempts(
 			(r) =>
 				r.route_id === currentRun.route_id &&
 				r.distance_m > 100 &&
+				isPlausibleRunDuration(r.duration_s) &&
 				(r.activity_type ?? 'run') === thisActivity,
 		)
 		.sort((a, b) => a.duration_s - b.duration_s);

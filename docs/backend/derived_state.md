@@ -56,7 +56,8 @@ retention cron referenced in a comment that was never created.
   (`20260530000001`), mile bracket (`20261021_001`), the auth guard
   (`20260904_001`), consolidated by `20261009_001`, the parkrun/race source
   widening (`20270424_001`), the positive-time filters (`20270706000003`), and
-  the improvement hand-off (`20271104000002`, which changes no candidate).
+  the improvement hand-off (`20271104000002`, which changes no candidate), and
+  the whole-run duration bound (`20271218000002`).
   The live body is the **latest** migration that
   touches the function — read it, don't reconstruct from the originals.
 - **Every candidate time is positive** (`20270706000003`, decisions § 1078).
@@ -71,6 +72,14 @@ retention cron referenced in a comment that was never created.
   embedded-best branches read `>= 0` and are tightened with it. The bound
   belongs here rather than on the column — not having run 5 km in zero seconds
   is a PR-eligibility rule, not a storage rule.
+- **Every whole-run duration is inside the read-side bound** (`20271218000002`,
+  decisions § 2464). The whole-run branch also requires
+  `private.run_duration_in_bound(duration_s)` (`0 <= d < 864000`), so a run
+  holding the #1300 repair's 864000 s placeholder is no candidate: alone in a
+  bracket it would have been that bracket's PR at 240:00:00, and the cap,
+  faster than the out-of-bound value it replaced, would have been logged as an
+  improvement and notified for a run of the last seven days. The embedded-best
+  branches read their own `fastest_*_s` columns and are unaffected.
 - **Maintained by:** statement-level AFTER INSERT/UPDATE/DELETE triggers on
   `runs` (`20270315_001`; per-row until then) calling the refresher once per
   statement per affected `user_id` from the transition tables — a bulk import

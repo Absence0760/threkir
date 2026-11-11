@@ -20,7 +20,7 @@
 -- and its client twins (`isPlausibleRunDuration`, the `run_duration` parity
 -- pair) become strict at the top: exactly 864000 s is the repair's
 -- placeholder, so every duration total leaves a capped row out, as it left out
--- the original value. The column still admits 864000 (the cap must satisfy the
+-- the original value, and the personal-records refresher ranks none. The column still admits 864000 (the cap must satisfy the
 -- CHECK); the manual forms now refuse it too, so no writer produces it.
 --
 -- The flag follows the duration. `runs_keep_duration_repair` keeps
@@ -28,7 +28,12 @@
 -- write that changes it, whoever writes: the owner's edit and the job alike.
 -- `duration_s_original` is kept on every later write. A client holding a copy
 -- from before this migration writes a duration over the bound, which the
--- constraint refuses and api_client parks as `durationOutOfRange`.
+-- constraint refuses and api_client parks as `durationOutOfRange`. One holding
+-- a copy of the capped row (the batch sync's whole-row upsert, a backup
+-- restore) writes 864000 back after the job or the owner replaced it; the
+-- trigger keeps the stored duration for that write, as
+-- `runs_keep_distance_recompute` keeps a recomputed distance, and the flag
+-- stays off, so the repair is not undone.
 --
 -- Locks (docs/backend/migration_locks.md): the UPDATE is scoped by its
 -- predicate and touches only the out-of-bound rows, a handful, so it row-locks
@@ -56,6 +61,146 @@ comment on function private.run_duration_in_bound(integer) is
   '20271218000002 stored over an out-of-bound row, so it is left out with '
   'them. SQL twin of isPlausibleRunDuration in the run_duration parity pair '
   '(decisions § 2359, § 2464).';
+
+-- The cap is no best either. The whole-run branch of the personal-records
+-- refresher ranks on `duration_s asc` with a floor and no ceiling, so a capped
+-- run that is its owner's only run in a bracket would hold that PR at
+-- 240:00:00, and the cap itself, being faster than the value it replaced,
+-- would be logged as an improvement and notified for a run of the last seven
+-- days. The branch now takes only in-bound durations. The live body
+-- (20271104000002) with that one predicate added; it must precede the cap
+-- below, whose UPDATE fires the refresh.
+CREATE OR REPLACE FUNCTION public.refresh_personal_records_for_user(p_user_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  v_role text := coalesce(
+    nullif(current_setting('request.jwt.claim.role', true), ''),
+    (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'),
+    ''
+  );
+  v_before jsonb;
+begin
+  if v_role <> 'service_role' and v_role <> '' then
+    if auth.uid() is null or auth.uid() is distinct from p_user_id then
+      raise exception 'refresh_personal_records_for_user: not authorized'
+        using errcode = '42501';
+    end if;
+  end if;
+
+  perform pg_advisory_xact_lock(
+    hashtext('personal_records:' || p_user_id::text)
+  );
+
+  select coalesce(jsonb_object_agg(distance, best_time_s), '{}'::jsonb)
+    into v_before
+    from personal_records
+   where user_id = p_user_id;
+
+  delete from personal_records where user_id = p_user_id;
+
+  insert into personal_records (user_id, distance, best_time_s, run_id, achieved_at)
+  select
+    p_user_id, distance, duration_s, run_id, achieved_at
+  from (
+    select
+      run_id, duration_s, achieved_at, distance,
+      row_number() over (
+        partition by distance
+        order by duration_s asc, achieved_at asc, run_id asc
+      ) as rn
+    from (
+      -- Whole-run candidates, widened brackets, DNFs excluded.
+      select
+        id as run_id,
+        duration_s,
+        started_at as achieved_at,
+        case
+          when distance_m between 1559  and 1659   then '1_mile'
+          when distance_m between 4900  and 5100   then '5k'
+          when distance_m between 7840  and 8160   then '8k'
+          when distance_m between 9800  and 10200  then '10k'
+          when distance_m between 11760 and 12240  then '12k'
+          when distance_m between 20675 and 21519  then 'half_marathon'
+          when distance_m between 41351 and 43039  then 'marathon'
+        end as distance
+      from runs
+      where user_id = p_user_id
+        -- 'parkrun' (certified weekly 5K) + 'race' (chip-timed official results,
+        -- the most authoritative source) are valid runs.source values (#378).
+        and source in ('app', 'watch', 'strava', 'garmin', 'healthkit', 'healthconnect', 'parkrun', 'race')
+        -- Run family only: a bicycle covers a PR bracket at speeds no runner
+        -- reaches. Mirrors the client's `isRunFamily` in recap.ts.
+        and activity_type <> 'cycle'
+        and distance_m is not null
+        and duration_s is not null
+        and duration_s > 0
+        and private.run_duration_in_bound(duration_s)
+        and is_dnf = false
+
+      union all
+
+      -- Embedded-best 5k from the promoted fastest_5k_s column.
+      select
+        id as run_id, fastest_5k_s,
+        started_at as achieved_at, '5k' as distance
+      from runs
+      where user_id = p_user_id
+        and source in ('app', 'watch', 'strava', 'garmin', 'healthkit', 'healthconnect', 'parkrun', 'race')
+        and activity_type <> 'cycle'
+        and fastest_5k_s is not null
+        and fastest_5k_s > 0
+        and is_dnf = false
+
+      union all
+
+      select
+        id as run_id, fastest_10k_s,
+        started_at as achieved_at, '10k' as distance
+      from runs
+      where user_id = p_user_id
+        and source in ('app', 'watch', 'strava', 'garmin', 'healthkit', 'healthconnect', 'parkrun', 'race')
+        and activity_type <> 'cycle'
+        and fastest_10k_s is not null
+        and fastest_10k_s > 0
+        and is_dnf = false
+
+      union all
+
+      select
+        id as run_id, fastest_half_marathon_s,
+        started_at as achieved_at, 'half_marathon' as distance
+      from runs
+      where user_id = p_user_id
+        and source in ('app', 'watch', 'strava', 'garmin', 'healthkit', 'healthconnect', 'parkrun', 'race')
+        and activity_type <> 'cycle'
+        and fastest_half_marathon_s is not null
+        and fastest_half_marathon_s > 0
+        and is_dnf = false
+
+      union all
+
+      select
+        id as run_id, fastest_marathon_s,
+        started_at as achieved_at, 'marathon' as distance
+      from runs
+      where user_id = p_user_id
+        and source in ('app', 'watch', 'strava', 'garmin', 'healthkit', 'healthconnect', 'parkrun', 'race')
+        and activity_type <> 'cycle'
+        and fastest_marathon_s is not null
+        and fastest_marathon_s > 0
+        and is_dnf = false
+    ) candidates
+    where distance is not null
+  ) ranked
+  where rn = 1;
+
+  perform private.record_personal_record_improvements(p_user_id, v_before);
+end;
+$function$;
 
 -- A function rather than a bare statement so runs_duration_repair_test.sql can
 -- drive the exact repair this migration applies.
@@ -113,12 +258,17 @@ begin
       || jsonb_build_object('duration_s_original', v_old -> 'duration_s_original');
   end if;
 
-  if v_old ? 'duration_repaired' then
-    if new.duration_s is distinct from old.duration_s then
-      new.metadata := new.metadata - 'duration_repaired';
-    else
-      new.metadata := new.metadata || jsonb_build_object('duration_repaired', true);
-    end if;
+  -- No writer produces 864000 (the forms refuse it, the job never writes it),
+  -- so 864000 arriving over another duration is a copy loaded while the run
+  -- was capped, written back after the job or the owner replaced the cap.
+  if new.duration_s = 864000 and old.duration_s is distinct from 864000 then
+    new.duration_s := old.duration_s;
+  end if;
+
+  if v_old ? 'duration_repaired' and new.duration_s is not distinct from old.duration_s then
+    new.metadata := new.metadata || jsonb_build_object('duration_repaired', true);
+  else
+    new.metadata := new.metadata - 'duration_repaired';
   end if;
 
   return new;
@@ -130,6 +280,7 @@ revoke execute on function private.runs_keep_duration_repair() from public, anon
 comment on function private.runs_keep_duration_repair() is
   'Keeps metadata.duration_repaired while runs.duration_s still holds the cap '
   '20271218000002 stored, drops it on the write that changes the duration, '
+  'keeps the stored duration when a stale copy writes the cap back over it, '
   'and keeps metadata.duration_s_original on every write (decisions § 2464).';
 
 create trigger runs_keep_duration_repair

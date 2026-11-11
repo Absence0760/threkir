@@ -16,6 +16,7 @@ import com.runapp.watchwear.recording.RecordingRepository
 import com.runapp.watchwear.recording.RecoveryAction
 import com.runapp.watchwear.recording.recoveryActionFor
 import com.runapp.watchwear.recording.sealTrackFileOrNull
+import com.runapp.watchwear.recording.trackFileSegmentCount
 import com.runapp.watchwear.recording.RunRecordingService
 import com.runapp.watchwear.recording.TrackStorage
 import com.runapp.watchwear.recording.sweepOrphanTracks
@@ -1721,6 +1722,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                 _state.value = _state.value.copy(pendingRecovery = null)
                 return@launchGuarded
             }
+            // Counted off the sealed file, as the server's replay will count
+            // it: fixes written after the last checkpoint can open a segment.
+            val segments = withContext(Dispatchers.IO) { trackFileSegmentCount(sealed) }
             store.save(
                 QueuedRun(
                     id = cp.runId,
@@ -1741,7 +1745,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                     distanceEstimator = cp.distanceEstimator,
                     distanceStepFilledM = cp.distanceStepFilledM,
                     distanceStepOverChordM = cp.distanceStepOverChordM,
-                    distanceSegments = cp.distanceSegments,
+                    distanceSegments = segments?.takeIf { it >= 1 },
                     locationProvider = cp.locationProvider,
                     gnssSignal = cp.gnssSignal,
                     trackComplete = cp.trackComplete,

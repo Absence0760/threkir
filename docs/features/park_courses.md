@@ -322,8 +322,9 @@ These follow the owner-approved permit conditions (memo
   "junior parkrun", links to parkrun, or uses its logo or colours; "official"
   always comes with "Threkir". `scripts/parks/lib/third_party_marks.mjs`
   enforces the words: the build and the payload check refuse any string in a
-  park's spec or manifest matching `park[\s_-]*(run|walk)` (case-insensitive),
-  which covers its domains too. A sentence naming the event that shares a
+  park's spec or manifest naming parkrun or parkwalk (case-insensitive, after
+  folding full-width and zero-width characters; spaced forms such as "park run"
+  only as whole words), which covers its domains too. A sentence naming the event that shares a
   course's paths (even with a disclaimer) is held until parkrun answers the
   outreach on #1148.
 - **Terms.** Terms § 8 Safety says courses, routes and park courses are
@@ -376,6 +377,16 @@ account. The reporter picks a reason (`course_hazard`, `course_closure`,
   pending reports reviewed) or reopens it, logged in
   `park_course_status_actions` and read through `park_course_status_history`.
   Mark reviewed and Dismiss work on course reports as on any other.
+- **Rights holders (gap, not built).** A trade-mark or data rights holder
+  that is not a verified club (parkrun has no club here) can file today only
+  as a signed-out reporter under `other`: it reaches the queue and, as the
+  first pending report on a course, the admin notice, but has no
+  rights-holder reason, no priority, no deadline and no exemption from the
+  caps. `organiser_dispute` (#1363) needs a verified club and does not target
+  park courses, and Terms § 4 names only a copyright channel. The memo's
+  recommendation 5 (a `rights_holder_request` reason routed like
+  `land_manager_request`, and "Copyright and trade mark complaints" in the
+  Terms) is the fix; decisions § 2455 records the gap.
 - **Personal data.** The contact email goes with a signed-in reporter's
   account (a trigger clears it when `reporter_id` is set null) and 30 days
   after the report is resolved (`private.purge_stale_reports`), unless the

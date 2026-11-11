@@ -1,7 +1,7 @@
 import { cameraAt, DEFAULT_FLYOVER_SPEED_MPS, pointAtDistance, type FlyoverPath } from '#lib/routes/flyover_path.ts';
 import type { FlyoverMode } from '#lib/routes/flyover_capability.ts';
 
-/// How Grisnir moves on the course preview (decisions § 2455): which way he
+/// How Grisnir moves on the course preview (decisions § 2458): which way he
 /// faces, how fast he trots, and whether he is drawn at all. Pure, so the
 /// dialog and the video export cannot disagree.
 

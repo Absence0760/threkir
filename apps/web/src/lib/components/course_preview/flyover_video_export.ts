@@ -79,7 +79,7 @@ export interface FlyoverVideoInput {
 	exaggeration: number;
 	text: FlyoverVideoText;
 	/// The exporting viewer's `show_mascot`: on, Grisnir trots the line in
-	/// place of the dot, as he does in the dialog (decisions § 2455).
+	/// place of the dot, as he does in the dialog (decisions § 2458).
 	showMascot: boolean;
 	plan: VideoEncoderPlan;
 	signal: AbortSignal;

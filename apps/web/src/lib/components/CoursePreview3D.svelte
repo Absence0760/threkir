@@ -184,7 +184,7 @@
 	let finale: { from: CameraPose; to: CameraPose; plan: FinalePlan; startTs: number | null } | null = null;
 	let atOverview = $state(false);
 
-	// Grisnir in place of the dot (decisions § 2455): the viewer's universal
+	// Grisnir in place of the dot (decisions § 2458): the viewer's universal
 	// `show_mascot`, read when the dialog opens (null until it lands, so a
 	// viewer who hid him never sees him flash in), and his own WebGL canvas,
 	// loaded only once the map is up. Auxiliary: any failure keeps the dot.

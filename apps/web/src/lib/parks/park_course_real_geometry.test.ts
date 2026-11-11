@@ -1,5 +1,6 @@
-// The park-course matcher on the real Pocahontas course lines (#1342): a run
-// that follows a course is timed once, and a partial or foreign lap is not.
+// The park-course matcher on the real course lines (#1342; Deep Run Park,
+// #1345): a run that follows a course is timed once, and a partial or foreign
+// lap is not.
 //
 // The lines are derived here as the `global_segments_set_gates` trigger
 // derives them (migration 20271122002402 over 20271116002390's
@@ -26,10 +27,8 @@ import {
 } from '../geo/gate_crossing';
 import { computeGlobalSegmentEfforts, type GlobalSegmentGeometry } from '../segments/segments';
 
-const PARK = resolve(
-	dirname(fileURLToPath(import.meta.url)),
-	'../../../../../scripts/parks/catalogue/us-va/pocahontas',
-);
+const CATALOGUE = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../scripts/parks/catalogue/us-va');
+const PARKS = ['pocahontas', 'deep-run'];
 
 interface LatLng {
 	lat: number;
@@ -45,6 +44,7 @@ interface CuratedGate {
 
 interface ManifestCourse {
 	slug: string;
+	dir: string;
 	start_gate?: CuratedGate;
 	end_gate?: CuratedGate;
 	geojson: string;
@@ -56,14 +56,17 @@ interface ManifestCourse {
 	start_line_from_lead_in_start_m?: number;
 }
 
-const manifest = JSON.parse(readFileSync(resolve(PARK, 'manifest.json'), 'utf8')) as {
-	courses: ManifestCourse[];
-	race_courses: ManifestCourse[];
-};
-const COURSES: ManifestCourse[] = [...manifest.courses, ...manifest.race_courses];
+const COURSES: ManifestCourse[] = PARKS.flatMap((park) => {
+	const dir = resolve(CATALOGUE, park);
+	const manifest = JSON.parse(readFileSync(resolve(dir, 'manifest.json'), 'utf8')) as {
+		courses: Omit<ManifestCourse, 'dir'>[];
+		race_courses?: Omit<ManifestCourse, 'dir'>[];
+	};
+	return [...manifest.courses, ...(manifest.race_courses ?? [])].map((c) => ({ ...c, dir }));
+});
 
 function courseLine(c: ManifestCourse): LatLng[] {
-	const gj = JSON.parse(readFileSync(resolve(PARK, c.geojson), 'utf8'));
+	const gj = JSON.parse(readFileSync(resolve(c.dir, c.geojson), 'utf8'));
 	const line = gj.features.find((f: { geometry?: { type?: string } }) => f.geometry?.type === 'LineString');
 	return line.geometry.coordinates.map((p: number[]) => ({ lat: p[1], lng: p[0] }));
 }
@@ -410,4 +413,70 @@ test('the half, marathon and 50K share a start area, and a run of one is not tim
 			assert.equal(effort, null, `a ${run} run timed ${effort?.time_seconds} s on the ${other}\n${diagnose(course, track)}`);
 		}
 	}
+});
+
+/** Metres along the line at which it passes within 3 m of the point `atM` along it, nearest first per pass. */
+function passesOf(b: Built, atM: number): number[] {
+	const p = slice(b.line, atM, atM + 0.01)[0];
+	const out: number[] = [];
+	let inside = false;
+	let best = Infinity;
+	let bestM = 0;
+	for (let m = 0; m <= b.lineM; m += 1) {
+		const d = hopM(slice(b.line, m, m + 0.01)[0], p);
+		if (d <= 3) {
+			inside = true;
+			if (d < best) {
+				best = d;
+				bestM = m;
+			}
+		} else if (inside) {
+			out.push(bestM);
+			inside = false;
+			best = Infinity;
+		}
+	}
+	if (inside) out.push(bestM);
+	return out;
+}
+
+/**
+ * Deep Run Park, 5 km: twice round the ponds, out and back on the woods path,
+ * once more round. The ponds repeat, so its checkpoints are spaced under a
+ * pond lap apart (13 over 5 km): each pond lap holds one that comes earlier in
+ * the lap than the one before it, and only a further lap can pass it.
+ */
+test('deep-run-park-5k: the line passes the pond junction five times: two pond laps, the out-and-back, one pond lap', () => {
+	const b = bySlug('deep-run-park-5k');
+	const passes = passesOf(b, lineToJunctionM(b));
+	assert.equal(passes.length, 5, `passes at ${passes.join(', ')}`);
+	const pondLap = passes[1] - passes[0];
+	assert.ok(pondLap > 600 && pondLap < 750, `pond lap ${pondLap} m`);
+	assert.ok(Math.abs(passes[2] - passes[1] - pondLap) <= 3);
+	assert.ok(Math.abs(passes[4] - passes[3] - pondLap) <= 3);
+	assert.ok(passes[3] - passes[2] > 2500, 'the out-and-back sits between the second and third pond laps');
+	assert.ok(Math.abs(b.lineM - passes[4] - lineToJunctionM(b)) <= 3);
+});
+
+test('deep-run-park-5k: a run that leaves out any one pond lap gets no time, though it is inside the length guard', () => {
+	const b = bySlug('deep-run-park-5k');
+	const passes = passesOf(b, lineToJunctionM(b));
+	const pondLap = passes[1] - passes[0];
+	assert.ok(pondLap / b.lineM < 0.25, 'only the checkpoints can refuse it');
+	for (const [n, from] of [passes[0], passes[1], passes[3]].entries()) {
+		const path = [...slice(b.line, 0, from), ...slice(b.line, from + pondLap, b.lineM).slice(1)];
+		const track = syntheticRun(path, b.gates, 5000 + n);
+		const effort = score(b, track);
+		assert.equal(effort, null, `timed ${effort?.time_seconds} s without the pond lap from ${from} m\n${diagnose(b, track)}`);
+	}
+});
+
+test('deep-run-park-5k: turning 100 m short of the far end of the out-and-back gets no time', () => {
+	const b = bySlug('deep-run-park-5k');
+	const passes = passesOf(b, lineToJunctionM(b));
+	const turn = (passes[2] + passes[3]) / 2;
+	const path = [...slice(b.line, 0, turn - 100), ...slice(b.line, turn + 100, b.lineM).slice(1)];
+	const track = syntheticRun(path, b.gates, 6000);
+	const effort = score(b, track);
+	assert.equal(effort, null, `timed ${effort?.time_seconds} s on a short turn\n${diagnose(b, track)}`);
 });

@@ -17,8 +17,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { readPayload } from './load.mjs';
-import { catalogueSyncSql, parkDirsFromManifests, parsePublisher } from './lib/catalogue_sync.mjs';
+import { readPayload, readRelease } from './load.mjs';
+import { catalogueSyncSql, parkDirsFromManifests, parsePublisher, splitByRelease } from './lib/catalogue_sync.mjs';
 import { stageScript } from '../prod_sync/lib/stages.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -41,18 +41,25 @@ export function findParkDirs(root) {
 }
 
 /**
- * The stage the production sync runs.
+ * The stage the production sync runs. Every park is validated; a staged one
+ * (decisions § 2455) is reported `staged` and never loaded.
  *
  * @param {{ root?: string, publisherFile?: string }} [opts]
  */
 export function parkCatalogueStage({ root = CATALOGUE_ROOT, publisherFile = PUBLISHER_FILE } = {}) {
 	const publisher = parsePublisher(JSON.parse(fs.readFileSync(publisherFile, 'utf8')));
-	const payloads = findParkDirs(root).map((dir) => readPayload(dir));
+	const { live, staged } = splitByRelease(
+		findParkDirs(root).map((dir) => ({ payload: readPayload(dir), release: readRelease(dir) })),
+	);
+	/** @param {number} n */
+	const courses = (n) => `${n} course${n === 1 ? '' : 's'}`;
+	const loaded = `${live.length} park(s): ${live.map((p) => `${p.park.slug} (${courses(p.courses.length)})`).join(', ') || 'none'}`;
+	const held = staged.map((s) => `${s.park} (${courses(s.courses.length)}): ${s.reason}`);
 	return {
 		id: 'park-catalogue',
 		title: 'Park catalogue',
-		sql: catalogueSyncSql(payloads, publisher),
-		note: `${payloads.length} park(s): ${payloads.map((p) => `${p.park.slug} (${p.courses.length} courses)`).join(', ')}`,
+		sql: catalogueSyncSql(live, publisher, staged),
+		note: held.length > 0 ? `${loaded}. Staged, not loaded: ${held.join('; ')}` : loaded,
 	};
 }
 

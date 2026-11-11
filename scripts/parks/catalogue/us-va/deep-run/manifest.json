@@ -1,0 +1,263 @@
+{
+  "park": {
+    "slug": "deep-run",
+    "name": "Deep Run Park",
+    "agency": "county",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://henrico.gov/rec/places/deep-run/",
+    "osm_boundary": "relation/11623997"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner records the brand and data outcome on #1097 and checks this line against a GPS trace of the paths (decisions § 2455)."
+  },
+  "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
+  "snapshot_fetched_at": "2026-11-11",
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "deep-run-park-5k",
+      "name": "Deep Run Park, 5 km",
+      "race_distance": "5k",
+      "distance_m": 5000,
+      "laps": 1,
+      "lap_m": 4764.1,
+      "lead_in_m": 150.7,
+      "start_line_from_lead_in_start_m": 32.8,
+      "start_finish": {
+        "lat": 37.624977,
+        "lng": -77.587262
+      },
+      "surface": "road",
+      "shared_use": "saturday_morning_group",
+      "geometry_source": "osm",
+      "source_ref": "way/354922962,way/651195264,way/651195380,way/651196046,way/651196537,way/919780813,way/1335709995,way/1567830875",
+      "source_checked_at": "2026-11-11",
+      "geojson": "deep-run-park-5k.geojson",
+      "elevation_m": 45,
+      "checkpoints": [
+        {
+          "lat": 37.623706,
+          "lng": -77.587477
+        },
+        {
+          "lat": 37.623501,
+          "lng": -77.586131
+        },
+        {
+          "lat": 37.623345,
+          "lng": -77.587308
+        },
+        {
+          "lat": 37.623802,
+          "lng": -77.586441
+        },
+        {
+          "lat": 37.626251,
+          "lng": -77.586707
+        },
+        {
+          "lat": 37.628512,
+          "lng": -77.586372
+        },
+        {
+          "lat": 37.630247,
+          "lng": -77.58943
+        },
+        {
+          "lat": 37.627966,
+          "lng": -77.588948
+        },
+        {
+          "lat": 37.630117,
+          "lng": -77.588969
+        },
+        {
+          "lat": 37.628283,
+          "lng": -77.586051
+        },
+        {
+          "lat": 37.626068,
+          "lng": -77.586275
+        },
+        {
+          "lat": 37.624411,
+          "lng": -77.58726
+        },
+        {
+          "lat": 37.622374,
+          "lng": -77.586283
+        }
+      ],
+      "waypoint_count": 186,
+      "route_guide": {
+        "version": 1,
+        "lang": "en",
+        "getting_there": "Park in the lot north of the ponds. The start line is on the paved path that runs south from there to the ponds.",
+        "steps": [
+          {
+            "kind": "start",
+            "at_m": 0,
+            "way": "path"
+          },
+          {
+            "kind": "direction",
+            "at_m": 0,
+            "rotation": "counterclockwise"
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 118
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 240
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 357,
+            "order": 1,
+            "of": 13
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 553
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 714,
+            "order": 2,
+            "of": 13
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 789
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 911
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1071,
+            "order": 3,
+            "of": 13
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 1225
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1429,
+            "order": 4,
+            "of": 13
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1460
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 1786,
+            "order": 5,
+            "of": 13
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 1793
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2143,
+            "order": 6,
+            "of": 13
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2500,
+            "order": 7,
+            "of": 13
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 2857,
+            "order": 8,
+            "of": 13
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3214,
+            "order": 9,
+            "of": 13
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3571,
+            "order": 10,
+            "of": 13
+          },
+          {
+            "kind": "junction",
+            "turn": "left",
+            "way": "path",
+            "at_m": 3878
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 3929,
+            "order": 11,
+            "of": 13
+          },
+          {
+            "kind": "junction",
+            "turn": "right",
+            "way": "path",
+            "at_m": 4211
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4286,
+            "order": 12,
+            "of": 13
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 4333
+          },
+          {
+            "kind": "checkpoint",
+            "at_m": 4643,
+            "order": 13,
+            "of": 13
+          },
+          {
+            "kind": "crossing",
+            "crossing": "bridge",
+            "at_m": 4646
+          },
+          {
+            "kind": "finish",
+            "at_m": 5000
+          }
+        ]
+      },
+      "route_guide_checked_at": null
+    }
+  ]
+}

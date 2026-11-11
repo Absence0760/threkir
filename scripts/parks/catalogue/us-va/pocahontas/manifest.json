@@ -9,6 +9,9 @@
     "website_url": "https://www.dcr.virginia.gov/state-parks/pocahontas",
     "osm_boundary": "relation/3144509"
   },
+  "release": {
+    "status": "live"
+  },
   "attribution": "© OpenStreetMap contributors (ODbL); elevation: USGS 3DEP",
   "snapshot_fetched_at": "2026-11-09",
   "courses": [

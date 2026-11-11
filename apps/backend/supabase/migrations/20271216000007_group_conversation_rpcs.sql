@@ -1,5 +1,5 @@
 -- Group conversations, slice 1 (issue #1365, docs/features/group_messages.md
--- §§ 2-3, decisions § 2458): the group RPCs and the inbox.
+-- §§ 2-3, decisions § 2461): the group RPCs and the inbox.
 --
 -- All SECURITY DEFINER with a pinned search_path. A conversation the caller
 -- is not an active member of, one that does not exist and one they left all
@@ -26,8 +26,10 @@
 --       member_count and membership_state, and a row per group.
 --
 -- Who may be invited (D1): anyone the inviter could message 1:1 under
--- private.dm_send_admitted, and never across a block either way. A refused
--- invitee, one that does not exist and a blocked pair all answer one 42501.
+-- private.dm_send_admitted, and never across a block either way, and not
+-- someone who declined, left or let an invite to this group lapse in the last
+-- 14 days. A refused invitee, one that does not exist and a blocked pair all
+-- answer one 42501.
 --
 -- Cap (D2): 32 including unexpired invites, c_group_max_members below,
 -- counted under a per-conversation advisory lock so two invites cannot both
@@ -59,6 +61,9 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
+  -- Serialised per group, so two accepts into an ownerless group cannot both
+  -- promote and trip the one-owner index.
+  perform pg_advisory_xact_lock(hashtextextended('group_owner:' || p_conversation_id::text, 0));
   if exists (
     select 1 from conversation_participants p
      where p.conversation_id = p_conversation_id
@@ -92,9 +97,12 @@ set search_path = public, pg_temp
 as $$
 declare
   c_invite_ttl constant interval := interval '14 days';
+  c_reinvite_cooldown constant interval := interval '14 days';
   v_me uuid := auth.uid();
   v_state text;
   v_invited_at timestamptz;
+  v_left_at timestamptz;
+  v_removed_by uuid;
   v_found boolean;
 begin
   if p_invitee is null
@@ -107,8 +115,8 @@ begin
 
   perform pg_advisory_xact_lock(private.group_member_lock_key(p_conversation_id, p_invitee));
 
-  select p.membership_state, p.invited_at, true
-    into v_state, v_invited_at, v_found
+  select p.membership_state, p.invited_at, p.left_at, p.removed_by, true
+    into v_state, v_invited_at, v_left_at, v_removed_by, v_found
     from conversation_participants p
    where p.conversation_id = p_conversation_id
      and p.user_id = p_invitee
@@ -117,6 +125,15 @@ begin
   if v_state = 'active'
      or (v_state = 'invited' and v_invited_at > now() - c_invite_ttl) then
     return false;
+  end if;
+
+  -- Someone who declined, left or let an invite lapse said no; they cannot be
+  -- invited back into the same group for 14 days, by anyone, and the refusal
+  -- is the same 42501 as any other. A removal was the group's choice, not
+  -- theirs, so it does not hold them out.
+  if (v_state = 'left' and v_removed_by is null and v_left_at > now() - c_reinvite_cooldown)
+     or (v_state = 'invited' and v_invited_at > now() - c_invite_ttl - c_reinvite_cooldown) then
+    raise exception 'invite_to_group: you cannot invite this person' using errcode = '42501';
   end if;
 
   perform enforce_create_rate_limit('invite_to_group', v_me, 50, 86400);
@@ -305,6 +322,10 @@ begin
   if not found then
     raise exception 'accept_group_invite: invite not found' using errcode = 'P0002';
   end if;
+
+  -- Everyone else may have left while the invite was out; the first to accept
+  -- into an ownerless group then owns it, or nobody could manage it.
+  perform private.group_pass_ownership(p_conversation_id);
 end;
 $$;
 revoke execute on function public.accept_group_invite(uuid) from public, anon;
@@ -507,12 +528,19 @@ begin
     raise exception 'transfer_group_ownership: only the owner transfers ownership' using errcode = '42501';
   end if;
 
-  if p_user_id is null or p_user_id = v_me or not exists (
-    select 1 from conversation_participants p
-     where p.conversation_id = p_conversation_id
-       and p.user_id = p_user_id
-       and p.membership_state = 'active'
-  ) then
+  if p_user_id is null or p_user_id = v_me then
+    raise exception 'transfer_group_ownership: member not found' using errcode = 'P0002';
+  end if;
+
+  -- The target's key exclusive, so they cannot leave or be removed between
+  -- the check and the promotion and leave the group with no active owner.
+  perform pg_advisory_xact_lock(private.group_member_lock_key(p_conversation_id, p_user_id));
+  perform 1 from conversation_participants p
+   where p.conversation_id = p_conversation_id
+     and p.user_id = p_user_id
+     and p.membership_state = 'active'
+   for update;
+  if not found then
     raise exception 'transfer_group_ownership: member not found' using errcode = 'P0002';
   end if;
 
@@ -524,7 +552,8 @@ begin
   update conversation_participants
      set role = 'owner'
    where conversation_id = p_conversation_id
-     and user_id = p_user_id;
+     and user_id = p_user_id
+     and membership_state = 'active';
 end;
 $$;
 revoke execute on function public.transfer_group_ownership(uuid, uuid) from public, anon;

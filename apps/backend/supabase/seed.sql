@@ -3213,3 +3213,12 @@ insert into private.feature_flags (name, enabled) values ('coach_share', true)
 -- CI open it so both clients and their specs exercise it.
 insert into private.feature_flags (name, enabled) values ('dm_images', true)
   on conflict (name) do update set enabled = excluded.enabled, updated_at = now();
+
+-- ─────────────────── Group conversations gate (20271216000006) ───────────────────
+--
+-- Group conversations are fail-closed behind a private.feature_flags row no
+-- migration writes, so prod stays off until the pre-deploy items in
+-- docs/ops/deployment.md (issue #1365). Local stacks and CI open it so the
+-- slice 2 and 3 surfaces and their specs exercise it.
+insert into private.feature_flags (name, enabled) values ('group_messages', true)
+  on conflict (name) do update set enabled = excluded.enabled, updated_at = now();

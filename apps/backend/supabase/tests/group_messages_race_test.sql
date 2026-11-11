@@ -1,5 +1,5 @@
 -- Pins the send-versus-remove serialisation of migration 20271216000006
--- (issue #1365, decisions § 2458, security memo § 2.1 and C3).
+-- (issue #1365, decisions § 2461, security memo § 2.1 and C3).
 --
 -- A group send takes a SHARED transaction advisory lock on (conversation,
 -- sender) before it reads the sender's membership; remove, leave and accept

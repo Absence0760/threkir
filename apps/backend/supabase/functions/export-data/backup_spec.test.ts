@@ -400,7 +400,7 @@ Deno.test('direct_messages exported in both directions (GDPR Art 20)', () => {
 });
 
 Deno.test('group messages export only as the subject\'s own sent messages (D5)', () => {
-	// 20271216000003 / decisions § 2458: a group message is a direct_messages
+	// 20271216000003 / decisions § 2461: a group message is a direct_messages
 	// row with no recipient. The sent side carries is_group so the archive says
 	// which audience a message went to; the received side filters on
 	// recipient_id, which no group message has, so other members' messages

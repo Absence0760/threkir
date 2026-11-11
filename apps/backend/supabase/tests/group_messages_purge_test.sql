@@ -1,5 +1,5 @@
 -- Pins migration 20271216000008 (issue #1365, group_messages.md § 4,
--- decisions § 2458): the 2-year purge and the erase-what-nobody-can-see purge
+-- decisions § 2461): the 2-year purge and the erase-what-nobody-can-see purge
 -- on group messages, a group with no active member, expired invites, the
 -- empty-conversation sweep, and account deletion of a member and of the
 -- owner (ownership passes on).

@@ -1,4 +1,4 @@
--- Pins migration 20271216000007 (issue #1365, decisions § 2458, owner
+-- Pins migration 20271216000007 (issue #1365, decisions § 2461, owner
 -- decisions D1, D2, D3, D12; security memo C3, C5): creating a group, inviting
 -- (always an invite the invitee accepts, only people the inviter could
 -- message 1:1, never across a block, 32 seats including live invites, 14-day
@@ -7,7 +7,7 @@
 -- the earlier window back, the uniform not-found, and the default-off flag.
 
 begin;
-select plan(64);
+select plan(70);
 
 insert into private.feature_flags (name, enabled) values ('group_messages', true)
 on conflict (name) do update set enabled = true;
@@ -252,9 +252,20 @@ select is(
     where conversation_id = (select id from g where k = 'main') and user_id = 'b1365000-0000-0000-0000-0000000000b1'),
   'left', 'leaving leaves a left row');
 set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-0000000000b2","role":"authenticated"}';
+select throws_ok(
+  $$select invite_to_group((select id from g where k = 'main'), array['b1365000-0000-0000-0000-0000000000b1']::uuid[])$$,
+  '42501', null, 'someone who just left cannot be invited straight back');
+select throws_ok(
+  $$select invite_to_group((select id from g where k = 'main'), array['b1365000-0000-0000-0000-0000000000b4']::uuid[])$$,
+  '42501', null, 'someone who declined cannot be invited again within 14 days');
+reset role;
+update conversation_participants set left_at = now() - interval '15 days'
+ where conversation_id = (select id from g where k = 'main') and user_id = 'b1365000-0000-0000-0000-0000000000b1';
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-0000000000b2","role":"authenticated"}';
 select is(
   invite_to_group((select id from g where k = 'main'), array['b1365000-0000-0000-0000-0000000000b1']::uuid[]),
-  1, 'the leaver is invited back');
+  1, 'after 14 days the leaver can be invited back');
 set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-0000000000b1","role":"authenticated"}';
 select lives_ok($$select accept_group_invite((select id from g where k = 'main'))$$, 'the leaver re-joins');
 select is(
@@ -288,6 +299,9 @@ set local role authenticated;
 select is(
   invite_to_group((select id from g where k = 'cap'), array['b1365000-0000-0000-0000-000000000132']::uuid[]),
   1, 'an expired invite frees its seat');
+select throws_ok(
+  $$select invite_to_group((select id from g where k = 'cap'), array['b1365000-0000-0000-0000-000000000131']::uuid[])$$,
+  '42501', null, 'a lapsed invite cannot be sent again within 14 days of lapsing');
 
 -- ── one not-found for a group the caller is not in and one that does not exist (C5) ──
 
@@ -304,6 +318,21 @@ select throws_ok(
 select throws_ok(
   $$select leave_conversation('c1365000-0000-0000-0000-0000000000ee')$$,
   'P0002', null, 'leaving a group that does not exist is the same not-found');
+
+-- ── an invitee accepting into a group everyone else left becomes its owner ──
+
+set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-0000000000b1","role":"authenticated"}';
+insert into g values ('orphan', create_group_conversation('Orphan',
+  array['b1365000-0000-0000-0000-000000000135', 'b1365000-0000-0000-0000-000000000136']::uuid[]));
+select lives_ok($$select leave_conversation((select id from g where k = 'orphan'))$$,
+  'the owner leaves a group that has only invitees');
+set local "request.jwt.claims" = '{"sub":"b1365000-0000-0000-0000-000000000135","role":"authenticated"}';
+select lives_ok($$select accept_group_invite((select id from g where k = 'orphan'))$$,
+  'an invitee accepts into the ownerless group');
+select is(
+  (select role from conversation_participants
+    where conversation_id = (select id from g where k = 'orphan') and user_id = 'b1365000-0000-0000-0000-000000000135'),
+  'owner', 'the first to accept into an ownerless group owns it');
 
 -- ── flag off ──
 

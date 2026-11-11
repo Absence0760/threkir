@@ -129,17 +129,17 @@ export const PAIRS = [
 	{
 		tableColumn: 'conversation_participants.membership_state',
 		clients: [],
-		note: 'group lifecycle (migration 20271216000002, decisions § 2458): written only by the group RPCs and the purge; clients read dm_threads().membership_state and group_members(), and no client enumerates the set until the slice 2 surfaces do.',
+		note: 'group lifecycle (migration 20271216000002, decisions § 2461): written only by the group RPCs and the purge; clients read dm_threads().membership_state and group_members(), and no client enumerates the set until the slice 2 surfaces do.',
 	},
 	{
 		tableColumn: 'conversation_participants.role',
 		clients: [],
-		note: 'group roles (migration 20271216000002, decisions § 2458): written only by create_group_conversation, accept_group_invite, set_group_member_role and transfer_group_ownership; no client enumerates the set until the slice 2 member sheet does.',
+		note: 'group roles (migration 20271216000002, decisions § 2461): written only by create_group_conversation, accept_group_invite, set_group_member_role and transfer_group_ownership; no client enumerates the set until the slice 2 member sheet does.',
 	},
 	{
 		tableColumn: 'conversations.kind',
 		clients: [],
-		note: 'direct (migration 20271105000010) and group (20271216000001, decisions § 2458); written by the direct_messages_set_conversation trigger and create_group_conversation, never by a client. Clients read the dm_threads().kind text and no client enumerates the set until slice 2.',
+		note: 'direct (migration 20271105000010) and group (20271216000001, decisions § 2461); written by the direct_messages_set_conversation trigger and create_group_conversation, never by a client. Clients read the dm_threads().kind text and no client enumerates the set until slice 2.',
 	},
 	{
 		tableColumn: 'challenges.activity_type',

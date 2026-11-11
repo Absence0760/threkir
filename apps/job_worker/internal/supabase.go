@@ -2438,7 +2438,7 @@ func exportPersonalDataSpecs(uid string) []exportTableSpec {
 		// (20271113000001); seen_at is what the recipient chose to share.
 		// edited_at and original_body (the text before an edit,
 		// 20271114000210) are the subject's own words. Group messages
-		// (20271216000003, decisions § 2458) ship on the sent side only: they
+		// (20271216000003, decisions § 2461) ship on the sent side only: they
 		// have no recipient, and other members' group messages are not the
 		// subject's data (owner decision D5).
 		{

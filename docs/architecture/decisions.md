@@ -33217,3 +33217,11 @@ Owner decisions on issue #1352. The course page showed "Run it clockwise. © Ope
 **Rejected:** trimming to fit (nothing here is dead code or a duplicated dependency); a larger cover (it hides the next rogue dependency).
 
 **Don't re-litigate unless** the shell's share keeps growing round over round: then split `core/data.ts` by domain so route-only reads leave the shell, rather than raising this again.
+
+## 2471. A race result's course and distance lock with its timing 24 h after the race finishes; the host override still applies
+
+**Decided 2026-11-11 (owner decision, PR #1359; migration `20271222002471`).** `event_results_race_guard` refused a runner's own timing change once the race finished more than 24 h ago (§ 1849) but let `course_id` and `distance_m` through, so a closed result could still be moved onto another course's board, where it takes a place, or have its distance restated. Both now join the locked set: past the window the runner's write is refused with the same `race_result_window_closed` error, and the race director / event organiser bypass that covers a time covers them too, so the host can still correct a genuine mistake. Inside the window nothing changes. The runner / host normalisation still keys on a timing change alone: a course or distance change with no timing change reaches only the window check, so it is never re-timed, re-stamped `host` or sent back for approval. No client offers a result course switch today (the web and phone write a result's course only with its time, through the re-time and the device upload, both already windowed), so no client changed; the host's override is server-side only until a host course-move control exists.
+
+**Rejected:** locking the course from GO (a runner who RSVP'd the wrong course has no other way to put it right before the host does); a separate error code for the course (the clients already read `race_result_window_closed` as "the window has closed", which is the whole story); folding the two columns into the timing set (it would re-stamp a host's course move as a host time and reset a runner's approval for a change that moves no time).
+
+**Don't re-litigate unless** a runner-side course correction past the window becomes a support load the host cannot absorb; then add a host control, not a longer runner window.

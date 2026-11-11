@@ -83,7 +83,7 @@ apps/watch_wear/
             │   ├── RaceRun.kt               # pure race-mode model + transitions RunViewModel acts on (Stop, Finish race, bind, host End, device-clock fix stamp, late start, the result row with its crossings)
             │   ├── RaceLineTimer.kt         # timing by the lines from the recording's Start (#1307): fix log, detector rebuilt at GO / course, start cue, distance to the start line, undo
             │   ├── RaceResultOutbox.kt      # every event_results write + undo delete for a race, in one order (bank, send, void)
-            │   ├── RaceResultStore.kt       # DataStore: race results owed the server, withdrawn finishes still to delete, the cached race course
+            │   ├── RaceResultStore.kt       # DataStore: race results owed the server, withdrawn finishes still to delete, the cached race and its course
             │   ├── ui/RunWatchApp.kt        # Compose-for-Wear screens
             │   ├── ui/RouteMiniMap.kt       # Polyline + position-dot + track-so-far + raster tiles
             │   ├── ui/TileSource.kt         # MapTiler raster tile fetcher (OkHttp + LRU)

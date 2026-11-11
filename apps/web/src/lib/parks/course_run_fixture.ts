@@ -199,13 +199,13 @@ function asGate(g: CuratedGate): Gate {
 /** Reads a file by its path from the repo root. */
 export type RepoReader = (path: string) => string;
 
-export function loadCourses(read: RepoReader): ParkCourse[] {
-	const manifest = JSON.parse(read(`${PARK_DIR}/manifest.json`)) as {
+export function loadCourses(read: RepoReader, parkDir: string = PARK_DIR): ParkCourse[] {
+	const manifest = JSON.parse(read(`${parkDir}/manifest.json`)) as {
 		courses: ManifestCourse[];
-		race_courses: ManifestCourse[];
+		race_courses?: ManifestCourse[];
 	};
-	return [...manifest.courses, ...manifest.race_courses].map((c) => {
-		const gj = JSON.parse(read(`${PARK_DIR}/${c.geojson}`));
+	return [...manifest.courses, ...(manifest.race_courses ?? [])].map((c) => {
+		const gj = JSON.parse(read(`${parkDir}/${c.geojson}`));
 		const feature = gj.features.find((f: { geometry?: { type?: string } }) => f.geometry?.type === 'LineString');
 		const line: LatLng[] = feature.geometry.coordinates.map((p: number[]) => ({ lat: p[1], lng: p[0] }));
 		const derived = derivedGates(line);
@@ -219,7 +219,7 @@ export function loadCourses(read: RepoReader): ParkCourse[] {
 				: 0;
 		return {
 			slug: c.slug,
-			geojson: `${PARK_DIR}/${c.geojson}`,
+			geojson: `${parkDir}/${c.geojson}`,
 			distanceM: c.distance_m,
 			laps: c.laps ?? 1,
 			checkpoints: c.checkpoints,

@@ -822,6 +822,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Back by morning, like Thor\'s goats.';
 
   @override
+  String get mascotMilestoneFirstRun => 'First run in. That\'s the hard one.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Your first 5K. That counts.';
+
+  @override
+  String get mascotMilestoneBadge => 'Badge earned. Worth a hop.';
+
+  @override
+  String get mascotMilestoneBest => 'A new best. Worth a hop.';
+
+  @override
+  String get mascotMilestoneLongest => 'Your longest run yet.';
+
+  @override
+  String get mascotOnboardingLine => 'Grisnir waits at the trailhead.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Readiness $score';
   }
@@ -21102,6 +21120,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get parksLongCourseNotice =>
       'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.';
+
+  @override
+  String get parksTimesNotEventResults =>
+      'Times here are Threkir times on these paths. They are not results of any event held on them.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.';
 
   @override
   String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';

@@ -20,8 +20,8 @@
 //      same database, and nothing is scanned: no scan means no exposure to an
 //      OSV database outage on a PR that could not fail anyway.
 //   3. Otherwise HEAD is scanned, then <base> in a detached worktree, both with
-//      the same pinned binary, `--offline-vulnerabilities` and the same
-//      database cache. Head goes first: the second download can only be newer,
+//      the same pinned binary, `--offline-vulnerabilities`, no call analysis
+//      and the same database cache. Head goes first: the second download can only be newer,
 //      so an advisory published between the two scans can appear at the base
 //      only, never at the head only, and cannot read as introduced.
 //   4. Findings are keyed by (ecosystem, package, version, advisory id). A
@@ -337,6 +337,9 @@ export const isExpired = (e, today) => e.ignoreUntil !== null && e.ignoreUntil <
 /** @param {string} a @param {string} b YYYY-MM-DD */
 const daysBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000);
 
+/** The furthest `ignoreUntil` a PR may add or change, in days after the run date. */
+export const MAX_IGNORE_DAYS = 180;
+
 /**
  * @param {readonly IgnoreEntry[]} entries head's entries
  * @param {readonly IgnoreEntry[]} baseEntries base's entries ([] in report mode)
@@ -352,6 +355,7 @@ export function judgeIgnores(entries, baseEntries, headFindings, changed, today)
 	/** @type {string[]} */
 	const notes = [];
 	const baseIds = new Set(baseEntries.map((e) => `${e.file}\u0000${e.id}`));
+	const baseUntil = new Set(baseEntries.map((e) => `${e.file}\u0000${e.id}\u0000${e.ignoreUntil}`));
 	for (const e of entries) {
 		const where = `${e.file}:${e.line}`;
 		const touchedFile = changed?.has(e.file) ?? false;
@@ -363,6 +367,15 @@ export function judgeIgnores(entries, baseEntries, headFindings, changed, today)
 		}
 		if (changed && !baseIds.has(`${e.file}\u0000${e.id}`)) {
 			notes.push(`${where}: this PR adds an ignore for ${e.id} until ${e.ignoreUntil}.`);
+		}
+		if (changed && !baseUntil.has(`${e.file}\u0000${e.id}\u0000${e.ignoreUntil}`)) {
+			const out = daysBetween(today, e.ignoreUntil);
+			if (out > MAX_IGNORE_DAYS) {
+				errors.push(
+					`${where}: the ignore for ${e.id} runs until ${e.ignoreUntil}, ${out} days out; a waiver this PR adds or changes may run at most ${MAX_IGNORE_DAYS} days (decisions § 2457). ` +
+						`Set ignoreUntil on or before ${new Date(Date.parse(today) + MAX_IGNORE_DAYS * 86400000).toISOString().slice(0, 10)}, and renew it closer to expiry, with a reason, if the advisory still has no fix.`,
+				);
+			}
 		}
 		if (isExpired(e, today)) {
 			const lockfiles = [
@@ -413,6 +426,10 @@ export function scan(scanner, root, outFile, log, delayMs = RETRY_DELAY_MS) {
 		'--recursive',
 		'--offline-vulnerabilities',
 		'--download-offline-databases',
+		// Call analysis runs govulncheck, which needs a Go toolchain and the
+		// module proxy: a second network dependency, and a local `go` older
+		// than a go.mod's `go` line exits 127. The gate reads lockfiles only.
+		'--no-call-analysis=all',
 		'--all-packages',
 		'--format',
 		'json',
@@ -427,7 +444,9 @@ export function scan(scanner, root, outFile, log, delayMs = RETRY_DELAY_MS) {
 		rmSync(outFile, { force: true });
 		const r = spawnSync(scanner, args, { cwd: root, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 		status = r.status;
-		detail = (r.error?.message ?? '') + (r.stderr ?? '').split('\n').filter(Boolean).slice(-3).join(' | ');
+		const lines = (r.stderr ?? '').split('\n').filter(Boolean);
+		const errs = lines.filter((l) => /error|unable|could not|failed/i.test(l));
+		detail = [r.error?.message, ...(errs.length ? errs : lines).slice(-3)].filter(Boolean).join(' | ').slice(0, 600);
 		if (status !== null && SCANNER_OK.has(status)) {
 			if (status === 128 && !existsSync(outFile)) return { ok: true, report: { results: [] } };
 			try {

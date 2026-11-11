@@ -454,8 +454,17 @@ schedule; the weekly scan is `supply-chain-scan.yml`, still advisory.
 with an `::error::` saying the scan did not complete and to **re-run the job**.
 A failed binary download says the same. That red is not a finding, and a
 re-run is the fix. A sha256 mismatch on the binary says not to re-run past it.
-Bypass `CI gate` only for a hotfix, as condition (c) in the next section sets
-out, and record the bypass on the PR.
+There is no merge-box bypass: `CI gate` is a required check under branch
+protection, enforced for admins, and the ruleset bypass in condition (c) of the
+next section covers only the Code scanning gate. For a hotfix during an outage:
+
+1. A PR that changes no lockfile or manifest is not scanned, so it merges
+   normally. Most hotfixes are this case.
+2. A PR with a dependency change: re-run the job. If the outage persists, split
+   the dependency change into its own PR so the code fix merges alone.
+3. Last resort: the owner removes `CI gate` from branch protection, merges,
+   restores it immediately, and records on the PR who did it, why, the failing
+   run, and the time protection was restored.
 
 **Ignoring an advisory.** When no fixed release exists, add an
 `[[IgnoredVulns]]` entry to the `osv-scanner.toml` beside the lockfile, with
@@ -467,6 +476,10 @@ file. Once `ignoreUntil` passes, osv-scanner reports the advisory again. A PR
 that changes a lockfile the expired entry covers then fails until someone
 re-reads the advisory and either fixes the dependency or renews the date with a
 reason. Every other PR gets a warning. Entries within 30 days of expiry warn.
+A PR that adds an entry, or changes an entry's `ignoreUntil`, fails if that
+date is more than 180 days after the run date: renew the waiver closer to its
+expiry, with a reason, rather than dating it far out. Entries the PR leaves
+unchanged or removes are not held to the cap.
 
 **Pre-merge checklist (#1359).** Making this job required changes the merge
 gate (SOC 2 CC8.1). **#1359 does not merge until the owner's sign-off on this

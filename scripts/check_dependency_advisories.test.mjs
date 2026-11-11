@@ -273,6 +273,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const args = process.argv.slice(2);
 const out = args[args.indexOf('--output-file') + 1];
+if (process.env.FAKE_ARGS) fs.writeFileSync(process.env.FAKE_ARGS, JSON.stringify(args));
 const counter = process.env.FAKE_COUNTER;
 let n = 0;
 if (counter) { n = fs.existsSync(counter) ? Number(fs.readFileSync(counter, 'utf8')) : 0; fs.writeFileSync(counter, String(n + 1)); }
@@ -318,11 +319,15 @@ test('an outage exit is retried once and then succeeds', () => {
 		writeFileSync(join(dir, 'fake-report.json'), '{"results": []}');
 		/** @type {string[]} */
 		const log = [];
-		withEnv({ FAKE_COUNTER: join(dir, 'n'), FAKE_FAIL_TIMES: '1' }, () => {
+		withEnv({ FAKE_COUNTER: join(dir, 'n'), FAKE_FAIL_TIMES: '1', FAKE_ARGS: join(dir, 'args.json') }, () => {
 			const r = scan(scanner, dir, join(dir, 'out.json'), (l) => log.push(l), 0);
 			assert.equal(r.ok, true);
 		});
-		assert.match(log[0], /^::warning::osv-scanner exited 127 .*retrying once/);
+		assert.match(log[0], /^::warning::osv-scanner exited 127 .*unable to fetch OSV database.*retrying once/);
+		const args = JSON.parse(readFileSync(join(dir, 'args.json'), 'utf8'));
+		for (const flag of ['--offline-vulnerabilities', '--download-offline-databases', '--no-call-analysis=all', '--all-packages']) {
+			assert.ok(args.includes(flag), flag);
+		}
 	} finally {
 		rmSync(dir, { recursive: true, force: true });
 	}
@@ -506,4 +511,33 @@ test('the gate and the advisory scan pin the same osv-scanner release and sha256
 		return { version: version[0], sha: sha[0] };
 	};
 	assert.deepEqual(pins('ci.yml'), pins('supply-chain-scan.yml'));
+});
+
+test('a waiver a PR adds or changes may run at most 180 days past the run date', () => {
+	const today = '2026-11-10';
+	const lock = new Set(['osv-scanner.toml']);
+	const at = judgeIgnores([entry({ ignoreUntil: '2027-05-09' })], [], [], lock, today);
+	assert.deepEqual(at.errors, []);
+	const over = judgeIgnores([entry({ ignoreUntil: '2027-05-10' })], [], [], lock, today);
+	assert.equal(over.errors.length, 1);
+	assert.match(over.errors[0], /181 days out.*at most 180 days.*on or before 2027-05-09.*renew it closer to expiry, with a reason/);
+	const changedDate = judgeIgnores([entry({ ignoreUntil: '2099-01-01' })], [entry({})], [], lock, today);
+	assert.equal(changedDate.errors.length, 1);
+});
+
+test('an unchanged far-out waiver and a removed one do not fail the cap', () => {
+	const today = '2026-11-10';
+	const lock = new Set(['osv-scanner.toml']);
+	const far = entry({ ignoreUntil: '2099-01-01' });
+	assert.deepEqual(judgeIgnores([far], [far], [], lock, today).errors, []);
+	assert.deepEqual(judgeIgnores([], [far], [], lock, today).errors, []);
+	assert.deepEqual(judgeIgnores([far], [], [], null, today).errors, []);
+});
+
+test('both committed waivers sit inside the 180-day cap as of 2026-11-10', () => {
+	const entries = ['osv-scanner.toml', 'apps/custom_watch/osv-scanner.toml'].flatMap((f) =>
+		parseIgnores(readFileSync(new URL(`../${f}`, import.meta.url), 'utf8'), f),
+	);
+	assert.equal(entries.length, 2);
+	assert.deepEqual(judgeIgnores(entries, [], [], new Set(entries.map((e) => e.file)), '2026-11-10').errors, []);
 });

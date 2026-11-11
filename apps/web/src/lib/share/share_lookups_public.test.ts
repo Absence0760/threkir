@@ -233,6 +233,7 @@ test('course: a row maps onto the course, its segment geometry and its park', as
 						],
 					},
 					route_guide_checked_at: '2026-12-01',
+					shared_use: 'saturday_morning_group',
 					global_segments: {
 						name: 'Lake Loop',
 						description: null,
@@ -268,4 +269,7 @@ test('course: a row maps onto the course, its segment geometry and its park', as
 		{ kind: 'finish', at_m: 5120 },
 	]);
 	assert.equal(course?.route_guide_checked_at, '2026-12-01');
+	assert.equal(course?.shared_use, 'saturday_morning_group');
+	const select = requests.at(-1)?.searchParams.get('select') ?? '';
+	assert.ok(select.split(/,\s*/).includes('shared_use'), select);
 });

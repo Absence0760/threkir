@@ -233,7 +233,7 @@
 		<p class="visually-hidden" role="status">{m('socialFeed.loadingFeed')}</p>
 	{:else if entries.length === 0}
 		{#if !followsAnyone}
-			<EmptyState icon="dynamic_feed" title={m('socialFeed.emptyTitle')} text={m('socialFeed.emptyText')}>
+			<EmptyState icon="dynamic_feed" title={m('socialFeed.emptyTitle')} text={m('socialFeed.emptyText')} mascot>
 				{#snippet actions()}
 					<a href="/social?tab=people" class="btn btn-primary">
 						<span class="material-symbols" aria-hidden="true">person_search</span>

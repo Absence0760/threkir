@@ -2589,6 +2589,43 @@ export const UNOBSERVED_RPC_WRITES = [
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
   {
+    file: 'group_messages_read_matrix_test.sql',
+    description: 'an active member sends to the group by naming the conversation',
+    columns: ['direct_messages.conversation_id'],
+    readBack: "the member's send lands in the group it named",
+    reason:
+      'direct_messages_set_conversation overwrites conversation_id from the pair on a 1:1 send and keeps it ' +
+      'on a group send (20271216000006). This send names no recipient, so the named group must stand; the ' +
+      'read-back proves the stored conversation is the one supplied.',
+  },
+  {
+    file: 'group_messages_read_matrix_test.sql',
+    description: 'a message naming a recipient is a 1:1 send whatever conversation it names',
+    columns: ['direct_messages.conversation_id'],
+    readBack: "the 1:1 send lands in the pair's own conversation, not the group it named",
+    reason:
+      'the claim IS the rewrite: a send naming a recipient takes the pair\'s conversation whatever it names, ' +
+      'and the read-back proves the stored value is not the one supplied.',
+  },
+  {
+    file: 'group_messages_read_matrix_test.sql',
+    description: 'a block does not stop the blocked member posting to a group they share',
+    columns: ['direct_messages.conversation_id'],
+    readBack: "the blocked member's post lands in the group",
+    reason:
+      'a group send keeps the conversation it names (20271216000006); the read-back counts the post in that ' +
+      'group rather than relying on the fixture naming no recipient.',
+  },
+  {
+    file: 'group_messages_race_test.sql',
+    description: 'an active member sends',
+    columns: ['direct_messages.conversation_id'],
+    readBack: 'only the message that won the race is in the group',
+    reason:
+      'a group send keeps the conversation it names (20271216000006); the read-back lists the group\'s ' +
+      'messages by that conversation, so a send that landed elsewhere would leave it empty.',
+  },
+  {
     file: 'organiser_disputes_test.sql',
     description: 'once lifted, the source may be published again',
     columns: ['training_plans.library_copy_id'],

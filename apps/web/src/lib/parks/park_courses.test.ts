@@ -11,6 +11,8 @@ import {
 	MAX_COURSE_CHECKPOINTS,
 	parkCourseGpx,
 	parseCourseCheckpoints,
+	parseSharedUse,
+	SHARED_USES,
 	regionCodeFromSlug,
 	regionName,
 	regionSlug,
@@ -281,4 +283,12 @@ test('pickShareCourse: with nothing ranked, the first time', () => {
 		{ ...TIME, course_name: 'B', season_rank: null },
 	];
 	assert.equal(pickShareCourse(rows)?.course_name, 'A');
+});
+
+test('parseSharedUse: reads a known key and nothing else', () => {
+	assert.deepEqual([...SHARED_USES], ['saturday_morning_group']);
+	assert.equal(parseSharedUse('saturday_morning_group'), 'saturday_morning_group');
+	for (const raw of [null, undefined, '', 'Saturday group', 'SATURDAY_MORNING_GROUP', 1, {}]) {
+		assert.equal(parseSharedUse(raw), null, String(raw));
+	}
 });

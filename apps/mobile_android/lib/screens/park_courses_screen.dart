@@ -345,6 +345,14 @@ String courseStatusLabel(AppLocalizations l10n, String status) =>
       _ => status,
     };
 
+/// The give-way note for a course whose paths an organised group regularly
+/// uses (`park_courses.shared_use`, decisions § 2460). It names no one.
+String? sharedUseNotice(AppLocalizations l10n, String? sharedUse) =>
+    switch (sharedUse) {
+      'saturday_morning_group' => l10n.parksSharedUseSaturdayMorningGroup,
+      _ => null,
+    };
+
 String? courseDifficultyLabel(AppLocalizations l10n, String? difficulty) =>
     switch (difficulty) {
       'easy' => l10n.parksDifficultyEasy,
@@ -1096,7 +1104,10 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                _CourseNotices(long: isLongCourse(segment.distanceM)),
+                _CourseNotices(
+                  long: isLongCourse(segment.distanceM),
+                  sharedUse: parseSharedUse(course.sharedUse),
+                ),
                 if (canNavigate || canShare) ...[
                   const SizedBox(height: 16),
                   Wrap(
@@ -1456,10 +1467,12 @@ class _CourseRouteGuide extends StatelessWidget {
 }
 
 /// The course page's one notices callout: the safety rules first, the
-/// long-course warning when it applies, then the not-affiliated note.
+/// give-way note when an organised group shares the paths, the long-course
+/// warning when it applies, then the times and not-affiliated notes.
 class _CourseNotices extends StatelessWidget {
   final bool long;
-  const _CourseNotices({required this.long});
+  final String? sharedUse;
+  const _CourseNotices({required this.long, required this.sharedUse});
 
   @override
   Widget build(BuildContext context) {
@@ -1490,6 +1503,15 @@ class _CourseNotices extends StatelessWidget {
               l10n.parksSafetyNotice,
               theme.textTheme.bodyMedium,
             ),
+            if (sharedUseNotice(l10n, sharedUse) case final note?) ...[
+              const SizedBox(height: 10),
+              row(
+                const Key('park-course-shared-use'),
+                Icons.groups_outlined,
+                note,
+                theme.textTheme.bodyMedium,
+              ),
+            ],
             if (long) ...[
               const SizedBox(height: 10),
               row(
@@ -1499,6 +1521,15 @@ class _CourseNotices extends StatelessWidget {
                 theme.textTheme.bodyMedium,
               ),
             ],
+            const SizedBox(height: 10),
+            row(
+              const Key('park-course-times'),
+              Icons.timer_outlined,
+              l10n.parksTimesNotEventResults,
+              theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 10),
             row(
               const Key('park-course-not-affiliated'),

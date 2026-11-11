@@ -16737,6 +16737,21 @@ export async function fetchRunDistanceBadge(runId: string): Promise<Achievement 
 	return (data as Achievement | null) ?? null;
 }
 
+/// Whether any of the runner's badges names this run as its source: the run
+/// that unlocked it, for the run page's milestone moment.
+export async function fetchRunEarnedBadge(runId: string): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return false;
+	const { data, error } = await supabase
+		.from(TABLES.achievements)
+		.select('id')
+		.eq('user_id', userId)
+		.eq('source_id', runId)
+		.limit(1);
+	if (error) throw dbError(error);
+	return (data?.length ?? 0) > 0;
+}
+
 /** Flip a badge's public visibility. Owner-only (enforced by RLS). */
 export async function setBadgeVisibility(id: string, isPublic: boolean): Promise<void> {
 	const { error } = await supabase

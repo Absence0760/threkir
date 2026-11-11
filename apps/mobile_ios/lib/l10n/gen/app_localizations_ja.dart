@@ -794,6 +794,24 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardHeroRestDayGrisnir => 'トールのヤギのように、朝には元どおり。';
 
   @override
+  String get mascotMilestoneFirstRun => '初めてのランを記録。いちばん大変な一歩です。';
+
+  @override
+  String get mascotMilestoneFirst5k => '初めての5K。ちゃんと数に入ります。';
+
+  @override
+  String get mascotMilestoneBadge => 'バッジ獲得。跳ねたくなりますね。';
+
+  @override
+  String get mascotMilestoneBest => '自己ベスト更新。跳ねたくなりますね。';
+
+  @override
+  String get mascotMilestoneLongest => 'これまでで最長のラン。';
+
+  @override
+  String get mascotOnboardingLine => 'グリスニルは登山口で待っています。';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return '準備度 $score';
   }
@@ -20291,6 +20309,14 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String get parksLongCourseNotice =>
       '長いコースです。閉園時間までに走り終えられるよう、早めにスタートしてください。自転車や馬と共用のトレイルや、雨の後は渡れなくなることがある渡渉箇所があります。';
+
+  @override
+  String get parksTimesNotEventResults =>
+      'ここに表示されるタイムは、この道をThrekirで記録したタイムです。この道で開催されるいかなるイベントの結果でもありません。';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      '土曜日の朝は、団体がこの道を利用します。道を譲り、その中を走り抜けてタイムを計測するのは避けてください。';
 
   @override
   String get parksAttributionOsm => 'コースライン © OpenStreetMap contributors';

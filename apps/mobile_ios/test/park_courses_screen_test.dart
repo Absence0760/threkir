@@ -64,6 +64,7 @@ ParkCourseListing _course({
   List<Map<String, dynamic>>? waypoints,
   Object? routeGuide,
   DateTime? routeGuideCheckedAt,
+  String? sharedUse,
 }) => ParkCourseListing(
   course: ParkCourseRow(
     id: id,
@@ -79,6 +80,7 @@ ParkCourseListing _course({
     attribution: attribution,
     routeGuide: routeGuide,
     routeGuideCheckedAt: routeGuideCheckedAt,
+    sharedUse: sharedUse,
     createdAt: DateTime.parse('2026-01-01T00:00:00Z'),
   ),
   segment: GlobalSegmentRow(
@@ -526,6 +528,54 @@ void main() {
 
   group('ParkCourseScreen', () {
     testWidgets(
+      'a course an organised group shares gets the give-way note, naming no one',
+      (tester) async {
+        tallView(tester);
+        await tester.pumpWidget(
+          _host(
+            ParkCourseScreen(
+              api: _ParksApi(),
+              listing: _park(id: 'p1', name: 'Deep Run Park'),
+              course: _course(
+                name: 'Deep Run Park, 5 km',
+                distanceM: 5000,
+                sharedUse: 'saturday_morning_group',
+              ),
+            ),
+          ),
+        );
+        await _settle(tester);
+        final notices = find.byKey(const Key('park-course-notices'));
+        final note = find.descendant(
+          of: notices,
+          matching: find.byKey(const Key('park-course-shared-use')),
+        );
+        expect(note, findsOneWidget);
+        expect(
+          find.descendant(
+            of: note,
+            matching: find.text(
+              'Organised groups use these paths on Saturday mornings. '
+              'Give way, and avoid timing an effort through them.',
+            ),
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Times here are Threkir times on these paths. '
+            'They are not results of any event held on them.',
+          ),
+          findsOneWidget,
+        );
+        final y = (String k) => tester.getTopLeft(find.byKey(Key(k))).dy;
+        expect(y('park-course-safety'), lessThan(y('park-course-shared-use')));
+        expect(y('park-course-shared-use'), lessThan(y('park-course-times')));
+        await _unmount(tester);
+      },
+    );
+
+    testWidgets(
       'loads this season first, then all time, then completions',
       (tester) async {
         tallView(tester);
@@ -626,6 +676,7 @@ void main() {
       for (final k in [
         'park-course-safety',
         'park-course-long',
+        'park-course-times',
         'park-course-not-affiliated',
       ]) {
         expect(
@@ -636,10 +687,12 @@ void main() {
       }
       final y = (String k) => tester.getTopLeft(find.byKey(Key(k))).dy;
       expect(y('park-course-safety'), lessThan(y('park-course-long')));
+      expect(y('park-course-long'), lessThan(y('park-course-times')));
       expect(
-        y('park-course-long'),
+        y('park-course-times'),
         lessThan(y('park-course-not-affiliated')),
       );
+      expect(find.byKey(const Key('park-course-shared-use')), findsNothing);
       expect(
         find.textContaining(
           'Start early enough to finish before the park closes.',

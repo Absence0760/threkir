@@ -830,6 +830,25 @@ class AppLocalizationsFr extends AppLocalizations {
       'De retour au matin, comme les boucs de Thor.';
 
   @override
+  String get mascotMilestoneFirstRun =>
+      'Première course enregistrée. C\'était la plus dure.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Votre premier 5 km. Ça compte.';
+
+  @override
+  String get mascotMilestoneBadge => 'Badge obtenu. Ça vaut un bond.';
+
+  @override
+  String get mascotMilestoneBest => 'Nouveau record. Ça vaut un bond.';
+
+  @override
+  String get mascotMilestoneLongest => 'Votre plus longue course à ce jour.';
+
+  @override
+  String get mascotOnboardingLine => 'Grisnir attend au départ du sentier.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Forme $score';
   }
@@ -21372,6 +21391,14 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get parksLongCourseNotice =>
       'Parcours long. Partez assez tôt pour finir avant la fermeture du parc. Attendez-vous à partager le sentier avec des vélos et des chevaux, et à des passages à gué parfois infranchissables après la pluie.';
+
+  @override
+  String get parksTimesNotEventResults =>
+      'Les temps affichés ici sont des temps Threkir sur ces chemins. Ce ne sont les résultats d\'aucun événement qui s\'y déroule.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Des groupes organisés empruntent ces chemins le samedi matin. Cédez-leur le passage et évitez de chronométrer un effort au milieu d\'eux.';
 
   @override
   String get parksAttributionOsm =>

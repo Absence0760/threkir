@@ -153,9 +153,11 @@ select is(
     where message_id = '2222a216-4ea0-0000-0000-000000000002'),
   0,
   'reactions on a message the viewer deleted for themselves are hidden from them');
+-- Since 20271216000006 the lookup is the read rule, and a message behind the
+-- viewer's own hidden_before is one they cannot read, so it is not found.
 select throws_ok(
   $$select set_direct_message_reaction('2222a216-4ea0-0000-0000-000000000002', 'sad')$$,
-  '55000', null,
+  'P0002', null,
   'a message deleted for the viewer takes no reaction from them');
 set local "request.jwt.claims" = '{"sub":"aaaa1216-4ea0-0000-0000-0000000000b2","role":"authenticated"}';
 select is(

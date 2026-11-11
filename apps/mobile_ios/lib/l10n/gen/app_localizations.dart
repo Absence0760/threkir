@@ -1331,6 +1331,42 @@ abstract class AppLocalizations {
   /// **'Back by morning, like Thor\'s goats.'**
   String get dashboardHeroRestDayGrisnir;
 
+  /// Grisnir the mascot's one dry line beside his hop when a run is the runner's first ever
+  ///
+  /// In en, this message translates to:
+  /// **'First run in. That\'s the hard one.'**
+  String get mascotMilestoneFirstRun;
+
+  /// Grisnir's line when a run is the runner's first 5 km; never a nag
+  ///
+  /// In en, this message translates to:
+  /// **'Your first 5K. That counts.'**
+  String get mascotMilestoneFirst5k;
+
+  /// Grisnir's line when a run unlocked a badge
+  ///
+  /// In en, this message translates to:
+  /// **'Badge earned. Worth a hop.'**
+  String get mascotMilestoneBadge;
+
+  /// Grisnir's line when a run set a new best time at a personal-record distance
+  ///
+  /// In en, this message translates to:
+  /// **'A new best. Worth a hop.'**
+  String get mascotMilestoneBest;
+
+  /// Grisnir's line when a run is the runner's longest so far
+  ///
+  /// In en, this message translates to:
+  /// **'Your longest run yet.'**
+  String get mascotMilestoneLongest;
+
+  /// Line under Grisnir waiting by a trail sign on the onboarding screen; Grisnir is the mascot's name, keep it
+  ///
+  /// In en, this message translates to:
+  /// **'Grisnir waits at the trailhead.'**
+  String get mascotOnboardingLine;
+
   /// One-line readiness score in the Today hero; {score} is 0-100
   ///
   /// In en, this message translates to:
@@ -34384,6 +34420,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.'**
   String get parksLongCourseNotice;
+
+  /// Park course page notice, on every course: the times on its boards are Threkir's own, never the results of an organised event (a weekly community run, say) that uses the same paths. Names no event.
+  ///
+  /// In en, this message translates to:
+  /// **'Times here are Threkir times on these paths. They are not results of any event held on them.'**
+  String get parksTimesNotEventResults;
+
+  /// Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation.
+  ///
+  /// In en, this message translates to:
+  /// **'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.'**
+  String get parksSharedUseSaturdayMorningGroup;
 
   /// Park courses (#1313): web key parks.attributionOsm.
   ///

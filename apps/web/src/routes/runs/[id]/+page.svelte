@@ -29,6 +29,8 @@
 	import RunShareImageDialog from '#lib/components/RunShareImageDialog.svelte';
 	import HeadToHeadDialog from '#lib/components/HeadToHeadDialog.svelte';
 	import type { PrCardEntry } from '#lib/share/pr_card.ts';
+	import GrisnirMilestone from '#lib/components/GrisnirMilestone.svelte';
+	import { pickMilestone, type MilestoneKind } from '#lib/mascot/mascot.ts';
 	import StaticMapImage from '#lib/components/StaticMapImage.svelte';
 	import Avatar from '#lib/components/Avatar.svelte';
 	import ReportDialog from '#lib/components/ReportDialog.svelte';
@@ -49,6 +51,8 @@
 	import {
 		fetchRunById,
 		fetchRunPersonalRecords,
+		fetchRunAllTimeStats,
+		fetchRunEarnedBadge,
 		fetchPublicRunAttribution,
 		type PublicRunAttribution,
 		deleteRun,
@@ -282,6 +286,12 @@
 	// Universal `show_mascot` (default on): off drops Grisnir from the map
 	// share card whatever the editor's mark switch says.
 	let showMascot = $state(true);
+	/// Whether the settings read has landed, so the milestone Grisnir never
+	/// flashes for a runner who hid him (the share card's default-on
+	/// `showMascot` is only read at capture time).
+	let mascotKnown = $state(false);
+	/// The one milestone this run earned, for Grisnir's hop under the header.
+	let milestone = $state<MilestoneKind | null>(null);
 	// HR-zone fallback inputs, read from the universal settings bag on
 	// mount. Used only when explicit `hr_zones` is unset (Older #8).
 	let maxHrBpm = $state<number | null>(null);
@@ -420,6 +430,7 @@
 				if (typeof bw === 'number' && bw > 0) bodyWeightKg = bw;
 				showCalories = effective<boolean>(settings, 'show_calories', true) !== false;
 				showMascot = effective<boolean>(settings, 'show_mascot', true) !== false;
+				mascotKnown = true;
 			}
 			// Read viewer gender for the calorie cross-formula
 			// calibration (persona-hunt Round 3 finding Woman #5).
@@ -967,6 +978,27 @@
 		}
 		if (runRecords.length > 0 && page.url.searchParams.get('share') === 'pr') {
 			void handleShareImage('pr');
+		}
+		void loadMilestone();
+	}
+
+	/// L4: the milestone is decoration; a failed read shows none.
+	async function loadMilestone() {
+		if (!run) return;
+		const runId = run.id;
+		const distanceM = run.distance_m ?? 0;
+		try {
+			const [stats, badgeEarned] = await Promise.all([fetchRunAllTimeStats(), fetchRunEarnedBadge(runId)]);
+			if (run?.id !== runId) return;
+			milestone = pickMilestone({
+				totalRuns: stats.totalRuns,
+				runDistanceM: distanceM,
+				longestRunM: stats.longestRunM,
+				records: runRecords,
+				badgeEarned,
+			});
+		} catch (e) {
+			console.warn('run milestone read failed', e);
 		}
 	}
 
@@ -2192,6 +2224,9 @@
 			</div>
 			{#if runNotes}
 				<p class="run-notes">{runNotes}</p>
+			{/if}
+			{#if milestone && mascotKnown && showMascot && !isDnf && !recoveredUnfinished && auth.user?.id === run.user_id}
+				<GrisnirMilestone kind={milestone} />
 			{/if}
 		</header>
 

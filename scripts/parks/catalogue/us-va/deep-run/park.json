@@ -1,0 +1,99 @@
+{
+  "park": {
+    "slug": "deep-run",
+    "name": "Deep Run Park",
+    "agency": "county",
+    "region_code": "US-VA",
+    "country_code": "US",
+    "timezone": "America/New_York",
+    "website_url": "https://henrico.gov/rec/places/deep-run/",
+    "osm_boundary": "relation/11623997"
+  },
+  "release": {
+    "status": "staged",
+    "reason": "Held until the owner records the brand and data outcome on #1097 and checks this line against a GPS trace of the paths (decisions § 2460)."
+  },
+  "trail_review": {
+    "checked_at": "2026-11-10",
+    "source_urls": [
+      "https://henrico.gov/assets/DeepRun-ParkMap-2026.pdf",
+      "https://henrico.gov/rec/places/deep-run/",
+      "https://www.openstreetmap.org/relation/11623997"
+    ],
+    "designated": [
+      354922962,
+      651195264,
+      651195380,
+      651196046,
+      651196537,
+      919780813,
+      1335709995,
+      1567830875
+    ],
+    "refused": {},
+    "fords": []
+  },
+  "courses": [],
+  "race_courses": [
+    {
+      "slug": "deep-run-park-5k",
+      "name": "Deep Run Park, 5 km",
+      "race_distance": "5k",
+      "laps": 1,
+      "surface": "road",
+      "shared_use": "saturday_morning_group",
+      "osm_ways": [
+        354922962,
+        651195264,
+        651195380,
+        651196046,
+        651196537,
+        919780813,
+        1335709995,
+        1567830875
+      ],
+      "lead_in_via": [
+        214800395,
+        3605720457
+      ],
+      "loop_via": [
+        3605720457,
+        5730442264,
+        12356134353,
+        5730442262,
+        7905736939,
+        8541486404,
+        8541486403,
+        3605720457,
+        5730442264,
+        12356134353,
+        5730442262,
+        7905736939,
+        8541486404,
+        8541486403,
+        3605720457,
+        2911725400,
+        13012727257,
+        2911725718,
+        13012727265,
+        2911725718,
+        13012727257,
+        2911725400,
+        3605720457,
+        5730442264,
+        12356134353,
+        5730442262,
+        7905736939,
+        8541486404,
+        8541486403,
+        3605720457
+      ],
+      "start_note": "Start and finish on the paved path that runs south from the parking area to the ponds. Twice round both ponds, out and back on the paved woods path north of the ponds (the park map's 7/10-mile trail), then once more round the ponds.",
+      "route_guide": {
+        "getting_there": "Park in the lot north of the ponds. The start line is on the paved path that runs south from there to the ponds.",
+        "ground_checked_at": null
+      },
+      "checkpoints_per_lap": 13
+    }
+  ]
+}

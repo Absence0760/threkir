@@ -119,6 +119,8 @@ Deno.test('malformed requests are refused before any rate-limit spend', async ()
     [{ ...VALID, contact_email: 'nobody' }, 'invalid_email'],
     [{ ...VALID, contact_email: 7 }, 'invalid_email'],
     [{ ...VALID, contact_email: `${'a'.repeat(250)}@b.example` }, 'invalid_email'],
+    [{ ...VALID, reason: 'rights_holder_request', contact_email: null }, 'email_required'],
+    [{ ...VALID, reason: 'rights_holder_request', contact_email: '  ' }, 'email_required'],
   ];
   for (const [body, error] of cases) {
     const { deps: d, rec } = deps();
@@ -139,6 +141,14 @@ Deno.test('an empty contact email is no email', async () => {
   const { deps: d, rec } = deps();
   await makeParkCourseReportHandler(d)(post({ ...VALID, contact_email: '  ' }));
   assertEquals(rec.filed[0].report.contactEmail, null);
+});
+
+Deno.test('a rights-holder request with an address is filed with it', async () => {
+  const { deps: d, rec } = deps();
+  const res = await makeParkCourseReportHandler(d)(post({ ...VALID, reason: 'rights_holder_request' }));
+  assertEquals(res.status, 201);
+  assertEquals(rec.filed[0].report.reason, 'rights_holder_request');
+  assertEquals(rec.filed[0].report.contactEmail, 'office@park.example');
 });
 
 Deno.test('a body over the byte cap is a 413 that spends nothing', async () => {

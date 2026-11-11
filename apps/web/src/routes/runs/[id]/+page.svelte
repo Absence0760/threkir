@@ -37,6 +37,7 @@
 	import RunGearChips from '#lib/components/RunGearChips.svelte';
 	import RunRaceResult from '#lib/components/RunRaceResult.svelte';
 	import RunParkCourseChips from '#lib/components/RunParkCourseChips.svelte';
+	import RunRaceRetime from '#lib/components/RunRaceRetime.svelte';
 	import RunPlanWorkoutPrompt from '#lib/components/RunPlanWorkoutPrompt.svelte';
 	import RunSegmentEfforts from '#lib/components/RunSegmentEfforts.svelte';
 	import RouteHistory from '#lib/components/RouteHistory.svelte';
@@ -2372,6 +2373,15 @@
 		/>
 
 		<RunParkCourseChips runId={run.id} runOwnerId={run.user_id} refresh={parkCourseRefresh} />
+
+		<RunRaceRetime
+			runId={run.id}
+			runOwnerId={run.user_id}
+			eventId={run.event_id}
+			startedAt={run.started_at}
+			distanceM={run.distance_m}
+			track={run.track}
+		/>
 
 		<RunPhotos
 			runId={run.id}

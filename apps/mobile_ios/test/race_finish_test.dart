@@ -137,6 +137,7 @@ void main() {
     expect(kRaceFinishMinCoverageWithStart,
         _num(c['MIN_COVERAGE_WITH_START']));
     expect(kRaceStartCommitM, _num(c['START_COMMIT_M']));
+    expect(kRaceLapShortShare, _num(c['LAP_SHORT_SHARE']));
     expect(kGateEarthRadiusM, _num(c['GATE_EARTH_RADIUS_M']));
     expect(kRaceLateStartAfter.inMilliseconds, c['LATE_START_AFTER_MS']);
     expect(kRaceLateStartFarM, _num(c['LATE_START_FAR_M']));

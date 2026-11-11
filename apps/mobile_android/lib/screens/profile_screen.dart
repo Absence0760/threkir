@@ -31,7 +31,9 @@ import 'challenge_detail_screen.dart';
 import 'club_detail_screen.dart';
 import 'event_detail_screen.dart';
 import 'follow_requests_screen.dart';
+import 'group_thread_screen.dart';
 import 'message_thread_screen.dart';
+import 'messages_screen.dart';
 import 'plan_detail_screen.dart';
 import 'public_run_screen.dart';
 import 'race_detail_screen.dart';
@@ -1474,7 +1476,26 @@ class _ProfileScreenState extends State<ProfileScreen>
     await _markNotifRead(item);
     if (!mounted) return;
     final kind = item.row.kind;
-    if (kind == 'message' && item.row.actorId != null) {
+    if (kind == 'message' && item.row.conversationId != null) {
+      // A group message opens its group, never a 1:1 thread with the sender.
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => GroupThreadScreen(
+            api: widget.api,
+            conversationId: item.row.conversationId!,
+          ),
+        ),
+      );
+    } else if (kind == 'group_invite') {
+      // Join and Decline sit in the inbox's Requests list; the group itself
+      // opens only once accepted (decisions § 2463).
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) =>
+              MessagesScreen(api: widget.api, initialShowRequests: true),
+        ),
+      );
+    } else if (kind == 'message' && item.row.actorId != null) {
       await _openConversation(
         item.row.actorId!,
         name: item.actor?.displayName,
@@ -1762,7 +1783,11 @@ class _ProfileScreenState extends State<ProfileScreen>
       case 'refund_failed':
         return l10n.profileNotifRefundFailed;
       case 'message':
-        return l10n.profileNotifMessage(name);
+        return item.row.conversationId != null
+            ? l10n.profileNotifGroupMessage(name)
+            : l10n.profileNotifMessage(name);
+      case 'group_invite':
+        return l10n.profileNotifGroupInvite(name);
       case 'club_post':
         return item.clubName != null
             ? l10n.profileNotifClubPostNamed(name, item.clubName!)

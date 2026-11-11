@@ -726,9 +726,6 @@ export const PAIRS = [
 				file: 'apps/mobile_android/lib/screens/profile_screen.dart',
 				decl: '_verbFor',
 				shape: 'switch',
-				// #1365 slice 3 adds the verb with the mobile group surfaces; the
-				// default-off group_messages flag raises no invite before then.
-				allowMissing: ['group_invite'],
 			},
 		],
 	},

@@ -28,7 +28,7 @@ export type CourseDifficulty = (typeof COURSE_DIFFICULTIES)[number];
 
 /**
  * When an organised group regularly uses a course's paths
- * (`park_courses.shared_use`, decisions § 2455). A key, never free text, so
+ * (`park_courses.shared_use`, decisions § 2459). A key, never free text, so
  * the give-way note rendered from it names no one.
  */
 export const SHARED_USES = ['saturday_morning_group'] as const;

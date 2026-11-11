@@ -42,7 +42,7 @@ export function findParkDirs(root) {
 
 /**
  * The stage the production sync runs. Every park is validated; a staged one
- * (decisions § 2455) is reported `staged` and never loaded.
+ * (decisions § 2459) is reported `staged` and never loaded.
  *
  * @param {{ root?: string, publisherFile?: string }} [opts]
  */

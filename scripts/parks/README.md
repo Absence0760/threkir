@@ -34,7 +34,7 @@ scripts/parks/
 5. `node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>`. The build refuses a course whose traced distance is more than 5 % off the published figure.
 6. Review the `.geojson` on a map (geojson.io, or drop it into QGIS) against the park's trail map before committing.
 
-Every `park.json` declares its `release` (decisions § 2455): `{ "status": "staged", "reason": "..." }` for a park that must not load yet, or `{ "status": "live" }`. A new park starts staged until its owner checks are done; there is no default, and a missing or unknown release fails the build. See *Loading a park* for what staging does and how to unstage.
+Every `park.json` declares its `release` (decisions § 2459): `{ "status": "staged", "reason": "..." }` for a park that must not load yet, or `{ "status": "live" }`. A new park starts staged until its owner checks are done; there is no default, and a missing or unknown release fails the build. See *Loading a park* for what staging does and how to unstage.
 
 Name a course after the park and its distance ("Deep Run Park, 5 km", "Swift Creek Loop, 5 km"). Never after an event that uses the same paths: the build and the payload check refuse any string in the spec or manifest that says parkrun or parkwalk in any spelling, or links to its site (`lib/third_party_marks.mjs`). Where an organised group regularly uses the paths, set the course's `shared_use` (today only `saturday_morning_group`); the clients show a give-way note that names no one.
 

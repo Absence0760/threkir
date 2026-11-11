@@ -3,6 +3,7 @@
 	import { m as tr } from '#lib/i18n/store.svelte.ts';
 	import { fetchDmImage, type DmImageView } from '#lib/core/data.ts';
 	import { DM_IMAGE_SIGNED_URL_SECONDS } from '#lib/social/dm_image.ts';
+	import { thrownMessage } from '#lib/core/supabase_error.ts';
 
 	let { imageId }: { imageId: string } = $props();
 
@@ -30,7 +31,7 @@
 			if (v?.status === 'ready') schedule((DM_IMAGE_SIGNED_URL_SECONDS - 60) * 1000, id);
 		} catch (e) {
 			if (id !== current) return;
-			console.error('dm image read failed', e instanceof Error ? e.message : e);
+			console.error('dm image read failed', thrownMessage(e));
 			if (++checks < PENDING_MAX_CHECKS) schedule(PENDING_RECHECK_MS, id);
 			else if (view?.status !== 'ready') failed = true;
 		}

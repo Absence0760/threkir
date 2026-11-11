@@ -99,7 +99,7 @@
 				</p>
 			{/if}
 			{#if draft}
-				<div class="draft" data-testid="coach-assist-draft">
+				<div class="assist-draft" data-testid="coach-assist-draft">
 					<p class="draft-label">{m('coachAssist.draftLabel')}</p>
 					<p class="draft-text">{draft}</p>
 					<div class="actions">
@@ -157,7 +157,7 @@
 		margin: 0;
 		color: var(--color-danger-text);
 	}
-	.draft {
+	.assist-draft {
 		border-inline-start: 3px solid var(--section-coach);
 		padding-inline-start: var(--space-sm);
 	}

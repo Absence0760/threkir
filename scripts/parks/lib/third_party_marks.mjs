@@ -1,4 +1,4 @@
-// Third-party event marks a park course must never carry (decisions § 2455,
+// Third-party event marks a park course must never carry (decisions § 2459,
 // reviews/legal-parkrun-park-courses.md § Recommendation 2). A course on paths
 // a weekly event also uses is named after the park and its distance only:
 // the event's name, in any spelling, and a link to its site would read as the

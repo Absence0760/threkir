@@ -24,6 +24,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 
 import { parseAuthHeader } from '../limits';
+import { TABLES } from '../../core/schema';
 import type { SupabaseClientFactory } from '../types';
 import {
 	AI_DISCLOSURE_VERSION_COACH_ASSIST,
@@ -194,7 +195,7 @@ export async function handleCoachAssist(
 
 	// The athlete's, on this link. Never bypassed.
 	const link = await supabase
-		.from('coach_athletes')
+		.from(TABLES.coach_athletes)
 		.select('ai_assist_consent_version, accepted_at')
 		.eq('coach_id', coachId)
 		.eq('athlete_id', input.athleteId)
@@ -212,10 +213,14 @@ export async function handleCoachAssist(
 
 	// A block does not end a coaching link, so it is checked here as every
 	// other surface between the pair checks it (share_coach_message included).
-	const blocked = await supabase.rpc('is_blocked_either_way', {
-		a: coachId,
-		b: input.athleteId,
-	});
+	const blocked = await supabase.rpc(
+		'is_blocked_either_way',
+		{
+			a: coachId,
+			b: input.athleteId,
+		},
+		{ get: true },
+	);
 	if (blocked.error) {
 		console.error('[coach-assist] block lookup failed', supabaseErrorFields(blocked.error));
 		return json(500, { error: 'consent check failed' });

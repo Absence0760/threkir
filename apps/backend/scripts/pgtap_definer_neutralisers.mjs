@@ -1714,7 +1714,8 @@ $neutralised$;`,
       sql: `create or replace function public.dm_threads()
  returns table(conversation_id uuid, partner_id uuid, deleted_partner_key uuid, last_body text,
                last_unsent boolean, last_at timestamptz, last_from_me boolean, unread bigint,
-               muted boolean, archived boolean, marked_unread boolean, request boolean)
+               muted boolean, archived boolean, marked_unread boolean, request boolean,
+               last_kind text, last_image boolean)
  language sql stable security definer set search_path to 'public', 'pg_temp'
 as $neutralised$
   with my_msgs as (
@@ -1722,7 +1723,7 @@ as $neutralised$
       m.conversation_id,
       case when m.sender_id = (select auth.uid()) then m.recipient_id else m.sender_id end as partner_id,
       m.deleted_partner_key, m.sender_id, m.recipient_id, m.body, m.unsent_at,
-      m.created_at, m.read_at, m.id
+      m.created_at, m.read_at, m.id, m.kind, m.image_id
     from direct_messages m
     where ${mine('m')}
   ),
@@ -1730,7 +1731,8 @@ as $neutralised$
     select distinct on (conversation_id)
       conversation_id, partner_id, deleted_partner_key,
       body as last_body, (unsent_at is not null) as last_unsent, created_at as last_at,
-      (sender_id = (select auth.uid())) as last_from_me
+      (sender_id = (select auth.uid())) as last_from_me,
+      kind as last_kind, (image_id is not null) as last_image
     from my_msgs
     order by conversation_id, created_at desc, id desc
   ),
@@ -1747,7 +1749,8 @@ as $neutralised$
     coalesce(p.muted_at is not null, false) as muted,
     coalesce(p.archived_at is not null and p.archived_at >= l.last_at, false) as archived,
     coalesce(p.marked_unread_at is not null, false) as marked_unread,
-    coalesce(p.request_state = 'pending', false) as request
+    coalesce(p.request_state = 'pending', false) as request,
+    l.last_kind, l.last_image
   from latest l
   left join unread u using (conversation_id)
   left join conversation_participants p
@@ -1777,6 +1780,64 @@ $neutralised$;`,
                 select set_config('request.jwt.claims',
                   '{"sub":"00000000-0000-0000-0000-00000000c0d1","role":"authenticated"}', true);`,
         probe: `select count(*) from dm_threads() where partner_id = '00000000-0000-0000-0000-00000000c0d2';`,
+      },
+    },
+  ],
+  [
+    'search_direct_messages',
+    {
+      why: "drops the caller-is-a-party rule (`sender_id` or `recipient_id` = auth.uid()) a SECURITY INVOKER body carries beside RLS; keeps the query match, the unsent and empty-body filters, and the caller's own request-state and block exclusions, which say whose search it is",
+      sql: `create or replace function public.search_direct_messages(p_query text, p_limit integer default 30)
+ returns table(id uuid, conversation_id uuid, sender_id uuid, recipient_id uuid,
+               deleted_partner_key uuid, body text, created_at timestamptz, kind text)
+ language sql stable security invoker set search_path to 'public', 'pg_temp'
+as $neutralised$
+  with q as (
+    select btrim(coalesce(p_query, '')) as t
+  )
+  select m.id, m.conversation_id, m.sender_id, m.recipient_id,
+         m.deleted_partner_key, m.body, m.created_at, m.kind
+    from direct_messages m, q
+   where char_length(q.t) between 2 and 100
+     and m.unsent_at is null
+     and m.body is not null
+     and ${mine('m')}
+     and m.body ilike '%' || replace(replace(replace(q.t, '\\', '\\\\'), '%', '\\%'), '_', '\\_') || '%'
+     and not exists (
+       select 1 from conversation_participants p
+        where p.conversation_id = m.conversation_id
+          and p.user_id = (select auth.uid())
+          and p.request_state in ('pending', 'declined')
+     )
+     and not exists (
+       select 1 from user_blocks b
+        where b.blocker_id = (select auth.uid())
+          and b.blocked_id in (m.sender_id, m.recipient_id)
+     )
+   order by m.created_at desc, m.id desc
+   limit least(greatest(coalesce(p_limit, 30), 1), 50);
+$neutralised$;`,
+      subject: 'direct_messages m — the messages whose sender-or-recipient rule was dropped',
+      witness: {
+        // A message between two other runners, which the caller is no party to:
+        // the real search never returns it, the replacement does. Its own three
+        // users and a word no seed message carries, so nothing committed can
+        // answer the probe.
+        setup: `insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at) values
+                  ('00000000-0000-0000-0000-00000000c0e1', 'authenticated', 'authenticated',
+                   'pgtap-guard-dms-a@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0e2', 'authenticated', 'authenticated',
+                   'pgtap-guard-dms-b@local', '', now(), now()),
+                  ('00000000-0000-0000-0000-00000000c0e3', 'authenticated', 'authenticated',
+                   'pgtap-guard-dms-c@local', '', now(), now());
+                insert into user_follows (follower_id, followee_id)
+                  values ('00000000-0000-0000-0000-00000000c0e3', '00000000-0000-0000-0000-00000000c0e2');
+                insert into direct_messages (id, sender_id, recipient_id, body)
+                  values ('00000000-0000-0000-0000-00000000c0e4', '00000000-0000-0000-0000-00000000c0e3',
+                          '00000000-0000-0000-0000-00000000c0e2', 'pgtapguardwitness');
+                select set_config('request.jwt.claims',
+                  '{"sub":"00000000-0000-0000-0000-00000000c0e1","role":"authenticated"}', true);`,
+        probe: `select count(*) from search_direct_messages('pgtapguardwitness');`,
       },
     },
   ],

@@ -31,8 +31,8 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
 | Geometry credit in GPX / KML exports, course GPX (web download, mobile share) | Shipped (decisions § 2395); see *Attribution* |
 | Help guide `park-courses`, Learn page `/learn/park-courses-how-timing-works` | Shipped |
 | Route guide per course (`park_courses.route_guide`, migration `20271212001344`, decisions § 2448): generated with the geometry, shown on the course page, the share page, its search text and the GPX, web + mobile | Shipped; every Pocahontas guide is still a draft awaiting the owner's ground check. See *Route guide* |
-| Staged parks: a park's `release` in `park.json` (`live`, or `staged` with a reason) decides whether the release sync loads it; a staged park is validated and reported `staged`, never loaded (decisions § 2455). See *Loading courses* | Shipped |
-| Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2455. See *Wording and safety* | Shipped |
+| Staged parks: a park's `release` in `park.json` (`live`, or `staged` with a reason) decides whether the release sync loads it; a staged park is validated and reported `staged`, never loaded (decisions § 2459). See *Loading courses* | Shipped |
+| Third-party event marks refused by the catalogue build and payload check (parkrun / parkwalk in any spelling, or a link to its site), decisions § 2459. See *Wording and safety* | Shipped |
 | "Times here are Threkir times…" notice on every course page and share page, and the `shared_use` give-way note (`park_courses.shared_use`, migration `20271215120001`), web + mobile | Shipped |
 | **Deep Run Park, 5 km** (Henrico County, VA; issue #1345): built from OSM under `scripts/parks/catalogue/us-va/deep-run/` | **Staged**: waits on the owner's brand outcome on #1097 and a ground check against a GPS trace. See *Pre-deploy checklist* |
 
@@ -71,7 +71,7 @@ is timed against it. Virginia is the pilot. Issue #1313; decisions § 2383.
   `park_courses` parity pair (`apps/web/src/lib/parks/park_courses.ts` ↔
   `apps/mobile_android/lib/park_courses.dart`) and the mobile label switches.
 - **`shared_use`** (text, nullable; migration `20271215120001`, decisions
-  § 2455): when an organised group regularly uses the course's paths, as a key
+  § 2459): when an organised group regularly uses the course's paths, as a key
   (`saturday_morning_group`), never free text, so the give-way note the clients
   render from it names no one. Set per course in `park.json`.
 
@@ -314,7 +314,7 @@ These follow the owner-approved permit conditions (memo
   use these paths on Saturday mornings. Give way, and avoid timing an effort
   through them." (`parks.sharedUseSaturdayMorningGroup`). It is a key, not
   text, so no organisation can be named through it.
-- **No third-party event names** (decisions § 2455, memo
+- **No third-party event names** (decisions § 2459, memo
   `reviews/legal-parkrun-park-courses.md`). A course on paths a weekly
   community event uses is named after the park and its distance ("Deep Run
   Park, 5 km"). No surface (name, slug, description, route guide, share and SEO
@@ -386,7 +386,7 @@ account. The reporter picks a reason (`course_hazard`, `course_closure`,
   park courses, and Terms § 4 names only a copyright channel. The memo's
   recommendation 5 (a `rights_holder_request` reason routed like
   `land_manager_request`, and "Copyright and trade mark complaints" in the
-  Terms) is the fix; decisions § 2455 records the gap.
+  Terms) is the fix; decisions § 2459 records the gap.
 - **Personal data.** The contact email goes with a signed-in reporter's
   account (a trigger clears it when `reporter_id` is set null) and 30 days
   after the report is resolved (`private.purge_stale_reports`), unless the
@@ -510,7 +510,7 @@ run with `psql` on the service-role connection. `node scripts/parks/load.mjs
 <park dir> --club-id … --author-id … [--enqueue-backfill]` still prints one
 park's single call.
 
-**Staged parks** (decisions § 2455). Committing a park under
+**Staged parks** (decisions § 2459). Committing a park under
 `scripts/parks/catalogue/` would otherwise load it on the next `backend@*`
 release, so every `park.json` declares whether it may:
 
@@ -668,7 +668,7 @@ These gate going live, not the code:
       `TRUSTED_CLIENT_IP_HEADER` is right for the production edge, or every
       signed-out reporter shares one bucket.
 - [ ] Written terms from Virginia DCR before any DCR geometry is loaded.
-- [ ] **Deep Run Park (staged, decisions § 2455).** Before its `release` goes
+- [ ] **Deep Run Park (staged, decisions § 2459).** Before its `release` goes
       `live`: (a) the owner records the parkrun brand and data outcome on
       #1097 (memo `reviews/legal-parkrun-park-courses.md`), including the
       Henrico county-park conditions in its § Recommendation 6; (b) the owner
@@ -752,6 +752,33 @@ These gate going live, not the code:
   admin-only writes, timezone and vocabulary refusals, the season boundary in
   the park's timezone, completions counting days, block and private-run rules.
 - Matcher: the `checkpoints:` cases in `segments.test.ts` ↔ `segments_test.dart`, and the shared line cases `fixtures/segments_gate_cases.json` (parallel path, hairpin, wrong direction, two passes, loops, interpolation, off-track fixes, the circle fallback).
+- A run over a real course reaches its board (#1342 step 5c, the automated
+  form of the hand test): `fixtures/park_course_runs.json`, seeded 1 Hz runs
+  with about 5 m RMS of correlated GPS error over the six committed
+  Pocahontas lines (a minute in the lot, a lead-in, the course, a cool-down),
+  generated by `parks/course_run_fixture.ts` with `pnpm gen:park-course-runs`
+  (`parks/course_run_fixture.test.ts` fails when it, or the generated block of
+  the pgTAP test below, is stale). Cases: a clean run of every course within
+  `2 × 8 m / pace` of its true elapsed time, a stop with sparse fixes under the
+  trees, a shortcut that skips a checkpoint, the loop the wrong way, stopping
+  short, passing nearby, three laps, two 5K passes either way round, and one
+  lap of each two-lap course. Read by `parks/park_course_runs.test.ts` ↔
+  `test/park_course_runs_test.dart` (every case scored on all six courses, to
+  the millisecond), by Deno `segment-match/park_course_runs.test.ts` (the
+  function's `scoreRun` sends exactly those efforts) and by pgTAP
+  `park_course_boards_test.sql`, which loads the real catalogue through
+  `private.load_park_catalogue`, checks the database's lines are the
+  fixture's, lands each run as a phone sync does and records its efforts,
+  then reads the season board, completions, `park_course_records()` and
+  `run_park_course_times` back (with a private run, a 23:30 31 December run
+  and a closed course). Playwright `tests-e2e/parks/park-course-real-run.spec.ts`
+  plants the real Beaver Lake line, uploads the clean run and calls the
+  `segment-match` function as the job worker does; the course board shows the
+  time and the share page names nobody. `park_courses_screen_test.dart` shows
+  that time as a board row on the phone. What these cannot see: whether the
+  production job worker is draining `segment_match`, whether the deployed
+  function carries the current bundle, and whether production's rows match the
+  manifest.
 - Lines: pgTAP `global_segment_gates_test.sql` (derivation, curator override and reset, `matched_by`, the owner's delete-then-insert re-match); Playwright `tests-e2e/routes/global-segment-gates.spec.ts`.
 - Server matching: pgTAP `segment_match_jobs_test.sql` (enqueue triggers, the
   bbox lookup, the write and its refusal for replaced bytes, the backfill, grants);

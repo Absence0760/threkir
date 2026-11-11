@@ -3,6 +3,7 @@ import type { Browser } from '@playwright/test';
 
 import { expect, test } from '../fixtures/test';
 
+import { readRows } from '../fixtures/db-read';
 import { getAdminClient, getUserClient } from '../fixtures/local-supabase';
 import { createSagaUsers, deleteSagaUsers, type SagaUser } from '../fixtures/saga-users';
 
@@ -91,15 +92,18 @@ test.describe('Messages — share an AI Coach answer with your coach', () => {
 		await dialog.getByTestId('coach-share-send').click();
 		await expect(dialog.getByTestId('coach-share-sent')).toHaveText('Shared with Share Coach Saga.');
 
-		const { data: rows } = await admin
-			.from('direct_messages')
-			.select('kind, body, coach_message_id')
-			.eq('sender_id', athlete.id)
-			.eq('recipient_id', coach.id);
+		const rows = await readRows(
+			"the athlete's shared messages",
+			admin
+				.from('direct_messages')
+				.select('kind, body, coach_message_id')
+				.eq('sender_id', athlete.id)
+				.eq('recipient_id', coach.id),
+		);
 		expect(rows).toHaveLength(1);
-		expect(rows![0].kind).toBe('coach_share');
-		expect(rows![0].body).toBe(`## Week plan ${stamp}\n\nSkip the hills ${stamp}`);
-		expect(rows![0].coach_message_id).not.toBeNull();
+		expect(rows[0].kind).toBe('coach_share');
+		expect(rows[0].body).toBe(`## Week plan ${stamp}\n\nSkip the hills ${stamp}`);
+		expect(rows[0].coach_message_id).not.toBeNull();
 
 		await dialog.getByRole('link', { name: 'Open conversation' }).click();
 		await expect(page).toHaveURL(new RegExp(`/messages/${coach.id}$`));

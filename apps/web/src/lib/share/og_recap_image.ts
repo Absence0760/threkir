@@ -34,7 +34,7 @@ import { grisnirBadgeSvg, grisnirBadgeWidth } from './grisnir_badge';
 const W = 1200;
 const H = 630;
 const PAD = 64;
-const RECAP_GRISNIR_HEIGHT = 130;
+const RECAP_GRISNIR_HEIGHT = 160;
 
 const BG = OG_CARD_DARK.bg;
 const BRAND = OG_CARD_DARK.brand;

@@ -24,6 +24,23 @@ larger still.
 | `grisnir-rest-192.png` / `.webp` | 188 × 156 | 23,044 / 14,986 | Lying down, legs folded under | Web dashboard rest day, 1x |
 | `grisnir-rest-384.png` / `.webp` | 368 × 304 | 60,891 / 37,986 | Same | Web dashboard rest day, 2x; copied to the phones for Home's rest-day card |
 
+## The 3D trot (`grisnir-trot.glb`)
+
+| File | Bytes | What | Used by |
+|---|---|---|---|
+| `grisnir-trot.glb` | 172,368 | The rigged model and its trot (15 frames, a 0.5 s loop), one skinned mesh, quantized by gltfpack | The web 3D course preview and its exported flyover video, in place of the position dot (decisions § 2458) |
+
+Re-export, with the brand repo checked out (gltfpack on the PATH):
+
+    heavy blender -b <path>/social/brand/threkir/mascot/grisnir.blend --python scripts/brand/export_grisnir_gltf.py
+
+The export is byte-stable, so an unchanged model gives an unchanged file.
+It carries no textures or lights: the toon look is packed into `COLOR_0`
+(R the horn's base-to-tip position, G the ink width, B the part), which only
+the preview's renderer (`apps/web/src/lib/components/course_preview/mascot/`)
+reads, so a generic glTF viewer shows him grey. `glb.test.ts` fails the PR
+past a 256 KiB budget or when the part order drifts from the script.
+
 ## Rules for using the art
 
 From the brand notes; they apply to every placement.

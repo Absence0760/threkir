@@ -12795,7 +12795,7 @@ export async function fetchDmImage(imageId: string): Promise<DmImageView | null>
 	const { data: signed, error: signError } = await supabase.storage
 		.from('dm-images')
 		.createSignedUrl(data.storage_path, DM_IMAGE_SIGNED_URL_SECONDS);
-	if (signError || !signed) throw signError ?? new Error('createSignedUrl failed');
+	if (signError || !signed) throw signError ? dbError(signError) : new Error('createSignedUrl failed');
 	return { status, width: data.width, height: data.height, url: signed.signedUrl };
 }
 
@@ -16546,6 +16546,21 @@ export async function fetchRunDistanceBadge(runId: string): Promise<Achievement 
 		.maybeSingle();
 	if (error) throw dbError(error);
 	return (data as Achievement | null) ?? null;
+}
+
+/// Whether any of the runner's badges names this run as its source: the run
+/// that unlocked it, for the run page's milestone moment.
+export async function fetchRunEarnedBadge(runId: string): Promise<boolean> {
+	const userId = auth.user?.id;
+	if (!userId) return false;
+	const { data, error } = await supabase
+		.from(TABLES.achievements)
+		.select('id')
+		.eq('user_id', userId)
+		.eq('source_id', runId)
+		.limit(1);
+	if (error) throw dbError(error);
+	return (data?.length ?? 0) > 0;
 }
 
 /** Flip a badge's public visibility. Owner-only (enforced by RLS). */

@@ -59,6 +59,11 @@ test('every source-scanning guard blanks comments through the one shared strippe
 			why: 'the :focus/:focus-visible pairing scan reads <style> blocks, which are CSS.',
 		},
 		{
+			file: 'src/lib/empty_state_guard.test.ts',
+			count: 2,
+			why: 'the empty-card rule scan reads <style> blocks, which are CSS.',
+		},
+		{
 			file: 'src/lib/consent_guards.test.ts',
 			count: 2,
 			why: 'the font-source scan reads app.css, where `//` is not a comment.',

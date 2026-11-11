@@ -48,6 +48,15 @@ dockerfile = "Dockerfile"
 # anything not listed gets a 403 at the WS handshake.
 LIVEHUB_ALLOWED_ORIGINS = "https://threkir.com,https://www.threkir.com,https://preview.threkir.com"
 
+# Soft heap ceiling for the Go runtime, below the 256 MB VM. Without it the GC
+# lets the heap grow to twice the live set, and a dm_image_process job holds
+# up to ~60 MB live (an 8.4 MP decode, the downscaled copy and both encoded
+# buffers), so a second burst could pass the VM before a collection ran and
+# the kernel would OOM-kill the hub with it. 180 MiB leaves ~64 MiB for the
+# kernel, Fly's init, the binary and goroutine stacks. Keep it about 70% of
+# [[vm]] memory if that changes; see deployment.md § Sizing.
+GOMEMLIMIT = "180MiB"
+
 # Fail-closed sentinel. With LIVEHUB_REQUIRE_AUTH=1, main.go refuses to
 # start the binary unless LIVEHUB_ALLOWED_ORIGINS is set AND some token
 # verification is configured — either SUPABASE_JWT_SECRET (legacy HS256

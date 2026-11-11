@@ -6,7 +6,7 @@
 -- holds it, the report snapshot, and the orphan worklist.
 
 begin;
-select plan(38);
+select plan(40);
 
 insert into auth.users (id, email, encrypted_password, email_confirmed_at,
                         instance_id, aud, role)
@@ -175,6 +175,9 @@ select lives_ok(
   $$select unsend_direct_message('4444a216-1a6e-0000-0000-000000000001')$$,
   'the sender unsends the photo');
 reset role;
+select ok(
+  (select unsent_at is not null from direct_messages where id = '4444a216-1a6e-0000-0000-000000000001'),
+  'the photo message is stamped unsent');
 select is(
   (select count(*)::int from direct_message_images where id = (select id from img where k = 'one')),
   0,
@@ -291,6 +294,11 @@ select throws_ok(
   '54000', null,
   'an eleventh waiting upload is refused');
 reset role;
+select is(
+  (select count(*)::int from direct_message_images
+    where owner_id = 'aaaa1216-1a6e-0000-0000-0000000000b2' and status = 'pending'),
+  10,
+  'the ten waiting uploads are rows');
 
 -- ── the gate ──
 

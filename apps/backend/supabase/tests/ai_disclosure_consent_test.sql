@@ -27,10 +27,12 @@
 --      (migration 20270826000003).
 --  17/18. A v5 holder reaches the v6 Coach cross-training rung only by
 --      accepting v6 (migration 20271021000001, issue #1217).
+--  19-21. v6 is no longer current: a v6 holder reaches the v7 coach-assistant
+--      rung only by accepting v7 (migration 20271210001219, issue #1215).
 
 begin;
 
-select plan(18);
+select plan(21);
 
 -- U1: no consent on record.
 insert into auth.users (id, aud, role, email, encrypted_password, created_at, updated_at)
@@ -62,8 +64,8 @@ select throws_ok(
 -- ── 2. The version the web + SQL sides agree on ──────────────────
 select is(
   (select ai_disclosure_current_version()),
-  6::smallint,
-  'ai_disclosure_current_version() is the v6 Coach cross-training version'
+  7::smallint,
+  'ai_disclosure_current_version() is the v7 coach-assistant version'
 );
 
 -- ── 3. No resolvable identity → refused ──────────────────────────
@@ -194,6 +196,29 @@ select is(
   (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf01'),
   6::smallint,
   'the v6 acceptance is persisted on the row'
+);
+
+-- ── 19. v6 -> v7 is an explicit upgrade, not inherited ───────────
+select cmp_ok(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf01'),
+  '<',
+  ai_disclosure_current_version(),
+  'a v6 holder is below the current version, so the coach assistant stays closed to them'
+);
+
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000ccf01","role":"authenticated"}';
+select is(
+  (select version from record_ai_disclosure_consent(7::smallint)),
+  7::smallint,
+  'record_ai_disclosure_consent(7) upgrades a v6 holder to the coach-assistant rung'
+);
+
+reset role;
+select is(
+  (select ai_disclosure_version from user_profiles where id = '00000000-0000-0000-0000-0000000ccf01'),
+  7::smallint,
+  'the v7 acceptance is persisted on the row'
 );
 
 select * from finish();

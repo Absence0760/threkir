@@ -55,7 +55,7 @@ export function readPayload(dir) {
 }
 
 /**
- * The park's `release` from its built manifest (decisions § 2455).
+ * The park's `release` from its built manifest (decisions § 2459).
  *
  * @param {string} dir
  */

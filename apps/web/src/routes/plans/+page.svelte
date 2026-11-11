@@ -417,7 +417,7 @@
 								</span>
 								<span class="starter-cta" aria-hidden="true">
 									{creatingStarterId === s.id ? m('plansNew.creating') : m('plansNew.createStarter')}
-									<span class="material-symbols">arrow_forward</span>
+									<span class="material-symbols" aria-hidden="true">arrow_forward</span>
 								</span>
 							</button>
 						</li>

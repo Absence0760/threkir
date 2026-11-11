@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
@@ -123,6 +126,7 @@ class _ParksApi extends ApiClient {
     this.records = const {},
     this.emptyBoards = false,
     this.emptyThisSeasonOnly = false,
+    this.seasonBoard,
   }) : courses = courses ?? [_course()];
 
   final List<ParkListing> parks;
@@ -134,6 +138,9 @@ class _ParksApi extends ApiClient {
   final Map<String, ParkCourseRecord> records;
   final bool emptyBoards;
   final bool emptyThisSeasonOnly;
+
+  /// This season's fastest board, in place of the default two rows.
+  final List<GlobalSegmentLeaderboardEntry>? seasonBoard;
   final List<int?> leaderboardSeasons = [];
   final List<int?> completionSeasons = [];
   final List<Map<String, Object?>> reports = [];
@@ -192,6 +199,8 @@ class _ParksApi extends ApiClient {
   }) async {
     leaderboardSeasons.add(season);
     if (emptyBoards || (emptyThisSeasonOnly && season != null)) return [];
+    final planted = seasonBoard;
+    if (planted != null && season != null) return planted;
     return season == null
         ? [_fast('viewer-1', 'Me', 1, 400), _fast('u2', 'Bea', 2, 410)]
         : [_fast('u2', 'Bea', 1, 410), _fast('viewer-1', 'Me', 2, 430)];
@@ -605,6 +614,48 @@ void main() {
         await _unmount(tester);
       },
     );
+
+    testWidgets(
+        'a board row shows the time the server gave a real Beaver Lake run', (
+      tester,
+    ) async {
+      tallView(tester);
+      // The effort segment-match writes for the clean Beaver Lake run of
+      // fixtures/park_course_runs.json (issue #1342 step 5c); the board RPC
+      // hands its time back in whole seconds.
+      final fixture = jsonDecode(
+        File('../../fixtures/park_course_runs.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
+      final clean = (fixture['cases'] as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((c) => c['key'] == 'beaver_clean');
+      final matched = (clean['matched'] as Map<String, dynamic>)[
+          'beaver-lake-trail'] as Map<String, dynamic>;
+      final seconds = (matched['time_seconds'] as num).roundToDouble();
+      final api = _ParksApi(
+        seasonBoard: [_fast('u9', 'Beaver Runner', 1, seconds)],
+      );
+      await tester.pumpWidget(
+        _host(
+          ParkCourseScreen(
+            api: api,
+            listing: _park(id: 'p1', name: 'Pocahontas State Park'),
+            course: _course(
+              id: 'beaver',
+              name: 'Beaver Lake Trail',
+              distanceM: 3595,
+            ),
+          ),
+        ),
+      );
+      await _settle(tester);
+      expect(api.leaderboardSeasons, [2026]);
+      expect(find.text('Beaver Runner'), findsOneWidget);
+      final whole = seconds.toInt();
+      final shown = '${whole ~/ 60}:${(whole % 60).toString().padLeft(2, '0')}';
+      expect(find.text(shown), findsOneWidget);
+      await _unmount(tester);
+    });
 
     testWidgets('the safety notice leads the one notices block', (
       tester,

@@ -11,7 +11,7 @@
 				target="_blank"
 				rel={DM_LINK_REL}
 				data-testid="dm-link">{seg.text}</a
-			><span class="domain" data-testid="dm-link-domain"
+			><span class="link-domain" data-testid="dm-link-domain"
 				><span class="material-symbols" aria-hidden="true">link</span>{seg.domain}</span
 			>{:else}{seg.text}{/if}{/each}</span
 >
@@ -25,7 +25,7 @@
 		color: inherit;
 		text-decoration: underline;
 	}
-	.domain {
+	.link-domain {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.15rem;
@@ -36,7 +36,7 @@
 		background: color-mix(in srgb, currentColor 12%, transparent);
 		vertical-align: middle;
 	}
-	.domain .material-symbols {
+	.link-domain .material-symbols {
 		font-size: 0.85rem;
 	}
 </style>

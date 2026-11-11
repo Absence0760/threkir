@@ -51,7 +51,7 @@
 
 <style>
 	.guide {
-		text-align: left;
+		text-align: start;
 	}
 	.title {
 		margin: 0 0 var(--space-sm);
@@ -65,7 +65,7 @@
 	}
 	.pending {
 		padding: var(--space-xs) var(--space-sm);
-		border-left: 4px solid var(--color-warning);
+		border-inline-start: 4px solid var(--color-warning);
 		border-radius: var(--radius-sm);
 		background: var(--color-surface);
 		color: var(--color-text);
@@ -81,7 +81,7 @@
 	}
 	ol {
 		margin: 0;
-		padding-left: 1.4rem;
+		padding-inline-start: 1.4rem;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-xs);

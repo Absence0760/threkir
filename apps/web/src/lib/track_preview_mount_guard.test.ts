@@ -59,6 +59,18 @@ const STATIC_DEMO_MOUNTS: Record<string, RegExp> = {
 		/import \{[^}]*\bDEMO_TRACK\b[^}]*\} from '#lib\/marketing\/demo_preview\.ts'/,
 };
 
+/**
+ * Surfaces that draw the official park-course catalogue: `global_segments`
+ * geometry the catalogue publishes for anyone to read (docs/features/park_courses.md),
+ * never a runner's recorded track, so there is no owner to clip for. Held the
+ * same way: each imports the catalogue read by name, and the companion test
+ * fails if one reaches a runner's runs or routes.
+ */
+const CATALOGUE_MOUNTS: Record<string, RegExp> = {
+	'routes/parks/[region]/[park]/+page.svelte':
+		/import \{[^}]*\bfetchParkCourses\b[^}]*\} from '#lib\/core\/data\.ts'/,
+};
+
 function svelteFiles(dir: string, out: string[] = []): string[] {
 	for (const entry of readdirSync(dir)) {
 		if (entry === 'node_modules') continue;
@@ -142,6 +154,7 @@ test('only a clip-aware wrapper mounts the unclipped renderer', () => {
 		if (path === 'lib/components/TrackPreview.svelte') continue;
 		if (path in CLIPPING_WRAPPERS) continue;
 		if (path in STATIC_DEMO_MOUNTS) continue;
+		if (path in CATALOGUE_MOUNTS) continue;
 		if (mountsTrackPreview(file)) offenders.push(path);
 	}
 	assert.deepEqual(
@@ -251,6 +264,19 @@ test('a slash-star inside markup opens nothing, and an emoji shifts nothing', ()
 	assert.ok(!blanked.includes('/'), 'no comment character may survive the blanking');
 	assert.match(blanked, /const b = 2;/);
 	assert.equal(blanked.length, shifted.length);
+});
+
+test('every catalogue mount still draws the catalogue and no runner track', () => {
+	for (const [path, imports] of Object.entries(CATALOGUE_MOUNTS)) {
+		const source = withoutComments(readFileSync(join(SRC, path), 'utf-8'));
+		assert.match(source, imports, `${path} no longer imports its courses from the catalogue read`);
+		assert.ok(mountsTrackPreview(join(SRC, path)), `${path} no longer mounts TrackPreview — drop it from CATALOGUE_MOUNTS`);
+		assert.doesNotMatch(
+			source,
+			/\b(fetchRun|fetchRoute|fetchTrack|fetchClipped)\w*\b/,
+			`${path} reads a runner's run or route, which a catalogue mount must not hand to TrackPreview`,
+		);
+	}
 });
 
 test('every static-demo mount still draws demo geometry and nothing live', () => {

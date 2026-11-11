@@ -346,7 +346,7 @@ String courseStatusLabel(AppLocalizations l10n, String status) =>
     };
 
 /// The give-way note for a course whose paths an organised group regularly
-/// uses (`park_courses.shared_use`, decisions § 2455). It names no one.
+/// uses (`park_courses.shared_use`, decisions § 2459). It names no one.
 String? sharedUseNotice(AppLocalizations l10n, String? sharedUse) =>
     switch (sharedUse) {
       'saturday_morning_group' => l10n.parksSharedUseSaturdayMorningGroup,

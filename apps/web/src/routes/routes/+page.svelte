@@ -378,7 +378,7 @@
 				<button class="btn btn-outline" onclick={load}>{m('routesPage.retry')}</button>
 			</div>
 		{:else if routes.length === 0}
-			<EmptyState icon="route" title={m('routesPage.emptyTitle')} text={m('routesPage.emptyText')}>
+			<EmptyState icon="route" title={m('routesPage.emptyTitle')} text={m('routesPage.emptyText')} mascot data-testid="routes-empty">
 				{#snippet actions()}
 					<a href="/routes/new" class="btn btn-primary">
 						<span class="material-symbols" aria-hidden="true">add</span>

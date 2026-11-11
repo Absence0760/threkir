@@ -1094,6 +1094,7 @@
 				<EmptyState
 					icon="directions_run"
 					title={m('runs.emptyNoData')}
+					mascot
 					data-testid="runs-empty-no-data"
 				>
 					{#snippet body()}

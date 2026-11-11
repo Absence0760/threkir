@@ -1,5 +1,5 @@
 -- park_courses.shared_use (migration 20271215120001, issue #1345, decisions
--- § 2455): a vocabulary key the clients render as a give-way note naming no
+-- § 2459): a vocabulary key the clients render as a give-way note naming no
 -- one. private.load_park_catalogue writes it, reports a course whose value
 -- changed `updated` with no backfill and an unchanged one `unchanged`, and the
 -- CHECK refuses free text.

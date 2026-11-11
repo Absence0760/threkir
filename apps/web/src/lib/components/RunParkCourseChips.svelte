@@ -101,7 +101,7 @@
 		background: var(--color-primary-light);
 	}
 	.park-course-chip .material-symbols {
-		font-size: 1.1em;
+		font-size: 0.95rem;
 		color: var(--color-success-text);
 		flex-shrink: 0;
 	}

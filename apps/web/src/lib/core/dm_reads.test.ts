@@ -47,8 +47,12 @@ test('fetchDmThread matches the pair with two in filters, leaving the one or= to
 
 test('sendDm renders its follow/block refusal through the catalogue', () => {
 	// The 42501 branch threw a hard-coded English sentence, so every locale
-	// read the refusal in English.
+	// read the refusal in English. A photo send is refused by its own rule
+	// (an accepted conversation also admits one), so it reads its own key.
 	const fn = body('sendDm');
-	assert.match(fn, /error\?\.code === '42501'\) \{\s*throw new AppError\('messages\.sendNotAllowed'/);
+	assert.match(
+		fn,
+		/error\?\.code === '42501'\) \{\s*throw new AppError\(opts\.imageId \? 'messages\.photoSendNotAllowed' : 'messages\.sendNotAllowed'/,
+	);
 	assert.doesNotMatch(fn, /You can only message/);
 });

@@ -57,7 +57,7 @@ export function parkDirsFromManifests(manifestPaths) {
 
 /**
  * Splits validated parks into the ones the sync loads and the staged ones it
- * only reports (decisions § 2455). A staged park's payload goes no further
+ * only reports (decisions § 2459). A staged park's payload goes no further
  * than this: the stage SQL carries its slugs, never its geometry.
  *
  * @param {{ payload: CataloguePayload, release: import('./catalogue_release.mjs').Release }[]} parks

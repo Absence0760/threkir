@@ -22,7 +22,7 @@ function svelteFiles(dir: string): string[] {
 
 /// The plain (scoped) uses of `.name` in the file's <style> blocks.
 function scopedUses(source: string, name: string): number {
-	const styles = [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map((m) => m[1]);
+	const styles = [...source.matchAll(/<style[^>]*>([\s\S]*?)<\/style(?=[\s/>])[^>]*>/g)].map((m) => m[1]);
 	const escaped = name.replace(/[-]/g, '\\-');
 	const any = new RegExp(`\\.${escaped}(?![\\w-])`, 'g');
 	const global = new RegExp(`:global\\(\\s*\\.${escaped}(?![\\w-])`, 'g');

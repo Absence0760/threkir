@@ -6,7 +6,8 @@
 -- 20260818_001 redoing 20260801_001 / 20260723_001 / 20260806_001,
 -- checkpoint_crossings 20270201_001, donations + instructor_payout_accounts
 -- 20270621_001, matrix re-asserted by 20270408_001, direct_messages
--- 20271113000001, direct_message_images 20271213121604). Every withholding below
+-- 20271113000001, direct_message_images 20271213121604, event_results
+-- 20271224000700). Every withholding below
 -- is a security decision with a named replacement read path, not an accident
 -- of reaching for `grant select (a, b, c)`.
 --
@@ -112,6 +113,15 @@ insert into lockdown_registry (tbl, col, reason) values
   -- submit_report can snapshot it for moderators. Clients show the edited text.
   ('direct_messages',      'original_body',        'moderation evidence of the text before an edit; read only by submit_report, never by a client'),
 
+  -- event_results — 20271224000700 (audit of PR #1359). Leaderboard reads go
+  -- through event_results_redacted, which reads these through
+  -- private.event_result_withheld_columns (the runner; the race director for
+  -- the detections and needs_review). No client writes needs_review, and a
+  -- director's approval writes the other two with a plain UPDATE.
+  ('event_results',        'needs_review',         'the review flag the redacted view shows only to the runner and the race director'),
+  ('event_results',        'organiser_approved_by','which director approved a result; no client read site'),
+  ('event_results',        'organiser_approved_at','when a director approved a result; no client read site'),
+
   -- course_alerts — 20271124002407 (issue #1190, decisions § 2407). An alert
   -- speaks for its organiser club; the admin who typed it is no reader's
   -- business and has no client read site. The data export reads it under the
@@ -157,6 +167,21 @@ insert into lockdown_registry (tbl, col, reason) values
   ('user_profiles',        'age_confirmed_at',     'age-gate state; self-read only'),
   ('user_profiles',        'onboarded_at',         'account lifecycle state; self-read only'),
   ('user_profiles',        'shadow_hidden',        'moderation state; disclosing it to the subject defeats shadow-hiding');
+
+-- Withheld from anon only. The runner's own result upsert writes these, and an
+-- INSERT ... ON CONFLICT DO UPDATE needs SELECT on every column its SET reads
+-- from EXCLUDED, so authenticated keeps them until the write path stops
+-- reading them back (followups, "Surfaced by the PR #1359 rounds"). anon
+-- writes nothing.
+insert into lockdown_registry (tbl, col, reason, roles) values
+  ('event_results', 'age_grade_pct',    'the runner''s own age grade; the redacted view shows it to the runner only', '{anon}'),
+  ('event_results', 'note',             'the runner''s own note; the redacted view shows it to the runner only', '{anon}'),
+  ('event_results', 'run_id',           'links a public result to a run its runner may keep private', '{anon}'),
+  ('event_results', 'start_at',         'the runner''s line crossings; the redacted view never shows them', '{anon}'),
+  ('event_results', 'finish_at',        'the runner''s line crossings; the redacted view never shows them', '{anon}'),
+  ('event_results', 'start_detection',  'how the start was timed; the runner and the race director only', '{anon}'),
+  ('event_results', 'finish_detection', 'how the finish was timed; the runner and the race director only', '{anon}'),
+  ('event_results', 'clock_offset_ms',  'the runner''s device clock offset; the runner only', '{anon}');
 
 -- (1) The registry IS the withheld map, in both directions and for both roles.
 select is(

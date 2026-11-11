@@ -2642,7 +2642,22 @@ export const UNOBSERVED_RPC_WRITES = [
  * @type {{ file: string, description: string, columns: string[], readBack?: string, reason: string }[]}
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
-
+  {
+    file: 'event_results_column_lock_test.sql',
+    description: "the runner's own merge upsert, reading every column it writes back from EXCLUDED, still lands",
+    columns: [
+      'event_results.duration_s',
+      'event_results.finish_at',
+      'event_results.finish_detection',
+      'event_results.start_at',
+      'event_results.start_detection',
+    ],
+    readBack: "the upsert's note is stored",
+    reason:
+      'the claim is that the column grants admit the upsert at all (an ON CONFLICT DO UPDATE needs SELECT on ' +
+      'every column it reads from EXCLUDED), not what the race guard makes of the timing columns; the read-back ' +
+      'proves the write landed, through a column the guard never rewrites.',
+  },
   {
     file: 'group_messages_read_matrix_test.sql',
     description: 'an active member sends to the group by naming the conversation',

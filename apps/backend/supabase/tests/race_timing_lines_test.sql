@@ -186,7 +186,8 @@ update event_results set finisher_status = 'dnf', duration_s = 900
 
 select ok(
   (select start_at is null and finish_at is null and start_detection is null
-          and finish_detection is null and not needs_review and gun_time_s is null
+          and finish_detection is null and gun_time_s is null
+          and not (select v.needs_review from event_results_redacted v where v.id = event_results.id)
      from event_results where user_id = 'e7307000-0000-0000-0000-000000000002'),
   'a DNF keeps no crossing instants, detections or review flag'
 );
@@ -205,7 +206,8 @@ update event_results set duration_s = 1010, gun_time_s = 1010
 
 select ok(
   (select start_at is null and finish_at is null and start_detection is null
-          and finish_detection is null and not needs_review
+          and finish_detection is null
+          and not (select v.needs_review from event_results_redacted v where v.id = event_results.id)
           and finish_method = 'host' and duration_s = 1010
      from event_results where user_id = 'e7307000-0000-0000-0000-000000000003'),
   'a host edit clears the crossings, the detections and the review flag'

@@ -130,6 +130,51 @@ internal fun restorableActiveRace(
     )
 }
 
+/// How long a kept server clock offset is trusted after the sample it came
+/// from: a day. Past it, or on a device clock set back since, the offset is
+/// unknown again until a ping measures it, as the phone's cache does.
+internal const val CLOCK_OFFSET_MAX_AGE_MS = 24 * 60 * 60 * 1000L
+
+/// The best server-minus-device clock offset this watch has measured, kept
+/// beside the race so a restart with no signal still puts the race's
+/// instants on the server clock (#1307 offline). [rttMs] is the round trip of
+/// the sample it came from, so a live sample replaces it by
+/// [ServerClockOffset]'s own rule; [sampledAtMs] is when, on the device clock.
+@Serializable
+data class CachedClockOffset(
+    val offsetMs: Long,
+    val rttMs: Long,
+    val sampledAtMs: Long,
+)
+
+/// The entry a ping's [sample] makes, or null for a round trip that ran
+/// backwards, which [ServerClockOffset] ignores too.
+internal fun clockOffsetEntry(sample: RaceSessionClient.ClockSample): CachedClockOffset? {
+    val rtt = sample.receivedAtMs - sample.sentAtMs
+    if (rtt < 0) return null
+    return CachedClockOffset(sample.serverAtMs - (sample.sentAtMs + rtt / 2), rtt, sample.receivedAtMs)
+}
+
+/// Whether a sample of [rttMs] replaces the best one, of [bestRttMs], under
+/// [ServerClockOffset]'s rule: the shortest round trip wins, the newer on a tie.
+internal fun clockSampleWins(rttMs: Long, bestRttMs: Long?): Boolean =
+    rttMs >= 0 && (bestRttMs == null || rttMs <= bestRttMs)
+
+/// The kept offset at [nowMs], or null: none kept, one older than
+/// [CLOCK_OFFSET_MAX_AGE_MS], or one sampled after [nowMs] (the device clock
+/// was set back since, so the offset no longer describes it).
+internal fun restorableClockOffset(entry: CachedClockOffset?, nowMs: Long): CachedClockOffset? {
+    val e = entry ?: return null
+    val age = nowMs - e.sampledAtMs
+    return e.takeIf { it.rttMs >= 0 && age in 0..CLOCK_OFFSET_MAX_AGE_MS }
+}
+
+/// Seed this estimate with a kept offset, as one sample of the same round
+/// trip: the next live sample then replaces it exactly as it would a live one.
+internal fun ServerClockOffset.seed(entry: CachedClockOffset) {
+    addSample(sentAtMs = 0L, receivedAtMs = entry.rttMs, serverAtMs = entry.offsetMs + entry.rttMs / 2)
+}
+
 /// Whether a failed upsert is worth replaying. The body is the problem on a
 /// 400 / 403 / 404 / 422 and a replay sends the same body; everything else —
 /// offline, 5xx, a 409 on a run that has not uploaded yet, an expired token —
@@ -167,6 +212,7 @@ private val KEY_PENDING: Preferences.Key<String> = stringPreferencesKey("pending
 private val KEY_VOIDS: Preferences.Key<String> = stringPreferencesKey("pending_race_voids_v1")
 private val KEY_COURSE: Preferences.Key<String> = stringPreferencesKey("race_course_cache_v1")
 private val KEY_ACTIVE: Preferences.Key<String> = stringPreferencesKey("race_active_cache_v1")
+private val KEY_CLOCK: Preferences.Key<String> = stringPreferencesKey("race_clock_offset_v1")
 private val pendingJson = Json { ignoreUnknownKeys = true }
 private val pendingSerializer = ListSerializer(PendingRaceResult.serializer())
 private val voidSerializer = ListSerializer(PendingRaceVoid.serializer())
@@ -299,14 +345,36 @@ class RaceResultStore internal constructor(private val dataStore: DataStore<Pref
         return restorableActiveRace(entry, userId, nowMs, course)
     }
 
-    /// Sign-out: every queued result, withdrawn finish, cached course and
-    /// cached race, for every account.
+    /// Keep [entry] as the watch's server clock offset; null forgets it.
+    suspend fun cacheClockOffset(entry: CachedClockOffset?) {
+        dataStore.edit { prefs ->
+            if (entry == null) {
+                prefs.remove(KEY_CLOCK)
+            } else {
+                prefs[KEY_CLOCK] = pendingJson.encodeToString(CachedClockOffset.serializer(), entry)
+            }
+        }
+    }
+
+    /// The kept server clock offset, however old, or null.
+    suspend fun cachedClockOffset(): CachedClockOffset? {
+        val raw = dataStore.data.first()[KEY_CLOCK] ?: return null
+        return runCatching { pendingJson.decodeFromString(CachedClockOffset.serializer(), raw) }
+            .getOrElse { e ->
+                Log.w("RaceResultStore", "cached clock offset unreadable, ignoring", e)
+                null
+            }
+    }
+
+    /// Sign-out: every queued result, withdrawn finish, cached course, cached
+    /// race and the kept clock offset, for every account.
     suspend fun clear() {
         dataStore.edit { prefs ->
             prefs.remove(KEY_PENDING)
             prefs.remove(KEY_VOIDS)
             prefs.remove(KEY_COURSE)
             prefs.remove(KEY_ACTIVE)
+            prefs.remove(KEY_CLOCK)
         }
     }
 }

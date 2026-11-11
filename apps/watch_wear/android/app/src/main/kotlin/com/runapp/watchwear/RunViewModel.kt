@@ -523,8 +523,13 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     // (layer L4): a fault in any of it is caught where it happens and leaves
     // the recording, the foreground service and the queued run untouched.
     /// Server-minus-device clock offset, sampled off every race ping's
-    /// server-stamped `at`.
-    private val serverClock = ServerClockOffset()
+    /// server-stamped `at`, or restored off the watch after a restart.
+    private var serverClock = ServerClockOffset()
+    /// The round trip of the offset [serverClock] holds, so a sample that
+    /// beats it is kept on the watch; null until one lands or is restored.
+    private var serverClockRttMs: Long? = null
+    /// The kept offset is read back once per session, before the race is.
+    private var clockRestoreTried = false
     /// The race the current recording belongs to.
     private var boundRace: ActiveRaceState? = null
     private var boundRunId: String? = null
@@ -780,13 +785,46 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun onClockSample(sample: RaceSessionClient.ClockSample) {
+        val wins = clockSampleWins(sample.receivedAtMs - sample.sentAtMs, serverClockRttMs)
         serverClock.addSample(sample.sentAtMs, sample.receivedAtMs, sample.serverAtMs)
+        if (wins) rememberClockOffset(sample)
         val race = boundRace ?: return
         val run = _state.value.raceRun ?: return
         val gun = gunStartDeviceMs(race.goAtMs, serverClock.offsetMs)
         if (gun != run.gunStartDeviceMs) {
             _state.value = _state.value.copy(raceRun = run.copy(gunStartDeviceMs = gun))
         }
+    }
+
+    /// Keep the offset a winning sample gave on the watch, so a restart with
+    /// no signal still knows it. L4: a failed write costs only that.
+    private fun rememberClockOffset(sample: RaceSessionClient.ClockSample) {
+        val entry = clockOffsetEntry(sample) ?: return
+        serverClockRttMs = entry.rttMs
+        if (supabase.authedUserId == null) return
+        launchGuarded {
+            try {
+                raceResults.cacheClockOffset(entry)
+            } catch (e: Throwable) {
+                Log.w(TAG, "clock offset not kept; it holds while the app runs", e)
+            }
+        }
+    }
+
+    /// After a restart, the offset kept within the last day stands in until a
+    /// ping measures one, so the restored race is judged on the server clock.
+    private suspend fun restoreClockOffset() {
+        if (clockRestoreTried) return
+        clockRestoreTried = true
+        val entry = try {
+            restorableClockOffset(raceResults.cachedClockOffset(), System.currentTimeMillis())
+        } catch (e: Throwable) {
+            Log.w(TAG, "kept clock offset unreadable; the next ping measures one", e)
+            null
+        } ?: return
+        if (serverClock.offsetMs != null) return
+        serverClock.seed(entry)
+        serverClockRttMs = entry.rttMs
     }
 
     /// `Flow.catch` was the wrong operator here and its cost was total: catch
@@ -850,6 +888,7 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
     /// one kept at the last poll, with its course, unless it has finished or
     /// its window has closed since. The poll replaces it once it has signal.
     private suspend fun restoreCachedRace() {
+        restoreClockOffset()
         if (raceRestoreTried || boundRace != null || _state.value.activeRace != null) return
         val uid = supabase.authedUserId ?: return
         raceRestoreTried = true
@@ -1391,6 +1430,9 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
         forgetLastRun { lastRunStore.clear() }
         authReady.value = false
         raceRestoreTried = false
+        serverClock = ServerClockOffset()
+        serverClockRttMs = null
+        clockRestoreTried = false
         raceCacheEntry = null
         raceCacheWritten = false
         raceCourseFromCacheKey = null

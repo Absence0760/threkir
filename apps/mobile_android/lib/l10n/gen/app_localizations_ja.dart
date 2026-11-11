@@ -21057,7 +21057,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'メンバー#人',
+      other: 'メンバー$count人',
     );
     return '$_temp0';
   }
@@ -21067,7 +21067,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'メンバー#人',
+      other: 'メンバー$count人',
     );
     return '$_temp0';
   }
@@ -21094,7 +21094,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'メンバー#人',
+      other: 'メンバー$count人',
     );
     return '$nameさんからの招待 · $_temp0';
   }
@@ -21263,7 +21263,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '#人を招待',
+      other: '$count人を招待',
     );
     return '$_temp0';
   }
@@ -21273,7 +21273,7 @@ class AppLocalizationsJa extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '#件の招待を送りました',
+      other: '$count件の招待を送りました',
     );
     return '$_temp0';
   }

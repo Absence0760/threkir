@@ -35636,13 +35636,13 @@ abstract class AppLocalizations {
   /// Group conversations (issue #1365): the web catalogue's groups.memberCount
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one {# member} other {# members}}'**
+  /// **'{count, plural, one {{count} member} other {{count} members}}'**
   String groupsMemberCount(int count);
 
   /// Group conversations (issue #1365): the web catalogue's groups.membersTitle
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one {# member} other {# members}}'**
+  /// **'{count, plural, one {{count} member} other {{count} members}}'**
   String groupsMembersTitle(int count);
 
   /// Group conversations (issue #1365): the web catalogue's groups.membersButton
@@ -35678,7 +35678,7 @@ abstract class AppLocalizations {
   /// Group conversations (issue #1365): the web catalogue's groups.inviteLine
   ///
   /// In en, this message translates to:
-  /// **'{name} invited you · {count, plural, one {# member} other {# members}}'**
+  /// **'{name} invited you · {count, plural, one {{count} member} other {{count} members}}'**
   String groupsInviteLine(String name, int count);
 
   /// Group conversations (issue #1365): the web catalogue's groups.inviteAccept
@@ -35948,13 +35948,13 @@ abstract class AppLocalizations {
   /// Group conversations (issue #1365): the web catalogue's groups.inviteSend
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one {Invite # person} other {Invite # people}}'**
+  /// **'{count, plural, one {Invite {count} person} other {Invite {count} people}}'**
   String groupsInviteSend(int count);
 
   /// Group conversations (issue #1365): the web catalogue's groups.invitedToast
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, one {Invitation sent} other {# invitations sent}}'**
+  /// **'{count, plural, one {Invitation sent} other {{count} invitations sent}}'**
   String groupsInvitedToast(int count);
 
   /// Group conversations (issue #1365): the web catalogue's groups.roleInvited

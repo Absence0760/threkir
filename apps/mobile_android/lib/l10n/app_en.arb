@@ -29206,7 +29206,7 @@
   "@groupsGroupFallback": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.groupFallback"
   },
-  "groupsMemberCount": "{count, plural, one {# member} other {# members}}",
+  "groupsMemberCount": "{count, plural, one {{count} member} other {{count} members}}",
   "@groupsMemberCount": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.memberCount",
     "placeholders": {
@@ -29215,7 +29215,7 @@
       }
     }
   },
-  "groupsMembersTitle": "{count, plural, one {# member} other {# members}}",
+  "groupsMembersTitle": "{count, plural, one {{count} member} other {{count} members}}",
   "@groupsMembersTitle": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.membersTitle",
     "placeholders": {
@@ -29249,7 +29249,7 @@
   "@groupsInvitesHeading": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.invitesHeading"
   },
-  "groupsInviteLine": "{name} invited you · {count, plural, one {# member} other {# members}}",
+  "groupsInviteLine": "{name} invited you · {count, plural, one {{count} member} other {{count} members}}",
   "@groupsInviteLine": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.inviteLine",
     "placeholders": {
@@ -29503,7 +29503,7 @@
   "@groupsInviteMore": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.inviteMore"
   },
-  "groupsInviteSend": "{count, plural, one {Invite # person} other {Invite # people}}",
+  "groupsInviteSend": "{count, plural, one {Invite {count} person} other {Invite {count} people}}",
   "@groupsInviteSend": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.inviteSend",
     "placeholders": {
@@ -29512,7 +29512,7 @@
       }
     }
   },
-  "groupsInvitedToast": "{count, plural, one {Invitation sent} other {# invitations sent}}",
+  "groupsInvitedToast": "{count, plural, one {Invitation sent} other {{count} invitations sent}}",
   "@groupsInvitedToast": {
     "description": "Group conversations (issue #1365): the web catalogue's groups.invitedToast",
     "placeholders": {

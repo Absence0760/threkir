@@ -22195,8 +22195,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# membres',
-      one: '# membre',
+      other: '$count membres',
+      one: '$count membre',
     );
     return '$_temp0';
   }
@@ -22206,8 +22206,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# membres',
-      one: '# membre',
+      other: '$count membres',
+      one: '$count membre',
     );
     return '$_temp0';
   }
@@ -22234,8 +22234,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# membres',
-      one: '# membre',
+      other: '$count membres',
+      one: '$count membre',
     );
     return '$name vous a invité · $_temp0';
   }
@@ -22415,8 +22415,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Inviter # personnes',
-      one: 'Inviter # personne',
+      other: 'Inviter $count personnes',
+      one: 'Inviter $count personne',
     );
     return '$_temp0';
   }
@@ -22426,7 +22426,7 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '# invitations envoyées',
+      other: '$count invitations envoyées',
       one: 'Invitation envoyée',
     );
     return '$_temp0';

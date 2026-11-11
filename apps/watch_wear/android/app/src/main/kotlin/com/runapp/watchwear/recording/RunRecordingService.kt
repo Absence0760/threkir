@@ -958,7 +958,6 @@ class RunRecordingService : Service() {
                 distanceEstimator = GpsDistanceEstimator.SPEC_ID,
                 distanceStepFilledM = stepFilledM,
                 distanceStepOverChordM = stepOverChordM,
-                distanceSegments = file.segmentCount,
                 locationProvider = locationProviderForTrack(file.pointCount),
                 gnssSignal = gnssSignalSummary(),
                 trackComplete = file.pointCount > 0,

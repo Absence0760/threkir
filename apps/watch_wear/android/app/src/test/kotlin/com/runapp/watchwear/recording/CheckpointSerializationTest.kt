@@ -448,7 +448,6 @@ class CheckpointSerializationTest {
         assertNull(decoded.distanceEstimator)
         assertNull(decoded.distanceStepFilledM)
         assertNull(decoded.distanceStepOverChordM)
-        assertNull(decoded.distanceSegments)
     }
 
     @Test
@@ -457,7 +456,6 @@ class CheckpointSerializationTest {
             distanceEstimator = GpsDistanceEstimator.SPEC_ID,
             distanceStepFilledM = 78.4,
             distanceStepOverChordM = 12.5,
-            distanceSegments = 3,
         )
         val decoded = json.decodeFromString(
             Checkpoint.serializer(),
@@ -466,7 +464,6 @@ class CheckpointSerializationTest {
         assertEquals("kalman_v1", decoded.distanceEstimator)
         assertEquals(78.4, decoded.distanceStepFilledM!!, 0.0)
         assertEquals(12.5, decoded.distanceStepOverChordM!!, 0.0)
-        assertEquals(3, decoded.distanceSegments)
     }
 
     @Test

@@ -61,10 +61,6 @@ data class Checkpoint(
     // What of [distanceStepFilledM] the gaps' chords would not have credited.
     // Null on an older checkpoint, whose run uploads without it.
     val distanceStepOverChordM: Double? = null,
-    // The estimator segments the track file held at write time. Null on an
-    // older checkpoint, whose run uploads without `metadata.distance_segments`
-    // and so keeps the server's run-total rule.
-    val distanceSegments: Int? = null,
     // Which stream recorded the fixes so far, so a recovered run says what
     // the normal stop path would. Null on an older checkpoint, or before the
     // run has a track.

@@ -24,6 +24,19 @@ class CheckpointRecoveryWiringTest {
     }
 
     @Test
+    fun `a recovered run counts its segments off the sealed track file`() {
+        val fn = body("fun recoverCheckpoint()")
+        val sealed = fn.indexOf("sealTrackFile(cp.trackFilePath)")
+        val counted = fn.indexOf("trackFileSegmentCount(sealed)")
+        assertTrue("must count after sealing", sealed >= 0 && counted > sealed)
+        assertTrue(fn.contains("distanceSegments = segments?.takeIf { it >= 1 }"))
+        assertFalse(
+            "the checkpoint lags the file, so its snapshot is not the count",
+            fn.contains("distanceSegments = cp."),
+        )
+    }
+
+    @Test
     fun `the grader reads all three inputs it grades on`() {
         val fn = body("private suspend fun gradeRecovery(")
         assertTrue("must call the pure grader", fn.contains("recoveryActionFor("))

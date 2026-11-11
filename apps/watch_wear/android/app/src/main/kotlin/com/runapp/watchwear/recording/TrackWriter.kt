@@ -5,6 +5,7 @@ import com.runapp.watchwear.GpsPoint
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
+import java.io.IOException
 import java.io.PrintWriter
 import java.time.Instant
 import kotlinx.serialization.json.Json
@@ -138,5 +139,79 @@ fun trackLineLatLngs(raw: String): List<RouteMath.LatLng> {
         val lat = (obj["lat"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return@mapNotNull null
         val lng = (obj["lng"] as? JsonPrimitive)?.content?.toDoubleOrNull() ?: return@mapNotNull null
         RouteMath.LatLng(lat, lng)
+    }
+}
+
+/// The estimator segments a stored track [file] holds, counted as the
+/// server's replay counts them: the first point carrying a coordinate and a
+/// timestamp opens one, and so does every later such point at or after a
+/// `"segmentStart":true` (a mark on a point the replay skips carries to the
+/// next it reads). [TrackWriter.segmentCount] gives the same figure while the
+/// file is written; this is the count for a run recovered from a checkpoint,
+/// whose file holds fixes the last checkpoint never saw. Streams one point at
+/// a time, since a 100-hour track is tens of megabytes. Null when the file is
+/// missing or a point does not parse, so the run omits
+/// `metadata.distance_segments` and the server keeps its run-total rule.
+fun trackFileSegmentCount(file: File): Int? {
+    if (!file.exists()) return null
+    return try {
+        file.bufferedReader().use { reader ->
+            var points = 0
+            var segments = 0
+            var markPending = false
+            val open = ArrayDeque<Char>()
+            var inString = false
+            var escaped = false
+            val point = StringBuilder()
+            while (true) {
+                val c = reader.read()
+                if (c < 0) break
+                val ch = c.toChar()
+                if (open.size >= 2) point.append(ch)
+                if (inString) {
+                    when {
+                        escaped -> escaped = false
+                        ch == '\\' -> escaped = true
+                        ch == '"' -> inString = false
+                    }
+                    continue
+                }
+                when (ch) {
+                    '"' -> inString = true
+                    '[', '{' -> {
+                        open.addLast(ch)
+                        if (open.size == 2) {
+                            point.setLength(0)
+                            point.append(ch)
+                        }
+                    }
+                    ']', '}' -> {
+                        // A point cut off mid-write and then sealed closes
+                        // with the wrong bracket: its count is unknown.
+                        if (open.removeLastOrNull() != (if (ch == ']') '[' else '{')) return null
+                        if (open.size == 1 && ch == '}') {
+                            val obj = Json.parseToJsonElement(point.toString()) as? JsonObject ?: return null
+                            markPending = markPending ||
+                                (obj["segmentStart"] as? JsonPrimitive)?.booleanOrNull == true
+                            val placed = (obj["lat"] as? JsonPrimitive)?.content?.toDoubleOrNull() != null &&
+                                (obj["lng"] as? JsonPrimitive)?.content?.toDoubleOrNull() != null &&
+                                (obj["ts"] as? JsonPrimitive)?.isString == true
+                            if (placed) {
+                                if (points == 0 || markPending) segments++
+                                markPending = false
+                                points++
+                            }
+                        }
+                    }
+                }
+            }
+            if (open.isNotEmpty() || inString) null else segments
+        }
+    } catch (e: IOException) {
+        null
+    } catch (e: IllegalArgumentException) {
+        // kotlinx.serialization's SerializationException: a point that is
+        // not JSON.
+        null
     }
 }

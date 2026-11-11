@@ -10183,7 +10183,7 @@
   "@planNudgeAnchorReturnTitle": {
     "description": "Home plan card title: back after weeks away from the plan (comeback ramp)"
   },
-  "planNudgeAnchorReturnBody": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. There's a suggested change so the weeks ahead build back up from what you last ran.",
+  "planNudgeAnchorReturnBody": "You've been away from the plan for {n, plural, one {{n} week} other {{n} weeks}}. There's a suggested change so the weeks ahead build back up from what you last ran.",
   "@planNudgeAnchorReturnBody": {
     "description": "Home plan card body: back after n weeks away from the plan (comeback ramp)",
     "placeholders": {
@@ -10287,7 +10287,7 @@
       }
     }
   },
-  "planDetailAnchorReturnNote": "You've been away from the plan for {n, plural, one {# week} other {# weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.",
+  "planDetailAnchorReturnNote": "You've been away from the plan for {n, plural, one {{n} week} other {{n} weeks}}. These weeks restart at about half of the {km} you last ran in a week and build about 10% a week. The taper stays as planned.",
   "@planDetailAnchorReturnNote": {
     "description": "Plan-detail re-plan preview note after weeks away from the plan: n weeks away, km is the last week run",
     "placeholders": {

@@ -7597,8 +7597,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semaines',
-      one: '# semaine',
+      other: '$n semaines',
+      one: '$n semaine',
     );
     return 'Vous avez quitté le plan pendant $_temp0. Une modification est proposée pour que les semaines à venir repartent de ce que vous avez couru en dernier.';
   }
@@ -7664,8 +7664,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semaines',
-      one: '# semaine',
+      other: '$n semaines',
+      one: '$n semaine',
     );
     return 'Vous avez quitté le plan pendant $_temp0. Ces semaines reprennent à environ la moitié des $km courus lors de votre dernière semaine, puis progressent d\'environ 10 % par semaine. L\'affûtage reste tel que prévu.';
   }
@@ -14080,7 +14080,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get metricRouteHistoryDefinition =>
-      'Une tentative est une course sur cet itinéraire, du même type d\'activité, qui a parcouru plus de 100 m et a un temps enregistré (supérieur à zéro, inférieur à dix jours). Les tentatives sont classées de la plus rapide à la plus lente ; des temps égaux partagent un rang, donc une course qui égale le meilleur temps est aussi un record.';
+      'Une tentative est une course sur cet itinéraire, du même type d\'activité, qui fait plus de 100 m et a un temps enregistré (supérieur à zéro, inférieur à dix jours). Les tentatives sont classées de la plus rapide à la plus lente ; les temps égaux se partagent le même rang, donc une course qui égale le meilleur temps est aussi un record personnel.';
 
   @override
   String get coachingRosterRiskLow => 'Faible';

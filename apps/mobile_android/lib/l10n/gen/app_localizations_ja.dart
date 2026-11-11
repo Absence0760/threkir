@@ -7159,7 +7159,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planNudgeAnchorReturnBody(int n) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#週間');
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n週間');
     return '$_temp0プランから離れていました。この先の週を最後に走った量から積み上げ直す変更案があります。';
   }
 
@@ -7220,7 +7220,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String planDetailAnchorReturnNote(int n, String km) {
-    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '#週間');
+    String _temp0 = intl.Intl.pluralLogic(n, locale: localeName, other: '$n週間');
     return '$_temp0プランから離れていました。これからの週は最後に1週間で走った$kmの約半分から再開し、週に約10%ずつ増やします。テーパーは計画どおりです。';
   }
 
@@ -13363,7 +13363,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get metricRouteHistoryDefinition =>
-      '試技とは、このルートで同じアクティビティ種別のランのうち、100 m を超えて移動し、記録されたタイム（0 より大きく 10 日未満）があるものです。試技は速い順に並び、同じタイムは同じ順位になります。そのため、ベストタイムに並んだランも自己ベストです。';
+      '挑戦とは、このルートでのランのうち、アクティビティの種類が同じで、100 mを超えて移動し、記録されたタイム（0より大きく10日未満）があるものです。挑戦は速い順に並び、同じタイムは同じ順位になります。そのため、ベストタイムに並んだランも自己ベストです。';
 
   @override
   String get coachingRosterRiskLow => '低';

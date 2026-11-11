@@ -7575,8 +7575,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semanas',
-      one: '# semana',
+      other: '$n semanas',
+      one: '$n semana',
     );
     return 'Has estado fuera del plan $_temp0. Hay un cambio sugerido para que las próximas semanas se reconstruyan desde lo último que corriste.';
   }
@@ -7642,8 +7642,8 @@ class AppLocalizationsEs extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       n,
       locale: localeName,
-      other: '# semanas',
-      one: '# semana',
+      other: '$n semanas',
+      one: '$n semana',
     );
     return 'Has estado fuera del plan $_temp0. Estas semanas vuelven a empezar en aproximadamente la mitad de los $km que corriste en tu última semana y suben alrededor de un 10 % por semana. La puesta a punto se mantiene como estaba.';
   }
@@ -14047,7 +14047,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get metricRouteHistoryDefinition =>
-      'Un intento es una carrera en esta ruta con el mismo tipo de actividad que recorrió más de 100 m y tiene un tiempo registrado (mayor que cero y menor de diez días). Los intentos se ordenan del más rápido al más lento; los tiempos iguales comparten puesto, así que una carrera que iguala el mejor tiempo también es una marca personal.';
+      'Un intento es una carrera en esta ruta, del mismo tipo de actividad, de más de 100 m y con un tiempo registrado (mayor que cero y menor de diez días). Los intentos se ordenan del más rápido al más lento; los tiempos iguales comparten puesto, así que una carrera que iguala el mejor tiempo también es tu mejor marca personal.';
 
   @override
   String get coachingRosterRiskLow => 'Bajo';

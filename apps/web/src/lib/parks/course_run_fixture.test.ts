@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { FIXTURE, buildOutputs } from '../../../../../scripts/gen_park_course_runs.mjs';
+import { FIXTURE, SQL_TEST, buildOutputs } from '../../../../../scripts/gen_park_course_runs.mjs';
 import {
 	NOISE_SIGMA_M,
 	caseDefs,
@@ -46,9 +46,10 @@ const errorsOf = (r: SimulatedRun, from = 0, to = r.fixes.length) =>
 	r.truth.slice(from, to).map((p, i) => hopM(p, fixAt(r, from + i)));
 const rms = (xs: number[]) => Math.sqrt(xs.reduce((s, x) => s + x * x, 0) / xs.length);
 
-test('the committed fixture is current', async () => {
+test('the committed fixture and the generated block of park_course_boards_test.sql are current', async () => {
 	const next = await buildOutputs();
 	assert.equal(readFileSync(FIXTURE, 'utf8'), next.fixture, 'fixtures/park_course_runs.json is stale: run `pnpm gen:park-course-runs`');
+	assert.equal(readFileSync(SQL_TEST, 'utf8'), next.sql, 'park_course_boards_test.sql is stale: run `pnpm gen:park-course-runs`');
 });
 
 test('a plan and its seed make the same run every time, and another seed another run', () => {

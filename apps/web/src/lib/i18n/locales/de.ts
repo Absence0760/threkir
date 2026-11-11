@@ -8237,4 +8237,5 @@ export const messages = {
 	"admin.reports.conversationDirect": "In einer Unterhaltung zu zweit gesendet",
 	"admin.reports.conversationGroup": "In der Gruppe {title} gesendet ({count, plural, one {# Mitglied} other {# Mitglieder}})",
 	"admin.reports.conversationGone": "Die Unterhaltung, in der dies gesendet wurde, existiert nicht mehr",
+	"admin.reports.conversationFailed": "Die Unterhaltung, in der dies gesendet wurde, konnte nicht geladen werden.",
 } satisfies Messages;

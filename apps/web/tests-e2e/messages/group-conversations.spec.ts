@@ -210,9 +210,18 @@ test.describe('/messages — group conversations', () => {
 		}
 	});
 
-	test('the owner removes a member, behind a confirm, and they lose the group', async ({ browser }) => {
+	test('the owner removes a member, behind a confirm, and the open thread loses the group without a reload', async ({
+		browser
+	}) => {
+		const c = await open(browser, cal);
 		const a = await open(browser, owner);
 		try {
+			// Cal has the group open, and keeps it open through the removal.
+			await c.page.goto(`/messages/group/${groupId}`);
+			await expect(c.page.getByTestId('dm-bubble').filter({ hasText: `dev says hi ${stamp}` })).toBeVisible({
+				timeout: 15_000,
+			});
+
 			await a.page.goto(`/messages/group/${groupId}`);
 			await a.page.getByTestId('group-members-button').click();
 			const sheet = a.page.getByTestId('group-members-sheet');
@@ -227,17 +236,16 @@ test.describe('/messages — group conversations', () => {
 				timeout: 10_000,
 			});
 			await expect(sheet.locator(`[data-testid="group-member"][data-user-id="${bea.id}"]`)).toBeVisible();
-		} finally {
-			await a.ctx.close();
-		}
 
-		const c = await open(browser, cal);
-		try {
-			await c.page.goto(`/messages/group/${groupId}`);
-			await expect(c.page.getByTestId('group-unavailable')).toBeVisible({ timeout: 15_000 });
+			// The next 10 s poll takes the group away from the open page.
+			await expect(c.page.getByTestId('group-unavailable')).toBeVisible({ timeout: 25_000 });
 			await expect(c.page.getByText(`dev says hi ${stamp}`)).toHaveCount(0);
+
+			await c.page.reload();
+			await expect(c.page.getByTestId('group-unavailable')).toBeVisible({ timeout: 15_000 });
 			await expect(c.page.getByText(title)).toHaveCount(0);
 		} finally {
+			await a.ctx.close();
 			await c.ctx.close();
 		}
 	});

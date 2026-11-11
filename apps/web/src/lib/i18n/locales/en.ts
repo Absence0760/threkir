@@ -8269,4 +8269,5 @@ export const en = {
 	"admin.reports.conversationDirect": "Sent in a one-to-one conversation",
 	"admin.reports.conversationGroup": "Sent in the group {title} ({count, plural, one {# member} other {# members}})",
 	"admin.reports.conversationGone": "The conversation this was sent in no longer exists",
+	"admin.reports.conversationFailed": "Couldn't load the conversation this was sent in.",
 } satisfies Record<string, string>;

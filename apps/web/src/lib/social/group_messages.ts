@@ -119,14 +119,14 @@ export function mergeGroupThread<T extends DmOrderKey>(
 	placeholders: readonly DmOrderKey[],
 ): GroupThreadItem<T>[] {
 	const shown = new Set(messages.map((m) => m.id));
-	const items: (GroupThreadItem<T> & { key: DmOrderKey })[] = [
-		...messages.map((message) => ({ kind: 'message' as const, message, key: message })),
+	const items: GroupThreadItem<T>[] = [
+		...messages.map((message) => ({ kind: 'message' as const, message })),
 		...placeholders
 			.filter((p) => !shown.has(p.id))
-			.map((p) => ({ kind: 'blocked' as const, id: p.id, created_at: p.created_at, key: p })),
+			.map((p) => ({ kind: 'blocked' as const, id: p.id, created_at: p.created_at })),
 	];
-	items.sort((a, b) => compareDmOrder(a.key, b.key));
-	return items.map(({ key: _key, ...item }) => item as GroupThreadItem<T>);
+	const orderKey = (i: GroupThreadItem<T>): DmOrderKey => (i.kind === 'message' ? i.message : i);
+	return items.sort((a, b) => compareDmOrder(orderKey(a), orderKey(b)));
 }
 
 /**

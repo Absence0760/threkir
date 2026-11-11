@@ -8237,4 +8237,5 @@ export const messages = {
 	"admin.reports.conversationDirect": "Envoyé dans une conversation à deux",
 	"admin.reports.conversationGroup": "Envoyé dans le groupe {title} ({count, plural, one {# membre} other {# membres}})",
 	"admin.reports.conversationGone": "La conversation où cela a été envoyé n'existe plus",
+	"admin.reports.conversationFailed": "Impossible de charger la conversation où cela a été envoyé.",
 } satisfies Messages;

@@ -73,12 +73,17 @@
 	let earlierError = $state(false);
 	let scroller = $state<HTMLDivElement | null>(null);
 
-	let draft = $state('');
+	// Drafts are per group, as the 1:1 page keeps them per thread: this
+	// component is reused when the route moves to another group, and a draft
+	// that followed the reader would post to a different audience.
+	let drafts = $state<Record<string, string>>({});
+	const draft = $derived(drafts[groupId] ?? '');
 	let sending = $state(false);
 	let sendError = $state<string | null>(null);
 	let actionError = $state<string | null>(null);
 	let photosEnabled = $state(false);
-	let photoDraft = $state<{ blob: Blob; preview: string } | null>(null);
+	let photoDraft = $state<{ group: string; blob: Blob; preview: string } | null>(null);
+	const groupPhoto = $derived(photoDraft?.group === groupId ? photoDraft : null);
 	let photoInput = $state<HTMLInputElement | null>(null);
 	let preparingPhoto = $state(false);
 
@@ -150,6 +155,12 @@
 			if (e instanceof AppError && e.key === 'groups.notFound') {
 				members = [];
 				membership = 'outside';
+				// D12: someone who left or was removed reads only their own
+				// messages. The server already answers so; what this page still
+				// holds from before goes too, rather than waiting for a reload.
+				messages = messages.filter((x) => x.sender_id === me);
+				placeholders = [];
+				reactions = [];
 			} else {
 				console.warn('group members read failed', e);
 			}
@@ -328,9 +339,11 @@
 		preparingPhoto = true;
 		sendError = null;
 		try {
+			const id = groupId;
 			const blob = await encodeDmImage(file);
+			if (id !== groupId) return;
 			clearPhotoDraft();
-			photoDraft = { blob, preview: URL.createObjectURL(blob) };
+			photoDraft = { group: id, blob, preview: URL.createObjectURL(blob) };
 		} catch (err) {
 			sendError =
 				err instanceof DmImageEncodeError && err.kind === 'too_large'
@@ -344,20 +357,25 @@
 
 	async function send() {
 		const id = groupId;
-		const photo = photoDraft;
-		if (!active || sending || (!draft.trim() && !photo)) return;
+		const photo = groupPhoto;
+		const body = drafts[id] ?? '';
+		if (!active || sending || (!body.trim() && !photo)) return;
 		sending = true;
 		sendError = null;
 		try {
 			const imageId = photo ? await uploadDmImage(photo.blob) : undefined;
-			const msg = await sendGroupMessage(id, draft, { imageId });
+			const msg = await sendGroupMessage(id, body, { imageId });
 			if (photo && photoDraft === photo) clearPhotoDraft();
-			localWrites++;
-			messages = mergeDmMessages(messages, [msg]);
-			draft = '';
-			void scrollToNewest();
+			delete drafts[id];
+			drafts = { ...drafts };
+			if (id === groupId) {
+				localWrites++;
+				messages = mergeDmMessages(messages, [msg]);
+				void scrollToNewest();
+			}
 			await messagesInbox.refreshThreads();
 		} catch (e) {
+			if (id !== groupId) return;
 			sendError = errorCopy(e, tr, 'messages.sendFailed', 'messages.sendFailed');
 			// A refusal is most often a removal the poll has not shown yet.
 			void loadMembers(id);
@@ -375,15 +393,18 @@
 
 	async function confirmUnsend() {
 		const target = unsendTarget;
+		const id = groupId;
 		unsendTarget = null;
 		if (!target) return;
 		actionError = null;
 		try {
 			const updated = await unsendDm(target.id);
-			localWrites++;
-			messages = mergeDmMessages(messages, [updated]);
+			if (id === groupId) {
+				localWrites++;
+				messages = mergeDmMessages(messages, [updated]);
+			}
 		} catch (e) {
-			actionError = errorCopy(e, tr, 'messages.unsendFailed', 'messages.unsendFailed');
+			if (id === groupId) actionError = errorCopy(e, tr, 'messages.unsendFailed', 'messages.unsendFailed');
 		}
 		await messagesInbox.refreshThreads();
 	}
@@ -402,16 +423,18 @@
 
 	async function saveEdit() {
 		const targetId = editingId;
+		const id = groupId;
 		if (!targetId || editBusy || !editDraft.trim()) return;
 		editBusy = true;
 		editError = null;
 		try {
 			const updated = await editDm(targetId, editDraft);
+			if (id !== groupId) return;
 			localWrites++;
 			messages = mergeDmMessages(messages, [updated]);
 			if (editingId === targetId) cancelEdit();
 		} catch (e) {
-			editError = errorCopy(e, tr, 'messages.editFailed', 'messages.editFailed');
+			if (id === groupId) editError = errorCopy(e, tr, 'messages.editFailed', 'messages.editFailed');
 		} finally {
 			editBusy = false;
 		}
@@ -651,9 +674,9 @@
 	{#if membership === 'outside'}
 		<p class="muted closed" data-testid="group-left-notice">{tr('groups.leftNotice')}</p>
 	{:else if active}
-		{#if photoDraft}
+		{#if groupPhoto}
 			<div class="photo-draft">
-				<img src={photoDraft.preview} alt={tr('messages.photoDraftAlt')} />
+				<img src={groupPhoto.preview} alt={tr('messages.photoDraftAlt')} />
 				<button type="button" class="btn btn-secondary btn-sm" onclick={clearPhotoDraft} aria-label={tr('messages.photoRemove')}>
 					<span class="material-symbols" aria-hidden="true">close</span>
 				</button>
@@ -682,14 +705,15 @@
 				</button>
 			{/if}
 			<textarea
-				bind:value={draft}
+				value={draft}
+				oninput={(e) => (drafts[groupId] = e.currentTarget.value)}
 				onkeydown={onKeydown}
 				placeholder={tr('messages.composerPlaceholder')}
 				aria-label={tr('groups.composerLabel', { title })}
 				rows="1"
 				maxlength="4000"
 			></textarea>
-			<button class="btn btn-primary" onclick={send} disabled={sending || preparingPhoto || (!draft.trim() && !photoDraft)}>
+			<button class="btn btn-primary" onclick={send} disabled={sending || preparingPhoto || (!draft.trim() && !groupPhoto)}>
 				{sending ? '…' : tr('messages.send')}
 			</button>
 		</div>

@@ -8232,4 +8232,5 @@ export const messages = {
 	"admin.reports.conversationDirect": "1対1の会話で送信",
 	"admin.reports.conversationGroup": "グループ{title}で送信({count, plural, other {メンバー#人}})",
 	"admin.reports.conversationGone": "送信された会話はもう存在しません",
+	"admin.reports.conversationFailed": "送信された会話を読み込めませんでした。",
 } satisfies Messages;

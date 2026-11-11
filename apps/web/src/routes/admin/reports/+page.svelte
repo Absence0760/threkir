@@ -95,6 +95,7 @@
 	// The audience a reported message went to: a 1:1 thread or a group, with
 	// the group's name and size (group_messages.md § 6). Null when unknown.
 	let conversation = $state<ReportConversation | null>(null);
+	let conversationFailed = $state(false);
 	let courseHistory = $state<ParkCourseStatusHistoryEntry[]>([]);
 	let courseNote = $state('');
 	let courseBusy = $state(false);
@@ -218,13 +219,21 @@
 		courseHistory = [];
 		courseNote = '';
 		conversation = null;
+		conversationFailed = false;
 		detail = [];
 		detailLoading = true;
 		try {
 			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
 			if (target.target_kind === 'park_course') await loadCourse(target.target_id);
 			if (target.target_kind === 'direct_message') {
-				conversation = await fetchAdminReportConversation(target.target_id);
+				// Auxiliary: a failed lookup says so and leaves the reports and
+				// the actions on them standing (conventions.md § Layered resilience).
+				try {
+					conversation = await fetchAdminReportConversation(target.target_id);
+				} catch (e) {
+					console.warn('admin report conversation lookup failed', e);
+					conversationFailed = true;
+				}
 			}
 			if (detail.some((r) => r.reason === 'organiser_dispute') && DISPUTE_KINDS.includes(target.target_kind)) {
 				history = await fetchOrganiserDisputeHistory(
@@ -598,7 +607,9 @@
 			</div>
 			{#if selected.target_kind === 'direct_message' && !detailLoading}
 				<p class="muted" data-testid="admin-report-conversation">
-					{conversation === null
+					{conversationFailed
+						? t('admin.reports.conversationFailed')
+						: conversation === null
 						? t('admin.reports.conversationGone')
 						: conversation.kind === 'group'
 							? t('admin.reports.conversationGroup', {

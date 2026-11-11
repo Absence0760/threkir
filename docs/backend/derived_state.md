@@ -82,7 +82,11 @@ retention cron referenced in a comment that was never created.
   the embedded-best promotion, `20270325_001`, and `activity_type` joined it
   with the run-family filter, `20270514_001` — a re-typed run changes what the
   authoritative query returns, so it has to re-derive), and refreshes both the
-  old and new owner on a `user_id` change. `trigger_award_achievements_runs`
+  old and new owner on a `user_id` change. The duration repair of issue #1300 § 5
+  (`20271218000002` and the job_worker's `duration_repair`, [decisions
+  § 2464](../architecture/decisions.md)) writes only `duration_s`, so both its
+  cap and its track recompute re-derive through this path with no call of
+  their own. `trigger_award_achievements_runs`
   watches `activity_type` for the same reason.
 - **Improvement log + notification:** since `20271104000002` the refresher
   reads the user's bests before its DELETE and hands them to

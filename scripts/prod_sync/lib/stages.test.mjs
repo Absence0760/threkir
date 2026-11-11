@@ -221,9 +221,18 @@ test('the entry point connects without the password on the command line and summ
 	// each reads absent and no delete or unset is sent.
 	assert.ok(r.summary.includes('| function | parkrun-import | absent |'));
 	assert.ok(!/functions delete|secrets unset/.test(r.supabase), r.supabase);
-	for (const call of ['private.apply_feature_flag(', 'private.arm_cron_url(', 'private.begin_ops_task(', 'private.ops_task_runs']) {
+	for (const call of ['private.apply_feature_flag(', 'private.arm_cron_url(']) {
 		assert.ok(!r.stdin.includes(call), `the committed config sends no ${call}`);
 	}
+	// The committed one-off tasks are not a toggle: each one the stub's ledger
+	// has not recorded is begun exactly once, and none is begun when none is
+	// committed.
+	const tasks = fs
+		.readdirSync(path.join(REPO, 'apps', 'backend', 'ops', 'tasks'))
+		.filter((f) => f.endsWith('.sql'))
+		.map((f) => f.replace(/\.sql$/, ''));
+	assert.equal(r.stdin.split('private.begin_ops_task(').length - 1, tasks.length, r.stdin);
+	for (const name of tasks) assert.ok(r.stdin.includes(`private.begin_ops_task('${name}'`), name);
 });
 
 test('a dry run rolls the stage back', () => {

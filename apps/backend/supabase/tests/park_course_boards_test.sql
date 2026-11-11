@@ -431,7 +431,7 @@ select is(
   (select array_agg(pc.slug order by pc.slug)
      from global_segment_efforts e join park_courses pc on pc.global_segment_id = e.global_segment_id
     where e.run_id = 'cb000000-0000-4000-8000-00000000000a'),
-  array['swift-creek-10k'], 'and timed on it');
+  array['swift-creek-10k'], 'and timed on the open 10K');
 
 update park_courses pc set status = 'closed', status_note = 'Closed for the test.'
   from parks p where p.id = pc.park_id and p.slug = 'pocahontas' and pc.slug = 'swift-creek-10k';
@@ -544,7 +544,7 @@ select is(
   (select array_agg(pc.slug order by pc.slug)
      from global_segment_efforts e join park_courses pc on pc.global_segment_id = e.global_segment_id
     where e.run_id = 'cb000000-0000-4000-8000-00000000000c'),
-  array['swift-creek-10k'], 'and timed on it');
+  array['swift-creek-10k'], 'and timed on the seasonal 10K');
 
 select * from finish();
 rollback;

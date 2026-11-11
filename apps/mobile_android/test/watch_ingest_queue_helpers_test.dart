@@ -243,6 +243,28 @@ void main() {
       expect(alone.metadata, isNull);
     });
 
+    test('forwards a whole segment count of one or more beside the estimator',
+        () {
+      final run = runFromWatchPayload(_basePayload()
+        ..['distance_estimator'] = 'kalman_v4'
+        ..['distance_segments'] = 3);
+      expect(run.metadata![MetadataKeys.distanceSegments], 3);
+      final whole = runFromWatchPayload(_basePayload()
+        ..['distance_estimator'] = 'kalman_v4'
+        ..['distance_segments'] = 2.0);
+      expect(whole.metadata![MetadataKeys.distanceSegments], 2);
+      for (final bad in <Object>[0, -1, 1.5, '2', double.nan]) {
+        final r = runFromWatchPayload(_basePayload()
+          ..['distance_estimator'] = 'kalman_v4'
+          ..['distance_segments'] = bad);
+        expect(r.metadata!.containsKey(MetadataKeys.distanceSegments), isFalse,
+            reason: '$bad');
+      }
+      final alone =
+          runFromWatchPayload(_basePayload()..['distance_segments'] = 2);
+      expect(alone.metadata, isNull);
+    });
+
     test('keeps an off-track fix flagged, in order, and forwards track_complete',
         () {
       final raw = _basePayload()

@@ -8,26 +8,24 @@ import { USER_A } from '../fixtures/users';
  * which of them this deployment is allowed to offer.
  *
  * The page renders only what it can honour (`integration_visibility.ts`):
- * Strava behind `PUBLIC_STRAVA_CLIENT_ID`, parkrun behind a reachability probe
- * of its Edge Function, Garmin Connect and Apple HealthKit never — the first
- * blocked on Garmin's developer programme, the second an on-device iOS API a
- * browser cannot reach. A card is also always shown while a row for it exists,
+ * Strava behind `PUBLIC_STRAVA_CLIENT_ID`, Garmin Connect and Apple HealthKit
+ * never — the first blocked on Garmin's developer programme, the second an
+ * on-device iOS API a browser cannot reach. A card is also always shown while a row for it exists,
  * whatever the gate says, so a connection can still be disconnected.
  *
  * Local dev has no `PUBLIC_STRAVA_CLIENT_ID`, which is what makes the
  * unconfigured branch reachable from here at all.
  *
- * Future depth: Strava connect button click → mock OAuth flow, parkrun import
- * button against the seeded athlete number, Garmin .fit / .zip upload.
+ * Future depth: Strava connect button click → mock OAuth flow, Garmin .fit /
+ * .zip upload.
  */
 
-/// USER_A's two seeded connections (seed.sql § 5). Several cases below lean on
-/// them, and two of them change them, so every case starts from and leaves
-/// exactly this state. Restoring through the UI is not enough: a case that
+/// USER_A's seeded connection (seed.sql § 5). Several cases below lean on it,
+/// and one of them removes it, so every case starts from and leaves exactly
+/// this state. Restoring through the UI is not enough: a case that
 /// fails after its disconnect would leave the row gone for every case and spec
 /// that runs after it.
 const SEED_INTEGRATIONS = [
-	{ user_id: USER_A.id, provider: 'parkrun', last_sync_at: '2026-04-01T10:00:00Z' },
 	{ user_id: USER_A.id, provider: 'strava', last_sync_at: '2026-03-30T08:00:00Z' }
 ];
 
@@ -47,15 +45,16 @@ test.describe('/settings/integrations', () => {
 	test('the list offers what this deployment can honour, and nothing else', async ({
 		page
 	}) => {
-		// Runner's seed has parkrun + strava connected (last_sync_at
-		// populated), so both render whatever their gate says. Garmin Connect
-		// and Apple HealthKit have no row and no leg, so neither is offered —
-		// they used to render a live Connect button that wrote a placeholder
-		// row and synced nothing.
+		// Runner's seed has Strava connected (last_sync_at populated), so it
+		// renders whatever its gate says. Garmin Connect and Apple HealthKit
+		// have no row and no leg, so neither is offered — they used to render a
+		// live Connect button that wrote a placeholder row and synced nothing.
+		// parkrun and UltraSignup were scrapers and are gone outright.
 		await page.goto('/settings/integrations');
 
 		await expect(page.getByTestId('integration-strava')).toBeVisible({ timeout: 10_000 });
-		await expect(page.getByTestId('integration-parkrun')).toBeVisible();
+		await expect(page.getByTestId('integration-parkrun')).toHaveCount(0);
+		await expect(page.getByTestId('ultrasignup-card')).toHaveCount(0);
 		await expect(page.getByTestId('integration-garmin')).toHaveCount(0);
 		await expect(page.getByTestId('integration-healthkit')).toHaveCount(0);
 	});
@@ -63,19 +62,19 @@ test.describe('/settings/integrations', () => {
 	test('every offered card carries an info tip that explains the feature', async ({
 		page
 	}) => {
-		// A new runner does not know what parkrun is, let alone what an athlete
-		// number is for. The (i) is the only place on this page that says so.
+		// A new runner does not know what connecting Strava copies, or when.
+		// The (i) is the only place on this page that says so.
 		await page.goto('/settings/integrations');
 
-		const trigger = page.getByTestId('info-parkrun');
+		const trigger = page.getByTestId('info-strava');
 		await expect(trigger).toBeVisible({ timeout: 10_000 });
 		await expect(trigger).toHaveAttribute('aria-expanded', 'false');
-		await expect(page.getByTestId('info-parkrun-panel')).toHaveCount(0);
+		await expect(page.getByTestId('info-strava-panel')).toHaveCount(0);
 
 		await trigger.click();
-		const panel = page.getByTestId('info-parkrun-panel');
+		const panel = page.getByTestId('info-strava-panel');
 		await expect(panel).toBeVisible();
-		await expect(panel).toContainText(/5k/i);
+		await expect(panel).toContainText(/90 days/i);
 		await expect(trigger).toHaveAttribute('aria-expanded', 'true');
 
 		// Escape closes it and puts focus back where the runner left it.
@@ -101,43 +100,6 @@ test.describe('/settings/integrations', () => {
 		).toBeVisible();
 	});
 
-	test('parkrun connect → disconnect round-trip flips the button + the row class', async ({
-		page,
-		mockRoute
-	}) => {
-		// parkrun goes through the placeholder-connect path
-		// (`connectIntegration(provider)` upsert into integrations) —
-		// only Strava has live OAuth. parkrun starts connected per
-		// seed, so the round-trip is Disconnect → Connect.
-		// Tests the data-layer upsert + delete path that the canonical
-		// click handler funnels into.
-		//
-		// Once disconnected, the card stays only while the parkrun probe says
-		// the leg is deployed (`integrationIsVisible`). That gate has its own
-		// cases above; here it is answered yes, so this case tests the toggle
-		// rather than whether the stack's Edge Runtime is up, or whether the
-		// probe's per-user hourly bucket has room left.
-		await mockRoute(page, '**/functions/v1/parkrun-import', (route) =>
-			route.fulfill({ status: 200, json: { configured: true } })
-		);
-		await page.goto('/settings/integrations');
-
-		const parkrunCard = page.locator('.integration-card', { hasText: 'parkrun' });
-		await expect(parkrunCard).toBeVisible({ timeout: 10_000 });
-		await expect(parkrunCard).toHaveClass(/connected/);
-
-		await parkrunCard.getByRole('button', { name: 'Disconnect' }).click();
-		const confirm = page.locator('.modal', { hasText: 'Disconnect integration?' });
-		await expect(confirm).toBeVisible({ timeout: 5_000 });
-		await confirm.getByRole('button', { name: 'Disconnect' }).click();
-		await expect(parkrunCard).not.toHaveClass(/connected/, { timeout: 5_000 });
-		await expect(parkrunCard.getByRole('button', { name: 'Connect' }))
-			.toBeVisible();
-
-		await parkrunCard.getByRole('button', { name: 'Connect' }).click();
-		await expect(parkrunCard).toHaveClass(/connected/, { timeout: 5_000 });
-	});
-
 	test('an unconfigured Strava with no connection is not offered at all', async ({
 		page
 	}) => {
@@ -154,9 +116,11 @@ test.describe('/settings/integrations', () => {
 			.eq('provider', 'strava');
 
 		await page.goto('/settings/integrations');
-		// parkrun is the proof the page rendered rather than merely failing
-		// to reach the assertion below.
-		await expect(page.getByTestId('integration-parkrun')).toBeVisible({ timeout: 10_000 });
+		// The bulk importer is the proof the page rendered rather than merely
+		// failing to reach the assertion below.
+		await expect(
+			page.locator('section.bulk-import').filter({ hasText: 'Bulk import from a Strava export' })
+		).toBeVisible({ timeout: 10_000 });
 		await expect(page.getByTestId('integration-strava')).toHaveCount(0);
 	});
 

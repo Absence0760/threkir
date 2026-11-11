@@ -46,7 +46,7 @@ test.describe('/settings/upgrade — free user', () => {
 	}) => {
 		// Pin the polished two-card structure. Each tier carries a
 		// `check_circle` icon per feature — 4 on Free (Recording,
-		// Routes/plans/clubs, Strava/parkrun/Garmin, AI Coach) and 6 on
+		// Routes/plans/clubs, Strava/Garmin, AI Coach) and 6 on
 		// Pro (AI Coach 10/day, Log meals from a photo, Server route
 		// generation, Priority map-matching, Priority exports, Everything in
 		// Free). The Coach bullets render because PUBLIC_COACH_ENABLED=true in

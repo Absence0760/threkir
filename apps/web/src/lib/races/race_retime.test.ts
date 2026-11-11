@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 import type { TrackPoint } from '../types';
 import {
 	RACE_RESULT_WRITE_WINDOW_MS,
+	RETIME_UNDONE_TOLERANCE_MS,
 	computeRetime,
+	msExact,
 	raceOccurrenceForRun,
 	retimeApproval,
 	retimeFixes,
@@ -394,4 +396,46 @@ test('a run with no linked result belongs to the occurrence whose window or inst
 	assert.equal(raceOccurrenceForRun(sessions.slice(2), isoAt(t0)), isoAt(t0 + 2 * 3600_000));
 	assert.equal(raceOccurrenceForRun(sessions.slice(0, 1), isoAt(t0)), null, 'a week away is another race');
 	assert.equal(raceOccurrenceForRun([], isoAt(t0)), null);
+});
+
+test('a GO stamped with microseconds is floored as the server floors it', () => {
+	// GO .123456 s past a second, the finish crossing at .123 past: the server's
+	// floor(finish_at - started_at) is one second short of the millisecond sum.
+	const goIso = new Date(GO_MS).toISOString().replace('.000Z', '.123456+00:00');
+	assert.equal(msExact(goIso), GO_MS + 123.456);
+	assert.equal(msExact(isoAt(GO_MS)), GO_MS);
+	const track = straightTrack().map((p) => ({ ...p, ts: isoAt(Date.parse(p.ts!) + 123) }));
+	const c = ready(run({ track, session: session({ started_at: goIso }) })).candidate;
+	assert.equal(c.gunTimeS, 284);
+});
+
+test('the finish the runner undid on the day is not offered again', () => {
+	assert.equal(run({ undoneFinishAt: isoAt(t0 + 255_000) }).kind, 'undone');
+	assert.equal(run({ undoneFinishAt: isoAt(t0 + 255_000 - RETIME_UNDONE_TOLERANCE_MS) }).kind, 'undone');
+	assert.equal(run({ undoneFinishAt: isoAt(t0 + 255_000 - RETIME_UNDONE_TOLERANCE_MS - 1) }).kind, 'ready');
+	assert.equal(run({ undoneFinishAt: null }).kind, 'ready');
+});
+
+test('lock rule: self-timed, a protected row is never replaced by its own run or from outside the window', () => {
+	const prot = current({
+		finish_method: 'auto',
+		start_detection: 'gate',
+		finish_detection: 'gate',
+		duration_s: 251,
+		chip_time_s: 251,
+		run_id: 'r1',
+	});
+	assert.equal(run({ session: selfTimedSession(), current: prot, runId: 'r2' }).kind, 'ready');
+	assert.equal(run({ session: selfTimedSession(), current: prot, runId: 'r1' }).kind, 'locked');
+	assert.equal(
+		run({ session: selfTimedSession({ window_closes_at: isoAt(t0) }), current: prot, runId: 'r2' }).kind,
+		'locked',
+	);
+});
+
+test('two occurrences equally far from a run resolve to the earlier, whatever the row order', () => {
+	const at = (h: number) => isoAt(t0 + h * 3600_000);
+	const rows = [{ instance_start: at(12) }, { instance_start: at(-12) }];
+	assert.equal(raceOccurrenceForRun(rows, isoAt(t0)), at(-12));
+	assert.equal(raceOccurrenceForRun([...rows].reverse(), isoAt(t0)), at(-12));
 });

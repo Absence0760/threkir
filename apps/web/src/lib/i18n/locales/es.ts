@@ -4889,6 +4889,7 @@ export const messages = {
 	"raceRetime.lockedHost": "El organizador fijó tu tiempo, así que un recálculo no puede sustituirlo.",
 	"raceRetime.closed": "Los resultados de esta carrera se cerraron 24 horas después de que terminara.",
 	"raceRetime.noCrossing": "No se encontró ninguna llegada en la traza de esta carrera: no cruza las líneas del recorrido como lo exige una llegada.",
+	"raceRetime.undone": "El cruce de la línea de meta en esta traza es la llegada que deshiciste durante la competición, así que no se puede recalcular el tiempo con esta traza.",
 	"raceRetime.reasonNoSession": "Esta carrera no está configurada para cronometraje.",
 	"raceRetime.reasonNoCourse": "No se sabe cuál es tu recorrido en esta carrera, así que no se puede cronometrar.",
 	"raceRetime.reasonSelfCross": "Este recorrido cruza su línea de meta antes del final, así que solo se puede terminar a mano.",

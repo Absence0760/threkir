@@ -9,7 +9,10 @@
 // coverage on the recorder's credited distance (`distM`) when every fix carries
 // it and the hop-sum otherwise. Every fix is put on the server clock at its
 // `ts` plus the result's persisted `clock_offset_ms`, the offset the device
-// filed beside its own crossings, so a re-time reproduces the live gun time.
+// filed beside its own crossings. That is the live clock basis but not the
+// live instants: the stored `ts` is each fix's own time and the device timed
+// the race at each fix's arrival, so a re-time runs ahead of the live result by
+// the fix delivery latency (a few hundred ms) and can differ by a second.
 // There is no run-level offset anywhere (the runs row and its metadata keep
 // none), so a result without one is timed on the recording's own clock and
 // says so (`clockBasis: 'device'`).
@@ -62,6 +65,8 @@ export interface RetimeCurrent {
 	gun_time_s: number | null;
 	chip_time_s: number | null;
 	clock_offset_ms: number | null;
+	/** The run the row was filed with, when it was. */
+	run_id?: string | null;
 }
 
 export type RetimeStartDetection = 'gate' | 'device';
@@ -110,6 +115,7 @@ export type RetimeOutcome =
 	| { kind: 'unavailable'; reason: RetimeUnavailableReason }
 	| { kind: 'closed' }
 	| { kind: 'no_crossing' }
+	| { kind: 'undone' }
 	| { kind: 'locked'; reason: RetimeLockReason; candidate: RetimeCandidate }
 	| { kind: 'unchanged'; candidate: RetimeCandidate }
 	| { kind: 'ready'; candidate: RetimeCandidate; approval: RetimeApproval };
@@ -121,13 +127,37 @@ export interface RetimeInput {
 	session: RetimeSession | null;
 	course: RetimeCourse | null;
 	current: RetimeCurrent | null;
+	/** This run's id: a protected row filed with it is the same attempt. */
+	runId?: string | null;
+	/**
+	 * `runs.metadata.race_undone_finish_at`: the line finish the runner undid
+	 * with "Not finished? Resume", on the server clock. A finish the track
+	 * gives at or before it is that same finish, not a new one.
+	 */
+	undoneFinishAt?: string | null;
 	nowMs: number;
 }
+
+/** How far after the undone instant a finish still reads as the undone one: the stored track's fix times run ahead of the live arrival times, and smoothing moves a crossing by a fraction of a second. */
+export const RETIME_UNDONE_TOLERANCE_MS = 2000;
 
 function ms(iso: string | null | undefined): number | null {
 	if (!iso) return null;
 	const t = Date.parse(iso);
 	return Number.isFinite(t) ? t : null;
+}
+
+/**
+ * [ms] keeping a timestamptz's microseconds as a fraction: GO is stamped by
+ * `now()`, and the server's gun time floors the difference at microsecond
+ * precision, so truncating GO to the millisecond can put the client a second
+ * off the server on 1 race in 1000.
+ */
+export function msExact(iso: string | null | undefined): number | null {
+	const t = ms(iso);
+	if (t === null || !iso) return t;
+	const frac = /\.(\d+)/.exec(iso)?.[1] ?? '';
+	return frac.length > 3 ? t + Number(`0.${frac.slice(3)}`) : t;
 }
 
 /** The Start press on the server clock; the first fix when the run has no parseable start. */
@@ -174,7 +204,8 @@ export function raceOccurrenceForRun(
 	}
 	let best: string | null = null;
 	let bestGap = Infinity;
-	for (const s of sessions) {
+	const byInstant = [...sessions].sort((a, b) => (ms(a.instance_start) ?? 0) - (ms(b.instance_start) ?? 0));
+	for (const s of byInstant) {
 		const at = ms(s.instance_start);
 		if (at === null || s.instance_start === null) continue;
 		const gap = Math.abs(run - at);
@@ -225,19 +256,25 @@ export function retimeProtected(current: RetimeCurrent): boolean {
  * (the host's close-time fill included), a pending manual or typed time, a
  * zone finish and a row waiting on review. Never over a finish the organiser
  * set. A protected row: in a self-timed race only by a faster gate-to-gate
- * finish (decision 4b, the server's lock rule); in a gun race not at all,
- * because the device already timed that one attempt by the same lines.
+ * finish (decision 4b, the server's lock rule), from another run (the same
+ * attempt re-timed on its fix times would beat itself by the fix latency) and
+ * with its start inside the window (outside it the server sends it to review
+ * and its lock keeps the old row); in a gun race not at all, because the
+ * device already timed that one attempt by the same lines.
  */
 export function retimeLock(
 	current: RetimeCurrent | null,
 	candidate: RetimeCandidate,
 	selfTimed: boolean,
+	runId: string | null = null,
 ): RetimeLockReason | null {
 	if (current === null || current.finisher_status !== 'finished') return null;
 	if (current.finish_method === 'host') return 'host';
 	if (!retimeProtected(current)) return null;
 	if (
 		selfTimed &&
+		!(runId !== null && current.run_id === runId) &&
+		!candidate.outsideWindow &&
 		candidate.startDetection === 'gate' &&
 		candidate.finishDetection === 'gate' &&
 		current.duration_s !== null &&
@@ -331,7 +368,7 @@ export function computeRetime(i: RetimeInput): RetimeOutcome {
 	const finishLng = course.finish_lng ?? finishGate?.lng ?? null;
 	if (finishLat === null || finishLng === null) return { kind: 'unavailable', reason: 'no_line' };
 
-	const goMs = selfTimed ? null : ms(session.started_at);
+	const goMs = selfTimed ? null : msExact(session.started_at);
 	if (!selfTimed && goMs === null) return { kind: 'unavailable', reason: 'no_go' };
 
 	const offsetMs = i.current?.clock_offset_ms ?? null;
@@ -355,10 +392,12 @@ export function computeRetime(i: RetimeInput): RetimeOutcome {
 	}
 	finish ??= detector.settle();
 	if (finish === null) return { kind: 'no_crossing' };
+	const undone = ms(i.undoneFinishAt);
+	if (undone !== null && finish.atMs <= undone + RETIME_UNDONE_TOLERANCE_MS) return { kind: 'undone' };
 
 	const candidate = candidateOf(finish, goMs, pressMs, offsetMs, session, selfTimed);
 	if (i.current !== null && sameTiming(i.current, candidate)) return { kind: 'unchanged', candidate };
-	const lock = retimeLock(i.current, candidate, selfTimed);
+	const lock = retimeLock(i.current, candidate, selfTimed, i.runId ?? null);
 	if (lock !== null) return { kind: 'locked', reason: lock, candidate };
 	return { kind: 'ready', candidate, approval: retimeApproval(session.is_auto_approve, selfTimed) };
 }

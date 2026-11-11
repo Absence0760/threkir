@@ -4884,6 +4884,7 @@ export const messages = {
 	"raceRetime.lockedHost": "タイムは主催者が設定したため、再計測で置き換えることはできません。",
 	"raceRetime.closed": "このレースの結果は、レース終了から24時間で締め切られました。",
 	"raceRetime.noCrossing": "このランのGPSトラックにゴールが見つかりませんでした。ゴールに必要な形でコースのラインを通過していません。",
+	"raceRetime.undone": "このGPSトラックのフィニッシュライン通過は、レース中に取り消したゴールです。そのため、このランからは再計測できません。",
 	"raceRetime.reasonNoSession": "このレースは計測用に設定されていません。",
 	"raceRetime.reasonNoCourse": "このレースでのあなたのコースが不明なため、計測できません。",
 	"raceRetime.reasonSelfCross": "このコースは終点より前にフィニッシュラインを横切るため、手動でのゴールのみとなります。",

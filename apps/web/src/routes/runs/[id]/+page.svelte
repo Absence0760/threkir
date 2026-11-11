@@ -2381,6 +2381,9 @@
 			startedAt={run.started_at}
 			distanceM={run.distance_m}
 			track={run.track}
+			undoneFinishAt={typeof run.metadata?.race_undone_finish_at === 'string'
+				? run.metadata.race_undone_finish_at
+				: null}
 		/>
 
 		<RunPhotos

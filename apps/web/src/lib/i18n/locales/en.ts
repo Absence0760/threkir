@@ -4902,6 +4902,7 @@ export const en = {
 	"raceRetime.lockedHost": "The organiser set your time, so a re-time can't replace it.",
 	"raceRetime.closed": "Results for this race closed 24 hours after it finished.",
 	"raceRetime.noCrossing": "No finish was found in this run's track: it doesn't cross the course's lines the way a finish needs.",
+	"raceRetime.undone": "The line finish in this track is the one you undid during the race, so this run can't be re-timed.",
 	"raceRetime.reasonNoSession": "This race isn't set up for timing.",
 	"raceRetime.reasonNoCourse": "Your course for this race isn't known, so it can't be timed.",
 	"raceRetime.reasonSelfCross": "This course crosses its finish line before the end, so it finishes by hand only.",

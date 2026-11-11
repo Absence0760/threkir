@@ -4889,6 +4889,7 @@ export const messages = {
 	"raceRetime.lockedHost": "Der Veranstalter hat deine Zeit festgelegt, daher kann eine Neumessung sie nicht ersetzen.",
 	"raceRetime.closed": "Die Ergebnisse für dieses Rennen wurden 24 Stunden nach seinem Ende geschlossen.",
 	"raceRetime.noCrossing": "Im Track dieses Laufs wurde kein Zieleinlauf gefunden: Er überquert die Linien der Strecke nicht so, wie es ein Zieleinlauf erfordert.",
+	"raceRetime.undone": "Die Zieldurchquerung in diesem Track ist das Ziel, das du im Rennen rückgängig gemacht hast. Dieser Lauf kann daher nicht neu gemessen werden.",
 	"raceRetime.reasonNoSession": "Dieses Rennen ist nicht für die Zeitmessung eingerichtet.",
 	"raceRetime.reasonNoCourse": "Deine Strecke für dieses Rennen ist nicht bekannt, daher kann keine Zeit gemessen werden.",
 	"raceRetime.reasonSelfCross": "Diese Strecke überquert ihre Ziellinie vor dem Ende, daher ist ein Zieleinlauf nur von Hand möglich.",

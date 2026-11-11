@@ -29,8 +29,10 @@
 		startedAt: string;
 		distanceM: number;
 		track: TrackPoint[] | null | undefined;
+		/** `runs.metadata.race_undone_finish_at`, when the runner undid a line finish. */
+		undoneFinishAt: string | null;
 	}
-	let { runId, runOwnerId, eventId, startedAt, distanceM, track }: Props = $props();
+	let { runId, runOwnerId, eventId, startedAt, distanceM, track, undoneFinishAt }: Props = $props();
 
 	const isOwner = $derived(auth.user?.id === runOwnerId);
 
@@ -80,6 +82,8 @@
 							: null,
 						course: ctx.course,
 						current: ctx.current,
+						runId,
+						undoneFinishAt,
 						nowMs,
 					})
 	);
@@ -269,6 +273,8 @@
 					<p>{m('raceRetime.closed')}</p>
 				{:else if outcome.kind === 'no_crossing'}
 					<p>{m('raceRetime.noCrossing')}</p>
+				{:else if outcome.kind === 'undone'}
+					<p>{m('raceRetime.undone')}</p>
 				{:else if outcome.reason === 'no_session'}
 					<p>{m('raceRetime.reasonNoSession')}</p>
 				{:else if outcome.reason === 'no_course'}

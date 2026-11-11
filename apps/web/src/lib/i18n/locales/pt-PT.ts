@@ -4888,6 +4888,7 @@ export const messages = {
 	"raceRetime.lockedHost": "O organizador definiu o seu tempo, por isso uma nova cronometragem não o pode substituir.",
 	"raceRetime.closed": "Os resultados desta prova fecharam 24 horas depois de ela terminar.",
 	"raceRetime.noCrossing": "Não foi encontrada nenhuma chegada no trajeto desta corrida: não atravessa as linhas do percurso da forma que uma chegada exige.",
+	"raceRetime.undone": "A passagem pela linha de chegada neste trajeto é a chegada que anulou durante a prova, por isso não é possível cronometrar de novo a partir desta corrida.",
 	"raceRetime.reasonNoSession": "Esta prova não está configurada para cronometragem.",
 	"raceRetime.reasonNoCourse": "Não se sabe qual é o seu percurso nesta prova, por isso não pode ser cronometrado.",
 	"raceRetime.reasonSelfCross": "Este percurso atravessa a sua linha de chegada antes do fim, por isso a chegada só pode ser feita manualmente.",

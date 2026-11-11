@@ -4889,6 +4889,7 @@ export const messages = {
 	"raceRetime.lockedHost": "L'organisateur a fixé votre temps : un nouveau chronométrage ne peut donc pas le remplacer.",
 	"raceRetime.closed": "Les résultats de cette course ont été clos 24 heures après sa fin.",
 	"raceRetime.noCrossing": "Aucune arrivée n'a été trouvée dans le tracé de cette sortie : il ne franchit pas les lignes du parcours comme l'exige une arrivée.",
+	"raceRetime.undone": "Le passage de la ligne d'arrivée dans ce tracé est l'arrivée que vous avez annulée pendant la course : cette sortie ne peut donc pas être rechronométrée.",
 	"raceRetime.reasonNoSession": "Cette course n'est pas configurée pour le chronométrage.",
 	"raceRetime.reasonNoCourse": "Votre parcours pour cette course est inconnu : le chronométrage est donc impossible.",
 	"raceRetime.reasonSelfCross": "Ce parcours franchit sa ligne d'arrivée avant la fin : l'arrivée ne se fait donc qu'à la main.",

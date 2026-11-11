@@ -1,7 +1,8 @@
 /// Pure helpers for the "Route History" panel on `/runs/[id]`.
 ///
-/// Mirrors `_buildRouteComparison` in
-/// `apps/mobile_android/lib/screens/run_detail_screen.dart`: filter to
+/// TS↔Dart parity pair with `apps/mobile_android/lib/route_history.dart` —
+/// keep the two in lockstep: algorithm, edge cases, outputs, test counts.
+/// Filter to
 /// runs on the same route + same activity_type with > 100 m of
 /// movement, sort by duration ascending, then summarise the current
 /// run's standing (PB / behind PB / rank). Kept pure so the component
@@ -26,9 +27,10 @@ export interface RouteHistorySummary {
 }
 
 /// Filter to qualifying attempts on the same route + activity type
-/// and sort by duration ascending. Returns the trimmed list.
+/// and sort by duration ascending (stable, so ties keep input order).
+/// Returns the trimmed list.
 ///
-/// Match rules (mirroring mobile):
+/// Match rules:
 ///  - Same `route_id` (a run with no route is excluded — the panel
 ///    doesn't render in that case anyway).
 ///  - `distance_m > 100` — guards against accidental starts that

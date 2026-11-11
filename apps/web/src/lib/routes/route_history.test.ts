@@ -87,6 +87,16 @@ test('qualifyingAttempts sorts by duration ascending', () => {
 	);
 });
 
+test('qualifyingAttempts keeps tied durations in input order', () => {
+	const me = baseRun({ id: 'me' });
+	const ids = Array.from({ length: 40 }, (_, i) => `t${i}`);
+	const others = ids.map((id) => baseRun({ id, duration_s: 1500 }));
+	assert.deepEqual(
+		qualifyingAttempts(me, others).map((r) => r.id),
+		ids,
+	);
+});
+
 test('summariseHistory returns null for fewer than 2 attempts', () => {
 	const only = [baseRun({ id: 'me', duration_s: 1500 })];
 	assert.equal(summariseHistory('me', only), null);

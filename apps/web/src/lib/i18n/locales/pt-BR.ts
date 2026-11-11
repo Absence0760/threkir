@@ -7984,7 +7984,7 @@ export const messages = {
 	"parks.report.emailLabel": "Seu e-mail (opcional)",
 	"parks.report.emailLabelRequired": "Seu e-mail",
 	"parks.report.emailHint": "Só se quiser uma resposta. Usamos para responder a este relato e o apagamos 30 dias depois de resolvido.",
-	"parks.report.emailHintRequired": "Necessário para um pedido de titular de direitos, para podermos responder. Apagamos 30 dias depois de resolver o pedido.",
+	"parks.report.emailHintRequired": "Necessário para um pedido de titular de direitos, para podermos responder. Apagamos o e-mail 30 dias depois de resolvermos o pedido.",
 	"parks.report.privacyLink": "Política de privacidade",
 	"parks.report.websiteLabel": "Deixe este campo vazio",
 	"parks.report.cancel": "Cancelar",

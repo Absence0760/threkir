@@ -6790,7 +6790,7 @@ export const messages = {
 	"admin.reports.course.signedOut": "未ログイン",
 	"admin.reports.course.contact": "{email} に返信",
 	"admin.reports.course.replyHint": "Threkir は報告者にメールを送りません。対応後に手動で返信してください。アドレスは30日後に削除されます。",
-	"admin.reports.course.rightsHolderHint": "権利者から、このコースが使う名称、商標、コースデータについて問い合わせがあります。そのアドレスに手動で返信してください。依頼内容に応じて、確認中はここでコースを閉鎖してください。",
+	"admin.reports.course.rightsHolderHint": "権利者から、このコースが使う名称、商標、コースデータについて問い合わせがあります。そのアドレスに手動で返信してください。必要な場合は、確認中にここでコースを閉鎖してください。",
 	"admin.reports.course.panelTitle": "公園コース",
 	"admin.reports.course.panelHint": "報告だけでコースが閉鎖されることはありません。管理者から依頼があった場合やコースが危険な場合は、ここで閉鎖してください。メモはコースのページに表示されます。",
 	"admin.reports.course.missing": "このコースは存在しないか、公園が掲載されていません。",

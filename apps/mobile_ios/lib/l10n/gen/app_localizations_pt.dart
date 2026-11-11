@@ -44475,7 +44475,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get parkCourseReportEmailHintRequired =>
-      'Necessário para um pedido de titular de direitos, para podermos responder. Apagamos 30 dias depois de resolver o pedido.';
+      'Necessário para um pedido de titular de direitos, para podermos responder. Apagamos o e-mail 30 dias depois de resolvermos o pedido.';
 
   @override
   String get parkCourseReportCancel => 'Cancelar';

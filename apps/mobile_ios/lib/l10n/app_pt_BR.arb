@@ -6068,7 +6068,7 @@
   "parkCourseReportEmailLabel": "Seu e-mail (opcional)",
   "parkCourseReportEmailLabelRequired": "Seu e-mail",
   "parkCourseReportEmailHint": "Só se quiser uma resposta. Usamos para responder a este relato e o apagamos 30 dias depois de resolvido.",
-  "parkCourseReportEmailHintRequired": "Necessário para um pedido de titular de direitos, para podermos responder. Apagamos 30 dias depois de resolver o pedido.",
+  "parkCourseReportEmailHintRequired": "Necessário para um pedido de titular de direitos, para podermos responder. Apagamos o e-mail 30 dias depois de resolvermos o pedido.",
   "parkCourseReportCancel": "Cancelar",
   "parkCourseReportSubmit": "Enviar relato",
   "parkCourseReportSent": "Obrigado. Seu relato chegou à equipe da Threkir.",

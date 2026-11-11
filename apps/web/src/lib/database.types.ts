@@ -8591,7 +8591,7 @@ export type Database = {
       }
       grant_health_data_consent: { Args: never; Returns: string }
       group_blocked_placeholders: {
-        Args: { p_conversation_id: string; p_since: string }
+        Args: { p_conversation_id: string; p_since?: string }
         Returns: {
           created_at: string
           id: string

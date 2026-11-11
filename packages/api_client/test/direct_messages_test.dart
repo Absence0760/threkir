@@ -1314,5 +1314,18 @@ void main() {
       expect(q['p_since'], '2026-11-10T08:00:00.000Z');
       expect(rows.single.id, 'm-4');
     });
+
+    test('a thread with no lower bound omits p_since rather than sending "null"',
+        () async {
+      await _signIn(client);
+      const path = '/rest/v1/rpc/group_blocked_placeholders';
+      fake.bodyByPath[path] = <Map<String, dynamic>>[];
+
+      await api.fetchGroupBlockedPlaceholders('g-1', null);
+
+      final q = fake.to(path).single.url.queryParameters;
+      expect(q['p_conversation_id'], 'g-1');
+      expect(q.containsKey('p_since'), isFalse);
+    });
   });
 }

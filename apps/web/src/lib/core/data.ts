@@ -13303,7 +13303,9 @@ export async function fetchGroupBlockedPlaceholders(
 ): Promise<DmOrderKey[]> {
 	const { data, error } = await supabase.rpc(
 		'group_blocked_placeholders',
-		{ p_conversation_id: conversationId, p_since: since },
+		// A GET sends null as the string "null"; omit it instead (p_since
+		// defaults to null, migration 20271221000100).
+		{ p_conversation_id: conversationId, p_since: since ?? undefined },
 		{ get: true },
 	);
 	if (error) throw dbError(error);

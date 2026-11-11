@@ -74,10 +74,11 @@ func maxSpeedMpsForActivity(activityType string) float64 {
 	}
 }
 
-// handleDistanceRecompute replays a stored track through the spec-v1.2
-// smoother and rewrites runs.distance_m, keeping the originally
-// recorded figure in metadata.distance_recorded_m, and rewrites the four
-// fastest_* embedded bests from the same replay's cumulative distance.
+// handleDistanceRecompute replays a stored track through the smoother,
+// segment by segment where a watch marked them, and rewrites
+// runs.distance_m, keeping the originally recorded figure in
+// metadata.distance_recorded_m, and rewrites the four fastest_* embedded
+// bests from the same replay's cumulative distance.
 // When it keeps the smoothed pass it also writes the smoothed-position
 // sidecar (smoothed_sidecar.go) and records its hash in the same write.
 func (w *Worker) handleDistanceRecompute(ctx context.Context, job *Job) error {
@@ -251,10 +252,12 @@ const (
 // (stepOverChordSlackM over), since it is a part of those metres; anything
 // else, and a run saved before the key, falls back to the run-total rule,
 // gapStepTopUpM. A usable key is credited as the larger of the two: neither
-// adds more than the steps credited beyond the replay's chords, and the key
-// holds back the steps a pause or source switch committed across a gap the
-// replay runs on into the next segment (the track has no segment marks),
-// where the run-total rule can be the exact one.
+// adds more than the steps credited beyond the replay's chords. On a track
+// that marks its segments (spec v1.8) the replay's gaps are the recorder's, so
+// the key is exact and never below the run-total rule. A v1.7 watch's track
+// marks none and its key holds back the steps a pause or source switch
+// committed across a gap the replay runs on into the next segment, where the
+// run-total rule can be the exact one; that is the case the larger-of keeps.
 func gapStepCreditM(meta map[string]json.RawMessage, gapM float64) (float64, string) {
 	stepFilledM := metaStepFilledM(meta)
 	raw, present := meta[schema.MetaDistanceStepOverChordM]

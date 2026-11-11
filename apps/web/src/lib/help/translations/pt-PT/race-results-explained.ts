@@ -3,7 +3,7 @@ import type { GuideTranslation } from '../../types';
 export const translation: GuideTranslation = {
 	id: 'race-results-explained',
 	title: 'Perceber os resultados das provas',
-	summary: 'O que significam o tempo oficial e o tempo de chip, como as posições são calculadas por percurso e o que dizem as marcas Manual, Organizador, DNF, DNS e pendente.',
+	summary: 'O que significam o tempo oficial e o tempo de chip, como as posições são calculadas, o que dizem as marcas Manual, Organizador, DNF, DNS e pendente, e como voltar a cronometrar pelo seu trajeto.',
 	sections: [
 		{
 			heading: 'Tempo oficial e tempo de chip',
@@ -12,7 +12,8 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'O **Tempo oficial** é medido desde o momento em que o organizador deu o GO até ao momento em que cruzou a meta. O GO é registado pelo nosso servidor, por isso todos os participantes da prova partilham a mesma partida.',
-						'O **Tempo de chip** é medido desde que premiu Iniciar no seu próprio dispositivo até à sua chegada, incluindo eventuais pausas.',
+						'O **Tempo de chip** é medido desde que atravessou a linha de partida do percurso até à sua chegada. Se o telemóvel ou o relógio não detetou nenhuma passagem pela linha de partida, conta a partir de quando premiu Iniciar no seu próprio dispositivo, incluindo eventuais pausas.',
+						'Uma prova de tempo próprio não tem GO, por isso não tem tempo oficial: o quadro mostra o seu tempo de chip, da linha de partida à linha de chegada.',
 						'O tempo grande no quadro é o seu tempo oficial quando a prova teve um GO; caso contrário, é o seu tempo de chip. As posições são calculadas a partir desse tempo grande.',
 					],
 				},
@@ -41,7 +42,7 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**Sem marca**: o telemóvel ou o relógio do corredor detetou a linha de meta. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.',
+						'**Sem marca**: o telemóvel ou o relógio do corredor cronometrou a chegada, no momento em que atravessou a linha de chegada, ou no círculo de 30 m à volta da chegada num percurso sem linha de chegada. É o caso normal, por isso nem a web nem a app do telemóvel o assinalam.',
 						'**Manual**: o corredor terminou à mão, com **Terminar prova** depois de percorrer pelo menos 90% do percurso, ou usando **Enviar o meu tempo** na web durante a prova.',
 						'**Organizador** (na web, **Editado pelo organizador**): o organizador introduziu ou corrigiu este resultado, ou o corredor ficou como DNF quando o organizador encerrou a prova.',
 					],
@@ -76,12 +77,37 @@ export const translation: GuideTranslation = {
 			],
 		},
 		{
+			heading: 'Voltar a cronometrar a partir do seu trajeto',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Se o telemóvel falhou uma linha, se o seu resultado é um DNF que não esperava, ou se correu a prova com um Apple Watch, pode voltar a cronometrar o seu resultado a partir da corrida que gravou. Abra a corrida na web: se pertencer a uma prova, mostra **Cronometrar de novo pelo meu trajeto** com o seu resultado atual ao lado do que o seu trajeto dá.',
+				},
+				{
+					type: 'steps',
+					items: [
+						'Compare as duas colunas: tempo oficial, tempo de chip e se a partida e a chegada foram cronometradas pela linha.',
+						'Escolha **Cronometrar de novo o resultado** e depois **Substituir resultado**.',
+					],
+				},
+				{
+					type: 'list',
+					items: [
+						'Cronometra o seu trajeto pelas linhas de partida e de chegada com que a prova foi disputada, com a mesma hora de referência que o telemóvel ou o relógio usou durante a prova.',
+						'Pode voltar a cronometrar até 24 horas depois de a prova terminar. Depois disso, só o organizador pode alterar um tempo.',
+						'Substitui um DNF, uma chegada manual e um resultado à espera de revisão. Nunca substitui um tempo definido pelo organizador nem um resultado já cronometrado pelas duas linhas; numa prova de tempo próprio, só uma tentativa mais rápida cronometrada pelas duas linhas o substitui.',
+						'Se o organizador aprovar os resultados manualmente, um resultado cronometrado de novo volta a ser-lhe enviado para aprovação.',
+					],
+				},
+			],
+		},
+		{
 			heading: 'Algo parece estar errado',
 			blocks: [
 				{
 					type: 'list',
 					items: [
-						'Não há resultado nenhum? Se o seu dispositivo não tinha sinal na chegada, envia o resultado quando voltar a ligar-se, no prazo de 24 horas após o fim da prova.',
+						'Não há resultado nenhum? Se o seu dispositivo não tinha sinal na chegada, envia o resultado quando voltar a ligar-se, no prazo de 24 horas após o fim da prova. Nesse mesmo prazo de 24 horas, também pode voltar a cronometrá-lo a partir do seu trajeto.',
 						'Um DNF que acha que está errado, ou um tempo que não bate certo? Fale com o organizador. Pode corrigi-lo na web, e o resultado passa então a mostrar a marca do organizador.',
 					],
 				},
@@ -94,17 +120,18 @@ export const translation: GuideTranslation = {
 	],
 	sources: {
 		title: 'c5d9f999ac691293',
-		summary: '7d62d231e5ab41c2',
+		summary: '184c2d298bd26fe6',
 		's0.heading': 'c64bc4e8176b0753',
 		's0.b0.i0': '5c206fcfa0703269',
-		's0.b0.i1': 'd4a920d1ad78f899',
-		's0.b0.i2': 'cf4e236435fc2502',
+		's0.b0.i1': 'cb9512f304721331',
+		's0.b0.i2': 'd7cbf99a35b6a2ef',
+		's0.b0.i3': 'cf4e236435fc2502',
 		's0.b1': 'a18a5324618c6db1',
 		's1.heading': '280c1a73657807c5',
 		's1.b0': '86d271497a41304f',
 		's1.b1': '692dd04c06057463',
 		's2.heading': '6e3b7d9c6cfced31',
-		's2.b0.i0': '9dec22cfdf8763a9',
+		's2.b0.i0': '35a51ea02054bef1',
 		's2.b0.i1': '53388c67a2b02b1b',
 		's2.b0.i2': '811f16eecd7e7ab7',
 		's3.heading': '6a340a4c16d7e613',
@@ -114,9 +141,17 @@ export const translation: GuideTranslation = {
 		's4.heading': '5ed96724cf8a0430',
 		's4.b0': 'f02bc0251822ab1e',
 		's4.b1': 'a9bb4df966953e7a',
-		's5.heading': 'badeb43244f6c195',
-		's5.b0.i0': '3a602354cdf2e6f2',
-		's5.b0.i1': 'b8f3e2e296b07673',
-		's5.b1': '9f40f68ca81e692f',
+		's5.heading': '58d90ac423027da2',
+		's5.b0': '8fe61e9de9317b69',
+		's5.b1.i0': 'd6fc360bf0506c2c',
+		's5.b1.i1': 'b0eb18e5a8270886',
+		's5.b2.i0': '7b1ea13025902315',
+		's5.b2.i1': '7e44288e6edf8a96',
+		's5.b2.i2': '8a9c94b45aba53b2',
+		's5.b2.i3': '84812a40e9aafb58',
+		's6.heading': 'badeb43244f6c195',
+		's6.b0.i0': '9afe7b467f14e81b',
+		's6.b0.i1': 'b8f3e2e296b07673',
+		's6.b1': '9f40f68ca81e692f',
 	},
 };

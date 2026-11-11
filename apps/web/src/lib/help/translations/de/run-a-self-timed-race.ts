@@ -72,6 +72,27 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Wenn dein Handy eine Linie verpasst hat',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Dein Handy oder deine Uhr sagt „Startlinie überquert, Zeitmessung läuft“, wenn es erkennt, dass du die Startlinie überquerst, und wertet deinen Zieleinlauf an der Ziellinie. Verpasst es eine davon, etwa unter Bäumen oder wenn du etwas neben der Linie startest:',
+				},
+				{
+					type: 'list',
+					items: [
+						'Tippe im Ziel auf Stopp und dann auf **Rennen beenden**. Hast du 90 % der Strecke zurückgelegt, sendet das deine Zeit, und der Veranstalter prüft sie, bevor sie zählt.',
+						'Oder miss deinen Versuch danach aus seinem Track neu: Öffne den Lauf im Web und wähle **Aus meinem Track neu messen**. Der Track wird anhand der Linien des Rennens gemessen und ersetzt ein Ergebnis, das auf Prüfung wartet, oder ein langsameres. Das geht bis 24 Stunden nach dem Schließen des Zeitraums.',
+						'Mit einer Apple Watch gelaufen? Sie erkennt die Linien nicht, daher bekommt dein Versuch durch das Neumessen aus deinem Track ein per Linie gestopptes Ergebnis.',
+					],
+				},
+				{
+					type: 'p',
+					text: 'Mehr zum Neumessen findest du in [[guide:race-results-explained|Rennergebnisse erklärt]].',
+				},
+			],
+		},
 	],
 	sources: {
 		title: '980e3fe539fa87ed',
@@ -96,5 +117,11 @@ export const translation: GuideTranslation = {
 		's3.b0.i2': 'a6113125dae261a1',
 		's3.b0.i3': '8e98409f10047bd7',
 		's3.b1': '71fadd9d562da318',
+		's4.heading': '9f401b8bc89ad9f0',
+		's4.b0': 'c83ffd00a5d79eaf',
+		's4.b1.i0': '371c0ea180b0a2cc',
+		's4.b1.i1': 'd4b32e20b9afba25',
+		's4.b1.i2': '30e86640bcd591b4',
+		's4.b2': '172cd34b60d4d532',
 	},
 };

@@ -77,6 +77,27 @@ export const guide: Guide = {
 				},
 			],
 		},
+		{
+			heading: 'If your phone missed a line',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Your phone or watch says "Start line crossed, timing" when it sees you cross the start line, and finishes you at the finish line. If it misses one, for example under trees or when you start a little to the side of the line:'
+				},
+				{
+					type: 'list',
+					items: [
+						'At the finish, tap Stop, then **Finish race**. Once you have covered 90% of the course, that sends your time, and the organiser reviews it before it counts.',
+						'Or re-time your attempt from its track afterwards: open the run on the web and choose **Re-time from my track**. It times the track by the race\'s lines and replaces a result waiting for review, or a slower one. You can do this until 24 hours after the window closes.',
+						'Raced with an Apple Watch? It does not detect the lines, so re-timing from your track is how your attempt gets a line-timed result.'
+					]
+				},
+				{
+					type: 'p',
+					text: 'More on re-timing in [[guide:race-results-explained|Race results explained]].'
+				}
+			]
+		}
 	],
 	related: ['racing-in-a-race', 'race-results-explained', 'follow-a-race-live'],
 };

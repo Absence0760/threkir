@@ -72,6 +72,27 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Se o seu celular não detectou uma linha',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Seu celular ou relógio diz “Linha de largada cruzada, cronometrando” quando detecta que você cruzou a linha de largada, e registra sua chegada na linha de chegada. Se ele não detectar uma delas, por exemplo sob árvores ou quando você larga um pouco ao lado da linha:',
+				},
+				{
+					type: 'list',
+					items: [
+						'Na chegada, toque em Parar e depois em **Finalizar prova**. Se você já cobriu 90% do percurso, isso envia seu tempo, e o organizador o revisa antes que ele conte.',
+						'Ou, depois, recronometre sua tentativa pelo trajeto dela: abra a corrida na web e escolha **Recronometrar pelo meu trajeto**. Isso cronometra o trajeto pelas linhas da prova e substitui um resultado aguardando revisão ou um mais lento. Você pode fazer isso até 24 horas depois que a janela fechar.',
+						'Correu com um Apple Watch? Ele não detecta as linhas, então recronometrar pelo seu trajeto é a forma de a sua tentativa receber um resultado cronometrado pelas linhas.',
+					],
+				},
+				{
+					type: 'p',
+					text: 'Mais sobre recronometragem em [[guide:race-results-explained|Como funcionam os resultados de prova]].',
+				},
+			],
+		},
 	],
 	sources: {
 		title: '980e3fe539fa87ed',
@@ -96,5 +117,11 @@ export const translation: GuideTranslation = {
 		's3.b0.i2': 'a6113125dae261a1',
 		's3.b0.i3': '8e98409f10047bd7',
 		's3.b1': '71fadd9d562da318',
+		's4.heading': '9f401b8bc89ad9f0',
+		's4.b0': 'c83ffd00a5d79eaf',
+		's4.b1.i0': '371c0ea180b0a2cc',
+		's4.b1.i1': 'd4b32e20b9afba25',
+		's4.b1.i2': '30e86640bcd591b4',
+		's4.b2': '172cd34b60d4d532',
 	},
 };

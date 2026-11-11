@@ -72,10 +72,31 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Si votre téléphone a manqué une ligne',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Votre téléphone ou votre montre annonce « Ligne de départ franchie, chrono lancé » quand il vous voit franchir la ligne de départ, et enregistre votre arrivée à la ligne d\'arrivée. S\'il en manque une, par exemple sous les arbres ou quand vous partez un peu à côté de la ligne :',
+				},
+				{
+					type: 'list',
+					items: [
+						'À l\'arrivée, touchez Arrêter, puis **Terminer la course**. Une fois que vous avez couvert 90 % du parcours, cela envoie votre temps, et l\'organisateur l\'examine avant qu\'il compte.',
+						'Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la sortie sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de la course, et le résultat remplace un résultat en attente d\'examen, ou un résultat plus lent. Vous pouvez le faire jusqu\'à 24 heures après la fermeture de la fenêtre.',
+						'Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre tracé est donc le moyen d\'obtenir pour votre tentative un résultat chronométré par les lignes.',
+					],
+				},
+				{
+					type: 'p',
+					text: 'Pour en savoir plus sur le rechronométrage, voir [[guide:race-results-explained|Comprendre les résultats de course]].',
+				},
+			],
+		},
 	],
 	sources: {
-		title: '980e3fe539fa87ed',
-		summary: '8200cb3990ca1c84',
+		'title': '980e3fe539fa87ed',
+		'summary': '8200cb3990ca1c84',
 		's0.heading': 'da16fddd6466ff82',
 		's0.b0': 'b166c8e10ca64251',
 		's0.b1': '9eb15ab29b32b50a',
@@ -96,5 +117,11 @@ export const translation: GuideTranslation = {
 		's3.b0.i2': 'a6113125dae261a1',
 		's3.b0.i3': '8e98409f10047bd7',
 		's3.b1': '71fadd9d562da318',
+		's4.heading': '9f401b8bc89ad9f0',
+		's4.b0': 'c83ffd00a5d79eaf',
+		's4.b1.i0': '371c0ea180b0a2cc',
+		's4.b1.i1': 'd4b32e20b9afba25',
+		's4.b1.i2': '30e86640bcd591b4',
+		's4.b2': '172cd34b60d4d532',
 	},
 };

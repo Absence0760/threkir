@@ -112,6 +112,12 @@ export type TrackPoint = {
 	/// other point. Line readers go through `trackLine`
 	/// (lib/runs/track_line.ts).
 	offTrack?: boolean;
+	/// The first fix of a watch run's segment after its first: the watch
+	/// restarted its distance estimator here after a pause, a Wear OS source
+	/// switch or a continued run, so the server's distance replay restarts
+	/// here too (docs/features/gps_distance.md § Stored track, spec v1.8).
+	/// Absent, never `false`, on every other point; on the line like any fix.
+	segmentStart?: boolean;
 };
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped

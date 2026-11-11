@@ -266,6 +266,25 @@ void main() {
       expect(run.metadata![MetadataKeys.trackComplete], isTrue);
     });
 
+    test('keeps a segment-start fix marked, in order, as the watch wrote it',
+        () {
+      final raw = _basePayload()
+        ..['track'] = [
+          {'lat': 40.0, 'lng': -75.0, 'ts': '2026-04-15T07:30:00Z', 'distM': 0},
+          {
+            'lat': 40.001,
+            'lng': -75.0,
+            'ts': '2026-04-15T07:32:00Z',
+            'distM': 80,
+            'segmentStart': true,
+          },
+          {'lat': 40.0011, 'lng': -75.0, 'ts': '2026-04-15T07:32:01Z', 'distM': 84},
+        ];
+      final run = runFromWatchPayload(raw);
+      expect(run.track.map((w) => w.segmentStart), [false, true, false]);
+      expect(trackLine(run.track), hasLength(3));
+    });
+
     test('an older watch payload reads as all on-track and claims nothing', () {
       final raw = _basePayload()
         ..['track_complete'] = 'yes'

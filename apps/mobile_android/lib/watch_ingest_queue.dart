@@ -379,6 +379,9 @@ cm.Run runFromWatchPayload(Map<String, dynamic> raw) {
           // A fix the wrist's estimator took past its 30 m track gate,
           // stored for the server's replay and skipped by every line reader.
           offTrack: p['offTrack'] == true,
+          // The first fix of a segment after a pause or a source switch
+          // (spec v1.8): the server replays each segment apart from it.
+          segmentStart: p['segmentStart'] == true,
         ));
       }
     }

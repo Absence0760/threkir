@@ -142,7 +142,7 @@ create` / UI / `/release`). The last column is what the workflow attaches
 
 | Release tag | Runs | Signs | Publishes to | Attaches back to the Release |
 |---|---|---|---|---|
-| `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track, then Production for review as a staged rollout at 1%; `play-rollout.yml` widens it daily to 100% ([§ 2432](../architecture/decisions.md)) | `.aab` |
+| `mobile_android@*` | ubuntu-latest | release keystore from secrets | Play Internal track, then Production for review as a staged rollout at 1%; `play-rollout.yml` widens it daily to 100% ([§ 2433](../architecture/decisions.md)) | `.aab` |
 | `watch_wear@*` | ubuntu-latest | Wear release keystore | Play Internal track (`com.threkir.watchwear`) | `.aab` |
 | `mobile_ios@*` | macos-latest | Apple Distribution certificate + one App Store profile each for the phone and watch apps, from secrets | TestFlight, then App Store review; on approval it releases itself as a 7-day phased release ([§ 2040](../architecture/decisions.md)) | — |
 | `watch_ios@*` | macos-latest | — | — (build smoke-check only) | — |
@@ -217,7 +217,7 @@ production track with the Release's `## What's New` (at most 500 characters,
 never truncated, no fallback to generated notes) as its en-US notes, as a
 staged rollout at 1%, and commits the edit, which sends it for review. The
 `production` environment approval the job already waits on is the human gate,
-as on iOS ([decisions § 2432](../architecture/decisions.md), [§ 2040](../architecture/decisions.md)).
+as on iOS ([decisions § 2433](../architecture/decisions.md), [§ 2040](../architecture/decisions.md)).
 Re-running is safe: an upload Play already holds is skipped, and production
 already carrying the build is a no-op. It fails the job, changing nothing,
 when a different build is still rolling out on production (complete or halt

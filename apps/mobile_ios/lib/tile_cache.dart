@@ -52,7 +52,12 @@ class TileCache {
   /// `CachedTileProvider`'s dispose is a no-op, which is what makes sharing
   /// it across layers safe.
   static TileProvider get tileProvider =>
-      _tileProvider ??= buildTileProvider(store);
+      debugTileProviderOverride ?? (_tileProvider ??= buildTileProvider(store));
+
+  /// Replaces [tileProvider] in widget tests, where a real tile request is a
+  /// network call the fake clock leaves pending when the test ends.
+  @visibleForTesting
+  static TileProvider? debugTileProviderOverride;
 
   /// The provider [tileProvider] memoises, over [store] wrapped in a
   /// [ResilientCacheStore] so a failing cache can only cost a tile its

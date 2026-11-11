@@ -38,12 +38,13 @@ ParkListing _park({
   season: 2026,
 );
 
-/// A loop north out of the park and back, with an elevation on every point.
+/// A loop north out of the park and back to where it began, with an
+/// elevation on every point.
 List<Map<String, dynamic>> _loop({double ele = 100}) => [
-  for (var i = 0; i < 12; i++)
+  for (var i = 0; i <= 12; i++)
     {
       'lat': 37.0 + (i < 6 ? i : 12 - i) * 0.002,
-      'lng': -77.0 + (i < 6 ? 0 : 0.002),
+      'lng': -77.0 + (i < 6 || i == 12 ? 0 : 0.002),
       'ele': ele + i,
     },
 ];

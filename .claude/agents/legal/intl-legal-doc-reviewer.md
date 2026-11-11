@@ -37,7 +37,7 @@ When none of these exist, the headline finding is "no published legal pages — 
 9. **Right to lodge a complaint (Art 13(2)(d)).** Supervisory authority of the user's habitual residence; UK ICO equivalent.
 10. **Automated decision-making (Art 22).** If the AI Coach makes decisions producing legal/similarly-significant effects, declare. (Probably not — but the disclosure is cheap.)
 11. **Children (Art 8).** Age of consent stated; member-state variation acknowledged.
-12. **Source of personal data (Art 14).** If we collect data from a third party (Strava, parkrun, Garmin, Health Connect), the disclosure is required.
+12. **Source of personal data (Art 14).** If we collect data from a third party (Strava, Garmin, Health Connect, RunSignUp / ChronoTrack race results), the disclosure is required.
 13. **Profiling / direct marketing opt-out (Art 21).** Prominent, separate from other opt-outs.
 14. **Lawful basis withdrawal language.** "You may withdraw consent at any time; this does not affect the lawfulness of processing before withdrawal" — verbatim or equivalent.
 

@@ -35620,6 +35620,462 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t open that link.'**
   String get messagesLinkOpenFailed;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.newGroup
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get groupsNewGroup;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.groupFallback
+  ///
+  /// In en, this message translates to:
+  /// **'Group'**
+  String get groupsGroupFallback;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.memberCount
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {# member} other {# members}}'**
+  String groupsMemberCount(int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.membersTitle
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {# member} other {# members}}'**
+  String groupsMembersTitle(int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.membersButton
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get groupsMembersButton;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.youLeftPreview
+  ///
+  /// In en, this message translates to:
+  /// **'You left this group'**
+  String get groupsYouLeftPreview;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renamedPreview
+  ///
+  /// In en, this message translates to:
+  /// **'Group renamed to {title}'**
+  String groupsRenamedPreview(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.noMessagesYet
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet'**
+  String get groupsNoMessagesYet;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.invitesHeading
+  ///
+  /// In en, this message translates to:
+  /// **'Group invitations'**
+  String get groupsInvitesHeading;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteLine
+  ///
+  /// In en, this message translates to:
+  /// **'{name} invited you · {count, plural, one {# member} other {# members}}'**
+  String groupsInviteLine(String name, int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteAccept
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get groupsInviteAccept;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteDecline
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get groupsInviteDecline;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteAcceptedToast
+  ///
+  /// In en, this message translates to:
+  /// **'You joined {title}'**
+  String groupsInviteAcceptedToast(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteDeclinedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation declined'**
+  String get groupsInviteDeclinedToast;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteActionFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t answer the invitation: {error}'**
+  String groupsInviteActionFailed(String error);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteDeclineConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Decline the invitation to {title}?'**
+  String groupsInviteDeclineConfirmTitle(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteDeclineConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'You won\'t join the group, and it can\'t invite you again for 14 days. Nobody is told why.'**
+  String get groupsInviteDeclineConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createTitle
+  ///
+  /// In en, this message translates to:
+  /// **'New group'**
+  String get groupsCreateTitle;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.titleLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Group name'**
+  String get groupsTitleLabel;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createHint
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least two people. Each gets an invitation and joins only if they accept. People see messages from the moment they join.'**
+  String get groupsCreateHint;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createSubmit
+  ///
+  /// In en, this message translates to:
+  /// **'Create group'**
+  String get groupsCreateSubmit;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.creating
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get groupsCreating;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createdToast
+  ///
+  /// In en, this message translates to:
+  /// **'{title} created. Invitations sent.'**
+  String groupsCreatedToast(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.createFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create the group.'**
+  String get groupsCreateFailed;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleLoadFailed
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the people you can invite.'**
+  String get groupsPeopleLoadFailed;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleEmpty
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody to invite yet. You can invite people you follow or who follow you.'**
+  String get groupsPeopleEmpty;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleSearch
+  ///
+  /// In en, this message translates to:
+  /// **'Search people'**
+  String get groupsPeopleSearch;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleSelected
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {max} selected'**
+  String groupsPeopleSelected(int count, int max);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleNoMatches
+  ///
+  /// In en, this message translates to:
+  /// **'No one matches that name.'**
+  String get groupsPeopleNoMatches;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.peopleFull
+  ///
+  /// In en, this message translates to:
+  /// **'A group holds at most 32 people, invitations included. {max} more can be invited.'**
+  String groupsPeopleFull(int max);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Group conversations aren\'t available right now.'**
+  String get groupsUnavailable;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.notFound
+  ///
+  /// In en, this message translates to:
+  /// **'This group isn\'t available.'**
+  String get groupsNotFound;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.notAvailable
+  ///
+  /// In en, this message translates to:
+  /// **'This group isn\'t available.'**
+  String get groupsNotAvailable;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.actionRefused
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t do that in this group.'**
+  String get groupsActionRefused;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteRefused
+  ///
+  /// In en, this message translates to:
+  /// **'One of these people can\'t be invited.'**
+  String get groupsInviteRefused;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.capReached
+  ///
+  /// In en, this message translates to:
+  /// **'A group holds at most 32 people, invitations included.'**
+  String get groupsCapReached;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.titleInvalid
+  ///
+  /// In en, this message translates to:
+  /// **'A group name is 1 to 60 characters.'**
+  String get groupsTitleInvalid;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.sendNotAllowed
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t send to this group.'**
+  String get groupsSendNotAllowed;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.actionFailed
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work: {error}'**
+  String groupsActionFailed(String error);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.historyNote
+  ///
+  /// In en, this message translates to:
+  /// **'Messages from before you joined aren\'t shown.'**
+  String get groupsHistoryNote;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.emptyThread
+  ///
+  /// In en, this message translates to:
+  /// **'No messages yet. Say hello.'**
+  String get groupsEmptyThread;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.blockedPlaceholder
+  ///
+  /// In en, this message translates to:
+  /// **'Message from someone you blocked'**
+  String get groupsBlockedPlaceholder;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renamedLine
+  ///
+  /// In en, this message translates to:
+  /// **'{name} renamed the group to {title}'**
+  String groupsRenamedLine(String name, String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renamedLineYou
+  ///
+  /// In en, this message translates to:
+  /// **'You renamed the group to {title}'**
+  String groupsRenamedLineYou(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leftNotice
+  ///
+  /// In en, this message translates to:
+  /// **'You left this group. You can still unsend your own messages.'**
+  String get groupsLeftNotice;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.composerLabel
+  ///
+  /// In en, this message translates to:
+  /// **'Message {title}'**
+  String groupsComposerLabel(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leave
+  ///
+  /// In en, this message translates to:
+  /// **'Leave'**
+  String get groupsLeave;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leaveConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Leave {title}?'**
+  String groupsLeaveConfirmTitle(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leaveConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll stop seeing the group\'s messages at once, and you need a new invitation to come back. Your own messages stay in the group until you unsend them. Anything already on other members\' devices stays there.'**
+  String get groupsLeaveConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.leftToast
+  ///
+  /// In en, this message translates to:
+  /// **'You left {title}'**
+  String groupsLeftToast(String title);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.rename
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get groupsRename;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renameSave
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get groupsRenameSave;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.renamedToast
+  ///
+  /// In en, this message translates to:
+  /// **'Group renamed'**
+  String get groupsRenamedToast;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteMore
+  ///
+  /// In en, this message translates to:
+  /// **'Invite'**
+  String get groupsInviteMore;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteSend
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Invite # person} other {Invite # people}}'**
+  String groupsInviteSend(int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.invitedToast
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one {Invitation sent} other {# invitations sent}}'**
+  String groupsInvitedToast(int count);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.roleInvited
+  ///
+  /// In en, this message translates to:
+  /// **'Invited'**
+  String get groupsRoleInvited;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.youSuffix
+  ///
+  /// In en, this message translates to:
+  /// **'(you)'**
+  String get groupsYouSuffix;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.makeAdmin
+  ///
+  /// In en, this message translates to:
+  /// **'Make admin'**
+  String get groupsMakeAdmin;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removeAdmin
+  ///
+  /// In en, this message translates to:
+  /// **'Remove as admin'**
+  String get groupsRemoveAdmin;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.madeAdminToast
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now an admin'**
+  String groupsMadeAdminToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removedAdminToast
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is no longer an admin'**
+  String groupsRemovedAdminToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.makeOwner
+  ///
+  /// In en, this message translates to:
+  /// **'Make owner'**
+  String get groupsMakeOwner;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.transferConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Make {name} the owner?'**
+  String groupsTransferConfirmTitle(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.transferConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'You become an admin. Only the new owner can give ownership back.'**
+  String get groupsTransferConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.transferredToast
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now the owner'**
+  String groupsTransferredToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.remove
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get groupsRemove;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removeConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from the group?'**
+  String groupsRemoveConfirmTitle(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removeConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'They stop seeing the group\'s messages at once and need a new invitation to come back. Their own messages stay. They aren\'t told who removed them.'**
+  String get groupsRemoveConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.removedToast
+  ///
+  /// In en, this message translates to:
+  /// **'{name} was removed'**
+  String groupsRemovedToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.cancelInvite
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel invitation'**
+  String get groupsCancelInvite;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.cancelInviteConfirmTitle
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel the invitation to {name}?'**
+  String groupsCancelInviteConfirmTitle(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's groups.cancelInviteConfirmMessage
+  ///
+  /// In en, this message translates to:
+  /// **'They won\'t be able to join with it. You can invite them again later.'**
+  String get groupsCancelInviteConfirmMessage;
+
+  /// Group conversations (issue #1365): the web catalogue's groups.inviteCancelledToast
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation to {name} cancelled'**
+  String groupsInviteCancelledToast(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's notificationsList.verbGroupMessage
+  ///
+  /// In en, this message translates to:
+  /// **'{name} wrote in a group'**
+  String profileNotifGroupMessage(String name);
+
+  /// Group conversations (issue #1365): the web catalogue's notificationsList.verbGroupInvite
+  ///
+  /// In en, this message translates to:
+  /// **'{name} invited you to a group'**
+  String profileNotifGroupInvite(String name);
 }
 
 class _AppLocalizationsDelegate

@@ -21893,4 +21893,330 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get messagesLinkOpenFailed => 'Couldn\'t open that link.';
+
+  @override
+  String get groupsNewGroup => 'New group';
+
+  @override
+  String get groupsGroupFallback => 'Group';
+
+  @override
+  String groupsMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# members',
+      one: '# member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsMembersTitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# members',
+      one: '# member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsMembersButton => 'Members';
+
+  @override
+  String get groupsYouLeftPreview => 'You left this group';
+
+  @override
+  String groupsRenamedPreview(String title) {
+    return 'Group renamed to $title';
+  }
+
+  @override
+  String get groupsNoMessagesYet => 'No messages yet';
+
+  @override
+  String get groupsInvitesHeading => 'Group invitations';
+
+  @override
+  String groupsInviteLine(String name, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# members',
+      one: '# member',
+    );
+    return '$name invited you · $_temp0';
+  }
+
+  @override
+  String get groupsInviteAccept => 'Join';
+
+  @override
+  String get groupsInviteDecline => 'Decline';
+
+  @override
+  String groupsInviteAcceptedToast(String title) {
+    return 'You joined $title';
+  }
+
+  @override
+  String get groupsInviteDeclinedToast => 'Invitation declined';
+
+  @override
+  String groupsInviteActionFailed(String error) {
+    return 'Couldn\'t answer the invitation: $error';
+  }
+
+  @override
+  String groupsInviteDeclineConfirmTitle(String title) {
+    return 'Decline the invitation to $title?';
+  }
+
+  @override
+  String get groupsInviteDeclineConfirmMessage =>
+      'You won\'t join the group, and it can\'t invite you again for 14 days. Nobody is told why.';
+
+  @override
+  String get groupsCreateTitle => 'New group';
+
+  @override
+  String get groupsTitleLabel => 'Group name';
+
+  @override
+  String get groupsCreateHint =>
+      'Pick at least two people. Each gets an invitation and joins only if they accept. People see messages from the moment they join.';
+
+  @override
+  String get groupsCreateSubmit => 'Create group';
+
+  @override
+  String get groupsCreating => 'Creating…';
+
+  @override
+  String groupsCreatedToast(String title) {
+    return '$title created. Invitations sent.';
+  }
+
+  @override
+  String get groupsCreateFailed => 'Couldn\'t create the group.';
+
+  @override
+  String get groupsPeopleLoadFailed =>
+      'Couldn\'t load the people you can invite.';
+
+  @override
+  String get groupsPeopleEmpty =>
+      'Nobody to invite yet. You can invite people you follow or who follow you.';
+
+  @override
+  String get groupsPeopleSearch => 'Search people';
+
+  @override
+  String groupsPeopleSelected(int count, int max) {
+    return '$count of $max selected';
+  }
+
+  @override
+  String get groupsPeopleNoMatches => 'No one matches that name.';
+
+  @override
+  String groupsPeopleFull(int max) {
+    return 'A group holds at most 32 people, invitations included. $max more can be invited.';
+  }
+
+  @override
+  String get groupsUnavailable =>
+      'Group conversations aren\'t available right now.';
+
+  @override
+  String get groupsNotFound => 'This group isn\'t available.';
+
+  @override
+  String get groupsNotAvailable => 'This group isn\'t available.';
+
+  @override
+  String get groupsActionRefused => 'You can\'t do that in this group.';
+
+  @override
+  String get groupsInviteRefused => 'One of these people can\'t be invited.';
+
+  @override
+  String get groupsCapReached =>
+      'A group holds at most 32 people, invitations included.';
+
+  @override
+  String get groupsTitleInvalid => 'A group name is 1 to 60 characters.';
+
+  @override
+  String get groupsSendNotAllowed => 'You can\'t send to this group.';
+
+  @override
+  String groupsActionFailed(String error) {
+    return 'That didn\'t work: $error';
+  }
+
+  @override
+  String get groupsHistoryNote =>
+      'Messages from before you joined aren\'t shown.';
+
+  @override
+  String get groupsEmptyThread => 'No messages yet. Say hello.';
+
+  @override
+  String get groupsBlockedPlaceholder => 'Message from someone you blocked';
+
+  @override
+  String groupsRenamedLine(String name, String title) {
+    return '$name renamed the group to $title';
+  }
+
+  @override
+  String groupsRenamedLineYou(String title) {
+    return 'You renamed the group to $title';
+  }
+
+  @override
+  String get groupsLeftNotice =>
+      'You left this group. You can still unsend your own messages.';
+
+  @override
+  String groupsComposerLabel(String title) {
+    return 'Message $title';
+  }
+
+  @override
+  String get groupsLeave => 'Leave';
+
+  @override
+  String groupsLeaveConfirmTitle(String title) {
+    return 'Leave $title?';
+  }
+
+  @override
+  String get groupsLeaveConfirmMessage =>
+      'You\'ll stop seeing the group\'s messages at once, and you need a new invitation to come back. Your own messages stay in the group until you unsend them. Anything already on other members\' devices stays there.';
+
+  @override
+  String groupsLeftToast(String title) {
+    return 'You left $title';
+  }
+
+  @override
+  String get groupsRename => 'Rename';
+
+  @override
+  String get groupsRenameSave => 'Save';
+
+  @override
+  String get groupsRenamedToast => 'Group renamed';
+
+  @override
+  String get groupsInviteMore => 'Invite';
+
+  @override
+  String groupsInviteSend(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Invite # people',
+      one: 'Invite # person',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String groupsInvitedToast(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# invitations sent',
+      one: 'Invitation sent',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupsRoleInvited => 'Invited';
+
+  @override
+  String get groupsYouSuffix => '(you)';
+
+  @override
+  String get groupsMakeAdmin => 'Make admin';
+
+  @override
+  String get groupsRemoveAdmin => 'Remove as admin';
+
+  @override
+  String groupsMadeAdminToast(String name) {
+    return '$name is now an admin';
+  }
+
+  @override
+  String groupsRemovedAdminToast(String name) {
+    return '$name is no longer an admin';
+  }
+
+  @override
+  String get groupsMakeOwner => 'Make owner';
+
+  @override
+  String groupsTransferConfirmTitle(String name) {
+    return 'Make $name the owner?';
+  }
+
+  @override
+  String get groupsTransferConfirmMessage =>
+      'You become an admin. Only the new owner can give ownership back.';
+
+  @override
+  String groupsTransferredToast(String name) {
+    return '$name is now the owner';
+  }
+
+  @override
+  String get groupsRemove => 'Remove';
+
+  @override
+  String groupsRemoveConfirmTitle(String name) {
+    return 'Remove $name from the group?';
+  }
+
+  @override
+  String get groupsRemoveConfirmMessage =>
+      'They stop seeing the group\'s messages at once and need a new invitation to come back. Their own messages stay. They aren\'t told who removed them.';
+
+  @override
+  String groupsRemovedToast(String name) {
+    return '$name was removed';
+  }
+
+  @override
+  String get groupsCancelInvite => 'Cancel invitation';
+
+  @override
+  String groupsCancelInviteConfirmTitle(String name) {
+    return 'Cancel the invitation to $name?';
+  }
+
+  @override
+  String get groupsCancelInviteConfirmMessage =>
+      'They won\'t be able to join with it. You can invite them again later.';
+
+  @override
+  String groupsInviteCancelledToast(String name) {
+    return 'Invitation to $name cancelled';
+  }
+
+  @override
+  String profileNotifGroupMessage(String name) {
+    return '$name wrote in a group';
+  }
+
+  @override
+  String profileNotifGroupInvite(String name) {
+    return '$name invited you to a group';
+  }
 }

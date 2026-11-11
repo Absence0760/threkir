@@ -321,6 +321,8 @@ The foundation under both the generator and any hand-built plan: a data model fo
 
 ✓ **Shipped.** The full social layer: following graph + activity feed, the `/social` hub (Feed/People/Clubs), kudos + threaded comments, run reactions + comment likes + @mentions (2026-10-15, decisions § 1971), private profiles with follower approval (2026-10-15, § 1967), privacy zones, training-load curves, plan templates, run photos (server-side EXIF strip), segments + tiered leaderboards/crowns, the notifications inbox, and run streaks. Full delivery checklist in [roadmap_shipped.md](roadmap_shipped.md).
 
+Group conversations (#1365) are built on web and mobile through slice 3 (decisions § 2463 / § 2468) and stay behind the default-off `group_messages` flag. Still to come: slice 4 (Realtime signals), slice 5 (club channels and their `/privacy` text), then the flag opens on the owner's sign-off (#1097) once the mobile release is live in both stores.
+
 ### Park courses (#1313)
 
 Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_courses` schema, the checkpoint rule in the catalogue matcher, the fastest board by season (`p_season`, calendar year in the park's timezone) and the most-completions board, web `/parks` pages and the mobile park screens; then the indexable course page, the help guide, the Learn page and the export credit (§ 2394, § 2395). **Open:**
@@ -338,6 +340,7 @@ Partial. **Shipped (2026-11-08, decisions § 2383):** the `parks` / `park_course
 - [ ] Run-detail chip with the season rank ("3rd this year on …"); `run_park_course_times` already returns it.
 - [ ] Create the official yearly passport challenge (official club, `park_region_code = 'US-VA'`) once the first courses are loaded (operator step).
 - [ ] NPS closures job and status tooling (Phase 6).
+- [x] A rights holder can report a course with its own `rights_holder_request` reason (email required, uncapped, answered within two business days in `/admin/reports`), and a course's season best reads "Fastest in {year}", never "record" (2026-11-11, decisions § 2460 / § 2469). Counsel reviews the Terms § 4 change before the release that carries it.
 
 ### Elevation and pace analysis (post-run)
 

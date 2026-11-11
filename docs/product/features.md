@@ -695,6 +695,8 @@ These are stubs. Each closes a gap against a specific competitor (see `docs/prod
 **Stub:** `follows` table; activity feed of people you follow; kudos (one-tap); threaded comments on runs; per-user privacy zones that blur start/end within radius.
 **Shipped (web, Android + iOS):** 1:1 **direct messages** (persona #55) — `/messages` on web, the Messages inbox + conversation screens on mobile (decisions § 1916), gated on the follow graph + blocks, with a `message` notification. Either side can block from inside the conversation. Realtime delivery + a non-follower "message requests" inbox are deferred; both platforms poll an open inbox (30 s) and conversation (10 s) instead ([direct_messages.md](../features/direct_messages.md)).
 
+**Shipped behind the default-off `group_messages` flag (web, Android + iOS):** group conversations (issue #1365, [group_messages.md](../features/group_messages.md), decisions § 2461 / § 2463 / § 2468): invite-only groups of up to 32 people from your follow graph, invitations under Requests, a thread with sender names, rename lines, mute, leave and per-group drafts, and a members sheet for invites, roles, ownership hand-over and removal. The 1:1 tools (edit, unsend, reactions, photos, report) work inside a group. Realtime and club channels are later slices.
+
 ### Gear tracking
 **Closes:** Strava, Garmin.
 **Stub:** shoes and bikes as `gear` rows; `run_gear` link table; auto-compute total mileage; retirement reminder at user-chosen threshold (default 500 mi for shoes).

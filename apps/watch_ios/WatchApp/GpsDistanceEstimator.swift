@@ -1,6 +1,6 @@
 import Foundation
 
-/// GPS distance estimator, spec v1.7 forward filter — the watchOS port of
+/// GPS distance estimator, spec v1.8 forward filter — the watchOS port of
 /// `scripts/gps_distance/reference.py`. See `docs/features/gps_distance.md`.
 /// The watch runs only the causal filter; the spec's smoother is ported where
 /// a whole run's saved figure is computed (phone, web, server).
@@ -57,7 +57,7 @@ final class GpsDistanceEstimator {
     static let zuptBatchMinCadenceSps = 1.0
     static let zuptBatchMargin = 1.5
     static let zuptMaxNoStepS = 30.0
-    static let specVersion = "1.7"
+    static let specVersion = "1.8"
 
     /// Every constant by its reference name, so the vector test can hold each
     /// one to the fixture's `constants` block.

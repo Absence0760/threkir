@@ -1,4 +1,4 @@
-// GPS distance estimator, spec v1.7. docs/features/gps_distance.md is the spec
+// GPS distance estimator, spec v1.8. docs/features/gps_distance.md is the spec
 // and scripts/gps_distance/reference.py the reference; every port must
 // reproduce fixtures/gps_distance_vectors.json to 1e-3 m, so keep the
 // formulas in the reference's order. Parity pair with
@@ -8,7 +8,7 @@
 // screen runs; smoothDistance is the saved / recomputed figure, a forward pass
 // plus a Rauch-Tung-Striebel backward pass over the whole run.
 
-export const SPEC_VERSION = '1.7';
+export const SPEC_VERSION = '1.8';
 
 export const EARTH_RADIUS_M = 6371008.8;
 export const Q_ACCEL = 0.6;

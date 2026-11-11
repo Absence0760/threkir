@@ -99,5 +99,5 @@ export const guide: Guide = {
 			],
 		},
 	],
-	related: ['record-your-first-run', 'link-ultrasignup-results', 'your-data-and-privacy'],
+	related: ['record-your-first-run', 'your-data-and-privacy'],
 };

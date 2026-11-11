@@ -9,8 +9,13 @@
 -- (group_messages.md § 3, "Mute in a group suppresses the message notification
 -- for that participant only"), and never for a member who blocked the sender:
 -- they do not read that message, so being told of it would be the one leak the
--- block filter exists to prevent. A member already holding an unread message
--- notice for this group gets no second one, the 1:1 burst rule at group scale.
+-- block filter exists to prevent. A member already holding a message notice
+-- for this group that is unread in the bell AND newer than their read
+-- position gets no second one: the 1:1 burst rule at group scale. Keying on
+-- the read position (mark_conversation_read) as well as the bell is what
+-- makes opening the thread re-arm it, as opening a 1:1 thread does through
+-- direct_messages.read_at; on the bell alone, a member who reads in the app
+-- and never opens the bell would never be told again.
 -- Nothing is read about anyone's reading (D6: no read receipts). An invitee
 -- and a member who left or was removed get nothing. The rename system line
 -- notifies nobody.
@@ -83,6 +88,7 @@ begin
             and n.user_id = p.user_id
             and n.kind = 'message'
             and n.read_at is null
+            and n.created_at > coalesce(p.last_read_at, p.joined_at)
        );
     return new;
   end if;

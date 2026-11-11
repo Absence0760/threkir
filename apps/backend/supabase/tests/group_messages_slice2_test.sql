@@ -7,7 +7,7 @@
 -- group_invites(), and the notification cascade with the conversation.
 
 begin;
-select plan(38);
+select plan(39);
 
 insert into private.feature_flags (name, enabled) values ('group_messages', true)
 on conflict (name) do update set enabled = true;
@@ -69,7 +69,7 @@ select accept_group_invite((select id from g where k = 'main'));
 select leave_conversation((select id from g where k = 'main'));
 
 reset role;
-update conversation_participants set joined_at = now() - interval '1 hour'
+update conversation_participants set joined_at = now() - interval '1 hour', last_read_at = now() - interval '1 hour'
  where conversation_id = (select id from g where k = 'main') and membership_state = 'active';
 insert into user_blocks (blocker_id, blocked_id)
 values ('b1365200-0000-0000-0000-0000000000c4', 'b1365200-0000-0000-0000-0000000000c2');
@@ -129,26 +129,31 @@ set local "request.jwt.claims" = '{"sub":"b1365200-0000-0000-0000-0000000000c2",
 insert into direct_messages (sender_id, conversation_id, body)
 values ('b1365200-0000-0000-0000-0000000000c2', (select id from g where k = 'main'), 'second from c2');
 reset role;
+insert into g select 'c2_second', id from direct_messages where body = 'second from c2';
 select is(
   (select count(*)::integer from notifications
     where kind = 'message' and user_id = 'b1365200-0000-0000-0000-0000000000c1'
       and conversation_id = (select id from g where k = 'main')),
   1, 'a second message while the first notice is unread raises no second notice');
 
-update notifications set read_at = now()
- where kind = 'message' and user_id = 'b1365200-0000-0000-0000-0000000000c1';
+-- c1 reads the group in the app and never opens the bell: the read position
+-- moves past the notice, which re-arms it as opening a 1:1 thread does.
 set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"b1365200-0000-0000-0000-0000000000c1","role":"authenticated"}';
+select lives_ok(
+  $$select mark_conversation_read((select id from g where k = 'main'), (select id from g where k = 'c2_second'))$$,
+  'the owner reads the group in the app');
 set local "request.jwt.claims" = '{"sub":"b1365200-0000-0000-0000-0000000000c4","role":"authenticated"}';
 insert into direct_messages (sender_id, conversation_id, body)
 values ('b1365200-0000-0000-0000-0000000000c4', (select id from g where k = 'main'), 'from c4');
 reset role;
-insert into g select 'c2_second', id from direct_messages where body = 'second from c2';
 insert into g select 'c4_msg', id from direct_messages where body = 'from c4';
 select is(
   (select string_agg(user_id::text, ',' order by user_id) from notifications
-    where kind = 'message' and read_at is null and conversation_id = (select id from g where k = 'main')),
+    where kind = 'message' and read_at is null and conversation_id = (select id from g where k = 'main')
+      and actor_id = 'b1365200-0000-0000-0000-0000000000c4'),
   'b1365200-0000-0000-0000-0000000000c1,b1365200-0000-0000-0000-0000000000c2',
-  'once the notice is read the next message notifies again, and a blocked member is still told of the blocker''s message');
+  'once the member has read the group in the app the next message notifies again, with the bell notice still unread, and a blocked member is still told of the blocker''s message');
 
 update private.feature_flags set enabled = false where name = 'group_messages';
 update notifications set read_at = now() where conversation_id = (select id from g where k = 'main');

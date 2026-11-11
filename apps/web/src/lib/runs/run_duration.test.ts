@@ -27,9 +27,9 @@ test('the issue #1300 run — 12333 in the hours box — is refused', () => {
 	assert.deepEqual(validateManualDuration('12333', '21', '34'), { ok: false, error: 'tooLong' });
 });
 
-test('the bound itself is allowed and one second past it is not', () => {
-	assert.deepEqual(validateManualDuration('240', '0', '0'), { ok: true, seconds: 864_000 });
-	assert.deepEqual(validateManualDuration('240', '0', '1'), { ok: false, error: 'tooLong' });
+test('the bound itself is the repair placeholder and refused; one second under it is not', () => {
+	assert.deepEqual(validateManualDuration('239', '59', '59'), { ok: true, seconds: 863_999 });
+	assert.deepEqual(validateManualDuration('240', '0', '0'), { ok: false, error: 'tooLong' });
 	assert.deepEqual(validateManualDuration('112', '0', '0'), { ok: true, seconds: 403_200 });
 });
 
@@ -57,10 +57,10 @@ test('a box too long for any integer type is out of range, not a crash', () => {
 	assert.deepEqual(validateManualDuration('0000000000001', '', ''), { ok: true, seconds: 3600 });
 });
 
-test('isPlausibleRunDuration is the inclusive 0..bound range', () => {
+test('isPlausibleRunDuration is 0 up to, not including, the bound', () => {
 	assert.equal(isPlausibleRunDuration(0), true);
-	assert.equal(isPlausibleRunDuration(864_000), true);
-	assert.equal(isPlausibleRunDuration(864_001), false);
+	assert.equal(isPlausibleRunDuration(863_999), true);
+	assert.equal(isPlausibleRunDuration(864_000), false);
 	assert.equal(isPlausibleRunDuration(44_400_094), false);
 	assert.equal(isPlausibleRunDuration(-1), false);
 	assert.equal(isPlausibleRunDuration(Number.NaN), false);

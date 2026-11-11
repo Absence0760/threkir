@@ -3037,9 +3037,9 @@ The Dart half of the table above (`segments` pair): every case to the millisecon
 
 `scoreRun` over every fixture run with a fake client: the gzipped track, the six courses as `global_segments_in_bbox` rows with their lines, their checkpoints; the candidates, the extent and the efforts it sends `record_segment_match` are exactly the web matcher's.
 
-### `apps/backend/supabase/tests/park_course_boards_test.sql` — 33 tests
+### `apps/backend/supabase/tests/park_course_boards_test.sql` — 43 tests
 
-The real catalogue loaded through `private.load_park_catalogue`, the database's lines checked against the fixture's, then runs landed as a phone sync lands them (a `segment_match` job queued) and recorded with the matcher's efforts. Reads back the season board, most completions, `park_course_records()` and `run_park_course_times`; a refused shortcut and wrong way earn nothing; one lap of the 10K is a 5K; a private run stays off another reader's board; 23:30 on 31 December in New York is that year's; a closed course still times and ranks a run (pinned as it is, an owner question).
+The real catalogue loaded through `private.load_park_catalogue`, the database's lines checked against the fixture's, then runs landed as a phone sync lands them (a `segment_match` job queued) and recorded with the matcher's efforts. Reads back the season board, most completions, `park_course_records()` and `run_park_course_times`; a refused shortcut and wrong way earn nothing; one lap of the 10K is a 5K; a private run stays off another reader's board; 23:30 on 31 December in New York is that year's; a closed course times no new run (from the scorer, a payload naming it, or the owner's own insert), keeps the effort it had through a re-match without it and one with another time, still ranks it on its board and records, and times again once seasonal (decisions § 2465).
 
 ### `apps/web/tests-e2e/parks/park-course-real-run.spec.ts` — 1 test
 

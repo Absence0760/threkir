@@ -12,10 +12,11 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.119.0';
 import type { Database, DbClient } from '../_shared/database.ts';
 import { publishableKey, secretKey } from '../_shared/api_keys.ts';
-import { checkRateLimit, ipBucketKey } from '../_shared/rate_limit.ts';
+import { checkRateLimit, ipBucketKey, trustedRequestIp } from '../_shared/rate_limit.ts';
 import { withSentry } from '../_shared/sentry.ts';
 import { withCors } from '../_shared/cors.ts';
 import { makeParkCourseReportHandler } from './handler.ts';
+import { addressBucket } from './lib.ts';
 
 /// Per signed-in user, and per client address for a signed-out caller, each
 /// an hour. A land manager reporting several courses of one park in one
@@ -50,15 +51,18 @@ const handler = makeParkCourseReportHandler({
     checkRateLimit(adminClient(), userId, 'park-course-report', PARK_COURSE_REPORT_USER_PER_HOUR, 3600, {
       failClosed: true,
     }),
-  limitAddress: async (req) =>
-    checkRateLimit(
+  limitAddress: async (req, reason) => {
+    const bucket = addressBucket(reason, trustedRequestIp(req));
+    if (bucket === null) return null;
+    return checkRateLimit(
       adminClient(),
       await ipBucketKey(req),
-      'park-course-report:anon',
+      bucket,
       PARK_COURSE_REPORT_ADDRESS_PER_HOUR,
       3600,
       { failClosed: true },
-    ),
+    );
+  },
   submit: async (report, reporterId) => {
     const { error } = await adminClient().rpc('submit_park_course_report', {
       p_course_id: report.courseId,

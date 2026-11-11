@@ -1808,6 +1808,33 @@ export function stampedThroughRpc(landings, stamped) {
  */
 export const FILTERED_RPC_ARGUMENTS = [
   {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'the 60th ordinary report is filed: the deadline requests this hour do not count toward its cap',
+    columns: ['reports.signed_out'],
+    readBack: 'the 60th ordinary report is stored signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'a land-manager request is filed although the ordinary bucket is spent',
+    columns: ['reports.signed_out'],
+    readBack: 'the land-manager request is stored pending, signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
+    file: 'park_course_report_deadline_cap_test.sql',
+    description: 'neither bucket holds back a signed-in reporter',
+    columns: ['reports.signed_out'],
+    readBack: 'the signed-in report is stored with its reporter, not signed out',
+    reason:
+      'submit_park_course_report writes signed_out as `p_reporter_id is null` rather than storing an ' +
+      'argument; the named read-back compares the stored flag, so a server that stopped computing it fails there.',
+  },
+  {
     file: 'park_course_rights_holder_test.sql',
     description: "an ordinary report opens the course's queue",
     columns: ['reports.signed_out'],
@@ -2615,6 +2642,7 @@ export const UNOBSERVED_RPC_WRITES = [
  * @type {{ file: string, description: string, columns: string[], readBack?: string, reason: string }[]}
  */
 export const CONDITIONALLY_STAMPED_ASSERTIONS = [
+
   {
     file: 'group_messages_read_matrix_test.sql',
     description: 'an active member sends to the group by naming the conversation',

@@ -19,6 +19,29 @@ export const COURSE_REPORT_REASONS = [
 
 export type CourseReportReason = (typeof COURSE_REPORT_REASONS)[number];
 
+/// The requests that carry a two-business-day promise (decisions § 2469). The
+/// database caps their signed-out filings in a bucket of their own, and so
+/// does the per-address limit, so ordinary traffic cannot lock them out.
+export const DEADLINE_REASONS: readonly CourseReportReason[] = ['land_manager_request', 'rights_holder_request'];
+
+export function isDeadlineReason(reason: CourseReportReason): boolean {
+  return DEADLINE_REASONS.includes(reason);
+}
+
+/// The per-address rate-limit bucket a signed-out report spends, or null for
+/// none. `ip` is the address the trusted header established (null when it
+/// did not). An ordinary report always spends one: with no address it shares
+/// the single `unknown` bucket, which is the fail-closed choice. A deadline
+/// request spends its own bucket, apart from the ordinary one; with no
+/// address it spends none, because the shared `unknown` bucket is spent by
+/// everyone else without one, and a request with a deadline must not be
+/// refused for their traffic. submit_park_course_report's 120-an-hour
+/// deadline cap still bounds it.
+export function addressBucket(reason: CourseReportReason, ip: string | null): string | null {
+  if (!isDeadlineReason(reason)) return 'park-course-report:anon';
+  return ip === null ? null : 'park-course-report:anon:deadline';
+}
+
 export const MAX_NOTES_LEN = 1000;
 export const MAX_EMAIL_LEN = 254;
 /// Room for a 1000-character note in any script plus the other fields.

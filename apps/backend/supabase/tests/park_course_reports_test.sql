@@ -240,11 +240,13 @@ select is(
      and reason = 'land_manager_request' and signed_out and status = 'pending'),
   1, 'the land-manager request on the full course is stored');
 
--- The hourly signed-out cap counts every course: 2 signed-out reports on the
--- first course this hour, so 58 more reach 60.
+-- The hourly signed-out cap on ordinary reports counts every course: one
+-- ordinary signed-out report on the first course this hour, so 59 more reach
+-- 60. The two land-manager requests filed signed out this hour count toward
+-- their own bucket, not this one (20271224000600).
 insert into reports (target_kind, target_id, reason, notes, signed_out, status, reviewed_at)
 select 'park_course', 'c0c03333-0000-0000-0000-000000000004', 'other', 'burst ' || i, true, 'dismissed', now()
-  from generate_series(1, 58) i;
+  from generate_series(1, 59) i;
 set local role service_role;
 select throws_ok(
   $$select submit_park_course_report('c0c03333-0000-0000-0000-000000000001', 'course_hazard', 'Burst.', 'new@pcr.example', null)$$,

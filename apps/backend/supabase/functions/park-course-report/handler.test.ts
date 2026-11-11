@@ -8,7 +8,7 @@
 
 import { assertEquals } from 'https://deno.land/std@0.224.0/assert/mod.ts';
 import { makeParkCourseReportHandler, type ParkCourseReportDeps } from './handler.ts';
-import { type CourseReport, MAX_BODY_BYTES } from './lib.ts';
+import { addressBucket, type CourseReport, MAX_BODY_BYTES } from './lib.ts';
 
 const URL = 'http://127.0.0.1:24321/functions/v1/park-course-report';
 const COURSE = '6f1c2b8e-3a4d-4e5f-8a9b-0c1d2e3f4a5b';
@@ -32,8 +32,8 @@ function deps(over: Partial<ParkCourseReportDeps> = {}): { deps: ParkCourseRepor
         rec.calls.push(`limit-user:${id}`);
         return Promise.resolve(null);
       },
-      limitAddress: () => {
-        rec.calls.push('limit-address');
+      limitAddress: (_req, reason) => {
+        rec.calls.push(`limit-address:${reason}`);
         return Promise.resolve(null);
       },
       submit: (report, reporterId) => {
@@ -66,7 +66,7 @@ Deno.test('a signed-out report is filed with no reporter, against the address bu
   const res = await makeParkCourseReportHandler(d)(post(VALID));
   assertEquals(res.status, 201);
   assertEquals(await res.json(), { ok: true });
-  assertEquals(rec.calls, ['user', 'limit-address', 'submit']);
+  assertEquals(rec.calls, ['user', 'limit-address:land_manager_request', 'submit']);
   assertEquals(rec.filed, [{
     report: {
       courseId: COURSE,
@@ -94,7 +94,7 @@ Deno.test('a token that does not verify files signed out, never as a claimed use
   const { deps: d, rec } = deps();
   const res = await makeParkCourseReportHandler(d)(post(VALID, { Authorization: 'Bearer forged' }));
   assertEquals(res.status, 201);
-  assertEquals(rec.calls, ['user', 'limit-address', 'submit']);
+  assertEquals(rec.calls, ['user', 'limit-address:land_manager_request', 'submit']);
   assertEquals(rec.filed[0].reporterId, null);
 });
 
@@ -194,4 +194,23 @@ Deno.test('a thrown filing is a 500, not an unhandled rejection', async () => {
   const res = await makeParkCourseReportHandler(d)(post(VALID));
   assertEquals(res.status, 500);
   assertEquals(await res.json(), { error: 'report_failed' });
+});
+
+Deno.test('the address limit is told the reason, so a deadline request spends its own bucket', async () => {
+  const { deps: d, rec } = deps();
+  await makeParkCourseReportHandler(d)(post({ ...VALID, reason: 'other' }));
+  await makeParkCourseReportHandler(d)(post(VALID));
+  assertEquals(rec.calls.filter((c) => c.startsWith('limit-address')), [
+    'limit-address:other',
+    'limit-address:land_manager_request',
+  ]);
+});
+
+Deno.test('addressBucket keeps deadline requests out of the ordinary and the shared unknown buckets', () => {
+  assertEquals(addressBucket('other', '203.0.113.7'), 'park-course-report:anon');
+  assertEquals(addressBucket('course_hazard', null), 'park-course-report:anon');
+  assertEquals(addressBucket('land_manager_request', '203.0.113.7'), 'park-course-report:anon:deadline');
+  assertEquals(addressBucket('rights_holder_request', '203.0.113.7'), 'park-course-report:anon:deadline');
+  assertEquals(addressBucket('rights_holder_request', null), null);
+  assertEquals(addressBucket('land_manager_request', null), null);
 });

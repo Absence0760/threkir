@@ -109,6 +109,15 @@ void main() {
   );
 
   test(
+    'courseOffersWayfinding: a closed course offers no Navigate, GPX or route guide',
+    () {
+      expect(courseOffersWayfinding('open'), isTrue);
+      expect(courseOffersWayfinding('seasonal'), isTrue);
+      expect(courseOffersWayfinding('closed'), isFalse);
+    },
+  );
+
+  test(
     'isLongCourse: only a course over 15 km carries the long-course notice',
     () {
       expect(kLongCourseThresholdM, 15000);

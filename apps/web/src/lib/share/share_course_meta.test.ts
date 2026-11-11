@@ -174,3 +174,11 @@ test('the route guide is the JSON-LD description\'s indexable text, in English',
 	const ld = JSON.parse(buildCourseJsonLd(c({ route_guide: GUIDE }), { key: KEY, base: SITE }));
 	assert.match(ld.description, /Start on Lake Trail\. Run the loop clockwise\./);
 });
+
+test('a closed course gives its route guide to no description, JSON-LD included', () => {
+	const closed = c({ status: 'closed', route_guide: GUIDE });
+	assert.equal(buildCourseGuideText(closed), '');
+	assert.doesNotMatch(buildCourseShareDescription(closed), /Route guide/);
+	const ld = JSON.parse(buildCourseJsonLd(closed, { key: KEY, base: SITE }));
+	assert.equal(ld.description, '5.1 km loop course at Fixture State Park, Virginia. Currently closed.');
+});

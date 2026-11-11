@@ -20,6 +20,7 @@
 	} from '#lib/core/data.ts';
 	import {
 		courseAttribution,
+		courseOffersWayfinding,
 		parkCourseGpx,
 		parseSharedUse,
 		regionCodeFromSlug,
@@ -275,8 +276,9 @@
 			data-testid="park-course-not-found"
 		/>
 	{:else}
-		{@const canNavigate = !!course.route_id && course.status !== 'closed'}
-		{@const canDownload = mapTrack.length >= 2 && course.status !== 'closed'}
+		{@const wayfinding = courseOffersWayfinding(course.status)}
+		{@const canNavigate = !!course.route_id && wayfinding}
+		{@const canDownload = mapTrack.length >= 2 && wayfinding}
 		<header class="detail-header">
 			<div class="title-row">
 				<h1>{course.segment.name}</h1>
@@ -391,7 +393,7 @@
 				</section>
 			{/if}
 
-			{#if routeGuide}
+			{#if routeGuide && wayfinding}
 				<div class="guide-slot">
 					<ParkCourseRouteGuide
 						guide={routeGuide}

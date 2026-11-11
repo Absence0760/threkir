@@ -141,6 +141,11 @@ String regionName(String regionCode) => kRegionNames[regionCode] ?? regionCode;
 bool courseIsCountable(String status) =>
     status == 'open' || status == 'seasonal';
 
+/// Whether the course page offers the way round: Navigate, the GPX and the
+/// route guide. A closed course offers none of them, so nothing reads as an
+/// invitation to run it while the park has it shut.
+bool courseOffersWayfinding(String status) => status != 'closed';
+
 /// Courses longer than this carry the long-course notice.
 const double kLongCourseThresholdM = 15000;
 

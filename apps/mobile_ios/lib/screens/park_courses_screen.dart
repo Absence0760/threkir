@@ -976,9 +976,9 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
     final guide = parseRouteGuide(course.routeGuide);
     final api = widget.api;
     final routeId = course.routeId;
-    final open = course.status != 'closed';
-    final canNavigate = api != null && routeId != null && open;
-    final canShare = geometry.length >= 2 && open;
+    final wayfinding = courseOffersWayfinding(course.status);
+    final canNavigate = api != null && routeId != null && wayfinding;
+    final canShare = geometry.length >= 2 && wayfinding;
     return Scaffold(
       appBar: AppBar(
         title: Text(segment.name),
@@ -1096,7 +1096,7 @@ class _ParkCourseScreenState extends State<ParkCourseScreen> {
                     unit: activeDistanceUnit,
                   ),
                 ],
-                if (guide != null) ...[
+                if (guide != null && wayfinding) ...[
                   const SizedBox(height: 20),
                   _CourseRouteGuide(
                     guide: guide,

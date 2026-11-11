@@ -291,6 +291,12 @@ climbs on the way, the checkpoints and the laps.
   to `locales/en.ts` by a test), the course GPX's track `<desc>` in the same
   English, mobile `ParkCourseScreen`, and a line in the `park-courses` help
   guide.
+- **Not while closed.** A closed course shows no guide anywhere: not on the
+  course page or the share page (web or mobile), not in the share page's
+  JSON-LD, and not in its meta description (which already says "Currently
+  closed."). The guide goes with Navigate and the GPX, all three gated by one
+  predicate, `courseOffersWayfinding` (web `parks/park_courses.ts`, mobile
+  `park_courses.dart`).
 
 ## Wording and safety
 
@@ -298,7 +304,7 @@ The surfaces say *course* and *time trial*, never *race*, *compete* or
 *register*. Every course page carries the stay-on-trail notice and the
 geometry attribution (`osm` credits OpenStreetMap contributors, `nps` the
 National Park Service). A closed course shows a banner and hides "Navigate
-this course"; its times and boards stay, and a run over it while it is closed
+this course", the GPX and the route guide; its times and boards stay, and a run over it while it is closed
 is not timed (see *Matching*).
 
 These follow the owner-approved permit conditions (memo

@@ -9,7 +9,7 @@ import { formatKmStable, normaliseSiteUrl } from './share_meta';
 import { escapeHtml } from '../util/html_escape';
 import { serialiseJsonLd } from '../util/json_ld';
 import { collapseAndClip } from '../util/clip_text';
-import { regionName } from '../parks/park_courses';
+import { courseOffersWayfinding, regionName } from '../parks/park_courses';
 import { GUIDE_EN, routeGuideEnglish } from '../parks/route_guide';
 import { courseShareKey, type SharedCourse } from './share_course_lookup';
 
@@ -45,9 +45,9 @@ export function buildCourseShareDescription(course: SharedCourse | null | undefi
 
 /// The course's route guide as one canonical-English paragraph, for the
 /// JSON-LD description: the indexable text a written guide gives the page
-/// (issue #1344). Empty when the course has none.
+/// (issue #1344). Empty when the course has none, or is closed.
 export function buildCourseGuideText(course: SharedCourse | null | undefined): string {
-	if (!course?.route_guide) return '';
+	if (!course?.route_guide || !courseOffersWayfinding(course.status)) return '';
 	return routeGuideEnglish(course.route_guide, course.route_guide_checked_at).join(' ');
 }
 

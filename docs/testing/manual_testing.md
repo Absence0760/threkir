@@ -410,6 +410,9 @@ Not yet run. Needs a real park, a course whose start and finish lines are placed
 | Phone in a pocket | Run the whole race with the screen off and the phone in a pocket | Cues heard and felt; the finish files; the run saves after 60 s. |
 | Undo after a false finish | Trigger a finish (for example cross the finish line early on a lap course flagged differently), tap Not finished? Resume | The result disappears from the event's results; recording continues; Stop then Finish race files a manual finish. |
 | Offline | Open the race once with signal, then turn on airplane mode before the start | Distance to the start line shows, the start and finish are detected and cued, and the result is queued and lands when signal returns. |
+| Undo, then restart | After Not finished? Resume, kill the app (phone) or let the activity be recreated while the service records (Wear), reopen, run on and cross the finish line again after 90% of the course from the start | The undone crossing is not filed again; the later crossing finishes, timed from the original start-line crossing; the saved run carries `metadata.race_undone_finish_at`. |
+| Clock offset across a restart | Start a race recording with signal, kill the app, turn on airplane mode, reopen and finish | The gun time still matches the stopwatch within a second or two (the offset is remembered for 24 h). |
+| Web re-time | Within 24 h of the race finishing, open one of these runs on the web as its owner | **Re-time from my track** shows the track's result beside the current one; on a run whose finish was undone it refuses the undone finish; replacing a DNF or a hand finish files `gate` / `gate` and the board updates. Note how far the re-timed gun time sits from the live one (fix delivery latency, § 2458). |
 
 (Live race recording on the watch is roadmap-pending in some cells; see [parity.md "Live race mode"](../product/parity.md).)
 

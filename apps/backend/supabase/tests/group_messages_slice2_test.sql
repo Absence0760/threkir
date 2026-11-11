@@ -7,7 +7,7 @@
 -- group_invites(), and the notification cascade with the conversation.
 
 begin;
-select plan(39);
+select plan(40);
 
 insert into private.feature_flags (name, enabled) values ('group_messages', true)
 on conflict (name) do update set enabled = true;
@@ -143,6 +143,14 @@ set local "request.jwt.claims" = '{"sub":"b1365200-0000-0000-0000-0000000000c1",
 select lives_ok(
   $$select mark_conversation_read((select id from g where k = 'main'), (select id from g where k = 'c2_second'))$$,
   'the owner reads the group in the app');
+reset role;
+select is(
+  (select last_read_at from conversation_participants
+    where conversation_id = (select id from g where k = 'main')
+      and user_id = 'b1365200-0000-0000-0000-0000000000c1'),
+  (select created_at from direct_messages where id = (select id from g where k = 'c2_second')),
+  'reading the group in the app moves the member''s read position up to the message read');
+set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"b1365200-0000-0000-0000-0000000000c4","role":"authenticated"}';
 insert into direct_messages (sender_id, conversation_id, body)
 values ('b1365200-0000-0000-0000-0000000000c4', (select id from g where k = 'main'), 'from c4');

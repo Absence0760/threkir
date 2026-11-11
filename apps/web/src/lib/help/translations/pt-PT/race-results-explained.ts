@@ -94,7 +94,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Cronometra o seu trajeto pelas linhas de partida e de chegada com que a prova foi disputada, com a mesma hora de referência que o telemóvel ou o relógio usou durante a prova.',
-						'Pode voltar a cronometrar até 24 horas depois de a prova terminar. Depois disso, só o organizador pode alterar um tempo.',
+						'Pode voltar a cronometrar até 24 horas depois de a prova terminar. Depois disso, o seu tempo, o seu percurso e a sua distância ficam bloqueados, e só o organizador pode alterar o seu tempo.',
 						'Substitui um DNF, uma chegada manual e um resultado à espera de revisão. Nunca substitui um tempo definido pelo organizador nem um resultado já cronometrado pelas duas linhas; numa prova de tempo próprio, só uma tentativa mais rápida cronometrada pelas duas linhas o substitui.',
 						'Se o organizador aprovar os resultados manualmente, um resultado cronometrado de novo volta a ser-lhe enviado para aprovação.',
 					],
@@ -146,7 +146,7 @@ export const translation: GuideTranslation = {
 		's5.b1.i0': 'd6fc360bf0506c2c',
 		's5.b1.i1': 'b0eb18e5a8270886',
 		's5.b2.i0': '7b1ea13025902315',
-		's5.b2.i1': '7e44288e6edf8a96',
+		's5.b2.i1': 'a97c00d0cbdf91fc',
 		's5.b2.i2': '8a9c94b45aba53b2',
 		's5.b2.i3': '84812a40e9aafb58',
 		's6.heading': 'badeb43244f6c195',

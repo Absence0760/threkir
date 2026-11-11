@@ -2437,7 +2437,7 @@
             "type": "list",
             "items": [
               "Cronometra o seu trajeto pelas linhas de partida e de chegada com que a prova foi disputada, com a mesma hora de referência que o telemóvel ou o relógio usou durante a prova.",
-              "Pode voltar a cronometrar até 24 horas depois de a prova terminar. Depois disso, só o organizador pode alterar um tempo.",
+              "Pode voltar a cronometrar até 24 horas depois de a prova terminar. Depois disso, o seu tempo, o seu percurso e a sua distância ficam bloqueados, e só o organizador pode alterar o seu tempo.",
               "Substitui um DNF, uma chegada manual e um resultado à espera de revisão. Nunca substitui um tempo definido pelo organizador nem um resultado já cronometrado pelas duas linhas; numa prova de tempo próprio, só uma tentativa mais rápida cronometrada pelas duas linhas o substitui.",
               "Se o organizador aprovar os resultados manualmente, um resultado cronometrado de novo volta a ser-lhe enviado para aprovação."
             ]

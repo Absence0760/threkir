@@ -2437,7 +2437,7 @@
             "type": "list",
             "items": [
               "Dein Track wird anhand der Start- und Ziellinie gemessen, mit denen das Rennen ausgetragen wurde, und mit derselben Uhrzeit, die dein Handy oder deine Uhr während des Rennens verwendet hat.",
-              "Neu messen kannst du bis 24 Stunden nach dem Ende des Rennens. Danach kann nur noch der Veranstalter eine Zeit ändern.",
+              "Neu messen kannst du bis 24 Stunden nach dem Ende des Rennens. Danach sind deine Zeit, deine Strecke und deine Distanz gesperrt, und nur noch der Veranstalter kann deine Zeit ändern.",
               "Eine Neumessung ersetzt ein DNF, eine von Hand beendete Zeit und ein Ergebnis, das auf Prüfung wartet. Sie ersetzt nie eine Zeit, die der Veranstalter festgelegt hat, oder ein Ergebnis, das bereits über beide Linien gestoppt wurde; in einem selbstgestoppten Rennen ersetzt nur ein schnellerer, über beide Linien gestoppter Versuch ein solches Ergebnis.",
               "Genehmigt der Veranstalter Ergebnisse von Hand, geht ein neu gemessenes Ergebnis zur Genehmigung an ihn zurück."
             ]

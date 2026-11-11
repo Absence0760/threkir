@@ -99,7 +99,7 @@ export const guide: Guide = {
 					type: 'list',
 					items: [
 						'It times your track by the start and finish lines the race was run with, on the same clock your phone or watch used during the race.',
-						'You can re-time until 24 hours after the race finished. After that, only the organiser can change a time.',
+						'You can re-time until 24 hours after the race finished. After that, your time, course and distance are locked, and only the organiser can change your time.',
 						'It replaces a DNF, a time finished by hand and a result waiting for review. It never replaces a time the organiser set, or a result already timed by both lines; in a self-timed race, only a faster attempt timed by both lines replaces it.',
 						'If the organiser approves results by hand, a re-timed result goes back to them for approval.'
 					]

@@ -94,7 +94,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Dein Track wird anhand der Start- und Ziellinie gemessen, mit denen das Rennen ausgetragen wurde, und mit derselben Uhrzeit, die dein Handy oder deine Uhr während des Rennens verwendet hat.',
-						'Neu messen kannst du bis 24 Stunden nach dem Ende des Rennens. Danach kann nur noch der Veranstalter eine Zeit ändern.',
+						'Neu messen kannst du bis 24 Stunden nach dem Ende des Rennens. Danach sind deine Zeit, deine Strecke und deine Distanz gesperrt, und nur noch der Veranstalter kann deine Zeit ändern.',
 						'Eine Neumessung ersetzt ein DNF, eine von Hand beendete Zeit und ein Ergebnis, das auf Prüfung wartet. Sie ersetzt nie eine Zeit, die der Veranstalter festgelegt hat, oder ein Ergebnis, das bereits über beide Linien gestoppt wurde; in einem selbstgestoppten Rennen ersetzt nur ein schnellerer, über beide Linien gestoppter Versuch ein solches Ergebnis.',
 						'Genehmigt der Veranstalter Ergebnisse von Hand, geht ein neu gemessenes Ergebnis zur Genehmigung an ihn zurück.',
 					],
@@ -146,7 +146,7 @@ export const translation: GuideTranslation = {
 		's5.b1.i0': 'd6fc360bf0506c2c',
 		's5.b1.i1': 'b0eb18e5a8270886',
 		's5.b2.i0': '7b1ea13025902315',
-		's5.b2.i1': '7e44288e6edf8a96',
+		's5.b2.i1': 'a97c00d0cbdf91fc',
 		's5.b2.i2': '8a9c94b45aba53b2',
 		's5.b2.i3': '84812a40e9aafb58',
 		's6.heading': 'badeb43244f6c195',

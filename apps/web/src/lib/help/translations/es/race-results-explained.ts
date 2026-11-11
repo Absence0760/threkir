@@ -94,7 +94,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Cronometra tu traza por las líneas de salida y de meta con las que se corrió la carrera, con el mismo reloj que usó tu móvil o tu reloj durante la carrera.',
-						'Puedes recalcularlo hasta 24 horas después de que termine la carrera. Pasado ese plazo, solo el organizador puede cambiar un tiempo.',
+						'Puedes recalcularlo hasta 24 horas después de que termine la carrera. Pasado ese plazo, tu tiempo, tu recorrido y tu distancia quedan bloqueados, y solo el organizador puede cambiar tu tiempo.',
 						'Sustituye un DNF, un tiempo terminado a mano y un resultado pendiente de revisión. Nunca sustituye un tiempo que fijó el organizador ni un resultado ya cronometrado por las dos líneas; en una carrera con cronometraje propio, solo lo sustituye un intento más rápido cronometrado por las dos líneas.',
 						'Si el organizador aprueba los resultados a mano, un resultado recalculado vuelve a él para que lo apruebe.',
 					],
@@ -146,7 +146,7 @@ export const translation: GuideTranslation = {
 		's5.b1.i0': 'd6fc360bf0506c2c',
 		's5.b1.i1': 'b0eb18e5a8270886',
 		's5.b2.i0': '7b1ea13025902315',
-		's5.b2.i1': '7e44288e6edf8a96',
+		's5.b2.i1': 'a97c00d0cbdf91fc',
 		's5.b2.i2': '8a9c94b45aba53b2',
 		's5.b2.i3': '84812a40e9aafb58',
 		's6.heading': 'badeb43244f6c195',

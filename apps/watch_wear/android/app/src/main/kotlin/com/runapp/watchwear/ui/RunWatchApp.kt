@@ -94,6 +94,8 @@ import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import androidx.wear.compose.material.Vignette
 import androidx.wear.compose.material.VignettePosition
+import com.runapp.watchwear.BuildConfig
+import com.runapp.watchwear.LineCalibrationCapture
 import com.runapp.watchwear.R
 import com.runapp.watchwear.RunViewModel
 import com.runapp.watchwear.Stage
@@ -208,6 +210,7 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
             when (state.stage) {
                 Stage.PreRun -> {
                     var batteryHelp by remember { mutableStateOf(false) }
+                    var calibrationOpen by remember { mutableStateOf(false) }
                     // Auto-dismiss the instruction card when the user has
                     // actually granted the exemption — VM state flips from
                     // `batteryOptimised = true` → `false`.
@@ -219,7 +222,14 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                     val canOpenSettings = remember(settingsUnavailable) {
                         !settingsUnavailable && AppSettings.canOpen(activity)
                     }
-                    if (notice != null) {
+                    if (BuildConfig.DEBUG && calibrationOpen) {
+                        LineCalibrationScreen(
+                            capture = LineCalibrationCapture.shared,
+                            sampleServerClock = { vm.sampleServerClock() },
+                            lastPosition = { vm.lastKnownPosition() },
+                            onClose = { calibrationOpen = false },
+                        )
+                    } else if (notice != null) {
                         PermissionNotice(
                             outcome = notice,
                             canOpenSettings = canOpenSettings,
@@ -293,6 +303,11 @@ fun RunWatchApp(vm: RunViewModel, activity: Activity, isAmbient: Boolean = false
                             onDiscardRecovery = vm::discardCheckpoint,
                             onSync = vm::sync,
                             onDiscardRejected = vm::discardRejectedRuns,
+                            onOpenCalibration = if (BuildConfig.DEBUG) {
+                                { calibrationOpen = true }
+                            } else {
+                                null
+                            },
                             listState = preRunListState,
                         )
                     }
@@ -720,6 +735,7 @@ private fun PreRunScreen(
     onDiscardRecovery: () -> Unit,
     onSync: () -> Unit,
     onDiscardRejected: () -> Unit,
+    onOpenCalibration: (() -> Unit)?,
     listState: ScalingLazyListState,
 ) {
     // Recovery prompt takes precedence — user has unsaved-run state from
@@ -1357,6 +1373,17 @@ private fun PreRunScreen(
                     )
                 }
             }
+            // Debug builds only: the timing-line calibration tool (#1304 § 6).
+            if (onOpenCalibration != null) {
+                item(key = "line-calibration") {
+                    Chip(
+                        onClick = onOpenCalibration,
+                        label = { Text("Line calibration (debug)", maxLines = 1) },
+                        colors = ChipDefaults.childChipColors(),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
             // Account actions are not glance material, so Sign out trails the
             // list: reachable by a scroll, never one stray tap from the home face
             // the way the old unlabelled corner icon was.
@@ -1549,7 +1576,7 @@ private fun SignInScreen(
 }
 
 @Composable
-private fun InlineTextField(
+internal fun InlineTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,

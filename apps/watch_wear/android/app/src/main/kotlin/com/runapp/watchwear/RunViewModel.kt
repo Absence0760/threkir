@@ -748,6 +748,30 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
                         } catch (e: Throwable) {
                             Log.w(TAG, "race finish tracking failed; the run records on", e)
                         }
+                        // Debug builds only: the line-calibration capture
+                        // (#1304 § 6) takes fixes by the race feed's own rule.
+                        try {
+                            if (BuildConfig.DEBUG) {
+                                val p = m.latestPoint
+                                if (p != null) LineCalibrationCapture.shared.offer(
+                                    runId = m.runId,
+                                    recording = m.stage == RecordingRepository.Stage.Recording,
+                                    fixKey = p.epochMs,
+                                    fix = GateFix(
+                                        p.lat,
+                                        p.lng,
+                                        raceFixDeviceMs(
+                                            fixElapsedRealtimeMs = p.elapsedRealtimeMs,
+                                            nowWallMs = System.currentTimeMillis(),
+                                            nowElapsedRealtimeMs = SystemClock.elapsedRealtime(),
+                                        ).toDouble(),
+                                        m.distanceM,
+                                    ),
+                                )
+                            }
+                        } catch (e: Throwable) {
+                            Log.w(TAG, "line calibration capture failed; the run records on", e)
+                        }
                     }
                     RecordingRepository.Stage.Finished -> handleFinishedRun(m)
                     RecordingRepository.Stage.Idle -> Unit
@@ -1346,6 +1370,22 @@ class RunViewModel(application: Application) : AndroidViewModel(application) {
             filing?.join()
             raceOutbox.void(supabase.currentAccessToken, uid, race.eventId, race.instanceStart)
         }
+    }
+
+    /// One round trip to the server clock, for the debug calibration screen.
+    suspend fun sampleServerClock(): RaceSessionClient.ClockSample? = try {
+        raceClient.sampleServerNow(supabase.currentAccessToken)
+    } catch (e: Throwable) {
+        Log.w(TAG, "server clock sample failed", e)
+        null
+    }
+
+    /// The watch's last known position, for centring a line where it stands.
+    suspend fun lastKnownPosition(): GpsPoint? = try {
+        gpsForPrefetch.lastLocation()
+    } catch (e: Throwable) {
+        Log.w(TAG, "no last known position", e)
+        null
     }
 
     /// The haptic and the spoken line for a start- or finish-line crossing,

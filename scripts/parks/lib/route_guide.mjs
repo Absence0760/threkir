@@ -302,7 +302,7 @@ function mergeShortRuns(runs, cum) {
  *   allWays: SnapshotWay[],
  *   offsetM?: number,
  *   lengthM: number,
- *   checkpointCount: number,
+ *   checkpointAtM: number[],
  *   laps?: { count: number, firstStartM: number, lapM: number } | null,
  *   water?: Array<{ name?: string, ring: { lat: number, lon: number }[] }>,
  *   lang: string,
@@ -320,7 +320,7 @@ function mergeShortRuns(runs, cum) {
  * @param {GuideInput} input
  */
 export function buildRouteGuide(input) {
-	const { sequence, nodes, ways, allWays, lengthM, checkpointCount, lang } = input;
+	const { sequence, nodes, ways, allWays, lengthM, checkpointAtM, lang } = input;
 	const offsetM = input.offsetM ?? 0;
 	const points = sequence.map((id) => {
 		const n = nodes[String(id)];
@@ -495,9 +495,9 @@ export function buildRouteGuide(input) {
 			});
 		}
 	}
-	for (let k = 1; k <= checkpointCount; k++) {
-		steps.push({ kind: 'checkpoint', at_m: Math.round((lengthM * k) / (checkpointCount + 1)), order: k, of: checkpointCount });
-	}
+	checkpointAtM.forEach((m, i) => {
+		steps.push({ kind: 'checkpoint', at_m: Math.round(m), order: i + 1, of: checkpointAtM.length });
+	});
 	steps.push({ kind: 'finish', at_m: Math.round(lengthM) });
 
 	const rank = (/** @type {string} */ k) => STEP_KINDS.indexOf(k);

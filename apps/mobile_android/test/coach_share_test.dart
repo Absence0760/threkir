@@ -50,6 +50,7 @@ void main() {
     expect(parseDmKind('coach_share'), 'coach_share');
     expect(parseDmKind('text'), 'text');
     expect(parseDmKind('ai_assisted'), 'ai_assisted');
+    expect(parseDmKind('group_renamed'), 'group_renamed');
     expect(parseDmKind('ai_reply'), 'text');
     expect(parseDmKind(null), 'text');
   });

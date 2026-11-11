@@ -81,10 +81,12 @@ apps/watch_wear/
             │   ├── RaceSessionClient.kt     # race-mode REST client: armed/running poll, chosen course, pings, `event_results` upsert
             │   ├── RaceFinish.kt            # finish detector, Kotlin half of the `race_finish` parity pair (30 m zone, 90 % gate, closest approach) + `ServerClockOffset`
             │   ├── RaceRun.kt               # pure race-mode model + transitions RunViewModel acts on (Stop, Finish race, bind, host End, device-clock fix stamp, late start, the result row with its crossings)
-            │   ├── RaceLineTimer.kt         # timing by the lines from the recording's Start (#1307): fix log, detector rebuilt at GO / course, start cue, distance to the start line, undo
+            │   ├── RaceLineTimer.kt         # timing by the lines from the recording's Start (#1307): fix log, detector rebuilt at GO / course, start cue, distance to the start line, undo, the finish line re-armed after an undo and a restart
             │   ├── RaceResultOutbox.kt      # every event_results write + undo delete for a race, in one order (bank, send, void)
-            │   ├── RaceResultStore.kt       # DataStore: race results owed the server, withdrawn finishes still to delete, the cached race and its course
+            │   ├── RaceResultStore.kt       # DataStore: race results owed the server, withdrawn finishes still to delete, the cached race and its course, the kept server clock offset (24 h) and an undone finish (decisions § 2450)
+            │   ├── LineCalibration.kt       # debug builds only: the #1304 line-calibration capture + scoring + CSV, Kotlin half of the phone's `line_calibration.dart` (decisions § 2453)
             │   ├── ui/RunWatchApp.kt        # Compose-for-Wear screens
+            │   ├── ui/LineCalibrationScreen.kt # debug builds only: the line-calibration screen, opened from the pre-run list behind `BuildConfig.DEBUG`
             │   ├── ui/RouteMiniMap.kt       # Polyline + position-dot + track-so-far + raster tiles
             │   ├── ui/TileSource.kt         # MapTiler raster tile fetcher (OkHttp + LRU)
             │   ├── ui/TileLayer.kt          # Compose composable that draws tile bitmaps
@@ -669,7 +671,11 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   match and the post-run map take only fixes within 30 m (`SourceVerdict.track`): a 30-50 m
   canopy fix moves distance and pace and is stored in the track file flagged
   `"offTrack":true` (`TrackWriter.append(point, distM, offTrack)`), so the
-  server's replay sees every fix the estimator took; the finished run and the
+  server's replay sees every fix the estimator took. The first fix stored
+  after a pause or a source switch closes the estimator's segment is written
+  `"segmentStart":true` (`closeDistanceSegment` sets `markSegmentStart`,
+  `onGps` writes and clears it), so the server replays each segment apart
+  (spec v1.8); the finished run and the
   checkpoint carry `trackComplete` into `metadata.track_complete`
   (docs/features/gps_distance.md § Stored track). Each point now also carries the optional `accuracyMetres`,
   `speedMps`, `speedAccuracyMps`, `bearingDeg` keys so the server can
@@ -685,8 +691,9 @@ steal focus from typing). `RotaryScrollWiringTest` pins the call sites.
   `distance_recompute` job, which replays this track and replaces
   `distance_m` with the smoothed figure (its gaps credited the larger of
   `distance_step_over_chord_m` and the run-total rule, or on an older run
-  the larger of their chords and the step-filled metres; a pause or source
-  switch inside a gap holds that close's trailing steps out of the key),
+  the larger of their chords and the step-filled metres; each segment is
+  replayed apart from its `segmentStart` fix, so a close's trailing steps
+  are banked whole),
   keeping the wrist's figure as `distance_recorded_m`
   ([gps_distance.md § Server recompute](../../docs/features/gps_distance.md#server-recompute),
   decisions § 1991).

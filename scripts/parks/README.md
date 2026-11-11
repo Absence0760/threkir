@@ -12,6 +12,8 @@ scripts/parks/
   build.mjs                      offline step: spec + snapshot -> <course>.geojson + manifest.json
   lib/catalogue_payload.mjs      pure: manifest + GeoJSON -> the load payload and its SQL
   lib/catalogue_sync.mjs         pure: every park + the publisher -> the release sync's SQL
+  lib/catalogue_release.mjs      pure: a park's release (live, or staged with a reason)
+  lib/third_party_marks.mjs      pure: refuses parkrun / parkwalk in any spec or manifest string
   sync.mjs                       the release sync's park stage (and its manual fallback)
   load.mjs                       fallback: one built park -> one SQL statement on stdout
   publisher.json                 the official club the courses publish as (slug + id)
@@ -31,6 +33,10 @@ scripts/parks/
 4. `node scripts/parks/fetch_snapshot.mjs scripts/parks/catalogue/<region>/<park>`
 5. `node scripts/parks/build.mjs scripts/parks/catalogue/<region>/<park>`. The build refuses a course whose traced distance is more than 5 % off the published figure.
 6. Review the `.geojson` on a map (geojson.io, or drop it into QGIS) against the park's trail map before committing.
+
+Every `park.json` declares its `release` (decisions § 2460): `{ "status": "staged", "reason": "..." }` for a park that must not load yet, or `{ "status": "live" }`. A new park starts staged until its owner checks are done; there is no default, and a missing or unknown release fails the build. See *Loading a park* for what staging does and how to unstage.
+
+Name a course after the park and its distance ("Deep Run Park, 5 km", "Swift Creek Loop, 5 km"). Never after an event that uses the same paths: the build and the payload check refuse any string in the spec or manifest that says parkrun or parkwalk in any spelling, or links to its site (`lib/third_party_marks.mjs`). Where an organised group regularly uses the paths, set the course's `shared_use` (today only `saturday_morning_group`); the clients show a give-way note that names no one.
 
 `node scripts/parks/build.mjs --check <dir>` fails when a committed output no longer matches its spec and snapshot.
 
@@ -100,6 +106,8 @@ A park course is the trail as it is, whatever its length. A race course must mea
 
 Finding a loop that fits is a search over the park's trail graph. For L the loop length, N the laps, D the race distance and S the lead-in length, a loop fits when (D - 2S) / N <= L < D / N.
 
+The loop need not be one ring. Deep Run Park's `loop_via` goes twice round the ponds, out and back on the woods path, and once more round, with `laps` 1 (it is not N identical laps). Where part of a loop repeats, the length guard cannot catch a skipped repeat (one pond lap is 13 % of the course, under its 25 %), so space the checkpoints closer than the repeated part's length: then each repeat holds a checkpoint earlier in the ring than the one before it, which only another pass reaches. Deep Run Park has 13 (`checkpoints_per_lap` with `laps` 1), and `park_course_real_geometry.test.ts` fails if a run that leaves out any pond lap is timed.
+
 ## Loading a park
 
 Every backend release loads the catalogue; nobody runs SQL in production. The
@@ -117,6 +125,14 @@ summary lists every course as `created`, `updated`, `unchanged` or `closed`.
 - **Backfill only where it changes a result.** A backfill is queued for a
   `created` course, or when the line, a start or end line, or the checkpoints
   changed. A name, description, difficulty or source change queues none.
+- **Staged parks are held out.** A park whose manifest `release` is `staged`
+  is validated like the rest and never loaded: each of its courses is a
+  `staged` row in the step summary and the dry run, and the summary's note
+  names the park and its reason. `load.mjs` refuses one too. Staging does not
+  close a park that is already loaded. To unstage: set `park.json`'s
+  `release` to `{ "status": "live" }`, rebuild, commit `park.json` and
+  `manifest.json`, preview with a `dry_run` dispatch (its courses move from
+  `staged` to `created`), and publish a `backend@*` release.
 - **Never deletes.** A course its park's manifest no longer names is set
   `closed` ("Removed from the park catalogue."), keeping its segment and every
   effort, and reopens if the manifest names it again. A closure an operator
@@ -138,6 +154,8 @@ summary lists every course as `created`, `updated`, `unchanged` or `closed`.
 - `park_courses.laps` is a race course's `laps`. A trail course takes its
   entry's `laps` if it has one, else 1 for a `loop` and null for an
   `out_and_back` or `point_to_point` course (decisions § 2438).
+- Each course's `shared_use` is written to `park_courses.shared_use`
+  (migration `20271215120001`); a change reports it `updated` with no backfill.
 - Each course's `route_guide` and `route_guide_checked_at` are written to the
   `park_courses` columns of those names (migration `20271212001344`). A change
   to either reports the course `updated` with no backfill.
@@ -151,7 +169,8 @@ summary lists every course as `created`, `updated`, `unchanged` or `closed`.
   GeoJSON whose line no longer matches the manifest (point count, or length
   more than 1 % off), a loop whose ends are more than 25 m apart, a race course
   that does not measure its race distance, laps that are not a whole number
-  from 1 to 1000, an attribution over 300 characters.
+  from 1 to 1000, an attribution over 300 characters, a `shared_use` outside
+  its vocabulary, and any string naming parkrun or parkwalk.
 
 To preview a change against production, run the Release Backend workflow by
 hand with `dry_run` on (the default): it runs only the sync, behind the

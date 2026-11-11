@@ -1,4 +1,4 @@
-//! GPS distance estimator, spec v1.7 forward filter — the `no_std` port of
+//! GPS distance estimator, spec v1.8 forward filter — the `no_std` port of
 //! `scripts/gps_distance/reference.py` (docs/features/gps_distance.md). The
 //! spec's smoother needs the whole run in memory and is not ported here; the
 //! phone or server re-derives a saved figure from the uploaded track.
@@ -71,7 +71,7 @@ pub const ZUPT_RELEASE_M: f64 = 40.0;
 pub const ZUPT_BATCH_MIN_CADENCE_SPS: f64 = 1.0;
 pub const ZUPT_BATCH_MARGIN: f64 = 1.5;
 pub const ZUPT_MAX_NO_STEP_S: f64 = 30.0;
-pub const SPEC_VERSION: &str = "1.7";
+pub const SPEC_VERSION: &str = "1.8";
 pub const DEFAULT_MAX_SPEED_MPS: f64 = 10.0;
 
 const DEG_TO_RAD: f64 = core::f64::consts::PI / 180.0;
@@ -1002,8 +1002,8 @@ mod tests {
     #[test]
     fn the_fixture_is_this_port_s_spec_version() {
         let doc: serde_json::Value = serde_json::from_str(VECTORS).expect("vectors parse");
-        assert_eq!(SPEC_VERSION, "1.7");
-        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.7"));
+        assert_eq!(SPEC_VERSION, "1.8");
+        assert_eq!(doc["spec"].as_str(), Some("gps-distance-estimator v1.8"));
     }
 
     #[test]

@@ -231,6 +231,30 @@ class RaceSessionClient(
         }
     }
 
+    /// One round trip to `server_now()`, answered with the server's clock: the
+    /// debug line-calibration tool measures its offset from ten of these, as
+    /// the phone's does. Signed out it goes as the anon role, which may call
+    /// it. Null when the answer carried no readable instant.
+    suspend fun sampleServerNow(accessToken: String?): ClockSample? {
+        val req = Request.Builder()
+            .url("$baseUrl/rest/v1/rpc/server_now")
+            .header("apikey", anonKey)
+            .header("Authorization", "Bearer ${accessToken ?: anonKey}")
+            .get()
+            .build()
+        return withContext(Dispatchers.IO) {
+            val sentAt = System.currentTimeMillis()
+            http.newCall(req).execute().use { resp ->
+                val receivedAt = System.currentTimeMillis()
+                val text = resp.body.string()
+                if (!resp.isSuccessful) {
+                    throw RuntimeException("HTTP ${resp.code}: $text")
+                }
+                parseServerNowMs(text)?.let { ClockSample(sentAt, receivedAt, it) }
+            }
+        }
+    }
+
     suspend fun submitResult(accessToken: String, result: PendingRaceResult) {
         val req = Request.Builder()
             .url("$baseUrl/rest/v1/event_results?on_conflict=event_id,instance_start,user_id")
@@ -289,6 +313,13 @@ class RaceSessionClient(
         @JvmStatic
         internal fun parsePingAtMs(body: String): Long? =
             firstRow(body)?.get("at")?.jsonPrimitive?.contentOrNull?.let(::parseServerInstantMs)
+
+        /// The instant `server_now()` answers with: a JSON string.
+        @JvmStatic
+        internal fun parseServerNowMs(body: String): Long? =
+            runCatching { parser.parseToJsonElement(body).jsonPrimitive.contentOrNull }
+                .getOrNull()
+                ?.let(::parseServerInstantMs)
 
         @JvmStatic
         internal fun parseCourseId(body: String): String? =

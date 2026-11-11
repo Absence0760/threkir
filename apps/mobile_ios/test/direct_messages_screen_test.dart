@@ -41,6 +41,7 @@ DirectMessageRow _msg(
 }) =>
     DirectMessageRow(
       kind: 'text',
+      isGroup: false,
       id: id,
       conversationId: 'c-1',
       senderId: from,
@@ -55,6 +56,7 @@ DirectMessageRow _msg(
 /// One of a burst, stamped a second apart so the thread order is the index.
 DirectMessageRow _burst(int i, {bool read = false}) => DirectMessageRow(
       kind: 'text',
+      isGroup: false,
       id: 'b${i.toString().padLeft(3, '0')}',
       conversationId: 'c-1',
       senderId: _partner,
@@ -187,6 +189,7 @@ class _FakeApi extends ApiClient {
     final m = [...newest, ...?server].firstWhere((m) => m.id == messageId);
     return DirectMessageRow(
       kind: m.kind,
+      isGroup: false,
       id: m.id,
       conversationId: m.conversationId,
       senderId: m.senderId,
@@ -249,6 +252,7 @@ class _FakeApi extends ApiClient {
         ? row
         : DirectMessageRow(
             kind: 'text',
+            isGroup: false,
             id: row.id,
             conversationId: row.conversationId,
             senderId: row.senderId,
@@ -951,6 +955,7 @@ void main() {
     DirectMessageRow fresh(String id, {String from = _me, String? body}) =>
         DirectMessageRow(
           kind: 'text',
+          isGroup: false,
           id: id,
           conversationId: 'c-1',
           senderId: from,
@@ -1187,6 +1192,7 @@ void main() {
         ..newest = [
           DirectMessageRow(
             kind: 'text',
+            isGroup: false,
             id: 'm1',
             conversationId: 'c-1',
             senderId: _partner,
@@ -2326,6 +2332,7 @@ void main() {
     DirectMessageRow photoMsg(String id, String imageId, {String? body}) =>
         DirectMessageRow(
           kind: 'text',
+          isGroup: false,
           id: id,
           conversationId: 'c-1',
           senderId: _partner,

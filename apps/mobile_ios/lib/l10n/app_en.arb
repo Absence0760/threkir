@@ -1118,6 +1118,30 @@
   "@dashboardHeroRestDayGrisnir": {
     "description": "Grisnir the mascot's one dry line beside his resting art on a plan rest day; Norse lore: Thor's goats are eaten every night and are back by morning"
   },
+  "mascotMilestoneFirstRun": "First run in. That's the hard one.",
+  "@mascotMilestoneFirstRun": {
+    "description": "Grisnir the mascot's one dry line beside his hop when a run is the runner's first ever"
+  },
+  "mascotMilestoneFirst5k": "Your first 5K. That counts.",
+  "@mascotMilestoneFirst5k": {
+    "description": "Grisnir's line when a run is the runner's first 5 km; never a nag"
+  },
+  "mascotMilestoneBadge": "Badge earned. Worth a hop.",
+  "@mascotMilestoneBadge": {
+    "description": "Grisnir's line when a run unlocked a badge"
+  },
+  "mascotMilestoneBest": "A new best. Worth a hop.",
+  "@mascotMilestoneBest": {
+    "description": "Grisnir's line when a run set a new best time at a personal-record distance"
+  },
+  "mascotMilestoneLongest": "Your longest run yet.",
+  "@mascotMilestoneLongest": {
+    "description": "Grisnir's line when a run is the runner's longest so far"
+  },
+  "mascotOnboardingLine": "Grisnir waits at the trailhead.",
+  "@mascotOnboardingLine": {
+    "description": "Line under Grisnir waiting by a trail sign on the onboarding screen; Grisnir is the mascot's name, keep it"
+  },
   "dashboardHeroReadiness": "Readiness {score}",
   "@dashboardHeroReadiness": {
     "description": "One-line readiness score in the Today hero; {score} is 0-100",
@@ -8430,11 +8454,11 @@
   "@eventRaceArm": {
     "description": "Button to arm the race"
   },
-  "eventRaceArmedHint": "Tap Fire Go when the race begins. Participants' watches show the armed banner now.",
+  "eventRaceArmedHint": "Tap GO when the race begins. Participants' watches show the armed banner now.",
   "@eventRaceArmedHint": {
     "description": "Hint shown when the race is armed"
   },
-  "eventRaceFireGo": "Fire Go",
+  "eventRaceFireGo": "GO",
   "@eventRaceFireGo": {
     "description": "Button to start the race"
   },
@@ -27816,6 +27840,15 @@
   "@parksLongCourseNotice": {
     "description": "Park courses: shown on a course over 15 km (isLongCourse); web key parks.longCourseNotice. Names no park hours on purpose."
   },
+  "parksTimesNotEventResults": "Times here are Threkir times on these paths. They are not results of any event held on them.",
+  "@parksTimesNotEventResults": {
+    "description": "Park course page notice, on every course: the times on its boards are Threkir's own, never the results of an organised event (a weekly community run, say) that uses the same paths. Names no event."
+  },
+  "parksSharedUseSaturdayMorningGroup": "Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.",
+  "@parksSharedUseSaturdayMorningGroup": {
+    "description": "Park course page notice, shown when an organised group (e.g. a weekly community run) regularly uses the course's paths on Saturday mornings: give way and do not time-trial through the group. Must not name any organisation."
+  },
+
   "parksAttributionOsm": "Course line © OpenStreetMap contributors",
   "@parksAttributionOsm": {
     "description": "Park courses (#1313): web key parks.attributionOsm."
@@ -29009,6 +29042,24 @@
   "rateLimitPhotoUpload": "You've sent a lot of photos — please wait {wait} and try again.",
   "@rateLimitPhotoUpload": {
     "description": "Rate-limit refusal when the direct-message photo upload bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitCreateGroup": "You're creating groups too quickly — please wait {wait} and try again.",
+  "@rateLimitCreateGroup": {
+    "description": "Rate-limit refusal when the create_group_conversation bucket is spent",
+    "placeholders": {
+      "wait": {
+        "type": "String"
+      }
+    }
+  },
+  "rateLimitInviteToGroup": "You've sent a lot of group invitations today — please wait {wait} and try again.",
+  "@rateLimitInviteToGroup": {
+    "description": "Rate-limit refusal when the invite_to_group bucket is spent",
     "placeholders": {
       "wait": {
         "type": "String"

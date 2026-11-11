@@ -2331,7 +2331,7 @@
     "id": "race-results-explained",
     "lang": "fr",
     "title": "Comprendre les résultats de course",
-    "summary": "Ce que signifient le temps officiel et le temps puce, comment les places sont calculées par parcours, et ce qu'indiquent les marques Manuel, Organisateur, DNF, DNS et en attente.",
+    "summary": "Le sens du temps officiel et du temps puce, le calcul des places, les marques Manuel, Organisateur, DNF, DNS et en attente, et comment rechronométrer depuis votre tracé.",
     "kind": "explainer",
     "category": "races",
     "audience": [
@@ -2344,7 +2344,8 @@
     ],
     "routes": [
       "/clubs/[slug]/events/[id]",
-      "/live/event/[id]/[instance]"
+      "/live/event/[id]/[instance]",
+      "/runs/[id]"
     ],
     "sections": [
       {
@@ -2354,7 +2355,8 @@
             "type": "list",
             "items": [
               "Le **Temps officiel** est mesuré entre le moment où l'organisateur a donné le GO et celui où vous avez franchi l'arrivée. Le GO est horodaté par notre serveur : tous les participants partagent donc le même départ.",
-              "Le **Temps puce** est mesuré entre le moment où vous avez appuyé sur Démarrer sur votre propre appareil et votre arrivée, pauses comprises.",
+              "Le **Temps puce** est mesuré entre le moment où vous avez franchi la ligne de départ du parcours et votre arrivée. Si votre téléphone ou votre montre n'a vu aucun franchissement de la ligne de départ, il court à partir du moment où vous avez appuyé sur Démarrer sur votre propre appareil, pauses comprises.",
+              "Une course en chrono libre n'a pas de GO, donc pas de temps officiel : son classement affiche votre temps puce, de la ligne de départ à la ligne d'arrivée.",
               "Le grand temps affiché au classement est votre temps officiel si la course a eu un GO, sinon votre temps puce. Les places sont calculées à partir de ce grand temps."
             ]
           },
@@ -2383,7 +2385,7 @@
           {
             "type": "list",
             "items": [
-              "**Aucun badge** : le téléphone ou la montre du coureur a détecté la ligne d'arrivée. C'est le cas normal : ni le web ni l'app mobile ne le signalent.",
+              "**Aucun badge** : le téléphone ou la montre du coureur a chronométré l'arrivée, au moment où il a franchi la ligne d'arrivée, ou au cercle de 30 m autour de l'arrivée sur un parcours sans ligne d'arrivée. C'est le cas normal : ni le web ni l'app mobile ne le signalent.",
               "**Manuel** : le coureur a terminé à la main, soit avec **Terminer la course** après avoir couvert au moins 90 % du parcours, soit avec **Soumettre mon temps** sur le web pendant la course.",
               "**Organisateur** (sur le web, **Modifié par l'organisateur**) : l'organisateur a saisi ou corrigé ce résultat, ou le coureur a été marqué DNF quand l'organisateur a terminé la course."
             ]
@@ -2418,12 +2420,37 @@
         ]
       },
       {
+        "heading": "Rechronométrer depuis votre tracé",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Si votre téléphone a manqué une ligne, si votre résultat est un DNF inattendu, ou si vous avez couru avec une Apple Watch, vous pouvez chronométrer à nouveau votre résultat à partir de la sortie que vous avez enregistrée. Ouvrez la sortie sur le web : si elle appartient à une course, elle affiche **Rechronométrer depuis mon tracé** avec votre résultat actuel à côté de celui que donne votre tracé."
+          },
+          {
+            "type": "steps",
+            "items": [
+              "Vérifiez les deux colonnes : temps officiel, temps puce, et si le départ et l'arrivée ont été chronométrés par la ligne.",
+              "Choisissez **Rechronométrer le résultat**, puis **Remplacer le résultat**."
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "Votre tracé est chronométré par les lignes de départ et d'arrivée avec lesquelles la course s'est déroulée, sur la même horloge que celle utilisée par votre téléphone ou votre montre pendant la course.",
+              "Vous pouvez rechronométrer jusqu'à 24 heures après la fin de la course. Ensuite, seul l'organisateur peut modifier un temps.",
+              "Cela remplace un DNF, un temps terminé à la main et un résultat en attente d'examen. Cela ne remplace jamais un temps fixé par l'organisateur, ni un résultat déjà chronométré par les deux lignes ; dans une course en chrono libre, seule une tentative plus rapide chronométrée par les deux lignes le remplace.",
+              "Si l'organisateur approuve les résultats à la main, un résultat rechronométré lui est renvoyé pour approbation."
+            ]
+          }
+        ]
+      },
+      {
         "heading": "Quelque chose semble incorrect",
         "blocks": [
           {
             "type": "list",
             "items": [
-              "Aucun résultat ? Si votre appareil n'avait pas de réseau à l'arrivée, il envoie le résultat à la reconnexion, dans les 24 heures qui suivent la fin de la course.",
+              "Aucun résultat ? Si votre appareil n'avait pas de réseau à l'arrivée, il envoie le résultat à la reconnexion, dans les 24 heures qui suivent la fin de la course. Pendant ces mêmes 24 heures, vous pouvez aussi le rechronométrer à partir de votre tracé.",
               "Un DNF qui vous semble erroné, ou un temps décalé ? Demandez à l'organisateur. Il peut le corriger sur le web, et le résultat portera alors la marque de l'organisateur."
             ]
           },
@@ -2445,7 +2472,7 @@
     "id": "racing-in-a-race",
     "lang": "fr",
     "title": "Participer à une course en direct",
-    "summary": "Inscrivez-vous, choisissez votre parcours, démarrez l'enregistrement sur la ligne ou après le GO et laissez votre téléphone ou votre montre vous chronométrer à l'arrivée.",
+    "summary": "Inscrivez-vous, choisissez votre parcours, lancez l'enregistrement avant la ligne de départ et laissez votre téléphone ou votre montre vous chronométrer de la ligne de départ à la ligne d'arrivée.",
     "kind": "how-to",
     "category": "races",
     "audience": [
@@ -2469,11 +2496,11 @@
           {
             "type": "list",
             "items": [
-              "App Android : prise en charge complète. Elle affiche le bandeau de course, envoie votre position en direct et enregistre votre arrivée automatiquement.",
+              "App Android : prise en charge complète. Elle affiche le bandeau de course, envoie votre position en direct et vous chronomètre par les lignes de départ et d'arrivée.",
               "App iPhone : elle exécute le même code qu'Android, mais n'a pas encore été testée sur iPhone lors d'une vraie course.",
-              "Montre Wear OS : prise en charge complète au poignet, y compris l'arrivée automatique. L'inscription et le choix du parcours se font toujours sur le web ou le téléphone.",
-              "Apple Watch : prise en charge préliminaire seulement. Elle affiche le bandeau de course, envoie votre position et transmet votre temps via votre iPhone, mais elle n'a pas d'arrivée automatique et n'a pas fait ses preuves lors d'une vraie course. Gardez votre téléphone sur vous en secours.",
-              "Web : servez-vous-en pour vous inscrire, choisir un parcours et consulter les résultats. Un navigateur ne peut pas enregistrer de course."
+              "Montre Wear OS : prise en charge complète au poignet, y compris le chronométrage par les lignes. L'inscription et le choix du parcours se font toujours sur le web ou le téléphone.",
+              "Apple Watch : prise en charge préliminaire seulement. Elle affiche le bandeau de course, envoie votre position et transmet votre temps via votre iPhone, mais elle ne détecte pas les lignes de départ et d'arrivée : elle n'a donc pas d'arrivée automatique, et elle n'a pas fait ses preuves lors d'une vraie course. Gardez votre téléphone sur vous en secours, ou rechronométrez ensuite votre résultat à partir de votre tracé sur le web.",
+              "Web : servez-vous-en pour vous inscrire, choisir un parcours, consulter les résultats et rechronométrer un résultat à partir du tracé d'une sortie. Un navigateur ne peut pas enregistrer de course."
             ]
           }
         ]
@@ -2505,7 +2532,7 @@
           {
             "type": "note",
             "tone": "caution",
-            "text": "Votre téléphone ou votre montre ne démarre pas l'enregistrement tout seul : appuyez vous-même sur Démarrer. Vous pouvez démarrer sur la ligne pendant que la course affiche **Course armée**, ou dès que vous voyez **Course EN DIRECT**. Un enregistrement lancé en avance est rattaché à la course au GO, sur le téléphone comme sur une montre Wear OS, et votre temps puce compte alors à partir du GO plutôt qu'à partir du moment où vous avez appuyé sur Démarrer."
+            "text": "Votre téléphone ou votre montre ne démarre pas l'enregistrement tout seul : appuyez vous-même sur Démarrer, avant d'atteindre la ligne de départ. Vous pouvez démarrer pendant que la course affiche **Course armée**, ou dès que vous voyez **Course EN DIRECT**. Un enregistrement lancé en avance est rattaché à la course au GO, sur le téléphone comme sur une montre Wear OS."
           },
           {
             "type": "p",
@@ -2514,27 +2541,54 @@
         ]
       },
       {
-        "heading": "Arrivée automatique",
+        "heading": "Franchir la ligne de départ",
         "blocks": [
           {
             "type": "p",
-            "text": "Vous n'avez rien à appuyer à l'arrivée. Votre téléphone ou votre montre Wear OS enregistre votre arrivée quand ces deux conditions sont réunies :"
+            "text": "Quand votre parcours a une ligne de départ, l'écran Courir indique à quelle distance elle se trouve, par exemple « 120 m jusqu'à la ligne de départ ». Traversez-la dans le sens du parcours. Après le GO, votre téléphone ou votre montre Wear OS vibre alors, annonce « Ligne de départ franchie, chrono lancé » si les annonces vocales sont activées, et votre temps puce court à partir de cet instant."
           },
           {
             "type": "list",
             "items": [
-              "vous êtes à moins de 30 m de la ligne d'arrivée, et",
-              "vous avez couvert au moins 90 % de la distance de votre parcours."
+              "Vous avez déjà dépassé la ligne de départ quand le GO retentit ? Votre départ est le GO lui-même.",
+              "Franchir la ligne avant le GO, par exemple pendant l'échauffement, ne compte pas. Après le GO, votre départ compte une fois que vous êtes à environ 50 m sur le parcours sans être repassé par la ligne.",
+              "Si votre téléphone ou votre montre ne vous voit jamais franchir la ligne de départ, votre temps puce court plutôt à partir du moment où vous avez appuyé sur Démarrer."
             ]
+          }
+        ]
+      },
+      {
+        "heading": "Arrivée automatique",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Vous n'avez rien à appuyer à l'arrivée. Quand votre parcours a une ligne d'arrivée, votre téléphone ou votre montre Wear OS enregistre votre arrivée à l'instant où vous la traversez dans le sens du parcours, une fois que vous avez couvert une part suffisante du parcours : 60 % de sa distance depuis votre franchissement de la ligne de départ, ou 90 % si aucun franchissement de la ligne de départ n'a été détecté. Cela évite qu'un parcours en boucle, qui part de l'endroit où il arrive, enregistre votre arrivée dès le départ."
           },
           {
             "type": "p",
-            "text": "Votre temps est pris au moment où vous étiez le plus proche de l'arrivée, et non au premier moment où vous êtes passé à moins de 30 m. La règle des 90 % évite qu'un parcours en boucle, qui part de l'endroit où il arrive, enregistre votre arrivée dès la première seconde. Le téléphone affiche « Arrivée ! » avec votre temps officiel, et votre enregistrement s'arrête."
+            "text": "Passer à côté de la ligne d'arrivée sur un chemin qui la longe ne compte pas, car vous ne la traversez jamais. Votre temps est pris à l'instant où vous avez franchi la ligne. Le téléphone vibre et affiche « Arrivée ! » avec votre temps officiel."
+          },
+          {
+            "type": "p",
+            "text": "Un parcours avec un point d'arrivée mais sans ligne d'arrivée garde l'ancienne règle : votre arrivée est enregistrée une fois que vous êtes à moins de 30 m de l'arrivée et avez couvert 90 % du parcours, chronométrée au moment où vous en étiez le plus proche. Sur un parcours avec une ligne d'arrivée, ce cercle de 30 m ne compte que si vous appuyez sur Arrêter ou **Terminer la course** à l'intérieur."
           },
           {
             "type": "note",
             "tone": "tip",
-            "text": "Si votre parcours n'a pas d'itinéraire ou pas de distance, il n'y a pas d'arrivée automatique. Utilisez Arrêter, puis **Terminer la course** quand vous franchissez la ligne."
+            "text": "Il n'y a pas d'arrivée automatique si votre parcours n'a pas de distance, n'a ni ligne d'arrivée ni point d'arrivée, ou a un itinéraire qui franchit sa propre ligne d'arrivée avant la fin, comme un parcours en tours. Utilisez Arrêter, puis **Terminer la course** quand vous franchissez la ligne."
+          }
+        ]
+      },
+      {
+        "heading": "Pas terminé ? Reprendre",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Une arrivée par la ligne est envoyée immédiatement et votre enregistrement se met en pause. Pendant les 60 secondes qui suivent, l'écran Courir propose **Pas terminé ? Reprendre**, sur le téléphone comme sur une montre Wear OS. Si vous n'avez pas terminé, par exemple parce que vous avez franchi la ligne trop tôt pendant un tour, touchez-le : votre résultat est retiré et l'enregistrement continue. Si vous ne faites rien, l'enregistrement s'arrête et le résultat est maintenu."
+          },
+          {
+            "type": "p",
+            "text": "Après avoir annulé une arrivée, terminez le reste de la course à la main : touchez Arrêter, puis **Terminer la course**, quand vous terminez vraiment. Si l'app redémarre entre-temps, elle surveille de nouveau la ligne d'arrivée, mais ne compte jamais l'arrivée que vous avez annulée."
           }
         ]
       },
@@ -2580,7 +2634,7 @@
             "type": "list",
             "items": [
               "Le **Temps officiel** court du moment où l'organisateur a donné le GO jusqu'à votre arrivée. C'est sur ce temps que vous êtes classé.",
-              "Le **Temps puce** court du moment où vous avez appuyé sur Démarrer jusqu'à votre arrivée, pauses comprises. Si vous avez appuyé sur Démarrer avant le GO, il court à partir du GO : il n'est donc jamais plus long que votre temps officiel.",
+              "Le **Temps puce** court de votre franchissement de la ligne de départ jusqu'à votre arrivée. Si aucun franchissement de la ligne de départ n'a été détecté, il court à partir du moment où vous avez appuyé sur Démarrer, ou à partir du GO si vous avez appuyé sur Démarrer plus tôt. Il n'est jamais plus long que votre temps officiel.",
               "Si vous partez plus de 5 minutes après le GO, ou si votre première position est à plus de 200 m du départ du parcours, l'app mobile affiche un avis de départ tardif et une montre Wear OS garde **Départ tardif** sous le chrono de course. Votre temps officiel compte toujours à partir du GO : un départ tardif le rend donc plus long que votre temps puce."
             ]
           },
@@ -2693,6 +2747,27 @@
           {
             "type": "p",
             "text": "La signification des temps au classement est expliquée dans [[guide:race-results-explained|Comprendre les résultats de course]]."
+          }
+        ]
+      },
+      {
+        "heading": "Si votre téléphone a manqué une ligne",
+        "blocks": [
+          {
+            "type": "p",
+            "text": "Votre téléphone ou votre montre annonce « Ligne de départ franchie, chrono lancé » quand il vous voit franchir la ligne de départ, et enregistre votre arrivée à la ligne d'arrivée. S'il en manque une, par exemple sous les arbres ou quand vous partez un peu à côté de la ligne :"
+          },
+          {
+            "type": "list",
+            "items": [
+              "À l'arrivée, touchez Arrêter, puis **Terminer la course**. Une fois que vous avez couvert 90 % du parcours, cela envoie votre temps, et l'organisateur l'examine avant qu'il compte.",
+              "Ou rechronométrez ensuite votre tentative à partir de son tracé : ouvrez la sortie sur le web et choisissez **Rechronométrer depuis mon tracé**. Le tracé est chronométré par les lignes de la course, et le résultat remplace un résultat en attente d'examen, ou un résultat plus lent. Vous pouvez le faire jusqu'à 24 heures après la fermeture de la fenêtre.",
+              "Vous avez couru avec une Apple Watch ? Elle ne détecte pas les lignes : rechronométrer à partir de votre tracé est donc le moyen d'obtenir pour votre tentative un résultat chronométré par les lignes."
+            ]
+          },
+          {
+            "type": "p",
+            "text": "Pour en savoir plus sur le rechronométrage, voir [[guide:race-results-explained|Comprendre les résultats de course]]."
           }
         ]
       }

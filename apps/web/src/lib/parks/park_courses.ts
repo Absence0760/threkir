@@ -26,6 +26,19 @@ export type GeometrySource = (typeof GEOMETRY_SOURCES)[number];
 export const COURSE_DIFFICULTIES = ['easy', 'moderate', 'hard'] as const;
 export type CourseDifficulty = (typeof COURSE_DIFFICULTIES)[number];
 
+/**
+ * When an organised group regularly uses a course's paths
+ * (`park_courses.shared_use`, decisions § 2460). A key, never free text, so
+ * the give-way note rendered from it names no one.
+ */
+export const SHARED_USES = ['saturday_morning_group'] as const;
+export type SharedUse = (typeof SHARED_USES)[number];
+
+/** Reads `park_courses.shared_use`; null for no shared use or a value this client does not know. */
+export function parseSharedUse(raw: unknown): SharedUse | null {
+	return typeof raw === 'string' && (SHARED_USES as readonly string[]).includes(raw) ? (raw as SharedUse) : null;
+}
+
 export interface CourseCheckpoint {
 	lat: number;
 	lng: number;

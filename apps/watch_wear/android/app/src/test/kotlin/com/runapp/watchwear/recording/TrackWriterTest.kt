@@ -163,6 +163,35 @@ class TrackWriterTest {
     }
 
     @Test
+    fun `a segment's first fix is stored marked and every other omits the key`() {
+        // docs/features/gps_distance.md § Stored track (spec v1.8): the first
+        // fix after a pause or a source switch is `"segmentStart":true`, so
+        // the server replays each segment apart; never written `false`, so
+        // every older track reads as one segment.
+        val w = TrackWriter(trackFile)
+        w.open()
+        w.append(GpsPoint(lat = 51.5, lng = -0.1, ele = null, epochMs = 1_716_000_000_000), distM = 0.0)
+        w.append(
+            GpsPoint(lat = 51.5009, lng = -0.1, ele = null, epochMs = 1_716_000_120_000),
+            distM = 11.1,
+            segmentStart = true,
+        )
+        w.append(GpsPoint(lat = 51.501, lng = -0.1, ele = null, epochMs = 1_716_000_121_000), distM = 22.2)
+        val out = w.close().readText()
+        val arr = Json.parseToJsonElement(out).jsonArray
+        assertEquals(3, arr.size)
+        assertNull(arr[0].jsonObject["segmentStart"])
+        assertEquals("true", arr[1].jsonObject["segmentStart"]!!.jsonPrimitive.content)
+        assertNull(arr[1].jsonObject["offTrack"])
+        assertNull(arr[2].jsonObject["segmentStart"])
+        assertFalse(out.contains("\"segmentStart\":false"))
+        assertEquals(
+            listOf(RouteMath.LatLng(51.5, -0.1), RouteMath.LatLng(51.5009, -0.1), RouteMath.LatLng(51.501, -0.1)),
+            trackLineLatLngs(out),
+        )
+    }
+
+    @Test
     fun `the line skips off-track fixes and keeps the order of the rest`() {
         val raw = """[{"lat":1.0,"lng":2.0},{"lat":1.1,"lng":2.0,"offTrack":true},""" +
             """{"lat":1.2,"lng":2.0,"offTrack":false},{"lat":"x","lng":2.0}]"""

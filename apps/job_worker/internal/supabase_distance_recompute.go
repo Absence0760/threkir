@@ -56,6 +56,11 @@ type RecordedTrackPoint struct {
 	// reads it like any other fix, because the recorder's figure includes
 	// it; nothing that draws or matches the line does (onTrackRaw).
 	OffTrack bool `json:"offTrack,omitempty"`
+	// SegmentStart marks the first fix of a watch run's segment after its
+	// first (spec v1.8): the watch closed its estimator at a pause, a Wear OS
+	// source switch or a continued run and opened a fresh one here, so the
+	// replay starts a fresh one too (replayRecordedTrack).
+	SegmentStart bool `json:"segmentStart,omitempty"`
 }
 
 // ErrRunNotFound means the run named by a job payload no longer exists

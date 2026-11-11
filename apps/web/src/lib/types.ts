@@ -112,6 +112,12 @@ export type TrackPoint = {
 	/// other point. Line readers go through `trackLine`
 	/// (lib/runs/track_line.ts).
 	offTrack?: boolean;
+	/// The first fix of a watch run's segment after its first: the watch
+	/// restarted its distance estimator here after a pause, a Wear OS source
+	/// switch or a continued run, so the server's distance replay restarts
+	/// here too (docs/features/gps_distance.md § Stored track, spec v1.8).
+	/// Absent, never `false`, on every other point; on the line like any fix.
+	segmentStart?: boolean;
 };
 
 // `track` is populated on-demand by `data.ts#fetchRunById` from the gzipped
@@ -684,7 +690,8 @@ export type NotificationKind =
 	| 'organiser_dispute'
 	| 'park_course_report'
 	| 'race_starting_soon'
-	| 'race_start_moved';
+	| 'race_start_moved'
+	| 'group_invite';
 
 // `invite_token` is excluded from the base type because the column-
 // level grant lockdown (migrations 20260801_001 + 20260818_001 redo)

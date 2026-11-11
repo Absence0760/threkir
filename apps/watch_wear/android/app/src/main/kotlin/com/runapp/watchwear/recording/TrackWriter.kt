@@ -50,8 +50,16 @@ class TrackWriter(private val file: File) {
     /// fix the distance estimator took past the 30 m track gate: stored so the
     /// server's replay sees every estimator input, written as `"offTrack":true`
     /// and omitted otherwise, and skipped by every reader that draws the line
-    /// (`docs/features/gps_distance.md` § Stored track).
-    fun append(point: GpsPoint, distM: Double? = null, offTrack: Boolean = false) {
+    /// (`docs/features/gps_distance.md` § Stored track). [segmentStart] marks
+    /// the first fix after a pause or a source switch closed the estimator's
+    /// segment, written as `"segmentStart":true` and omitted otherwise, so the
+    /// server replays each segment apart (spec v1.8).
+    fun append(
+        point: GpsPoint,
+        distM: Double? = null,
+        offTrack: Boolean = false,
+        segmentStart: Boolean = false,
+    ) {
         val w = writer ?: return
         if (count > 0) w.print(",")
         val ts = Instant.ofEpochMilli(point.epochMs)
@@ -67,6 +75,7 @@ class TrackWriter(private val file: File) {
                 optionalField("bearingDeg", point.bearingDeg) +
                 optionalField("distM", distM?.takeIf { it.isFinite() && it >= 0 }?.let { Math.round(it * 100) / 100.0 }) +
                 (if (offTrack) ",\"offTrack\":true" else "") +
+                (if (segmentStart) ",\"segmentStart\":true" else "") +
                 "}"
         )
         count++

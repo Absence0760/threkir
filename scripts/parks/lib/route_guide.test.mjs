@@ -44,7 +44,7 @@ function guide(over = {}) {
 		ways: [alpha, beta],
 		allWays: [alpha, beta],
 		lengthM: 444.8,
-		checkpointCount: 1,
+		checkpointAtM: [222.4],
 		lang: 'en',
 		...over,
 	});
@@ -199,7 +199,7 @@ test('laps 2..N keep only the lap marker, the checkpoints and what differs from 
 	const g = guide({
 		sequence: twice,
 		lengthM: 889.6,
-		checkpointCount: 2,
+		checkpointAtM: [889.6 / 3, (889.6 * 2) / 3],
 		laps: { count: 2, firstStartM: 0, lapM: 444.8 },
 	});
 	const kinds = g.steps.map((s) => `${s.kind}@${s.at_m}`);
@@ -220,7 +220,7 @@ test('laps 2..N keep only the lap marker, the checkpoints and what differs from 
 });
 
 test('offsetM and lengthM cut the guide to the published course', () => {
-	const g = guide({ offsetM: 150, lengthM: 200, checkpointCount: 0 });
+	const g = guide({ offsetM: 150, lengthM: 200, checkpointAtM: [] });
 	assert.deepEqual(
 		g.steps.map((s) => `${s.kind}@${s.at_m}`),
 		['start@0', 'direction@0', 'junction@72', 'surface@72', 'finish@200'],
@@ -288,4 +288,15 @@ test('every committed guide passes routeGuideRefusal', () => {
 			}
 		}
 	}
+});
+
+test('a checkpoint step sits where the course names it, not at an even spacing', () => {
+	const g = guide({ checkpointAtM: [100.4, 300] });
+	assert.deepEqual(
+		g.steps.filter((s) => s.kind === 'checkpoint'),
+		[
+			{ kind: 'checkpoint', at_m: 100, order: 1, of: 2 },
+			{ kind: 'checkpoint', at_m: 300, order: 2, of: 2 },
+		],
+	);
 });

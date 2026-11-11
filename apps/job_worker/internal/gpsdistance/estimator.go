@@ -1,5 +1,5 @@
 // Package gpsdistance is the Go port of the GPS distance estimator,
-// spec v1.7 (docs/features/gps_distance.md). The reference implementation
+// spec v1.8 (docs/features/gps_distance.md). The reference implementation
 // is scripts/gps_distance/reference.py and this file follows it
 // operation for operation; every port replays
 // fixtures/gps_distance_vectors.json to 1e-3 m, so a change here without
@@ -15,7 +15,7 @@ package gpsdistance
 import "math"
 
 // SpecVersion is the spec this port implements.
-const SpecVersion = "1.7"
+const SpecVersion = "1.8"
 
 const (
 	EarthRadiusM              = 6371008.8

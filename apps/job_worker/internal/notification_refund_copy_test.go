@@ -11,6 +11,7 @@ import (
 // refunded, and must keep pointing at the same event the plain cancel does.
 
 func TestCopyKeyFor_RefundedEventCancel(t *testing.T) {
+	groupID := "g1"
 	cases := []struct {
 		name string
 		row  NotificationRow
@@ -21,6 +22,10 @@ func TestCopyKeyFor_RefundedEventCancel(t *testing.T) {
 		// The flag means nothing on another kind; it must not borrow the copy.
 		{"other kind ignores the flag", NotificationRow{Kind: "event_reminder", Refunded: true}, "event_reminder"},
 		{"comment_reply still folds", NotificationRow{Kind: "comment_reply"}, "comment"},
+		// A message naming a conversation is a group message (decisions § 2463).
+		{"group message", NotificationRow{Kind: "message", ConversationID: &groupID}, "group_message"},
+		{"direct message", NotificationRow{Kind: "message"}, "message"},
+		{"group invite", NotificationRow{Kind: "group_invite", ConversationID: &groupID}, "group_invite"},
 	}
 	for _, c := range cases {
 		if got := copyKeyFor(c.row); got != c.want {

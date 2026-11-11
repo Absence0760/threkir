@@ -833,6 +833,26 @@ class AppLocalizationsDe extends AppLocalizations {
       'Morgen früh wieder da, wie Thors Böcke.';
 
   @override
+  String get mascotMilestoneFirstRun =>
+      'Der erste Lauf ist drin. Das war der schwerste.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Dein erster 5K. Der zählt.';
+
+  @override
+  String get mascotMilestoneBadge =>
+      'Abzeichen erhalten. Das ist einen Sprung wert.';
+
+  @override
+  String get mascotMilestoneBest => 'Neue Bestzeit. Das ist einen Sprung wert.';
+
+  @override
+  String get mascotMilestoneLongest => 'Dein bisher längster Lauf.';
+
+  @override
+  String get mascotOnboardingLine => 'Grisnir wartet am Ausgangspunkt.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Bereitschaft $score';
   }
@@ -2075,7 +2095,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — warten auf START';
+    return '$label — warten auf GO';
   }
 
   @override
@@ -6301,7 +6321,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventRsvpDeclined => 'Kann nicht';
 
   @override
-  String get eventRaceArmed => 'Scharf – wartet auf GO';
+  String get eventRaceArmed => 'Bereit – wartet auf GO';
 
   @override
   String get eventRaceRunning => 'Läuft – live';
@@ -6313,7 +6333,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventRaceCancelled => 'Abgesagt';
 
   @override
-  String get eventRaceNotArmed => 'Nicht scharf';
+  String get eventRaceNotArmed => 'Nicht scharf geschaltet';
 
   @override
   String get eventRaceControlLabel => 'RENNSTEUERUNG';
@@ -6327,10 +6347,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'Tippe auf Los, wenn das Rennen beginnt. Die Uhren der Teilnehmer zeigen jetzt das Scharf-Banner.';
+      'Tippe auf GO, wenn das Rennen beginnt. Die Uhren der Teilnehmenden zeigen jetzt das Bereit-Banner.';
 
   @override
-  String get eventRaceFireGo => 'Los';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Abbrechen';
@@ -17472,7 +17492,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      'Später Start: Du bist mehr als 5 Minuten nach dem Startschuss oder abseits der Startlinie losgelaufen.';
+      'Später Start: Du bist mehr als 5 Minuten nach GO oder abseits der Startlinie losgelaufen.';
 
   @override
   String get eventCoursesTitle => 'Strecken';
@@ -21191,6 +21211,14 @@ class AppLocalizationsDe extends AppLocalizations {
       'Lange Strecke. Starte früh genug, um vor der Schließung des Parks fertig zu sein. Rechne mit Wegen, die du mit Radfahrern und Reitern teilst, und mit Bachquerungen, die nach Regen unpassierbar sein können.';
 
   @override
+  String get parksTimesNotEventResults =>
+      'Die Zeiten hier sind Threkir-Zeiten auf diesen Wegen. Sie sind keine Ergebnisse einer Veranstaltung, die auf ihnen stattfindet.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Organisierte Gruppen nutzen diese Wege samstagmorgens. Lass ihnen den Vortritt und vermeide es, mitten durch sie hindurch auf Zeit zu laufen.';
+
+  @override
   String get parksAttributionOsm =>
       'Streckenverlauf © OpenStreetMap-Mitwirkende';
 
@@ -21306,14 +21334,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventRacePreflightBlockedTitle =>
-      'Dieses Rennen kann noch nicht scharfgeschaltet werden';
+      'Dieses Rennen kann noch nicht scharf geschaltet werden';
 
   @override
   String get eventRacePreflightFixOnWeb =>
       'Streckenlinien werden im Event-Editor im Web bearbeitet.';
 
   @override
-  String get eventRaceArmAnyway => 'Trotzdem scharfschalten';
+  String get eventRaceArmAnyway => 'Trotzdem scharf schalten';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -21325,7 +21353,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String eventRacePreflightNoStart(String course) {
-    return '$course: keine Startlinie. Ein selbst gestopptes Rennen braucht eine.';
+    return '$course: keine Startlinie. Ein selbstgestopptes Rennen braucht eine.';
   }
 
   @override
@@ -21393,11 +21421,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get eventRaceScheduledNotYet =>
-      'Startet von selbst zur geplanten Zeit. Schalte früher scharf, um die Linien jetzt zu prüfen.';
+      'Startet von selbst zur geplanten Zeit. Schalte das Rennen früher scharf, um die Linien jetzt zu prüfen.';
 
   @override
   String get eventRaceSelfTimedNotYet =>
-      'Öffnet von selbst. Schalte früher scharf, um die Linien jetzt zu prüfen.';
+      'Öffnet von selbst. Schalte das Rennen früher scharf, um die Linien jetzt zu prüfen.';
 
   @override
   String eventRaceGoAt(String time) {
@@ -22023,6 +22051,16 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String rateLimitPhotoUpload(String wait) {
     return 'Du hast viele Fotos gesendet – bitte warte $wait und versuche es erneut.';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'Du erstellst zu schnell Gruppen – bitte warte $wait und versuche es erneut.';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return 'Du hast heute viele Gruppeneinladungen verschickt – bitte warte $wait und versuche es erneut.';
   }
 
   @override

@@ -401,6 +401,11 @@ struct TrackPointRecord: Codable {
     /// other reader of the line. Nil, and so omitted, on every other fix
     /// (docs/features/gps_distance.md § Stored track).
     var offTrack: Bool? = nil
+    /// `true` on the first fix after a pause or a continued run closed the
+    /// distance estimator's segment, so the server replays each segment apart
+    /// (spec v1.8, docs/features/gps_distance.md § Stored track). Nil, and so
+    /// omitted, on every other fix.
+    var segmentStart: Bool? = nil
 
     var isOffTrack: Bool { offTrack == true }
 }

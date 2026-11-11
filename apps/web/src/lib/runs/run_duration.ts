@@ -69,15 +69,18 @@ export function validateManualDuration(
 	if (s > 59) return { ok: false, error: 'secondsOutOfRange' };
 	const total = h * 3600 + m * 60 + s;
 	if (total <= 0) return { ok: false, error: 'zero' };
-	if (total > MAX_RUN_DURATION_S) return { ok: false, error: 'tooLong' };
+	if (total >= MAX_RUN_DURATION_S) return { ok: false, error: 'tooLong' };
 	return { ok: true, seconds: total };
 }
 
 /// The read-side bound: a stored duration a total may sum. A row outside it
 /// predates the CHECK (or reached the table before it was validated) and
-/// contributes nothing to a duration aggregate rather than swamping it.
+/// contributes nothing to a duration aggregate rather than swamping it. The
+/// bound itself is outside: exactly `MAX_RUN_DURATION_S` is the placeholder
+/// the 20271218000002 repair stored over such a row (decisions § 2464), so
+/// it is left out with them, and the form refuses it for the same reason.
 export function isPlausibleRunDuration(durationS: number): boolean {
-	return Number.isFinite(durationS) && durationS >= 0 && durationS <= MAX_RUN_DURATION_S;
+	return Number.isFinite(durationS) && durationS >= 0 && durationS < MAX_RUN_DURATION_S;
 }
 
 /// Whether a typed duration is slower than `SLOW_PACE_CONFIRM_S_PER_KM` over

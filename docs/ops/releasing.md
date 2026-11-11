@@ -436,6 +436,33 @@ and install from there.
   key credits the run's gaps by the run-total rule, stamps it, and the run is
   never queued again. Check the deployed worker carries `gapStepCreditM`
   before tagging the first such watch release; after that, nothing to do.
+- **The job_worker that replays a track's `segmentStart` marks ships before
+  the first watch build that writes them** (GPS distance spec v1.8, issue
+  #1361, decisions § 2465). That build banks each segment's
+  `distance_step_over_chord_m` whole, which is exact only when the replay
+  ends each segment at its own last fix; a worker that predates the marks
+  replays the track as one stream, credits the chord of a gap still open at a
+  pause or a Wear OS source switch on top of those steps (a handover in a
+  gap: 285.52 m against the wrist's 238.00 m), stamps the run, and it is
+  never queued again. Check the deployed worker's `replayRecordedTrack`
+  reads `SegmentStart` before tagging the first `watch_wear@*` release, or
+  the first `mobile_ios@*` release (it carries the Apple Watch app and the
+  phone ingest that keeps the marks, so the two arrive together), that
+  writes the mark; after that, nothing to do.
+- **The job_worker that handles `duration_repair` ships before the
+  `backend@*` release carrying `20271218000001`–`…03`** (issue #1300 § 5,
+  [decisions § 2464](../architecture/decisions.md)). `…02` caps every run
+  stored above ten days and enqueues one `duration_repair` job per capped run
+  that has a track; a worker without the handler fails each one as an unknown
+  kind, and nothing enqueues them again. Order: tag `job_worker@*`, confirm
+  the deployed worker's dispatch has `case "duration_repair"`, then tag
+  `backend@*`. `…03` validates `runs_duration_s_max_check` in the same
+  release; it does not wait for the jobs, because the cap alone satisfies
+  it. After the release, a capped run with no usable track keeps the cap and
+  `metadata.duration_repaired` until its owner edits the duration; to see
+  which remain:
+  `select id, user_id, metadata->>'duration_s_original' from runs where metadata ? 'duration_repaired';`
+  (read-only).
 - **Health Connect permission changes block the Android release.** If the
   diff since the last `mobile_android@*` tag adds or removes an
   `android.permission.health.*` entry in `AndroidManifest.xml` /

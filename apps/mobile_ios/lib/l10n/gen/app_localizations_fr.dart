@@ -830,6 +830,25 @@ class AppLocalizationsFr extends AppLocalizations {
       'De retour au matin, comme les boucs de Thor.';
 
   @override
+  String get mascotMilestoneFirstRun =>
+      'Première course enregistrée. C\'était la plus dure.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Votre premier 5 km. Ça compte.';
+
+  @override
+  String get mascotMilestoneBadge => 'Badge obtenu. Ça vaut un bond.';
+
+  @override
+  String get mascotMilestoneBest => 'Nouveau record. Ça vaut un bond.';
+
+  @override
+  String get mascotMilestoneLongest => 'Votre plus longue course à ce jour.';
+
+  @override
+  String get mascotOnboardingLine => 'Grisnir attend au départ du sentier.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Forme $score';
   }
@@ -2078,7 +2097,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — en attente du départ';
+    return '$label — en attente du GO';
   }
 
   @override
@@ -6299,7 +6318,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventRsvpDeclined => 'Pas dispo';
 
   @override
-  String get eventRaceArmed => 'Armé — en attente du GO';
+  String get eventRaceArmed => 'Armée — en attente du GO';
 
   @override
   String get eventRaceRunning => 'En cours — en direct';
@@ -6311,7 +6330,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventRaceCancelled => 'Annulé';
 
   @override
-  String get eventRaceNotArmed => 'Non armé';
+  String get eventRaceNotArmed => 'Non armée';
 
   @override
   String get eventRaceControlLabel => 'CONTRÔLE DE COURSE';
@@ -6325,10 +6344,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'Appuyez sur Lancer le Go quand la course commence. Les montres des participants affichent maintenant la bannière « armé ».';
+      'Appuyez sur GO quand la course commence. Les montres des participants affichent maintenant la bannière « COURSE ARMÉE ».';
 
   @override
-  String get eventRaceFireGo => 'Lancer le Go';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Annuler';
@@ -17489,7 +17508,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      'Départ tardif : vous êtes parti plus de 5 minutes après le départ ou loin de la ligne de départ.';
+      'Départ tardif : vous êtes parti plus de 5 minutes après le GO ou loin de la ligne de départ.';
 
   @override
   String get eventCoursesTitle => 'Parcours';
@@ -21208,6 +21227,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Parcours long. Partez assez tôt pour finir avant la fermeture du parc. Attendez-vous à partager le sentier avec des vélos et des chevaux, et à des passages à gué parfois infranchissables après la pluie.';
 
   @override
+  String get parksTimesNotEventResults =>
+      'Les temps affichés ici sont des temps Threkir sur ces chemins. Ce ne sont les résultats d\'aucun événement qui s\'y déroule.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Des groupes organisés empruntent ces chemins le samedi matin. Cédez-leur le passage et évitez de chronométrer un effort au milieu d\'eux.';
+
+  @override
   String get parksAttributionOsm =>
       'Tracé du parcours © contributeurs d\'OpenStreetMap';
 
@@ -21319,7 +21346,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Carte de la ligne d’arrivée du parcours';
 
   @override
-  String get eventRacePreflightTitle => 'Vérifiez les parcours avant d’armer';
+  String get eventRacePreflightTitle => 'Vérifiez les parcours avant d\'armer';
 
   @override
   String get eventRacePreflightBlockedTitle =>
@@ -21342,7 +21369,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String eventRacePreflightNoStart(String course) {
-    return '$course : pas de ligne de départ. Une course chronométrée par chacun en a besoin.';
+    return '$course : pas de ligne de départ. Une course en chrono libre en a besoin.';
   }
 
   @override
@@ -22041,6 +22068,16 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String rateLimitPhotoUpload(String wait) {
     return 'Vous avez envoyé beaucoup de photos — veuillez patienter $wait et réessayer.';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'Vous créez des groupes trop vite — veuillez patienter $wait et réessayer.';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return 'Vous avez envoyé beaucoup d\'invitations de groupe aujourd\'hui — veuillez patienter $wait et réessayer.';
   }
 
   @override

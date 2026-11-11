@@ -146,22 +146,49 @@ void main() {
     }
   });
 
+  for (final key in ['beaver_shortcut', 'beaver_cut']) {
+    test(
+        '$key is refused by the checkpoints alone: without them the same run '
+        'is timed', () {
+      final beaver = geometries[slugs.indexOf('beaver-lake-trail')];
+      final track = _decode(caseBy(key)['track'] as Map<String, dynamic>, base);
+      expect(computeGlobalSegmentEfforts(track, [beaver]).first, isNull);
+      final unguarded = computeGlobalSegmentEfforts(track, [
+        GlobalSegmentGeometry(
+          points: beaver.points,
+          distanceM: beaver.distanceM,
+          startGate: beaver.startGate,
+          endGate: beaver.endGate,
+        ),
+      ]).first;
+      expect(unguarded, isNotNull);
+      expect(unguarded!.matchedBy, GlobalSegmentMatchedBy.gate);
+    });
+  }
+
+  // decisions § 2463: the evenly spaced half-mark checkpoint (1797 m) sat
+  // 22 m from the straight cut from 1450 m to 2150 m, so the cut was timed.
   test(
-      'the shortcut is refused by checkpoint 2 alone: without the checkpoints '
-      'the same run is timed', () {
+      'the 1450 m to 2150 m cut was timed by the evenly spaced checkpoints, '
+      'and is refused by the placed ones', () {
     final beaver = geometries[slugs.indexOf('beaver-lake-trail')];
+    final cps = beaver.checkpoints;
     final track =
-        _decode(caseBy('beaver_shortcut')['track'] as Map<String, dynamic>, base);
-    expect(computeGlobalSegmentEfforts(track, [beaver]).first, isNull);
-    final unguarded = computeGlobalSegmentEfforts(track, [
+        _decode(caseBy('beaver_cut')['track'] as Map<String, dynamic>, base);
+    final old = computeGlobalSegmentEfforts(track, [
       GlobalSegmentGeometry(
         points: beaver.points,
         distanceM: beaver.distanceM,
+        checkpoints: [
+          cps.first,
+          const Waypoint(lat: 37.38116, lng: -77.591165),
+          cps.last,
+        ],
         startGate: beaver.startGate,
         endGate: beaver.endGate,
       ),
     ]).first;
-    expect(unguarded, isNotNull);
-    expect(unguarded!.matchedBy, GlobalSegmentMatchedBy.gate);
+    expect(old, isNotNull);
+    expect(computeGlobalSegmentEfforts(track, [beaver]).first, isNull);
   });
 }

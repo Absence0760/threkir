@@ -410,6 +410,9 @@ Not yet run. Needs a real park, a course whose start and finish lines are placed
 | Phone in a pocket | Run the whole race with the screen off and the phone in a pocket | Cues heard and felt; the finish files; the run saves after 60 s. |
 | Undo after a false finish | Trigger a finish (for example cross the finish line early on a lap course flagged differently), tap Not finished? Resume | The result disappears from the event's results; recording continues; Stop then Finish race files a manual finish. |
 | Offline | Open the race once with signal, then turn on airplane mode before the start | Distance to the start line shows, the start and finish are detected and cued, and the result is queued and lands when signal returns. |
+| Undo, then restart | After Not finished? Resume, kill the app (phone) or let the activity be recreated while the service records (Wear), reopen, run on and cross the finish line again after 90% of the course from the start | The undone crossing is not filed again; the later crossing finishes, timed from the original start-line crossing; the saved run carries `metadata.race_undone_finish_at`. |
+| Clock offset across a restart | Start a race recording with signal, kill the app, turn on airplane mode, reopen and finish | The gun time still matches the stopwatch within a second or two (the offset is remembered for 24 h). |
+| Web re-time | Within 24 h of the race finishing, open one of these runs on the web as its owner | **Re-time from my track** shows the track's result beside the current one; on a run whose finish was undone it refuses the undone finish; replacing a DNF or a hand finish files `gate` / `gate` and the board updates. Note how far the re-timed gun time sits from the live one (fix delivery latency, § 2462). |
 
 (Live race recording on the watch is roadmap-pending in some cells; see [parity.md "Live race mode"](../product/parity.md).)
 
@@ -417,7 +420,7 @@ Not yet run. Needs a real park, a course whose start and finish lines are placed
 
 Not yet run. Measures the error of the timing lines on the production fix feed, so the provisional constants (`halfWidthM`, `maxGapS`, `maxHopM`, `rejectGapS`, `startCommitM`, the with-start coverage threshold) can be replaced by measured ones ([decisions § 2453](../architecture/decisions.md)). Record the date, devices and OS versions, and the per-cell median and p95 |error|, missed and false counts, in a new decisions entry.
 
-**Kit.** A debug build of the phone app (`flutter run` or a debug APK; the screen does not exist in a release build), a Wear OS watch, a line marked on the ground with two cones, a camera filming the line with an NTP-synced clock in frame (a second phone showing time.is, say) and signal for the clock measurement.
+**Kit.** A debug build of the phone app (`flutter run` or a debug APK; the screen does not exist in a release build), a Wear OS watch with a debug build of the Wear app (`./gradlew installDebug` from `apps/watch_wear/android`; the entry does not exist in a release build) and `adb` connected to it, a line marked on the ground with two cones, a camera filming the line with an NTP-synced clock in frame (a second phone showing time.is, say) and signal for the clock measurement.
 
 **The matrix (about 120 crossings).** Ten crossings per cell:
 
@@ -426,7 +429,7 @@ Not yet run. Measures the error of the timing lines on the production fix feed, 
 | 90° to the line | walk, run | phone in hand, phone in pocket, Wear |
 | 30° to the line | walk, run | phone in hand, phone in pocket, Wear |
 
-Plus passes along parallel paths 20 m and 40 m beside the line (none should cross it), and standing still on the line for a few minutes (no crossing at all). The phone screen scores the phone cells only: there is no capture on the watch yet, so the Wear cells are filmed and timed the same way but scored by hand from the watch's results until one exists.
+Plus passes along parallel paths 20 m and 40 m beside the line (none should cross it), and standing still on the line for a few minutes (no crossing at all). The phone scores the phone cells and the watch scores the Wear cells, each on its own fix feed, into the same CSV format.
 
 **Per cell.**
 1. Phone: Settings > Line calibration. Stand at the centre of the line and tap Centre at my position (or type the centre), type the bearing of travel through it and the half-width (15 m today). Tap Measure server clock (10 round trips); the offset's uncertainty is half the round trip shown with each result.
@@ -434,6 +437,13 @@ Plus passes along parallel paths 20 m and 40 m beside the line (none should cros
 3. Run tab: Start a recording (no race needed) and make the cell's ten crossings, then Stop. Each recording is kept apart, so several in one capture are fine.
 4. Line calibration: Stop capture. From the video, write down each crossing's instant on the NTP clock (the frame where the runner's chest crosses the line) as `HH:MM:SS.fff` in the phone's zone, or as an ISO instant with its zone when the clock shows UTC or the session crosses midnight. Paste them one per line and tap Score this capture.
 5. Read the line it adds: matched of true, missed, false, near misses, median error and |error| p50 / p95. Nothing matched while detections sit about an hour away means a time-zone slip in the typed instants, not a detector failure.
+
+**Per Wear cell.** The same steps on the watch, wrist-worn:
+1. Pre-run screen, scrolled to the end: **Line calibration (debug)**. Type the line centre (or **Centre at my position**, the watch's last known fix), the bearing of travel and the half-width, and tap **Measure server clock** (10 round trips; it needs signal, or type the offset).
+2. Cycle **Approach** and **Pace** to the cell (carry is always `wear_wrist`) and tap **Start capture**, then **Close**.
+3. Pre-run Start, make the cell's crossings, Stop. Each recording is kept apart.
+4. Back in Line calibration: **Stop capture**, type the video-timed instants into **True crossing instants**, separated by commas (`HH:MM:SS.fff` in the watch's zone, or an ISO instant with its zone), and tap **Score this capture**. The line it adds reads as the phone's.
+5. **Save CSV** writes `files/line_calibration.csv` in the app's private storage (each save replaces it with every capture scored this session). Take it off the watch with `adb exec-out run-as com.threkir.watchwear cat files/line_calibration.csv > wear_calibration.csv`; it never leaves by sync or share.
 
 **Export.** Share CSV (or Copy CSV) sends one row per crossing (outcome, error in ms, lateral offset from the line's centre, gapped, why a miss was missed) and one summary row per capture. It holds no position and no instant: nothing in it says where the session was.
 

@@ -1,3 +1,4 @@
+import '../widgets/grisnir_moments.dart';
 import '../activity_type_labels.dart';
 import 'package:api_client/api_client.dart';
 import 'package:core_models/core_models.dart';
@@ -469,11 +470,12 @@ class _FeedScreenState extends State<FeedScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.groups_outlined,
-              size: 48,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
+            (!hasFollows ? grisnirWaitingOrNull() : null) ??
+                Icon(
+                  Icons.groups_outlined,
+                  size: 48,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
             const SizedBox(height: 16),
             Text(
               !hasFollows

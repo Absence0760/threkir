@@ -11,14 +11,14 @@ export const translation: GuideTranslation = {
 				{
 					type: 'list',
 					items: [
-						'**GO durch Veranstalter**: Du stellst das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.',
+						'**GO durch Veranstalter**: Du schaltest das Rennen scharf und drückst an der Linie auf GO. Nutze das, wenn du mit allen am Start bist, für einen Massenstart.',
 						'**Geplanter GO**: Das Rennen startet zur eingestellten Zeit von selbst. Nutze das, wenn die Startzeit feststeht, du aber vielleicht nicht an der Linie bist oder selbst mitlaufen möchtest. Bis dahin kannst du den Start verschieben oder das Rennen absagen.',
 						'**Selbstgestoppter Zeitraum**: Es gibt keinen gemeinsamen Start. Alle stoppen ihren eigenen Versuch zwischen Startlinie und Ziellinie, jederzeit, solange der Zeitraum offen ist. Nutze das für einen wöchentlichen Zeitlauf oder eine Strecke, die man läuft, wann man kann. Es gibt keine Bruttozeit.',
 					],
 				},
 				{
 					type: 'p',
-					text: 'Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Renntag leiten (früher scharfstellen, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt.',
+					text: 'Die Wahl triffst du unter **Wie das Rennen startet** im Event-Editor im Web, bei einem Gruppenlauf- oder Radfahr-Event. Die Handy-App kann das Rennen am Renntag leiten (früher scharf schalten, verschieben, verlängern oder beenden), aber die Startart wird im Web gewählt.',
 				},
 			],
 		},
@@ -48,7 +48,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Du stellst das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
+					text: 'Du schaltest das Rennen scharf, gibst GO und beendest es selbst. Siehe [[guide:race-day-for-hosts|Renntag für Veranstalter]].',
 				},
 			],
 		},
@@ -59,7 +59,7 @@ export const translation: GuideTranslation = {
 					type: 'list',
 					items: [
 						'Du musst nichts tun. Das Rennen wird etwa einen Tag vor dem Start angelegt und startet zur geplanten Zeit von selbst.',
-						'Um die Linien der Strecken früher zu prüfen, wähle **Früher scharfstellen**.',
+						'Um die Linien der Strecken früher zu prüfen, wähle **Früher scharf schalten**.',
 						'Vor dem Start zeigt der Rennbereich **Start um** mit der Uhrzeit und einem Countdown. Um den Start nach hinten zu verschieben, gib die Minuten ein und wähle **Start verschieben**; alle, die dabei sind, erfahren, dass der Start verschoben wurde. Wähle **Abbrechen**, um das Rennen abzusagen.',
 						'Sobald die Startzeit vorbei ist, kann das Rennen nicht mehr abgesagt werden. Es endet von selbst, wenn seine Zeit abgelaufen ist, oder du wählst **Rennen beenden**, um es früher zu beenden.',
 						'Die Handys der Teilnehmenden zählen nach der Serveruhr bis zum Start herunter und sagen die letzten Sekunden an, sodass alle gemeinsam starten.',

@@ -294,7 +294,7 @@ Until step 4 lands, treat the secret as compromised-if-logs-are: the channel is 
 Every deploy starts with a merge, so the merge gate is the first production
 control. Branch protection on `main` requires **exactly one status context**:
 `CI gate`, the aggregator job in `.github/workflows/ci.yml`. It waits on the
-other 40 jobs in that file and fails if any of them reports anything but
+other 41 jobs in that file and fails if any of them reports anything but
 success or skipped.
 
 `build-mobile-ios` joined the required set on 2026-09-20. It compiles
@@ -398,9 +398,11 @@ dropped, or an entry there this list never mentions, fails `workflow-lint`.
   advisory**: its SARIF results carry no line region, so GitHub files every one
   at line 1 of the lockfile, and merge protection counts only an alert whose
   lines are all in the PR diff. Required, it would almost never block on a real
-  finding but would block every PR whenever its upload went missing. A
-  diff-aware dependency gate is a separate follow-up
-  ([§ 2412](../architecture/decisions.md), [§ 2452](../architecture/decisions.md)).
+  finding but would block every PR whenever its upload went missing. The
+  dependency gate is instead `ci.yml`'s `dependency-advisories` job, which
+  diffs the PR against its base (section below,
+  [§ 2412](../architecture/decisions.md), [§ 2452](../architecture/decisions.md),
+  [§ 2457](../architecture/decisions.md)).
 
 The register carries each reason in full; the list above is the operator's
 index into it. Apart from the CodeQL and zizmor findings the ruleset blocks on,
@@ -421,6 +423,68 @@ one of them invisible to every guard in the tree. A bad PR title is caught by a
 red row and fixed with a retitle; that is the trade
 ([§ 1585](../architecture/decisions.md)).
 
+
+### `dependency-advisories`: a PR fails only on vulnerable packages it introduces
+
+The `dependency-advisories` job in `ci.yml` is in `CI gate`'s `needs:`, so it
+blocks a merge like any other job there
+([§ 2457](../architecture/decisions.md), issue #1366). It runs
+`scripts/check_dependency_advisories.mjs` with the same sha256-pinned
+osv-scanner as `supply-chain-scan.yml` and `--offline-vulnerabilities`.
+
+**What it blocks on.** On a pull request it scans the merge commit and its
+first parent (the base branch tip) against one OSV database download, and fails
+on an advisory present at the head and absent at the base, at **CVSS 7.0 or
+higher**. The match is on package, version and advisory id, so an advisory
+already on `main` never blocks an unrelated PR. The score is the highest CVSS
+base score available: v3 vectors are scored by the script, v4 is taken from
+osv-scanner's own computed score, and a GitHub `HIGH` or `CRITICAL` label is
+the fallback. An advisory with no score at all is listed in the job summary
+and does not fail. A PR that changes no lockfile, manifest, `osv-scanner.toml`
+or the gate's own files is not scanned, and passes.
+
+**Push to `main`.** Report only: the summary lists every advisory at HEAD and
+nothing fails on a finding. It does fail if osv-scanner read a file the
+script's `DEPENDENCY_INPUT` pattern does not cover, because a PR changing only
+that file would skip the scan; add the basename there. `ci.yml` has no
+schedule; the weekly scan is `supply-chain-scan.yml`, still advisory.
+
+**Outage: re-run, never wait.** An osv-scanner failure (exit outside 0, 1 or
+128, usually an OSV database download) is retried once, then the job goes red
+with an `::error::` saying the scan did not complete and to **re-run the job**.
+A failed binary download says the same. That red is not a finding, and a
+re-run is the fix. A sha256 mismatch on the binary says not to re-run past it.
+There is no merge-box bypass: `CI gate` is a required check under branch
+protection, enforced for admins, and the ruleset bypass in condition (c) of the
+next section covers only the Code scanning gate. For a hotfix during an outage:
+
+1. A PR that changes no lockfile or manifest is not scanned, so it merges
+   normally. Most hotfixes are this case.
+2. A PR with a dependency change: re-run the job. If the outage persists, split
+   the dependency change into its own PR so the code fix merges alone.
+3. Last resort: the owner removes `CI gate` from branch protection, merges,
+   restores it immediately, and records on the PR who did it, why, the failing
+   run, and the time protection was restored.
+
+**Ignoring an advisory.** When no fixed release exists, add an
+`[[IgnoredVulns]]` entry to the `osv-scanner.toml` beside the lockfile, with
+the advisory `id` (never a package), a `reason` that states the drop
+condition, and an `ignoreUntil` review date ([§ 2422](../architecture/decisions.md)).
+The entry is part of the PR's diff, and the job summary lists it as a waiver
+the PR adds. An entry missing any of the three fails the PR that edits the
+file. Once `ignoreUntil` passes, osv-scanner reports the advisory again. A PR
+that changes a lockfile the expired entry covers then fails until someone
+re-reads the advisory and either fixes the dependency or renews the date with a
+reason. Every other PR gets a warning. Entries within 30 days of expiry warn.
+A PR that adds an entry, or changes an entry's `ignoreUntil`, fails if that
+date is more than 180 days after the run date: renew the waiver closer to its
+expiry, with a reason, rather than dating it far out. Entries the PR leaves
+unchanged or removes are not held to the cap.
+
+**Pre-merge checklist (#1359).** Making this job required changes the merge
+gate (SOC 2 CC8.1). **#1359 does not merge until the owner's sign-off on this
+gate is recorded on #1097**, through its own agent memo. The job is built and
+wired now. The sign-off is the condition on merging it, not on writing it.
 
 ### CodeQL and zizmor are the exception, and it is a repo setting
 
@@ -456,7 +520,10 @@ alternative, flipping it to *evaluate*, keeps the record without the lock.
   records on the PRs. The owner is the only admin, so this review is the
   compensating control for the segregation-of-duties gap.
 - (e) A diff-aware dependency gate (new advisories in the head only, CVSS
-  >= 7.0) is a separate follow-up issue with its own sign-off. The required status-check set is still
+  >= 7.0) is a separate follow-up with its own sign-off. It is now the
+  `dependency-advisories` job (section above).
+
+The required status-check set is still
 exactly `CI gate`. Before that ruleset, a CodeQL alert did not block a merge,
 and the reason why is kept below because it is why the gate is a ruleset and
 not a status check. The
@@ -794,6 +861,10 @@ The server-side sweep of route-photo bytes no `route_photos` row references ([re
 ### Coach run map — after the CISO / Security Analyst review
 
 A linked coach's clipped view of the athlete's run map ([coach_roster.md § Coach run map](../features/coach_roster.md#coach-run-map-decisions--1968), decisions § 1968) ships closed: no migration writes the `coach_run_map` row of `private.feature_flags`, so a coach keeps run rows and stats only, as before. Open it only after the CISO / Security Analyst has reviewed the `coached_runs` view and the coach branch of `clip-public-track` — then add `"coach_run_map": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR; the next `backend@*` release (or a Release Backend dispatch from `main`) applies it and reports `created` / `updated` in its step summary. Closing it again is the same edit with `"enabled": false`; both clients stop drawing the map and the view empties at once.
+
+### Group conversations — after the DPIA, the privacy notice and the owner's sign-off
+
+Group conversations (issue #1365, migrations `20271216000001`–`…10`, [group_messages.md](../features/group_messages.md)) ship closed: no migration writes the `group_messages` row of `private.feature_flags` (`seed.sql` opens it for local and CI), so `create_group_conversation`, `invite_to_group`, `accept_group_invite`, the group roles, rename and remove answer 0A000, a group send is refused, and a group message is readable only by its sender. Open it only after security memo condition C12 is met (**docs done 2026-11-10, owner sign-off pending at flag-open**): a DPIA section for group messaging in [dpia.md](../compliance/dpia.md), a `/privacy` update (groups, and that an export carries only the subject's own group messages), the group rows in [retention.md](../compliance/retention.md) (done in slice 1), both audit command lists (done in slice 1), and the owner's sign-off recorded on #1097. Then add `"group_messages": { "enabled": true, "signoff": "<link to the sign-off>" }` to `feature_flags` in [`apps/backend/ops/prod_config.json`](../../apps/backend/ops/README.md) in a PR. Closing it again hides every group message from everyone but its sender; leaving and unsending keep working. **Also before opening (slice 2, [decisions § 2463](../architecture/decisions.md)):** the mobile group surfaces (slice 3) must be released, since the phone has no group thread and its notification switches draw a `group_invite` with the default arm; and the job worker running in prod must be the release that selects `notifications.conversation_id` (migration `20271217000001`), or a group message goes out with the 1:1 "direct message" copy and the inbox link. Web needs no extra step: with the flag closed `dm_threads()` and `group_invites()` list no group and `group_messages_enabled()` hides every surface.
 
 ### Photos in direct messages — after the CISO / Security Analyst reviews the image path
 

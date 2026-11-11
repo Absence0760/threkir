@@ -38,6 +38,7 @@ fun buildRunMetadata(
     gnssSignal: GnssSignalSummary? = null,
     trackComplete: Boolean = false,
     workout: WorkoutReview? = null,
+    raceUndoneFinishAt: String? = null,
 ): JsonObject = buildJsonObject {
     put("activity_type", activityType)
     if (avgBpm != null) put("avg_bpm", avgBpm)
@@ -75,6 +76,8 @@ fun buildRunMetadata(
     if (workout != null) {
         for ((key, value) in workout.metadataEntries()) put(key, value)
     }
+    // The finish the runner undid, so a later re-time does not find it again.
+    if (raceUndoneFinishAt != null) put("race_undone_finish_at", raceUndoneFinishAt)
     if (laps.isNotEmpty()) {
         put("laps", buildJsonArray {
             var prevMs = 0L

@@ -55,7 +55,7 @@ class DistanceEstimatorWiringTest {
         // `offTrack` rather than left out.
         val onGps = body(serviceSrc, ON_GPS)
         val fed = onGps.indexOf("distanceEstimator.addFix(")
-        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance, offTrack = !track)")
+        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance, offTrack = !track, segmentStart = segmentStart)")
         assertTrue("onGps must store every fed fix, flagged by the gate's verdict", stored >= 0)
         assertFalse("no fix is gated out of the stored track", onGps.contains("if (track) trackWriter?.append("))
         assertTrue("the fix is stored after the estimator has credited it", stored > fed)
@@ -85,7 +85,7 @@ class DistanceEstimatorWiringTest {
     @Test
     fun `a pause closes the segment so the paused span is never credited`() {
         assertTrue(body(serviceSrc, "private fun pauseRecording()").contains("closeDistanceSegment()"))
-        assertTrue(body(serviceSrc, "private fun stopRecording()").contains("closeDistanceSegment(endOfRun = true)"))
+        assertTrue(body(serviceSrc, "private fun stopRecording()").contains("closeDistanceSegment()"))
         val close = body(serviceSrc, CLOSE_SEGMENT)
         assertTrue("finish() commits steps buffered across a trailing gap", close.contains(".finish("))
         assertTrue(
@@ -119,7 +119,7 @@ class DistanceEstimatorWiringTest {
         assertTrue(onFix.contains("onGps(p, track = verdict.track)"))
         val onGps = body(serviceSrc, "private fun onGps(p: GpsPoint, track: Boolean)")
         val fed = onGps.indexOf("distanceEstimator.addFix(")
-        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance, offTrack = !track)")
+        val stored = onGps.indexOf("trackWriter?.append(p, distM = newDistance, offTrack = !track, segmentStart = segmentStart)")
         val offTrackReturn = onGps.indexOf("if (!track) {")
         val routeMatch = onGps.indexOf("RouteMath.routeProgress(")
         val overlay = onGps.indexOf("trackOverlay.add(posLL)")
@@ -150,27 +150,39 @@ class DistanceEstimatorWiringTest {
     }
 
     /// A pause or source switch banks each segment's step-over-chord metres
-    /// beside its step metres, so the run total covers every segment (v1.7).
+    /// beside its step metres, so the run total covers every segment (v1.7),
+    /// whole: the steps finish() commits past a segment's last fix are all
+    /// over-chord, because the stored track marks the next segment's first
+    /// fix and the server's replay ends this one where the watch did (v1.8).
     @Test
     fun `every segment's step-over-chord metres are banked`() {
         val close = body(serviceSrc, CLOSE_SEGMENT)
-        assertTrue(close.contains("bankedStepOverChordM += segment.stepOverChordM + heldBoundaryStepM"))
+        assertTrue(close.contains("bankedStepOverChordM += segment.stepOverChordM"))
+        assertTrue(
+            "finish() runs before the segment's over-chord metres are banked",
+            close.indexOf("segment.finish(") in 0 until close.indexOf("bankedStepOverChordM += segment.stepOverChordM"),
+        )
+        assertFalse("nothing is held back from the bank any more", serviceSrc.contains("heldBoundaryStepM"))
         assertTrue(serviceSrc.contains("bankedStepOverChordM + distanceEstimator.stepOverChordM"))
     }
 
-    /// The steps a pause or source switch commits across an open gap stay out
-    /// of the bank until the run ends with no fix after them: the stored track
-    /// has no segment marks, so the replay credits that gap's chord (v1.7).
+    /// The first fix stored after a segment closes mid-run is marked
+    /// `segmentStart`, once, so the server replays the segments apart (v1.8).
     @Test
-    fun `a mid-run segment close holds its trailing gap's steps out of the bank`() {
+    fun `the first stored fix after a segment close marks the segment's start`() {
         val close = body(serviceSrc, CLOSE_SEGMENT)
-        val reset = close.indexOf("if (segment.lastFixT != null) heldBoundaryStepM = 0.0")
-        val before = close.indexOf("val overBeforeFinish = segment.stepOverChordM")
-        val finish = close.indexOf("segment.finish(")
-        assertTrue("held steps are dropped once a segment takes a fix", reset >= 0)
-        assertTrue("the over-chord metres are read before finish commits the trailing gap", before in 0 until finish)
-        assertTrue(close.contains("bankedStepOverChordM += overBeforeFinish"))
-        assertTrue(close.contains("heldBoundaryStepM += segment.stepOverChordM - overBeforeFinish"))
+        assertTrue(close.contains("markSegmentStart = true"))
+        val onGps = body(serviceSrc, ON_GPS)
+        val read = onGps.indexOf("val opensSegment = markSegmentStart")
+        val clear = onGps.indexOf("markSegmentStart = false")
+        val stored = onGps.indexOf("segmentStart = segmentStart)")
+        assertTrue("onGps reads the mark under the distance lock and clears it", read in 0 until clear)
+        assertTrue("the stored fix carries it", clear < stored)
+        val start = serviceSrc.indexOf("private fun startRecording(")
+        assertTrue(
+            "a new run starts unmarked",
+            serviceSrc.indexOf("markSegmentStart = false", start) in start until serviceSrc.indexOf("livePace.seal()", start),
+        )
     }
 
     private companion object {

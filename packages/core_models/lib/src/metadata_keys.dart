@@ -64,6 +64,7 @@ class MetadataKeys {
   static const String planWorkoutId = 'plan_workout_id';
   static const String position = 'position';
   static const String raceName = 'race_name';
+  static const String raceUndoneFinishAt = 'race_undone_finish_at';
   static const String recoveredFromCrash = 'recovered_from_crash';
   static const String recoveredUnfinished = 'recovered_unfinished';
   static const String routineId = 'routine_id';

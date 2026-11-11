@@ -10,7 +10,7 @@ export const translation: GuideTranslation = {
 			blocks: [
 				{
 					type: 'p',
-					text: 'Una carrera con cronometraje propio no tiene salida en grupo. El organizador abre una ventana, que puede durar hasta una semana, y corres el recorrido cuando quieras mientras esté abierta. Tu tiempo cuenta desde que cruzas la línea de salida hasta que cruzas la línea de meta, así que no hay tiempo de pistola.',
+					text: 'Una carrera con cronometraje propio no tiene salida en grupo. El organizador abre una ventana, que puede durar hasta una semana, y corres el recorrido cuando quieras mientras esté abierta. Tu tiempo cuenta desde que cruzas la línea de salida hasta que cruzas la línea de meta, así que no hay tiempo bruto.',
 				},
 				{
 					type: 'p',
@@ -72,6 +72,27 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Si tu móvil no detectó una línea',
+			blocks: [
+				{
+					type: 'p',
+					text: 'Tu móvil o tu reloj dice «Línea de salida cruzada, cronometrando» cuando detecta que cruzas la línea de salida, y registra tu llegada en la línea de meta. Si no detecta alguna, por ejemplo bajo los árboles o cuando sales un poco al lado de la línea:',
+				},
+				{
+					type: 'list',
+					items: [
+						'En la meta, toca Detener y luego **Terminar carrera**. Si has cubierto el 90 % del recorrido, eso envía tu tiempo, y el organizador lo revisa antes de que cuente.',
+						'O vuelve a cronometrar tu intento con su traza después: abre la carrera en la web y elige **Recalcular el tiempo con mi traza**. Cronometra la traza por las líneas de la carrera y sustituye un resultado pendiente de revisión, o uno más lento. Puedes hacerlo hasta 24 horas después de que se cierre la ventana.',
+						'¿Competiste con un Apple Watch? No detecta las líneas, así que volver a cronometrar con tu traza es la forma de que tu intento obtenga un resultado cronometrado por las líneas.',
+					],
+				},
+				{
+					type: 'p',
+					text: 'Más sobre recalcular el tiempo en [[guide:race-results-explained|Los resultados de carrera, explicados]].',
+				},
+			],
+		},
 	],
 	sources: {
 		title: '980e3fe539fa87ed',
@@ -96,5 +117,11 @@ export const translation: GuideTranslation = {
 		's3.b0.i2': 'a6113125dae261a1',
 		's3.b0.i3': '8e98409f10047bd7',
 		's3.b1': '71fadd9d562da318',
+		's4.heading': '9f401b8bc89ad9f0',
+		's4.b0': 'c83ffd00a5d79eaf',
+		's4.b1.i0': '371c0ea180b0a2cc',
+		's4.b1.i1': 'd4b32e20b9afba25',
+		's4.b1.i2': '30e86640bcd591b4',
+		's4.b2': '172cd34b60d4d532',
 	},
 };

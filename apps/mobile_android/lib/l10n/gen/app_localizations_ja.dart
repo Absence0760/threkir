@@ -794,6 +794,24 @@ class AppLocalizationsJa extends AppLocalizations {
   String get dashboardHeroRestDayGrisnir => 'トールのヤギのように、朝には元どおり。';
 
   @override
+  String get mascotMilestoneFirstRun => '初めてのランを記録。いちばん大変な一歩です。';
+
+  @override
+  String get mascotMilestoneFirst5k => '初めての5K。ちゃんと数に入ります。';
+
+  @override
+  String get mascotMilestoneBadge => 'バッジ獲得。跳ねたくなりますね。';
+
+  @override
+  String get mascotMilestoneBest => '自己ベスト更新。跳ねたくなりますね。';
+
+  @override
+  String get mascotMilestoneLongest => 'これまでで最長のラン。';
+
+  @override
+  String get mascotOnboardingLine => 'グリスニルは登山口で待っています。';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return '準備度 $score';
   }
@@ -1980,7 +1998,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String runRaceWaitingForGo(String label) {
-    return '$label — スタート待ち';
+    return '$label — GO待ち';
   }
 
   @override
@@ -5940,7 +5958,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'レース開始時に「GO」をタップしてください。参加者のウォッチに準備バナーが表示されます。';
+      'レース開始時に「GO」をタップしてください。参加者のウォッチに準備完了バナーが表示されます。';
 
   @override
   String get eventRaceFireGo => 'GO';
@@ -16625,7 +16643,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get runRaceLateStart =>
-      '遅れスタート：スタートから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
+      '遅れスタート：GOから5分以上経ってから、またはスタートラインから離れた場所で開始しました。';
 
   @override
   String get eventCoursesTitle => 'コース';
@@ -20134,6 +20152,14 @@ class AppLocalizationsJa extends AppLocalizations {
       '長いコースです。閉園時間までに走り終えられるよう、早めにスタートしてください。自転車や馬と共用のトレイルや、雨の後は渡れなくなることがある渡渉箇所があります。';
 
   @override
+  String get parksTimesNotEventResults =>
+      'ここに表示されるタイムは、この道をThrekirで記録したタイムです。この道で開催されるいかなるイベントの結果でもありません。';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      '土曜日の朝は、団体がこの道を利用します。道を譲り、その中を走り抜けてタイムを計測するのは避けてください。';
+
+  @override
   String get parksAttributionOsm => 'コースライン © OpenStreetMap contributors';
 
   @override
@@ -20227,16 +20253,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get eventCourseLinesMapFinish => 'コースのフィニッシュラインの地図';
 
   @override
-  String get eventRacePreflightTitle => '準備完了にする前にコースを確認';
+  String get eventRacePreflightTitle => 'レースを準備する前にコースを確認';
 
   @override
-  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備完了にできません';
+  String get eventRacePreflightBlockedTitle => 'このレースはまだ準備できません';
 
   @override
   String get eventRacePreflightFixOnWeb => 'コースのラインはウェブのイベントエディターで編集します。';
 
   @override
-  String get eventRaceArmAnyway => 'このまま準備完了にする';
+  String get eventRaceArmAnyway => 'このまま準備する';
 
   @override
   String get eventRacePreflightOk => 'OK';
@@ -20365,7 +20391,7 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String eventRaceSelfTimedParticipant(String time) {
-    return 'セルフタイムのレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
+    return 'セルフタイム方式のレースは$timeまで受付中。参加してから、ラン画面で挑戦を計測してください。';
   }
 
   @override
@@ -20911,6 +20937,16 @@ class AppLocalizationsJa extends AppLocalizations {
   @override
   String rateLimitPhotoUpload(String wait) {
     return '写真を多く送信しています。$wait待ってから、もう一度お試しください。';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'グループの作成が速すぎます。$wait待ってからもう一度お試しください。';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return '今日はグループへの招待を多く送っています。$wait待ってからもう一度お試しください。';
   }
 
   @override

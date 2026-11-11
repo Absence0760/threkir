@@ -127,9 +127,19 @@ export const PAIRS = [
 		note: 'message requests (migration 20271115002384): written only by the direct_messages_request_state trigger and the accept/decline RPCs; clients read the derived dm_threads().request boolean and never name a state.',
 	},
 	{
+		tableColumn: 'conversation_participants.membership_state',
+		clients: [],
+		note: 'group lifecycle (migration 20271216000002, decisions § 2461): written only by the group RPCs and the purge; clients read dm_threads().membership_state and group_members(), and no client enumerates the set until the slice 2 surfaces do.',
+	},
+	{
+		tableColumn: 'conversation_participants.role',
+		clients: [],
+		note: 'group roles (migration 20271216000002, decisions § 2461): written only by create_group_conversation, accept_group_invite, set_group_member_role and transfer_group_ownership; no client enumerates the set until the slice 2 member sheet does.',
+	},
+	{
 		tableColumn: 'conversations.kind',
 		clients: [],
-		note: 'only direct exists (migration 20271105000010); written by the direct_messages_set_conversation trigger and never named by a client.',
+		note: 'direct (migration 20271105000010) and group (20271216000001, decisions § 2461); written by the direct_messages_set_conversation trigger and create_group_conversation, never by a client. Clients read the dm_threads().kind text and no client enumerates the set until slice 2.',
 	},
 	{
 		tableColumn: 'challenges.activity_type',
@@ -710,12 +720,18 @@ export const PAIRS = [
 				file: 'apps/mobile_android/lib/notification_groups.dart',
 				decl: '_targetKeyFor',
 				shape: 'switch',
-				allowMissing: ['content_hidden', 'data_export_ready', 'refund_failed'],
+				// group_invite: the mobile group surfaces are #1365 slice 3, and
+				// the default-off group_messages flag holds every invite back
+				// until they ship; the default arm keeps one solo meanwhile.
+				allowMissing: ['content_hidden', 'data_export_ready', 'refund_failed', 'group_invite'],
 			},
 			{
 				file: 'apps/mobile_android/lib/screens/profile_screen.dart',
 				decl: '_verbFor',
 				shape: 'switch',
+				// #1365 slice 3 adds the verb with the mobile group surfaces; the
+				// default-off group_messages flag raises no invite before then.
+				allowMissing: ['group_invite'],
 			},
 		],
 	},
@@ -783,6 +799,15 @@ export const PAIRS = [
 				// The `_` branch is the traced-against-the-park-map credit.
 				allowMissing: ['traced'],
 			},
+		],
+	},
+	{
+		tableColumn: 'park_courses.shared_use',
+		clients: [
+			{ file: 'apps/web/src/lib/parks/park_courses.ts', decl: 'SHARED_USES', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/park_courses.dart', decl: 'kSharedUses', shape: 'strings' },
+			{ file: 'apps/mobile_android/lib/screens/park_courses_screen.dart', decl: 'sharedUseNotice', shape: 'switch' },
+			{ file: 'scripts/parks/lib/catalogue_payload.mjs', decl: 'SHARED_USES', shape: 'strings' },
 		],
 	},
 	{

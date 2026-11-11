@@ -81,7 +81,7 @@ export const translation: GuideTranslation = {
 					items: [
 						'**Admin**: ändert die Einstellungen des Clubs, verwaltet Mitglieder und ihre Rollen, leitet Events und Rennen und genehmigt Ergebnisse.',
 						'**Eventorganisator**: erstellt, bearbeitet und löscht Events und fügt Teilnehmende hinzu, ohne Zugriff auf Club-Einstellungen oder Mitglieder.',
-						'**Renndirektor**: stellt Rennen scharf, startet und beendet sie und genehmigt oder lehnt Ergebnisse ab.',
+						'**Renndirektor**: schaltet Rennen scharf, startet und beendet sie und genehmigt oder lehnt Ergebnisse ab.',
 						'**Mitglied**: schreibt Antworten, gibt bei Events Rückmeldung zur Teilnahme und reicht eigene Rennergebnisse ein.',
 					],
 				},

@@ -13,6 +13,8 @@
 		resolveOrganiserDispute,
 		fetchOrganiserDisputeHistory,
 		fetchAdminParkCourse,
+		fetchAdminReportConversation,
+		type ReportConversation,
 		adminSetParkCourseStatus,
 		fetchParkCourseStatusHistory,
 		fetchParkNpsAlerts,
@@ -90,6 +92,10 @@
 	// Park course reports (decisions § 2449): a report never closes a course;
 	// the admin does, here, with the note the course page shows.
 	let course = $state<AdminParkCourse | null>(null);
+	// The audience a reported message went to: a 1:1 thread or a group, with
+	// the group's name and size (group_messages.md § 6). Null when unknown.
+	let conversation = $state<ReportConversation | null>(null);
+	let conversationFailed = $state(false);
 	let courseHistory = $state<ParkCourseStatusHistoryEntry[]>([]);
 	let courseNote = $state('');
 	let courseBusy = $state(false);
@@ -212,11 +218,23 @@
 		course = null;
 		courseHistory = [];
 		courseNote = '';
+		conversation = null;
+		conversationFailed = false;
 		detail = [];
 		detailLoading = true;
 		try {
 			detail = await fetchReportsForTarget(target.target_kind, target.target_id);
 			if (target.target_kind === 'park_course') await loadCourse(target.target_id);
+			if (target.target_kind === 'direct_message') {
+				// Auxiliary: a failed lookup says so and leaves the reports and
+				// the actions on them standing (conventions.md § Layered resilience).
+				try {
+					conversation = await fetchAdminReportConversation(target.target_id);
+				} catch (e) {
+					console.warn('admin report conversation lookup failed', e);
+					conversationFailed = true;
+				}
+			}
 			if (detail.some((r) => r.reason === 'organiser_dispute') && DISPUTE_KINDS.includes(target.target_kind)) {
 				history = await fetchOrganiserDisputeHistory(
 					target.target_kind as OrganiserDisputeTargetKind,
@@ -232,6 +250,7 @@
 
 	function closeDetail() {
 		selected = null;
+		conversation = null;
 		detail = [];
 		course = null;
 		courseHistory = [];
@@ -586,6 +605,20 @@
 					<span class="hidden-badge" data-testid="admin-detail-hidden-badge">{t('admin.reports.hiddenBadge')}</span>
 				{/if}
 			</div>
+			{#if selected.target_kind === 'direct_message' && !detailLoading}
+				<p class="muted" data-testid="admin-report-conversation">
+					{conversationFailed
+						? t('admin.reports.conversationFailed')
+						: conversation === null
+						? t('admin.reports.conversationGone')
+						: conversation.kind === 'group'
+							? t('admin.reports.conversationGroup', {
+									title: conversation.title ?? '',
+									count: conversation.memberCount,
+								})
+							: t('admin.reports.conversationDirect')}
+				</p>
+			{/if}
 
 			{#if selected.shadow_hidden}
 				<div class="hidden-notice" data-testid="admin-hidden-notice">

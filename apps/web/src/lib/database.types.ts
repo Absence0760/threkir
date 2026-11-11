@@ -880,33 +880,54 @@ export type Database = {
           archived_at: string | null
           conversation_id: string
           hidden_before: string | null
+          invited_at: string | null
+          invited_by: string | null
           joined_at: string
+          last_read_at: string | null
+          left_at: string | null
           marked_unread_at: string | null
+          membership_state: string
           muted_at: string | null
+          removed_by: string | null
           request_state: string | null
           requested_at: string | null
+          role: string | null
           user_id: string
         }
         Insert: {
           archived_at?: string | null
           conversation_id: string
           hidden_before?: string | null
+          invited_at?: string | null
+          invited_by?: string | null
           joined_at?: string
+          last_read_at?: string | null
+          left_at?: string | null
           marked_unread_at?: string | null
+          membership_state?: string
           muted_at?: string | null
+          removed_by?: string | null
           request_state?: string | null
           requested_at?: string | null
+          role?: string | null
           user_id: string
         }
         Update: {
           archived_at?: string | null
           conversation_id?: string
           hidden_before?: string | null
+          invited_at?: string | null
+          invited_by?: string | null
           joined_at?: string
+          last_read_at?: string | null
+          left_at?: string | null
           marked_unread_at?: string | null
+          membership_state?: string
           muted_at?: string | null
+          removed_by?: string | null
           request_state?: string | null
           requested_at?: string | null
+          role?: string | null
           user_id?: string
         }
         Relationships: [
@@ -922,18 +943,24 @@ export type Database = {
       conversations: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           kind: string
+          title: string | null
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           kind?: string
+          title?: string | null
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           kind?: string
+          title?: string | null
         }
         Relationships: []
       }
@@ -1230,6 +1257,7 @@ export type Database = {
           edited_at: string | null
           id: string
           image_id: string | null
+          is_group: boolean
           kind: string
           original_body: string | null
           read_at: string | null
@@ -1248,6 +1276,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           image_id?: string | null
+          is_group?: boolean
           kind?: string
           original_body?: string | null
           read_at?: string | null
@@ -1266,6 +1295,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           image_id?: string | null
+          is_group?: boolean
           kind?: string
           original_body?: string | null
           read_at?: string | null
@@ -3313,6 +3343,7 @@ export type Database = {
           challenge_id: string | null
           club_id: string | null
           comment_id: string | null
+          conversation_id: string | null
           course_alert_id: string | null
           created_at: string
           email_sent_at: string | null
@@ -3337,6 +3368,7 @@ export type Database = {
           challenge_id?: string | null
           club_id?: string | null
           comment_id?: string | null
+          conversation_id?: string | null
           course_alert_id?: string | null
           created_at?: string
           email_sent_at?: string | null
@@ -3361,6 +3393,7 @@ export type Database = {
           challenge_id?: string | null
           club_id?: string | null
           comment_id?: string | null
+          conversation_id?: string | null
           course_alert_id?: string | null
           created_at?: string
           email_sent_at?: string | null
@@ -3411,6 +3444,13 @@ export type Database = {
             columns: ["comment_id"]
             isOneToOne: false
             referencedRelation: "run_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
           {
@@ -3743,6 +3783,7 @@ export type Database = {
           route_guide: Json | null
           route_guide_checked_at: string | null
           route_id: string | null
+          shared_use: string | null
           slug: string
           source_checked_at: string | null
           source_ref: string | null
@@ -3764,6 +3805,7 @@ export type Database = {
           route_guide?: Json | null
           route_guide_checked_at?: string | null
           route_id?: string | null
+          shared_use?: string | null
           slug: string
           source_checked_at?: string | null
           source_ref?: string | null
@@ -3785,6 +3827,7 @@ export type Database = {
           route_guide?: Json | null
           route_guide_checked_at?: string | null
           route_id?: string | null
+          shared_use?: string | null
           slug?: string
           source_checked_at?: string | null
           source_ref?: string | null
@@ -7497,6 +7540,10 @@ export type Database = {
         Args: { parent_id: string }
         Returns: boolean
       }
+      accept_group_invite: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
       accept_message_request: {
         Args: { p_conversation_id: string }
         Returns: undefined
@@ -7586,6 +7633,14 @@ export type Database = {
           host_user_id: string
           net_fee_cents: number
           reversed_fee_cents: number
+        }[]
+      }
+      admin_report_conversation: {
+        Args: { p_message_id: string }
+        Returns: {
+          kind: string
+          member_count: number
+          title: string
         }[]
       }
       admin_review_park_nps_alert: {
@@ -8001,6 +8056,10 @@ export type Database = {
           upload_path: string
         }[]
       }
+      create_group_conversation: {
+        Args: { p_invitees: string[]; p_title: string }
+        Returns: string
+      }
       create_live_overlay_token: { Args: never; Returns: string }
       create_training_plan: {
         Args: { p_overlap?: string; p_plan: Json; p_weeks: Json }
@@ -8034,6 +8093,10 @@ export type Database = {
           p_week_ids?: string[]
           p_workout_ids?: string[]
         }
+        Returns: undefined
+      }
+      decline_group_invite: {
+        Args: { p_conversation_id: string }
         Returns: undefined
       }
       decline_message_request: {
@@ -8108,6 +8171,7 @@ export type Database = {
           archived: boolean
           conversation_id: string
           deleted_partner_key: string
+          kind: string
           last_at: string
           last_body: string
           last_from_me: boolean
@@ -8115,9 +8179,12 @@ export type Database = {
           last_kind: string
           last_unsent: boolean
           marked_unread: boolean
+          member_count: number
+          membership_state: string
           muted: boolean
           partner_id: string
           request: boolean
+          title: string
           unread: number
         }[]
       }
@@ -8136,6 +8203,7 @@ export type Database = {
           edited_at: string | null
           id: string
           image_id: string | null
+          is_group: boolean
           kind: string
           original_body: string | null
           read_at: string | null
@@ -8521,6 +8589,34 @@ export type Database = {
         }
       }
       grant_health_data_consent: { Args: never; Returns: string }
+      group_blocked_placeholders: {
+        Args: { p_conversation_id: string; p_since: string }
+        Returns: {
+          created_at: string
+          id: string
+        }[]
+      }
+      group_invites: {
+        Args: never
+        Returns: {
+          conversation_id: string
+          invited_at: string
+          invited_by: string
+          member_count: number
+          title: string
+        }[]
+      }
+      group_members: {
+        Args: { p_conversation_id: string }
+        Returns: {
+          invited_at: string
+          joined_at: string
+          membership_state: string
+          role: string
+          user_id: string
+        }[]
+      }
+      group_messages_enabled: { Args: never; Returns: boolean }
       gym_exercise_names: {
         Args: never
         Returns: {
@@ -8649,6 +8745,10 @@ export type Database = {
       }
       hr_prescription_enabled: { Args: never; Returns: boolean }
       increment_coach_usage: { Args: { p_user_id: string }; Returns: number }
+      invite_to_group: {
+        Args: { p_conversation_id: string; p_invitees: string[] }
+        Returns: number
+      }
       invoke_club_verification_recheck: { Args: never; Returns: number }
       invoke_event_refund_sweep: { Args: never; Returns: number }
       invoke_park_closures_sweep: { Args: never; Returns: number }
@@ -8746,6 +8846,10 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      leave_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
+      }
       link_race_course: {
         Args: { p_listing_id: string; p_route_id: string; p_source?: string }
         Returns: undefined
@@ -8777,6 +8881,10 @@ export type Database = {
           p_instance_start: string
           p_user_id: string
         }
+        Returns: undefined
+      }
+      mark_conversation_read: {
+        Args: { p_conversation_id: string; p_through_message_id: string }
         Returns: undefined
       }
       mark_direct_messages_read: {
@@ -9219,6 +9327,14 @@ export type Database = {
       }
       reject_club_verification: {
         Args: { p_reason: string; p_request_id: string }
+        Returns: undefined
+      }
+      remove_group_member: {
+        Args: { p_conversation_id: string; p_user_id: string }
+        Returns: undefined
+      }
+      rename_group: {
+        Args: { p_conversation_id: string; p_title: string }
         Returns: undefined
       }
       repeat_plan_week: {
@@ -9733,6 +9849,10 @@ export type Database = {
         Args: { p_hidden: boolean; p_photo_id: string }
         Returns: undefined
       }
+      set_group_member_role: {
+        Args: { p_conversation_id: string; p_role: string; p_user_id: string }
+        Returns: undefined
+      }
       set_gym_routine_public: {
         Args: { p_public: boolean; p_routine_id: string }
         Returns: undefined
@@ -9809,6 +9929,7 @@ export type Database = {
           edited_at: string | null
           id: string
           image_id: string | null
+          is_group: boolean
           kind: string
           original_body: string | null
           read_at: string | null
@@ -9889,6 +10010,10 @@ export type Database = {
         Returns: string
       }
       sweep_challenge_completions: { Args: never; Returns: undefined }
+      transfer_group_ownership: {
+        Args: { p_conversation_id: string; p_user_id: string }
+        Returns: undefined
+      }
       trim_training_plan: {
         Args: { p_new_end_date: string; p_plan_id: string }
         Returns: undefined
@@ -9910,6 +10035,7 @@ export type Database = {
           edited_at: string | null
           id: string
           image_id: string | null
+          is_group: boolean
           kind: string
           original_body: string | null
           read_at: string | null

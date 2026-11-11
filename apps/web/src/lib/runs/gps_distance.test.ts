@@ -84,9 +84,9 @@ function replay(s: Scenario): { est: GpsDistanceEstimator; after: number[] } {
 	return { est, after };
 }
 
-test('fixture is spec v1.7 with a non-trivial scenario set', () => {
-	assert.equal(fixture.spec, 'gps-distance-estimator v1.7');
-	assert.equal(SPEC_VERSION, '1.7');
+test('fixture is spec v1.8 with a non-trivial scenario set', () => {
+	assert.equal(fixture.spec, 'gps-distance-estimator v1.8');
+	assert.equal(SPEC_VERSION, '1.8');
 	assert.ok(fixture.scenarios.length >= 53, `only ${fixture.scenarios.length} scenarios`);
 	assert.ok(TOL > 0 && TOL <= 0.001);
 	assert.ok(POS_TOL > 0 && POS_TOL <= 1e-8);

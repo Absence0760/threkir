@@ -822,6 +822,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Back by morning, like Thor\'s goats.';
 
   @override
+  String get mascotMilestoneFirstRun => 'First run in. That\'s the hard one.';
+
+  @override
+  String get mascotMilestoneFirst5k => 'Your first 5K. That counts.';
+
+  @override
+  String get mascotMilestoneBadge => 'Badge earned. Worth a hop.';
+
+  @override
+  String get mascotMilestoneBest => 'A new best. Worth a hop.';
+
+  @override
+  String get mascotMilestoneLongest => 'Your longest run yet.';
+
+  @override
+  String get mascotOnboardingLine => 'Grisnir waits at the trailhead.';
+
+  @override
   String dashboardHeroReadiness(int score) {
     return 'Readiness $score';
   }
@@ -6248,10 +6266,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get eventRaceArmedHint =>
-      'Tap Fire Go when the race begins. Participants\' watches show the armed banner now.';
+      'Tap GO when the race begins. Participants\' watches show the armed banner now.';
 
   @override
-  String get eventRaceFireGo => 'Fire Go';
+  String get eventRaceFireGo => 'GO';
 
   @override
   String get eventRaceCancel => 'Cancel';
@@ -20939,6 +20957,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Long course. Start early enough to finish before the park closes. Expect shared trail with bikes and horses, and water crossings that can be impassable after rain.';
 
   @override
+  String get parksTimesNotEventResults =>
+      'Times here are Threkir times on these paths. They are not results of any event held on them.';
+
+  @override
+  String get parksSharedUseSaturdayMorningGroup =>
+      'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.';
+
+  @override
   String get parksAttributionOsm => 'Course line © OpenStreetMap contributors';
 
   @override
@@ -21755,6 +21781,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String rateLimitPhotoUpload(String wait) {
     return 'You\'ve sent a lot of photos — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitCreateGroup(String wait) {
+    return 'You\'re creating groups too quickly — please wait $wait and try again.';
+  }
+
+  @override
+  String rateLimitInviteToGroup(String wait) {
+    return 'You\'ve sent a lot of group invitations today — please wait $wait and try again.';
   }
 
   @override

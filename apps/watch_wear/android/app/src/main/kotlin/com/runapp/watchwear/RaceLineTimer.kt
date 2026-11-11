@@ -1,5 +1,7 @@
 package com.runapp.watchwear
 
+import kotlin.math.abs
+
 /// The race a recording is being timed for right now: the race it is bound
 /// to, else the runner's armed or live race while a recording runs (a
 /// self-timed one only once "This run is my attempt" is on). [goServerMs] is
@@ -67,6 +69,42 @@ internal fun raceDetectorFor(
     )
 }
 
+/// The finish line armed again after a restart (#1307 m11): the first forward
+/// crossing [x] strictly after the finish the runner took back at
+/// [undoneFinishMs], covering [RaceFinish.MIN_DISTANCE_FRACTION] of the course
+/// from the kept [start] (from the Start press without one). The share a
+/// finish with no start line needs, not the 60 % a committed start earns, so
+/// the early crossing that was taken back cannot finish again; the phone's
+/// re-armed detector counts the same way. Null otherwise, and for a course
+/// with no usable distance.
+internal fun rearmedLineFinish(
+    x: GateCrossing,
+    start: RaceFinish.Start?,
+    undoneFinishMs: Long,
+    courseDistanceM: Double?,
+): RaceFinish.Finish? {
+    if (x.direction != GateDirection.FORWARD || x.tMs <= undoneFinishMs.toDouble()) return null
+    val d = courseDistanceM ?: return null
+    if (!d.isFinite() || d <= 0.0) return null
+    if (x.coveredM - (start?.coveredM ?: 0.0) < d * RaceFinish.MIN_DISTANCE_FRACTION) return null
+    return RaceFinish.Finish(
+        epochMs = Math.round(x.tMs),
+        distanceToFinishM = abs(x.offsetM),
+        coveredM = x.coveredM,
+        detection = RaceFinish.FinishDetection.GATE,
+        start = start,
+        gapped = x.gapped,
+    )
+}
+
+/// The finish line a restarted recording is armed with, or null when the
+/// course finishes by hand only.
+internal fun rearmedFinishLine(course: RaceSessionClient.RaceCourse): GateCrossingDetector? {
+    if (course.finishLineSelfCross) return null
+    val gate = course.finishGate?.takeIf { RaceFinish.lineUsable(it) } ?: return null
+    return GateCrossingDetector(gate)
+}
+
 /// Timing by the lines from the recording's Start (#1307 M1), the Kotlin half
 /// of the phone's `RaceController` detection (decisions § 2450). Pure: no
 /// Android, no I/O, no clock — `RunViewModel` hands it every fresh fix, the
@@ -118,6 +156,14 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
         private set
     private var keptStart: RaceFinish.Start? = null
 
+    /// A finish taken back before the app restarted, for the race [Rearm.key]:
+    /// its start stands, and only a later finish-line crossing finishes.
+    private class Rearm(val key: String, val start: RaceFinish.Start?, val undoneFinishMs: Long)
+
+    private var rearm: Rearm? = null
+    private var rearmLine: GateCrossingDetector? = null
+    private var rearmTried = false
+
     /// The runner chose Finish race: the stream is closed.
     private var settled = false
     private var startCued = false
@@ -128,15 +174,18 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
         private set
 
     /// Whether a detector is timing this recording right now.
-    val detecting: Boolean get() = detector != null
+    val detecting: Boolean get() = detector != null || rearmLine != null
 
     /// The start a finish is measured from: the automatic finish's, the
-    /// detector's, or the one kept through an undo. Null for the Start press.
-    val start: RaceFinish.Start? get() = finish?.start ?: detector?.start ?: keptStart
+    /// detector's, the one kept through an undo, or the one an undo kept
+    /// before a restart. Null for the Start press.
+    val start: RaceFinish.Start?
+        get() = finish?.start ?: detector?.start ?: keptStart ?: rearm?.takeIf { it.key == key }?.start
 
     /// A recording started: everything before it is forgotten.
     fun beginRecording() {
         reset()
+        rearm = null
         log.clear()
         bindIndex = 0
         bound = false
@@ -147,6 +196,18 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
     fun endRecording() {
         beginRecording()
         recording = false
+    }
+
+    /// After a restart mid-recording, the finish the runner took back on this
+    /// recording at [undoneFinishMs] (device clock), in the race [key], and the
+    /// [start] it was measured from. That start is kept, and the finish line is
+    /// armed again for a forward crossing after [undoneFinishMs] only, so the
+    /// finish taken back is never found again. Call after [beginRecording].
+    fun restoreUndone(key: String, start: RaceFinish.Start?, undoneFinishMs: Long) {
+        rearm = Rearm(key, start, undoneFinishMs)
+        rearmLine = null
+        rearmTried = false
+        if (finish == null) detector = null
     }
 
     /// The recording joined [race]. Idempotent.
@@ -193,6 +254,8 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
             bindIndex = if (bindIndex > 1000) bindIndex - 1000 else 0
         }
         updateDistanceToStart(fix)
+        val line = rearmLine
+        if (line != null) return if (voided) null else offerRearmed(line, fix)
         val d = detector ?: return null
         if (isV1(d) && !v1Sees(fix, log.size - 1, goDeviceMs())) return null
         val f = d.offer(fix)
@@ -222,6 +285,7 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
         finish = null
         pendingFinish = null
         detector = null
+        rearmLine = null
         voided = true
         return true
     }
@@ -235,6 +299,8 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
         pendingFinish = null
         voided = false
         keptStart = null
+        rearmLine = null
+        rearmTried = false
         settled = false
         startCued = false
         distanceToStartM = null
@@ -246,6 +312,7 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
         val t = target ?: return null
         val c = course ?: return null
         if (voided || finish != null || settled) return null
+        rearm?.takeIf { it.key == t.key }?.let { return armAgain(c) }
         val goDevice = goDeviceMs()
         val d = detector
         if (d == null) {
@@ -259,6 +326,26 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
         val f = d.setGo(goDevice)?.let { onFinish(it) }
         checkStartCue()
         return f
+    }
+
+    /// The finish line, once per race, with the log replayed through it.
+    private fun armAgain(c: RaceSessionClient.RaceCourse): RaceFinish.Finish? {
+        if (rearmTried) return null
+        rearmTried = true
+        val line = rearmedFinishLine(c) ?: return null
+        rearmLine = line
+        for (fix in log) {
+            val f = offerRearmed(line, fix)
+            if (f != null) return f
+        }
+        return null
+    }
+
+    private fun offerRearmed(line: GateCrossingDetector, fix: RaceFinish.Fix): RaceFinish.Finish? {
+        val r = rearm ?: return null
+        val x = line.offer(GateFix(fix.lat, fix.lng, fix.epochMs.toDouble(), fix.coveredM)) ?: return null
+        val f = rearmedLineFinish(x, r.start, r.undoneFinishMs, course?.distanceM) ?: return null
+        return onFinish(f)
     }
 
     private fun replay(goDevice: Long?): RaceFinish.Finish? {
@@ -304,7 +391,7 @@ internal class RaceLineTimer(private val logMax: Int = RACE_FIX_LOG_MAX) {
 
     private fun updateDistanceToStart(fix: RaceFinish.Fix) {
         val gate = course?.startGate
-        if (gate == null || target == null || detector?.start != null || finish != null || voided) {
+        if (gate == null || target == null || start != null || rearm != null || finish != null || voided) {
             distanceToStartM = null
             return
         }

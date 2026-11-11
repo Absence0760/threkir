@@ -47,7 +47,7 @@ export function orderForTable(table: string): string {
 
 /** Every direct_messages column but read_at (see the sent spec below). */
 export const DIRECT_MESSAGES_SENT_SELECT =
-	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id';
+	'id,sender_id,recipient_id,body,created_at,seen_at,route_id,unsent_at,deleted_partner_key,conversation_id,edited_at,original_body,kind,coach_message_id,image_id,is_group';
 
 /// Build the full table-spec list. Pure — only takes the caller's
 /// user id. Mirrors the Go worker's `FetchExportPersonalDataTables`
@@ -250,6 +250,10 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		// seen_at is what the recipient chose to share. edited_at and
 		// original_body (the text before an edit, 20271114000210) are the
 		// subject's own words, so they ship on both sides.
+		// Group messages (20271216000003, decisions § 2461) ship on the sent
+		// side only: a group message has no recipient, so the received filter
+		// never matches one, and other members' group messages are their data,
+		// not the subject's (Art 20(1)/(4), owner decision D5).
 		{
 			entry: 'direct_messages_sent.json',
 			table: 'direct_messages',
@@ -285,13 +289,15 @@ export function buildBackupSpecs(userId: string): BackupTableSpec[] {
 		// conversation: when they joined, and whether they deleted it for
 		// themselves, muted it, archived it, marked it unread, and where a
 		// message request to or from them stands (migrations 20271105000010,
-		// 20271109000020, 20271115002384). Only their own row: the other
-		// participant's state is theirs.
+		// 20271109000020, 20271115002384), and their group memberships: state,
+		// role, who invited and who removed them, when they were invited and
+		// left, and their read position (20271216000002). Only their own row:
+		// the other participants' state is theirs.
 		{
 			entry: 'conversation_settings.json',
 			table: 'conversation_participants',
 			filter: uidEq,
-			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at',
+			select: 'conversation_id,joined_at,hidden_before,muted_at,archived_at,marked_unread_at,request_state,requested_at,membership_state,role,invited_by,invited_at,left_at,removed_by,last_read_at',
 		},
 		// coach_athletes — coaching relationships as coach + as athlete.
 		// `invite_token` is a redeemable credential; the narrow select

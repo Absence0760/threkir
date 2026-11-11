@@ -1499,6 +1499,7 @@ class DirectMessageRow {
   static const String colKind = 'kind';
   static const String colCoachMessageId = 'coach_message_id';
   static const String colImageId = 'image_id';
+  static const String colIsGroup = 'is_group';
 
   final String id;
   final String senderId;
@@ -1516,6 +1517,7 @@ class DirectMessageRow {
   final String kind;
   final String? coachMessageId;
   final String? imageId;
+  final bool isGroup;
 
   const DirectMessageRow({
     required this.id,
@@ -1534,6 +1536,7 @@ class DirectMessageRow {
     required this.kind,
     this.coachMessageId,
     this.imageId,
+    required this.isGroup,
   });
 
   factory DirectMessageRow.fromJson(Map<String, dynamic> json) => DirectMessageRow(
@@ -1553,6 +1556,7 @@ class DirectMessageRow {
     kind: json['kind'] as String,
     coachMessageId: json['coach_message_id'] as String?,
     imageId: json['image_id'] as String?,
+    isGroup: (json['is_group'] as bool?) ?? false,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -1572,6 +1576,7 @@ class DirectMessageRow {
     colKind: kind,
     colCoachMessageId: coachMessageId,
     colImageId: imageId,
+    colIsGroup: isGroup,
   };
 
   DirectMessageRow copyWith({
@@ -1591,6 +1596,7 @@ class DirectMessageRow {
     String? kind,
     String? coachMessageId,
     String? imageId,
+    bool? isGroup,
   }) => DirectMessageRow(
     id: id ?? this.id,
     senderId: senderId ?? this.senderId,
@@ -1608,6 +1614,7 @@ class DirectMessageRow {
     kind: kind ?? this.kind,
     coachMessageId: coachMessageId ?? this.coachMessageId,
     imageId: imageId ?? this.imageId,
+    isGroup: isGroup ?? this.isGroup,
   );
 }
 
@@ -4800,6 +4807,7 @@ class NotificationRow {
   static const String colRefunded = 'refunded';
   static const String colEventTitle = 'event_title';
   static const String colCourseAlertId = 'course_alert_id';
+  static const String colConversationId = 'conversation_id';
 
   final String id;
   final String userId;
@@ -4823,6 +4831,7 @@ class NotificationRow {
   final bool refunded;
   final String? eventTitle;
   final String? courseAlertId;
+  final String? conversationId;
 
   const NotificationRow({
     required this.id,
@@ -4847,6 +4856,7 @@ class NotificationRow {
     required this.refunded,
     this.eventTitle,
     this.courseAlertId,
+    this.conversationId,
   });
 
   factory NotificationRow.fromJson(Map<String, dynamic> json) => NotificationRow(
@@ -4872,6 +4882,7 @@ class NotificationRow {
     refunded: (json['refunded'] as bool?) ?? false,
     eventTitle: json['event_title'] as String?,
     courseAlertId: json['course_alert_id'] as String?,
+    conversationId: json['conversation_id'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -4897,6 +4908,7 @@ class NotificationRow {
     colRefunded: refunded,
     colEventTitle: eventTitle,
     colCourseAlertId: courseAlertId,
+    colConversationId: conversationId,
   };
 
   NotificationRow copyWith({
@@ -4922,6 +4934,7 @@ class NotificationRow {
     bool? refunded,
     String? eventTitle,
     String? courseAlertId,
+    String? conversationId,
   }) => NotificationRow(
     id: id ?? this.id,
     userId: userId ?? this.userId,
@@ -4945,6 +4958,7 @@ class NotificationRow {
     refunded: refunded ?? this.refunded,
     eventTitle: eventTitle ?? this.eventTitle,
     courseAlertId: courseAlertId ?? this.courseAlertId,
+    conversationId: conversationId ?? this.conversationId,
   );
 }
 
@@ -5186,6 +5200,7 @@ class ParkCourseRow {
   static const String colAttribution = 'attribution';
   static const String colRouteGuide = 'route_guide';
   static const String colRouteGuideCheckedAt = 'route_guide_checked_at';
+  static const String colSharedUse = 'shared_use';
 
   final String id;
   final String parkId;
@@ -5206,6 +5221,7 @@ class ParkCourseRow {
   final String? attribution;
   final dynamic routeGuide;
   final DateTime? routeGuideCheckedAt;
+  final String? sharedUse;
 
   const ParkCourseRow({
     required this.id,
@@ -5227,6 +5243,7 @@ class ParkCourseRow {
     this.attribution,
     this.routeGuide,
     this.routeGuideCheckedAt,
+    this.sharedUse,
   });
 
   factory ParkCourseRow.fromJson(Map<String, dynamic> json) => ParkCourseRow(
@@ -5249,6 +5266,7 @@ class ParkCourseRow {
     attribution: json['attribution'] as String?,
     routeGuide: json['route_guide'],
     routeGuideCheckedAt: parseIsoStrictValue(json['route_guide_checked_at']),
+    sharedUse: json['shared_use'] as String?,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -5271,6 +5289,7 @@ class ParkCourseRow {
     colAttribution: attribution,
     colRouteGuide: routeGuide,
     colRouteGuideCheckedAt: routeGuideCheckedAt?.toIso8601String(),
+    colSharedUse: sharedUse,
   };
 
   ParkCourseRow copyWith({
@@ -5293,6 +5312,7 @@ class ParkCourseRow {
     String? attribution,
     dynamic routeGuide,
     DateTime? routeGuideCheckedAt,
+    String? sharedUse,
   }) => ParkCourseRow(
     id: id ?? this.id,
     parkId: parkId ?? this.parkId,
@@ -5313,6 +5333,7 @@ class ParkCourseRow {
     attribution: attribution ?? this.attribution,
     routeGuide: routeGuide ?? this.routeGuide,
     routeGuideCheckedAt: routeGuideCheckedAt ?? this.routeGuideCheckedAt,
+    sharedUse: sharedUse ?? this.sharedUse,
   );
 }
 

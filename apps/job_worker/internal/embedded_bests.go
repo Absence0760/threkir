@@ -78,10 +78,9 @@ func medianFixIntervalS(pts []RecordedTrackPoint) float64 {
 	return (intervals[mid-1] + intervals[mid]) / 2
 }
 
-// trackReplay is one replay of a stored track through the spec-v1.2
-// smoother: both of its passes and the smoothed position, per point of the
-// replayed slice. An untimestamped point carries the previous cumulative and
-// has no position.
+// trackReplay is one replay of a stored track through the smoother: both of
+// its passes and the smoothed position, per point of the replayed slice. An
+// untimestamped point carries the previous cumulative and has no position.
 type trackReplay struct {
 	Fixes int
 	// PositionOnly: no accepted fix carries a finite speedMps (recorded
@@ -93,27 +92,81 @@ type trackReplay struct {
 	ForwardCumM  []float64
 	Positions    []*gpsdistance.LatLng
 	// GapM is the chord lower bound both passes credit across GPS gaps
-	// (gpsdistance.SmoothResult.GapM).
+	// (gpsdistance.SmoothResult.GapM), summed over the segments.
 	GapM float64
+	// Segments is how many segments the track was replayed as: one for a
+	// track that marks none (every phone save, every import, every watch
+	// run before spec v1.8).
+	Segments int
 }
 
 // replayRecordedTrack replays every timestamped point of pts (all
-// coordinate-bearing) through the spec-v1.2 smoother. t is seconds since the
-// first timestamped point; the expected interval is the median one, so a
+// coordinate-bearing) through the smoother. t is seconds since the first
+// timestamped point; the expected interval is the track's median one, so a
 // sparse watch track is not re-anchored on every fix.
+//
+// A watch closes its estimator at a pause, a Wear OS source switch or a
+// continued run and starts the next segment on a fresh one, so it credits
+// nothing across the close; since spec v1.8 it marks the next segment's first
+// stored fix segmentStart. Each segment is replayed apart, ending at its own
+// last fix, and the passes add up across them: a replay of the track as one
+// stream would credit the chord across every pause the runner moved during,
+// and read a gap still open at a close as running on into the next segment.
+// A mark on a point without a timestamp starts the segment at the next point
+// that has one. The Dart and web `estimatorCumulativeMetres` replay only phone
+// tracks and imports, which carry no marks.
 func replayRecordedTrack(pts []RecordedTrackPoint, maxSpeedMps float64) trackReplay {
-	events := make([]gpsdistance.Event, 0, len(pts)+1)
-	eventOf := make([]int, len(pts))
+	opts := gpsdistance.Options{
+		MaxSpeedMps:       maxSpeedMps,
+		ExpectedIntervalS: medianFixIntervalS(pts),
+	}
+	out := trackReplay{
+		PositionOnly: true,
+		SmoothedCumM: make([]float64, len(pts)),
+		ForwardCumM:  make([]float64, len(pts)),
+		Positions:    make([]*gpsdistance.LatLng, len(pts)),
+	}
 	var t0 int64
 	var lastT float64
-	fixes := 0
+	var events []gpsdistance.Event
+	// eventOf[i] is point i's event in the current segment, or -1.
+	eventOf := make([]int, len(pts))
+	segStart := 0
+	flush := func(segEnd int) {
+		if len(events) == 0 {
+			return
+		}
+		events = append(events, gpsdistance.Event{Kind: gpsdistance.EventFinish, T: lastT})
+		res := gpsdistance.SmoothDistance(events, opts)
+		sm, fw := out.SmoothedM, out.ForwardM
+		for i := segStart; i < segEnd; i++ {
+			if ev := eventOf[i]; ev >= 0 {
+				sm, fw = out.SmoothedM+res.CumulativeM[ev], out.ForwardM+res.ForwardCumulativeM[ev]
+				out.Positions[i] = res.Positions[ev]
+			}
+			out.SmoothedCumM[i], out.ForwardCumM[i] = sm, fw
+		}
+		out.SmoothedM += res.DistanceM
+		out.ForwardM += res.ForwardDistanceM
+		out.GapM += res.GapM
+		out.PositionOnly = out.PositionOnly && res.PositionOnly
+		out.Segments++
+		events = nil
+		segStart = segEnd
+	}
+	breakPending := false
 	for i, p := range pts {
 		eventOf[i] = -1
+		breakPending = breakPending || p.SegmentStart
 		ms, ok := pointMs(p)
 		if !ok {
 			continue
 		}
-		if fixes == 0 {
+		if breakPending && len(events) > 0 {
+			flush(i)
+		}
+		breakPending = false
+		if out.Fixes == 0 {
 			t0 = ms
 		}
 		lastT = float64(ms-t0) / 1000
@@ -127,33 +180,9 @@ func replayRecordedTrack(pts []RecordedTrackPoint, maxSpeedMps float64) trackRep
 			SpeedAccuracyMps: p.SpeedAccuracyMps,
 			BearingDeg:       p.BearingDeg,
 		}})
-		fixes++
+		out.Fixes++
 	}
-	if fixes > 0 {
-		events = append(events, gpsdistance.Event{Kind: gpsdistance.EventFinish, T: lastT})
-	}
-	res := gpsdistance.SmoothDistance(events, gpsdistance.Options{
-		MaxSpeedMps:       maxSpeedMps,
-		ExpectedIntervalS: medianFixIntervalS(pts),
-	})
-	out := trackReplay{
-		Fixes:        fixes,
-		PositionOnly: res.PositionOnly,
-		SmoothedM:    res.DistanceM,
-		ForwardM:     res.ForwardDistanceM,
-		SmoothedCumM: make([]float64, len(pts)),
-		ForwardCumM:  make([]float64, len(pts)),
-		Positions:    make([]*gpsdistance.LatLng, len(pts)),
-		GapM:         res.GapM,
-	}
-	var sm, fw float64
-	for i, ev := range eventOf {
-		if ev >= 0 {
-			sm, fw = res.CumulativeM[ev], res.ForwardCumulativeM[ev]
-			out.Positions[i] = res.Positions[ev]
-		}
-		out.SmoothedCumM[i], out.ForwardCumM[i] = sm, fw
-	}
+	flush(len(pts))
 	return out
 }
 

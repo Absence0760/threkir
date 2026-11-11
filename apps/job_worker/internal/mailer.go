@@ -633,7 +633,16 @@ func pathForKind(kind, base string, n NotificationRow) string {
 		// recipient owns the plan.
 		return planPath(base, n)
 	case "message":
+		// A group message opens its group; a 1:1 one the inbox, as the row
+		// names no partner route of its own.
+		if n.ConversationID != nil {
+			return base + "/messages/group/" + *n.ConversationID
+		}
 		return base + "/messages"
+	case "group_invite":
+		// Accept and decline sit in the inbox's Requests list; the invitee
+		// cannot open the group itself until they accept (decisions § 2463).
+		return base + "/messages?view=requests"
 	case "club_post":
 		return clubPath(base, n)
 	case "kudos", "comment", "comment_reply", "reaction":

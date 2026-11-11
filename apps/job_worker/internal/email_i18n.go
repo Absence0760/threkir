@@ -149,9 +149,16 @@ func keyForKind(kind string) string {
 // event_cancel for a registrant who paid (notifications.refunded, migration
 // 20270725000002) carries the refund line on email, web push and native push
 // alike, so all three renders resolve their copy through here.
+//
+// A message notification naming a conversation is a group message
+// (notifications.conversation_id, migration 20271217000001): it says "in one of
+// your groups" rather than "a direct message", and still carries no content.
 func copyKeyFor(n NotificationRow) string {
 	if n.Kind == "event_cancel" && n.Refunded {
 		return "event_cancel_refunded"
+	}
+	if n.Kind == "message" && n.ConversationID != nil {
+		return "group_message"
 	}
 	return keyForKind(n.Kind)
 }
@@ -349,6 +356,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"event_cancel":            {"An event you were going to was cancelled", "One of your RSVP'd events has been called off.", "Event cancelled", "View event", []string{"An event you'd RSVP'd to has been cancelled.", "Open it for the organiser's note and any replacement plans."}},
 		"plan_update":             {"Your training plan was updated", "Your coach changed your plan.", "Your training plan changed", "View training", []string{"Your coach made a change to your training plan."}},
 		"message":                 {"You have a new message", "Someone sent you a direct message.", "New message", "Read message", []string{"You have a new direct message on Threkir."}},
+		"group_message":           {"You have a new group message", "Someone wrote in a group you are in.", "New group message", "Read message", []string{"There is a new message in one of your groups on Threkir."}},
+		"group_invite":            {"You were invited to a group", "Someone invited you to a group conversation.", "Group invitation", "See invitation", []string{"Someone invited you to a group conversation on Threkir.", "You join only if you accept. Until then you see the group's name and size, and none of its messages. The invitation lapses after 14 days."}},
 		"event_rsvp":              {"New RSVP to your event", "Someone's going to your event.", "New RSVP", "View event", []string{"Someone RSVP'd to an event you organise."}},
 		"club_post":               {"New post in your club", "There's a new post in one of your clubs.", "New club post", "View club", []string{"There's a new post in one of your clubs."}},
 		"run_completed":           {"A runner you follow finished a run", "See their latest run.", "New run from someone you follow", "View run", []string{"Someone you follow just completed a run."}},
@@ -408,6 +417,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"event_cancel":            {"Ein Event, zu dem du wolltest, wurde abgesagt", "Eines deiner zugesagten Events wurde abgesagt.", "Event abgesagt", "Event ansehen", []string{"Ein Event, für das du zugesagt hattest, wurde abgesagt.", "Öffne es für die Notiz der Organisation und mögliche Ersatztermine."}},
 		"plan_update":             {"Dein Trainingsplan wurde aktualisiert", "Dein Coach hat deinen Plan geändert.", "Dein Trainingsplan hat sich geändert", "Training ansehen", []string{"Dein Coach hat eine Änderung an deinem Trainingsplan vorgenommen."}},
 		"message":                 {"Du hast eine neue Nachricht", "Jemand hat dir eine Direktnachricht geschickt.", "Neue Nachricht", "Nachricht lesen", []string{"Du hast eine neue Direktnachricht auf Threkir."}},
+		"group_message":           {"Neue Nachricht in einer Gruppe", "Jemand hat in einer deiner Gruppen geschrieben.", "Neue Gruppennachricht", "Nachricht lesen", []string{"In einer deiner Gruppen auf Threkir gibt es eine neue Nachricht."}},
+		"group_invite":            {"Du wurdest in eine Gruppe eingeladen", "Jemand hat dich zu einer Gruppenunterhaltung eingeladen.", "Gruppeneinladung", "Einladung ansehen", []string{"Jemand hat dich auf Threkir zu einer Gruppenunterhaltung eingeladen.", "Du trittst nur bei, wenn du annimmst. Bis dahin siehst du den Namen und die Größe der Gruppe, aber keine Nachrichten. Die Einladung verfällt nach 14 Tagen."}},
 		"event_rsvp":              {"Neue Zusage für dein Event", "Jemand kommt zu deinem Event.", "Neue Zusage", "Event ansehen", []string{"Jemand hat für ein Event zugesagt, das du organisierst."}},
 		"club_post":               {"Neuer Beitrag in deinem Club", "Es gibt einen neuen Beitrag in einem deiner Clubs.", "Neuer Club-Beitrag", "Club ansehen", []string{"Es gibt einen neuen Beitrag in einem deiner Clubs."}},
 		"run_completed":           {"Eine Person, der du folgst, hat einen Lauf beendet", "Sieh dir ihren neuesten Lauf an.", "Neuer Lauf von jemandem, dem du folgst", "Lauf ansehen", []string{"Eine Person, der du folgst, hat gerade einen Lauf abgeschlossen."}},
@@ -461,6 +472,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"event_cancel":            {"Un événement prévu a été annulé", "Un des événements auxquels vous étiez inscrit a été annulé.", "Événement annulé", "Voir l'événement", []string{"Un événement auquel vous vous étiez inscrit a été annulé.", "Ouvrez-le pour le message de l'organisateur et d'éventuelles dates de remplacement."}},
 		"plan_update":             {"Votre plan d'entraînement a été mis à jour", "Votre coach a modifié votre plan.", "Votre plan d'entraînement a changé", "Voir l'entraînement", []string{"Votre coach a apporté une modification à votre plan d'entraînement."}},
 		"message":                 {"Vous avez un nouveau message", "Quelqu'un vous a envoyé un message direct.", "Nouveau message", "Lire le message", []string{"Vous avez un nouveau message direct sur Threkir."}},
+		"group_message":           {"Nouveau message dans un groupe", "Quelqu'un a écrit dans l'un de vos groupes.", "Nouveau message de groupe", "Lire le message", []string{"Il y a un nouveau message dans l'un de vos groupes sur Threkir."}},
+		"group_invite":            {"Vous êtes invité dans un groupe", "Quelqu'un vous a invité à une conversation de groupe.", "Invitation de groupe", "Voir l'invitation", []string{"Quelqu'un vous a invité à une conversation de groupe sur Threkir.", "Vous ne rejoignez le groupe que si vous acceptez. D'ici là, vous voyez son nom et sa taille, mais aucun de ses messages. L'invitation expire après 14 jours."}},
 		"event_rsvp":              {"Nouvelle réponse à votre événement", "Quelqu'un participe à votre événement.", "Nouvelle réponse", "Voir l'événement", []string{"Quelqu'un a répondu présent à un événement que vous organisez."}},
 		"club_post":               {"Nouvelle publication dans votre club", "Il y a une nouvelle publication dans l'un de vos clubs.", "Nouvelle publication de club", "Voir le club", []string{"Il y a une nouvelle publication dans l'un de vos clubs."}},
 		"run_completed":           {"Une personne que vous suivez a terminé une course", "Découvrez sa dernière course.", "Nouvelle course d'une personne que vous suivez", "Voir la course", []string{"Une personne que vous suivez vient de terminer une course."}},
@@ -514,6 +527,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"event_cancel":            {"Se canceló un evento al que ibas", "Uno de los eventos a los que te apuntaste se ha cancelado.", "Evento cancelado", "Ver evento", []string{"Se ha cancelado un evento al que te habías apuntado.", "Ábrelo para ver la nota del organizador y posibles fechas alternativas."}},
 		"plan_update":             {"Tu plan de entrenamiento se actualizó", "Tu entrenador cambió tu plan.", "Tu plan de entrenamiento cambió", "Ver entrenamiento", []string{"Tu entrenador hizo un cambio en tu plan de entrenamiento."}},
 		"message":                 {"Tienes un mensaje nuevo", "Alguien te envió un mensaje directo.", "Mensaje nuevo", "Leer mensaje", []string{"Tienes un nuevo mensaje directo en Threkir."}},
+		"group_message":           {"Nuevo mensaje en un grupo", "Alguien escribió en uno de tus grupos.", "Nuevo mensaje de grupo", "Leer mensaje", []string{"Hay un mensaje nuevo en uno de tus grupos en Threkir."}},
+		"group_invite":            {"Te invitaron a un grupo", "Alguien te invitó a una conversación de grupo.", "Invitación a un grupo", "Ver invitación", []string{"Alguien te invitó a una conversación de grupo en Threkir.", "Solo te unes si aceptas. Hasta entonces ves el nombre y el tamaño del grupo, pero ninguno de sus mensajes. La invitación caduca a los 14 días."}},
 		"event_rsvp":              {"Nueva confirmación para tu evento", "Alguien va a tu evento.", "Nueva confirmación", "Ver evento", []string{"Alguien confirmó asistencia a un evento que organizas."}},
 		"club_post":               {"Nueva publicación en tu club", "Hay una nueva publicación en uno de tus clubes.", "Nueva publicación de club", "Ver club", []string{"Hay una nueva publicación en uno de tus clubes."}},
 		"run_completed":           {"Alguien a quien sigues terminó una carrera", "Mira su última carrera.", "Nueva carrera de alguien a quien sigues", "Ver carrera", []string{"Alguien a quien sigues acaba de completar una carrera."}},
@@ -567,6 +582,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"event_cancel":            {"参加予定だったイベントが中止されました", "参加予定だったイベントの1つが中止になりました。", "イベント中止", "イベントを見る", []string{"参加予定だったイベントが中止されました。", "主催者からのお知らせや代替予定を確認しましょう。"}},
 		"plan_update":             {"トレーニングプランが更新されました", "コーチがプランを変更しました。", "トレーニングプランが変更されました", "トレーニングを見る", []string{"コーチがあなたのトレーニングプランを変更しました。"}},
 		"message":                 {"新しいメッセージがあります", "ダイレクトメッセージが届きました。", "新しいメッセージ", "メッセージを読む", []string{"Threkir に新しいダイレクトメッセージが届いています。"}},
+		"group_message":           {"グループに新しいメッセージがあります", "参加中のグループに投稿がありました。", "新しいグループメッセージ", "メッセージを読む", []string{"Threkir で参加しているグループに新しいメッセージがあります。"}},
+		"group_invite":            {"グループに招待されました", "グループの会話に招待されました。", "グループへの招待", "招待を確認", []string{"Threkir でグループの会話に招待されました。", "承諾した場合のみ参加します。それまではグループの名前と人数だけが表示され、メッセージは表示されません。招待は14日で失効します。"}},
 		"event_rsvp":              {"あなたのイベントに新しい参加表明", "あなたのイベントに参加する人がいます。", "新しい参加表明", "イベントを見る", []string{"あなたが主催するイベントに参加表明がありました。"}},
 		"club_post":               {"クラブに新しい投稿があります", "参加中のクラブに新しい投稿があります。", "新しいクラブ投稿", "クラブを見る", []string{"参加中のクラブの1つに新しい投稿があります。"}},
 		"run_completed":           {"フォロー中のランナーがランを完了しました", "最新のランを見る。", "フォロー中の人の新しいラン", "ランを見る", []string{"フォロー中の人がランを完了しました。"}},
@@ -620,6 +637,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"event_cancel":            {"Um evento que você ia foi cancelado", "Um dos eventos que você confirmou foi cancelado.", "Evento cancelado", "Ver evento", []string{"Um evento que você havia confirmado foi cancelado.", "Abra para ver a nota do organizador e possíveis datas alternativas."}},
 		"plan_update":             {"Seu plano de treino foi atualizado", "Seu treinador alterou seu plano.", "Seu plano de treino mudou", "Ver treino", []string{"Seu treinador fez uma alteração no seu plano de treino."}},
 		"message":                 {"Você tem uma nova mensagem", "Alguém te enviou uma mensagem direta.", "Nova mensagem", "Ler mensagem", []string{"Você tem uma nova mensagem direta no Threkir."}},
+		"group_message":           {"Nova mensagem em um grupo", "Alguém escreveu em um dos seus grupos.", "Nova mensagem de grupo", "Ler mensagem", []string{"Há uma nova mensagem em um dos seus grupos no Threkir."}},
+		"group_invite":            {"Você foi convidado para um grupo", "Alguém convidou você para uma conversa em grupo.", "Convite para grupo", "Ver convite", []string{"Alguém convidou você para uma conversa em grupo no Threkir.", "Você só entra se aceitar. Até lá, vê o nome e o tamanho do grupo, mas nenhuma das mensagens. O convite expira depois de 14 dias."}},
 		"event_rsvp":              {"Nova confirmação no seu evento", "Alguém vai ao seu evento.", "Nova confirmação", "Ver evento", []string{"Alguém confirmou presença em um evento que você organiza."}},
 		"club_post":               {"Nova publicação no seu clube", "Há uma nova publicação em um dos seus clubes.", "Nova publicação do clube", "Ver clube", []string{"Há uma nova publicação em um dos seus clubes."}},
 		"run_completed":           {"Alguém que você segue concluiu uma corrida", "Veja a corrida mais recente.", "Nova corrida de alguém que você segue", "Ver corrida", []string{"Alguém que você segue acabou de concluir uma corrida."}},
@@ -673,6 +692,8 @@ var emailCatalogue = map[string]map[string]emailStrings{
 		"event_cancel":            {"Um evento a que ia foi cancelado", "Um dos eventos a que confirmou presença foi cancelado.", "Evento cancelado", "Ver evento", []string{"Um evento a que tinha confirmado presença foi cancelado.", "Abra-o para ver a nota do organizador e eventuais datas alternativas."}},
 		"plan_update":             {"O seu plano de treino foi atualizado", "O seu treinador alterou o seu plano.", "O seu plano de treino mudou", "Ver treino", []string{"O seu treinador fez uma alteração ao seu plano de treino."}},
 		"message":                 {"Tem uma nova mensagem", "Alguém lhe enviou uma mensagem direta.", "Nova mensagem", "Ler mensagem", []string{"Tem uma nova mensagem direta no Threkir."}},
+		"group_message":           {"Nova mensagem num grupo", "Alguém escreveu num dos seus grupos.", "Nova mensagem de grupo", "Ler mensagem", []string{"Há uma nova mensagem num dos seus grupos no Threkir."}},
+		"group_invite":            {"Foi convidado para um grupo", "Alguém o convidou para uma conversa de grupo.", "Convite para grupo", "Ver convite", []string{"Alguém o convidou para uma conversa de grupo no Threkir.", "Só entra se aceitar. Até lá, vê o nome e o tamanho do grupo, mas nenhuma das mensagens. O convite expira ao fim de 14 dias."}},
 		"event_rsvp":              {"Nova confirmação no seu evento", "Alguém vai ao seu evento.", "Nova confirmação", "Ver evento", []string{"Alguém confirmou presença num evento que organiza."}},
 		"club_post":               {"Nova publicação no seu clube", "Há uma nova publicação num dos seus clubes.", "Nova publicação do clube", "Ver clube", []string{"Há uma nova publicação num dos seus clubes."}},
 		"run_completed":           {"Alguém que segue concluiu uma corrida", "Veja a corrida mais recente.", "Nova corrida de alguém que segue", "Ver corrida", []string{"Alguém que segue acabou de concluir uma corrida."}},

@@ -1,6 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { HTMLAttributes } from 'svelte/elements';
+	import { onMount } from 'svelte';
+	import GrisnirArt from './GrisnirArt.svelte';
+	import { emptyStateShowsMascot } from '#lib/mascot/mascot.ts';
+	import { loadMascotShown, peekMascotShown } from '#lib/mascot/mascot_pref.ts';
 
 	// The whole-surface "nothing here" card: icon, heading, explainer, actions.
 	// It spans the content width like every other block on an uncapped list
@@ -8,6 +12,10 @@
 	// `body` replaces `text` when the explainer needs markup (a link);
 	// `children` renders below the actions for content that belongs inside
 	// the card, such as a row of starter tiles.
+	// `mascot` opts a "nothing yet" state into Grisnir waiting by a trail sign
+	// in place of the icon. Only the surfaces that name it show him, never an
+	// error: a `danger` tone or an alert role refuses him whatever is passed,
+	// and the runner's `show_mascot` hides him everywhere.
 	let {
 		icon,
 		title,
@@ -17,6 +25,7 @@
 		body,
 		actions,
 		children,
+		mascot = false,
 		class: className = '',
 		...rest
 	}: {
@@ -28,12 +37,25 @@
 		body?: Snippet;
 		actions?: Snippet;
 		children?: Snippet;
+		mascot?: boolean;
 		class?: string;
 	} & Omit<HTMLAttributes<HTMLDivElement>, 'title' | 'children' | 'class'> = $props();
+
+	let prefShown = $state<boolean | null>(null);
+	onMount(() => {
+		if (!mascot) return;
+		prefShown = peekMascotShown();
+		void loadMascotShown().then((v) => (prefShown = v));
+	});
+	const showMascot = $derived(emptyStateShowsMascot({ mascot, tone, role: rest.role, prefShown }));
 </script>
 
 <div class="empty-state {className}" class:danger={tone === 'danger'} {...rest}>
-	<span class="material-symbols empty-state-icon" aria-hidden="true">{icon}</span>
+	{#if showMascot}
+		<GrisnirArt pose="wait" width="8.5rem" testid="empty-state-grisnir" />
+	{:else}
+		<span class="material-symbols empty-state-icon" aria-hidden="true">{icon}</span>
+	{/if}
 	<svelte:element this={headingLevel === 3 ? 'h3' : 'h2'} class="empty-state-title">{title}</svelte:element>
 	{#if body}
 		<div class="empty-state-text">{@render body()}</div>

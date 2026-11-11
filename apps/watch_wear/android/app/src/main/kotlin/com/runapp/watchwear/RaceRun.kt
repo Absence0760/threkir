@@ -114,6 +114,12 @@ internal fun raceFixDeviceMs(
     return if (ageMs < 0) nowWallMs else nowWallMs - ageMs
 }
 
+/// `metadata.race_undone_finish_at` for a recording whose line finish was
+/// taken back at [undoneFinishMs] (device clock): that instant on the server
+/// clock, as a result's `finish_at` is written, or null when none was.
+internal fun raceUndoneFinishAtIso(undoneFinishMs: Long?, serverOffsetMs: Long?): String? =
+    undoneFinishMs?.let { Instant.ofEpochMilli(it + (serverOffsetMs ?: 0L)).toString() }
+
 /// The gun on the device clock, for the running screen's race clock.
 internal fun gunStartDeviceMs(startedAtMs: Long?, serverOffsetMs: Long?): Long? =
     startedAtMs?.let { it - (serverOffsetMs ?: 0L) }

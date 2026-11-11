@@ -65,6 +65,9 @@ data class QueuedRun(
     /// `metadata.track_complete`. False on a run queued before the watch
     /// stored its off-track fixes, and the key is omitted.
     val trackComplete: Boolean = false,
+    /// `metadata.race_undone_finish_at`: the latest line finish the runner
+    /// took back on this recording, on the server clock. Null when none was.
+    val raceUndoneFinishAt: String? = null,
     /// The planned-vs-actual review of a run started from today's workout:
     /// `metadata.plan_workout_id`, `workout_step_results`,
     /// `workout_adherence`. Null on a free run, and on a run queued before

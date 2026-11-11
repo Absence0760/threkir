@@ -3088,6 +3088,10 @@ void main() {
           reason: 'Stop files the same finish again, now with its run');
       expect(social.submitted.last.finishMethod, RaceFinishMethod.auto.wire);
       expect(find.byKey(const ValueKey('race-undo-resume')), findsNothing);
+      final saved = r.runStore.captured.single as cm.Run;
+      expect(saved.metadata!.containsKey(cm.MetadataKeys.raceUndoneFinishAt),
+          isFalse,
+          reason: 'nothing was undone');
       await unmount(tester);
     });
 
@@ -3116,9 +3120,17 @@ void main() {
       final social = _UndoableRaceSocial();
       final r = await pumpLined(tester, social, _SpokenCues());
 
+      // The server runs 2.5 s ahead of this device.
+      final t0 = DateTime.now();
+      r.race.clockOffset.addSample(
+        sentAt: t0,
+        receivedAt: t0.add(const Duration(milliseconds: 20)),
+        serverAt: t0.add(const Duration(milliseconds: 2510)),
+      );
       await runEast(tester, 0, 96);
       await pumpUntil(tester, () => social.submitted.isNotEmpty,
           describe: 'the line finish to be filed');
+      final lineFinish = r.race.autoFinish!.at;
       await tester.tap(find.byKey(const ValueKey('race-undo-resume')));
       await pumpUntil(tester, () => social.deletes == 1,
           describe: 'the filed finish to be withdrawn');
@@ -3143,6 +3155,11 @@ void main() {
       await pumpUntil(tester, () => social.submitted.length == 2,
           describe: 'the hand finish to be filed');
       expect(social.submitted.last.finishMethod, RaceFinishMethod.manual.wire);
+      final saved = r.runStore.captured.single as cm.Run;
+      expect(saved.metadata![cm.MetadataKeys.raceUndoneFinishAt],
+          lineFinish.add(const Duration(milliseconds: 2500)).toUtc()
+              .toIso8601String(),
+          reason: 'the undone finish rides the run on the server clock');
       await unmount(tester);
     });
   });

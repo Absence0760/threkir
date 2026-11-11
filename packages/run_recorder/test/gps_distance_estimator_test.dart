@@ -59,9 +59,9 @@ void main() {
   final posTolerance = (vectors['position_tolerance_deg'] as num).toDouble();
   final scenarios = (vectors['scenarios'] as List).cast<Map<String, dynamic>>();
 
-  test('fixture is spec v1.7 and carries every scenario', () {
-    expect(vectors['spec'], 'gps-distance-estimator v1.7');
-    expect(GpsDistanceEstimator.specVersion, '1.7');
+  test('fixture is spec v1.8 and carries every scenario', () {
+    expect(vectors['spec'], 'gps-distance-estimator v1.8');
+    expect(GpsDistanceEstimator.specVersion, '1.8');
     expect(scenarios.length, greaterThanOrEqualTo(53));
   });
 

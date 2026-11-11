@@ -72,6 +72,27 @@ export const translation: GuideTranslation = {
 				},
 			],
 		},
+		{
+			heading: 'Se o telemóvel falhou uma linha',
+			blocks: [
+				{
+					type: 'p',
+					text: 'O telemóvel ou o relógio diz “Linha de partida atravessada, a cronometrar” quando o vê atravessar a linha de partida, e regista a sua chegada na linha de chegada. Se falhar uma delas, por exemplo debaixo de árvores ou quando parte um pouco ao lado da linha:',
+				},
+				{
+					type: 'list',
+					items: [
+						'Na chegada, toque em Parar e depois em **Terminar prova**. Se já tiver percorrido 90% do percurso, isso envia o seu tempo, e o organizador revê-o antes de ele contar.',
+						'Ou volte a cronometrar a sua tentativa a partir do trajeto, mais tarde: abra a corrida na web e escolha **Cronometrar de novo pelo meu trajeto**. Isto cronometra o trajeto pelas linhas da prova e substitui um resultado à espera de revisão, ou um mais lento. Pode fazê-lo até 24 horas depois de a janela fechar.',
+						'Correu com um Apple Watch? Não deteta as linhas, por isso voltar a cronometrar a partir do trajeto é a forma de a sua tentativa obter um resultado cronometrado pelas linhas.',
+					],
+				},
+				{
+					type: 'p',
+					text: 'Mais sobre como voltar a cronometrar em [[guide:race-results-explained|Perceber os resultados das provas]].',
+				},
+			],
+		},
 	],
 	sources: {
 		title: '980e3fe539fa87ed',
@@ -96,5 +117,11 @@ export const translation: GuideTranslation = {
 		's3.b0.i2': 'a6113125dae261a1',
 		's3.b0.i3': '8e98409f10047bd7',
 		's3.b1': '71fadd9d562da318',
+		's4.heading': '9f401b8bc89ad9f0',
+		's4.b0': 'c83ffd00a5d79eaf',
+		's4.b1.i0': '371c0ea180b0a2cc',
+		's4.b1.i1': 'd4b32e20b9afba25',
+		's4.b1.i2': '30e86640bcd591b4',
+		's4.b2': '172cd34b60d4d532',
 	},
 };

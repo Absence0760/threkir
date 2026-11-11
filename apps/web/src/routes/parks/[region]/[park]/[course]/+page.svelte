@@ -21,6 +21,7 @@
 	import {
 		courseAttribution,
 		parkCourseGpx,
+		parseSharedUse,
 		regionCodeFromSlug,
 		regionName,
 	} from '#lib/parks/park_courses.ts';
@@ -401,7 +402,11 @@
 			{/if}
 
 			<div class="notices-slot">
-				<ParkCourseNotices distanceM={Number(course.segment.distance_m)} testidPrefix="park-course" />
+				<ParkCourseNotices
+					distanceM={Number(course.segment.distance_m)}
+					sharedUse={parseSharedUse(course.shared_use)}
+					testidPrefix="park-course"
+				/>
 				{#if credit && mapTrack.length < 2}
 					<p class="attribution" data-testid="park-course-attribution">
 						{'text' in credit ? credit.text : m(credit.key)}

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ui_kit/ui_kit.dart'
     show AppSemanticColors, EmptyState, SelectionHint;
 
+import '../widgets/grisnir_moments.dart';
 import '../adaptive_width.dart';
 import '../auth_error.dart';
 import '../backend_timeout.dart';
@@ -1389,6 +1390,7 @@ class _RunsScreenState extends State<RunsScreen>
       // can perform on its own.
       return EmptyState(
         icon: Icons.directions_run,
+        illustration: grisnirWaitingOrNull(),
         title: l10n.historyEmptyTitle,
         body: widget.centreStartsRun
             ? l10n.historyEmptyBodyRunPrimary(startActivityCaption(

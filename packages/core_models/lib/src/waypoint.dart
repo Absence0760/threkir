@@ -65,6 +65,15 @@ class Waypoint {
   @JsonKey(includeIfNull: false, toJson: _trueOrNull, fromJson: _isTrue)
   final bool offTrack;
 
+  /// The first fix of a watch run's segment after its first: the watch
+  /// closed its distance estimator at a pause, a Wear OS source switch or a
+  /// continued run and opened a fresh one at this fix, so the server replays
+  /// each segment apart (spec v1.8, `docs/features/gps_distance.md` § Stored
+  /// track). Only the watches write it; the phone keeps it through ingest and
+  /// upload. Serialised only when true, so every older track is one segment.
+  @JsonKey(includeIfNull: false, toJson: _trueOrNull, fromJson: _isTrue)
+  final bool segmentStart;
+
   const Waypoint({
     required this.lat,
     required this.lng,
@@ -80,6 +89,7 @@ class Waypoint {
     this.baroElevationMetres,
     this.cumulativeDistanceMetres,
     this.offTrack = false,
+    this.segmentStart = false,
   });
 
   /// Whether the stored track carries a usable smoothed position for this
@@ -113,6 +123,7 @@ class Waypoint {
         baroElevationMetres: baroElevationMetres,
         cumulativeDistanceMetres: cumulativeDistanceMetres,
         offTrack: offTrack,
+        segmentStart: segmentStart,
       );
 
   /// This fix with its cumulative credited distance set (or cleared).
@@ -132,6 +143,7 @@ class Waypoint {
         baroElevationMetres: baroElevationMetres,
         cumulativeDistanceMetres: cumulativeDistanceMetres,
         offTrack: offTrack,
+        segmentStart: segmentStart,
       );
 
   /// This fix marked off the track line (or back on it).
@@ -150,6 +162,7 @@ class Waypoint {
         baroElevationMetres: baroElevationMetres,
         cumulativeDistanceMetres: cumulativeDistanceMetres,
         offTrack: offTrack,
+        segmentStart: segmentStart,
       );
 
   static Object? _trueOrNull(bool v) => v ? true : null;
@@ -219,6 +232,7 @@ List<Waypoint> finiteWaypoints(List<Waypoint> track) {
           baroElevationMetres: _finiteOrNull(w.baroElevationMetres),
           cumulativeDistanceMetres: _finiteOrNull(w.cumulativeDistanceMetres),
           offTrack: w.offTrack,
+          segmentStart: w.segmentStart,
         ),
   ];
 }

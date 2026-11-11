@@ -264,7 +264,11 @@
 			case 'workout_reminder':
 				return m('notificationsList.verbWorkoutReminder');
 			case 'message':
-				return m('notificationsList.verbMessage', { name });
+				return item.row.conversation_id
+					? m('notificationsList.verbGroupMessage', { name })
+					: m('notificationsList.verbMessage', { name });
+			case 'group_invite':
+				return m('notificationsList.verbGroupInvite', { name });
 			case 'club_post':
 				return item.club_name
 					? m('notificationsList.verbClubPostNamed', { name, club: item.club_name })

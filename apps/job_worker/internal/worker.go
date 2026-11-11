@@ -199,6 +199,14 @@ type Backend interface {
 	// they were computed from (smoothed_sidecar.go). Written after a
 	// recompute and, for a watch run, after its map_match.
 	UploadSmoothedSidecar(ctx context.Context, path string, sc *SmoothedSidecar) error
+	// Duration-repair path — kind='duration_repair', enqueued once by
+	// migration 20271218000002 for each run it capped at the ten-day bound
+	// that has a track. ReadRunForDurationRepair returns ErrRunNotFound for a
+	// deleted run; UpdateRunDuration returns ErrRunChangedDuringDurationRepair
+	// when its duration + track_url + flag CAS misses. The track is read with
+	// DownloadRecordedTrack.
+	ReadRunForDurationRepair(ctx context.Context, runID string) (*DurationRepairRun, error)
+	UpdateRunDuration(ctx context.Context, read *DurationRepairRun, durationS int) error
 	// Road-distance path — the map_match handler's last step. Reads the run
 	// with its linked route's surface and writes metadata.distance_map_matched_m
 	// through a track_url + metadata CAS; UpdateRunMetadata returns
@@ -562,6 +570,8 @@ func (w *Worker) dispatch(ctx context.Context, job *Job) error {
 		return w.handleDmImageOrphanSweep(ctx, job)
 	case "distance_recompute":
 		return w.handleDistanceRecompute(ctx, job)
+	case "duration_repair":
+		return w.handleDurationRepair(ctx, job)
 	case "segment_match":
 		return w.handleSegmentMatch(ctx, job)
 	default:

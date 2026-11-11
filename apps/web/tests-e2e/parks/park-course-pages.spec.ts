@@ -7,8 +7,10 @@ import { USER_A } from '../fixtures/users';
  * The park course pages as the owner reviewed them (issue #1352): a park's
  * courses sorted by distance with readable distances and a laps chip, the
  * index card's course count and distance range, the course page's map key,
- * its one credit line, its one primary action, and an empty board that
- * invites a first run with its filters hidden.
+ * its one credit line, its one primary action, an empty board that invites a
+ * first run with its filters hidden, and the notices callout: the times
+ * notice on every course and the give-way note on a course an organised group
+ * shares (decisions § 2460).
  *
  * Every row is planted (service role) in one park under a unique slug, at
  * (37.4, -78.4), which no seed row or other spec uses, and removed afterwards.
@@ -80,6 +82,7 @@ test.beforeAll(async () => {
 			checkpoints: [{ lat: BASE_LAT + 500 / M_PER_DEG_LAT, lng }],
 			laps: c.laps,
 			attribution: c.slug === '5k' ? CREDIT : null,
+			shared_use: c.slug === '5k' ? 'saturday_morning_group' : null,
 		});
 		if (course.error) throw course.error;
 	}
@@ -164,9 +167,18 @@ test.describe('park course pages', () => {
 			'Direction to run',
 		]);
 
-		// One callout holds the safety notice first, then the not-affiliated note.
+		// One callout: the safety notice, the give-way note this shared course
+		// carries, the times notice, then the not-affiliated note.
 		const notices = page.getByTestId('park-course-notices');
+		await expect(notices.locator('li')).toHaveText([
+			/^Stay on the marked trail\./,
+			'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.',
+			'Times here are Threkir times on these paths. They are not results of any event held on them.',
+			/^Threkir publishes these courses\./,
+		]);
 		await expect(notices.locator('li').first()).toHaveAttribute('data-testid', 'park-course-safety');
+		await expect(notices.getByTestId('park-course-shared-use')).toBeVisible();
+		await expect(notices.getByTestId('park-course-times')).toBeVisible();
 		await expect(notices.getByTestId('park-course-not-affiliated')).toBeVisible();
 
 		// No route to navigate, so the GPX download is the one primary action.
@@ -187,6 +199,9 @@ test.describe('park course pages', () => {
 		await expect(page.getByRole('heading', { level: 1, name: COURSES[4].name })).toBeVisible({ timeout: 15_000 });
 		await expect(page.getByTestId('park-course-attribution')).toHaveText('Course line © OpenStreetMap contributors');
 		await expect(page.getByTestId('park-course-distance')).toHaveText('21.1 km');
+		// A course no group shares has the times notice and no give-way note.
+		await expect(page.getByTestId('park-course-times')).toBeVisible();
+		await expect(page.getByTestId('park-course-shared-use')).toHaveCount(0);
 	});
 });
 
@@ -201,5 +216,16 @@ test.describe('park course share page', () => {
 		await expect(page.getByTestId('share-course-attribution')).toHaveCount(1);
 		await expect(page.getByTestId('share-course-notices')).toBeVisible();
 		await expect(page.getByTestId('share-course-safety')).toBeVisible();
+		await expect(page.getByTestId('share-course-times')).toBeVisible();
+		await expect(page.getByTestId('share-course-shared-use')).toHaveCount(0);
+	});
+
+	test('carries the give-way note on a course an organised group shares', async ({ page }) => {
+		await page.goto(`/share/course/us-va/${PARK_SLUG}/5k`);
+		await expect(page.getByRole('heading', { level: 1, name: COURSES[3].name })).toBeVisible({ timeout: 15_000 });
+		await expect(page.getByTestId('share-course-shared-use')).toHaveText(
+			'Organised groups use these paths on Saturday mornings. Give way, and avoid timing an effort through them.',
+		);
+		await expect(page.getByTestId('share-course-times')).toBeVisible();
 	});
 });

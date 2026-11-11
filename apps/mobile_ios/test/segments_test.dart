@@ -668,13 +668,34 @@ void main() {
 
   test(
       'a circle match reports matched_by zone, and the matcher version is '
-      'past the circles-only 1', () {
+      'past the two-pass loop rule of 2', () {
     final track = _straightTrack(points: 200, stepM: 5, stepS: 1);
     final eff = computeGlobalSegmentEffort(
       track,
       GlobalSegmentGeometry(points: [track[10], track[100]], distanceM: 450),
     );
     expect(eff?.matchedBy, GlobalSegmentMatchedBy.zone);
-    expect(kGlobalSegmentMatcherVersion, 2);
+    expect(kGlobalSegmentMatcherVersion, 3);
+  });
+
+  test(
+      'linesChain: a loop finishing on its start line, facing within 90 '
+      'degrees of it, chains its laps', () {
+    Gate at(double bearingDeg, {double northM = 0}) => Gate(
+          lat: 37.5 + northM / 111195,
+          lng: -77.5,
+          bearingDeg: bearingDeg,
+          halfWidthM: 15,
+        );
+    // Beaver Lake: one point, the finish facing 38 degrees off the start.
+    expect(linesChain(at(153.1), at(191.5)), isTrue);
+    // Across north: 350 and 20 are 30 degrees apart, not 330.
+    expect(linesChain(at(350), at(20)), isTrue);
+    // A lollipop finishes facing back the way it started: the runner turns
+    // first.
+    expect(linesChain(at(48.5), at(228.5)), isFalse);
+    // 14 m off is within the start line's reach, 20 m is not.
+    expect(linesChain(at(90), at(90, northM: 14)), isTrue);
+    expect(linesChain(at(90), at(90, northM: 20)), isFalse);
   });
 }

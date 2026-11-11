@@ -90,6 +90,9 @@ void main() {
     expect(pending[0], 'Drafted from map data, not yet checked on the ground.');
     expect(pending[1], 'Park by the boathouse.');
     expect(pending[2], 'Start on Lake Trail.');
+    expect(pending[5], '400 m: turn left onto Ridge Trail.',
+        reason: 'under a kilometre reads in metres');
+    expect(pending.last, '2.0 km: finish.');
     expect(routeGuideEnglish(guide, '2026-12-01')[0],
         'Checked on the ground on 2026-12-01.');
   });

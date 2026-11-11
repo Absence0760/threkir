@@ -413,6 +413,64 @@ Not yet run. Needs a real park, a course whose start and finish lines are placed
 
 (Live race recording on the watch is roadmap-pending in some cells; see [parity.md "Live race mode"](../product/parity.md).)
 
+### Timing-line calibration (#1304 § 6)
+
+Not yet run. Measures the error of the timing lines on the production fix feed, so the provisional constants (`halfWidthM`, `maxGapS`, `maxHopM`, `rejectGapS`, `startCommitM`, the with-start coverage threshold) can be replaced by measured ones ([decisions § 2453](../architecture/decisions.md)). Record the date, devices and OS versions, and the per-cell median and p95 |error|, missed and false counts, in a new decisions entry.
+
+**Kit.** A debug build of the phone app (`flutter run` or a debug APK; the screen does not exist in a release build), a Wear OS watch, a line marked on the ground with two cones, a camera filming the line with an NTP-synced clock in frame (a second phone showing time.is, say) and signal for the clock measurement.
+
+**The matrix (about 120 crossings).** Ten crossings per cell:
+
+| Approach | Pace | Carry |
+|---|---|---|
+| 90° to the line | walk, run | phone in hand, phone in pocket, Wear |
+| 30° to the line | walk, run | phone in hand, phone in pocket, Wear |
+
+Plus passes along parallel paths 20 m and 40 m beside the line (none should cross it), and standing still on the line for a few minutes (no crossing at all). The phone screen scores the phone cells only: there is no capture on the watch yet, so the Wear cells are filmed and timed the same way but scored by hand from the watch's results until one exists.
+
+**Per cell.**
+1. Phone: Settings > Line calibration. Stand at the centre of the line and tap Centre at my position (or type the centre), type the bearing of travel through it and the half-width (15 m today). Tap Measure server clock (10 round trips); the offset's uncertainty is half the round trip shown with each result.
+2. Pick the cell (approach, pace, carry) and tap Start capture.
+3. Run tab: Start a recording (no race needed) and make the cell's ten crossings, then Stop. Each recording is kept apart, so several in one capture are fine.
+4. Line calibration: Stop capture. From the video, write down each crossing's instant on the NTP clock (the frame where the runner's chest crosses the line) as `HH:MM:SS.fff` in the phone's zone, or as an ISO instant with its zone when the clock shows UTC or the session crosses midnight. Paste them one per line and tap Score this capture.
+5. Read the line it adds: matched of true, missed, false, near misses, median error and |error| p50 / p95. Nothing matched while detections sit about an hour away means a time-zone slip in the typed instants, not a detector failure.
+
+**Export.** Share CSV (or Copy CSV) sends one row per crossing (outcome, error in ms, lateral offset from the line's centre, gapped, why a miss was missed) and one summary row per capture. It holds no position and no instant: nothing in it says where the session was.
+
+### Replay regression: old circle vs new lines (#1304 § 6, step 2)
+
+Checks that the lines do not miss finishes the old 30 m circle caught, on the owner's own stored tracks. Run locally only; real tracks must never be committed (this repository is public).
+
+1. Download your own tracks: web Settings > Account > Download full backup, then unzip it into a directory outside the repo (for example `~/race-replay/`). Its `tracks/<run id>.json.gz` are what the replay reads.
+2. Optional, for the races you actually ran: in the Supabase SQL editor of the project you own, run the query below with your user id and save the result as `cases.json` beside `tracks/`. Without it every track is replayed over a course laid over the track itself (a start line 20 m in, a finish line 50 m before the end).
+
+   ```sql
+   select coalesce(json_agg(json_build_object(
+     'run_id', r.run_id, 'start_mode', s.start_mode, 'started_at', s.started_at,
+     'distance_m', coalesce(f.distance_m, c.distance_m),
+     'finish_lat', coalesce(f.finish_lat, c.finish_lat),
+     'finish_lng', coalesce(f.finish_lng, c.finish_lng),
+     'finish_line_self_cross', coalesce(f.finish_line_self_cross, c.finish_line_self_cross),
+     'start_gate_lat', coalesce(f.start_gate_lat, c.start_gate_lat),
+     'start_gate_lng', coalesce(f.start_gate_lng, c.start_gate_lng),
+     'start_gate_bearing_deg', coalesce(f.start_gate_bearing_deg, c.start_gate_bearing_deg),
+     'start_gate_half_width_m', coalesce(f.start_gate_half_width_m, c.start_gate_half_width_m),
+     'finish_gate_lat', coalesce(f.finish_gate_lat, c.finish_gate_lat),
+     'finish_gate_lng', coalesce(f.finish_gate_lng, c.finish_gate_lng),
+     'finish_gate_bearing_deg', coalesce(f.finish_gate_bearing_deg, c.finish_gate_bearing_deg),
+     'finish_gate_half_width_m', coalesce(f.finish_gate_half_width_m, c.finish_gate_half_width_m))), '[]')
+   from event_results r
+   join event_courses c on c.id = r.course_id
+   left join race_sessions s on s.event_id = r.event_id and s.instance_start = r.instance_start
+   left join race_session_courses f on f.event_id = r.event_id
+     and f.instance_start = r.instance_start and f.course_id = r.course_id
+   where r.user_id = '<your user id>' and r.run_id is not null;
+   ```
+
+3. From `apps/mobile_android`: `RACE_REPLAY_DIR=~/race-replay RACE_REPLAY_OUT=~/race-replay/report.csv flutter test test/race_finish_replay_test.dart`. Set `RACE_REPLAY_SYNTH=0` to replay only the `cases.json` races.
+
+It prints how many tracks it replayed, how many both detectors finished and how many the lines lost, and fails naming each lost run. `report.csv` has one row per track (`case,course,v1_finished,v2_finished,v2_detection,delta_s,regression`), with run ids and no coordinates; keep it with the tracks, outside the repo.
+
 ---
 
 ## Imports — Strava, Garmin, parkrun, Health Connect, HealthKit

@@ -8,7 +8,7 @@ import 'package:core_models/core_models.dart' as cm;
 import 'package:core_models/core_models.dart'
     show ActivityType, DistanceUnit, PlanWorkoutRow;
 import 'package:flutter/foundation.dart'
-    show ValueListenable, defaultTargetPlatform, visibleForTesting;
+    show ValueListenable, defaultTargetPlatform, kDebugMode, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderProxyBox;
 import 'package:flutter/scheduler.dart';
@@ -57,6 +57,7 @@ import '../preferences.dart';
 import '../privacy.dart';
 import '../off_route_alert.dart';
 import '../orphaned_recording.dart';
+import '../line_calibration.dart' show LineCalibrationCapture;
 import '../race_controller.dart';
 import '../race_finish.dart';
 import '../widgets/race_banner.dart';
@@ -3207,6 +3208,17 @@ class _RunScreenState extends State<RunScreen> with WidgetsBindingObserver {
         }
       } catch (e) {
         debugPrint('raceController.offerFix failed: $e');
+      }
+
+      // Debug builds only: the line-calibration capture (#1304 § 6) takes the
+      // fixes by the same rule as the race detector above, race or not.
+      try {
+        if (kDebugMode) {
+          LineCalibrationCapture.instance.offer(snapshot,
+              fresh: positionFresh, paused: _manualPaused || _stopRequested);
+        }
+      } catch (e) {
+        debugPrint('line calibration capture failed: $e');
       }
 
       // L4 — Live spectator broadcast (separate from race-mode pings).

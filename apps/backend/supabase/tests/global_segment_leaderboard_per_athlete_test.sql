@@ -47,13 +47,13 @@ set local "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-0000000da001"}
 insert into runs (id, user_id, started_at, distance_m, duration_s, source, metadata, is_public)
 values
   ('b3b3b3b3-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000da001',
-   now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
+   now() - interval '4 hours', 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
   ('b3b3b3b3-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000da001',
-   now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
+   now() - interval '3 hours', 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
   ('b3b3b3b3-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000da001',
-   now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
+   now() - interval '2 hours', 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, true),
   ('b3b3b3b3-0000-0000-0000-0000000000d4', '00000000-0000-0000-0000-0000000da001',
-   now(), 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, false);
+   now() - interval '1 hours', 5000, 1200, 'app', '{"activity_type":"run"}'::jsonb, false);
 insert into global_segment_efforts (global_segment_id, run_id, user_id, time_seconds, started_at)
 values
   ('a3a3a3a3-0000-0000-0000-0000000000d1', 'b3b3b3b3-0000-0000-0000-0000000000d1',

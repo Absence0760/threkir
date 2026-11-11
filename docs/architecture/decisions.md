@@ -33207,3 +33207,13 @@ Owner decisions on issue #1352. The course page showed "Run it clockwise. © Ope
 **Rejected:** widening `organiser_dispute` to park courses (it needs a verified club, which parkrun is not here, and carries a rename-notice flow a course does not have); a free-text "who are you" field in place of a reason (no priority, no deadline, nothing for the cap to exempt); an optional email for this reason (an unanswerable complaint); a separate deadline length (the Terms promise one number, and the land-manager one is already owner-approved).
 
 **Don't re-litigate unless** counsel asks for a different channel or deadline in the Terms, or a rights holder files at a volume the uncapped reason cannot absorb (then cap it per address, not per course).
+
+## 2470. The PR #1359 rounds raise the web code ceiling to 2684 KB by what they measured
+
+**Decided 2026-11-11 (PR #1359).** The rounds' first full build put web code at 2678 KB gzipped against the 2585 ceiling § 2410 set, measured locally from 2582 KB on origin/main 45756afe5 (578 -> 607 files) with the CI build's placeholder env. The client manifest attributes ~77 KB exactly, the rest being the per-file round-up on 29 new files: group conversations ~19 KB, park courses ~14, the 3D course-preview mascot ~7, the help centre's localized guides 6, the admin reports and home-metrics pages 6, race re-time on run detail 4, the organiser dispute flow 3. No web dependency changed, the largest code chunk is 289 KB on both sides, and no module joined the shell's static import graph (`shell_import_graph_guard.test.ts` passes). The ceiling moves to 2684, the measurement plus the same 6 KB of cover.
+
+**What it costs every reader:** the shell (entry plus the root layout's static closure) grew 294.5 -> 306.6 KB, 8.5 of it `core/data.ts` itself, which gained ~1,400 lines of the rounds' reads and writes, and 1.9 the `park_courses` parser it already imported, now split into its own chunk. That is the monolith's shape, not a stray import: every route reaches `data.ts`, so every domain's data code ships in the shell.
+
+**Rejected:** trimming to fit (nothing here is dead code or a duplicated dependency); a larger cover (it hides the next rogue dependency).
+
+**Don't re-litigate unless** the shell's share keeps growing round over round: then split `core/data.ts` by domain so route-only reads leave the shell, rather than raising this again.

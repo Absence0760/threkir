@@ -6006,7 +6006,7 @@ class ApiClient {
   /// with no visible effort this season has no entry. Signed-in only: the
   /// board it wraps refuses an anonymous caller. Throws on a failed read.
   Future<Map<String, ParkCourseRecord>> fetchParkCourseRecords() async {
-    final rows = await _client.rpc('park_course_records', get: true);
+    final rows = await _client.rpc('park_course_records', params: const {}, get: true);
     if (rows is! List) return const {};
     return {
       for (final r in rows)

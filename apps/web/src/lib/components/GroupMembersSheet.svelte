@@ -22,7 +22,6 @@
 		type GroupMember,
 	} from '#lib/core/data.ts';
 	import {
-		GROUP_TITLE_MAX,
 		canChangeGroupRoles,
 		canManageGroup,
 		canRemoveGroupMember,
@@ -57,6 +56,7 @@
 	let invitees = $state<string[]>([]);
 	let renaming = $state(false);
 	let draftTitle = $state('');
+	const draftInvalid = $derived(normalizeGroupTitle(draftTitle) === null);
 	let removeTarget = $state<GroupMember | null>(null);
 	let transferTarget = $state<GroupMember | null>(null);
 
@@ -152,19 +152,27 @@
 			{#if renaming}
 				<form class="rename" onsubmit={saveTitle}>
 					<label class="visually-hidden" for="group-rename-input">{tr('groups.titleLabel')}</label>
+					<!-- No maxlength: it counts UTF-16 units, so it would stop a valid
+					     title of 31 emoji that the server, counting characters, takes. -->
 					<input
 						id="group-rename-input"
 						type="text"
 						bind:value={draftTitle}
-						maxlength={GROUP_TITLE_MAX}
+						aria-invalid={draftInvalid}
+						aria-describedby={draftInvalid ? 'group-rename-error' : undefined}
 						data-testid="group-rename-input"
 					/>
-					<button type="submit" class="btn btn-primary btn-sm" disabled={busy || normalizeGroupTitle(draftTitle) === null} data-testid="group-rename-save">
+					<button type="submit" class="btn btn-primary btn-sm" disabled={busy || draftInvalid} data-testid="group-rename-save">
 						{tr('groups.renameSave')}
 					</button>
 					<button type="button" class="btn btn-secondary btn-sm" onclick={() => (renaming = false)}>
 						{tr('profile.cancel')}
 					</button>
+					{#if draftInvalid}
+						<p id="group-rename-error" class="title-error" role="alert" data-testid="group-rename-error">
+							{tr('groups.titleInvalid')}
+						</p>
+					{/if}
 				</form>
 			{:else}
 				<button
@@ -300,6 +308,12 @@
 		border-radius: var(--radius-md);
 		background: var(--color-bg);
 		color: var(--color-text);
+	}
+	.title-error {
+		flex-basis: 100%;
+		margin: 0;
+		color: var(--color-danger-text);
+		font-size: 0.85rem;
 	}
 	.inviting {
 		display: flex;

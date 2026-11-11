@@ -12,7 +12,6 @@
 	import { createGroupConversation } from '#lib/core/data.ts';
 	import {
 		GROUP_MIN_INVITEES,
-		GROUP_TITLE_MAX,
 		groupSeatsLeft,
 		normalizeGroupTitle,
 	} from '#lib/social/group_messages.ts';
@@ -25,6 +24,9 @@
 	let error = $state<string | null>(null);
 
 	const normalized = $derived(normalizeGroupTitle(title));
+	// Empty is the untouched state, which `required` and the disabled submit
+	// already answer; only a title that is too long earns the message.
+	const titleTooLong = $derived(normalized === null && title.trim() !== '');
 	const ready = $derived(normalized !== null && selected.length >= GROUP_MIN_INVITEES);
 
 	$effect(() => {
@@ -58,15 +60,21 @@
 	<form onsubmit={create}>
 		<label class="field">
 			<span>{tr('groups.titleLabel')}</span>
+			<!-- No maxlength: it counts UTF-16 units, so it would stop a valid
+			     title of 31 emoji that the server, counting characters, takes. -->
 			<input
 				type="text"
 				bind:value={title}
-				maxlength={GROUP_TITLE_MAX}
 				required
 				autocomplete="off"
+				aria-invalid={titleTooLong}
+				aria-describedby={titleTooLong ? 'group-title-error' : undefined}
 				data-testid="group-title-input"
 			/>
 		</label>
+		{#if titleTooLong}
+			<p id="group-title-error" class="error" role="alert" data-testid="group-title-error">{tr('groups.titleInvalid')}</p>
+		{/if}
 		<p class="hint">{tr('groups.createHint')}</p>
 		<GroupPeoplePicker bind:selected max={groupSeatsLeft(1, 0)} disabled={busy} />
 		{#if error}<p class="error" role="alert" data-testid="group-create-error">{error}</p>{/if}

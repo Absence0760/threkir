@@ -552,7 +552,8 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
   }
 
   Future<void> _send() async {
-    final body = _composer.text.trim();
+    final typed = _composer.text;
+    final body = typed.trim();
     final photo = _photoDraft;
     if (!_active ||
         _sending ||
@@ -573,7 +574,9 @@ class _GroupThreadScreenState extends State<GroupThreadScreen>
           .sendGroupMessage(widget.conversationId, body, imageId: imageId);
       if (!mounted) return;
       _localWrites++;
-      _composer.clear();
+      // Text typed while a slow send was in flight is the runner's next
+      // message, not this one's leftovers: only the sent words clear.
+      if (_composer.text == typed) _composer.clear();
       setState(() {
         _messages = _merge(_messages, [row]);
         if (identical(_photoDraft, photo)) _photoDraft = null;

@@ -375,8 +375,12 @@
 			const imageId = photo ? await uploadDmImage(photo.blob) : undefined;
 			const msg = await sendGroupMessage(id, body, { imageId });
 			if (photo && photoDraft === photo) clearPhotoDraft();
-			delete drafts[id];
-			drafts = { ...drafts };
+			// Text typed while a slow send was in flight is the runner's next
+			// message, not this one's leftovers: only the sent words clear.
+			if ((drafts[id] ?? '') === body) {
+				delete drafts[id];
+				drafts = { ...drafts };
+			}
 			if (id === groupId) {
 				localWrites++;
 				messages = mergeDmMessages(messages, [msg]);

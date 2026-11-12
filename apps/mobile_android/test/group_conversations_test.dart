@@ -69,6 +69,8 @@ class _FakeApi extends ApiClient {
   bool? groupsOn = true;
   int flagReads = 0;
 
+  /// Holds a send in flight until completed.
+  Completer<void>? sendGate;
   List<DmThread> threads = [];
   List<GroupInvite> invites = [];
   List<DirectMessageRow> messages = [];
@@ -174,6 +176,7 @@ class _FakeApi extends ApiClient {
   @override
   Future<DirectMessageRow> sendGroupMessage(String conversationId, String body,
       {String? imageId}) async {
+    await sendGate?.future;
     sent.add(body);
     return _msg('sent-${sent.length}', from: _me, minute: 59, body: body);
   }
@@ -506,6 +509,26 @@ void main() {
       final composer = tester.widget<TextField>(
           find.byKey(const ValueKey('message-composer')));
       expect(composer.controller!.text, isEmpty);
+    });
+
+    testWidgets('text typed while a send is in flight stays in the composer',
+        (tester) async {
+      final api = _FakeApi()
+        ..messages = [_msg('m1')]
+        ..sendGate = Completer<void>();
+      await _pumpThread(tester, api);
+      final field = find.byKey(const ValueKey('message-composer'));
+      await tester.enterText(field, 'slow one');
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('message-send')));
+      await tester.pump();
+      await tester.enterText(field, 'typed meanwhile');
+      api.sendGate!.complete();
+      await pumpUntil(tester, () => api.sent.isNotEmpty, describe: 'the send');
+      await tester.pump();
+      expect(api.sent, ['slow one']);
+      expect(tester.widget<TextField>(field).controller!.text,
+          'typed meanwhile');
     });
 
     testWidgets(
